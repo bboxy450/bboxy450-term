@@ -1,0 +1,46 @@
+FINAL EXECUTOR HANDOFF — exact full gate EXIT0; Oracle verification/merge pending.
+ROLE: EXECUTOR — Nyx Copperwing
+C-3 brief e49d5b08; own branch nyx-ctl-ui, /Users/feral/mydev/bboxy450-term-nyx.
+Source ff0d74335d25a5d5ea105c69d01b6bdae395fc82, base 4d38143086c048be60524d78cf600882a27bc6db.
+Completed gate: target/c3-gate-ff0d7433, exact clean atomic ci-local --parity, slot3 released13bca9de.
+
+Mechanism:
+ctl.rs:439 parser/mapping and :1113 Client::ui use the existing admitted GUI door.
+proto/gui.rs:84 bounded UiRequest; :156 actual produced-frame UiLayout incl frame_seq, pane grids, focus/tab and bounded solved tree.
+logic.rs:792/:3944 journal admits operator principal, then waits outside Worker; same op replays once, changed args refuse.
+gui_capture.rs:96 bounded existing relay; seat_socket.rs:664 ctl-only requests and GUI-owner-only answers.
+main.rs:3674/:3701/:3719 readiness/produced-frame receipt; Focus uses T7; Spawn waits actual Placed; Mute actual metadata; read returns retained frame, never re-solves.
+main.rs native KeyboardInput keeps direct route_input; virtual chords never alter physical held-key/release state.
+headless.rs:192 same App/Scene/controllers; retained layout publishes only on existing GPU completion. Both drivers handle command_retry capacity wake without paint.
+scene.rs:132 retained LauncherLayout getter; gpu.rs:698 foreground after pane textures.
+messaging/service.rs:1405 atomic mute-state outbox, bounded128 indexed drain to existing seat-state stream, bus acceptance clears it.
+
+Preflight facts:
+DD source dd002910: workspace1358/0/29 ignored, strict workspace/all-target Clippy0, invariants23/0/9 slow skipped.
+Rebase to FF changes ONLY lab/web/{components.js,e2e.html,lab.css} and ctl spec wording.
+Crates/scripts/design/Cargo/invariant trees identical, recorded target/c3-reference-rebase.json.
+FF reference checks: UI lint0, corpus6/0, lab-check40x4/0.
+Exact FF full gate EXIT0 / 2109.598s; workspace1358/0/29, strict/UIlint0, smoke0/0/10.005s, parity2176/2072 required measured/0 failures, same72 review keys/0new, invariants24/0/8slow.
+Focused10d26208: headless11/0, mux messaging18/0, proto messaging7/0; foreground529984 changed/covered, red529984->0, file custody/windows0. Image read confirms launcher foreground.
+
+Historical failures, not concealed:
+cb6125af exact gate101 at Core Kitty source guard; parity unreached. Native direct route_input and virtual/physical held-key separation fixed; final-code workspace Kitty passes.
+8bae preflight gui_events EOF251; one exact-binary rerun1/0; Oracle20x tip34d and20x main714 both20/0; cause unclassified. Current DD real-logic kill/reconnect fixture passes. No lane/deadline change.
+c852 workspace1341/1/29 and ae965 focused10/1: Cmd-M waited for stale metadata. Oracle ruled service-side publication; client-refetch experiment removed. New durable idle-mute test and end-state frame tests pass.
+Compile-only runs stopped on source supersession; raw logs retained. No deadline increased, no assertion weakened.
+
+Deliberately deferred: ui scroll, app resize/seat wait frame extension, standalone close/undo frame follow-up, #316 e2e UI, no OS input or publication.
+Cleanup already completed: merged Documents/T1 retired29306 files,1180073984 allocated bytes, per-file hashes target/c3-merged-gallery-cleanup-v2.json; peer artifacts untouched.
+
+Exact-gate artifacts and checksums: .bboxy/runs/c3-ctl-ui-verdict-ff0d7433.json and c3-ctl-ui-hashes-ff0d7433.jsonl.
+Owned cache removed4388208640 allocated bytes; retained gallery/binaries/proof are live.
+Main during gate: 6beb36f3017c55a42a98f8bc1438d950b3edb0a3
+6beb36f3 Merge ctl task status/report/accept/reject (Sable)
+c21da048 Record ctl task verification guards replay proof exact CI and cleanup
+ac973701 Merge startup diagnostics: ctl app start names the dead child's signal and its PID-matched crash report (Aster)
+5fca4127 Record startup signal and crash-report gate evidence
+547c5e97 Name startup signals and locate matching macOS crash reports
+15ec5966 Expose operator task status report accept and reject through ctl
+890373a6 Exercise ctl task verification and operation replay through a private fixture
+
+Final evidence is an evidence-only child of the exact gated source. No implementation edits after the gate.

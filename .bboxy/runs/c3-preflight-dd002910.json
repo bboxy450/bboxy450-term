@@ -1,0 +1,54 @@
+{
+  "source": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+  "cut": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-verify",
+  "target": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-dev",
+  "runner_pid": 32313,
+  "started": "2026-10-25T04:55:07.356547+00:00",
+  "steps": [
+    {
+      "name": "workspace",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--no-fail-fast"
+      ],
+      "pid": 32321,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1061.527046918869
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "pid": 66365,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 52.98712086677551
+    },
+    {
+      "name": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "pid": 68491,
+      "state": "finished",
+      "exit": 0,
+      "elapsed_seconds": 536.0251359939575
+    }
+  ],
+  "phase": "passed",
+  "exit": 0,
+  "finished": "2026-10-25T05:22:37.899908+00:00"
+}

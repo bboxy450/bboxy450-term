@@ -1,0 +1,331 @@
+{
+  "source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+  "base": "4d38143086c048be60524d78cf600882a27bc6db",
+  "ci_exit": 0,
+  "ci_elapsed_s": 2109.5977380275726,
+  "ci_log": ".bboxy/runs/c3-ctl-ui-ci-ff0d7433.log",
+  "ci_log_sha256": "247e2c315ed0c7f62a930bf7d39fee2b425dec64545552227b013f3f804c5bc9",
+  "workspace": {
+    "passed": 1358,
+    "failed": 0,
+    "ignored": 29
+  },
+  "strict_clippy_exit": 0,
+  "ui_lint_exit": 0,
+  "smoke": {
+    "mode": "headless",
+    "windows": 0,
+    "frames": 0,
+    "callbacks": 0,
+    "seconds": 10.005,
+    "operator_input": false
+  },
+  "invariants": {
+    "checks": 24,
+    "failures": 0,
+    "slow_skipped": 8
+  },
+  "parity": {
+    "cases": 2176,
+    "required": 2072,
+    "unproven": [],
+    "mismatches": [],
+    "reviews": 72,
+    "new_review_keys": [],
+    "removed_review_keys": [],
+    "review_modules": {
+      "harness-icon": 48,
+      "materials": 8,
+      "documents": 16
+    },
+    "baseline_sha256": "21b10359bdadbed0bb070a9f866ad9a61896ee4e5fc4e6e5197f9d9d2414b43a",
+    "report_sha256": "1ffb7c99cd289737ce3eb388ba51b2b0fffb0e4be3efb6c731e38596cccb1e85"
+  },
+  "legacy": {
+    "cases": 1664,
+    "pixel_reviews": 851,
+    "gating": false
+  },
+  "gallery": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/parity",
+  "foreground": {
+    "changed": 529984,
+    "covered": 529984,
+    "custody": "file",
+    "red_after": 0,
+    "red_before": 529984,
+    "windows": 0,
+    "frame_seq": 71,
+    "image_read": "Opaque red pane before; launcher text and controls above it after. Read both exact-gate PNGs."
+  },
+  "artifact_manifest": {
+    "path": ".bboxy/runs/c3-ctl-ui-hashes-ff0d7433.jsonl",
+    "files": 13929,
+    "nonempty_pngs": 13718,
+    "sha256": "e87043d59e7079a9aa152c3c472ed49f3b471b4e4a4f693bb5eaffc2c4a56edc"
+  },
+  "binaries": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/bboxybook-ff0d7433",
+      "bytes": 18283056,
+      "sha256": "f8352b88faa87c731c1b0ecb23383340a96e9c150556f1960c1355df92cfe96e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433/bboxy450-term-ff0d7433",
+      "bytes": 52922016,
+      "sha256": "ed4fbf8958901534c86ecd49a426446534797b5292f93e8e8f56a007ff314ca6"
+    }
+  ],
+  "preflight": {
+    "original_code_check_source": "dd002910ba1652d25239db1e6abaa70766c5efe0",
+    "original_log_refs": [
+      {
+        "path": ".bboxy/runs/c3-ctl-ui-ci-ff0d7433.log",
+        "sha256": "247e2c315ed0c7f62a930bf7d39fee2b425dec64545552227b013f3f804c5bc9"
+      },
+      {
+        "path": ".bboxy/runs/c3-ctl-ui-gate-ff0d7433.json",
+        "sha256": "199e63b2ee7f470e3c9ef8e6fbe689af5d8a207011ce2f8f80cd8a1c5d57286d"
+      },
+      {
+        "path": ".bboxy/runs/c3-preflight-dd002910.json",
+        "sha256": "85afb48c1777886c2888a828449239bf3a671ab1b76639e373515ea78135e66b"
+      },
+      {
+        "path": ".bboxy/runs/c3-reference-preflight-ff0d7433.json",
+        "sha256": "b552e76e9d585e871a118a493dfb131a28d952b08d81310b42d375352eb10713"
+      },
+      {
+        "path": ".bboxy/runs/c3-workspace-dd002910.log",
+        "sha256": "1a692ce2eb77e0fa658ee148599649e97c84e6a7e9cdfdd00a2702c40340bb87"
+      },
+      {
+        "path": ".bboxy/runs/c3-clippy-dd002910.log",
+        "sha256": "61fb1e240660697b94c69e379d87face0f99585ee8342237d4394e8d9d88e36c"
+      },
+      {
+        "path": ".bboxy/runs/c3-invariants-dd002910.log",
+        "sha256": "3ab5094ad2efb1fd935cd2cb2aec5f62675527c7a8f4b5822c79a827451ac141"
+      },
+      {
+        "path": ".bboxy/runs/c3-preflight-c8522979-failed.log",
+        "sha256": "22c65e48c81c40c5febbc64f31cd796b6cf3bd53ff6dbce752e948c1d75d1073"
+      },
+      {
+        "path": ".bboxy/runs/c3-mute-timeout-ae965239.log",
+        "sha256": "995b5488b6f33e3850752883ab884b5023c3e286be86eae36446160dca8a3e8a"
+      }
+    ],
+    "reference_checks": ".bboxy/runs/c3-reference-preflight-ff0d7433.json",
+    "note": "Original Rust/workspace checks are attributed to DD, not claimed rerun on FF. Crates/scripts/design/Cargo/invariant trees match; the full FF gate reran all required checks."
+  },
+  "historical_gui_events_classification": [
+    {
+      "source_tag": "34d2d449",
+      "side": "tip",
+      "results": ".bboxy/runs/c3-gui-events-tip-34d2d449.json",
+      "sha256": "656a196eca83dfc18e272b13c60eda4341c2735e2a398720111f26d8acb0fbef",
+      "raw_files": [
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/01.log",
+          "sha256": "602f20cac634333084f44bb2ccf46630d7021d1345e4d184d0f55a2ec5e543ca"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/02.log",
+          "sha256": "efda7193fb4dae88c8ec1cccde0a29c8f44e9b94e610f0e7de4cfafd0be9ec56"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/03.log",
+          "sha256": "aba31d2bd46c1ca181cd49cc65e6bf9fbcc64ab9f88c3f3eaf7cedffb8eac04f"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/04.log",
+          "sha256": "62a2821e08361f5cfdd86a9d60d76328b91d286b6c0d5261e23ce9827099fa6a"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/05.log",
+          "sha256": "95428414543d83472081ff2a774d64d98e4dd783221f6939261a1eaf4520c4ef"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/06.log",
+          "sha256": "b9190a3538c0efae26c0a8f785c94024385eb27f5109a06e474291b8f68724ab"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/07.log",
+          "sha256": "cc303d8562020cbb8132b8534810680bf763ef04f5da8d62498e424ae54e5829"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/08.log",
+          "sha256": "1b6ca04bc76e1edb9dd0e06df09c55c93aa75f5d860891999586d9d4a4a9c634"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/09.log",
+          "sha256": "710898bc07929df163026cc8150e163a7367f850383d14fa341e46682921aef4"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/10.log",
+          "sha256": "d2bcd2c94ce6040d0992318848a94d636b95015e982df60f32d0bdd10326c596"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/11.log",
+          "sha256": "59297e88e5bf5c3c4f9f04f0be993923e824e580e370f9f172e1771457227496"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/12.log",
+          "sha256": "7a924b665b5be859e866d45b69d7ac93423a11d7cc9f102b48b8bbd4ddd97b71"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/13.log",
+          "sha256": "4e87381621ceb3d2255b7284f70997c3ed5455e5c19f03ce991a03eb395ba19d"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/14.log",
+          "sha256": "cec0e2ce4d040d880440112ee4041949198ed1d5fab9954e16065aff9f05fa2f"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/15.log",
+          "sha256": "5a65109b82707347a0b8f6be2832cb0b95ac0c098795f88b8a3abcf4064d24ca"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/16.log",
+          "sha256": "6a803db49cd881f20df65093a0b524e7b988463f2ced9dd00715ec5fc69866b2"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/17.log",
+          "sha256": "acf4b9788c50f07372175e52930249badebdf3d0e16aa41e2a9e5cd5fe1a6136"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/18.log",
+          "sha256": "3a349cf20139c7ba31770aa94fd26b6e8be1fde3efdf9fd94b23278fb9172cd0"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/19.log",
+          "sha256": "0e2da4ae3863df33baab867074cbeb5108d6029a8351f78082f3fad391972707"
+        },
+        {
+          "path": "target/c3-gui-events-classification-34d2d449/tip/20.log",
+          "sha256": "2f763023dd44555f51766b923d84e321dd9a9d681d4d86890e928a6b09000c56"
+        }
+      ]
+    },
+    {
+      "source_tag": "714163f2",
+      "side": "main",
+      "results": ".bboxy/runs/c3-gui-events-main-714163f2.json",
+      "sha256": "02d0734151a962c7eec9bc7935ac1ce6b8cc68f11ca1a96a048f3adce7689804",
+      "raw_files": [
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/01.log",
+          "sha256": "3eb8fd2bf619b2cac696f56ab14bdebecd265b3ba056e4ddcdc88e63aa1ba933"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/02.log",
+          "sha256": "14c48f21ffc9a5d663e4bc964e0641c907641a18b882c7b5695dd1258cd4b4cc"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/03.log",
+          "sha256": "b7c4b7f14687979175642c7aaac808e69073db0627a065c8f21ede82d5ac583a"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/04.log",
+          "sha256": "b6712d575b0f90dd00336461cf1d9ee3451d2111c92792a35a637673cf28cb2f"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/05.log",
+          "sha256": "b91388a7b8bd4abf27eae1f6aa62d07b88ba36a8b4a6975825c0a9ce992233b0"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/06.log",
+          "sha256": "7c79e7b5de814d62b9aeb644353e7a17b498f89051a25df582e39bb0ef4cc8af"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/07.log",
+          "sha256": "b8f5505d2196fcd45f64fefca35d7e7480d5128ca0a7c27d290f94e8fa5558d1"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/08.log",
+          "sha256": "d43711d25798d1ec5a6eadb358071e89e9d454cb1d5b6eb623fe848a4d70cc57"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/09.log",
+          "sha256": "70c4dfb1449993e697da60cbdb4e275a9f86d53683d609aae1441c779c44dcde"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/10.log",
+          "sha256": "560d0db8a52ed0faf19ee4f4b2701e3e7f174779f40471874e1f41193bb2ce8e"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/11.log",
+          "sha256": "1c3d17a15c6a05ecbd24ebc47bb9c8fbe076aa309c81038c12de8f495a8cfd78"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/12.log",
+          "sha256": "f37f7e6c00ee5779788b50bc91c9ecc994543aed2bfc86df60ae98886b39cf17"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/13.log",
+          "sha256": "5b908eb12a6d0d627c44c336c7dc6a9bebe1a26b7d65006bf25827e9a1736c5d"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/14.log",
+          "sha256": "2ca9a6d72437699e106a60309818b6d15e1369865f8e968c944f30feed979f15"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/15.log",
+          "sha256": "7a375aeba4c00dcc0f8fe0636149611fb103066ca774285ec900b435c8d39bd8"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/16.log",
+          "sha256": "eee0b4f298b44e9bf6b865cd80b70f8ca1a7d8c624abecfb0025b9f1e33b43a9"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/17.log",
+          "sha256": "ccdcbe0c485fdc24ded0d91dbd7a1bf515550be02208341c604da8b35787cbd7"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/18.log",
+          "sha256": "09a5a6557e594e5b93e59fe5bc1b8124e607c16abfb6e16b2d1da5020980bfb9"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/19.log",
+          "sha256": "072a5473b64a9b9135bc855ce24eb387f27ddc75b2b87fb969260fa3bba7c93d"
+        },
+        {
+          "path": "target/c3-gui-events-classification-714163f2/main/20.log",
+          "sha256": "63fab6d931cd24d68b6b04ae6ae5127fd3626591283ac842ba2304fc8c5c29d0"
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "gate_source": "ff0d74335d25a5d5ea105c69d01b6bdae395fc82",
+    "build_target_deleted": true,
+    "allocated_gate_cache_freed": 4388208640,
+    "merged_gallery_retirement": {
+      "manifest": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-merged-gallery-cleanup-v2.json",
+      "manifest_sha256": "640d988641da26c77f42db8e012e4f47f1cffa087389a3a593f2474ffb542627",
+      "files": 29306,
+      "allocated_bytes": 1180073984,
+      "authorization": "Merged galleries/binaries retirement59db9494 plus current inactive-own-target cleanupa5ba9bb0; documents5e85ef2f and T16486e6fb both on main"
+    },
+    "peer_paths_deleted": []
+  },
+  "main_at_handoff": "6beb36f3017c55a42a98f8bc1438d950b3edb0a3",
+  "main_changes_during_gate": [
+    "6beb36f3 Merge ctl task status/report/accept/reject (Sable)",
+    "c21da048 Record ctl task verification guards replay proof exact CI and cleanup",
+    "ac973701 Merge startup diagnostics: ctl app start names the dead child's signal and its PID-matched crash report (Aster)",
+    "5fca4127 Record startup signal and crash-report gate evidence",
+    "547c5e97 Name startup signals and locate matching macOS crash reports",
+    "15ec5966 Expose operator task status report accept and reject through ctl",
+    "890373a6 Exercise ctl task verification and operation replay through a private fixture"
+  ],
+  "deliberately_deferred": [
+    "ui scroll",
+    "app resize and seat-wait frame extensions",
+    "dedicated close/undo frame follow-up",
+    "e2e #316 UI",
+    "967-seat load",
+    "OS input and manual probes",
+    "publication or main merge"
+  ]
+}

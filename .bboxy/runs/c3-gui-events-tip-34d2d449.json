@@ -1,0 +1,175 @@
+{
+  "label": "tip",
+  "source": "34d2d449dbee23c3231c47e99aac03cea983a319",
+  "cut": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-verify",
+  "input_binary": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-dev/debug/deps/gui_events-5e78e5847f729124",
+  "binary": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gui-events-classification-34d2d449/tip/gui-events-test",
+  "binary_sha256": "716c82a5f130fda2694c32b66c2ac8751ac32f9fc6fb310ffd2beff272f075f6",
+  "started": "2026-10-25T03:55:32.373885+00:00",
+  "runs": [
+    {
+      "n": 1,
+      "pid": 7965,
+      "group": 7965,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.5469162464141846
+    },
+    {
+      "n": 2,
+      "pid": 7993,
+      "group": 7993,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.3533239364624023
+    },
+    {
+      "n": 3,
+      "pid": 8017,
+      "group": 8017,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2765061855316162
+    },
+    {
+      "n": 4,
+      "pid": 8051,
+      "group": 8051,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.1610960960388184
+    },
+    {
+      "n": 5,
+      "pid": 8065,
+      "group": 8065,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.4167730808258057
+    },
+    {
+      "n": 6,
+      "pid": 8127,
+      "group": 8127,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2637989521026611
+    },
+    {
+      "n": 7,
+      "pid": 8143,
+      "group": 8143,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.3812758922576904
+    },
+    {
+      "n": 8,
+      "pid": 8172,
+      "group": 8172,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2635829448699951
+    },
+    {
+      "n": 9,
+      "pid": 8211,
+      "group": 8211,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2703659534454346
+    },
+    {
+      "n": 10,
+      "pid": 8226,
+      "group": 8226,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.302415132522583
+    },
+    {
+      "n": 11,
+      "pid": 8244,
+      "group": 8244,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.3042490482330322
+    },
+    {
+      "n": 12,
+      "pid": 8267,
+      "group": 8267,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.190783977508545
+    },
+    {
+      "n": 13,
+      "pid": 8318,
+      "group": 8318,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.3156590461730957
+    },
+    {
+      "n": 14,
+      "pid": 8359,
+      "group": 8359,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.5030498504638672
+    },
+    {
+      "n": 15,
+      "pid": 8432,
+      "group": 8432,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.5349199771881104
+    },
+    {
+      "n": 16,
+      "pid": 8504,
+      "group": 8504,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.357712745666504
+    },
+    {
+      "n": 17,
+      "pid": 8882,
+      "group": 8882,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.3058209419250488
+    },
+    {
+      "n": 18,
+      "pid": 8910,
+      "group": 8910,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2933878898620605
+    },
+    {
+      "n": 19,
+      "pid": 8935,
+      "group": 8935,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.2971909046173096
+    },
+    {
+      "n": 20,
+      "pid": 8953,
+      "group": 8953,
+      "phase": "finished",
+      "exit": 0,
+      "elapsed_seconds": 1.197934865951538
+    }
+  ],
+  "phase": "finished",
+  "passed": 20,
+  "failed": 0,
+  "finished": "2026-10-25T03:55:58.919039+00:00"
+}

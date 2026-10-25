@@ -1,0 +1,155 @@
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/target/c3-verify/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 22.55s
+     Running tests/headless.rs (/Users/feral/mydev/bboxy450-term-nyx/target/c3-dev/debug/deps/headless-42317773e6adb8e9)
+
+running 11 tests
+test stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid ... ok
+test unattended_without_a_test_account_is_refused_before_native_custody ... ok
+launch 1: real PTY marker and offscreen pane capture verified
+launch 2: real PTY marker and offscreen pane capture verified
+test headless_cli_starts_real_gui_types_captures_and_stops_without_a_window ... ok
+test unattended_headless_control_uses_its_own_file_account ... ok
+launch 3: real PTY marker and offscreen pane capture verified
+launch 4: real PTY marker and offscreen pane capture verified
+test t7_headless_close_uses_the_window_intent_and_restores_the_same_split ... ok
+launch 5: real PTY marker and offscreen pane capture verified
+
+thread 'ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame' (33941658) panicked at crates/bboxy450-term/tests/headless.rs:52:9:
+assertion `left == right` failed: ["ui", "key", "cmd-m"]: [Object {"error": Object {"hint": String("the GUI owner did not answer; retain --op and inspect app status"), "kind": String("timeout"), "message": String("unknown: timeout: UI frame incomplete; target=None, last=60, pending=0, effects=[\"Mute(SeatId(Ulid(2167487037780296732826283144806671879)), true)=Ok(false)\"]")}, "ok": Bool(false), "op": String("01M5RNS6YWV8Y6S4AXFJHKW6N9")}]; headless GUI starting: windows=0, real Session, offscreen renderer
+cockpit ready: supervisor=4560 logic=4569
+initial identity status: Certified, reason=Some("test-account:01M5RNS4PVYD6XN0BHT6FTMX06"), selector=memory custody (debug)
+GUI operation 01M5RNS51WQD9TCF892NMGCSPT accepted
+headless render ready: generation=1 frame=1 windows=0
+GUI operation 01M5RNS55Q01R3RB5DASPW5AM5 rejected: unknown GUI stream
+GUI operation 01M5RNS55R7RDQ244N6XQ4HDFF accepted
+launcher open
+GUI operation 01M5RNS56KA40Z11N2ADV3NCG9 accepted
+GUI operation 01M5RNS56M9MXAETXMPF2G5Y0C accepted
+GUI operation 01M5RNS57HMBRPQ086KDNBP95W accepted
+GUI operation 01M5RNS57MFG7VF7JMAXRMRGVD accepted
+GUI operation 01M5RNS5CCKMXQG2ZP01MA2502 accepted
+GUI operation 01M5RNS5CD5BKME3HFRKVZZ4Y9 accepted
+GUI operation 01M5RNS5CYADWWPVQW14NRW8MH accepted
+GUI operation 01M5RNS5CZDVXR3VZZNEJ406VW accepted
+GUI operation 01M5RNS5D0WXPB7C0E5EN0RTF8 accepted
+GUI operation 01M5RNS5D2MDTT0XT3RT7RXSN9 accepted
+GUI operation 01M5RNS5D3FX7RPKZFG5N9JK45 accepted
+GUI operation 01M5RNS5D3PPS86SPH2VQV4FYW accepted
+GUI operation 01M5RNS5D4HYE88N0KAHGTZRST accepted
+GUI operation 01M5RNS53NGKB8CN11WR0G00CB accepted
+launcher default spawn requested: id=zsh
+ui input: Locate { seat: SeatId(Ulid(2167487037780296732826283144806671879)), where_: Both }
+GUI operation 01M5RNS6HWG1PMXQNX7R2RKWH8 accepted
+GUI operation 01M5RNS5DYK8BM7E4K658H4DVP accepted
+GUI operation 01M5RNS6NQ0D1V5A2Q03G3BYEH accepted
+GUI operation 01M5RNS6PD007WMY8M4MS5Z5QS accepted
+GUI operation 01M5RNS6PSP4J3XG5CEJMDQA71 accepted
+GUI operation 01M5RNS6Q1WVGF4V0S933GRY8W accepted
+GUI operation 01M5RNS6RPRYK6563P50YPZPSM accepted
+seat 01M5RNS5HVV9RK7609Q98GG9G7 activity=Idle process=Running { pid: 4646 }
+GUI operation 01M5RNS6S54GJECSMQH91B3FE9 accepted
+GUI operation 01M5RNS6S6THSK3E6AHA00DV03 accepted
+GUI operation 01M5RNS6S7G56KPP9BH0PCA89M accepted
+GUI operation 01M5RNS6SDFAN1THRZ0PZ7VXK4 accepted
+capture /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmpwTiKNp/ui-spawn-ack.png: Ok(())
+GUI operation 01M5RNS6WDEDE2GYHS9QH8KTJG accepted
+GUI operation 01M5RNS6WM1WT59J3YRXPYXBDJ accepted
+GUI operation 01M5RNS6WSJX8M7D0VETQP0W57 accepted
+GUI operation 01M5RNS6WT8BKEJFDJPBYJVARQ accepted
+GUI operation 01M5RNS6XGQKMBV3EEG5R67N63 accepted
+GUI operation 01M5RNS6XPB4MG2PSJ8YVMDYSS accepted
+GUI operation 01M5RNS6Y07K6JWZWV8TY46G60 accepted
+GUI operation 01M5RNS6PDHZ4HJ5MMX96MKHXF accepted
+GUI operation 01M5RNS6YC6DAM4D1W1PD1DRF1 accepted
+GUI operation 01M5RNS6YTGM12H5K0GBKP3454 accepted
+GUI operation 01M5RNS6Z98EKYMZGS4M9YWVMB accepted
+GUI operation 01M5RNS6ZB2C7NRZS4CKHAGDEV accepted
+GUI operation 01M5RNS6ZCHGANGG029Z02406N accepted
+GUI operation 01M5RNS6ZCJWBB92TMGZS1EZRB accepted
+GUI operation 01M5RNS6ZD1YGCCE33QE8B012Y accepted
+GUI operation 01M5RNS6ZGT66YE9ZMQV9SA62S accepted
+GUI operation 01M5RNS6ZJ6RMQ52PEDHCMZTZE accepted
+GUI operation 01M5RNS6ZK44AS7SJJN054EPSG accepted
+GUI operation 01M5RNS6ZKAP2VMWK007ERMR0Q accepted
+GUI operation 01M5RNS6ZKDMBCPJNF1SMPF2ED accepted
+GUI operation 01M5RNS6ZM64FHWZKSW4029D1R accepted
+GUI operation 01M5RNS6ZMPNNDCHPQAATKVETV accepted
+GUI operation 01M5RNS6ZNQZHEVZTS7RMV4674 accepted
+GUI operation 01M5RNS6ZNS8F1H0EQH3C57K77 accepted
+GUI operation 01M5RNS6ZNJ4S28R5WDX67GRMS accepted
+GUI operation 01M5RNS6ZNEZ6W2CVQAMPWQ5PJ accepted
+GUI operation 01M5RNS6ZP641PRDRDXQCJDD0R accepted
+GUI operation 01M5RNS6ZPW4X61JCH03YHX837 accepted
+GUI operation 01M5RNS6ZQB5S1X8R3W77NRKNJ accepted
+GUI operation 01M5RNS71TNY22ECVKC86G0EY6 accepted
+GUI operation 01M5RNS75DCNPDJCWNJ45BRBRR accepted
+GUI operation 01M5RNS75YJR0CPBQ9XK2JV1DM accepted
+GUI operation 01M5RNS76DF8T8XEQT61W3KCTJ accepted
+GUI operation 01M5RNS7E4SA595QVGKVAH8W34 accepted
+GUI operation 01M5RNS7FENX53AT22EYKHHT2N accepted
+GUI operation 01M5RNS7FF8JPBA2A04JAEXWBK accepted
+GUI operation 01M5RNS7FF72ZSTQFGBZY3SEK9 accepted
+GUI operation 01M5RNS7FFG8NKJD0MKSE8G01M accepted
+GUI operation 01M5RNS7FGH8NQXPRCHJT7ZAMF accepted
+GUI operation 01M5RNS88ZM3Y92W2ENH4QCKCT accepted
+GUI operation 01M5RNS8942ZAJHQQNFD8KG2VE accepted
+GUI operation 01M5RNS89AVKQ26DJ6F7S6YEV1 accepted
+GUI operation 01M5RNS89B7J3N6TDW4DVX0SCG accepted
+GUI operation 01M5RNS89BS93BJDKGTN2WH4F9 accepted
+GUI operation 01M5RNS89ESMCP9N479VP9JBDK accepted
+GUI operation 01M5RNS8PN1P48BSWQ79N7NE42 accepted
+GUI operation 01M5RNS8Q4JYEJNMHYEHVWK4XN accepted
+GUI operation 01M5RNS8QJ434NT8WRFKHC1497 accepted
+GUI operation 01M5RNS8R3J8JBJPQNB5Z0A1VK accepted
+GUI operation 01M5RNS8R4NVSA0K7R1QGBRG3Q accepted
+GUI operation 01M5RNS8ZA9MW9Y47BD9W96MTQ accepted
+GUI operation 01M5RNS906MNST4RNZJSZV6QP7 accepted
+GUI operation 01M5RNS90SXY7BSZBR92MNY3MG accepted
+GUI operation 01M5RNS90S40YSA8EQJXJ1KW29 accepted
+GUI operation 01M5RNS90T310XY2CTBRN3AREX accepted
+GUI operation 01M5RNS9BH5C50CB511ZXW9DFG accepted
+GUI operation 01M5RNS9GW1G8XDTGA490VKFMV accepted
+GUI operation 01M5RNS9HHV2HAT2PASMEQKG6F accepted
+GUI operation 01M5RNS9JG75HDD6KJZEQ62FZ6 accepted
+GUI operation 01M5RNS9JYW8AEEAMV19ZCXV61 accepted
+GUI operation 01M5RNS9K12HJ4G988X8KKM3C4 accepted
+GUI operation 01M5RNS9K1C4PZ7XZCE26DK5SB accepted
+GUI operation 01M5RNS9NEQ0Y4NF9D90R5QE9Q accepted
+GUI operation 01M5RNS9NEQ24MZVC3Y2PTH20Z accepted
+GUI operation 01M5RNS9NE7VBJSM6CP4976D9B accepted
+GUI operation 01M5RNS9NF68RMT6BEX0RVNV41 accepted
+GUI operation 01M5RNS9NF2GKRDRZQ9ER83N49 accepted
+GUI operation 01M5RNS9YBWWXGBQCJY9MC4GMJ accepted
+GUI operation 01M5RNS6YWV8Y6S4AXFJHKW6N9 accepted
+
+  left: 3
+ right: 0
+stack backtrace:
+   0: __rustc::rust_begin_unwind
+   1: core::panicking::panic_fmt
+   2: core::panicking::assert_failed_inner
+   3: core::panicking::assert_failed::<i32, i32>
+   4: <headless::Fixture>::ok
+   5: <headless::ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame::{closure#0} as core::ops::function::FnOnce<()>>::call_once
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+test ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame ... FAILED
+test ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher ... ok
+launch 6: real PTY marker and offscreen pane capture verified
+launch 7: real PTY marker and offscreen pane capture verified
+launch 8: real PTY marker and offscreen pane capture verified
+launch 9: real PTY marker and offscreen pane capture verified
+launch 10: real PTY marker and offscreen pane capture verified
+test headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable ... ok
+test unattended_idle_smoke_keeps_file_custody_without_a_window ... ok
+test headless_smoke_uses_the_idle_probe_with_no_window_or_operator ... ok
+expected active-probe rejection: idle FAILED: frames=0 callbacks=1 seconds=10.006 windows=0 mode=headless
+test idle_probe_rejects_an_external_lifecycle_wake ... ok
+
+failures:
+
+failures:
+    ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame
+
+test result: FAILED. 10 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.71s
+
+error: test failed, to rerun pass `-p bboxy450-term --test headless`
