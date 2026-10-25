@@ -1,0 +1,18 @@
+ROLE: EXECUTOR — Nyx Copperwing
+Oracle02b5177b requested a union rebase plus touched/direct-dependency tests at2jobs, strict, invariants and one S2/S3 replay, after verifying the original two good signatures/evidence-only successor.
+Rebased signed code1383bd9e; checked HEADeabfd95a1d269add9b3e12b7fb60bc6a458336a4 (rebased OLD evidence only). Parent89ba8f2b6e7585d19ef9b978eb6bb77328031cab. Original exact NORMAL-gated194a7cb8/00ef43ec pair retained at nyx-history-debug-gated; old gate records remain valid for that exact old source, not a new full-gate claim.
+
+Unions:
+- ctl.rs: read flag union keeps DebugFault, DebugNotifications and UiNotificationClick, placement and parser arms retained.
+- main.rs: AppStatus keeps notifications AND history; AppAsk first projects Notifications, then selects the HistoryMetrics IO read or existing AppReply. Native and headless use the same choice; Clock, resize receipt, Spawn and notification callbacks retained.
+- proto gui.rs: AppRequest::Notifications and ::HistoryMetrics coexist; AppStatus has separate default/skip-null attributes for notifications and history. No VERSION or top GuiAction/Reply kind change.
+- gui_capture.rs: test literal keeps both status fields. tests/headless.rs: accepted resize test and new actual-account gap fixture both retained, plus meter assertions in the scroll test.
+- Sable singleton explicit History stays separate from hot ReadRingBatch/forecast/catch_up_page. No supervisor/raw ring/writer change.
+Core mask, meter and S2/S3 scripts compare byte-identical against194a7cb8. Existing golden test and fixture files compare unchanged against the rebase base.
+
+Actual results (one quick run, no new full gate/slot):
+Scoped six crates819 passed/0failed/29ignored,949.568s. Both every_gui_action_kind_keeps_its_exact_bytes and every_gui_reply_kind_keeps_its_exact_bytes PASS; accepted resize, new gap fixture and disabled-hook tests PASS. Strict all-target Clippy0, Python assertions5/0. Invariants26checks/0failures/8named slow skips (including active ring batching). Canonical S2/S3 replay ONCE, wrapper0, file-account/windowless apps; S2/S3 PASS at declared partials, overall groupAMBER0 with existingS4fixture_dimensions_unavailable. Binary SHA256f8a583b82e1aea8165a91eacf8deaf6c7befefd47b79a5105d3ab50283218a31. All command times/exits and raw output are siblings.
+
+Limits: S2 ring-level production, historical cell bytes and headless marker pixels remain named. S3 three sequential viewports is not50watched/hitch proof. Headless Scene::history_foreground fix is the approved NEXT cut112bc6ed after this merge, with parity, not mixed here.
+#320 cut1 is gating separately; whichever lands second moves these nested app/debug additions verbatim to gui/app.rs and gui/debug.rs. Golden skip-null tests must keep passing. Main's later T7 error.seat fix is outside this frozen check; Oracle merges the union as usual.
+Cleanup: copied exact binary/artifacts outside cache; empty lsof and all five night-owned PIDs independently absent, removed sole own cache (3002257408 allocated bytes). Worktree clean before these evidence-only records. No merge or push by Executor.

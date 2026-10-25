@@ -1,0 +1,316 @@
+{
+  "authority": "Oracle02b5177b quick union check; no second full gate requested",
+  "source": {
+    "code": "1383bd9e278b019fe45e805cc1f68b0cf42e201c",
+    "checked_head": "eabfd95a1d269add9b3e12b7fb60bc6a458336a4",
+    "parent": "89ba8f2b6e7585d19ef9b978eb6bb77328031cab",
+    "original_gated_code": "194a7cb88fc9dc3f2fdac8368e87493c07176366",
+    "original_gated_evidence": "00ef43ec5578e06892f74ec62691d89240258697",
+    "backup_branch": "nyx-history-debug-gated",
+    "paths": {
+      ".bboxy/specs/e2e-script-map.md": "569f46ae73a0a123ae3909f36614e669e0d6408259400311590a3742de96479e",
+      "crates/bboxy450-term/src/cockpit.rs": "7f121e51c2653e5eaaa04b8fd905cab0b3a1b284bc4af36d9282e1abbb01d157",
+      "crates/bboxy450-term/src/ctl.rs": "fcb229608a35e69e055e9f2c7f462a453b8dab35fa7104ed4d6a22a244b3c0bb",
+      "crates/bboxy450-term/src/headless.rs": "addd15c2001d138be8571ea8e19a47cf1fb8d532ccc2d3e21d7ed0aef7e16e32",
+      "crates/bboxy450-term/src/live.rs": "4ed57bf962b44b427569b4d3673d096a2290571b95373a463843d9895e443b88",
+      "crates/bboxy450-term/src/main.rs": "9b62865387759e1e5cc2741b6ddb498bc6288856c5d8c64f0cfd3d565cdb7f68",
+      "crates/bboxy450-term/src/scrollback.rs": "cb568ca1a26caea813773f8cf59d533e3211bb16d224dc41c9774c148c8aa52c",
+      "crates/bboxy450-term/tests/headless.rs": "f9e1923fc8cae75e7664711757362ba8653c173370b1fbaf298c962c2c3cb4ab",
+      "crates/bboxy450-term/tests/scrollback.rs": "29aac336228353505167918c8fa04c73677ee49ada1a923a1f2ac5d00a35456d",
+      "crates/bbt-mux/src/debug.rs": "4042763dce685a211efc1287bbed408301bd53c9dde82521608d57e92091ae29",
+      "crates/bbt-mux/src/gui_capture.rs": "da303b193b60dbd9ea9aebad8d3ae5d3bcee2417db3567b06d627bbb966ae7f2",
+      "crates/bbt-mux/src/history_fault.rs": "8c55a595e87937093542d757f181ab0e4bf1abb2bd63a1dd6e8fac2f50bb4392",
+      "crates/bbt-mux/src/lib.rs": "97d015a8abc8119aeede86604126315d8b053acba9332a9038cb49e8739da17e",
+      "crates/bbt-mux/src/logic.rs": "0f804a67029fd2f87d8770e0813b743bc0091501ca0976275cb7543b314caa77",
+      "crates/bbt-mux/src/seat_socket.rs": "8fbb6ac09c3a9392cbaeefdf1d771e4c0f8a0c8f425814797ba5232446a58d5f",
+      "crates/bbt-proto/src/gui.rs": "c46502b2383c58f0a9ea9e1c95f35352de6645474e7f493d4e841fbd8118adbb",
+      "crates/bbt-rt/src/diagnostics.rs": "527e83a57e8d0e1f9bb41d94b40cbbbed183f89ab874ecc3171f1673a5f25e34",
+      "scripts/e2e/S2.sh": "b02296622fdf1462fd5c11cdd70746dc4500c9770ba1f989c49e333060029267",
+      "scripts/e2e/S3.sh": "561d1eea651e31d733aed14eeb42f4ad0a05fc990ff4ea4f3bcc96a71ed2002c",
+      "scripts/e2e/test_ui.py": "1f276486f7e899848cad9c9eccf5791cc895668eaedca8987324b54cd897fd40",
+      "scripts/e2e/ui.py": "04dfd53d6703ad4db42cf629ff765c685b08abf1dd974e5a38f33d31b5725d7c"
+    },
+    "binary": {
+      "sha256": "f8a583b82e1aea8165a91eacf8deaf6c7befefd47b79a5105d3ab50283218a31",
+      "source": "eabfd95a1d269add9b3e12b7fb60bc6a458336a4",
+      "bytes": 55575904
+    },
+    "artifacts": {
+      "union-artifacts/S2/s2-before.jsonl": "37ef77f83c6d3c65499b94eb5a8aaca713ed04e956ba3cb7da59b8df82c88aef",
+      "union-artifacts/S2/s2-mask.jsonl": "12537b98b00bc28ed694010b28bb0bf31a1e7336fc7b9947ade2ca58d88e4e79",
+      "union-artifacts/S2/output.log": "dd38a23a6bf5bf22f2bffac132e6331a0232df862c0bc64ed21e4d8eedb19edb",
+      "union-artifacts/S2/s2-gap.png": "acc0be4c04ee20023a15de69c629b6464ccf1c3adedddc20fafed210902960c4",
+      "union-artifacts/S2/s2-top.jsonl": "3186d5f9aaaf4ccb316a7f26140afb2b6ba0d8ab6522570e73113c9609adaff5",
+      "union-artifacts/S2/s2-middle-live.jsonl": "8f5c8edda7c69b79c476ab7154c1b3719394ffa3736e18edaf04ee1e70bec0ec",
+      "union-artifacts/S2/s2-projected-ring.jsonl": "0715b2269e2a3759e8bf4658d547bcfae91bd08af461951b23bd76aaaae8fc51",
+      "union-artifacts/S2/gap.py": "6543f67eb2aaca3b3ff7084139ae7b1c1c21bf8d0ea2e0649da824edca3154d5",
+      "union-artifacts/S2/s2-metrics.jsonl": "560e70dde1342016c642b6a3213aad4a10cfa92e89aaff700bec38b19e013e30",
+      "union-artifacts/S2/s2-gap.jsonl": "43b01aa24872e7bd57f42637b3aa7dbd5c1dd05474930eaa9f3fc65168fa5275",
+      "union-artifacts/S3/s3-1-top-metrics.jsonl": "6e57dc0ea6d3085f0ef7adc1a70ef31972e3e6eef2beea8b7ef7cb68e0887bc2",
+      "union-artifacts/S3/s3-0-released-metrics.jsonl": "0e96dc2e05f2e547bbb9848c5dca90bd648b49f7741ef69a087491c6bad724b2",
+      "union-artifacts/S3/s3-1-seek-metrics.jsonl": "cd446567f5de16db62ff9dec38464ba41cb6c94c0b2abb3cfdef0a329375c36f",
+      "union-artifacts/S3/s3-0-top-metrics.jsonl": "7ad6ec0fdc452ced03f70d1509a382122049187c9ad8856ef4632462acbb5b43",
+      "union-artifacts/S3/s3-2-seek-metrics.jsonl": "8496484df6c35f776eba01f7596d85e7eacb087a4a0c33bcdcc8d50dfab38617",
+      "union-artifacts/S3/s3-2-released-metrics.jsonl": "9ff0b7fa661133972412071590af61885d50680e1f7c509235d37cbf4a0c14e3",
+      "union-artifacts/S3/numbered.py": "be476a2050883923762c485ffa4f6dbb07d81318f9489a428e3e928d5542ba7c",
+      "union-artifacts/S3/s3-2-top-metrics.jsonl": "71be7bc3d39a84f06e14ec935cfa243611aebab4baa61e396b5f130c57b9cc16",
+      "union-artifacts/S3/output.log": "f08961678a581d76f18c32317562b617f1ca2b5e56806248f5f885f7934256a4",
+      "union-artifacts/S3/s3-1-released-metrics.jsonl": "4f75abeedb9ff92e3aa3933984cec0edc555dfe15f80423803db4760f474a4f9",
+      "union-artifacts/S3/s3-0-seek-metrics.jsonl": "743163dd8040025caa2c4868d1cab445ad1ae400c03486d7f299d5746a9780fb"
+    }
+  },
+  "commands": {
+    "source": "eabfd95a1d269add9b3e12b7fb60bc6a458336a4",
+    "commands": [
+      {
+        "label": "scoped-tests",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "-p",
+          "bboxy450-term",
+          "-p",
+          "bbt-mux",
+          "-p",
+          "bbt-proto",
+          "-p",
+          "bbt-rt",
+          "-p",
+          "bbt-supervisor",
+          "-p",
+          "bboxy450-harness-wake-up"
+        ],
+        "exit": 0,
+        "seconds": 949.568,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union/scoped-tests.log"
+      },
+      {
+        "label": "strict",
+        "command": [
+          "cargo",
+          "clippy",
+          "--locked",
+          "--all-targets",
+          "-p",
+          "bboxy450-term",
+          "-p",
+          "bbt-mux",
+          "-p",
+          "bbt-proto",
+          "-p",
+          "bbt-rt",
+          "-p",
+          "bbt-supervisor",
+          "-p",
+          "bboxy450-harness-wake-up",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit": 0,
+        "seconds": 206.41,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union/strict.log"
+      },
+      {
+        "label": "python",
+        "command": [
+          "python3",
+          "-B",
+          "-I",
+          "scripts/e2e/test_ui.py"
+        ],
+        "exit": 0,
+        "seconds": 0.135,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union/python.log"
+      },
+      {
+        "label": "invariants",
+        "command": [
+          "sh",
+          "scripts/invariants.sh"
+        ],
+        "exit": 0,
+        "seconds": 552.826,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union/invariants.log"
+      },
+      {
+        "label": "night",
+        "command": [
+          "python3",
+          "target/history-debug/prove-night.py",
+          "union",
+          "target/history-union-build/debug/bboxy450-term"
+        ],
+        "exit": 0,
+        "seconds": 52.31,
+        "log": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union/night.log"
+      }
+    ]
+  },
+  "scoped_result": {
+    "passed": 819,
+    "failed": 0,
+    "ignored": 29,
+    "groups": 83
+  },
+  "night": {
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-nyx/target/history-union-build/debug/bboxy450-term",
+      "e2e",
+      "night",
+      "--group",
+      "scrollback",
+      "--records",
+      "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/union-records"
+    ],
+    "tree": "/Users/feral/mydev/bboxy450-term-nyx",
+    "head": "eabfd95a1d269add9b3e12b7fb60bc6a458336a4",
+    "exit": 0,
+    "seconds": 52.179,
+    "binary_sha256": "f8a583b82e1aea8165a91eacf8deaf6c7befefd47b79a5105d3ab50283218a31",
+    "S2_S3_passed": true,
+    "test_custody_and_windowless": true,
+    "scripts": {
+      "S1": {
+        "coverage": "partial",
+        "evidence": "S1: 20000 row coordinates exactly once/in order in 371 produced pages; top=0, live join and captures; displayed bytes/lazy-page metrics unobserved",
+        "exit": 0,
+        "function": "S1",
+        "group": "scrollback",
+        "kind": "e2e",
+        "missing": [
+          "displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof)",
+          "bounded lazy history page metrics"
+        ],
+        "verdict": "pass"
+      },
+      "S2": {
+        "coverage": "partial",
+        "evidence": "S2: test-account retained-read gap once at row5, both surviving sides, original live bytes and input preserved; ring-level gap production not exercised",
+        "exit": 0,
+        "function": "S2",
+        "group": "scrollback",
+        "kind": "e2e",
+        "missing": [
+          "ring-level gap production not exercised",
+          "GUI historical cell bytes",
+          "headless gap-marker pixels"
+        ],
+        "verdict": "pass"
+      },
+      "S3": {
+        "coverage": "partial",
+        "evidence": "S3: three sequential actual GUI Playback owners below4MB each/aggregate, bounded page residency/eviction and release on live; 50-watched setup and paging hitch meter unproved",
+        "exit": 0,
+        "function": "S3",
+        "group": "scrollback",
+        "kind": "e2e",
+        "missing": [
+          "50 watched GUI panes with history",
+          "paging hitch meter"
+        ],
+        "verdict": "pass"
+      },
+      "S4": {
+        "coverage": "partial",
+        "evidence": "FAIL: S4: S4 fixture_dimensions_unavailable: pane=471x148 Replica=471x69; live grid caps cells at 32768",
+        "exit": 1,
+        "function": "S4",
+        "group": "scrollback",
+        "kind": "e2e",
+        "missing": [
+          "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+          "history heap allocation accounting is not exported by ctl"
+        ],
+        "verdict": "fail"
+      }
+    },
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "S1",
+        "issued_by": "test-account:01M5SX13QMRNE8B5H4NPN44N29",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 89094,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enKMBLto/S1/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "S2",
+        "issued_by": "test-account:01M5SX1YQ728YVJ79A7TDYFADF",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 90192,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enKMBLto/S2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "S3",
+        "issued_by": "test-account:01M5SX21GDQRN2WC4B38ZZD0JB",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 90301,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enKMBLto/S3/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "S4",
+        "issued_by": "test-account:01M5SX25NPB20Q0ZEQACAYZNPV",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 90465,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enKMBLto/S4/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5SX2NQVDVZQYF9N40VNR8J8",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 91235,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enKMBLto/records-app/run",
+        "windows": 0
+      }
+    ],
+    "log_sha256": "5f736fb5711e866e317f96f3450008bcea59971c63e4e5a55d31bcd40d613721",
+    "artifacts": "/Users/feral/mydev/bboxy450-term-nyx/target/history-debug/union-artifacts"
+  },
+  "cleanup": {
+    "target": "/Users/feral/mydev/bboxy450-term-nyx/target/history-union-build",
+    "lsof_exit": 1,
+    "lsof_rows": "",
+    "allocated_bytes_removed": 3002257408,
+    "seconds": 0.993,
+    "night_pids": [
+      "89094",
+      "90192",
+      "90301",
+      "90465",
+      "91235"
+    ],
+    "ps_exit": 1,
+    "ps_rows": ""
+  },
+  "old_full_gate": "194a7cb8: normal EXIT0/1836.658s, workspace1434/0/29ignored, strict/UI0, idle0/0/10.005s/windows0, invariants25/0/9slow",
+  "partial_coverage": "S2: ring-level production, historical cells, headless marker pixels; S3:50watched/hitch; unchanged S4 viewport cap named",
+  "raw_log_sha256": {
+    "night.log": "fa1c07d59f8a18f5011dcf9cbf32a2f0d0bf8cf62b96a915ad3c73cfe373fd80",
+    "scoped-tests.log": "ba23c1173df576fef7b324e5fa654947d50853c425e26b0a4c9ce55e99a9eb06",
+    "strict.log": "c48476a82eebec428e7fa53e067a68bdcb03e2f973c95aee180f028fdf24bf4c",
+    "invariants.log": "f45e117bbe9b411a6d8ff0a18647625f83d5f60e4ff9ce08fd22d5b15592e5bc",
+    "driver.log": "f5e66835206d518980a3d3e48e754922f7a9ad034d73e24672acb3be4a37aa78",
+    "python.log": "78eef06a986d8417523e74a16d2bb14e35ab64ab86924c647f2bc690902433d9"
+  },
+  "stored_tests_log_normalization": "Only trailing blank lines removed; raw command output retained at target/history-union/scoped-tests.log with SHA256 above."
+}
