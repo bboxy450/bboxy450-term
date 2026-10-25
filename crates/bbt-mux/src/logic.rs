@@ -1942,13 +1942,21 @@ impl Worker {
         };
         call.validate()?;
         let journal = self.operator_journal.clone();
+        if request == R::Status {
+            let status = self.identity_control_status()?;
+            return identity_response(journal.native_status(
+                &principal,
+                &call,
+                crate::mcp::success(op, serde_json::to_value(status)?),
+            )?);
+        }
         if journal.retained(&principal, &call)?.is_some() {
             return identity_response(journal.call(&principal, &call, || {
                 crate::mcp::error(op, "unknown", "retained identity result unavailable")
             })?);
         }
         let mut status = self.identity_control_status()?;
-        if request == R::Status || status.hold.is_none() {
+        if status.hold.is_none() {
             return identity_response(journal.call(&principal, &call, || {
                 crate::mcp::success(op, serde_json::to_value(status).unwrap())
             })?);

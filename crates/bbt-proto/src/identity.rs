@@ -10,7 +10,8 @@ pub enum IdentityRequest {
     Unlock,
 }
 
-/// Unknown authority or target fields are refused before dispatch.
+/// Status with an earlier unlock ID reads its result; a fresh ID reads current status.
+/// Unknown authority or key-target fields are refused before dispatch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct IdentityCall {

@@ -102,6 +102,66 @@ impl Journal {
             .map(|(value, _)| value)
     }
 
+    /// Read a native result by its operation ID, without creating or admitting an effect.
+    pub(crate) fn native_status(
+        &self,
+        actor: &Principal,
+        call: &Call,
+        current: Value,
+    ) -> Result<Value> {
+        if !matches!(actor, Principal::Operator { .. }) || call.tool != "identity_status" {
+            return Err(crate::store::invalid(
+                "native status requires the admitted operator",
+            ));
+        }
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let old: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("control/op/{}", call.op_id)],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let old = old
+            .map(|bytes| serde_json::from_slice::<Entry>(&bytes))
+            .transpose()?;
+        let (result, replay) = match old {
+            Some(entry) if entry.tool == "identity_unlock" => {
+                if entry.actor.same_authority(actor) {
+                    (entry.result, true)
+                } else {
+                    (
+                        error(
+                            call.op_id,
+                            "forbidden",
+                            "native result belongs to another operator identity",
+                        ),
+                        false,
+                    )
+                }
+            }
+            _ => (current, false),
+        };
+        let event = audit(
+            actor,
+            call,
+            &digest(&serde_json::to_vec(&call.args)?),
+            &result,
+            replay,
+            false,
+        );
+        tx.execute(
+            "INSERT INTO kv VALUES(?1,?2)",
+            params![
+                format!("control/audit/{}", event.id),
+                serde_json::to_vec(&event)?
+            ],
+        )?;
+        tx.commit()?;
+        Ok(result)
+    }
+
     /// Reauthorize reads before consulting an old result. A current denial is
     /// audited and returned without revealing or replacing an old success.
     pub fn checked(&self, actor: impl Into<Principal>, call: &Call, value: Value) -> Result<Value> {
@@ -731,6 +791,50 @@ mod tests {
         assert!(journal.native_pending(128).unwrap().is_empty());
         assert!(journal.retained(&actor, &call).unwrap().is_none());
         assert!(journal.pending(128).unwrap().is_empty());
+    }
+
+    #[test]
+    fn native_status_of_a_missing_id_never_admits_or_poisons_an_unlock() {
+        let (_temp, store, actor, call, reference, _) = native_fixture();
+        let journal = Journal::new(store.clone());
+        let status = Call {
+            op_id: call.op_id,
+            tool: "identity_status".into(),
+            args: json!({"request":"status"}),
+        };
+        let current = super::super::success(call.op_id, json!({"hold":"fixture","outcome":null}));
+        assert_eq!(
+            journal
+                .native_status(&actor, &status, current.clone())
+                .unwrap(),
+            current
+        );
+        assert!(
+            store
+                .get(&format!("control/op/{}", call.op_id))
+                .unwrap()
+                .is_none()
+        );
+        let admitted = super::super::success(call.op_id, json!({"outcome":"unknown"}));
+        assert!(
+            journal
+                .admit_native_unlock(&actor, &call, "held".into(), reference, admitted.clone())
+                .unwrap()
+                .1
+        );
+        assert_eq!(
+            journal
+                .native_status(&actor, &status, current.clone())
+                .unwrap(),
+            admitted
+        );
+        let other = Principal::Operator {
+            device_id: Ulid::new(),
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        let refused = journal.native_status(&other, &status, current).unwrap();
+        assert_eq!(refused["structuredContent"]["error"]["code"], "forbidden");
     }
 
     #[test]

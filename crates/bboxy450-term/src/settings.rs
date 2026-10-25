@@ -56,7 +56,7 @@ impl CustodyControl {
         if self.pending.is_some() {
             return None;
         }
-        let request = if unlock {
+        let request = if unlock && self.retry.is_none() {
             bbt_proto::identity::IdentityRequest::Unlock
         } else {
             bbt_proto::identity::IdentityRequest::Status
@@ -98,21 +98,21 @@ impl CustodyControl {
         }
         match &reply.result {
             Err(reason) => {
-                if pending.request == bbt_proto::identity::IdentityRequest::Unlock {
+                if Some(pending.op) == self.last_unlock {
                     self.retry = Some(pending.op);
                 }
                 self.notice = Some(format!("Outcome unavailable: {reason}"));
                 self.pending = None;
             }
             Ok(response) => {
-                if pending.request == bbt_proto::identity::IdentityRequest::Unlock {
+                if Some(pending.op) == self.last_unlock && response.outcome.is_some() {
                     self.last_outcome = response.outcome;
                 }
                 self.response = Some(response.clone());
                 let admitted = response.pending.iter().any(|row| {
                     row.op == pending.op && row.pending_digest.is_some() && row.in_flight
                 });
-                if pending.request == bbt_proto::identity::IdentityRequest::Unlock
+                if Some(pending.op) == self.last_unlock
                     && response.outcome == Some(bbt_proto::identity::UnlockOutcome::Unknown)
                     && admitted
                 {
@@ -128,9 +128,10 @@ impl CustodyControl {
                             "Unlock outcome unknown; check the retained result".into()
                         }
                     });
-                    if pending.request == bbt_proto::identity::IdentityRequest::Unlock {
-                        self.retry = (response.outcome == Some(UnlockOutcome::Unknown))
-                            .then_some(pending.op);
+                    if Some(pending.op) == self.last_unlock {
+                        self.retry = (response.outcome.is_none()
+                            || response.outcome == Some(UnlockOutcome::Unknown))
+                        .then_some(pending.op);
                     }
                     self.pending = None;
                 }
@@ -145,7 +146,7 @@ impl CustodyControl {
     ) -> Option<crate::cockpit::UiMsg> {
         let pending = self.pending.as_mut()?;
         if !connected || now >= pending.deadline {
-            if pending.request == bbt_proto::identity::IdentityRequest::Unlock {
+            if Some(pending.op) == self.last_unlock {
                 self.retry = Some(pending.op);
             }
             self.notice = Some("Outcome unknown; reconnect and check the retained result".into());
@@ -154,6 +155,7 @@ impl CustodyControl {
         }
         if pending.next.is_some_and(|at| now >= at) {
             pending.next = None;
+            pending.request = bbt_proto::identity::IdentityRequest::Status;
             return Some(crate::cockpit::UiMsg::IdentityControl {
                 id: pending.op,
                 request: pending.request,
@@ -201,11 +203,15 @@ impl CustodyControl {
                     "local-dev"
                 }
             });
-        let attempt = if self
-            .pending
-            .as_ref()
-            .is_some_and(|request| request.request == bbt_proto::identity::IdentityRequest::Unlock)
-        {
+        let attempt = if self.pending.as_ref().is_some_and(|request| {
+            request.request == bbt_proto::identity::IdentityRequest::Unlock
+                || self.response.as_ref().is_some_and(|response| {
+                    response
+                        .pending
+                        .iter()
+                        .any(|row| row.op == request.op && row.in_flight)
+                })
+        }) {
             Some("pending")
         } else if self.retry.is_some() {
             Some("unknown")
@@ -938,12 +944,17 @@ mod tests {
             "no automatic retry before an admission receipt"
         );
         assert!(control.next(now, false).is_none());
-        let Some(crate::cockpit::UiMsg::IdentityControl { id: retry, .. }) =
+        let Some(crate::cockpit::UiMsg::IdentityControl { id: retry, request }) =
             control.request(true, now)
         else {
             panic!("explicit check missing")
         };
         assert_eq!(id, retry);
+        assert_eq!(
+            request,
+            IdentityRequest::Status,
+            "checking an unknown result is never an unlock request"
+        );
         let response = IdentityControl {
             custody: Some("fixture native".into()),
             acl: CustodyAcl::Unknown,

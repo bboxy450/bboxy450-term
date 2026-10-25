@@ -537,3 +537,31 @@ fn native_hold_refuses_an_unvalidated_persisted_device_before_admission() {
         "unvalidated identity cannot admit an act"
     );
 }
+
+#[test]
+fn native_status_check_cannot_turn_a_missing_or_unknown_id_into_an_attempt() {
+    let mut f = Fixture::new(true, false, UnlockOutcome::Unknown);
+    let op = Ulid::new();
+    assert!(
+        f.control(op, IdentityRequest::Status, Door::Ctl)
+            .unwrap()
+            .hold
+            .is_some()
+    );
+    assert_eq!(f.store.attempts.load(Ordering::Acquire), 0);
+    let account = SqliteStore::open(&f.root.path().join("account")).unwrap();
+    assert!(account.get(&format!("control/op/{op}")).unwrap().is_none());
+    f.control(op, IdentityRequest::Unlock, Door::Gui).unwrap();
+    f.store.wait_entered();
+    assert_eq!(f.final_result(op).outcome, Some(UnlockOutcome::Unknown));
+    f.restart();
+    for _ in 0..3 {
+        assert_eq!(
+            f.control(op, IdentityRequest::Status, Door::Ctl)
+                .unwrap()
+                .outcome,
+            Some(UnlockOutcome::Unknown)
+        );
+    }
+    assert_eq!(f.store.attempts.load(Ordering::Acquire), 1);
+}
