@@ -409,6 +409,8 @@ impl App {
                 "--headless",
                 "--ctl",
                 "--unattended",
+                "--notifications",
+                "record",
                 "--test-account",
             ])
             .arg(&account)
