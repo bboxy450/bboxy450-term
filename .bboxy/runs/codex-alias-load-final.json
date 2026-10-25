@@ -1,0 +1,2053 @@
+{
+  "created_utc": "2026-10-25T04:06:58.957674+00:00",
+  "author": "Sable Embertail <EXECUTOR>",
+  "source": "49939efe09ba5e90971e463316529b390298de0e",
+  "base": "bece3308",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec3",
+  "branch": "sable-codex-alias",
+  "verdict": "NORMAL CI EXIT 0; all gates passed",
+  "gate": {
+    "id": "ac46de99a6c44e41b994de1dee4219f2",
+    "source": "49939efe09ba5e90971e463316529b390298de0e",
+    "argv": [
+      "env",
+      "-u",
+      "BBOXY_GATE_SLOT",
+      "RUSTC_WRAPPER=",
+      "RUSTC_WORKSPACE_WRAPPER=",
+      "BBOXY_TEST_CUSTODY=memory",
+      "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0",
+      "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+      "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+      "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+      "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+      "CARGO_BUILD_JOBS=2",
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+    "started_utc": "2026-10-25T03:45:42.896791+00:00",
+    "pid": 88931,
+    "exit": 0,
+    "elapsed_seconds": 1176.3645044160075,
+    "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-ac46de99a6c44e41b994de1dee4219f2.log",
+    "sha256": "ad1601070657cd25704a8eeef6ad7a6e7bae1eb03ef22c1f59cb9fdf3555bb76"
+  },
+  "workspace": {
+    "results": 200,
+    "passed": 1341,
+    "failed": 0,
+    "ignored": 29
+  },
+  "all_reported_results_including_invariant_reruns": {
+    "results": 204,
+    "passed": 1344,
+    "failed": 0,
+    "ignored": 29
+  },
+  "smoke": "idle passed: frames=0 callbacks=0 seconds=10.002 windows=0 mode=headless",
+  "default_invariants": {
+    "checks": 23,
+    "failures": 0,
+    "slow_skipped": 9
+  },
+  "frozen_source": {
+    "source": "49939efe09ba5e90971e463316529b390298de0e",
+    "base": "bece3308",
+    "files": [
+      {
+        "path": "crates/bboxy450-harness-wake-up/src/launch.rs",
+        "git_blob": "f2437997aeb6fbca64c38a16bf4aed306e6c9720",
+        "sha256": "3dc525ef7d339037e60b54ffac08e98f7415af26f613fbf7911e6817e6791345"
+      },
+      {
+        "path": "crates/bbt-mux/src/logic.rs",
+        "git_blob": "3ee20c30240618b9eb51adb9e22558f6cbf13079",
+        "sha256": "be22ec30e1a9a5800c2d09457b4e26cfaca99081e81f677d66d2561da9a1cec5"
+      },
+      {
+        "path": "crates/bboxy450-term/tests/recovery.rs",
+        "git_blob": "5c1e862de81827873bbcb37c4e4eb9917eeaaf39",
+        "sha256": "435a805164532727c47a1e72c4fb2383856f560ce230b881ab2918e920e8575f"
+      },
+      {
+        "path": "crates/bbt-mux/tests/capture_fairness.rs",
+        "git_blob": "3a3d646e6d4141ebc9678a7535d529b8f0e70346",
+        "sha256": "38285f662ccae0a3461ed1fb4da7423870c3f8b0a4d10319744f96c2a8d86561"
+      }
+    ],
+    "tracked_status": ""
+  },
+  "commands": [
+    {
+      "id": "de66ba09453f416d8b1a7e0c72261ca7",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "recovery",
+        "--locked",
+        "-j2",
+        "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:01:12.468491+00:00",
+      "pid": 80629,
+      "exit": 101,
+      "elapsed_seconds": 517.4622210410307,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-de66ba09453f416d8b1a7e0c72261ca7.log",
+      "sha256": "04b86df55f00badf37dc8ac58bd5088c8de249bcc8d0008913e6a39113b8e4c4"
+    },
+    {
+      "id": "b02b5b0c675a461b8c81840e17260be8",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-harness-wake-up",
+        "--lib",
+        "--locked",
+        "-j2",
+        "runtime_tests",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:12:24.535057+00:00",
+      "pid": 99077,
+      "exit": 0,
+      "elapsed_seconds": 42.79261908301851,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-b02b5b0c675a461b8c81840e17260be8.log",
+      "sha256": "6723d02bcc871ff0198e350aebc7855264bb94eae25ce4c92fc15e7b6ad5229b"
+    },
+    {
+      "id": "588cefb02cd4476eb22ff0841ff5fe1b",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "recovery",
+        "--locked",
+        "-j2",
+        "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:13:15.161439+00:00",
+      "pid": 99884,
+      "exit": 0,
+      "elapsed_seconds": 293.47570074995747,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-588cefb02cd4476eb22ff0841ff5fe1b.log",
+      "sha256": "a28a1feb5d31d60448c2b98f6d4a50dec846081ff682dd686418ffbecde829d7"
+    },
+    {
+      "id": "c7cdec99a6ad45a69a62d5ee6173b0c8",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "capture_fairness",
+        "--locked",
+        "-j2",
+        "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:19:06.092756+00:00",
+      "pid": 11661,
+      "exit": 0,
+      "elapsed_seconds": 165.8927938339766,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-c7cdec99a6ad45a69a62d5ee6173b0c8.log",
+      "sha256": "0d3f469012625b39c8d251cf564de25ecf63b78d5b8382a35063cc5f2658f195"
+    },
+    {
+      "id": "28257e97a7844593b09231df10368c3a",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "recovery",
+        "--locked",
+        "-j2",
+        "restart_catalogue_accepts_completion_within_the_sessions_startup_budget",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:22:47.004394+00:00",
+      "pid": 22634,
+      "exit": 101,
+      "elapsed_seconds": 5.156566332967486,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-28257e97a7844593b09231df10368c3a.log",
+      "sha256": "12ef158dc7f48a9b4c5ec6dadf566b2b3c1baa162fba630b8697b2b48df91cc5"
+    },
+    {
+      "id": "0614e54136d34cefa3b77d97f134a65e",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "recovery",
+        "--locked",
+        "-j2",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:23:24.421268+00:00",
+      "pid": 23479,
+      "exit": 0,
+      "elapsed_seconds": 11.111109666991979,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-0614e54136d34cefa3b77d97f134a65e.log",
+      "sha256": "0ebd12884666014402d3d1dea8d352ef8bb5bff69c2d8ed1c1379768e0091f66"
+    },
+    {
+      "id": "74d288ce3bcc4cdfa6f14b205a498eea",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "capture_fairness",
+        "--locked",
+        "-j2",
+        "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:24:24.603024+00:00",
+      "pid": 26707,
+      "exit": 0,
+      "elapsed_seconds": 13.352362208010163,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-74d288ce3bcc4cdfa6f14b205a498eea.log",
+      "sha256": "b230a47f0501bd6ca13d6b3aa887b6629d6ebe8f28af3e90a277e3cb6aef8ae0"
+    },
+    {
+      "id": "e5a05c4f794a4183a2131136922f4d05",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--no-fail-fast",
+        "-j2"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T02:48:13.971029+00:00",
+      "pid": 58215,
+      "exit": 0,
+      "elapsed_seconds": 1238.845148042019,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-e5a05c4f794a4183a2131136922f4d05.log",
+      "sha256": "78fd987e71d87d546dd15f49cf2be1c8a96fe4b2a3ed44ec5a344fcf1fd60eba"
+    },
+    {
+      "id": "a1feac4ec53c49dcbf6cdeb68e490bfc",
+      "source": "49939efe09ba5e90971e463316529b390298de0e",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--no-fail-fast",
+        "-j2"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T03:09:45.524365+00:00",
+      "pid": 996,
+      "exit": 0,
+      "elapsed_seconds": 1240.4868670839933,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-a1feac4ec53c49dcbf6cdeb68e490bfc.log",
+      "sha256": "a9867006446d1ff017b0df4c9d508e4303364bd348ae3a520e1d5fe0f3152097"
+    },
+    {
+      "id": "da95671882494f6cb3978e72d5649580",
+      "source": "49939efe09ba5e90971e463316529b390298de0e",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j2",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T03:30:49.650036+00:00",
+      "pid": 50363,
+      "exit": 0,
+      "elapsed_seconds": 285.97532366600353,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-da95671882494f6cb3978e72d5649580.log",
+      "sha256": "64b0fc58f7a1a0ea7bf5d58a2ef3a673631d668946dc920100157ebad65fc4a2"
+    },
+    {
+      "id": "4dd9be060e514e948fee487498124b86",
+      "source": "49939efe09ba5e90971e463316529b390298de0e",
+      "argv": [
+        "env",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T03:36:09.687674+00:00",
+      "pid": 65358,
+      "exit": 0,
+      "elapsed_seconds": 527.9147539580008,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-4dd9be060e514e948fee487498124b86.log",
+      "sha256": "cd48227981b981419b41023299cbd37ea1e723134562d43bbbdb63f4360db11f"
+    },
+    {
+      "id": "ac46de99a6c44e41b994de1dee4219f2",
+      "source": "49939efe09ba5e90971e463316529b390298de0e",
+      "argv": [
+        "env",
+        "-u",
+        "BBOXY_GATE_SLOT",
+        "RUSTC_WRAPPER=",
+        "RUSTC_WORKSPACE_WRAPPER=",
+        "BBOXY_TEST_CUSTODY=memory",
+        "CARGO_TARGET_DIR=/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+        "CARGO_INCREMENTAL=0",
+        "CARGO_PROFILE_DEV_DEBUG=0",
+        "CARGO_PROFILE_TEST_DEBUG=0",
+        "CARGO_PROFILE_DEV_OPT_LEVEL=1",
+        "CARGO_PROFILE_TEST_OPT_LEVEL=1",
+        "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true",
+        "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true",
+        "CARGO_BUILD_JOBS=2",
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+      "started_utc": "2026-10-25T03:45:42.896791+00:00",
+      "pid": 88931,
+      "exit": 0,
+      "elapsed_seconds": 1176.3645044160075,
+      "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-ac46de99a6c44e41b994de1dee4219f2.log",
+      "sha256": "ad1601070657cd25704a8eeef6ad7a6e7bae1eb03ef22c1f59cb9fdf3555bb76"
+    }
+  ],
+  "repeats": {
+    "recovery-baseline-loaded": {
+      "source": "663feccd575ef2715c757f89b51d7f65f55bd8d3",
+      "argv": [
+        "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+        "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+        "--exact",
+        "--nocapture"
+      ],
+      "workers": [
+        {
+          "pid": 9947,
+          "exit": -15
+        },
+        {
+          "pid": 9948,
+          "exit": -15
+        }
+      ],
+      "worker_limit_seconds": 300,
+      "runs": [
+        {
+          "iteration": 1,
+          "load_before": [
+            31.66796875,
+            30.5517578125,
+            26.98291015625
+          ],
+          "elapsed_seconds": 2.1042981250211596,
+          "command": {
+            "id": "55cc46186fed4a12a9df0d4f25f7e0ba",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:08.864612+00:00",
+            "pid": 9950,
+            "exit": 0,
+            "elapsed_seconds": 2.0374819160206243,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-55cc46186fed4a12a9df0d4f25f7e0ba.log",
+            "sha256": "0cfd325eb5f7ed251548ff63cdf152d51c2ef14e40f3cb8e31b82cc614c3ee4e"
+          }
+        },
+        {
+          "iteration": 2,
+          "load_before": [
+            31.66796875,
+            30.5517578125,
+            26.98291015625
+          ],
+          "elapsed_seconds": 1.9335882919840515,
+          "command": {
+            "id": "b5a3a52bf48a4ba2be8879a84a2ac155",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:10.976714+00:00",
+            "pid": 10011,
+            "exit": 0,
+            "elapsed_seconds": 1.8631103340303525,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-b5a3a52bf48a4ba2be8879a84a2ac155.log",
+            "sha256": "dd6e9e9a6218a3438e97e70fc03da8d99a056672d60dc87f97185004862eb5ae"
+          }
+        },
+        {
+          "iteration": 3,
+          "load_before": [
+            31.2939453125,
+            30.49267578125,
+            26.98291015625
+          ],
+          "elapsed_seconds": 2.449931416020263,
+          "command": {
+            "id": "35117db693f9467da57e02d8250300be",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:12.890673+00:00",
+            "pid": 10070,
+            "exit": 0,
+            "elapsed_seconds": 2.3926069589797407,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-35117db693f9467da57e02d8250300be.log",
+            "sha256": "65439df04fca5cba59552ca742f6a56b92a13ae07e42932b833c8c508147779d"
+          }
+        },
+        {
+          "iteration": 4,
+          "load_before": [
+            31.2939453125,
+            30.49267578125,
+            26.98291015625
+          ],
+          "elapsed_seconds": 2.0476997080259025,
+          "command": {
+            "id": "9d85a5146e7a482087b0a111aee21be9",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:15.412436+00:00",
+            "pid": 10161,
+            "exit": 0,
+            "elapsed_seconds": 1.9193805830436759,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-9d85a5146e7a482087b0a111aee21be9.log",
+            "sha256": "ed706a37a1e006da658890027bdfbee900a9f9699a531cfcadaeb7ed00aa8269"
+          }
+        },
+        {
+          "iteration": 5,
+          "load_before": [
+            31.2939453125,
+            30.49267578125,
+            26.98291015625
+          ],
+          "elapsed_seconds": 1.905201500048861,
+          "command": {
+            "id": "ae1f2463c21a43b684b0289d96b37244",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:17.402107+00:00",
+            "pid": 10218,
+            "exit": 0,
+            "elapsed_seconds": 1.8380415000137873,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-ae1f2463c21a43b684b0289d96b37244.log",
+            "sha256": "5206346efd6e60ae4eab76db277b58cba69e4da607be2b78d51edf30043d0b20"
+          }
+        },
+        {
+          "iteration": 6,
+          "load_before": [
+            31.51025390625,
+            30.55078125,
+            27.02392578125
+          ],
+          "elapsed_seconds": 1.943029124988243,
+          "command": {
+            "id": "7810a640fe8f4a388cf0b3f4b80e0dc1",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:19.309912+00:00",
+            "pid": 10299,
+            "exit": 0,
+            "elapsed_seconds": 1.8761928749736398,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-7810a640fe8f4a388cf0b3f4b80e0dc1.log",
+            "sha256": "0aeff6ce1792d07d7e2f8f440590994b289436fc75b569acd5ec9558df38b9fd"
+          }
+        },
+        {
+          "iteration": 7,
+          "load_before": [
+            31.51025390625,
+            30.55078125,
+            27.02392578125
+          ],
+          "elapsed_seconds": 2.09561404195847,
+          "command": {
+            "id": "c95e033a110f42ad9cc23f8b1e31c56d",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:21.253688+00:00",
+            "pid": 10365,
+            "exit": 0,
+            "elapsed_seconds": 2.0189142499584705,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-c95e033a110f42ad9cc23f8b1e31c56d.log",
+            "sha256": "e9a3f8c510f2988126ec2d5b8ec2230131f252738cd853057b785ce3e0b04c11"
+          }
+        },
+        {
+          "iteration": 8,
+          "load_before": [
+            31.30908203125,
+            30.52490234375,
+            27.03515625
+          ],
+          "elapsed_seconds": 2.037791582988575,
+          "command": {
+            "id": "5d44b4831f8b48dd942ab91e1c45cca0",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:23.358730+00:00",
+            "pid": 10447,
+            "exit": 0,
+            "elapsed_seconds": 1.955737583048176,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-5d44b4831f8b48dd942ab91e1c45cca0.log",
+            "sha256": "643f2be5566bc5518b7a3df6b93bbe39187f0cb1399e6eb3a54ae89489a9fb78"
+          }
+        },
+        {
+          "iteration": 9,
+          "load_before": [
+            31.30908203125,
+            30.52490234375,
+            27.03515625
+          ],
+          "elapsed_seconds": 1.8590624590287916,
+          "command": {
+            "id": "30c855cd46534541ac2a571a9fe2f527",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:25.380349+00:00",
+            "pid": 10522,
+            "exit": 0,
+            "elapsed_seconds": 1.7974266670062207,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-30c855cd46534541ac2a571a9fe2f527.log",
+            "sha256": "5e09154ad6defe8447737659390adea0fa1847e79319c7fc034a780093364178"
+          }
+        },
+        {
+          "iteration": 10,
+          "load_before": [
+            31.30908203125,
+            30.52490234375,
+            27.03515625
+          ],
+          "elapsed_seconds": 2.008046999981161,
+          "command": {
+            "id": "afac4e96217f4ec09a7b8405d217b1b2",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:18:27.245260+00:00",
+            "pid": 10589,
+            "exit": 0,
+            "elapsed_seconds": 1.9393421660060994,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-afac4e96217f4ec09a7b8405d217b1b2.log",
+            "sha256": "b729f75f3c3774b261e51c8c18724acd9d458fa9b5c41423e54981af0d310080"
+          }
+        }
+      ],
+      "running": false,
+      "elapsed_seconds": 20.39912658301182,
+      "finished_utc": "2026-10-25T02:18:29.199634+00:00"
+    },
+    "fairness-baseline-loaded": {
+      "source": "663feccd575ef2715c757f89b51d7f65f55bd8d3",
+      "argv": [
+        "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+        "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+        "--exact",
+        "--nocapture"
+      ],
+      "workers": [
+        {
+          "pid": 20645,
+          "exit": -15
+        },
+        {
+          "pid": 20646,
+          "exit": -15
+        }
+      ],
+      "worker_limit_seconds": 300,
+      "runs": [
+        {
+          "iteration": 1,
+          "load_before": [
+            13.8486328125,
+            23.3759765625,
+            24.8310546875
+          ],
+          "elapsed_seconds": 4.345117082993966,
+          "command": {
+            "id": "25525fff29db42298a996cf8963be692",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:21:52.159940+00:00",
+            "pid": 20648,
+            "exit": 0,
+            "elapsed_seconds": 4.301335124997422,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-25525fff29db42298a996cf8963be692.log",
+            "sha256": "2d528f75ce0fc19dee472256759a252ba79ade5b5f458cd063b2116c7894ca67"
+          }
+        },
+        {
+          "iteration": 2,
+          "load_before": [
+            14.0205078125,
+            23.25341796875,
+            24.779296875
+          ],
+          "elapsed_seconds": 4.323144500027411,
+          "command": {
+            "id": "f8d0a8c9807a4cafb29234cebd92a99f",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:21:56.501548+00:00",
+            "pid": 20684,
+            "exit": 0,
+            "elapsed_seconds": 4.282169290992897,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-f8d0a8c9807a4cafb29234cebd92a99f.log",
+            "sha256": "56da27fe5de7a7b322e8706a7dbf75d2cae8741b8014228bda5596d4954137ae"
+          }
+        },
+        {
+          "iteration": 3,
+          "load_before": [
+            13.4580078125,
+            22.9833984375,
+            24.6748046875
+          ],
+          "elapsed_seconds": 4.53096437494969,
+          "command": {
+            "id": "be8037a358f44fd0aec535ccd62d9cba",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:00.845524+00:00",
+            "pid": 20805,
+            "exit": 0,
+            "elapsed_seconds": 4.45991633302765,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-be8037a358f44fd0aec535ccd62d9cba.log",
+            "sha256": "2335675f60b9ba3ac71328bec4e8c1ebbed33b3d89164e46fa1b6cdc770e80d0"
+          }
+        },
+        {
+          "iteration": 4,
+          "load_before": [
+            13.1005859375,
+            22.7509765625,
+            24.58251953125
+          ],
+          "elapsed_seconds": 4.252774209016934,
+          "command": {
+            "id": "dca8a3ceeb9d4732afd2d67cf08f13c9",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:05.410573+00:00",
+            "pid": 21040,
+            "exit": 0,
+            "elapsed_seconds": 4.15725295903394,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-dca8a3ceeb9d4732afd2d67cf08f13c9.log",
+            "sha256": "99021c69e31fd66c2d52c154996470ee7de7eebc861265089a76fdf036ee3736"
+          }
+        },
+        {
+          "iteration": 5,
+          "load_before": [
+            13.89306640625,
+            22.7548828125,
+            24.5732421875
+          ],
+          "elapsed_seconds": 4.701661666040309,
+          "command": {
+            "id": "e75e41ee9fd942b4a24e392d982fce30",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:09.666888+00:00",
+            "pid": 21184,
+            "exit": 0,
+            "elapsed_seconds": 4.600372834014706,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-e75e41ee9fd942b4a24e392d982fce30.log",
+            "sha256": "76ecb365cd106633390c9769f6339e8fe25a0936017ec71a89a7c1289d9b4b68"
+          }
+        },
+        {
+          "iteration": 6,
+          "load_before": [
+            14.7822265625,
+            22.7919921875,
+            24.57568359375
+          ],
+          "elapsed_seconds": 4.686195624992251,
+          "command": {
+            "id": "8a19dabe0d9c461f8bbc3f2b6d0a442c",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:14.369947+00:00",
+            "pid": 21309,
+            "exit": 0,
+            "elapsed_seconds": 4.586629582976457,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-8a19dabe0d9c461f8bbc3f2b6d0a442c.log",
+            "sha256": "ccb8c425f3151aae683fa21403e927560b11aabef66153d9c9de7673e479c615"
+          }
+        },
+        {
+          "iteration": 7,
+          "load_before": [
+            15.03955078125,
+            22.71240234375,
+            24.537109375
+          ],
+          "elapsed_seconds": 4.527140499965753,
+          "command": {
+            "id": "1eb8fa43d1514abd9fdd03526ec52568",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:19.027459+00:00",
+            "pid": 21479,
+            "exit": 0,
+            "elapsed_seconds": 4.464677374984603,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-1eb8fa43d1514abd9fdd03526ec52568.log",
+            "sha256": "1db65a07137ec7d31f099f47ddc2312c39fa3496172803d9aaf2d091fe39649f"
+          }
+        },
+        {
+          "iteration": 8,
+          "load_before": [
+            14.6357421875,
+            22.5009765625,
+            24.45166015625
+          ],
+          "elapsed_seconds": 5.215317791968118,
+          "command": {
+            "id": "c891a09849424087a73667ab32aca012",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:23.539272+00:00",
+            "pid": 21620,
+            "exit": 0,
+            "elapsed_seconds": 5.162356708955485,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-c891a09849424087a73667ab32aca012.log",
+            "sha256": "5acb718c0d225aef35a59092bc69b575e8d6eedb6d92b10c054d170e9dc00339"
+          }
+        },
+        {
+          "iteration": 9,
+          "load_before": [
+            14.66455078125,
+            22.3759765625,
+            24.39599609375
+          ],
+          "elapsed_seconds": 4.6870624590083025,
+          "command": {
+            "id": "96de3077d4fe4fadaa0759926b03c2ee",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:28.788173+00:00",
+            "pid": 21920,
+            "exit": 0,
+            "elapsed_seconds": 4.607761959021445,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-96de3077d4fe4fadaa0759926b03c2ee.log",
+            "sha256": "522be94cac2dc655cb8a685b9aa8482c558f25f749d959465a3fbf024240a1d4"
+          }
+        },
+        {
+          "iteration": 10,
+          "load_before": [
+            14.05078125,
+            22.12060546875,
+            24.2939453125
+          ],
+          "elapsed_seconds": 4.302044624986593,
+          "command": {
+            "id": "1e88247204ba443bb77e69493fa5aded",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:22:33.451405+00:00",
+            "pid": 22318,
+            "exit": 0,
+            "elapsed_seconds": 4.246334458002821,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-1e88247204ba443bb77e69493fa5aded.log",
+            "sha256": "729fac751deba28b298fbf801d71d6510cf484dd4bc109ba620181e79d0d2e12"
+          }
+        }
+      ],
+      "running": false,
+      "elapsed_seconds": 45.58673262497177,
+      "finished_utc": "2026-10-25T02:22:37.707356+00:00"
+    },
+    "recovery-fixed-loaded": {
+      "source": "d06e9d798b2c034502f75e1f31104d3fbd5d72c1",
+      "argv": [
+        "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+        "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+        "--exact",
+        "--nocapture"
+      ],
+      "workers": [
+        {
+          "pid": 25055,
+          "exit": -15
+        },
+        {
+          "pid": 25056,
+          "exit": -15
+        }
+      ],
+      "worker_limit_seconds": 300,
+      "runs": [
+        {
+          "iteration": 1,
+          "load_before": [
+            9.5234375,
+            18.5703125,
+            22.716796875
+          ],
+          "elapsed_seconds": 1.8439636660041288,
+          "command": {
+            "id": "80e7d54db8bf432c9fc57e96446e845c",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:23:57.774518+00:00",
+            "pid": 25058,
+            "exit": 0,
+            "elapsed_seconds": 1.7983205419732258,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-80e7d54db8bf432c9fc57e96446e845c.log",
+            "sha256": "8d3ae229881fa4061cf1905a9985bf6af99640f67394d0b5a55ce49132cecb02"
+          }
+        },
+        {
+          "iteration": 2,
+          "load_before": [
+            9.5234375,
+            18.5703125,
+            22.716796875
+          ],
+          "elapsed_seconds": 1.9415197080234066,
+          "command": {
+            "id": "aec59a25640a4e1491ac4f2a6af7b659",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:23:59.630514+00:00",
+            "pid": 25187,
+            "exit": 0,
+            "elapsed_seconds": 1.886040041979868,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-aec59a25640a4e1491ac4f2a6af7b659.log",
+            "sha256": "6c2d7db8c0a69a5097a60262bad3701f4847305625ce9f0f0da5fca9169f242e"
+          }
+        },
+        {
+          "iteration": 3,
+          "load_before": [
+            9.5234375,
+            18.5703125,
+            22.716796875
+          ],
+          "elapsed_seconds": 2.384159750014078,
+          "command": {
+            "id": "56d1d80d55914fc9a46a07b1b317a490",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:01.559606+00:00",
+            "pid": 25269,
+            "exit": 0,
+            "elapsed_seconds": 2.3391982920002192,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-56d1d80d55914fc9a46a07b1b317a490.log",
+            "sha256": "1e5260ff93081e082daffcf7c037a27ae004914c7ce9ed8841f3962c6c70c29b"
+          }
+        },
+        {
+          "iteration": 4,
+          "load_before": [
+            9.5615234375,
+            18.427734375,
+            22.64208984375
+          ],
+          "elapsed_seconds": 1.871958750009071,
+          "command": {
+            "id": "1fc2b2706fac42f993350080c826e011",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:03.939553+00:00",
+            "pid": 25353,
+            "exit": 0,
+            "elapsed_seconds": 1.831094958994072,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-1fc2b2706fac42f993350080c826e011.log",
+            "sha256": "49b9763ddd4523b20b0dad3070534f7404f8cb9402b8d2f67426e451a26fc639"
+          }
+        },
+        {
+          "iteration": 5,
+          "load_before": [
+            9.5615234375,
+            18.427734375,
+            22.64208984375
+          ],
+          "elapsed_seconds": 1.905034416995477,
+          "command": {
+            "id": "0537b426c5e942d9a596b7d1341bbd68",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:05.817207+00:00",
+            "pid": 25470,
+            "exit": 0,
+            "elapsed_seconds": 1.8583782089990564,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-0537b426c5e942d9a596b7d1341bbd68.log",
+            "sha256": "4f85970064c8b9355548af412976733fa4a71326cdaf90608440ca5be24fa020"
+          }
+        },
+        {
+          "iteration": 6,
+          "load_before": [
+            9.5615234375,
+            18.427734375,
+            22.64208984375
+          ],
+          "elapsed_seconds": 2.4650206249789335,
+          "command": {
+            "id": "29bf8d24719746f1ac21aa127df58ced",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:07.734091+00:00",
+            "pid": 25607,
+            "exit": 0,
+            "elapsed_seconds": 2.4045138329965994,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-29bf8d24719746f1ac21aa127df58ced.log",
+            "sha256": "c4fd894f383994e4f8824da31d768c9463b09bdb1b46ade3cbc8ef2174a57e24"
+          }
+        },
+        {
+          "iteration": 7,
+          "load_before": [
+            9.75634765625,
+            18.32080078125,
+            22.57958984375
+          ],
+          "elapsed_seconds": 1.832307957985904,
+          "command": {
+            "id": "8fda2b1250d24e00b2ec16d4bcee0a53",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:10.201154+00:00",
+            "pid": 25674,
+            "exit": 0,
+            "elapsed_seconds": 1.7739124579820782,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-8fda2b1250d24e00b2ec16d4bcee0a53.log",
+            "sha256": "2926241df60e75e6b9e9d9230e73f59c4caa9cc24b8e5139278492bc7c57c010"
+          }
+        },
+        {
+          "iteration": 8,
+          "load_before": [
+            9.75634765625,
+            18.32080078125,
+            22.57958984375
+          ],
+          "elapsed_seconds": 1.7490521669969894,
+          "command": {
+            "id": "eae437696226456ebb4919be6fb7d5fb",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:12.018388+00:00",
+            "pid": 25766,
+            "exit": 0,
+            "elapsed_seconds": 1.7073379590292461,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-eae437696226456ebb4919be6fb7d5fb.log",
+            "sha256": "64bdec78ee98b5b6056029af2c9b549a17d617eb770b89ef853f3ea6dc951989"
+          }
+        },
+        {
+          "iteration": 9,
+          "load_before": [
+            9.375,
+            18.099609375,
+            22.4765625
+          ],
+          "elapsed_seconds": 1.9300787089741789,
+          "command": {
+            "id": "f2dc3cc7aa1a48b589b548df22a0798a",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:13.765575+00:00",
+            "pid": 25849,
+            "exit": 0,
+            "elapsed_seconds": 1.8895093750325032,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-f2dc3cc7aa1a48b589b548df22a0798a.log",
+            "sha256": "520ccdd542fd2962b6421290c4205e31651cc2e64a5f1a166e4d90285f2adf19"
+          }
+        },
+        {
+          "iteration": 10,
+          "load_before": [
+            9.375,
+            18.099609375,
+            22.4765625
+          ],
+          "elapsed_seconds": 2.4151606669765897,
+          "command": {
+            "id": "44e1e7cbc4e6491690308231f5bb83ca",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/recovery-936fec2d4a7ae130",
+              "supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T02:24:15.699655+00:00",
+            "pid": 26021,
+            "exit": 0,
+            "elapsed_seconds": 2.3705267920158803,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-44e1e7cbc4e6491690308231f5bb83ca.log",
+            "sha256": "2cdd2705d2765fcc019e826aa04d2a6e6adeba98a54533bee23a0ac1dd79fa1c"
+          }
+        }
+      ],
+      "running": false,
+      "elapsed_seconds": 20.344482625019737,
+      "finished_utc": "2026-10-25T02:24:18.077360+00:00"
+    },
+    "fairness-fixed-after-quiet": {
+      "source": "49939efe09ba5e90971e463316529b390298de0e",
+      "argv": [
+        "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+        "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+        "--exact",
+        "--nocapture"
+      ],
+      "workers": [
+        {
+          "pid": 39298,
+          "exit": -15
+        },
+        {
+          "pid": 39299,
+          "exit": -15
+        }
+      ],
+      "worker_limit_seconds": 300,
+      "runs": [
+        {
+          "iteration": 1,
+          "load_before": [
+            11.35791015625,
+            17.2685546875,
+            19.70458984375
+          ],
+          "elapsed_seconds": 5.332704458967783,
+          "command": {
+            "id": "af4120d94add4f8d9e61a8f25e3a5bac",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:13.678051+00:00",
+            "pid": 39308,
+            "exit": 0,
+            "elapsed_seconds": 5.220091750030406,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-af4120d94add4f8d9e61a8f25e3a5bac.log",
+            "sha256": "3ed07b6c7da3c50ece97f01e3976e5b30ee2c7642ccaadfcd9899afad7c09e4e"
+          }
+        },
+        {
+          "iteration": 2,
+          "load_before": [
+            12.6904296875,
+            17.4462890625,
+            19.7529296875
+          ],
+          "elapsed_seconds": 5.102457125030924,
+          "command": {
+            "id": "54076103e31a4e03b3628c92c90f36ee",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:19.006791+00:00",
+            "pid": 39705,
+            "exit": 0,
+            "elapsed_seconds": 4.999192000017501,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-54076103e31a4e03b3628c92c90f36ee.log",
+            "sha256": "64a91aebc96ffb1dcde1ec12b479704a75e6d98b004709d5444ece4b159e73b6"
+          }
+        },
+        {
+          "iteration": 3,
+          "load_before": [
+            13.1953125,
+            17.4716796875,
+            19.748046875
+          ],
+          "elapsed_seconds": 5.023120582976844,
+          "command": {
+            "id": "713719e9a28d48a29cc9a072256c5d54",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:24.110438+00:00",
+            "pid": 40041,
+            "exit": 0,
+            "elapsed_seconds": 4.919937500031665,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-713719e9a28d48a29cc9a072256c5d54.log",
+            "sha256": "46633bcc97b745f94c6c1dd1e65605694a6c33100517a2edb602477b15301633"
+          }
+        },
+        {
+          "iteration": 4,
+          "load_before": [
+            14.86083984375,
+            17.74560546875,
+            19.83154296875
+          ],
+          "elapsed_seconds": 4.706491334014572,
+          "command": {
+            "id": "1e8de9a5e00643b4a8a82509a0906d9a",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:29.144205+00:00",
+            "pid": 40281,
+            "exit": 0,
+            "elapsed_seconds": 4.590585957979783,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-1e8de9a5e00643b4a8a82509a0906d9a.log",
+            "sha256": "a4ddf78fc1f6205220514da041ba4dca7b22b9e80a5e15baa9eb7ed0ef04d97c"
+          }
+        },
+        {
+          "iteration": 5,
+          "load_before": [
+            14.39111328125,
+            17.60009765625,
+            19.76806640625
+          ],
+          "elapsed_seconds": 4.83642016700469,
+          "command": {
+            "id": "37f40c17a9094ec69e2242628c5f64e1",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:33.832982+00:00",
+            "pid": 40441,
+            "exit": 0,
+            "elapsed_seconds": 4.733636750024743,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-37f40c17a9094ec69e2242628c5f64e1.log",
+            "sha256": "9302e72c93f4fd0eea3984a04024419499682248e659334778f635ae777dedb4"
+          }
+        },
+        {
+          "iteration": 6,
+          "load_before": [
+            14.19921875,
+            17.5068359375,
+            19.72216796875
+          ],
+          "elapsed_seconds": 4.978548459010199,
+          "command": {
+            "id": "181627cac9324f1890cd784e058b4ada",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:38.676951+00:00",
+            "pid": 40698,
+            "exit": 0,
+            "elapsed_seconds": 4.8741600409848616,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-181627cac9324f1890cd784e058b4ada.log",
+            "sha256": "e5b4425b4f708e940a204dba6a2beb971d180b9f102e483c32b9129c89c4e395"
+          }
+        },
+        {
+          "iteration": 7,
+          "load_before": [
+            14.18310546875,
+            17.4482421875,
+            19.6884765625
+          ],
+          "elapsed_seconds": 4.857528042048216,
+          "command": {
+            "id": "e30cf8eee6514c7ea5e14c14723bc3a8",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:43.667912+00:00",
+            "pid": 40984,
+            "exit": 0,
+            "elapsed_seconds": 4.736053750035353,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-e30cf8eee6514c7ea5e14c14723bc3a8.log",
+            "sha256": "618c27c4d7f8c44fa8938768522c12df7ccafd3f73bc1871b95ef60671997fc0"
+          }
+        },
+        {
+          "iteration": 8,
+          "load_before": [
+            15.689453125,
+            17.7060546875,
+            19.76611328125
+          ],
+          "elapsed_seconds": 4.824121334007941,
+          "command": {
+            "id": "b653020aae6a4f3e917da6c8a45b17d6",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:48.692662+00:00",
+            "pid": 41633,
+            "exit": 0,
+            "elapsed_seconds": 4.538874874997418,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-b653020aae6a4f3e917da6c8a45b17d6.log",
+            "sha256": "b286be6ef19783c540f28f3ab1603194cf2873d4b1c3eaa69d88e827d7281763"
+          }
+        },
+        {
+          "iteration": 9,
+          "load_before": [
+            17.9560546875,
+            18.14208984375,
+            19.90771484375
+          ],
+          "elapsed_seconds": 4.28560349997133,
+          "command": {
+            "id": "161c29d7d7ae486fb081f3effd4c7449",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:53.352083+00:00",
+            "pid": 41834,
+            "exit": 0,
+            "elapsed_seconds": 4.167518624977674,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-161c29d7d7ae486fb081f3effd4c7449.log",
+            "sha256": "c499610c5d35aff7e699bd11b328e3f85b1fa7ee4f754dcb6721a53553bf3a83"
+          }
+        },
+        {
+          "iteration": 10,
+          "load_before": [
+            19.64111328125,
+            18.48828125,
+            20.01953125
+          ],
+          "elapsed_seconds": 4.269082750019152,
+          "command": {
+            "id": "ba58dedca9f54728a992f7f51bdcf2ab",
+            "source": "49939efe09ba5e90971e463316529b390298de0e",
+            "argv": [
+              "env",
+              "BBOXY_TEST_CUSTODY=memory",
+              "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-be0c11b0338c2beb",
+              "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+              "--exact",
+              "--nocapture"
+            ],
+            "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+            "started_utc": "2026-10-25T03:25:57.633502+00:00",
+            "pid": 42029,
+            "exit": 0,
+            "elapsed_seconds": 4.156275333021767,
+            "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-ba58dedca9f54728a992f7f51bdcf2ab.log",
+            "sha256": "7afa3a0a97523c7957b95637d19dad8e13b4adf2ea488eb0ec961694ef1a2aad"
+          }
+        }
+      ],
+      "running": false,
+      "elapsed_seconds": 48.25001987500582,
+      "finished_utc": "2026-10-25T03:26:01.824029+00:00"
+    }
+  },
+  "fairness_audit": {
+    "source": "49939efe09ba5e90971e463316529b390298de0e",
+    "runs": 10,
+    "failures": 0,
+    "exact_screen_checks": 40,
+    "load1_min": 11.35791015625,
+    "load1_max": 19.64111328125,
+    "workers": [
+      {
+        "pid": 39298,
+        "exit": -15
+      },
+      {
+        "pid": 39299,
+        "exit": -15
+      }
+    ],
+    "recorded_pids": [
+      39298,
+      39299,
+      39339,
+      39347,
+      39350,
+      39364,
+      39710,
+      39722,
+      39734,
+      39738,
+      40043,
+      40052,
+      40055,
+      40058,
+      40283,
+      40285,
+      40288,
+      40295,
+      40450,
+      40453,
+      40455,
+      40461,
+      40699,
+      40701,
+      40711,
+      40714,
+      40985,
+      41053,
+      41206,
+      41284,
+      41650,
+      41653,
+      41661,
+      41665,
+      41836,
+      41843,
+      41853,
+      41870,
+      42030,
+      42032,
+      42034,
+      42036
+    ],
+    "ps_exit": 1,
+    "ps_output": "",
+    "counts_are_asserted_not_self_reported": true
+  },
+  "quiet_interruption": {
+    "utc": "2026-10-25T02:25:23.232899+00:00",
+    "quiet_message": "0560d135-98ed-4ace-8dec-caa3bcb02044",
+    "actions": [
+      {
+        "pid": 27712,
+        "ppid": 13411,
+        "start": "Sat Oct 24 19:24:51 2026",
+        "command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python /private/tmp/sable-codex-alias-oskx_v46/loaded-repeats.py fairness-fixed-loaded 10 2 /private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1 four_watched_seats_advance_during_a_large_replay_and_match_serial_screens --exact --nocapture",
+        "signal": "SIGINT"
+      },
+      {
+        "pid": 27724,
+        "ppid": 27712,
+        "start": "Sat Oct 24 19:24:51 2026",
+        "command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python -c import hashlib,time; stop=time.monotonic()+300; data=b'x'*65536\\012while time.monotonic()<stop: data=hashlib.sha256(data).digest()*2048",
+        "signal": "SIGTERM"
+      },
+      {
+        "pid": 27725,
+        "ppid": 27712,
+        "start": "Sat Oct 24 19:24:51 2026",
+        "command": "/opt/homebrew/Cellar/python@3.15/3.15.0_1/Frameworks/Python.framework/Versions/3.15/Resources/Python.app/Contents/MacOS/Python -c import hashlib,time; stop=time.monotonic()+300; data=b'x'*65536\\012while time.monotonic()<stop: data=hashlib.sha256(data).digest()*2048",
+        "signal": "SIGTERM"
+      }
+    ],
+    "reason": "Quiet notice returned in same batch as automatic start; stop only recorded owned runner/workers.",
+    "post_stop_ps_exit": 1,
+    "post_stop_ps_output": "",
+    "logged_partial_commands": [
+      {
+        "id": "cb82797a4e114d98844aca33fcc2ee5c",
+        "exit": 0
+      },
+      {
+        "id": "55149f43f4dc4855be94abc8e3db98ef",
+        "exit": 0
+      },
+      {
+        "id": "e764e8ee7c1143ea95f840801d1cbcf3",
+        "exit": 0
+      },
+      {
+        "id": "00cceebc335a4fcda169941f25f0217e",
+        "exit": 0
+      },
+      {
+        "id": "cffdebadb2e341a2890f31a4a898174d",
+        "exit": 0
+      },
+      {
+        "id": "bdd85ecb54974e7f8c325f92292f71cb",
+        "exit": 0
+      }
+    ]
+  },
+  "interrupted_repeats_not_counted": {
+    "source": "d06e9d798b2c034502f75e1f31104d3fbd5d72c1",
+    "argv": [
+      "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+      "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+      "--exact",
+      "--nocapture"
+    ],
+    "workers": [
+      {
+        "pid": 27724,
+        "exit": -15
+      },
+      {
+        "pid": 27725,
+        "exit": -15
+      }
+    ],
+    "worker_limit_seconds": 300,
+    "runs": [
+      {
+        "iteration": 1,
+        "load_before": [
+          8.66015625,
+          16.974609375,
+          21.890625
+        ],
+        "elapsed_seconds": 4.362753833003808,
+        "command": {
+          "id": "cb82797a4e114d98844aca33fcc2ee5c",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:24:51.644128+00:00",
+          "pid": 27727,
+          "exit": 0,
+          "elapsed_seconds": 4.322152000037022,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-cb82797a4e114d98844aca33fcc2ee5c.log",
+          "sha256": "ec213cfb857aac3d2856ad8928ec016539f5364c1575ee8e128246b7476a2541"
+        }
+      },
+      {
+        "iteration": 2,
+        "load_before": [
+          8.52685546875,
+          16.80859375,
+          21.80322265625
+        ],
+        "elapsed_seconds": 4.203156833013054,
+        "command": {
+          "id": "55149f43f4dc4855be94abc8e3db98ef",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:24:56.003144+00:00",
+          "pid": 27862,
+          "exit": 0,
+          "elapsed_seconds": 4.166776750003919,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-55149f43f4dc4855be94abc8e3db98ef.log",
+          "sha256": "17354e40883ffb83625ca997ffccce100877ab003b308541c9189a1cb3c41b72"
+        }
+      },
+      {
+        "iteration": 3,
+        "load_before": [
+          8.244140625,
+          16.6123046875,
+          21.70458984375
+        ],
+        "elapsed_seconds": 4.27396125002997,
+        "command": {
+          "id": "e764e8ee7c1143ea95f840801d1cbcf3",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:25:00.212738+00:00",
+          "pid": 27914,
+          "exit": 0,
+          "elapsed_seconds": 4.228072999976575,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-e764e8ee7c1143ea95f840801d1cbcf3.log",
+          "sha256": "5adc9f291268611482892f315f61ee850a9d3c8400e84e93e6ab25ffd3398075"
+        }
+      },
+      {
+        "iteration": 4,
+        "load_before": [
+          8.22412109375,
+          16.46923828125,
+          21.6240234375
+        ],
+        "elapsed_seconds": 4.200467917020433,
+        "command": {
+          "id": "00cceebc335a4fcda169941f25f0217e",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:25:04.487479+00:00",
+          "pid": 28041,
+          "exit": 0,
+          "elapsed_seconds": 4.155956333037466,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-00cceebc335a4fcda169941f25f0217e.log",
+          "sha256": "a061168ff946494e3ef2c2f6587c47e6bad2b621061c4d90f1c2926cc2a74154"
+        }
+      },
+      {
+        "iteration": 5,
+        "load_before": [
+          7.9658203125,
+          16.27880859375,
+          21.5263671875
+        ],
+        "elapsed_seconds": 4.207737417018507,
+        "command": {
+          "id": "cffdebadb2e341a2890f31a4a898174d",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:25:08.689898+00:00",
+          "pid": 28082,
+          "exit": 0,
+          "elapsed_seconds": 4.162431292003021,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-cffdebadb2e341a2890f31a4a898174d.log",
+          "sha256": "7e450231adae380d66bc818d3f5484ad6f04038bf28c4ca9cd814f9ec8af5b53"
+        }
+      },
+      {
+        "iteration": 6,
+        "load_before": [
+          8.28857421875,
+          16.20751953125,
+          21.47021484375
+        ],
+        "elapsed_seconds": 4.215021167008672,
+        "command": {
+          "id": "66a8a95eec314c9f8c8431368009768f",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:25:12.904491+00:00",
+          "pid": 28175,
+          "exit": 0,
+          "elapsed_seconds": 4.162719832966104,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-66a8a95eec314c9f8c8431368009768f.log",
+          "sha256": "f39837fd624062629ddc8008d6b21bcdd9c1bc6ad7e214182ceaa68fd0067dec"
+        }
+      },
+      {
+        "iteration": 7,
+        "load_before": [
+          8.28857421875,
+          16.20751953125,
+          21.47021484375
+        ],
+        "elapsed_seconds": 4.276854875031859,
+        "command": {
+          "id": "bdd85ecb54974e7f8c325f92292f71cb",
+          "argv": [
+            "env",
+            "BBOXY_TEST_CUSTODY=memory",
+            "/private/tmp/sable-codex-alias-oskx_v46/ci/target/debug/deps/capture_fairness-dad9daa21b2526c1",
+            "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+            "--exact",
+            "--nocapture"
+          ],
+          "cwd": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+          "started_utc": "2026-10-25T02:25:17.112051+00:00",
+          "pid": 28250,
+          "exit": 0,
+          "elapsed_seconds": 4.2260070409975015,
+          "log": "/private/tmp/sable-codex-alias-oskx_v46/cmd-bdd85ecb54974e7f8c325f92292f71cb.log",
+          "sha256": "b32b9f2cd2ca0842b976778061626b1bce6bdd19fd7bde4f607bcdb67a5585fa"
+        }
+      }
+    ],
+    "running": false,
+    "elapsed_seconds": 31.878601042029914,
+    "finished_utc": "2026-10-25T02:25:23.484146+00:00"
+  },
+  "cleanup": {
+    "utc": "2026-10-25T04:06:35.605447+00:00",
+    "source": "49939efe09ba5e90971e463316529b390298de0e",
+    "gate_exit": 0,
+    "target": "/private/tmp/sable-codex-alias-oskx_v46/ci/target",
+    "worktree": "/private/tmp/sable-codex-alias-oskx_v46/ci",
+    "target_removed": true,
+    "worktree_removed": true,
+    "allocated_bytes_freed": 4045725696,
+    "allocation_method": "unique (device,inode) st_blocks * 512 under own target, no symlink traversal",
+    "recorded_gate_ps_exit": 1,
+    "recorded_gate_ps_output": "",
+    "signalled": false
+  },
+  "limits": [
+    "Original stochastic flakes were not reproduced in ten baseline runs each. The 15 s cutoff was independently reproduced with paused time.",
+    "Production capture/replay scheduling and the best-effort diagnostic recorder are unchanged; the audit fixture explicitly selects the existing lossless mode.",
+    "No new native Codex, physical GUI, visual parity or 967-seat claim. Actual supervisor SIGKILL regression uses the private socket/process stand-in.",
+    "O1 with debug guards, two finite CPU workers and observed shared-host load; no controlled speed comparison.",
+    "Only the recorded immediate predecessor alias is considered; no global or historical alias scan.",
+    "Recovery loaded repetitions used d06e9d79 before the unconflicted HK-1/T7 rebases. The four changed Rust files stayed byte-identical; frozen49939efe full workspace and normal CI exercise the combined tip."
+  ],
+  "origin_main_after_gate": "d31e2ff4228cd3fa79c953c3a00c7de7703ee72b",
+  "origin_paths_since_base": [
+    ".bboxy/decisions/d285-no-gated-communications.md",
+    ".bboxy/invariants/messaging-never-held.md",
+    ".bboxy/specs/ctl-cli.md",
+    ".bboxy/specs/l9-messaging-tasks.md"
+  ]
+}

@@ -1,0 +1,33 @@
+Stale runtime alias and assigned load fixtures — final handoff
+Sable Embertail <EXECUTOR>; 2026-10-25T04:06:58.957674+00:00
+Signed frozen source 49939efe09ba5e90971e463316529b390298de0e on accepted T7 base bece3308; branch sable-codex-alias; own exec3.
+
+Mechanisms:
+crates/bboxy450-harness-wake-up/src/launch.rs:68 — retire only the recorded own /tmp alias: valid short name/socket suffix, exact private overlay target, UID/mode and inode recheck, absent socket. Preserve the overlay and any present socket; no scan.
+crates/bbt-mux/src/logic.rs:3658 — read predecessor launch paths only from that seat store before the new generation replaces them.
+crates/bboxy450-term/tests/recovery.rs:244 — await actual Seats with a 60 s hang watchdog (Session startup permits 30 s after death observation), preserve terminal recovery errors, and report last event/elapsed time. All original PID/generation/Screen/argv/input checks remain.
+crates/bbt-mux/tests/capture_fairness.rs:176 — select existing lossless fixture diagnostics and assert the mode; keep zero-miss, exact Screen, per-seat cursor, <=16 page and one-page-per-turn checks. Product recorder remains best effort/nonblocking.
+
+Verification:
+Actual supervisor SIGKILL → gen2 regression: baseline test-only 98379213 EXIT 101 solely on old alias survival after every original recovery assertion and orderly shutdown; fixed 663feccd EXIT 0. Kit ownership/socket guards 4/0.
+Recovery: unchanged baseline 10/10 pass under two bounded workers at load 31.29–31.67; no natural timeout reproduction. Paused-clock source 8175f4c4 EXIT 101 at 16 s under the old 15 s wrapper, within Session's 30 s startup allowance. Fixed full recovery suite 8/0; paused controls preserve errors and reject a true hang. Ten fixed loaded supervisor-kill runs pass on d06e9d79 before the unconflicted HK-1/T7 rebases; the four changed Rust files are byte-identical afterward, and the combined frozen tip passes both full workspace and normal CI.
+Fairness: unchanged baseline 10/10 pass at load 13.10–15.04; original stochastic miss not reproduced. Source proves missed increments on diagnostic try_lock contention; existing deterministic contention test expects 1 and remains green. Fixed frozen-source repeats 10/10, 40 exact serial Screens, load 11.36–19.64, finite workers stopped and recorded PIDs absent. No tolerance or production replay change.
+Before gate: full workspace 1341/0/29 ignored; strict all-target Clippy -D warnings EXIT 0; default invariants 23/0 (9 slow skipped). Earlier HK-1-base workspace also 1326/0; T7 combined source was prechecked separately.
+Exact NORMAL ci-local ac46de99a6c44e41b994de1dee4219f2 EXIT 0 / 1176.365 s. Clean detached checkout, atomic slot 1, own prechecked target, memory custody, direct compiler; no code/rebase while active.
+Raw gate /private/tmp/sable-codex-alias-oskx_v46/cmd-ac46de99a6c44e41b994de1dee4219f2.log
+Gate SHA256 ad1601070657cd25704a8eeef6ad7a6e7bae1eb03ef22c1f59cb9fdf3555bb76
+Gate workspace {"results": 200, "passed": 1341, "failed": 0, "ignored": 29}; all actual reported results incl. invariant reruns {"results": 204, "passed": 1344, "failed": 0, "ignored": 29}
+idle passed: frames=0 callbacks=0 seconds=10.002 windows=0 mode=headless
+Default invariants 23/0, 9 slow skipped. Footer: ci-local: all gates passed.
+
+Failures/limits:
+Expected RED controls each EXIT 101 are retained. One repeat loop began before inspecting the returned QUIET START; exact own runner/workers stopped at 02:25:23Z, wrapper EXIT 130; 7 completed iterations kept as partial only; the interrupted 8th is not counted. Fresh post-quiet 10/10 is separate. No run-contamination claim.
+Original stochastic flakes were not reproduced in ten baseline runs each. The 15 s cutoff was independently reproduced with paused time.
+Production capture/replay scheduling and the best-effort diagnostic recorder are unchanged; the audit fixture explicitly selects the existing lossless mode.
+No new native Codex, physical GUI, visual parity or 967-seat claim. Actual supervisor SIGKILL regression uses the private socket/process stand-in.
+O1 with debug guards, two finite CPU workers and observed shared-host load; no controlled speed comparison.
+Only the recorded immediate predecessor alias is considered; no global or historical alias scan.
+
+Cleanup: own target/worktree removed after gate exit; allocated cache bytes freed 4045725696. No push/merge. Raw transcripts/keys are not included. The JSON binds command argv, exits, source/hash records and cleanup.
+
+Origin/main after the gate: d31e2ff4228cd3fa79c953c3a00c7de7703ee72b; only these later paths differ from the frozen base: .bboxy/decisions/d285-no-gated-communications.md, .bboxy/invariants/messaging-never-held.md, .bboxy/specs/ctl-cli.md, .bboxy/specs/l9-messaging-tasks.md. No rebase after the green gate; Oracle verifies the merged tree.
