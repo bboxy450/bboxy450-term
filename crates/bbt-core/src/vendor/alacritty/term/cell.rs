@@ -330,6 +330,7 @@ mod tests {
     use crate::grid::Row;
     use crate::index::Column;
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn cell_size_is_below_cap() {
         // Expected cell size on 64-bit architectures.
@@ -339,6 +340,7 @@ mod tests {
         assert!(mem::size_of::<Cell>() <= EXPECTED_CELL_SIZE);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn line_length_works() {
         let mut row = Row::<Cell>::new(10);
@@ -347,6 +349,7 @@ mod tests {
         assert_eq!(row.line_length(), Column(6));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn line_length_works_with_wrapline() {
         let mut row = Row::<Cell>::new(10);

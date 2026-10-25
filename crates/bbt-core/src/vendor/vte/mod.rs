@@ -892,6 +892,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc() {
         let mut dispatcher = Dispatcher::default();
@@ -910,6 +911,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_empty_osc() {
         let mut dispatcher = Dispatcher::default();
@@ -924,6 +926,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc_max_params() {
         let params = ";".repeat(params::MAX_PARAMS + 1);
@@ -943,6 +946,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn osc_bell_terminated() {
         const INPUT: &[u8] = b"\x1b]11;ff/00/ff\x07";
@@ -958,6 +962,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn osc_c0_st_terminated() {
         const INPUT: &[u8] = b"\x1b]11;ff/00/ff\x1b\\";
@@ -973,6 +978,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc_with_utf8_arguments() {
         const INPUT: &[u8] = &[
@@ -994,6 +1000,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched.len(), 2);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn osc_containing_string_terminator() {
         const INPUT: &[u8] = b"\x1b]2;\xe6\x9c\xab\x1b\\";
@@ -1011,6 +1018,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn exceed_max_buffer_size() {
         const NUM_BYTES: usize = MAX_OSC_RAW + 100;
@@ -1041,6 +1049,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_csi_max_params() {
         // This will build a list of repeating '1;'s
@@ -1064,6 +1073,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_csi_params_ignore_long_params() {
         // This will build a list of repeating '1;'s
@@ -1087,6 +1097,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_csi_params_trailing_semicolon() {
         let mut dispatcher = Dispatcher::default();
@@ -1101,6 +1112,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_csi_params_leading_semicolon() {
         // Create dispatcher and check state
@@ -1116,6 +1128,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_long_csi_param() {
         // The important part is the parameter, which is (i64::MAX + 1)
@@ -1132,6 +1145,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn csi_reset() {
         const INPUT: &[u8] = b"\x1b[3;1\x1b[?1049h";
@@ -1151,6 +1165,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn csi_subparameters() {
         const INPUT: &[u8] = b"\x1b[38:2:255:0:255;1m";
@@ -1170,6 +1185,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_dcs_max_params() {
         let params = "1;".repeat(params::MAX_PARAMS + 1);
@@ -1190,6 +1206,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn dcs_reset() {
         const INPUT: &[u8] = b"\x1b[3;1\x1bP1$tx\x9c";
@@ -1211,6 +1228,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[2], Sequence::DcsUnhook);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_dcs() {
         const INPUT: &[u8] = b"\x1bP0;1|17/ab\x9c";
@@ -1233,6 +1251,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[6], Sequence::DcsUnhook);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn intermediate_reset_on_dcs_exit() {
         const INPUT: &[u8] = b"\x1bP=1sZZZ\x1b+\x5c";
@@ -1248,6 +1267,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn esc_reset() {
         const INPUT: &[u8] = b"\x1b[3;1\x1b(A";
@@ -1267,6 +1287,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn esc_reset_intermediates() {
         const INPUT: &[u8] = b"\x1b[?2004l\x1b#8";
@@ -1283,6 +1304,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[1], Sequence::Esc(vec![35], false, 56));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn params_buffer_filled_with_subparam() {
         const INPUT: &[u8] = b"\x1b[::::::::::::::::::::::::::::::::x\x1b";
@@ -1303,6 +1325,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn unicode() {
         const INPUT: &[u8] = b"\xF0\x9F\x8E\x89_\xF0\x9F\xA6\x80\xF0\x9F\xA6\x80_\xF0\x9F\x8E\x89";
@@ -1321,6 +1344,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[5], Sequence::Print('🎉'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn invalid_utf8() {
         const INPUT: &[u8] = b"a\xEF\xBCb";
@@ -1336,6 +1360,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[2], Sequence::Print('b'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_utf8() {
         const INPUT: &[u8] = b"\xF0\x9F\x9A\x80";
@@ -1352,6 +1377,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[0], Sequence::Print('🚀'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_utf8_separating_utf8() {
         // This is different from the `partial_utf8` test since it has a multi-byte UTF8
@@ -1372,6 +1398,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[1], Sequence::Print('🎉'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_invalid_utf8() {
         const INPUT: &[u8] = b"a\xEF\xBCb";
@@ -1390,6 +1417,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[2], Sequence::Print('b'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_invalid_utf8_split() {
         const INPUT: &[u8] = b"\xE4\xBF\x99\xB5";
@@ -1404,6 +1432,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[1], Sequence::Print('�'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_utf8_into_esc() {
         const INPUT: &[u8] = b"\xD8\x1b012";
@@ -1423,6 +1452,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[3], Sequence::Print('2'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn c1s() {
         const INPUT: &[u8] = b"\x00\x1f\x80\x90\x98\x9b\x9c\x9d\x9e\x9fa";
@@ -1446,6 +1476,7 @@ mod tests {
         assert_eq!(dispatcher.dispatched[10], Sequence::Print('a'));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn execute_anywhere() {
         const INPUT: &[u8] = b"\x18\x1a";

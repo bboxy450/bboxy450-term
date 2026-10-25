@@ -1,5 +1,6 @@
 use bbt_core::{Dimensions, Term};
 
+// keeps: spec terminal-core §D1
 #[test]
 fn resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes() {
     let mut term = Term::new(20, 4, 16);

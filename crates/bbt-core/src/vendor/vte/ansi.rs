@@ -2057,23 +2057,23 @@ mod tests {
 
     #[derive(Default)]
     pub struct TestSyncHandler {
-        is_sync: usize,
+        pending: bool,
     }
 
     impl Timeout for TestSyncHandler {
         #[inline]
         fn set_timeout(&mut self, _: Duration) {
-            self.is_sync += 1;
+            self.pending = true;
         }
 
         #[inline]
         fn clear_timeout(&mut self) {
-            self.is_sync = 0;
+            self.pending = false;
         }
 
         #[inline]
         fn pending_timeout(&self) -> bool {
-            self.is_sync != 0
+            self.pending
         }
     }
 
@@ -2130,6 +2130,7 @@ mod tests {
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_control_attribute() {
         static BYTES: &[u8] = &[0x1B, b'[', b'1', b'm'];
@@ -2142,6 +2143,7 @@ mod tests {
         assert_eq!(handler.attr, Some(Attr::Bold));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_terminal_identity_csi() {
         let bytes: &[u8] = &[0x1B, b'[', b'1', b'c'];
@@ -2168,6 +2170,7 @@ mod tests {
         assert!(handler.identity_reported);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_terminal_identity_esc() {
         let bytes: &[u8] = &[0x1B, b'Z'];
@@ -2191,6 +2194,7 @@ mod tests {
         handler.reset_state();
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_truecolor_attr() {
         static BYTES: &[u8] = &[
@@ -2212,31 +2216,7 @@ mod tests {
         assert_eq!(handler.attr, Some(Attr::Foreground(Color::Spec(spec))));
     }
 
-    /// No exactly a test; useful for debugging.
-    #[test]
-    fn parse_zsh_startup() {
-        static BYTES: &[u8] = &[
-            0x1B, b'[', b'1', b'm', 0x1B, b'[', b'7', b'm', b'%', 0x1B, b'[', b'2', b'7', b'm',
-            0x1B, b'[', b'1', b'm', 0x1B, b'[', b'0', b'm', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ', b' ',
-            b' ', b' ', b' ', b'\r', b' ', b'\r', b'\r', 0x1B, b'[', b'0', b'm', 0x1B, b'[', b'2',
-            b'7', b'm', 0x1B, b'[', b'2', b'4', b'm', 0x1B, b'[', b'J', b'j', b'w', b'i', b'l',
-            b'm', b'@', b'j', b'w', b'i', b'l', b'm', b'-', b'd', b'e', b's', b'k', b' ', 0x1B,
-            b'[', b'0', b'1', b';', b'3', b'2', b'm', 0xE2, 0x9E, 0x9C, b' ', 0x1B, b'[', b'0',
-            b'1', b';', b'3', b'2', b'm', b' ', 0x1B, b'[', b'3', b'6', b'm', b'~', b'/', b'c',
-            b'o', b'd', b'e',
-        ];
-
-        let mut handler = MockHandler::default();
-        let mut parser = Processor::<TestSyncHandler>::new();
-
-        parser.advance(&mut handler, BYTES);
-    }
-
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_designate_g0_as_line_drawing() {
         static BYTES: &[u8] = &[0x1B, b'(', b'0'];
@@ -2252,6 +2232,7 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_designate_g1_as_line_drawing_and_invoke() {
         static BYTES: &[u8] = &[0x1B, b')', b'0', 0x0E];
@@ -2272,6 +2253,7 @@ mod tests {
         assert_eq!(handler.index, CharsetIndex::G1);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_valid_rgb_colors() {
         assert_eq!(
@@ -2308,6 +2290,7 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_valid_legacy_rgb_colors() {
         assert_eq!(
@@ -2344,33 +2327,39 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_invalid_rgb_colors() {
         assert_eq!(xparse_color(b"rgb:0//"), None);
         assert_eq!(xparse_color(b"rgb://///"), None);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_invalid_legacy_rgb_colors() {
         assert_eq!(xparse_color(b"#"), None);
         assert_eq!(xparse_color(b"#f"), None);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_invalid_number() {
         assert_eq!(parse_number(b"1abc"), None);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_valid_number() {
         assert_eq!(parse_number(b"123"), Some(123));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_number_too_large() {
         assert_eq!(parse_number(b"321"), None);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc4_set_color() {
         let bytes: &[u8] = b"\x1b]4;0;#fff\x1b\\";
@@ -2390,6 +2379,7 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc104_reset_color() {
         let bytes: &[u8] = b"\x1b]104;1;\x1b\\";
@@ -2402,6 +2392,7 @@ mod tests {
         assert_eq!(handler.reset_colors, vec![1]);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc104_reset_all_colors() {
         let bytes: &[u8] = b"\x1b]104;\x1b\\";
@@ -2415,6 +2406,7 @@ mod tests {
         assert_eq!(handler.reset_colors, expected);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn parse_osc104_reset_all_colors_no_semicolon() {
         let bytes: &[u8] = b"\x1b]104\x1b\\";
@@ -2428,126 +2420,131 @@ mod tests {
         assert_eq!(handler.reset_colors, expected);
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn partial_sync_updates() {
         let mut parser = Processor::<TestSyncHandler>::new();
         let mut handler = MockHandler::default();
 
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Start synchronized update.
 
         parser.advance(&mut handler, b"\x1b[?20");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_none());
 
         parser.advance(&mut handler, b"26h");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Dispatch some data.
 
         parser.advance(&mut handler, b"random \x1b[31m stuff");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Extend synchronized update.
 
         parser.advance(&mut handler, b"\x1b[?20");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         parser.advance(&mut handler, b"26h");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 2);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Terminate synchronized update.
 
         parser.advance(&mut handler, b"\x1b[?20");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 2);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         parser.advance(&mut handler, b"26l");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_some());
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn sync_bursts_buffer() {
         let mut parser = Processor::<TestSyncHandler>::new();
         let mut handler = MockHandler::default();
 
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Repeat test twice to ensure internal state is reset properly.
         for _ in 0..2 {
             // Start synchronized update.
             parser.advance(&mut handler, b"\x1b[?2026h");
-            assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+            assert!(parser.sync_pending());
             assert!(handler.attr.is_none());
 
             // Ensure sync works.
             parser.advance(&mut handler, b"\x1b[31m");
-            assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+            assert!(parser.sync_pending());
             assert!(handler.attr.is_none());
 
             // Exceed sync buffer dimensions.
             parser.advance(&mut handler, "a".repeat(SYNC_BUFFER_SIZE).as_bytes());
-            assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+            assert!(!parser.sync_pending());
             assert!(handler.attr.take().is_some());
 
             // Ensure new events are dispatched directly.
             parser.advance(&mut handler, b"\x1b[31m");
-            assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+            assert!(!parser.sync_pending());
             assert!(handler.attr.take().is_some());
         }
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn mixed_sync_escape() {
         let mut parser = Processor::<TestSyncHandler>::new();
         let mut handler = MockHandler::default();
 
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Start synchronized update with immediate SGR.
         parser.advance(&mut handler, b"\x1b[?2026h\x1b[31m");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Terminate synchronized update and check for SGR.
         parser.advance(&mut handler, b"\x1b[?2026l");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_some());
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
     fn sync_bsu_with_esu() {
         let mut parser = Processor::<TestSyncHandler>::new();
         let mut handler = MockHandler::default();
 
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Start synchronized update with immediate SGR.
         parser.advance(&mut handler, b"\x1b[?2026h\x1b[1m");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 1);
+        assert!(parser.sync_pending());
         assert!(handler.attr.is_none());
 
         // Terminate synchronized update, but immediately start a new one.
         parser.advance(&mut handler, b"\x1b[?2026l\x1b[?2026h\x1b[4m");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 2);
+        assert!(parser.sync_pending());
         assert_eq!(handler.attr.take(), Some(Attr::Bold));
 
         // Terminate again, expecting one buffered SGR.
         parser.advance(&mut handler, b"\x1b[?2026l");
-        assert_eq!(parser.state.sync_state.timeout.is_sync, 0);
+        assert!(!parser.sync_pending());
         assert_eq!(handler.attr.take(), Some(Attr::Underline));
     }
 
+    // keeps: spec terminal-core §D2
     #[test]
 
     fn contrast() {

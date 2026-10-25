@@ -1,4 +1,7 @@
-#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 
 use std::sync::{Arc, Mutex};
 
@@ -12,6 +15,7 @@ fn restored(term: &Term) -> Term {
     result
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn red_foreground_survives_4096_bytes_and_a_durable_checkpoint() {
     let mut term = Term::new(80, 24, 128);
@@ -30,6 +34,7 @@ fn red_foreground_survives_4096_bytes_and_a_durable_checkpoint() {
     assert_eq!(term.grid()[point].fg, Color::Named(NamedColor::Red));
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn checkpoint_retains_an_incomplete_csi_and_utf8_codepoint() {
     let mut term = Term::new(8, 2, 0);
@@ -49,6 +54,7 @@ fn checkpoint_retains_an_incomplete_csi_and_utf8_codepoint() {
     );
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st() {
     let calls = Arc::new(Mutex::new(Vec::<Vec<Vec<u8>>>::new()));
@@ -74,6 +80,7 @@ fn osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st() {
     );
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook() {
     let mut original = Term::new(8, 2, 0);
@@ -99,6 +106,7 @@ fn incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook
     );
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn saved_cursor_and_inactive_primary_screen_survive_checkpoint() {
     let mut term = Term::new(8, 2, 0);
@@ -113,6 +121,7 @@ fn saved_cursor_and_inactive_primary_screen_survive_checkpoint() {
     );
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn synchronized_output_buffer_and_preceding_character_survive_checkpoint() {
     let mut term = Term::new(8, 2, 0);
@@ -132,6 +141,7 @@ fn synchronized_output_buffer_and_preceding_character_survive_checkpoint() {
     }
 }
 
+// keeps: spec terminal-core §D2
 #[test]
 fn viewport_only_drops_existing_history_even_while_the_primary_is_inactive() {
     let mut term = Term::new(8, 2, 32);

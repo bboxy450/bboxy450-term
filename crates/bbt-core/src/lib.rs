@@ -1,6 +1,7 @@
 //! Terminal grid and parser, independent of PTYs, rendering and process ownership.
 //!
 //! ```
+//! // keeps: spec terminal-core §D1
 //! use bbt_core::{Column, Line, Term};
 //! let mut term = Term::new(80, 24, 0);
 //! term.advance(b"hello");
@@ -270,6 +271,7 @@ impl Dimensions for Size {
 }
 
 #[cfg(test)]
+// keeps: invariant kitty-keyboard
 #[test]
 fn kitty_keyboard_invariant() {
     keyboard::assert_invariant();

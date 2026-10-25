@@ -60,6 +60,7 @@ fn remove_new_fields(value: &mut serde_json::Value) {
     }
 }
 
+// keeps: decision #40
 #[test]
 fn bounded_history_windows_checkpoint_compatibility_and_heap_accounting() {
     let mut term = Term::new_with_spare_rows(80, 24, 128, 0);

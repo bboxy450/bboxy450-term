@@ -351,6 +351,7 @@ ops!(Line, Line, i32);
 mod tests {
     use super::*;
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn location_ordering() {
         assert!(Point::new(Line(0), Column(0)) == Point::new(Line(0), Column(0)));
@@ -362,6 +363,7 @@ mod tests {
         assert!(Point::new(Line(0), Column(0)) > Point::new(Line(-1), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn sub() {
         let size = (10, 42);
@@ -372,6 +374,7 @@ mod tests {
         assert_eq!(result, Point::new(Line(0), point.column - 1));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn sub_wrap() {
         let size = (10, 42);
@@ -382,6 +385,7 @@ mod tests {
         assert_eq!(result, Point::new(Line(0), size.last_column()));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn sub_clamp() {
         let size = (10, 42);
@@ -392,6 +396,7 @@ mod tests {
         assert_eq!(result, point);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn sub_grid_clamp() {
         let size = (0, 42);
@@ -402,6 +407,7 @@ mod tests {
         assert_eq!(result, point);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn sub_none_clamp() {
         let size = (10, 42);
@@ -412,6 +418,7 @@ mod tests {
         assert_eq!(result, Point::new(Line(9), Column(41)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn add() {
         let size = (10, 42);
@@ -422,6 +429,7 @@ mod tests {
         assert_eq!(result, Point::new(Line(0), point.column + 1));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn add_wrap() {
         let size = (10, 42);
@@ -432,6 +440,7 @@ mod tests {
         assert_eq!(result, Point::new(Line(1), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn add_clamp() {
         let size = (10, 42);
@@ -442,6 +451,7 @@ mod tests {
         assert_eq!(result, point);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn add_grid_clamp() {
         let size = (10, 42);
@@ -452,6 +462,7 @@ mod tests {
         assert_eq!(result, point);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn add_none_clamp() {
         let size = (10, 42);

@@ -1,0 +1,144 @@
+# bbt-core test-policy sweep (#327)
+
+Base: `ac77453d6b2a483b5e414242293755cb8ab6aac2`. Inventory: 120 entries, including doctests. Each row below is one original inventory entry. D is §2D (the policy gives it no numeric subcategory). All rewrites retain the stated `keeps:` protection.
+
+| Test | Classification | Disposition | Contract / remaining coverage |
+|---|---|---|---|
+| `kitty_keyboard_invariant` | D (§2D) | keep | invariant kitty-keyboard — Exact invariant entry point, 32 flag sets, legacy/extended/modifier vectors, terminal mode stack and sole-encoder guard unchanged. |
+| `vendor::alacritty::grid::storage::tests::grow_after_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::grow_before_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::indexing` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::indexing_above_inner_len` | D (§2D) | keep | spec terminal-core §D1 — Debug bounds-refusal regression for an out-of-range logical row remains unchanged. |
+| `vendor::alacritty::grid::storage::tests::initialize` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::rotate` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::rotate_wrap_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::shrink_after_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::shrink_before_and_after_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::shrink_before_zero` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::shrink_then_grow` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::truncate_invisible_lines` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::truncate_invisible_lines_beginning` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::storage::tests::with_capacity` | C1/C4 | rewrite | spec terminal-core §D1 — Observe logical rows and retained length after the named storage operation; no private cache, zero-index or full-struct equality. |
+| `vendor::alacritty::grid::tests::accurate_size_hint` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::grow_reflow` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::grow_reflow_disabled` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::grow_reflow_multiline` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::scroll_down` | C1 | rewrite | spec terminal-core §D1 — All cell results retained; removed private occupied-length bookkeeping assertions. |
+| `vendor::alacritty::grid::tests::scroll_down_with_history` | C1 | rewrite | spec terminal-core §D1 — All cell results retained; removed private occupied-length bookkeeping assertions. |
+| `vendor::alacritty::grid::tests::scroll_up` | C1 | rewrite | spec terminal-core §D1 — All cell results retained; removed private occupied-length bookkeeping assertions. |
+| `vendor::alacritty::grid::tests::shrink_reflow` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::shrink_reflow_disabled` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::shrink_reflow_empty_cell_inside_line` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::shrink_reflow_twice` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::grid::tests::test_iter` | D (§2D) | keep | spec terminal-core §D1 — Observable row cells, wrapping/reflow, indexed iteration or iterator size contract. |
+| `vendor::alacritty::index::tests::add` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::add_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::add_grid_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::add_none_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::add_wrap` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::location_ordering` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::sub` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::sub_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::sub_grid_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::sub_none_clamp` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::index::tests::sub_wrap` | D (§2D) | keep | spec terminal-core §D1 — Point arithmetic/order/clamp/wrap returns public coordinates for distinct boundary cases. |
+| `vendor::alacritty::term::cell::tests::cell_size_is_below_cap` | D (§2D) | keep | spec terminal-core §D1 — Actual Cell allocation size <=24-byte retained-model budget; compares runtime type size with the cap, not a constant with itself. |
+| `vendor::alacritty::term::cell::tests::line_length_works` | D (§2D) | keep | spec terminal-core §D1 — Nonconstant production Row::line_length output, including wrapped rows. |
+| `vendor::alacritty::term::cell::tests::line_length_works_with_wrapline` | D (§2D) | keep | spec terminal-core §D1 — Nonconstant production Row::line_length output, including wrapped rows. |
+| `vendor::alacritty::term::tests::clear_saved_lines` | C1/C4 | rewrite | spec terminal-core §D1 — Real terminal output creates history; clear Saved and scroll Top, then assert zero history/offset and unchanged visible cells. |
+| `vendor::alacritty::term::tests::clearing_scrollback_resets_display_offset` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::clearing_viewport_keeps_history_position` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::damage_cursor_movements` | C1 | rewrite | spec terminal-core §D1 — Read public TermDamage bounds after cursor/edit operations; consume damage before resetting each frame. |
+| `vendor::alacritty::term::tests::damage_public_usage` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::full_damage` | C1 | rewrite | spec terminal-core §D1 — Check renderer-facing Full/Partial damage; Insert behavior is tested when the renderer requests damage. |
+| `vendor::alacritty::term::tests::grid_serde` | C4 | rewrite | spec terminal-core §D1 — Serialize populated grid; assert restored dimensions, cursor and visible cells, without private allocation/cache equality. |
+| `vendor::alacritty::term::tests::grow_lines_updates_active_cursor_pos` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::grow_lines_updates_inactive_cursor_pos` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::input_line_drawing_character` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::parse_cargo_version` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::shrink_lines_updates_active_cursor_pos` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::shrink_lines_updates_inactive_cursor_pos` | D (§2D) | keep | spec terminal-core §D1 — Public grid/history/cursor/cell result or terminal version encoder contract retained. |
+| `vendor::alacritty::term::tests::window_title` | C1 | rewrite | spec terminal-core §D1 — Assert title/reset events after push/pop, default restoration and reset; pop 4096 distinct titles to verify bounded retention/order. |
+| `vendor::vte::ansi::tests::contrast` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::mixed_sync_escape` | C1 | rewrite | spec terminal-core §D2 — Use public sync_pending plus deferred/emitted Handler attributes, not private timeout-counter values; fake timeout remains deterministic. |
+| `vendor::vte::ansi::tests::parse_control_attribute` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_designate_g0_as_line_drawing` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_designate_g1_as_line_drawing_and_invoke` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_invalid_legacy_rgb_colors` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_invalid_number` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_invalid_rgb_colors` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_number_too_large` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_osc104_reset_all_colors` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_osc104_reset_all_colors_no_semicolon` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_osc104_reset_color` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_osc4_set_color` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_terminal_identity_csi` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_terminal_identity_esc` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_truecolor_attr` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_valid_legacy_rgb_colors` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_valid_number` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_valid_rgb_colors` | D (§2D) | keep | spec terminal-core §D2 — Processor Handler callbacks are its public output contract; numeric/color helpers check actual parsed values. |
+| `vendor::vte::ansi::tests::parse_zsh_startup` | A4 | delete | No assertions and no observed result. ANSI attributes/colors and printable/Unicode paths remain covered by parse_control_attribute, parse_truecolor_attr, parse_valid_legacy_rgb_colors and unicode. |
+| `vendor::vte::ansi::tests::partial_sync_updates` | C1 | rewrite | spec terminal-core §D2 — Use public sync_pending plus deferred/emitted Handler attributes, not private timeout-counter values; fake timeout remains deterministic. |
+| `vendor::vte::ansi::tests::sync_bsu_with_esu` | C1 | rewrite | spec terminal-core §D2 — Use public sync_pending plus deferred/emitted Handler attributes, not private timeout-counter values; fake timeout remains deterministic. |
+| `vendor::vte::ansi::tests::sync_bursts_buffer` | C1 | rewrite | spec terminal-core §D2 — Use public sync_pending plus deferred/emitted Handler attributes, not private timeout-counter values; fake timeout remains deterministic. |
+| `vendor::vte::tests::c1s` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::csi_reset` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::csi_subparameters` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::dcs_reset` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::esc_reset` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::esc_reset_intermediates` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::exceed_max_buffer_size` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::execute_anywhere` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::intermediate_reset_on_dcs_exit` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::invalid_utf8` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::osc_bell_terminated` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::osc_c0_st_terminated` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::osc_containing_string_terminator` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::params_buffer_filled_with_subparam` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_csi_max_params` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_csi_params_ignore_long_params` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_csi_params_leading_semicolon` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_csi_params_trailing_semicolon` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_dcs` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_dcs_max_params` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_empty_osc` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_long_csi_param` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_osc` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_osc_max_params` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::parse_osc_with_utf8_arguments` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::partial_invalid_utf8` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::partial_invalid_utf8_split` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::partial_utf8` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::partial_utf8_into_esc` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::partial_utf8_separating_utf8` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `vendor::vte::tests::unicode` | D (§2D) | keep | spec terminal-core §D2 — Public Perform event sequence for distinct OSC/CSI/DCS/control/UTF-8 boundaries, including split input and parser limits. |
+| `checkpoint_retains_an_incomplete_csi_and_utf8_codepoint` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `red_foreground_survives_4096_bytes_and_a_durable_checkpoint` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `saved_cursor_and_inactive_primary_screen_survive_checkpoint` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `synchronized_output_buffer_and_preceding_character_survive_checkpoint` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `viewport_only_drops_existing_history_even_while_the_primary_is_inactive` | D (§2D) | keep | spec terminal-core §D2 — Durable full/incomplete parser/model state, raw OSC callback, no effect replay, saved cursor/primary screen, synchronized output or viewport history acceptance unchanged. |
+| `bounded_history_windows_checkpoint_compatibility_and_heap_accounting` | D (§2D) | keep | decision #40 — 20k-line replay, nonresident window refusal, old checkpoint compatibility, complete retained-allocation accounting and 50-seat heap budget unchanged. |
+| `resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes` | D (§2D) | keep | spec terminal-core §D1 — Real resize/reflow, cursor bounds, modes and minimum-dimension clamping unchanged. |
+| `crates/bbt-core/src/lib.rs - (line 3)` | D (§2D) | keep | spec terminal-core §D1 — Public Term::advance example asserts its emitted grid cell. |
+| `crates/bbt-core/src/vendor/alacritty/term/mod.rs - vendor::alacritty::term::test::mock_term (line 2410)` | A2 | delete | Doctest called fixture mock_term and discarded it; no behavioral assertion existed. Real Term doctest, input_line_drawing_character and grid reflow/checkpoint cases continue to assert terminal cells. |
+
+## Coverage map
+
+| Promise | Preserved tests / mechanism |
+|---|---|
+| `kitty-keyboard` invariant exact check | `kitty_keyboard_invariant`; invariant entry point and helper vectors unchanged. |
+| terminal-core D1 / task #99 fork, grid, reflow and retained public model | Index, cell, storage, grid and terminal tests retain logical cells/coordinates; private cache and damage/title bookkeeping rewritten to public output. |
+| terminal-core D2 / task #99 red 4096-byte checkpoint acceptance | `red_foreground_survives_4096_bytes_and_a_durable_checkpoint`. |
+| terminal-core D2 / task #99 raw OSC 7501 acceptance | `osc_7501_reaches_the_hook_with_raw_parameters_for_bel_and_st`. |
+| terminal-core D2 incomplete parser checkpoints / no replayed side effects | `checkpoint_retains_an_incomplete_csi_and_utf8_codepoint`, `incomplete_osc_restores_without_replaying_old_effects_or_losing_the_live_hook`. |
+| terminal-core D2 saved cursor, inactive primary, synchronized output, viewport-only history | The remaining three named checkpoint tests; all predicate bodies unchanged. |
+| decision #40 bounded replay, compatibility and complete heap accounting | `bounded_history_windows_checkpoint_compatibility_and_heap_accounting` unchanged, including 20k lines and 50-term allocation proof. |
+| terminal resize/reflow, mode and cursor preservation | `resizing_reflows_content_keeps_the_cursor_in_bounds_and_preserves_modes` unchanged. |
+| raw OSC/CSI/DCS and split UTF-8 public parser contract | All 31 Perform callback cases preserved; Processor behavior cases retained. |
+
+Sleep calls: before 0, after 0; no clock/process seam added. No test moved to the night. No peer in-flight core path found at initial overlap scan (`overlap.json`); no files skipped.
+
+Production executable code is unchanged. The only edit outside test modules/files is removal of an assertion-free Rustdoc fixture example and the protection comment inside the retained public Rustdoc test.

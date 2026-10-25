@@ -2405,21 +2405,6 @@ pub mod test {
     ///
     /// A `\n` will break line and `\r\n` will break line without wrapping.
     ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use bbt_core::term::test::mock_term;
-    ///
-    /// // Create a terminal with the following cells:
-    /// //
-    /// // [h][e][l][l][o] <- WRAPLINE flag set
-    /// // [:][)][ ][ ][ ]
-    /// // [t][e][s][t][ ]
-    /// mock_term(
-    ///     "\
-    ///     hello\n:)\r\ntest",
-    /// );
-    /// ```
     pub fn mock_term(content: &str) -> Term<VoidListener> {
         let lines: Vec<&str> = content.split('\n').collect();
         let num_cols = lines
@@ -2484,15 +2469,30 @@ mod tests {
     ///
     /// This test is in the term module as opposed to the grid since we want to
     /// test this property with a T=Cell.
+    // keeps: spec terminal-core §D1
     #[test]
     fn grid_serde() {
-        let grid: Grid<Cell> = Grid::new(24, 80, 0);
-        let serialized = serde_json::to_string(&grid).expect("ser");
-        let deserialized = serde_json::from_str::<Grid<Cell>>(&serialized).expect("de");
+        let size = TermSize::new(8, 2);
+        let mut term = Term::new(Config::default(), &size, VoidListener);
+        term.input('A');
+        term.newline();
+        term.input('B');
+        let grid = term.grid();
+        let serialized = serde_json::to_string(grid).expect("ser");
+        let restored = serde_json::from_str::<Grid<Cell>>(&serialized).expect("de");
 
-        assert_eq!(deserialized, grid);
+        assert_eq!(restored.columns(), grid.columns());
+        assert_eq!(restored.screen_lines(), grid.screen_lines());
+        assert_eq!(restored.cursor.point, grid.cursor.point);
+        for row in 0..grid.screen_lines() {
+            for column in 0..grid.columns() {
+                let point = Point::new(Line(row as i32), Column(column));
+                assert_eq!(restored[point], grid[point]);
+            }
+        }
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn input_line_drawing_character() {
         let size = TermSize::new(7, 17);
@@ -2507,6 +2507,7 @@ mod tests {
         assert_eq!(term.grid()[cursor].c, '▒');
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn clearing_viewport_keeps_history_position() {
         let size = TermSize::new(10, 20);
@@ -2520,14 +2521,15 @@ mod tests {
         // Change the display area.
         term.scroll_display(Scroll::Top);
 
-        assert_eq!(term.grid.display_offset(), 10);
+        assert_eq!(term.grid().display_offset(), 10);
 
         // Clear the viewport.
         term.clear_screen(ansi::ClearMode::All);
 
-        assert_eq!(term.grid.display_offset(), 10);
+        assert_eq!(term.grid().display_offset(), 10);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn clearing_scrollback_resets_display_offset() {
         let size = TermSize::new(10, 20);
@@ -2541,36 +2543,45 @@ mod tests {
         // Change the display area.
         term.scroll_display(Scroll::Top);
 
-        assert_eq!(term.grid.display_offset(), 10);
+        assert_eq!(term.grid().display_offset(), 10);
 
         // Clear the scrollback buffer.
         term.clear_screen(ansi::ClearMode::Saved);
 
-        assert_eq!(term.grid.display_offset(), 0);
+        assert_eq!(term.grid().display_offset(), 0);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn clear_saved_lines() {
         let size = TermSize::new(7, 17);
         let mut term = Term::new(Config::default(), &size, VoidListener);
+        for letter in b'a'..=b'r' {
+            term.input(char::from(letter));
+            term.carriage_return();
+            term.newline();
+        }
+        assert!(term.history_size() > 0);
+        let before: Vec<_> = term
+            .grid()
+            .display_iter()
+            .map(|cell| cell.cell.clone())
+            .collect();
 
-        // Add one line of scrollback.
-        term.grid.scroll_up(&(Line(0)..Line(1)), 1);
-
-        // Clear the history.
         term.clear_screen(ansi::ClearMode::Saved);
+        term.scroll_display(Scroll::Top);
 
-        // Make sure that scrolling does not change the grid.
-        let mut scrolled_grid = term.grid.clone();
-        scrolled_grid.scroll_display(Scroll::Top);
-
-        // Truncate grids for comparison.
-        scrolled_grid.truncate();
-        term.grid.truncate();
-
-        assert_eq!(term.grid, scrolled_grid);
+        assert_eq!(term.history_size(), 0);
+        assert_eq!(term.grid().display_offset(), 0);
+        let after: Vec<_> = term
+            .grid()
+            .display_iter()
+            .map(|cell| cell.cell.clone())
+            .collect();
+        assert_eq!(after, before);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn grow_lines_updates_active_cursor_pos() {
         let mut size = TermSize::new(100, 10);
@@ -2581,16 +2592,17 @@ mod tests {
             term.newline();
         }
         assert_eq!(term.history_size(), 10);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(9), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(9), Column(0)));
 
         // Increase visible lines.
         size.screen_lines = 30;
         term.resize(size);
 
         assert_eq!(term.history_size(), 0);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(19), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(19), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn grow_lines_updates_inactive_cursor_pos() {
         let mut size = TermSize::new(100, 10);
@@ -2601,7 +2613,7 @@ mod tests {
             term.newline();
         }
         assert_eq!(term.history_size(), 10);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(9), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(9), Column(0)));
 
         // Enter alt screen.
         term.set_private_mode(NamedPrivateMode::SwapScreenAndSetRestoreCursor.into());
@@ -2614,9 +2626,10 @@ mod tests {
         term.unset_private_mode(NamedPrivateMode::SwapScreenAndSetRestoreCursor.into());
 
         assert_eq!(term.history_size(), 0);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(19), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(19), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn shrink_lines_updates_active_cursor_pos() {
         let mut size = TermSize::new(100, 10);
@@ -2627,16 +2640,17 @@ mod tests {
             term.newline();
         }
         assert_eq!(term.history_size(), 10);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(9), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(9), Column(0)));
 
         // Increase visible lines.
         size.screen_lines = 5;
         term.resize(size);
 
         assert_eq!(term.history_size(), 15);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(4), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(4), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn shrink_lines_updates_inactive_cursor_pos() {
         let mut size = TermSize::new(100, 10);
@@ -2647,7 +2661,7 @@ mod tests {
             term.newline();
         }
         assert_eq!(term.history_size(), 10);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(9), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(9), Column(0)));
 
         // Enter alt screen.
         term.set_private_mode(NamedPrivateMode::SwapScreenAndSetRestoreCursor.into());
@@ -2660,9 +2674,10 @@ mod tests {
         term.unset_private_mode(NamedPrivateMode::SwapScreenAndSetRestoreCursor.into());
 
         assert_eq!(term.history_size(), 15);
-        assert_eq!(term.grid.cursor.point, Point::new(Line(4), Column(0)));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(4), Column(0)));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn damage_public_usage() {
         let size = TermSize::new(10, 10);
@@ -2672,14 +2687,14 @@ mod tests {
 
         // Test that we damage input form [`Term::input`].
 
-        let left = term.grid.cursor.point.column.0;
+        let left = term.grid().cursor.point.column.0;
         term.input('d');
         term.input('a');
         term.input('m');
         term.input('a');
         term.input('g');
         term.input('e');
-        let right = term.grid.cursor.point.column.0;
+        let right = term.grid().cursor.point.column.0;
 
         let mut damaged_lines = match term.damage() {
             TermDamage::Full => panic!("Expected partial damage, however got Full"),
@@ -2752,22 +2767,26 @@ mod tests {
         assert_eq!(damaged_lines.next(), None);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn damage_cursor_movements() {
+        fn line_damage(term: &mut Term<VoidListener>, line: usize) -> LineDamageBounds {
+            match term.damage() {
+                TermDamage::Partial(mut lines) => lines.find(|damage| damage.line == line).unwrap(),
+                TermDamage::Full => panic!("expected partial damage"),
+            }
+        }
+
         let size = TermSize::new(10, 10);
         let mut term = Term::new(Config::default(), &size, VoidListener);
-        let num_cols = term.columns();
         // Reset terminal for partial damage tests since it's initialized as fully damaged.
+        let _ = term.damage();
         term.reset_damage();
 
         term.goto(1, 1);
 
-        // NOTE While we can use `[Term::damage]` to access terminal damage information, in the
-        // following tests we will be accessing `term.damage.lines` directly to avoid adding extra
-        // damage information (like cursor and Vi cursor), which we're not testing.
-
         assert_eq!(
-            term.damage.lines[0],
+            line_damage(&mut term, 0),
             LineDamageBounds {
                 line: 0,
                 left: 0,
@@ -2775,29 +2794,31 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[1],
+            line_damage(&mut term, 1),
             LineDamageBounds {
                 line: 1,
                 left: 1,
                 right: 1
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.move_forward(3);
         assert_eq!(
-            term.damage.lines[1],
+            line_damage(&mut term, 1),
             LineDamageBounds {
                 line: 1,
                 left: 1,
                 right: 4
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.move_backward(8);
         assert_eq!(
-            term.damage.lines[1],
+            line_damage(&mut term, 1),
             LineDamageBounds {
                 line: 1,
                 left: 0,
@@ -2805,23 +2826,25 @@ mod tests {
             }
         );
         term.goto(5, 5);
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.backspace();
         term.backspace();
         assert_eq!(
-            term.damage.lines[5],
+            line_damage(&mut term, 5),
             LineDamageBounds {
                 line: 5,
                 left: 3,
                 right: 5
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.move_up(1);
         assert_eq!(
-            term.damage.lines[5],
+            line_damage(&mut term, 5),
             LineDamageBounds {
                 line: 5,
                 left: 3,
@@ -2829,19 +2852,20 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[4],
+            line_damage(&mut term, 4),
             LineDamageBounds {
                 line: 4,
                 left: 3,
                 right: 3
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.move_down(1);
         term.move_down(1);
         assert_eq!(
-            term.damage.lines[4],
+            line_damage(&mut term, 4),
             LineDamageBounds {
                 line: 4,
                 left: 3,
@@ -2849,7 +2873,7 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[5],
+            line_damage(&mut term, 5),
             LineDamageBounds {
                 line: 5,
                 left: 3,
@@ -2857,18 +2881,19 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[6],
+            line_damage(&mut term, 6),
             LineDamageBounds {
                 line: 6,
                 left: 3,
                 right: 3
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.wrapline();
         assert_eq!(
-            term.damage.lines[6],
+            line_damage(&mut term, 6),
             LineDamageBounds {
                 line: 6,
                 left: 3,
@@ -2876,7 +2901,7 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
@@ -2885,11 +2910,12 @@ mod tests {
         );
         term.move_forward(3);
         term.move_up(1);
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.linefeed();
         assert_eq!(
-            term.damage.lines[6],
+            line_damage(&mut term, 6),
             LineDamageBounds {
                 line: 6,
                 left: 3,
@@ -2897,41 +2923,44 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 3,
                 right: 3
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.carriage_return();
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
                 right: 3
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.erase_chars(5);
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
                 right: 5
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.delete_chars(3);
         let right = term.columns() - 1;
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
@@ -2939,11 +2968,12 @@ mod tests {
             }
         );
         term.move_forward(term.columns());
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.move_backward_tabs(1);
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 8,
@@ -2952,11 +2982,12 @@ mod tests {
         );
         term.save_cursor_position();
         term.goto(1, 1);
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.restore_cursor_position();
         assert_eq!(
-            term.damage.lines[1],
+            line_damage(&mut term, 1),
             LineDamageBounds {
                 line: 1,
                 left: 1,
@@ -2964,51 +2995,55 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 8,
                 right: 8
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.clear_line(ansi::LineClearMode::All);
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
                 right
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.clear_line(ansi::LineClearMode::Left);
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 0,
                 right: 8
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.clear_line(ansi::LineClearMode::Right);
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 8,
                 right
             }
         );
-        term.damage.reset(num_cols);
+        let _ = term.damage();
+        term.reset_damage();
 
         term.reverse_index();
         assert_eq!(
-            term.damage.lines[7],
+            line_damage(&mut term, 7),
             LineDamageBounds {
                 line: 7,
                 left: 8,
@@ -3016,7 +3051,7 @@ mod tests {
             }
         );
         assert_eq!(
-            term.damage.lines[6],
+            line_damage(&mut term, 6),
             LineDamageBounds {
                 line: 6,
                 left: 8,
@@ -3025,140 +3060,150 @@ mod tests {
         );
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn full_damage() {
         let size = TermSize::new(100, 10);
         let mut term = Term::new(Config::default(), &size, VoidListener);
 
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         for _ in 0..20 {
             term.newline();
         }
         term.reset_damage();
 
         term.clear_screen(ansi::ClearMode::Above);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.scroll_display(Scroll::Top);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         // Sequential call to scroll display without doing anything shouldn't damage.
         term.scroll_display(Scroll::Top);
-        assert!(!term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Partial(_)));
         term.reset_damage();
 
         term.set_options(Config::default());
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.scroll_down_relative(Line(5), 2);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.scroll_up_relative(Line(3), 2);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.deccolm();
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.decaln();
-        assert!(term.damage.full);
-        term.reset_damage();
-
-        term.set_mode(NamedMode::Insert.into());
-        // Just setting `Insert` mode shouldn't mark terminal as damaged.
-        assert!(!term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         let color_index = 257;
         term.set_color(color_index, Rgb::default());
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         // Setting the same color once again shouldn't trigger full damage.
         term.set_color(color_index, Rgb::default());
-        assert!(!term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Partial(_)));
 
         term.reset_color(color_index);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         // We shouldn't trigger fully damage when cursor gets update.
         term.set_color(NamedColor::Cursor as usize, Rgb::default());
-        assert!(!term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Partial(_)));
 
-        // However requesting terminal damage should mark terminal as fully damaged in `Insert`
-        // mode.
-        let _ = term.damage();
-        assert!(term.damage.full);
+        // A renderer requesting damage while in Insert mode must redraw everything.
+        term.set_mode(NamedMode::Insert.into());
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         term.unset_mode(NamedMode::Insert.into());
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         // Keep this as a last check, so we don't have to deal with restoring from alt-screen.
         term.swap_alt();
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
         term.reset_damage();
 
         let size = TermSize::new(10, 10);
         term.resize(size);
-        assert!(term.damage.full);
+        assert!(matches!(term.damage(), TermDamage::Full));
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn window_title() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        #[derive(Clone, Default)]
+        struct Titles(Rc<RefCell<Vec<Option<String>>>>);
+
+        impl EventListener for Titles {
+            fn send_event(&self, event: Event) {
+                match event {
+                    Event::Title(title) => self.0.borrow_mut().push(Some(title)),
+                    Event::ResetTitle => self.0.borrow_mut().push(None),
+                    _ => (),
+                }
+            }
+        }
+
+        let titles = Titles::default();
+        let take_titles = || mem::take(&mut *titles.0.borrow_mut());
         let size = TermSize::new(7, 17);
-        let mut term = Term::new(Config::default(), &size, VoidListener);
+        let mut term = Term::new(Config::default(), &size, titles.clone());
 
-        // Title None by default.
-        assert_eq!(term.title, None);
-
-        // Title can be set.
         term.set_title(Some("Test".into()));
-        assert_eq!(term.title, Some("Test".into()));
-
-        // Title can be pushed onto stack.
+        assert_eq!(take_titles(), [Some("Test".into())]);
         term.push_title();
         term.set_title(Some("Next".into()));
-        assert_eq!(term.title, Some("Next".into()));
-        assert_eq!(term.title_stack.first().unwrap(), &Some("Test".into()));
-
-        // Title can be popped from stack and set as the window title.
+        assert_eq!(take_titles(), [Some("Next".into())]);
         term.pop_title();
-        assert_eq!(term.title, Some("Test".into()));
-        assert!(term.title_stack.is_empty());
+        term.pop_title();
+        assert_eq!(take_titles(), [Some("Test".into())]);
 
-        // Title stack doesn't grow infinitely.
-        for _ in 0..4097 {
+        // Only the newest 4096 saved titles may be restored, in reverse order.
+        for index in 0..4097 {
+            term.set_title(Some(format!("title-{index}")));
             term.push_title();
         }
-        assert_eq!(term.title_stack.len(), 4096);
+        take_titles();
+        for index in (1..4097).rev() {
+            term.pop_title();
+            assert_eq!(take_titles(), [Some(format!("title-{index}"))]);
+        }
+        term.pop_title();
+        assert!(take_titles().is_empty());
 
-        // Title and title stack reset when terminal state is reset.
         term.push_title();
         term.reset_state();
-        assert_eq!(term.title, None);
-        assert!(term.title_stack.is_empty());
+        term.pop_title();
+        assert!(take_titles().is_empty());
 
-        // Title stack pops back to default.
-        term.title = None;
+        // Saving the default title restores the reset event, too.
         term.push_title();
         term.set_title(Some("Test".into()));
         term.pop_title();
-        assert_eq!(term.title, None);
+        assert_eq!(take_titles(), [Some("Test".into()), None]);
 
-        // Title can be reset to default.
-        term.title = Some("Test".into());
+        term.set_title(Some("Test".into()));
         term.set_title(None);
-        assert_eq!(term.title, None);
+        assert_eq!(take_titles(), [Some("Test".into()), None]);
     }
 
+    // keeps: spec terminal-core §D1
     #[test]
     fn parse_cargo_version() {
         // The fork starts at 0.0.1, below alacritty's historical 0.10.1 floor.
