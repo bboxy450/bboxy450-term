@@ -1,0 +1,645 @@
+{
+  "source": "f8e0f3319bae47cd39535676338714b212930ba2",
+  "base": "38d67a8b",
+  "gate": {
+    "exit": 0,
+    "elapsed": 1334.669245666999,
+    "finished": "2026-10-25T15:27:41.319917+00:00"
+  },
+  "gate_command": {
+    "args": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/private/tmp/sable-task-night-ym27dc8j/night-gate-worktree",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/task-night",
+    "source": "f8e0f3319bae47cd39535676338714b212930ba2",
+    "pid": 66695,
+    "process_group": 66695,
+    "started": "2026-10-25T15:05:26.651423+00:00",
+    "custody": "memory",
+    "wrappers": "cleared",
+    "jobs": 2,
+    "stable_target_reused_after_prechecks": true
+  },
+  "gate_log_sha256": "9ecbc0682fc99b62f6525e073f55afee905d71776d4c1f876a591ab019cbcd3d",
+  "suites": 206,
+  "passed": 1471,
+  "failed": 0,
+  "ignored": 29,
+  "checks": {
+    "night-runner-union-test": {
+      "result": {
+        "exit": 0,
+        "elapsed": 358.8770788750262,
+        "finished": "2026-10-25T14:32:59.196920+00:00"
+      },
+      "log_sha256": "163b6c6cc20e3f765e91de01752e9b115b93a279a379916bfa399f0ba49579c1"
+    },
+    "night-runner-integrated-test": {
+      "result": {
+        "exit": 0,
+        "elapsed": 92.06669945898466,
+        "finished": "2026-10-25T14:40:55.581210+00:00"
+      },
+      "log_sha256": "563e9b59c7443669cf14d9f9fa016ebab44a8156f8832dd6d297bdf2b5b36f94"
+    },
+    "night-app-precheck": {
+      "result": {
+        "exit": 0,
+        "elapsed": 236.18011070799548,
+        "finished": "2026-10-25T14:51:36.095616+00:00"
+      },
+      "log_sha256": "63430bada066947ac05726536738033365570c4601aa1b9573e583ff97961275"
+    },
+    "night-app-precheck-clock": {
+      "result": {
+        "exit": 0,
+        "elapsed": 303.37870266701793,
+        "finished": "2026-10-25T14:58:14.435697+00:00"
+      },
+      "log_sha256": "a4cb23010fba905bb274e65e186b01146aea02af3a19b4b18375baab28704d7c"
+    },
+    "night-app-clippy": {
+      "result": {
+        "exit": 0,
+        "elapsed": 43.91856916598044,
+        "finished": "2026-10-25T14:59:02.517109+00:00"
+      },
+      "log_sha256": "5d0cffcfb85e607a727f1f7d09d397b09dc913c018a96051b5efe64e4622cc43"
+    },
+    "night-invariants": {
+      "result": {
+        "exit": 0,
+        "elapsed": 331.36775033304,
+        "finished": "2026-10-25T15:04:37.043842+00:00"
+      },
+      "log_sha256": "a2b123b5dea550cacca6fcc887efe3b6adcfadabe23b633b798533c61720cc69"
+    },
+    "night-messaging-1": {
+      "result": {
+        "exit": 1,
+        "elapsed": 0.10360979102551937,
+        "finished": "2026-10-25T14:46:39.009845+00:00"
+      },
+      "log_sha256": "fbfdbc56e73da668aa2e82eaaf2820c118285f2824eb58590a00b100286f8b98"
+    },
+    "night-messaging-2": {
+      "result": {
+        "exit": 0,
+        "elapsed": 7.985234374995343,
+        "finished": "2026-10-25T14:47:08.929880+00:00"
+      },
+      "log_sha256": "64e96137be68844f7fffd1157ff23c4c1242904b59f1e2f2dc1bd85bf98ed983"
+    },
+    "night-messaging-clock": {
+      "result": {
+        "exit": 0,
+        "elapsed": 8.51289812498726,
+        "finished": "2026-10-25T15:04:59.439308+00:00"
+      },
+      "log_sha256": "d5c6b4a3f4945b05a52711c66ba33ccc3c168a5d53c99bdebc3729cc85a7860b"
+    },
+    "night-terminal-1": {
+      "result": {
+        "exit": 1,
+        "elapsed": 18.9277657920029,
+        "finished": "2026-10-25T14:35:43.375450+00:00"
+      },
+      "log_sha256": "6de7615e3c1edde8af222fd78578e1e66dde57561a4e9754a75a2012eff267ff"
+    }
+  },
+  "runtime": {
+    "night-terminal-1-evidence": {
+      "exit": 0,
+      "elapsed": 18.809618707979098,
+      "source": "8bdf98d580f207925760c68f01937667cce332dc",
+      "group": "terminal",
+      "root": "/private/tmp/sable-task-night-ym27dc8j/night-terminal-1-evidence",
+      "summary": [
+        {
+          "group": "terminal",
+          "kept": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3",
+          "kind": "summary",
+          "partial": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "T8",
+            "T9"
+          ],
+          "passed": 8,
+          "red": [
+            "T7"
+          ],
+          "state": "amber",
+          "total": 9,
+          "tracked": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "T7",
+            "T8",
+            "T9"
+          ],
+          "unwritten": []
+        }
+      ],
+      "verdicts": [
+        {
+          "function": "T1",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "\u2318T on a Claude or Codex row (only zsh is spawned, by ctl)",
+            "the seat opens within one frame",
+            "placements other than tab"
+          ]
+        },
+        {
+          "function": "T2",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "the echo appears within one frame",
+            "the 100 kB paste compared in full (the script truncates the received copy, so extra bytes pass)"
+          ]
+        },
+        {
+          "function": "T3",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "resizing a pane (only the window is resized)",
+            "no stale cells after the redraw"
+          ]
+        },
+        {
+          "function": "T4",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "wide glyphs and emoji align to the grid (cell widths and continuations are not read)",
+            "colours other than red"
+          ]
+        },
+        {
+          "function": "T5",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "the app is killed and relaunched (only logic is killed)",
+            "layout, focus and scroll positions are identical"
+          ]
+        },
+        {
+          "function": "T6",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "the app says so",
+            "resumes by session id (only the zsh respawn is proven)"
+          ]
+        },
+        {
+          "function": "T7",
+          "verdict": "fail",
+          "exit": 1,
+          "coverage": "partial",
+          "missing": [
+            "solved pane rectangle and focus after undo",
+            "visible grace strip"
+          ]
+        },
+        {
+          "function": "T8",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "malformed/unapproved report rejection",
+            "reported grade drawn in the seat row"
+          ]
+        },
+        {
+          "function": "T9",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "a harness resumed by session id (only a zsh seat is restarted)"
+          ]
+        }
+      ],
+      "apps": [
+        {
+          "custody_backend": "file",
+          "function": "T1",
+          "issued_by": "test-account:01M5SQSPM1RYW5MDRASCAEQJE9",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4477,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T1/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T2",
+          "issued_by": "test-account:01M5SQSRKA20KGKQEDE5V9TTGA",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4588,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T2/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T3",
+          "issued_by": "test-account:01M5SQSTBXZDQZJB5SBP0S5G4P",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4654,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T3/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T4",
+          "issued_by": "test-account:01M5SQSY1BE3KPTE3S0GXEW0TC",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4818,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T5",
+          "issued_by": "test-account:01M5SQSZHQBE7KRY7P8HRZDGM1",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4895,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T5/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T6",
+          "issued_by": "test-account:01M5SQT14R75JJ40E8EFKMW245",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4980,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T6/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T7",
+          "issued_by": "test-account:01M5SQT2XSXTJ8SS4JF4H1J5F5",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 5074,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T7/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T8",
+          "issued_by": "test-account:01M5SQT4BH1DS8QD78M2XBT07W",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 5160,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T8/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "T9",
+          "issued_by": "test-account:01M5SQT69EV462GQWEZMF0F6QD",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 5258,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/T9/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5SQT7MMWKWHXGKJJH0SWGP5",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 5341,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2c2KU3/records-app/run",
+          "windows": 0
+        }
+      ]
+    },
+    "night-messaging-2-evidence": {
+      "exit": 1,
+      "elapsed": 7.902403499989305,
+      "source": "deb4dcd6c7c66a1431a13982560af885fd08a15d",
+      "group": "messaging and tasks",
+      "root": "/private/tmp/sable-task-night-ym27dc8j/night-messaging-2-evidence",
+      "summary": [
+        {
+          "group": "messaging and tasks",
+          "kept": null,
+          "kind": "summary",
+          "partial": [
+            "M3",
+            "M5"
+          ],
+          "passed": 3,
+          "red": [
+            "M1",
+            "M2",
+            "M6"
+          ],
+          "state": "red",
+          "total": 6,
+          "tracked": [
+            "M3",
+            "M5"
+          ],
+          "unwritten": []
+        }
+      ],
+      "verdicts": [
+        {
+          "function": "M1",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        },
+        {
+          "function": "M2",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        },
+        {
+          "function": "M3",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "real-harness receipt",
+            "the seat row shows the task"
+          ]
+        },
+        {
+          "function": "M4",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "full",
+          "missing": []
+        },
+        {
+          "function": "M5",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "a real Worker and real Oracle harness ask for the unassigned inventory"
+          ]
+        },
+        {
+          "function": "M6",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        }
+      ],
+      "apps": [
+        {
+          "custody_backend": "file",
+          "function": "M3",
+          "issued_by": "test-account:01M5SREYQX98YWWGATE99R1DQE",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 26640,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0OwhSe/M3/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "M4",
+          "issued_by": "test-account:01M5SRF0K1M774J1HJ2SW10FEB",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 26729,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0OwhSe/M4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "M5",
+          "issued_by": "test-account:01M5SRF2BRZY6DAHY5Q4CAB5MT",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 26838,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0OwhSe/M5/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5SRF5PR8DYKHXFRFM8E574D",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 26981,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0OwhSe/records-app/run",
+          "windows": 0
+        }
+      ]
+    },
+    "night-messaging-clock-evidence": {
+      "exit": 1,
+      "elapsed": 8.42170508299023,
+      "source": "f8e0f3319bae47cd39535676338714b212930ba2",
+      "group": "messaging and tasks",
+      "root": "/private/tmp/sable-task-night-ym27dc8j/night-messaging-clock-evidence",
+      "summary": [
+        {
+          "group": "messaging and tasks",
+          "kept": null,
+          "kind": "summary",
+          "partial": [
+            "M3",
+            "M5"
+          ],
+          "passed": 3,
+          "red": [
+            "M1",
+            "M2",
+            "M6"
+          ],
+          "state": "red",
+          "total": 6,
+          "tracked": [
+            "M3",
+            "M5"
+          ],
+          "unwritten": []
+        }
+      ],
+      "verdicts": [
+        {
+          "function": "M1",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        },
+        {
+          "function": "M2",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        },
+        {
+          "function": "M3",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "real-harness receipt",
+            "the seat row shows the task"
+          ]
+        },
+        {
+          "function": "M4",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "full",
+          "missing": []
+        },
+        {
+          "function": "M5",
+          "verdict": "pass",
+          "exit": 0,
+          "coverage": "partial",
+          "missing": [
+            "a real Worker and real Oracle harness ask for the unassigned inventory"
+          ]
+        },
+        {
+          "function": "M6",
+          "verdict": "untested",
+          "exit": null,
+          "coverage": null,
+          "missing": []
+        }
+      ],
+      "apps": [
+        {
+          "custody_backend": "file",
+          "function": "M3",
+          "issued_by": "test-account:01M5SSFKNF3M8S2VNHV5Z9MQD9",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 65102,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrDJPAC/M3/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "M4",
+          "issued_by": "test-account:01M5SSFNGD74S64G0EXT34KST5",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 65219,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrDJPAC/M4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": "M5",
+          "issued_by": "test-account:01M5SSFQC61VGXMKRBF7N7KDZ1",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 65322,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrDJPAC/M5/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5SSFV28VQ10R4T32X10QN7G",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 65507,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrDJPAC/records-app/run",
+          "windows": 0
+        }
+      ]
+    }
+  },
+  "binary": "/private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-night-f8e0f331",
+  "binary_sha256": "c0c1d530f9af145ba9bd7bba2b12978adced23c62155bf5856b4350161c34a4b",
+  "completed": "2026-10-25T15:27:59.196248+00:00",
+  "cleanup": {
+    "at": "2026-10-25T15:28:29.198304+00:00",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/task-night",
+    "lsof_exit": 1,
+    "gate_group_absent": true,
+    "allocated_cache_bytes_removed": 4468871168,
+    "target_absent": true,
+    "binary_preserved": "/private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-night-f8e0f331"
+  },
+  "coordination": {
+    "brief": "9814dcfa-0a76-4269-ab49-2288cab5a1fb",
+    "seraph_list": "96f27c53-e7ec-468f-820d-34d985c2fe54",
+    "aster_siblings": "30aadce1-7174-41e3-b1cc-6ca7c221fc3f",
+    "t7_disposition": "a913d45b-c068-45f5-8215-4b725a5d2827",
+    "slot_taken": "c22a7638-6ddb-46ed-a132-8b01f26a50d4",
+    "slot_released": "2eef28e2-62ca-44e2-9a8d-a44033986d70"
+  },
+  "committed_artifacts": {
+    "task-night-ci-f8e0f331.log": "9ecbc0682fc99b62f6525e073f55afee905d71776d4c1f876a591ab019cbcd3d",
+    "task-night-terminal-8bdf98d5.jsonl": "8789bb96064501f1018664426ad5598784c88f99d4bb75edc7f8caa8bcdaccf9",
+    "task-night-messaging-f8e0f331.jsonl": "d18dbcea0166f8f7ae092140148f0a873d402e0318109fc31285d35f312ff8d2"
+  },
+  "later_main": "fabf8673 (resize-receipt), landed while exact gate ran",
+  "limits": [
+    "M3 stand-in; real harness receipt and visible task row unproven",
+    "M5 stand-ins; real Worker and Oracle harness requests unproven",
+    "Messaging group RED because M1/M2/M6 not present on frozen source; Aster owns them",
+    "Terminal AMBER8/9 with T7 stale exact-message assertion; separate Velvet fix assigned",
+    "No parity, windowed desktop, real model or 967-PTY claim"
+  ]
+}
