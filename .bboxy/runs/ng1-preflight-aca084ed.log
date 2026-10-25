@@ -1,0 +1,26 @@
+NG1 successful clean-checkout preflight, source aca084ed56e4a2b1610001dc81a34986604c1084.
+One own private target, two jobs, O1/debug assertions, wrappers empty, explicit memory custody.
+
+Command: cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0; elapsed 9.017314125027042 s including any build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/strict-clippy-6.log
+SHA256 08d77624e4c383678caf0cf1656487b15e9b663fe0bf2f02e72cbbefc16e6e41
+Clean tracked/untracked frozen tree after command: ''
+
+Command: cargo test --workspace --locked --no-fail-fast
+EXIT 0; elapsed 603.9432535420056 s including any build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/workspace-6.log
+SHA256 89164490dca75af2b1b1809b0980b1eb2f976fc78db0c05c74447610ab675f0c
+Clean tracked/untracked frozen tree after command: ''
+
+Command: sh scripts/invariants.sh
+EXIT 0; elapsed 540.8402574170032 s including any build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/invariants-6.log
+SHA256 9fb1aa916227644796f753b373e6bb3816380bdb50648e99cd908323fe7a53cc
+Clean tracked/untracked frozen tree after command: ''
+
+Workspace reported footers: 1374 passed, 0 failed, 29 ignored across 204 batches (subprocess fixture footers, if any, are included in this reported sum). Actual cargo exit0.
+Fast invariants: 24 checks, 0 failures, 8 slow checks skipped. messaging-never-held is active and passed, including first-ever held real GUI/operator/seat delivery, immutable reference/consumer, retained intent/event bytes, signed FIFO completion/device bindings, no second native delivery and pinned remote exclusion.
+Strict all-target workspace Clippy passed -D warnings. Earlier genuine failures and the corrected fixture assumption remain in ng1-backend-focused.log with their exact logs/hashes.
+
+No final clean ci-local --parity acceptance claimed yet. Oracle 47102d24 orders one frame attempt on exact main 2ad1d733 first, after this preflight. O3/debug-assertions/memory build started with PID17463 in /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx; no frame attempt or quiet claim yet.
