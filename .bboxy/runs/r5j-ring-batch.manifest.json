@@ -1,0 +1,58 @@
+{
+  "source": "4777a36be8992132f90abe9fc411184b88d82c7a",
+  "base": "1cde8f0c27afd910ce5b9a6664f4aa3ca64ff2b8",
+  "gate": {
+    "exit": 0,
+    "elapsed": 1765.527241459,
+    "finished": "2026-10-25T14:20:02.498278+00:00"
+  },
+  "gate_command": {
+    "args": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "cwd": "/private/tmp/sable-task-night-ym27dc8j/r5j-gate-worktree",
+    "target": "/Users/feral/mydev/bboxy450-term-exec3/target/task-night",
+    "source": "4777a36be8992132f90abe9fc411184b88d82c7a",
+    "pid": 95780,
+    "process_group": 95780,
+    "started": "2026-10-25T13:50:36.974892+00:00",
+    "custody": "memory",
+    "wrappers": "cleared",
+    "jobs": 2,
+    "stable_target_reused_after_prechecks": true
+  },
+  "gate_log_sha256": "b0025275d2bcd569fdf61ed9a0c22cca4f5199366d7cc636e73f37e1c1a349ce",
+  "suites": 205,
+  "passed": 1441,
+  "failed": 0,
+  "ignored": 29,
+  "prechecks": {
+    "r5j-final-tests": {
+      "exit": 0,
+      "elapsed": 786.2291015409864,
+      "finished": "2026-10-25T13:43:40.904085+00:00"
+    },
+    "r5j-final-clippy": {
+      "exit": 0,
+      "elapsed": 79.86736287496751,
+      "finished": "2026-10-25T13:45:00.813260+00:00"
+    },
+    "r5j-final-invariants": {
+      "exit": 0,
+      "elapsed": 325.54868841695134,
+      "finished": "2026-10-25T13:50:26.414821+00:00"
+    }
+  },
+  "binary": "/private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-r5j-4777a36b",
+  "binary_sha256": "8be3eaef9c0bb5f73a1982e33a327118c920f489bd2a99d0103d9916c0c96e44",
+  "completed": "2026-10-25T14:20:37.794055+00:00",
+  "cleanup": {
+    "lsof_exit": 1,
+    "gate_group_ps_exit": 1,
+    "allocated_cache_bytes_removed": 5202219008,
+    "target_absent": true,
+    "binary_preserved": "/private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-r5j-4777a36b",
+    "at": "2026-10-25T14:21:20.970653+00:00"
+  }
+}

@@ -1,0 +1,52 @@
+R5j ring reads and listener recovery — Sable Embertail <EXECUTOR>
+Source 4777a36be8992132f90abe9fc411184b88d82c7a; accepted base 1cde8f0c27afd910ce5b9a6664f4aa3ca64ff2b8.
+Four signed source commits: 41debfaa (bounded protocol/server + red hot-sweep), 3014a339 (listener recovery), 7edb0f68 (batched hot sweep), 4777a36b (per-member capacity admission + socket fixture counter).
+Authoring worktree: /Users/feral/mydev/bboxy450-term-exec3. Exact gate checkout: /private/tmp/sable-task-night-ym27dc8j/r5j-gate-worktree.
+Brief d52b476b; aggregate ruling 3e023b17; per-member-credit ruling 34aacd0f; shared-host ruling 4bbaee68; listener side task 61f2626c. Invariant #318.
+
+Mechanisms, at source 4777a36b:
+- crates/bbt-supervisor/src/protocol.rs:233,288,296,387 — ReadRingBatch / RingRead / RingReadResult / RingHistoryBatch; at most 8 members and 768 KiB encoded aggregate.
+- supervisor.rs:941 — byte budget includes frame metadata; one oversized member becomes Limit without erasing fitting siblings.
+- supervisor.rs:1283,1292 — all leaves are admitted/refused before waiting; remaining existing 128 IO credits are assigned in order; overflow returns member Busy without writer admission; admitted ready data stays charged until aggregate completion. One reply reserve, no new queue or pool.
+- crates/bbt-mux/src/logic.rs:1643 — per-host lane indices forecast the existing global 3:1 parse order, including parked/no-gap rows, without scanning every seat for each read.
+- logic.rs:5255,5410 — one bounded cached group per host; validate member identity and contiguous seat/generation/range before use; preserve unapplied boundary rows; Busy retains the original target; definitive refusal keeps its cursor and does not prevent healthy members from advancing. Parsing still consumes one page per turn. Singleton reads remain in explicit history and bootstrap/recovery.
+- provider/shared.rs:87 — every member is checked before forwarding; a mixed/wrong-host group gets the named host-boundary refusal before any valid prefix is sent.
+- seat_socket.rs:331 and logic.rs:4101 — live/unresponsive recovery is typed SeatListenerPending. A recovered seat remains available; one pending endpoint bind rotates per ordinary turn. No attachment/effect replay, global seat scan or sleep in production.
+- tests/capture_busy.rs, capture_fairness.rs, common/capture_priority.rs, provider.rs, recovery.rs and socket_backlog.rs observe successful member pages and preserve existing Busy/outage/crash boundaries, page budgets, exactness/order assertions and deadlines.
+
+Functional proof:
+- Actual hot-ingest fixture, 967 synthetic views: one host = 121 requests (bound 121); two hosts = 122 (sum-of-host bounds 122); zero singleton hot calls; exact final sequence, byte-end and Screen against serial Playback for every seat. No 967-PTY fixture or time-based pass criterion.
+- Five logic batch tests pass: those two sweeps; Busy/Gone/Stale/Limit isolation and unchanged refused cursors; boundary/generation/writer cache checks; exhaustive watched masks/streaks/parked hosts/no-gap rows against the actual scheduler.
+- Four supervisor tests pass: aggregate/independent results, retained credit lifetime, exact encoded-byte bound, malformed structure, and partial/full 128-credit capacity. A full queue returns per-member Busy, not a parent refusal.
+- Real capture/provider subset 13/0; watched-priority regression 1/0 with original sliding-window and page-budget assertions.
+- Listener regression holds a duplicate fd across Logic recovery, observes typed pending plus a working snapshot, closes it, then observes the same endpoint/capability/generation rebound. Original dead-owned-socket test waits at most 5 s for observed ConnectionRefused before reclaiming; all inode/file/symlink checks remain.
+- Socket flood now counts batch leaf pages. Final scoped run kept the 64 MiB digest, sequence/order, exit and tail checks: PASS in 72.94 s, unchanged 90 s no-progress watchdog.
+
+Commands and failures (private raw files under /private/tmp/sable-task-night-ym27dc8j):
+- r5j-server-first: EXIT 0, 3/0.
+- r5j-sweep-red: EXIT 101, fixture SeatSize omitted pixel fields; fixed via Default, retained log.
+- r5j-sweep-red-2: EXIT 101, actual counterexample 967 singleton requests (expected 0), after all serial cursor/Screen checks passed.
+- r5j-sweep-green: EXIT 0, initial 2/0; r5j-isolation-first: EXIT 0, expanded 5/0.
+- listener-recovery-first: EXIT 101, fixture unwrap_err required Debug on EndpointInfo; switched to err().expect(). listener-recovery-green: EXIT 101, orderly shutdown had removed the private parent; fixture recreates it as 0700. listener-recovery-green-2 and listener-fixture-green: EXIT 0, one test each.
+- r5j-server-bound: EXIT 101, test incorrectly expected ordinary pending IO to vanish on disconnect. Preserved its completion semantics; r5j-server-bound-2: EXIT 0, 4/0.
+- r5j-real-capture-first: EXIT 0, 13/0; r5j-priority-first: EXIT 0, 1/0.
+- r5j-precheck on 7edb0f68: cargo test -p bbt-supervisor -p bbt-mux -p bboxy450-term --locked --no-fail-fast, EXIT 101, 710/1/26 ignored. Sole failure socket_backlog.rs:197 counted only singleton replies; actual exit/snapshot completion had already succeeded. Ported its counter, no assertion/deadline change.
+- r5j-credit-red: EXIT 101, seven free credits still caused parent Busy. After approved correction, r5j-credit-green: EXIT 0, 4/0.
+- r5j-final-tests on final source: same three-crate command, EXIT 0, 711/0/26 ignored, 786.229 s.
+- r5j-final-clippy: cargo clippy -p bbt-supervisor -p bbt-mux -p bboxy450-term --all-targets --locked -- -D warnings, EXIT 0, 79.867 s.
+- r5j-final-invariants: sh scripts/invariants.sh, EXIT 0, 26/0 with 8 named slow skips, 325.549 s. #318 runs by default and has the exact lib test command in both invariant and README; status remains pending for Oracle acceptance.
+
+Exact clean NORMAL gate:
+- sh scripts/ci-local.sh, atomic slot 2, PID/group 95780, two Cargo jobs, direct compiler, sole stable warmed target; debug memory custody witnessed in smoke.
+- EXIT 0 in 1765.527 s, ending ci-local: all gates passed.
+- Workspace totals BEFORE invariant reruns: 1441 passed / 0 failed / 29 ignored across 205 reported suite results.
+- Strict workspace Clippy / UI lint: 0. Headless idle: 0 frames, 0 callbacks, 10.005 s, windows=0; orderly child reaping recorded. Default invariants 26/0, 8 slow skipped.
+- Committed raw log: .bboxy/runs/r5j-ring-batch-ci-4777a36b.log
+- Raw SHA256 b0025275d2bcd569fdf61ed9a0c22cca4f5199366d7cc636e73f37e1c1a349ce.
+- Preserved binary /private/tmp/sable-task-night-ym27dc8j/bin/bboxy450-term-r5j-4777a36b; SHA256 8be3eaef9c0bb5f73a1982e33a327118c920f489bd2a99d0103d9916c0c96e44.
+- Empty lsof (exit 1), recorded gate process group absent (ps exit 1); target deleted, 5202219008 allocated cache bytes retired. Binary and raw logs remain outside the removed cache.
+
+Limits / integration:
+- No app, renderer or lab producer edit and no parity claim; NORMAL gate as briefed. Aggregate completion can wait for its slowest admitted member (at most 8); no GPU/frame-latency claim and no full-count PTY run by Sable. Rook owns the subsequent measurement.
+- Frozen base 1cde8f0c was current at source rebase. Aster 774f64a8 landed during final prechecks with zero changed-path overlap; Kestrel/Wren 0eeabc95 landed during this gate. Kept the exact tested source; Oracle checks the union.
+- Original M3/M4/M5 night work remains signed separately on sable-task-night-ready, with Seraph metadata/cleanup preserved; runtime verification is next. No user config, credentials, operator account or desktop input touched. No push or merge by Sable.
