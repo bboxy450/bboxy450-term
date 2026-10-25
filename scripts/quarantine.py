@@ -114,7 +114,8 @@ def test(arguments, api):
         arguments = arguments[1:]
     cargo_args = list(arguments)
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
-    cargo_args.insert(split, "--no-fail-fast")
+    if "--no-fail-fast" not in cargo_args[:split]:
+        cargo_args.insert(split, "--no-fail-fast")
     # One ordered stream preserves Cargo's binary headings alongside libtest's
     # per-binary durations; --no-fail-fast guarantees later suites still run.
     child = subprocess.Popen(["cargo", "test", *cargo_args], cwd=root, text=True,

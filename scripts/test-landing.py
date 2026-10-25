@@ -277,6 +277,15 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(json.loads(rows[0])["verdict"], "green")
 
+    def test_absent_cache_adapter_uses_empty_wrapper_fallback(self):
+        (self.repo.root / "scripts/cache-env.sh").unlink()
+        self.repo.commit("Fixture without optional cache adapter")
+        self.repo.environment["RUSTC_WRAPPER"] = "/unavailable-fixture-wrapper"
+        self.repo.environment["RUSTC_WORKSPACE_WRAPPER"] = "/unavailable-fixture-wrapper"
+        self.cut("crates/c/src/lib.rs")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_failure_never_records_green(self):
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
@@ -511,6 +520,7 @@ with (state/'ci-calls').open('a') as f:f.write('ci --parity\\n')
 cfg=json.loads((state/'watch.json').read_text()) if (state/'watch.json').exists() else {}
 if cfg.get('fail'):
  print('test fixture_failed ... FAILED')
+ print("error: test failed, to rerun pass '-p c --test fixture'")
  raise SystemExit(101)
 if not cfg.get('missing_store'):
  target=pathlib.Path(os.environ['CARGO_TARGET_DIR'])
@@ -523,10 +533,14 @@ print('ci-local: all gates passed')
 PY
 ''')
         self.repo.write("scripts/culprit.sh", '''#!/bin/sh
-python3 - <<'PY'
-import json,os,pathlib
+printf '%s\\n' "$3" > "$BBOXY_LANDING_STATE_DIR/culprit-selector"
+python3 - "$1" "$2" <<'PY'
+import json,os,pathlib,sys
 s=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
 c=json.loads((s/'watch.json').read_text())
+if c.get('unresolved'):
+ print(json.dumps({'verdict':'unresolved','revert_range':sys.argv[1]+'..'+sys.argv[2]}))
+ raise SystemExit(2)
 print(json.dumps(c.get('diagnosis',{'verdict':'culprit','culprit':'f'*40})))
 PY
 ''')
@@ -573,6 +587,7 @@ PY
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertEqual((self.repo.state / "main-status").read_text(), "red " + sha + " fixture_failed\n")
         self.assertEqual((self.repo.state / "reverted").read_text().strip(), "f" * 40)
+        self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "cargo:c:test/fixture:fixture_failed")
 
     def test_three_pass_flake_verdict_reopens_without_revert(self):
         self.seed_green()
@@ -582,6 +597,14 @@ PY
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.repo.state / "main-status").read_text(), "green " + sha + "\n")
         self.assertFalse((self.repo.state / "reverted").exists())
+
+    def test_unresolved_failure_reverts_only_the_exact_failed_batch(self):
+        self.seed_green()
+        sha = self.publish("crates/c/src/lib.rs")
+        (self.repo.state / "watch.json").write_text('{"fail":true,"unresolved":true}')
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual((self.repo.state / "reverted").read_text().strip(), self.repo.base + ".." + sha)
 
     def test_green_without_native_store_cannot_be_published(self):
         (self.repo.state / "watch.json").write_text('{"missing_store":true}')
@@ -670,7 +693,7 @@ class ParityTests(unittest.TestCase):
                                   {"binary": "doc-tests:fixture", "seconds": 0., "over_60s": False}])
 
 
-def fixture_suite():
+def fixture_suite(extended=False):
     # Every test has an independent mktemp repo and local bare origin. Isolated
     # subprocesses keep mocks apart; one fresh test-only signer avoids 39 agents.
     key, wrapper = fixture_identity()
@@ -684,14 +707,30 @@ def fixture_suite():
             else:
                 yield item.id().removeprefix("__main__.")
     names = list(flatten(unittest.defaultTestLoader.loadTestsFromModule(sys.modules[__name__])))
+    extended_names = {"LandTests." + name for name in (
+        "test_three_moving_attempts_are_79_with_no_candidate_push",
+        "test_disjoint_main_movement_rebases_but_does_not_repeat_checks",
+        "test_reverse_dependency_overlap_rechecks",
+        "test_notification_failure_can_resume_without_rechecking_or_repush")}
+    extended_names.add("WatchTests.test_unresolved_failure_reverts_only_the_exact_failed_batch")
+    if not extended:
+        names = [name for name in names if name not in extended_names]
+        print("Fast CI fixtures; 5 extended moving-main/recovery cases run with --all (presubmit).", flush=True)
+    # Put multi-rebase fixtures first, so their serial Git steps do not form a
+    # long tail after the many small state/parity checks.
+    names.sort(key=lambda name: (0 if "three_moving_attempts" in name else
+                                 1 if name.startswith("LandTests.") else 2, name))
     def execute(name):
+        began = time.monotonic()
         result = subprocess.run([sys.executable, "-I", __file__, name], env=environment,
                                 text=True, capture_output=True, timeout=60)
-        return name, result
+        return name, result, time.monotonic() - began
     started = time.monotonic()
     failures = 0
-    with ThreadPoolExecutor(max_workers=min(12, os.cpu_count() or 1)) as pool:
-        for name, result in pool.map(execute, names):
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 1)) as pool:
+        for name, result, seconds in pool.map(execute, names):
+            if seconds > 5:
+                print(f"fixture duration: {name} {seconds:.3f}s", flush=True)
             if result.returncode:
                 failures += 1
                 print(name + " FAILED\n" + result.stdout + result.stderr, flush=True)
@@ -700,6 +739,6 @@ def fixture_suite():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        raise SystemExit(fixture_suite())
+    if len(sys.argv) == 1 or sys.argv[1:] == ["--all"]:
+        raise SystemExit(fixture_suite(extended=sys.argv[1:] == ["--all"]))
     unittest.main()

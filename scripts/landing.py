@@ -265,7 +265,7 @@ def presubmit_worker(base, result_path):
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
         if any(p.startswith("scripts/") for p in data["paths"]):
-            checked(["python3", "-I", "scripts/test-landing.py"], root)
+            checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
         checked(["sh", "scripts/invariants.sh"], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])

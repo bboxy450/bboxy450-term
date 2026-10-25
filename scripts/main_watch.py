@@ -50,7 +50,14 @@ def test_selector(text):
     rerun = re.search(r"error: test failed, to rerun pass [`']([^`']+)[`']",
                       text[max(0, failure):])
     args = shlex.split(rerun.group(1)) if rerun else None
-    return {"name": name, "cargo_args": args,
+    selector = name
+    if args:
+        package = next((args[n + 1] for n, arg in enumerate(args[:-1]) if arg in ("-p", "--package")), None)
+        kind = "lib" if "--lib" in args else next(
+            (arg[2:] + "/" + args[n + 1] for n, arg in enumerate(args[:-1]) if arg in ("--test", "--bin")), None)
+        if package and kind:
+            selector = f"cargo:{package}:{kind}:{name}"
+    return {"name": name, "selector": selector, "cargo_args": args,
             "source": "cargo_rerun" if args else "unavailable"}
 
 
@@ -159,28 +166,35 @@ def one(root, api):
             green = next((r["sha"] for r in reversed(history) if r["verdict"] == "green"), None)
             if green:
                 selector = output / "test-selector.json"
-                api.atomic_write(selector, json.dumps(test_selector(text)) + "\n")
-                diagnosis = api.command(["sh", "scripts/culprit.sh", green, sha, failure],
+                selection = test_selector(text)
+                api.atomic_write(selector, json.dumps(selection) + "\n")
+                record["test_selector"] = selection["selector"]
+                diagnosis = api.command(["sh", "scripts/culprit.sh", green, sha, selection["selector"]],
                                         cwd=tree, check=False,
                                         env=dict(os.environ, BBOXY_FAILED_TEST_SELECTOR=str(selector)))
                 api.atomic_write(output / "culprit.log", diagnosis.stdout + diagnosis.stderr)
-                if diagnosis.returncode == 0:
-                    try:
-                        answer = json.loads(diagnosis.stdout)
-                    except ValueError:
-                        answer = {}
-                        record["diagnostic_error"] = "invalid_culprit_json"
-                    if answer.get("verdict") == "flake":
-                        verdict = record["verdict"] = "green"
-                        record["flake"] = True
-                        api.atomic_write(api.state_directory() / "main-status", f"green {sha}\n")
-                    elif answer.get("culprit"):
-                        culprit = record["culprit"] = answer["culprit"]
-                        reverted = api.command(["sh", "scripts/revert.sh", culprit], cwd=tree, check=False)
-                        api.atomic_write(output / "revert.log", reverted.stdout + reverted.stderr)
-                        record["revert_exit"] = reverted.returncode
-                else:
+                try:
+                    answer = json.loads(diagnosis.stdout)
+                    if not isinstance(answer, dict):
+                        raise ValueError("not an object")
+                except ValueError:
+                    answer = {}
+                    record["diagnostic_error"] = "invalid_culprit_json"
+                if diagnosis.returncode:
                     record["diagnostic_exit"] = diagnosis.returncode
+                target = None
+                if diagnosis.returncode == 0 and answer.get("verdict") == "flake":
+                    verdict = record["verdict"] = "green"
+                    record["flake"] = True
+                    api.atomic_write(api.state_directory() / "main-status", f"green {sha}\n")
+                elif diagnosis.returncode == 0 and re.fullmatch(r"[0-9a-f]{40}", answer.get("culprit") or ""):
+                    target = record["culprit"] = answer["culprit"]
+                elif answer.get("verdict") == "unresolved" and answer.get("revert_range") == green + ".." + sha:
+                    target = record["revert_range"] = answer["revert_range"]
+                if target:
+                    reverted = api.command(["sh", "scripts/revert.sh", target], cwd=tree, check=False)
+                    api.atomic_write(output / "revert.log", reverted.stdout + reverted.stderr)
+                    record["revert_exit"] = reverted.returncode
             else:
                 record["diagnostic_error"] = "no_last_green"
         api.append_record("postsubmit.log", record)
