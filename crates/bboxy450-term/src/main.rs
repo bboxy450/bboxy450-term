@@ -2906,7 +2906,7 @@ impl App {
             Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
                 let generation = model.ui.seats[&seat].process_generation;
                 self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
-                if self.scene.focused() == Some(seat) {
+                if self.focus.stage.as_ref().and_then(|stage| stage.focused) == Some(seat) {
                     self.ctl_focus.applied(next_frame, generation);
                     self.request_redraw();
                     return true;
@@ -6623,6 +6623,36 @@ mod lazy_projection_tests {
         app.project_scene(true);
         assert_eq!(app.scene.projections(), 3);
         assert_eq!(app.scene.focused(), Some(SeatId::from_u128(4)));
+
+        let target = SeatId::from_u128(1);
+        app.ctl_focus.set(bboxy450_term::focus_ack::Ask {
+            id: bbt_mux::Ulid(9),
+            seat: target,
+            prior_spawns: vec![],
+        });
+        assert!(app.poll_focus_frame(10, 11));
+        assert_eq!(app.focus.stage.as_ref().unwrap().focused, Some(target));
+        assert_eq!(app.scene.focused(), Some(SeatId::from_u128(4)));
+        let model = app.live_state.clone().unwrap();
+        assert!(
+            app.ctl_focus
+                .poll(&model, app.scene.focused(), |_| true, 10)
+                .is_none(),
+            "accepted focus still waits for its produced frame"
+        );
+        app.project_scene(false);
+        assert_eq!(app.scene.projections(), 3);
+        app.project_scene(true);
+        assert_eq!(app.scene.projections(), 4);
+        let Some(bboxy450_term::focus_ack::Effect::Answer(answer)) =
+            app.ctl_focus
+                .poll(&model, app.scene.focused(), |_| true, 11)
+        else {
+            panic!("the projected completed frame must acknowledge focus");
+        };
+        let frame = answer.result.unwrap();
+        assert_eq!(frame.seat, target);
+        assert_eq!(frame.frame_seq, 11);
     }
 }
 

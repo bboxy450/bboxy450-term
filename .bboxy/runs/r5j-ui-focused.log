@@ -96,3 +96,25 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; fi
 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/unrelated-formatter.patch SHA256 dd4c0ca143023cf2601fad07c4133be719f0626295bd084084892ce7f7b600e9
 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/formatter-restored.json SHA256 27939c94c0662e70ba5bc5aa7213c6c6fdfc2e0b8ff49b60700841fe7410f6ae
 /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/projection-green-stopped.json SHA256 b0ef1bb0bacad04e4d749302ab13c2819785e09ff22027d78cdae60f1336e488
+
+Focus compatibility addendum
+Source audit: poll_focus_frame checked Scene::focused immediately after the local action; with deferred projection this still names the last drawn frame.
+Immediate acceptance now checks FocusState.stage.focused. The Pending frame/generation/visibility checks and all three-second deadlines remain unchanged.
+Extended same regression calls real App::poll_focus_frame, observes retained previous scene, no ACK before frame11, then one projection and successful actual-focus/frame11 completion.
+{"command": ["cargo", "test", "-p", "bboxy450-term", "--locked", "--bin", "bboxy450-term", "lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain", "--", "--exact", "--nocapture"], "elapsed_s": 16.330939208040945, "exit": 0, "label": "projection-focus-green", "log_sha256": "12d9a41b32fd9f0778d8de6d0b4686cdacf6befa99dae0572e98df92de26470d", "patch_sha256": "4a16bd0fbd35a4388e9a148a2bf84714c3423a710047b9221567ba8e034a9f8f", "source": "48ac78a990db6baac422b1444d60c758186b172a"}
+Original workspace precheck was stopped before completion after the source finding; no workspace verdict was claimed. Own driver87327 and four descendants terminated; stop manifest /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5j-ui-six9mgc6/prechecks-stopped-focus.json
+Raw extended focused log SHA256 12d9a41b32fd9f0778d8de6d0b4686cdacf6befa99dae0572e98df92de26470d
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-rook/crates/bboxy450-term)
+    Finished `test` profile [optimized] target(s) in 15.89s
+     Running unittests src/main.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/target/debug/deps/bboxy450_term-385072e00e980f81)
+
+running 1 test
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
+ui input: Locate { seat: SeatId(Ulid(4)), where_: Both }
+ui input: FocusChanged { seat: SeatId(Ulid(1)), prev: Some(SeatId(Ulid(4))), stage_switched: false }
+test lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain ... ok
+
+ui input: Locate { seat: SeatId(Ulid(1)), where_: Both }
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 113 filtered out; finished in 0.01s
+
+ui input: FocusChanged { seat: SeatId(Ulid(4)), prev: Some(SeatId(Ulid(1))), stage_switched: false }
