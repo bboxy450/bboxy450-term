@@ -1,0 +1,13 @@
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R1.sh","exit":null,"function":"R1","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R2.sh","exit":null,"function":"R2","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R3.sh","exit":null,"function":"R3","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R4.sh","exit":null,"function":"R4","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":null,"evidence":"no script at /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R5.sh","exit":null,"function":"R5","group":"rim, swell and attention","kind":"e2e","missing":[],"verdict":"untested"}
+{"coverage":"partial","evidence":"R6 recording: first line, one outstanding ID, replacement, muted sends=0, exact tab/pane completed frame; OS presentation unproven","exit":0,"function":"R6","group":"rim, swell and attention","kind":"e2e","missing":["a waiting seat posts one desktop notification","clicking it raises the window, switches space"],"verdict":"pass"}
+{"function":"R1","kind":"record","number":1,"path":"e2e/R1.md","tracked_by":null}
+{"function":"R2","kind":"record","number":2,"path":"e2e/R2.md","tracked_by":null}
+{"function":"R3","kind":"record","number":3,"path":"e2e/R3.md","tracked_by":null}
+{"function":"R4","kind":"record","number":4,"path":"e2e/R4.md","tracked_by":null}
+{"function":"R5","kind":"record","number":5,"path":"e2e/R5.md","tracked_by":null}
+{"function":"R6","kind":"record","number":8,"path":"e2e/R6.md","tracked_by":"01M5SKFGD8SET8YJMFWBJGCZP5"}
+{"group":"rim, swell and attention","kind":"summary","partial":["R6"],"passed":1,"red":["R1","R2","R3","R4","R5"],"state":"red","total":6,"tracked":["R6"],"unwritten":[]}

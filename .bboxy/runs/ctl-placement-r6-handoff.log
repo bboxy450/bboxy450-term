@@ -1,0 +1,42 @@
+Aster Cinderwing <EXECUTOR> — explicit ctl placements + R6 recording notifications
+Exact signed source: 2534a3ab12ae4e10740db5e8d198ee6ffd310599, base08c47b82.
+Branch aster-notification-adapter; own worktree /Users/feral/mydev/bboxy450-term-exec4.
+Exact clean ci-local --parity EXIT0; the full command log and per-case JSON were read. Not merged; Oracle verification remains.
+
+Mechanisms at the gated source
+crates/bboxy450-term/src/launcher.rs:14 — capture the observed tab/anchor/process generation and layout revision once; right/down refuse a missing/cross-swarm anchor, tab uses an existing swarm, space creates a fresh swarm and first tab.
+crates/bboxy450-term/src/cockpit.rs:144 + src/live.rs:45 — complete SpawnSpec stays within ordinary bounded spawn admission/outgoing controls, with existing Busy and publish/Applied ordering.
+crates/bboxy450-term/src/main.rs:3948 — freeze the Placed seat before ConsumeSpawn; produced-frame completion requires that exact focused pane. main.rs:4040 adds operation-specific captured/applied revisions only to the reply, not the ordinary cached layout.
+crates/bbt-proto/src/gui.rs:121 — additive UiSpawn/UiSpawned; optional serde-default revision/receipt preserve older layout decoding. GUI version remains inherited3.
+crates/bboxy450-term/src/ctl.rs:2173 — explicit --place routes through the GUI owner and returns seat, placement, operation, frame and both revisions. Unspecified placement retains existing Session-compatible backend behavior.
+crates/bboxy450-term/src/notifications/recording.rs:68 — bounded, sanitized, non-waiting readback; :91 submits the ordinary callback only for an outstanding id; :118 uses the existing guarded IO worker for Notifier calls. Same-id posts replace, with separate request/completion records and omission counters.
+crates/bboxy450-term/src/main.rs:2834 — selected recording backend shares desired policy, mute and focus state; worker submitted/processed fence supports a settled zero-post assertion. Native factory is skipped only under explicit debug test-account selection.
+crates/bboxy450-term/tests/headless.rs:109 — real private-file-account six-seat placement, preserved sibling rectangles, cached retry after focus changes, cwd and produced-frame capture.
+crates/bboxy450-term/tests/headless.rs:302 — actual OSC7501/parser/GUI/worker replacement, mute, unmute and exact-pane activation, plus absent-id refusal. Recorder unit tests exercise bounds and redaction.
+scripts/e2e/L2.sh:1 + scripts/e2e/R6.sh:1 — one runner-owned private-account no-window app; canonical map/header agree. No new lifecycle owner or second reader.
+
+Verified at the exact gated source (two Cargo jobs, direct compiler, O1, debug assertions, no debuginfo/incremental)
+sh scripts/ci-local.sh --parity — EXIT0,3264.612s. Log SHA256 b4790cf517662ae2ffdbe1cd659c4d62308a30340fdc2c46961b8ee22efe6365.
+cargo build --workspace --locked; strict workspace/all-target Clippy; UI disallowed-method lint — all0 through set -eu.
+cargo test --workspace --locked — 1441 passed/0 failed/29 ignored across205 suites; real headless16/0 includes both cuts.
+Private-repository headless idle smoke —0 frames/0 callbacks/10.005s/windows0, memory custody witnessed, children reaped.
+Invariants —26 checks/0 failures/8 named slow skips. No 967/frame/timing claim.
+Current parity —2240 cases, all2240 web captures successful;2136 required/measured geometry,0 unproven/mismatches;72 advisory pixel reviews. Legacy diagnostic1664 cases/851 reviews is non-gating. Source renderer/UI-model/UI/catalogue/lab inputs are byte-identical to accepted08c47b82; no measured pixel-delta claim.
+Final exact-binary e2e night launcher-and-placement — overall EXIT1/5.595s; L2 EXIT0/pass/partial, group RED only L1/L3/L4 absent from this tested source. Log SHA25602737198f4117124b15e806b0f048aa459abec22aa98a40509e9b223a2fceaac.
+Final exact-binary e2e night rim-swell-attention — overall EXIT1/4.583s; R6 EXIT0/pass/partial, group RED only R1-R5 absent. Log SHA256fcfa6973ad70a7936b9d7298f0b79373dfd52e030cc909dc91a49496a167e67b.
+Both use the existing runner's per-promise file account/headless app, no --records override. Scratch wrappers preserve canonical headers/verdicts and copy only E2E_WORK before runner cleanup; an extra read-only debug ps records numeric owned descendants, no second lifecycle. Five final PNGs visually inspected: selected cwd prompt and replacement-question producer are present. L2 reports captured revision2/applied3; R6 reports posts2/replacements1/muted_new_posts0 and exact-pane frame68.
+All10 L2 and7 R6 recorded promise-process PIDs absent after stop (ps exit1); omissions0/truncatedfalse. This includes transient sampled children; records apps acknowledged stop but were not independently sampled, so no exhaustive whole-night reaping claim.
+77 final public artifacts/4,979,056bytes and14,177 parity files/891,363,599bytes retained with per-file hashes. Earlier74 files/4,970,069bytes revalidated unchanged. Binaries and galleries retained outside the cache; no accounts, capability files or databases copied. App binary SHA2565a59a7fffd5f5a2cb6d44424e8bf42ee8ffffaf92c3ef36a9d35b3f94847a391.
+After empty lsof (exit1/no rows), own inactive gate target deleted:5,534,232,576 allocated bytes freed. Historical target evidence and all named raw remain.
+New evidence records: ctl-placement-r6-evidence.json, ctl-placement-r6-parity-files.jsonl, ctl-placement-r6-exact-parity.log and gated-{l2,r6}-night.log in .bboxy/runs. Raw root: scratchpad/placement-20261025T0213/; current galleries parity-2534a3ab/; final binaries/scripts/artifacts gated-night-2534a3ab/.
+Main advanced during the gate to1cde8f0c (unattended runner/records, UI scripts, R5j evidence and specs). No rebase after gate start. Integration needs union of our two recorder-selector lines in e2e_night.rs and the L2/R6 map rows with upstream additions; other shared files retain their exact tested state.
+Prechecks and every earlier failure are in .bboxy/runs/ctl-placement-preflight.log and r6-recording-preflight.log; no assertion/deadline/SLO relaxation.
+
+Deliberate limits
+L2 remains partial: "never a guessed slot" lacks a night witness for a pending-spawn focus race (unit coverage is not a night result).
+R6 remains partial: OS notification display, raising a window and OS-space switching are unproven. Recording reports os_presentation=false; callback submission alone is not a completed focus receipt.
+Enclosing night groups are expected RED only where other scripts are absent; own L2/R6 scripts must independently exit0/pass/partial. No full-night green or production record write claimed.
+No main push, merge, desktop input, login Keychain, operator identity or scale/timing run.
+
+Signature/cleanup disposition
+Default post-gate verify-commit EXIT1 after GPG keybox DB lock wait (holder PID21021 absent), no public key lookup. An unsupported --no-use-keyboxd probe exited2. Own public-only GNUPGHOME imports the already-approved bboxy-gpg-public.asc and references the existing signing-agent socket; git -c gpg.program=<own scratch public-ring-gpg> verify-commit2534a3ab EXIT0, Good signature, exact fingerprint9B07E849480C68328CA20684844ECC0587DE7AB0. No private key copied, no identity/global config/service/lock changed, no unsigned commit. This command-local lookup also signs the evidence-only successor. Own clean detached checkout retired after preserving binaries/galleries/raw/canonical scripts; scripts can be replayed after recreating that exact checkout, as their original wrapper paths record.

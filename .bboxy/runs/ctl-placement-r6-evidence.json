@@ -1,0 +1,662 @@
+{
+  "source": "2534a3ab12ae4e10740db5e8d198ee6ffd310599",
+  "accepted_base": "08c47b82",
+  "gate_process": {
+    "pid": 2699,
+    "command": [
+      "sh",
+      "scripts/ci-local.sh",
+      "--parity"
+    ],
+    "started": "2026-10-25T12:23:43.803951+00:00",
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/ci-04744877",
+    "source": "2534a3ab12ae4e10740db5e8d198ee6ffd310599",
+    "tracked_changes": [],
+    "profiles": "O1, debug assertions, no debuginfo/incremental, direct compiler"
+  },
+  "commands": {
+    "exact-parity": {
+      "command": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "exit": 0,
+      "started": "2026-10-25T12:23:43.803951+00:00",
+      "elapsed_s": 3264.6119139160146,
+      "log_sha256": "b4790cf517662ae2ffdbe1cd659c4d62308a30340fdc2c46961b8ee22efe6365"
+    },
+    "gated-l2-night": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "launcher and placement",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T13:19:14.292168+00:00",
+      "elapsed_s": 5.59508466598345,
+      "log_sha256": "02737198f4117124b15e806b0f048aa459abec22aa98a40509e9b223a2fceaac"
+    },
+    "gated-r6-night": {
+      "command": [
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts"
+      ],
+      "exit": 1,
+      "started": "2026-10-25T13:19:51.957550+00:00",
+      "elapsed_s": 4.583339041972067,
+      "log_sha256": "fcfa6973ad70a7936b9d7298f0b79373dfd52e030cc909dc91a49496a167e67b"
+    }
+  },
+  "workspace": {
+    "passed": 1441,
+    "failed": 0,
+    "ignored": 29,
+    "suites": 205
+  },
+  "headless": {
+    "passed": 16,
+    "failed": 0
+  },
+  "idle": {
+    "seconds": 10.005,
+    "frames": 0,
+    "callbacks": 0,
+    "windows": 0,
+    "custody": "memory"
+  },
+  "invariants": {
+    "checks": 26,
+    "failures": 0,
+    "slow_skipped": 8
+  },
+  "parity": {
+    "root": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/parity-2534a3ab",
+    "cases": 2240,
+    "required": 2136,
+    "measured": 2136,
+    "unproven": 0,
+    "mismatches": 0,
+    "statuses": {
+      "review pixels": 72,
+      "within policy": 2168
+    },
+    "manifest": ".bboxy/runs/ctl-placement-r6-parity-files.jsonl",
+    "manifest_sha256": "af35e2c4d80bc25c36069d1e445c90cae794ac0070d4e2809ddc60c24962e07a",
+    "files": 14177,
+    "bytes": 891363599,
+    "report_sha256": "e9594825ce8ab1c369e943d07940eafe67ae52888a9c6ccae7565f3a0c6647bc",
+    "render_inputs_identical_to_base": true
+  },
+  "binaries": {
+    "source": "2534a3ab12ae4e10740db5e8d198ee6ffd310599",
+    "files": [
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxy450-term",
+        "bytes": 54952560,
+        "sha256": "5a59a7fffd5f5a2cb6d44424e8bf42ee8ffffaf92c3ef36a9d35b3f94847a391"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/bin/bboxybook",
+        "bytes": 18342160,
+        "sha256": "2f635cc0e83690403534e576785237b90fa2ef4c4f427f3e3853d32574b2bf72"
+      }
+    ]
+  },
+  "night": {
+    "public_root": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/artifacts",
+    "files": [
+      {
+        "path": "L2/l2-ctl-001.json",
+        "bytes": 715,
+        "sha256": "ed9ea7b0d77d4f37c562b766c754c0774b178dd6068340e7551a8832d8d97c03"
+      },
+      {
+        "path": "L2/l2-ctl-002.json",
+        "bytes": 200,
+        "sha256": "3e10efafc7e856deb6a225b60a517e592fd860c488738ad515477e3043c26bef"
+      },
+      {
+        "path": "L2/l2-ctl-003.json",
+        "bytes": 392,
+        "sha256": "f57f769da2a9818715afa0d221cb5a9a6ebb1480ecc308e96be7f65eaf586909"
+      },
+      {
+        "path": "L2/l2-ctl-004.json",
+        "bytes": 200,
+        "sha256": "4727dc0dfda48d9f55b3afffe3154ff09242fa6e622d29256557e9d97771ca4f"
+      },
+      {
+        "path": "L2/l2-ctl-005.json",
+        "bytes": 164263,
+        "sha256": "a86d82e800978c8ed6b8b244d7f4f2f45bf66f48403d8619604515c58d566113"
+      },
+      {
+        "path": "L2/l2-ctl-006.json",
+        "bytes": 658,
+        "sha256": "336dabaa14e2dd365785d71f5d085a10829faf341f45ee6c2cd2e68b98741226"
+      },
+      {
+        "path": "L2/l2-ctl-007.json",
+        "bytes": 211143,
+        "sha256": "1868031b5618acffc5ba104026c118a2da263242bc1ae5578f196c2578c3d526"
+      },
+      {
+        "path": "L2/l2-ctl-008.json",
+        "bytes": 203166,
+        "sha256": "059a004aae6c926c21c3b243b670a8a54352097369dd4b081c536b924becface"
+      },
+      {
+        "path": "L2/l2-ctl-009.json",
+        "bytes": 2155,
+        "sha256": "1f9a72b201412a4143d1c82863eea9c1fbe529f2da1fb80932ae781de8e81e51"
+      },
+      {
+        "path": "L2/l2-ctl-010.json",
+        "bytes": 243280,
+        "sha256": "7d72a39bb7569d4845b172c0894a0e2b267c382ebc31d33f1089976a767c78d1"
+      },
+      {
+        "path": "L2/l2-ctl-011.json",
+        "bytes": 662,
+        "sha256": "e9b77928643ca93a06a9876cebb9e258119ffd0cbc67b895a40cd73fb121e5c6"
+      },
+      {
+        "path": "L2/l2-ctl-012.json",
+        "bytes": 234375,
+        "sha256": "0ed38ccc0f9b6dba2f0f9f964e216e6d85193f9f29d5416a79bc69a30aceef60"
+      },
+      {
+        "path": "L2/l2-ctl-013.json",
+        "bytes": 243326,
+        "sha256": "e007217993ce829fde0cbe5872d482b4bd28ccd436d706afd60e5bfb301dfad6"
+      },
+      {
+        "path": "L2/l2-ctl-014.json",
+        "bytes": 234343,
+        "sha256": "bf39d87c16738b67bef23cbc9c4684ff20a106a4368cd1c6c8415f5f3a9d774e"
+      },
+      {
+        "path": "L2/l2-ctl-015.json",
+        "bytes": 3115,
+        "sha256": "d20ef3821b1756c4c750b7841ccbd37145ffb8bf5b92d89b03d3e518bc6e7c83"
+      },
+      {
+        "path": "L2/l2-ctl-016.json",
+        "bytes": 234373,
+        "sha256": "94f2f9185eb10cdb491dd23206c6c33aaa437a3dc9e5a70ee45cd78efffa5a7d"
+      },
+      {
+        "path": "L2/l2-ctl-017.json",
+        "bytes": 275782,
+        "sha256": "fba53d80c9dde7519c2928cc2cbc051fb2a5655741cee43d34f4859c94cb90b8"
+      },
+      {
+        "path": "L2/l2-ctl-018.json",
+        "bytes": 660,
+        "sha256": "9343d962e6913772f967f6417df9e922ae86447c0573c14ec8624ea695c65ed4"
+      },
+      {
+        "path": "L2/l2-ctl-019.json",
+        "bytes": 266405,
+        "sha256": "62e61bd150740aadd2cbe21126248311cbc9944f2e930ecb979e510ff3822ab5"
+      },
+      {
+        "path": "L2/l2-ctl-020.json",
+        "bytes": 285959,
+        "sha256": "a0b7ce076091be23a354a3d06deab799142b17ba39735e2f6afe136814893641"
+      },
+      {
+        "path": "L2/l2-ctl-021.json",
+        "bytes": 307754,
+        "sha256": "807ca3b95b81e28a7fe46ba3e8e48fc13e5e9a6c65b0ff93f13be28a7d8368e3"
+      },
+      {
+        "path": "L2/l2-ctl-022.json",
+        "bytes": 5952,
+        "sha256": "9d7a64782a8e1327da2437c5897d2699e1604da6d3ff8eb73c9276e562f74355"
+      },
+      {
+        "path": "L2/l2-ctl-023.json",
+        "bytes": 663,
+        "sha256": "726e7ddff8f1253a441a4dc43c94e591c7baae3f2366667f95285afb7d6fa574"
+      },
+      {
+        "path": "L2/l2-ctl-024.json",
+        "bytes": 330838,
+        "sha256": "d4727594a1e33e95f44b4ca554a8e5a41a3a3403e856d656210eade114114eb2"
+      },
+      {
+        "path": "L2/l2-ctl-025.json",
+        "bytes": 5952,
+        "sha256": "77263269c57612af0bc39fd69d212b6465123d9add4ac5ef460a5de3022b64c9"
+      },
+      {
+        "path": "L2/l2-down.png",
+        "bytes": 5158,
+        "sha256": "ab604f9ff09f701109ba8419327cff5bca471ccb4ff412fc67d98042819e2acd"
+      },
+      {
+        "path": "L2/l2-result.json",
+        "bytes": 673,
+        "sha256": "c84c6d0ea06bb19527e875d251a626232479bc3cafec706a8ff60c0f63deb0b9"
+      },
+      {
+        "path": "L2/l2-right.png",
+        "bytes": 17172,
+        "sha256": "6300185789a3e82fc22bff2d5daedf806b4231c1b9b3198f581a44e22b99d792"
+      },
+      {
+        "path": "L2/l2-space.png",
+        "bytes": 9561,
+        "sha256": "a7a591f7e1fd27aa439c96cd072e83d2cf9a30935141cf389eb54ab73481b78a"
+      },
+      {
+        "path": "L2/l2-tab.png",
+        "bytes": 9561,
+        "sha256": "a7a591f7e1fd27aa439c96cd072e83d2cf9a30935141cf389eb54ab73481b78a"
+      },
+      {
+        "path": "L2/output.log",
+        "bytes": 160,
+        "sha256": "2d8edeed0c5396881779877df4c559a95ec216ebbc699026a9aa5bf404136d76"
+      },
+      {
+        "path": "L2/owned-process-observation.json",
+        "bytes": 875,
+        "sha256": "22f6928368c83c9f70fb417627e2b09fee01b93273ac3d8c609542d65599c4a4"
+      },
+      {
+        "path": "R6/output.log",
+        "bytes": 131,
+        "sha256": "cf6f98c08b606c7a2035f276d973c015d8ccd2556cb22974e8cbbf969a76b0d8"
+      },
+      {
+        "path": "R6/owned-process-observation.json",
+        "bytes": 748,
+        "sha256": "e59100dbb23701651a189d8c2e4e3df953ef8c0d63f70adfe08b0c5a59469b64"
+      },
+      {
+        "path": "R6/r6-activated.json",
+        "bytes": 2951,
+        "sha256": "06f8c9b417200e7ddae6f6c49cf6b78c902e82e3809705fef663ae7bf5186bb3"
+      },
+      {
+        "path": "R6/r6-clicked.png",
+        "bytes": 25072,
+        "sha256": "eb6cbaa515215a95cef509098e4a9ef2265248a77e383f7c96bb9dd5565001b3"
+      },
+      {
+        "path": "R6/r6-ctl-001.json",
+        "bytes": 714,
+        "sha256": "c6fd48ac8003aa1f2edc697d4ed6cbc7ac70bae4d2a4b86016e37bff5731dbf1"
+      },
+      {
+        "path": "R6/r6-ctl-002.json",
+        "bytes": 767,
+        "sha256": "30c5531e77cf90d7abc99174a5b5a59514f3bb93d5a72c6e42974b553d1a32e2"
+      },
+      {
+        "path": "R6/r6-ctl-003.json",
+        "bytes": 164250,
+        "sha256": "c23521bcd28d378b007c72541be04730f0457964875064168ca113793c48bae9"
+      },
+      {
+        "path": "R6/r6-ctl-004.json",
+        "bytes": 159124,
+        "sha256": "025a3a4d843e2569a0b243eac00ebc0f0bbb5d14d95ca1cf123ac34c6cbbf206"
+      },
+      {
+        "path": "R6/r6-ctl-005.json",
+        "bytes": 186132,
+        "sha256": "d7230efa3ebb286190d18e34d1c0a90be449d17c949f8b1b218b1b4102c447cc"
+      },
+      {
+        "path": "R6/r6-ctl-006.json",
+        "bytes": 179128,
+        "sha256": "a5d71c3e0f6d16c8c9febf72b2d2b3a01b0c4227332aba77ba1e8b412df22fed"
+      },
+      {
+        "path": "R6/r6-ctl-007.json",
+        "bytes": 446,
+        "sha256": "09d5d2d672e8ae7b481b6c53602e53f40a13c4164f8379135bc27ea70cc890bd"
+      },
+      {
+        "path": "R6/r6-ctl-008.json",
+        "bytes": 338,
+        "sha256": "5d44cc7e3efd0b9453db27b0babba7bee0741e6dc30b4a6cce6bc2b78e794d15"
+      },
+      {
+        "path": "R6/r6-ctl-009.json",
+        "bytes": 369,
+        "sha256": "3cee51138f07a5d71e266d4e5184d09c29cc80ed0a63692f5ecc8c4196ce67f1"
+      },
+      {
+        "path": "R6/r6-ctl-010.json",
+        "bytes": 351,
+        "sha256": "f5eea2903c79fd3f2b19abb708e4fbaf035c1c1b40d69a5d0e006f2b5fdb282a"
+      },
+      {
+        "path": "R6/r6-ctl-011.json",
+        "bytes": 338,
+        "sha256": "ef1ceb5846892c15ee0c1d1d0970faee0e05bad5fe5eff78e0199554628d0fcc"
+      },
+      {
+        "path": "R6/r6-ctl-012.json",
+        "bytes": 415,
+        "sha256": "8b29f3431cba3e7c2e7f0f04245ab712dd51d52ed74e0729bafd174b7efd5f4a"
+      },
+      {
+        "path": "R6/r6-ctl-013.json",
+        "bytes": 1539,
+        "sha256": "0b25360a3e937446ea10a82981a1ff83f1b52ca864cb3509dfe73c7d54b33da0"
+      },
+      {
+        "path": "R6/r6-ctl-014.json",
+        "bytes": 2488,
+        "sha256": "a3f6e332238a7cda8d6a87ea75246ebb9d27439b309f8e70f474d457a644310c"
+      },
+      {
+        "path": "R6/r6-ctl-015.json",
+        "bytes": 357,
+        "sha256": "2e6b37e737a05bac78895d442e103216b32795ba7c0659eb70c089b4d666ce74"
+      },
+      {
+        "path": "R6/r6-ctl-016.json",
+        "bytes": 338,
+        "sha256": "b02e5d95e09294ffe7eb40af0f245a05d25d63f2e2b3c79062ee9614187d6e84"
+      },
+      {
+        "path": "R6/r6-ctl-017.json",
+        "bytes": 427,
+        "sha256": "f77feb9449ab6025ef4fd628b979242252e4ff707a4cc0b248ba19399e9257a3"
+      },
+      {
+        "path": "R6/r6-ctl-018.json",
+        "bytes": 3199,
+        "sha256": "e186350f6fe92103516d6bc76220d8a81ed8d7f522fddcc74280610d184da2fd"
+      },
+      {
+        "path": "R6/r6-ctl-019.json",
+        "bytes": 179074,
+        "sha256": "879e5e53c8778e570c2ad9bd6de186c541a24a39b8e8c1a90ffc0f7d1fcbc9e7"
+      },
+      {
+        "path": "R6/r6-ctl-020.json",
+        "bytes": 179138,
+        "sha256": "a5a7d5e34db5ff9983e86acfd6cb1c082036878ae2540fd00d8c616d0266faf5"
+      },
+      {
+        "path": "R6/r6-ctl-021.json",
+        "bytes": 666,
+        "sha256": "190b3caa746fa3d3d62bf78140ceeb8e2fb2054d99d28fd0010a01bd60b9c82d"
+      },
+      {
+        "path": "R6/r6-ctl-022.json",
+        "bytes": 3700,
+        "sha256": "ebdf2f11b317cf9ef02f3af700a850dc1bf3a91839149fd9ff1112f6647029a5"
+      },
+      {
+        "path": "R6/r6-ctl-023.json",
+        "bytes": 185130,
+        "sha256": "9439ff8b03091b804aab4425c1ef9e4fa62cc8ea88b9f3ab5053655c73cfb5cb"
+      },
+      {
+        "path": "R6/r6-ctl-024.json",
+        "bytes": 2236,
+        "sha256": "21dcc32e15f6633f676a01a7607b0c76fe4f22e46f0e7c24dd24d26fe7f0316a"
+      },
+      {
+        "path": "R6/r6-ctl-025.json",
+        "bytes": 192034,
+        "sha256": "b21a0118486b72975d27540779b829d33032f7c790d6822dfe753f1760606cd4"
+      },
+      {
+        "path": "R6/r6-ctl-026.json",
+        "bytes": 339,
+        "sha256": "e5cfaeccf3efbbf03d5f5700c215cb022e6b141cc7613416e9507aa7d83b004d"
+      },
+      {
+        "path": "R6/r6-ctl-027.json",
+        "bytes": 338,
+        "sha256": "1ea621e12ab7165add07839228ca56c5acc0e497e084f4a0c3ea1d341e39c630"
+      },
+      {
+        "path": "R6/r6-ctl-028.json",
+        "bytes": 385,
+        "sha256": "d4abf76840d96cd9f37e3a01923fbed384ac4b0423649b50146abbdc7d7713b7"
+      },
+      {
+        "path": "R6/r6-ctl-029.json",
+        "bytes": 364,
+        "sha256": "377ec481d704166fd6db3eae397006b4fccc3e7084443d68a8d7099b5c1aeac6"
+      },
+      {
+        "path": "R6/r6-ctl-030.json",
+        "bytes": 351,
+        "sha256": "bd1970e7db9459a084908e14f77820c5c3ec90b2032477a5d8f7b250dfb3a423"
+      },
+      {
+        "path": "R6/r6-ctl-031.json",
+        "bytes": 338,
+        "sha256": "fa2f95ca39e68808c16747d0a6f7644490b374f6bd607b7127c9d69dd3e7af16"
+      },
+      {
+        "path": "R6/r6-ctl-032.json",
+        "bytes": 415,
+        "sha256": "47495f5379542258ba8017846ded75cc31d88104265464f9e53c9bd621a4c123"
+      },
+      {
+        "path": "R6/r6-ctl-033.json",
+        "bytes": 3799,
+        "sha256": "a2c38a8c633949069587f01207a6eef2c2ded8ba7f5a31472a6bdb6b39bf1281"
+      },
+      {
+        "path": "R6/r6-ctl-034.json",
+        "bytes": 388,
+        "sha256": "f2542ef0d559cf0df577fdda3f15d7004dbb6c9a88895572c2c5f30190b6bbfd"
+      },
+      {
+        "path": "R6/r6-ctl-035.json",
+        "bytes": 192002,
+        "sha256": "12f1cdbb047bafd8668afd5fe892667252cd60c9ecdb928d586574ea7fd8c391"
+      },
+      {
+        "path": "R6/r6-ctl-036.json",
+        "bytes": 1071,
+        "sha256": "9dc5d75133f75d4ec6020a82112d346d1fff5b0a996a2bedaa71bc85f4fc1062"
+      },
+      {
+        "path": "R6/r6-first.json",
+        "bytes": 1919,
+        "sha256": "4f4b078e771bac54c556d14e5ff021e692fe97c1427b0580dde35f3ad3e13db0"
+      },
+      {
+        "path": "R6/r6-muted.json",
+        "bytes": 3030,
+        "sha256": "af7abb8beb609072d961bb68e98c4ff60c9235ebedc3baef1447f49bef3e91e8"
+      },
+      {
+        "path": "R6/r6-replaced.json",
+        "bytes": 2518,
+        "sha256": "023f91c2e69920281e390d23111962d2623766138a485f6322bcd13cb6212dc4"
+      },
+      {
+        "path": "R6/r6-result.json",
+        "bytes": 292,
+        "sha256": "1f36ebfdd38829ee369714b203ce703a0b124032cb1c0c3f053b5e578d5e43fb"
+      },
+      {
+        "path": "R6/r6-waiting-producer.py",
+        "bytes": 416,
+        "sha256": "50476e7017be66fd42d07b123fd61be7290be4cfd39eab9b9aaa445d98cdd0e8"
+      }
+    ],
+    "wrappers": [
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/L2.sh",
+        "sha256": "bc13f66038c7ed82c12cf0a29425751caba1dc5c712b84f326283528df33186e"
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/gated-night-2534a3ab/scripts/R6.sh",
+        "sha256": "2e918c1de07ccac896c610e6080236e837d274b1dc07f77f5c340ad18f24dcdb"
+      }
+    ],
+    "scripts": {
+      "L2": {
+        "verdict": "pass",
+        "exit": 0,
+        "coverage": "partial",
+        "result": {
+          "placements": [
+            "tab",
+            "right",
+            "down",
+            "space"
+          ],
+          "sibling_rectangles_preserved": true,
+          "retry_same_seat": "01M5SKE9C4PYCV7KPVNFFX6XB0",
+          "captured_revision": 2,
+          "applied_revision": 3,
+          "captures": [
+            "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enlmp33W/L2/work/l2-tab.png",
+            "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enlmp33W/L2/work/l2-right.png",
+            "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enlmp33W/L2/work/l2-down.png",
+            "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enlmp33W/L2/work/l2-space.png"
+          ],
+          "pending_focus_race": "not witnessed by this script"
+        }
+      },
+      "R6": {
+        "verdict": "pass",
+        "exit": 0,
+        "coverage": "partial",
+        "result": {
+          "backend": "recording",
+          "os_presentation": false,
+          "posts": 2,
+          "replacements": 1,
+          "muted_new_posts": 0,
+          "activated_seat": "01M5SKFCTNFA1GZMBCGCMK6H6N",
+          "frame_seq": 68,
+          "capture": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2ene59NZw/R6/work/r6-clicked.png"
+        }
+      }
+    },
+    "post_stop": {
+      "L2": {
+        "recorded_pids": [
+          9700,
+          9705,
+          9706,
+          9739,
+          9759,
+          9769,
+          9790,
+          9800,
+          9811,
+          9895
+        ],
+        "ps_exit": 1,
+        "remaining": [],
+        "omitted": 0,
+        "truncated": false,
+        "basis": "promise app/observed descendants; records app not observed"
+      },
+      "R6": {
+        "recorded_pids": [
+          12170,
+          12185,
+          12187,
+          12233,
+          12244,
+          12267,
+          12352
+        ],
+        "ps_exit": 1,
+        "remaining": [],
+        "omitted": 0,
+        "truncated": false,
+        "basis": "promise app/observed descendants; records app not observed"
+      }
+    },
+    "gap": "records apps acknowledged orderly stop but were not independently sampled by the script wrapper"
+  },
+  "limits": {
+    "L2": [
+      "never a guessed slot; pending-spawn focus race has no night witness"
+    ],
+    "R6": [
+      "a waiting seat posts one desktop notification",
+      "clicking it raises the window, switches space"
+    ],
+    "os_presentation": false,
+    "groups_red": "L1/L3/L4 and R1-R5 absent from this exact source; own scripts pass/partial"
+  },
+  "prior_proofs": {
+    "logs": [
+      "ctl-placement-preflight.log",
+      "r6-recording-preflight.log"
+    ],
+    "public_manifest": "placement-r6-night-artifacts.json",
+    "unchanged_files_validated": 74,
+    "bytes": 4970069
+  },
+  "cleanup": {
+    "at": "2026-10-25T13:23:34.892898+00:00",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/ci-target-04744877",
+    "lsof_exit": 1,
+    "lsof_rows": 0,
+    "allocated_bytes_freed": 5534232576,
+    "target_removed": true,
+    "kept": [
+      "parity-2534a3ab (all galleries, reports and per-file hashes)",
+      "gated-night-2534a3ab/bin",
+      "gated-night-2534a3ab/artifacts",
+      "earlier night-artifacts and historical target evidence"
+    ],
+    "source": "2534a3ab12ae4e10740db5e8d198ee6ffd310599",
+    "checkout_removed": true,
+    "checkout_allocated_bytes_retired": 150630400,
+    "historical_wrapper_replay": "recreate its exact checkout at the logged path from2534a3ab; canonical scripts also retained under gated-night-2534a3ab/canonical"
+  },
+  "main_advanced_while_gating": {
+    "tip": "1cde8f0c",
+    "overlap": [
+      ".bboxy/specs/e2e-script-map.md rows",
+      "src/e2e_night.rs selector (upstream unattended records changes)"
+    ],
+    "other": [
+      "new UI scripts L1/S1-S4/K2",
+      "R5j scale evidence",
+      "history-metrics/ring-gap spec records"
+    ],
+    "policy": "exact tested source retained; no rebase/re-gate after main moved"
+  },
+  "visual_inspection": {
+    "images": 5,
+    "observed": "chosen-cwd prompts in all L2 captures; R6 target shows the first and replacement producer questions",
+    "unproven": "no OS presentation/window raise or whole-window image assertion"
+  },
+  "signature_lookup": {
+    "default_verify_exit": 1,
+    "reason": "shared keybox database lock held by absent PID21021; timed out, keydb_search, No public key",
+    "unsupported_probe": {
+      "command": "gpg --no-use-keyboxd --version",
+      "exit": 2
+    },
+    "isolated_verify_exit": 0,
+    "fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "public_key_source": "/Users/feral/.agents/identity/bboxy-gpg-public.asc",
+    "method": "own public-only GNUPGHOME, existing signing-agent socket reference; command-local gpg.program override; no global settings/lock/service changes and no private-key copy"
+  }
+}
