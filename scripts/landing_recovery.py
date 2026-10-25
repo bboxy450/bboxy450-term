@@ -5,6 +5,7 @@ branch or push directly; acceptance runs use local, throwaway repositories.
 """
 import argparse
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import hashlib
 import importlib.util
 import json
@@ -352,6 +353,34 @@ def code_commit(api, root, sha):
     return any(p != ".bboxy" and not p.startswith(".bboxy/") for p in paths)
 
 
+def watcher_lease_advice(api, records):
+    durations = []
+    for row in records:
+        try:
+            started = datetime.fromisoformat(row["started"].replace("Z", "+00:00"))
+            ended = datetime.fromisoformat((row.get("completed_at") or row["ended"]).replace("Z", "+00:00"))
+            seconds = (ended - started).total_seconds()
+            if seconds >= 0:
+                durations.append(seconds)
+        except (AttributeError, KeyError, TypeError, ValueError):
+            continue  # missing or unusable clock metadata is advice, never a red
+    advice = {"age_seconds": None, "longest_recorded_run_seconds": max(durations, default=None)}
+    try:
+        modified = (api.state_directory() / "main-watch.lock").stat().st_mtime
+        advice["age_seconds"] = max(0., round(datetime.now(timezone.utc).timestamp() - modified, 3))
+    except OSError:
+        advice["unavailable"] = "watcher_lease_missing_or_unreadable"
+    return advice
+
+
+def publication_time(value):
+    try:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return stamp.timestamp() if stamp.tzinfo is not None else None
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 def check_main(api, root):
     fixture(api, root)
     spec = importlib.util.spec_from_file_location("postsubmit_history", Path(__file__).with_name("main_watch.py"))
@@ -359,52 +388,101 @@ def check_main(api, root):
     spec.loader.exec_module(history)
     records = history.history_rows(api.records("postsubmit.log"))
     status = api.state_directory() / "main-status"
-    fields = status.read_text().split(maxsplit=2) if status.exists() else []
-    if fields and fields[0] == "red":
-        if len(fields) < 3:
-            raise api.Refusal("invalid_red_main_status")
-        if not any(r.get("sha") == fields[1] and r.get("verdict") == "red" for r in records):
-            records.append({"sha": fields[1], "verdict": "red", "culprit": None,
-                            "effective_verdict": "red", "failing_test": fields[2], "in_flight": True})
+    if status.exists():
+        with status.open() as stream:
+            fields = stream.read().split(maxsplit=2)
+            published = os.fstat(stream.fileno()).st_mtime
+        if fields and fields[0] == "red":
+            if len(fields) < 3:
+                raise api.Refusal("invalid_red_main_status")
+            if not records or records[-1].get("sha") != fields[1] or records[-1]["effective_verdict"] != "red":
+                records.append({"sha": fields[1], "verdict": "red", "culprit": None,
+                                "effective_verdict": "red", "failing_test": fields[2], "in_flight": True,
+                                "ended": datetime.fromtimestamp(published, timezone.utc).isoformat()})
+    lease_advice = watcher_lease_advice(api, records)
     if not records:
-        return {"status": "pending", "reason": "no_postsubmit_yet", "violations": []}
+        return {"status": "pending", "reason": "no_postsubmit_yet", "violations": [],
+                "covered_through": None, "uncovered": None, "uncovered_count": None,
+                "uncovered_reason": "no_postsubmit_yet", "watcher_lease": lease_advice}
     main = resolve(api, root, "origin/main")
     head = resolve(api, root, "HEAD")
+    candidate = []
     if ancestor(api, root, main, head):
         subjects = api.git("log", "--format=%s", main + ".." + head, cwd=root).splitlines()
-        if subjects and all(s.startswith("Revert") for s in subjects):
-            main = head  # check the corrective candidate before land.sh pushes it
+        if subjects and all(subject.startswith("Revert") for subject in subjects):
+            candidate = api.git("rev-list", "--first-parent", "--reverse", main + ".." + head, cwd=root).splitlines()
+            main = head  # evaluate a corrective candidate before publication
     chain = api.git("rev-list", "--first-parent", "--reverse", main, cwd=root).splitlines()
     positions = {sha: n for n, sha in enumerate(chain)}
-    violations, pending = [], []
+    code_cache = {}
+    def is_code(sha):
+        if sha not in code_cache:
+            code_cache[sha] = code_commit(api, root, sha)
+        return code_cache[sha]
     for row in records:
         if row.get("sha") not in positions:
             raise api.Refusal("postsubmit_not_on_main_or_invalid_verdict")
-    for index, row in enumerate(records):
-        if row["effective_verdict"] != "red":
+    admitted = {}
+    unobserved_landings = []
+    for landing in api.records("landings.log"):
+        sha = landing.get("sha")
+        stamp = publication_time(landing.get("timestamp"))
+        if sha not in positions or stamp is None:
             continue
-        following = next((r for r in records[index + 1:] if r["effective_verdict"] == "green"), None)
-        start = positions[row["sha"]] + 1
-        stop = positions[following["sha"]] + 1 if following else len(chain)
-        later = [sha for sha in chain[start:stop] if code_commit(api, root, sha)]
+        members = [sha]
+        base = landing.get("base")
+        if base in positions and positions[base] < positions[sha]:
+            members = chain[positions[base] + 1:positions[sha] + 1]
+        else:
+            unobserved_landings.append(sha)
+        for member in members:
+            if is_code(member):
+                admitted[member] = min(admitted.get(member, stamp), stamp)
+    for sha in candidate:
+        if is_code(sha):
+            admitted[sha] = datetime.now(timezone.utc).timestamp()
+    timed = [(publication_time(row.get("ended")), index, row) for index, row in enumerate(records)]
+    greens = sorted((stamp, index, row) for stamp, index, row in timed if stamp is not None and row["effective_verdict"] == "green")
+    violations, pending, unobserved_intervals = [], [], []
+    unobserved_verdicts = [row["sha"] for stamp, _, row in timed if stamp is None]
+    red_positions = [positions[row["sha"]] for _, _, row in timed if row["effective_verdict"] == "red"]
+    unobserved_admissions = [sha for sha in chain[min(red_positions) + 1:] if is_code(sha) and sha not in admitted] if red_positions else []
+    for stamp, index, row in timed:
+        if row["effective_verdict"] != "red" or stamp is None:
+            continue
+        next_logged_green = next((other for other in records[index + 1:] if other["effective_verdict"] == "green"), None)
+        if next_logged_green is not None and publication_time(next_logged_green.get("ended")) is None:
+            unobserved_intervals.append(row["sha"])
+            continue
+        following = next((event for event in greens if event[:2] > (stamp, index)), None)
+        stop = following[0] if following else None
+        later = sorted((time, positions[sha], sha) for sha, time in admitted.items()
+                       if positions[sha] > positions[row["sha"]] and time >= stamp and (stop is None or time < stop))
         if not later:
             if following is None:
                 pending.append(row["sha"])
             continue
         culprit = row.get("revert_range") or row.get("culprit")
-        for n, sha in enumerate(later):
+        first_is_observed = not any(positions[sha] < later[0][1] for sha in unobserved_admissions)
+        for n, (_, _, sha) in enumerate(later):
             subject = api.git("show", "-s", "--format=%s", sha, cwd=root)
-            body = api.git("show", "-s", "--format=%B", sha, cwd=root)
             if not subject.startswith("Revert"):
                 violations.append({"sha": sha, "reason": "non_revert_while_red", "red": row["sha"]})
-            elif n == 0 and culprit not in (None, "-", ""):
+            elif n == 0 and first_is_observed and culprit not in (None, "-", ""):
                 named = culprit.split("..")[-1]
-                if named not in body:
+                if named not in api.git("show", "-s", "--format=%B", sha, cwd=root):
                     violations.append({"sha": sha, "reason": "first_revert_does_not_name_culprit", "culprit": culprit})
-    greens = [positions[r["sha"]] for r in records if r["effective_verdict"] == "green"]
-    return {"status": "violated" if violations else ("pending" if pending else "held"), "main": main,
-            "covered_through": chain[max(greens)] if greens else None,
-            "pending_red": pending, "violations": violations}
+    covered_positions = [positions[row["sha"]] for row in records if row["effective_verdict"] == "green"]
+    covered = max(covered_positions) if covered_positions else None
+    uncovered = [sha for sha in chain[covered + 1:] if is_code(sha)] if covered is not None else None
+    unobserved = bool(unobserved_verdicts or unobserved_admissions or unobserved_intervals)
+    return {"status": "violated" if violations else ("pending" if pending or unobserved else "held"), "main": main,
+            "covered_through": chain[covered] if covered is not None else None,
+            "uncovered": uncovered, "uncovered_count": len(uncovered) if uncovered is not None else None,
+            "uncovered_reason": None if uncovered is not None else "no_green_verdict",
+            "watcher_lease": lease_advice, "pending_red": list(dict.fromkeys(pending)), "violations": violations,
+            "unobserved_verdicts": unobserved_verdicts, "unobserved_admissions": unobserved_admissions,
+            "unobserved_intervals": unobserved_intervals, "unobserved_landings": unobserved_landings}
 
 
 def groups_at(api, root, sha):

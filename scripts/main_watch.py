@@ -1,5 +1,6 @@
 """Batched postsubmit, shared main verdict, and retained native parity truth."""
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -22,6 +23,8 @@ def history_rows(rows):
     kinds = {"green": "green", "red": "red", "manual-green": "green", "manual-revert": "green"}
     for value in rows:
         row = dict(value)
+        if row.get("kind") == "invariant_finding":
+            continue  # historical findings never alter CI admission or render truth
         if "verdict" not in row and "correction" in row:
             prior = next((r for r in reversed(result) if r["sha"] == row["sha"]), None)
             if prior is None:
@@ -192,6 +195,58 @@ def diagnose_predicate(api, tree, output, green, sha, selection, label):
     return diagnosis.returncode, answer
 
 
+def status_publication(api, color, sha):
+    try:
+        with (api.state_directory() / "main-status").open() as stream:
+            fields = stream.read().split(maxsplit=2)
+            modified = os.fstat(stream.fileno()).st_mtime
+        if fields[:2] == [color, sha]:
+            return datetime.fromtimestamp(modified, timezone.utc).isoformat()
+    except OSError:
+        pass
+    return None
+
+
+def check_watch_invariant(root, api, row, destination):
+    command = ["sh", str(Path(__file__).with_name("main-red-bounded.sh"))]
+    try:
+        result = api.command(command, cwd=root, check=False)
+        code = result.returncode
+        try:
+            report = json.loads(result.stdout)
+        except ValueError:
+            report = {"unavailable": "invalid_checker_json", "stdout": result.stdout}
+        evidence = {"exit": code, "report": report, "stderr": result.stderr, "checked_at": api.now()}
+    except OSError as error:
+        code = 127
+        evidence = {"exit": code, "unavailable": str(error), "checked_at": api.now()}
+    api.atomic_write(destination, json.dumps(evidence, sort_keys=True) + "\n")
+    if code:
+        finding = {"kind": "invariant_finding", "check": "main-red-bounded", "sha": row["sha"],
+                   "exit": code, "ended": api.now(), "log": str(destination), "evidence": evidence}
+        api.append_record("postsubmit.log", finding)
+        print(json.dumps(finding, sort_keys=True), flush=True)
+    return code
+
+
+def publish_verdict(root, api, row):
+    color = "red" if row["verdict"] == "red" else "green"
+    # Diagnosis closes admission before bisect/revert. Preserve that first write.
+    first_red = status_publication(api, "red", row["sha"]) if color == "red" else None
+    status = color + " " + row["sha"]
+    if color == "red":
+        status += " " + row["failing_test"]
+    api.atomic_write(api.state_directory() / "main-status", status + "\n")
+    row["ended"] = first_red or status_publication(api, color, row["sha"])
+    row["completed_at"] = api.now()
+    destination = api.state_directory() / "watch-checks" / (uuid.uuid4().hex + ".json")
+    row["watch_check_log"] = str(destination)
+    api.append_record("postsubmit.log", row)
+    code = check_watch_invariant(root, api, row, destination)
+    print(json.dumps(row, sort_keys=True), flush=True)
+    return code or int(color == "red")
+
+
 def one(root, api):
     api.git("fetch", "origin", "main", cwd=root)
     sha = api.git("rev-parse", "origin/main", cwd=root)
@@ -204,12 +259,9 @@ def one(root, api):
         previous = history[-1]
         record = dict(previous, sha=sha, started=api.now(), ended=api.now(),
                       carried_from=last, skipped="records_only")
-        api.append_record("postsubmit.log", record)
-        status = f'{record["effective_verdict"]} {sha}'
         if record["effective_verdict"] == "red":
-            status += " " + record["failing_test"]
-        api.atomic_write(api.state_directory() / "main-status", status + "\n")
-        return 0 if record["effective_verdict"] == "green" else 1
+            record["verdict"] = "red"
+        return publish_verdict(root, api, record)
     work = root / "scratchpad/landing-watch"
     work.mkdir(parents=True, exist_ok=True)
     tree = work / "tree"
@@ -282,7 +334,8 @@ def one(root, api):
                 if survivor is not None:
                     selection, failure = survivor, survivor["name"]
                     record.update(failing_test=failure, test_selector=selection["selector"])
-                    api.atomic_write(api.state_directory() / "main-status", f"red {sha} {failure}\n")
+                    if status_publication(api, "red", sha) is None:
+                        api.atomic_write(api.state_directory() / "main-status", f"red {sha} {failure}\n")
                     if not green:
                         record["diagnostic_error"] = "no_last_green"
                         break
@@ -325,11 +378,7 @@ def one(root, api):
             record.update(verdict=verdict, initial_exit=record["exit"], exit=code,
                           ended=api.now(), failing_test=failure)
         record["native_retained"] = record["full_checks_passed"]
-        api.atomic_write(api.state_directory() / "main-status",
-                         f"{verdict} {sha}" + (" " + failure if verdict == "red" else "") + "\n")
-        api.append_record("postsubmit.log", record)
-        print(json.dumps(record, sort_keys=True), flush=True)
-        return 0 if verdict == "green" else 1
+        return publish_verdict(root, api, record)
     finally:
         # Only our newly-created detached checkout. Keep its target for the next
         # batch and all command output in the machine-wide evidence directory.
@@ -361,10 +410,7 @@ def run(arguments, api):
             raise api.Refusal("manual_revert_requires_a_landed_revert")
         row = {"sha": sha, "verdict": "manual-green" if args.manual_green else "manual-revert",
                "manual": True, "evidence": args.evidence, "ended": api.now(), "full_checks_passed": False}
-        api.append_record("postsubmit.log", row)
-        api.atomic_write(api.state_directory() / "main-status", "green " + sha + "\n")
-        print(json.dumps(row, sort_keys=True))
-        return 0
+        return publish_verdict(root, api, row)
     with Lease(api):
         while True:
             code = one(root, api)

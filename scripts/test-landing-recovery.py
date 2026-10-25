@@ -5,6 +5,7 @@ landing state. Predicate executables are deterministic fixture processes.
 """
 import importlib.util
 import json
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import shlex
@@ -56,10 +57,26 @@ raise SystemExit(int(pathlib.Path('bad').exists()))
             self.repo.write("bad", "failure\n")
         return self.repo.commit(subject)
 
+    def fixture_time(self, sha):
+        chain = fixtures.run("git", "rev-list", "--first-parent", "--reverse", self.repo.remote_head(), cwd=self.repo.root).splitlines()
+        return (datetime(2020, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=chain.index(sha) * 100)).isoformat()
+
     def publish(self):
         fixtures.run("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo.root)
+        chain = fixtures.run("git", "rev-list", "--first-parent", "--reverse", self.repo.remote_head(), cwd=self.repo.root).splitlines()
+        path = self.repo.state / "landings.log"
+        known = {row["sha"]: row for row in map(json.loads, path.read_text().splitlines())} if path.exists() else {}
+        rows = [known.get(sha, {"sha": sha, "base": chain[n - 1] if n else None, "timestamp": self.fixture_time(sha)}) for n, sha in enumerate(chain)]
+        path.write_text("".join(json.dumps(row) + "\n" for row in rows))
 
     def logs(self, rows):
+        for row in rows:
+            if "verdict" in row:
+                try:
+                    published = datetime.fromisoformat(self.fixture_time(row["sha"])) + timedelta(seconds=1)
+                    row.setdefault("ended", published.isoformat())
+                except ValueError:
+                    pass  # malformed/foreign references are exercised by the real checker
         (self.repo.state / "postsubmit.log").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
     # keeps: spec landing.md §6 — three reruns, first-parent bisect, caller unchanged.
@@ -163,6 +180,7 @@ fn unrelated() { panic!("must not run"); }
         self.publish()
         (self.repo.state / "main-status").write_text(f"red {culprit} exact_test\n")
         before = fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        admissions = (self.repo.state / "landings.log").read_text().splitlines()
         result = self.command("revert", culprit)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         answer = json.loads(result.stdout)
@@ -173,7 +191,10 @@ fn unrelated() { panic!("must not run"); }
         self.assertTrue(fixtures.run("git", "show", "-s", "--format=%s", reverted, cwd=self.repo.root).startswith("Revert"))
         self.assertEqual(fixtures.run("git", "diff", self.base, reverted, "--", "crates/c/src/lib.rs", cwd=self.repo.root), "")
         self.assertEqual(fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root), before)
-        self.assertEqual(len((self.repo.state / "landings.log").read_text().splitlines()), 1)
+        after = (self.repo.state / "landings.log").read_text().splitlines()
+        self.assertEqual(after[:-1], admissions)
+        self.assertEqual(json.loads(after[-1])["sha"], reverted)
+        self.assertEqual(json.loads(after[-1])["base"], culprit)
 
     # keeps: spec landing.md §6 — an inseparable batch can be reverted newest first.
     def test_whole_batch_reverts_through_the_same_landing_path(self):
@@ -252,6 +273,7 @@ fn unrelated() { panic!("must not run"); }
         red = self.change("second record", path=".bboxy/fixture.md")
         self.publish()
         (self.repo.state / "main-status").write_text(f"red {red} parity:fixture\n")
+        admissions = (self.repo.state / "landings.log").read_text()
         for revision in (self.base + ".." + red, red):
             with self.subTest(revision=revision):
                 result = self.command("revert", revision)
@@ -263,7 +285,7 @@ fn unrelated() { panic!("must not run"); }
                 self.assertEqual(self.repo.remote_head(), red)
                 self.assertEqual(fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root), red)
                 self.assertFalse((self.repo.state / "reverts").exists())
-                self.assertFalse((self.repo.state / "landings.log").exists())
+                self.assertEqual((self.repo.state / "landings.log").read_text(), admissions)
                 self.assertEqual(fixtures.run("git", "branch", "--list", "landing-revert-*", cwd=self.repo.root), "")
                 trees = fixtures.run("git", "worktree", "list", "--porcelain", cwd=self.repo.root)
                 self.assertEqual(trees.count("worktree "), 1)
@@ -278,6 +300,130 @@ fn unrelated() { panic!("must not run"); }
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(json.loads(result.stdout)["violations"],
                          [{"sha": lab, "reason": "non_revert_while_red", "red": red}])
+
+    # keeps: invariant main-red-bounded — B admitted before A's red publication is legitimate.
+    def test_code_landed_during_ci_precedes_red_publication(self):
+        red = self.change("A regression")
+        during = self.change("B landed while CI ran", path="crates/b/src/lib.rs")
+        self.publish()
+        fixtures.run("git", "revert", "--no-edit", red, cwd=self.repo.root)
+        self.publish()
+        published = (datetime.fromisoformat(self.fixture_time(during)) + timedelta(seconds=1)).isoformat()
+        self.logs([{"sha": self.base, "verdict": "green"}, {"sha": red, "verdict": "red", "ended": published, "culprit": red}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "held")
+        self.assertEqual(answer["violations"], [])
+        self.assertEqual(answer["unobserved_admissions"], [])
+
+    # keeps: invariant main-red-bounded — code after publication is rejected; pre-publication code is not.
+    def test_only_code_admitted_after_red_publication_is_a_violation(self):
+        red = self.change("A regression")
+        during = self.change("B before red", path="crates/b/src/lib.rs")
+        bad = self.change("C while known red", path="crates/a/src/lib.rs")
+        self.publish()
+        published = (datetime.fromisoformat(self.fixture_time(during)) + timedelta(seconds=1)).isoformat()
+        self.logs([{"sha": self.base, "verdict": "green"}, {"sha": red, "verdict": "red", "ended": published, "culprit": red}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["violations"],
+                         [{"sha": bad, "reason": "non_revert_while_red", "red": red}])
+
+    # keeps: invariant main-red-bounded — a cut's base binds every corrective commit to one admission.
+    def test_one_landing_can_contain_multiple_ordered_corrective_commits(self):
+        first = self.change("first regression", path="crates/a/src/lib.rs")
+        red = self.change("second regression", path="crates/b/src/lib.rs")
+        self.publish()
+        fixtures.run("git", "revert", "--no-edit", red, cwd=self.repo.root)
+        first_revert = fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        fixtures.run("git", "revert", "--no-edit", first, cwd=self.repo.root)
+        tip = fixtures.run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        self.publish()
+        path = self.repo.state / "landings.log"
+        rows = [row for row in map(json.loads, path.read_text().splitlines()) if row["sha"] not in (first_revert, tip)]
+        rows.append({"sha": tip, "base": red, "timestamp": self.fixture_time(tip)})
+        path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        self.logs([{"sha": self.base, "verdict": "green"}, {"sha": red, "verdict": "red", "revert_range": self.base + ".." + red}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "held")
+        self.assertEqual(answer["unobserved_admissions"], [])
+
+    # keeps: invariant main-red-bounded — missing admission evidence is unobserved, not a violation.
+    def test_missing_landing_time_is_named_without_inventing_a_violation(self):
+        red = self.change("regression")
+        unknown = self.change("admission not recorded", path="crates/a/src/lib.rs")
+        self.publish()
+        path = self.repo.state / "landings.log"
+        rows = [row for row in map(json.loads, path.read_text().splitlines()) if row["sha"] != unknown]
+        path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        self.logs([{"sha": self.base, "verdict": "green"}, {"sha": red, "verdict": "red", "culprit": red}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "pending")
+        self.assertEqual(answer["unobserved_admissions"], [unknown])
+        self.assertEqual(answer["violations"], [])
+
+    # keeps: invariant main-red-bounded — missing coverage is advice, not a red.
+    def test_uncovered_advice_lists_only_code_after_the_existing_coverage_point(self):
+        covered = self.change("covered code")
+        self.change("record only", path=".bboxy/fixture.md")
+        code = self.change("uncovered code")
+        lab = self.change("uncovered lab", path="lab/web/fixture.js")
+        self.publish()
+        self.logs([{"sha": covered, "verdict": "green"}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "held")
+        self.assertEqual(answer["covered_through"], covered)
+        self.assertEqual(answer["uncovered"], [code, lab])
+        self.assertEqual(answer["uncovered_count"], 2)
+        self.assertEqual(answer["violations"], [])
+
+    # keeps: invariant main-red-bounded — a bootstrap has no invented coverage baseline.
+    def test_bootstrap_advice_names_unobserved_coverage_and_a_missing_lease(self):
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "pending")
+        self.assertIsNone(answer["covered_through"])
+        self.assertIsNone(answer["uncovered"])
+        self.assertIsNone(answer["uncovered_count"])
+        self.assertEqual(answer["uncovered_reason"], "no_postsubmit_yet")
+        self.assertIsNone(answer["watcher_lease"]["age_seconds"])
+        self.assertIn("unavailable", answer["watcher_lease"])
+
+    # keeps: invariant main-red-bounded — unusable timing metadata cannot create a red.
+    def test_unusable_clock_metadata_is_unobserved_advice(self):
+        self.publish()
+        self.logs([{"sha": self.base, "verdict": "green", "started": None, "ended": {}}])
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "pending")
+        self.assertEqual(answer["uncovered_count"], 0)
+        self.assertIsNone(answer["watcher_lease"]["longest_recorded_run_seconds"])
+        self.assertEqual(answer["violations"], [])
+
+    # keeps: invariant main-red-bounded — lease metadata and completed-run duration stay advisory.
+    def test_lease_age_and_longest_run_are_reported_without_changing_the_gate(self):
+        self.publish()
+        self.logs([{"sha": self.base, "verdict": "green", "started": "2020-01-01T00:00:00Z", "ended": "2020-01-01T00:01:30Z"}])
+        lease = self.repo.state / "main-watch.lock"
+        lease.mkdir()
+        os.utime(lease, (900000000, 900000000))  # fixed old metadata, no waits or timing deadline
+        result = self.command("main-red-bounded")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        answer = json.loads(result.stdout)
+        self.assertEqual(answer["status"], "held")
+        self.assertEqual(answer["uncovered_count"], 0)
+        self.assertEqual(answer["watcher_lease"]["longest_recorded_run_seconds"], 90.)
+        self.assertGreater(answer["watcher_lease"]["age_seconds"], 90.)
+        self.assertEqual(answer["violations"], [])
 
     # keeps: invariant main-red-bounded — records may land, ordinary code may not.
     def test_red_interval_allows_records_and_revert_then_rejects_code(self):

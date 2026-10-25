@@ -1041,7 +1041,7 @@ def land(gate_log=None):
                     if git("rev-parse", "origin/main", cwd=root) == base:
                         raise Refusal("push_failed: " + pushed.stderr)
                     continue
-            landing = {"sha": sha, "timestamp": now(), "author_key": key, "author": email,
+            landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": key, "author": email,
                        "tier": proof.get("tier", data["tier"]), "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch}

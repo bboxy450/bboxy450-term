@@ -109,7 +109,7 @@ class Repository:
                                 RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
         self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
         for name in ("landing.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
-                     "main_watch.py", "main-watch.sh"):
+                     "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
             shutil.copy2(SOURCE.with_name(name), target)
@@ -715,6 +715,7 @@ class LandTests(unittest.TestCase):
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertEqual(record["tier"], "wide")
         self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["base"], self.repo.base)
         self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
 
     def test_wide_wrong_sha_log_is_refused_without_push_or_fallback(self):
@@ -1010,6 +1011,10 @@ if c.get('unresolved'):
 answer=c.get('diagnoses',{}).get(selector,c.get('diagnosis',{'verdict':'culprit','culprit':'f'*40}))
 if answer.get('verdict')=='flake':
  answer.setdefault('trials',[{'sha':sys.argv[2],'attempt':n,'exit':0} for n in (1,2,3)])
+if c.get('red_publication'):
+ status=s/'main-status'
+ status.write_text('red '+sys.argv[2]+' fixture_failed\\n')
+ os.utime(status,(c['red_publication'],c['red_publication']))
 print(json.dumps(answer))
 PY
 ''')
@@ -1029,6 +1034,42 @@ PY
         sha = self.repo.commit("Fixture main movement")
         run("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo.root)
         return sha
+
+    # keeps: invariant main-red-bounded — historical failure never turns green CI into red admission.
+    def test_watch_finding_is_separate_from_green_ci_and_never_reverted(self):
+        self.repo.write("scripts/main-red-bounded.sh", "#!/bin/sh\nprintf '%s\\n' '{\"status\":\"violated\",\"violations\":[{\"reason\":\"fixture\"}]}'\nexit 1\n")
+        sha = self.repo.commit("Fixture historical watch violation")
+        run("git", "push", "-q", "origin", "HEAD:main", cwd=self.repo.root)
+        result = self.watch()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        rows = [json.loads(line) for line in (self.repo.state / "postsubmit.log").read_text().splitlines()]
+        self.assertEqual(rows[0]["verdict"], "green")
+        self.assertTrue(rows[0]["full_checks_passed"])
+        self.assertEqual(rows[1]["kind"], "invariant_finding")
+        self.assertEqual(rows[1]["exit"], 1)
+        self.assertEqual(rows[1]["sha"], sha)
+        self.assertEqual(rows[1]["evidence"]["report"]["status"], "violated")
+        self.assertEqual((self.repo.state / "main-status").read_text(), "green " + sha + "\n")
+        self.assertTrue((self.repo.state / "parity-last-green").is_file())
+        self.assertFalse((self.repo.state / "reverted").exists())
+        self.assertFalse((self.repo.state / "culprit-calls").exists())
+        self.assertEqual(self.watch().returncode, 0)  # a finding is not a verdict or retry trigger
+
+    # keeps: invariant main-red-bounded — every new verdict links a completed watch check.
+    def test_full_carried_and_manual_verdicts_each_record_the_watch_check(self):
+        self.seed_green()
+        self.publish(".bboxy/fixture.md")
+        self.assertEqual(self.watch().returncode, 0)
+        sha = self.repo.remote_head()
+        result = self.repo.cli("main-watch", "--manual-green", sha, "--evidence", "fixture hand call")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        rows = [json.loads(line) for line in (self.repo.state / "postsubmit.log").read_text().splitlines()]
+        verdicts = [row for row in rows if "verdict" in row]
+        self.assertEqual(len(verdicts), 3)
+        for row in verdicts:
+            report = json.loads(Path(row["watch_check_log"]).read_text())
+            self.assertEqual(report["exit"], 0)
+        self.assertEqual(verdicts[-1]["verdict"], "manual-green")
 
     def test_green_keeps_native_set_and_same_main_runs_once(self):
         self.seed_green()
@@ -1051,12 +1092,16 @@ PY
     def test_red_closes_main_and_invokes_culprit_then_revert(self):
         self.seed_green()
         sha = self.publish("crates/c/src/lib.rs")
-        (self.repo.state / "watch.json").write_text('{"fail":true}')
+        (self.repo.state / "watch.json").write_text('{"fail":true,"red_publication":946684800}')
         result = self.watch()
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertEqual((self.repo.state / "main-status").read_text(), "red " + sha + " fixture_failed\n")
         self.assertEqual((self.repo.state / "reverted").read_text().strip(), "f" * 40)
         self.assertEqual((self.repo.state / "culprit-selector").read_text().strip(), "test:cargo:c:test/fixture:fixture_failed")
+        rows = [json.loads(line) for line in (self.repo.state / "postsubmit.log").read_text().splitlines()]
+        red = next(row for row in rows if row.get("verdict") == "red")
+        self.assertEqual(red["ended"], "2000-01-01T00:00:00+00:00")
+        self.assertNotEqual(red["completed_at"], red["ended"])
 
     # keeps: landing.md §6 — postsubmit retains the failing non-Cargo predicate.
     def test_invariant_failure_selects_the_named_gate(self):
