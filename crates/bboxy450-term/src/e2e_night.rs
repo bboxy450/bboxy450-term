@@ -69,11 +69,11 @@ async fn night(
     scripts: &[(String, PathBuf)],
     records: Option<PathBuf>,
 ) -> Result<bool, String> {
-    let root = tempfile::Builder::new()
+    let temporary = tempfile::Builder::new()
         .prefix("e2en")
         .tempdir_in(std::env::var_os("TMPDIR").map_or_else(std::env::temp_dir, PathBuf::from))
         .map_err(|e| e.to_string())?;
-    let root = root.path().canonicalize().map_err(|e| e.to_string())?;
+    let root = temporary.path().canonicalize().map_err(|e| e.to_string())?;
     // First line: the night's private root, so a caller that stops the night at a bound can
     // stop every app under it by its own endpoint (invariant #283).
     println!(
@@ -85,6 +85,7 @@ async fn night(
     let mut total = 0;
     let mut verdicts = Vec::new();
     let mut partial = Vec::new();
+    let mut failed = false;
     for (id, script) in scripts {
         total += 1;
         // Each promise gets its own app and run directory: one script's damage (a killed
@@ -111,6 +112,7 @@ async fn night(
         } else if !cover.0 {
             partial.push(id.clone());
         }
+        failed |= verdict == "fail";
         println!(
             "{}",
             json!({ "kind": "e2e", "group": group, "function": id, "verdict": verdict,
@@ -137,11 +139,15 @@ async fn night(
     } else {
         "red"
     };
+    // Preserve failed evidence at its original private paths. App shutdown and
+    // the unattended wrapper still stop owners; retention keeps files only.
+    // Missing scripts/partial coverage alone do not retain these private accounts.
+    let kept = (failed || !unwritten.is_empty()).then(|| temporary.keep());
     println!(
         "{}",
         json!({ "kind": "summary", "group": group, "state": state,
             "passed": total - red.len(), "total": total, "red": red, "partial": partial,
-            "tracked": tracked, "unwritten": unwritten })
+            "tracked": tracked, "unwritten": unwritten, "kept": kept })
     );
     Ok(state != "red")
 }

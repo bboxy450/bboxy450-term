@@ -92,6 +92,16 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
         assert_eq!(verdict(id), "untested", "{id}");
     }
     let summary = lines.last().unwrap();
+    let kept = std::path::PathBuf::from(summary["kept"].as_str().expect("failed run retained"));
+    assert_eq!(
+        std::fs::metadata(&kept).unwrap().permissions().mode() & 0o077,
+        0
+    );
+    assert!(
+        std::fs::read_to_string(kept.join("T2/work/output.log"))
+            .unwrap()
+            .contains("FAIL: the fixture says no")
+    );
     assert_eq!(summary["kind"], "summary");
     assert_eq!(summary["state"], "red");
     assert_eq!(summary["passed"], 2);
@@ -197,4 +207,21 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
         "one fix task and one cover task across both nights"
     );
     assert!(record("T2").contains("updated_by:"), "{}", record("T2"));
+    let kept_again = String::from_utf8_lossy(&again.stdout)
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|line| line["kind"] == "summary")
+        .unwrap()["kept"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(kept, std::path::Path::new(&kept_again));
+    assert!(
+        std::path::Path::new(&kept_again)
+            .join("T2/work/output.log")
+            .is_file()
+    );
+    // These are the two roots the test's own child nights retained, not shared state.
+    std::fs::remove_dir_all(kept).unwrap();
+    std::fs::remove_dir_all(kept_again).unwrap();
 }
