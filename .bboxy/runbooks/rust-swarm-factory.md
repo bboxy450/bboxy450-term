@@ -22,7 +22,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[ctl-cli]]", rel: builds-on }
 created: "2026-10-25T18:10:21Z"
-updated: "2026-10-25T19:44:27Z"
+updated: "2026-10-25T21:02:47Z"
 ---
 # Runbook: a Rust software factory run by an agent swarm
 
@@ -118,6 +118,7 @@ Written down because each cost a correction.
 4. **The Architect's pane runs no heavy build.** Verifying a flag fix by running the full invariants script compiled the workspace without a gate slot while three gates ran, and left four gigabytes in the worktree. The records gate is the only build that pane runs.
 5. **Zoom out before any loop.** A second identical failure makes the premise the problem; a third identical run is forbidden; a passed gate nobody consumed is cost; several results from one neighbourhood mean diverge before selecting. Said in one line before acting.
 6. **Judgement is flagged as judgement.** A hypothesis ("a foreign reaper sent that SIGKILL") goes to the Oracle labelled as such, with what would confirm it, not as a ruling. It was wrong, the app's own fence had done it, and the rule it prompted was still right.
+7. **Three narrowing patches to one rule mean the rule's premise is wrong.** On 2026-10-25 the presubmit's single 15-minute bound killed five cuts with no assertion failing; the Architect answered with a wide tier, then a cold-compile exception, then a widened cold-compile exception, each correct for the case in front of it. Creativity's zoom-out named the premise: one clock over compile and run measures cache state, not cut size. The fix was two clocks, a run bound and a build cap, and the patches were withdrawn. When the third exception is being written, stop and name what the rule is actually measuring.
 
 ### 10. Creativity: diverge first
 
