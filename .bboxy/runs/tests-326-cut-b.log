@@ -312,3 +312,71 @@ Source cd4e675a571695904f61cf1fd6d285e68ac616f2, signature verified G /9B07E8494
 }
 
 Raw per-command metadata, complete logs and hashes: loaded-01-* through loaded-10-* under the raw root above; loaded-progress.json contains both builder-liveness flags for every command. The night script now sources cache-env.sh after entering the worktree and setting its explicit fixture environment, per #325. No Rust source changed after the loaded run. Boundary checks, strict Clippy and landing remain outstanding.
+
+Final development verification
+
+{"command": ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"], "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "exit": 0, "label": "strict-workspace-1", "log_sha256": "ab68e933a0d16afcae153a12cd360d1cc86b47032eebc5b22aa9198cada2ad5c", "pgid": 9671, "pid": 9671, "results": [], "seconds": 227.8745440839557, "source": "834af373b0ee66b2db0ec3684be5edb63c53155d", "start_utc": "2026-10-25T21:14:38.404692+00:00"}
+{"command": ["sh", "scripts/night-test-boundaries.sh"], "diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "exit": 0, "label": "night-boundaries-final", "log_sha256": "40a666d161c21f4b2bb340339755786fcb5385f6845289d17d067a7816a43aca", "pgid": 42544, "pid": 42544, "results": ["test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 45.50s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 64.16s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 10 filtered out; finished in 30.17s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 30.21s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 12.61s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.31s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 16.40s", "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 30.26s"], "seconds": 285.6361990830046, "source": "834af373b0ee66b2db0ec3684be5edb63c53155d", "start_utc": "2026-10-25T21:19:28.572129+00:00"}
+
+Retained night script: all8 exact boundary invocations passed (each1 passed/0 failed), including the existing64MiB hash+10k flood/Exit and lifecycle cases, both actual30s recovery paths, actual10s Git observation, GUI custody/echo and messaging, and the20MiB raw hash/seal/replay/producer guard. No body assertions removed. These are manual executions of the night-tier script, not a controlled night performance cohort.
+
+{
+  "path": "crates/bbt-mux/tests/common/capture_priority.rs",
+  "all_original_assertion_macros_equal_as_multiset": true,
+  "assertions": 14,
+  "fixture_bytes_before": 13107200,
+  "fixture_bytes_after": 2097152
+}
+
+{
+  "pid": 78847,
+  "pgid": 78847,
+  "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-1/tree",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-1/target",
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-1/build.log",
+  "command": "cargo test -p bbt-mux --locked --lib --no-run",
+  "jobs": 2,
+  "exit": 0,
+  "sha256": "575a3fd7495a5a3a61b88136413e762827937032a62c69d5aa93c81b401ff766"
+}
+
+{
+  "pid": 79074,
+  "pgid": 79074,
+  "tree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-2/tree",
+  "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-2/target",
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-2/build.log",
+  "command": "cargo test -p bbt-mux --locked --lib --no-run",
+  "jobs": 2,
+  "exit": 0,
+  "sha256": "cfe36b8971939089c1c02c7863e16a56cf75d6ca227322573afdef4309fd9404"
+}
+
+{
+  "utc": "2026-10-25T21:19:27.974319+00:00",
+  "before_free_bytes": 25791369216,
+  "after_free_bytes": 30907604992,
+  "removed": [
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-1/target",
+      "allocated_bytes": 705990656
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-1/tree",
+      "allocated_bytes": 159236096
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-2/target",
+      "allocated_bytes": 707497984
+    },
+    {
+      "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326b-iwp69qwm/load-builder-2/tree",
+      "allocated_bytes": 159236096
+    }
+  ],
+  "df_delta": 5116235776
+}
+
+Only1,731,960,832 allocated bytes of own copies/targets were retired; concurrent host cleanup explains the larger df delta. Own main target is retained for landing, no other agent target touched.
+
+Strict workspace/all-target Clippy EXIT0. sh -n and git diff --check EXIT0. Both mutation controls are expected101, all subsequent restored checks green. The normal landing/presubmit is still outstanding at this evidence commit; full #327 inventory/dispositions and the owned provider_gui quarantine remain follow-up work. #326 is not activated by this cut.
