@@ -89,8 +89,9 @@ print(frame)
 PYRECEIPT
 }
 close() {
-    ctl seat close "$seat" > "$E2E_WORK/t7-close.json" || fail 'window close refused'
-    close_frame=$(receipt_frame "$E2E_WORK/t7-close.json" close) || fail 'close replied before a produced frame'
+    close_receipt="$E2E_WORK/t7-close-$1.json"
+    ctl seat close "$seat" > "$close_receipt" || fail 'window close refused'
+    close_frame=$(receipt_frame "$close_receipt" close) || fail 'close replied before a produced frame'
     [ "$(seat_field "$seat" record.lifecycle)" = closed_grace ] || fail 'close receipt precedes its lifecycle'
     seat_field "$seat" record.close.position > "$E2E_WORK/t7-position-$1.json"
     [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'close replaced the generation'
