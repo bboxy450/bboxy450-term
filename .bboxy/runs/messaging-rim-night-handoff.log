@@ -1,0 +1,35 @@
+Aster Cinderwing <EXECUTOR> — M1/M2/M6, R2/R4 night scripts
+Oracle brief b45f8c30-bfa7-4778-8502-707d668a84c2; fixture/M2 ruling25117cf9; R2/R4 unclaimed confirmed Velvetd47ee5c1 and claimedf674673a. Worktree /Users/feral/mydev/bboxy450-term-exec4, branch aster-messaging-night. No product, renderer, accepted rim_clock helper, or peer script edits.
+
+EXACT SOURCE a93f5a34a0f62a6ae47591f4d3ceb104e3103ec1 (signed), tested base7bb2d99edb2e9dcd0bdf89d03d6609ce2713dafc. This handoff is an evidence-only successor; authored scripts/spec were not changed after the exact gate.
+NORMAL sh scripts/ci-local.sh in the clean detached ci-a93f5a34, own target, atomic slot1, direct compiler, O1/debug assertions, no debuginfo/incremental, CARGO_BUILD_JOBS=2 and debug memory custody: EXIT0 /1968.325257s. Actual final line: ci-local: all gates passed.
+Raw CI SHA256fb12c0f156560fe66d569939ad1d892adce2d062c32659e315486734d39fd5aa; committed messaging-rim-night-exact-ci.log. Workspace1474 passed/0 failed/29 ignored, strict lint0/UI lint0, headless19/0. Idle memory smoke0 frames/0 callbacks/10.003s/windows0, orderly children reaped. Default invariants26/0,8 named slow skips. No performance/scale or new parity claim: product/render/helper bytes were untouched by this branch.
+Retained exact executable gated-a93f5a34/bin/bboxy450-term:55,515,584bytes, SHA25645bbf8a715ccd0bee86b3f2085ecbd9c0accc9d9f4904056d66dd1c4bf88a83a; hash unchanged after both nights.
+
+Mechanisms
+scripts/e2e/message_agent.py:1 — deterministic Python in real ctl-spawned zsh seats calls only its inherited admitted MCP bridge and returns raw JSON-RPC; no model verdict, credential read or second app.
+scripts/e2e/messaging.py:28 — bounded ctl requests; raw public requests/replies retained, real seat-MCP routing/inbox/ACK setup. :141 independently verifies operator=author=device with OpenSSL and retained signed bytes/public key/signature.
+scripts/e2e/messaging.py:174 — M1 DM/channel/swarm exact receipt and addressed inbox sets, no cross-swarm leak, explicit app ACK, replay and retained event/journal evidence. Composer remains untested.
+scripts/e2e/messaging.py:217 — M2 validates matching/nonmatching role grants, then fails missing_composer_role_control per Oracle ruling; no per-seat loop substitutes for grouped role-chip fanout or the above-32 refusal.
+scripts/e2e/messaging.py:231 — M6 keeps group/channel contexts separate, holds group traffic on recipient mute, checks the distinct direct-operator exception, preserves both classes/priorities through unmute and explicit ACK. Native/automatic priority scheduling remains untested.
+scripts/e2e/rim_more.py:10 — R2 uses actual Settings keyboard controls at2/4/8 and captures produced stages; asserts gutters2/4/8, every stage inset1/2/4, stable title/sidebar and content padding.
+scripts/e2e/rim_more.py:65 — R4 uses real split headers and actual row activity/focus, shared accepted UI clock, independent row/tab halo samples excluding each other and the pane/other active rim. :127 and :130 name the sample rectangles. Idle unfocused standalone row is stable without a sharp resting rim; focus swell settles after900 virtual ms with unchanged pane geometry. Card control is absent, so cards remain unproven.
+.bboxy/specs/e2e-script-map.md:44 — canonical headers match own five rows; preserved accepted R1/R3/R5 and M3/M4/M5 rows. No production task number invented; fixture tracking tasks are not production work.
+
+Exact-binary script verdicts (all separate file-account headless apps, windows0)
+M1 EXIT0 / pass / partial: from the composer missing.
+M2 EXIT1 / fail / partial: missing_composer_role_control; grouped role fanout/one send/above-32 refusal unproven (approved unavailable result).
+M6 EXIT0 / pass / partial: priority delays, never deletes remains the missing promise clause; tested retention is stated separately.
+R2 EXIT0 / pass / full: all four insets and gutters at2/4/8.
+R4 EXIT0 / pass / partial: cards missing. Active row/tab rim samples changed213/225pixels; independently isolated row/tab focus samples changed832/16pixels at450ms, zero at900ms, geometry unchanged. Actual PNGs inspected.
+The selected messaging wrapper directory intentionally omits M3/M4/M5; the selected rim directory omits R1/R3/R5/R6. Therefore enclosing groups are RED/EXIT1 (17.340514s and14.895203s), not full-group green. All own supplied script assertions have the verdicts above; no peer-script pass claimed.
+Every app was started/stopped by the runner using its own file-custody test account. No operator identity, Keychain, NSWindow, desktop input or extra GUI event consumer. Fifteen recorded final app/backend PIDs independently absent (ps EXIT1/no rows). Private kept messaging fixture remains for journal inspection; no credential files copied.
+
+Verification and failures retained
+Shell syntax, Python AST and own five header/map pairs held. Scoped corpus6/0, strict bbt-doc all-target Clippy0, fast invariants26/0 before slot. No workspace preflight.
+Earlier development failures are documented in messaging-rim-night-preflight.log / development.json and retained raw: wrong group name; inbox channel filter versus addressed inbox; old Settings index; one-seat tab reduction; unset idle sibling; confounded/focused static row sample; one accidental unchanged rerun after an unsaved edit. Fixed only the fixture mechanisms shown. No deadline, SLO, product or renderer workaround.
+No re-gate/rebase after main moved during the gate. Main later reached2615736c (T7 error.seat, S2/S3 and the landing spec). ui.py adds S2/S3 routines; consumed App/nodes helpers are unchanged. The new landing contract is recorded but scripts/land.sh does not yet exist on that main. This fulfills the assigned normal-gate/evidence handoff; no merge or push performed.
+
+Cleanup/provenance
+Empty lsof for the sole own target and clean checkout; retired4,282,101,760 allocated cache bytes plus158,425,088 checkout bytes. Kept exact executable,87 public artifact files/hashes, raw logs, app logs and private fixture. No inactive dev target remains from this task. Earlier merged placement galleries retired separately:13,972PNGs /556,605,440 allocated bytes, all retired hashes/manifests/reports retained and reported to Oracle494bfc79.
+Full final packet messaging-rim-night-final.json; raw root /Users/feral/mydev/bboxy450-term-exec4/scratchpad/messaging-night-20261025T072116. Prior development evidence and all original failures remain. Blank canonical tracked-by fields stay blank; no whole-night, native harness, desktop presentation or 967 timing claim.
