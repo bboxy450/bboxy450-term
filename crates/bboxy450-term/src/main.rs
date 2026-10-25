@@ -3879,17 +3879,30 @@ impl App {
                 if wait.visible.as_ref() != Some(&UiVisible::from_layout(&layout)) {
                     return Err("ui_frame_refused: a newer UI state superseded this operation before its frame".into());
                 }
-                if let Some(spawn)=&wait.spawn {
-                    let seat=spawn.seat.ok_or("ui_frame_refused: spawn target was not captured before its frame")?;
-                    let id=bbt_mux::Ulid(seat.0.0);
-                    if layout.focused!=Some(id) || !layout.panes.iter().any(|pane|pane.seat==id) {
+                if let Some(spawn) = &wait.spawn {
+                    let seat = spawn.seat.ok_or(
+                        "ui_frame_refused: spawn target was not captured before its frame",
+                    )?;
+                    let id = bbt_mux::Ulid(seat.0.0);
+                    if layout.focused != Some(id)
+                        || !layout.panes.iter().any(|pane| pane.seat == id)
+                    {
                         return Err("ui_frame_refused: produced frame does not show the spawned pane".into());
                     }
-                    layout.spawned=Some(bbt_proto::gui::UiSpawned {
-                        seat:id,op:spawn.op,swarm:bbt_mux::Ulid(spawn.captured.spec.swarm.0.0),
-                        placement:spawn.captured.spec.placement.clone().expect("explicit captured placement"),
-                        layout_revision:spawn.captured.layout_revision,
-                        applied_layout_revision:layout.layout_revision.ok_or("ui_frame_refused: frame revision is unavailable")?,
+                    layout.spawned = Some(bbt_proto::gui::UiSpawned {
+                        seat: id,
+                        op: spawn.op,
+                        swarm: bbt_mux::Ulid(spawn.captured.spec.swarm.0.0),
+                        placement: spawn
+                            .captured
+                            .spec
+                            .placement
+                            .clone()
+                            .expect("explicit captured placement"),
+                        layout_revision: spawn.captured.layout_revision,
+                        applied_layout_revision: layout
+                            .layout_revision
+                            .ok_or("ui_frame_refused: frame revision is unavailable")?,
                     });
                 }
                 Ok(layout)
@@ -4007,7 +4020,13 @@ impl App {
         let effects = self.ui_collect.take().expect("close command collection");
         self.await_ui_frame(id, effects, submitted, None);
     }
-    fn await_ui_frame(&mut self, id: bbt_mux::Ulid, effects: Vec<UiEffect>, submitted: u64, spawn: Option<UiSpawnCapture>) {
+    fn await_ui_frame(
+        &mut self,
+        id: bbt_mux::Ulid,
+        effects: Vec<UiEffect>,
+        submitted: u64,
+        spawn: Option<UiSpawnCapture>,
+    ) {
         let proxy = self.proxy.clone();
         let timer = bbt_rt::handle().spawn(async move {
             tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
@@ -8254,16 +8273,33 @@ mod spawn_admission_tests {
             location: bbt_proto::Where::Local,
         }
     }
+    fn captured() -> live::UiMsg {
+        live::UiMsg::SpawnSpec {
+            id: bbt_mux::Ulid::new(),
+            spec: Box::new(bbt_proto::SpawnSpec {
+                swarm: bbt_proto::SwarmId::from_u128(1),
+                harness_kind: "zsh".into(),
+                name: None,
+                role: None,
+                cwd: "/fixture".into(),
+                location: bbt_proto::Where::Local,
+                resume: None,
+                placement: Some(bbt_proto::seat_state::Placement::NewTab {
+                    tab: bbt_proto::TabId::from_u128(1),
+                }),
+            }),
+        }
+    }
     #[test]
     fn generic_and_legacy_spawns_share_the_same_cap() {
         let mut pending = VecDeque::new();
         for n in 0..PENDING_SPAWNS {
             queue_pending(
                 &mut pending,
-                if n % 2 == 0 {
-                    generic()
-                } else {
-                    live::UiMsg::SpawnZsh
+                match n % 3 {
+                    0 => generic(),
+                    1 => live::UiMsg::SpawnZsh,
+                    _ => captured(),
                 },
             )
             .unwrap();
@@ -8274,6 +8310,10 @@ mod spawn_admission_tests {
         );
         assert_eq!(
             queue_pending(&mut pending, live::UiMsg::SpawnZsh),
+            Err(AdmissionRefused::Spawn)
+        );
+        assert_eq!(
+            queue_pending(&mut pending, captured()),
             Err(AdmissionRefused::Spawn)
         );
         assert_eq!(pending.len(), PENDING_SPAWNS);

@@ -210,14 +210,14 @@ mod operator_tests {
     }
     #[test]
     fn captured_operator_anchor_survives_later_focus_and_revision_changes() {
-        let model = model();
+        let mut model = model();
         let mut stage = model.ui.window.stage.clone();
         let plan = operator_placement(pick(SpawnPlace::Down), &model, &stage, 19).unwrap();
         stage.focused = Some(SeatId::from_u128(3));
         let later = operator_placement(pick(SpawnPlace::Right), &model, &stage, 24).unwrap();
         assert_eq!(plan.layout_revision, 19);
         assert!(
-            matches!(plan.spec.placement,Some(Placement::Split {target,target_generation:7,tab,side:Side::Bottom}) if target==SeatId::from_u128(2)&&tab==TabId::from_u128(4))
+            matches!(plan.spec.placement.clone(),Some(Placement::Split {target,target_generation:7,tab,side:Side::Bottom}) if target==SeatId::from_u128(2)&&tab==TabId::from_u128(4))
         );
         assert!(
             matches!(later.spec.placement,Some(Placement::Split {target,side:Side::Right,..}) if target==SeatId::from_u128(3))
@@ -225,6 +225,42 @@ mod operator_tests {
         assert_eq!(plan.spec.cwd, "/chosen cwd");
         assert_eq!(plan.spec.name.as_deref(), Some("chosen name"));
         assert_eq!(plan.spec.role.as_deref(), Some("shell"));
+        // Resolve the pending request after focus moved. The published model
+        // must still split the original anchor and retain its sibling ratio.
+        let op = bbt_mux::Ulid(100);
+        model.request_spawn(op, plan.spec).unwrap();
+        model.ui.window.stage = stage;
+        let records: Vec<_> = [2, 3, 5]
+            .into_iter()
+            .map(|id| {
+                let mut record = bbt_proto::SeatRecord::new(
+                    bbt_mux::Ulid(id),
+                    bbt_mux::Ulid(1),
+                    format!("seat {id}"),
+                    "zsh",
+                );
+                if let Some(old) = model.ui.seats.get(&SeatId::from_u128(id)) {
+                    record.generation = old.process_generation;
+                }
+                record
+            })
+            .collect();
+        model.spawned(op, SeatId::from_u128(5));
+        let model = crate::model::build(&records, &crate::model::Grids::new(), &model);
+        let leaf = |id| SplitNode::Leaf(SeatId::from_u128(id));
+        assert_eq!(
+            model.ui.window.sidebar.swarms[0].tabs[0].tree,
+            SplitNode::split(
+                Axis::Row,
+                0.37,
+                SplitNode::split(Axis::Column, 0.5, leaf(2), leaf(5)),
+                leaf(3),
+            )
+        );
+        assert_eq!(
+            model.spawns[&op].outcome,
+            crate::model::SpawnOutcome::Placed(SeatId::from_u128(5))
+        );
     }
     #[test]
     fn explicit_split_never_falls_back_when_the_anchor_is_missing_or_cross_swarm() {

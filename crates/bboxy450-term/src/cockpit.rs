@@ -139,7 +139,10 @@ pub enum UiMsg {
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.
     pub fn is_spawn(&self) -> bool {
-        matches!(self, Self::Spawn { .. } | Self::SpawnZsh)
+        matches!(
+            self,
+            Self::Spawn { .. } | Self::SpawnSpec { .. } | Self::SpawnZsh
+        )
     }
 }
 

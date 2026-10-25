@@ -1,0 +1,31 @@
+Explicit ctl placements — Aster Cinderwing <EXECUTOR>, development checkpoint
+Brief ebf6fae5-29bc-4294-a09b-8cd76c2b08b9; space/revision ruling eab5e64b-525f-49e8-8c10-328e6b8045b4; spawn-frame ownership 999b48ed-e391-455a-add9-346eaf0cf86e.
+NOT AN ACCEPTANCE HANDOFF. No exact normal ci-local gate has run. Rebased implementation ad9d32c5 on accepted 0e97dc32 and the following quiet-window source review remain uncompiled while QUIET r5i-frame is active.
+
+Mechanism
+launcher.rs:14 — explicit right/down capture the GUI owner's selected tab, focused anchor and process generation once; absent or cross-swarm anchors refuse before launch. Tab and fresh swarm space use existing placement types. Requested name, role and cwd survive in the full SpawnSpec.
+proto/gui.rs:120 — UiSpawned binds the child operation/seat/swarm and captured placement to captured and applied layout revisions. Revisions are provenance; the existing model's same-tab and anchor-generation guards decide placement.
+cockpit.rs:141 — SpawnSpec participates in the ordinary shared spawn admission cap, alongside declarative and legacy launches. Static review found and corrected its initial omission; the cap regression now mixes all three forms. This follow-up has not run yet.
+main.rs:3765 — freeze the observed Placed seat before ConsumeSpawn can remove the retained model outcome. The produced-frame reply requires that exact seat to be focused and present in the encoded layout.
+main.rs:3812 — ordinary layout cache has no stale per-operation receipt; spawn receipt is added only to the operation reply after its frame. Accepted close Target.ready/shown checks remain in the shared waiter.
+main.rs:3981 — begin_ui supplies the optional captured spawn to the shared frame waiter; ordinary close passes None. No additional reader, socket or rendering path.
+launcher.rs:212 — quiet-window test strengthening carries a captured request through later focus and model publication, checking the original anchor and pre-existing 0.37 sibling ratio. Written after the earlier 3/0 run; not executed yet.
+tests/headless.rs:109 — real six-seat private file-account regression covers right/down/tab/space, sibling rectangles, captured/applied revision, idempotent retry after focus changes, cwd and an image after the placement frame.
+scripts/e2e/L2.sh:1 — consumes the runner's existing private no-window app; owns no lifecycle. Header and canonical map agree: partial; missing 'never a guessed slot'. The pending-spawn focus race has no night witness yet. No task number invented.
+
+Observed checks, before rebase (working tree on 7d4d599edc55e55307b21b952a0128b9cd30f5a5)
+Direct compiler; O1; debug assertions; no debuginfo or incremental cache. Logs retain the tracked dirty paths for each command; these are development results, not an exact-commit gate.
+cargo check -p bboxy450-term --all-targets --locked — EXIT0,9.211s; log SHA256 c209ac1051cfbecfb608da7d07faa4dc440a6bacf231706b21e41440a6534661.
+cargo test -p bboxy450-term --test headless --locked explicit_placements -- --nocapture — initial EXIT101,216.603s; unknown: ui_frame_refused: spawn is not placed. This was our receipt bug: rereading a consumed model outcome after GPU completion. Corrected by freezing the Placed target before frame wait. No deadline changed.
+Initial failing log SHA256 0a44053ec77a5cda47eae7fc3a1c004fbde8f6825e2768a38d81c153ecbf6446.
+Same focused command after correction — EXIT0,1/0,39.293s (5.59s runtime); SHA256 f2c517cffd9b3f8af97b3b48733f749704988332daf223da9cd73176b76fadc0.
+cargo test -p bboxy450-term --lib --locked operator_tests — EXIT0,3/0,45.697s; SHA256 6557263b32540e7a7143cb1f4f4e82a1253ea76cb36b1ba6f65a3a5d99c6caaf. The later full model-publication assertion is not included in this result.
+L2 shell syntax, embedded Python syntax and header/map equality were checked before quiet; no runtime/night result yet.
+
+Still owed after quiet
+Compile the rebased close/R5i union; execute the strengthened anchor and shared-cap regressions, parser/protocol tests and focused real-headless test; run the actual L2 night script; workspace tests, strict Clippy and fast invariants; then one exact normal atomic ci-local gate on current accepted main.
+R6 is a separate frozen branch aster-notification-adapter at 4a9ee9f4, with its own preflight report and an explicitly required parity gate after the GUI-store fix lands. This report does not claim R6 acceptance.
+
+Raw command logs, status hashes and process metadata:
+/Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/
+No operator identity, login Keychain, desktop input, NSWindow, scanout timing, new socket, publication or merge claimed. No owned workload remains during the quiet window.
