@@ -400,7 +400,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("app", "endpoint", "-"),
     ("app", "start", "-"),
     ("app", "status", "App"),
-    ("app", "resize", "App"),
+    ("app", "resize", "Ui"),
     ("app", "stop", "App"),
 ];
 /// The pre-grammar flat commands, kept one release as aliases (ctl-cli rev. 2, C-0).
@@ -2202,8 +2202,9 @@ fn run_verb(
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
                 .map_err(|e| e.to_string())?
         }
+        // The window replies with its first produced layout at the new size (ctl-cli §1a).
         Command::AppResize { cols, rows } => {
-            serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Resize { cols, rows })?)
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Resize { cols, rows })?)
                 .map_err(|e| e.to_string())?
         }
         Command::UiScroll { seat, motion } => {

@@ -521,6 +521,8 @@ enum UiEffect {
         state: bbt_proto::gui::UiClockState,
         landed: Option<(SeatId, Instant)>,
     },
+    /// The window has solved a layout at this logical size (`ctl app resize`).
+    Size([f32; 2]),
     Refused(String),
 }
 impl UiEffect {
@@ -1617,6 +1619,10 @@ struct App {
     ui_wait: Option<UiWait>,
     ui_focus: Option<bbt_mux::Ulid>,
     ui_collect: Option<Vec<UiEffect>>,
+    /// `ctl app resize` for the offscreen owner: the logical size its next frame takes.
+    requested_size: Option<[f32; 2]>,
+    /// The logical size the last solved layout used.
+    solved_size: [f32; 2],
     /// When the last frame was presented; a capture of it names this time.
     last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
@@ -1775,6 +1781,8 @@ impl App {
             ui_wait: None,
             ui_focus: None,
             ui_collect: None,
+            requested_size: None,
+            solved_size: [0.; 2],
             last_presented: None,
             pending_resize: None,
             animate,
@@ -4050,6 +4058,9 @@ impl App {
                     )
                 }
             }
+            UiEffect::Size([w, h]) => {
+                Ok((self.solved_size[0] - w).abs() < 1. && (self.solved_size[1] - h).abs() < 1.)
+            }
             UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
         }
     }
@@ -4397,6 +4408,21 @@ impl App {
                     )?;
                 }
             }
+            UiRequest::Resize { cols, rows } => {
+                let empty = bboxy450_term::model::Model::default();
+                let model = self.live_state.as_deref().unwrap_or(&empty);
+                let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                let target = cell_grid_size(model, cols, rows, scale);
+                if self.window.is_some() {
+                    self.pending_resize =
+                        Some(LogicalSize::new(f64::from(target[0]), f64::from(target[1])));
+                } else {
+                    self.requested_size = Some(target);
+                }
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Size(target));
+                }
+            }
             UiRequest::Open(UiTarget::Launcher) => self.open_launcher(),
             UiRequest::Open(UiTarget::Graph) => self.open_graph(),
             UiRequest::Open(UiTarget::Settings) => self.open_settings("Account"),
@@ -4550,6 +4576,7 @@ impl App {
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
         self.clock_frame = self.clock.frame();
+        self.solved_size = logical;
         self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
             Some(self.scene.conversation_layout(
                 logical,
@@ -5185,13 +5212,6 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::App(live::AppEvent::Ask { id, request }) => {
                 let empty = bboxy450_term::model::Model::default();
-                if let bbt_proto::gui::AppRequest::Resize { cols, rows } = request
-                    && let Some(window) = &self.window
-                {
-                    let model = self.live_state.as_deref().unwrap_or(&empty);
-                    let [w, h] = cell_grid_size(model, cols, rows, window.scale_factor() as f32);
-                    self.pending_resize = Some(LogicalSize::new(f64::from(w), f64::from(h)));
-                }
                 let mut status = app_status(
                     "window",
                     std::env::args().any(|a| {

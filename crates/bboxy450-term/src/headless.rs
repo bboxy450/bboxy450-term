@@ -240,11 +240,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                     }
                     UiEvent::App(live::AppEvent::Ask { id, request }) => {
-                        if let bbt_proto::gui::AppRequest::Resize { cols, rows } = request {
-                            size = crate::cell_grid_size(&model, cols, rows, 1.);
-                            gpu.resize([size[0] as u32, size[1] as u32]);
-                            dirty = true;
-                        }
                         let mut status = crate::app_status(
                             "headless",
                             unattended,
@@ -373,6 +368,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             }
                         }
                     }
+                }
+                // `ctl app resize`: the offscreen window takes the size its UI request asked for.
+                if let Some(next) = app.requested_size.take() {
+                    size = next;
+                    gpu.resize([size[0] as u32, size[1] as u32]);
+                    dirty = true;
                 }
                 if dirty && submitted == rendered {
                     app.project_scene(true);

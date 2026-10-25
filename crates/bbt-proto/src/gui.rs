@@ -52,9 +52,6 @@ pub enum AppRequest {
     Notifications,
     /// Acknowledge the request before beginning orderly app shutdown.
     Stop,
-    /// Resize the window (offscreen or real) to this grid of terminal cells; its layout then
-    /// sizes every pane's PTY, as a drag of the window edge does.
-    Resize { cols: u16, rows: u16 },
 }
 
 /// Public app readiness. No process credential or endpoint capability belongs here.
@@ -105,6 +102,12 @@ pub enum UiRequest {
         seat: Ulid,
     },
     Layout,
+    /// `ctl app resize`: the window (offscreen or real) to this grid of terminal cells; the
+    /// reply is the first produced layout at that size (ctl-cli §1a), its layout sizing panes.
+    Resize {
+        cols: u16,
+        rows: u16,
+    },
     /// Deterministic animation time, admitted only for a verified test account.
     Clock(UiClockCommand),
 }
@@ -184,6 +187,11 @@ impl UiRequest {
             }
             Self::Scroll { seat, .. } if *seat == Ulid::nil() => {
                 Err("invalid_ui_scroll: expected a seat ID")
+            }
+            Self::Resize { cols, rows }
+                if !(2..=512).contains(cols) || !(1..=256).contains(rows) =>
+            {
+                Err("invalid_ui_resize: expected 2-512 columns by 1-256 rows")
             }
             _ => Ok(()),
         }

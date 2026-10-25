@@ -1686,3 +1686,50 @@ fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {
     f.ok(&["app", "stop"]);
     f.pid = None;
 }
+
+/// ctl-cli §1a: `app resize` replies only after the first produced frame at the new size, with
+/// that frame's layout; a read or capture right after the reply needs no wait.
+#[test]
+fn app_resize_replies_with_the_first_frame_at_the_new_size() {
+    let mut f = Fixture::new();
+    f.start();
+    let seat = f.ok(&["seat", "spawn", "zsh", "--name", "only"])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let before = await_value(&f, || {
+        let row = f.ok(&["ui", "layout"]);
+        let laid_out = row["data"]["panes"]
+            .as_array()?
+            .iter()
+            .any(|pane| pane["seat"] == seat.as_str());
+        laid_out.then_some(row)
+    });
+    let row = f.ok(&["app", "resize", "100x40"]);
+    let data = &row["data"];
+    let frame = data["frame_seq"].as_u64().unwrap();
+    assert!(
+        frame > before["data"]["frame_seq"].as_u64().unwrap(),
+        "{row}"
+    );
+    assert_ne!(data["size"], before["data"]["size"], "{row}");
+    let pane = data["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|pane| pane["seat"] == seat.as_str())
+        .unwrap_or_else(|| panic!("no pane in the reply: {row}"));
+    assert!(pane["cols"].as_u64().unwrap() > 0, "{pane}");
+    // The reply's frame is current: what is read right after is that frame or a later one.
+    let after = f.ok(&["ui", "layout"]);
+    assert!(
+        after["data"]["frame_seq"].as_u64().unwrap() >= frame,
+        "{after}"
+    );
+    assert_eq!(after["data"]["size"], data["size"]);
+    let shot = f.root.path().join("resized.png");
+    f.ok(&["seat", "capture", &seat, shot.to_str().unwrap()]);
+    assert!(shot.exists());
+    let (code, rows) = f.ctl(&["app", "resize", "1x1"]);
+    assert_eq!(code, 2, "{rows:?}");
+}
