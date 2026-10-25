@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Settings in the launcher). Left nav, cards in the design-system material. Account (sign-in, root key, devices), Cloud providers, SSH machines, Roles with default system prompts and send permissions, Harnesses, Appearance, Notifications (on by default, only in the background, per harness; off greys the rest; a muted seat never notifies), Shortcuts. Rows that differ from config.toml get the dot and a reset. Read-mostly: values shown, edits are local to the demo.',
-  states: ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Shortcuts', 'in a tab'],
+  states: ['Account', 'custody · held', 'custody · unlock pending', 'custody · cancelled', 'custody · unknown', 'custody · granted', 'custody · signer returned', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Shortcuts', 'in a tab'],
   render(s, body) {
     if (s === 'in a tab') {
       const model = C.makeModel(10, 'phone');
@@ -21,6 +21,13 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
     const draft = s === 'new harness' ? { name: 'aider', command: 'aider --model sonnet', ci: 7, icon: 'zsh', role: 'executor', wake: 'pty', stateFrom: 'output cadence', hooks: false } : null;
     // notifications states pass their own values, so the page's other states keep the defaults
     const nv = s === 'notifications · off' ? { enabled: false, only_when_not_frontmost: true, disabled_harnesses: ['codex'] } : s === 'notifications · one harness off' ? { enabled: true, only_when_not_frontmost: false, disabled_harnesses: ['codex'] } : null;
-    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : s, draftHarness: draft, notifications: nv })); body.append(frame);
+    // custody states (#280, #315): the native Keychain path; a hold names itself and its two exits, then the outcome of one attempt
+    const CUS = { 'custody · held': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' } },
+      'custody · unlock pending': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' }, attempt: 'pending' },
+      'custody · cancelled': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' }, attempt: 'cancelled' },
+      'custody · unknown': { tier: 'keychain', acl: 'unknown', hold: { reason: 'Keychain interaction required' }, attempt: 'unknown', op: 'op-7f3a91c2' },
+      'custody · granted': { tier: 'keychain', acl: 'unknown', hold: { reason: 'Keychain interaction required' }, attempt: 'granted', op: 'op-7f3a91c2' },
+      'custody · signer returned': { tier: 'keychain', acl: 'designated', hold: null, attempt: 'returned', op: 'op-7f3a91c2' } }, cu = CUS[s] || null;
+    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : cu ? 'Account' : s, draftHarness: draft, notifications: nv, custody: cu })); body.append(frame);
   } });
 </script></body></html>

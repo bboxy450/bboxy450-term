@@ -1662,3 +1662,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 .e2r .e2why { color: var(--fg-dim); }
 .e2e-fault { margin-top: var(--s6); font-size: var(--t-label); color: var(--fg); } .e2e-fault b { color: var(--c-errored); font-weight: 600; }   /* a host fault: the band is red, the reason in words */
 .e2e-err { padding: var(--s8) var(--s10); border-radius: var(--r-card); background: color-mix(in srgb, var(--c-errored) 13%, var(--surface)); box-shadow: inset 5px 0 0 var(--c-errored); font-size: var(--t-row); color: var(--fg); }   /* a refused catalogue, never an empty green */
+
+/* Settings › Account › Custody (id1-seat-chain §4a, #280, #315): the hold names itself and its two exits; the outcome after an attempt */
+.settings .chip.ok { color: color-mix(in srgb, var(--c-ok) 70%, var(--fg)); } .settings .chip.warn { color: color-mix(in srgb, var(--c-waiting) 70%, var(--fg)); }
+.cu-hold { margin: var(--s5) 0 var(--s3); padding: var(--s5) var(--s6); border-radius: var(--r-row); background: color-mix(in srgb, var(--c-waiting) 12%, transparent); font-size: var(--t-row); color: var(--fg); display: grid; gap: var(--s3); }
+.cu-hold code { font-family: var(--font-mono); font-size: var(--t-small); }
+.cu-act { display: flex; }
+.cu-out { margin: var(--s3) 0; padding: var(--s3) var(--s6); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg-dim); background: var(--badge); }
+.cu-out b { color: var(--fg); font-weight: 600; }
+.cu-out.granted b { color: color-mix(in srgb, var(--c-ok) 70%, var(--fg)); } .cu-out.cancelled b, .cu-out.unknown b { color: color-mix(in srgb, var(--c-waiting) 70%, var(--fg)); }

@@ -1528,7 +1528,7 @@
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
   SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
-  // settingsPage({ section, onChange, notifications }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
+  // settingsPage({ section, onChange, notifications, custody }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
   // 'harness' with the record, null on delete. notifications: a state's own values instead of SET.notifications
   function settingsPage(opts) {
     opts = opts || {};
@@ -1551,6 +1551,7 @@
     const icon = name => ICON_SVG[name] ? harnessIcon(name) : el('span', { class: 'hicon', html: SVG[name] || '' });
     let cur = opts.section || 'Account', draftRole = null, draftHarness = opts.draftHarness || null;
     const NV = opts.notifications || SET.notifications;   // a reference state can pass its own
+    const CU = opts.custody || null;   // Account custody (#280, #315): drawn only when given, so the default Account is unchanged
     const root = el('div', { class: 'settings' });
     const nav = el('div', { class: 's-nav' });
     const q = el('input', { class: 's-q', placeholder: 'Search settings', type: 'search' });
@@ -1582,6 +1583,28 @@
         const a = SET.account, d = SET_DEF.account;
         const trust = el('div', { class: 'trust' }, el('span', { class: 'k' }, 'trust path'));
         a.trust.forEach((t, i) => { if (i) trust.append(el('span', { class: 'arrow' }, '→')); trust.append(chip(t)); });
+        // device-key custody (id1-seat-chain §4a, #280, #315), first when given (a hold is the thing to see): tier, the item's ACL, the hold and its two exits. Unlock is shown only while
+        // held: one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns; the act is journaled first,
+        // signature pending. No device secret or device ID is shown (public status hides it under a hold).
+        if (CU) {
+          const TIER = { keychain: 'login Keychain · native', file: 'file · test account', 'local-dev': 'local-dev issuer' };
+          const ACL = { designated: 'keyed to the team-signed requirement (UQB3368A84), verified · every build keeps access', legacy: 'keyed to one build’s signature · migrates during the one unlock', unknown: 'unknown until verified' };
+          const SAY = { pending: ['waiting for the macOS Keychain dialog', 'act journaled on account/control · signature pending'], cancelled: ['you cancelled the macOS dialog', 'signing still held · the no-dialog default is back · Unlock again to retry'],
+            unknown: ['no answer from the Keychain', 'signing still held · the result is kept under op ' + (CU.op || '—') + ' · Check result reads it, never reopens the dialog'],
+            granted: ['macOS granted access', 'signature pending until the device signer returns · the pending entry stays as written'],
+            returned: ['the device signer returned', 'signing ready · a device-signed completion links to the pending entry ' + (CU.op || '')] };
+          // #315: the pending envelope is immutable; a grant alone proves no signer, so signing stays held (pending) until one returns
+          const held = !!CU.hold, at = CU.attempt && SAY[CU.attempt];
+          add('Account', card('Custody', [
+            row('Device key', 'where the device leaf key lives', chip(TIER[CU.tier] || CU.tier)),
+            row('Access rule', 'the Keychain item’s ACL', chip(ACL[CU.acl] || CU.acl, CU.acl === 'designated' ? 'ok' : 'warn')),
+            row('Signing', held ? 'held, fail closed; the terminal keeps running' : 'available', chip(held ? (CU.attempt === 'granted' ? 'signature pending' : 'held') : 'ready', held ? 'warn' : 'ok')),
+            held ? el('div', { class: 'cu-hold', role: 'status' }, el('b', {}, 'Pending: ' + CU.hold.reason + '; signing held'),
+              el('div', {}, 'Clear it with Unlock here or ', el('code', {}, 'bboxy450-term ctl identity unlock'), ': one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns.'),
+              el('div', { class: 'cu-act' }, CU.attempt === 'unknown' ? btn('Check result', 'open', 'primary') : CU.attempt === 'granted' ? null : btn(CU.attempt === 'pending' ? 'Waiting for macOS…' : 'Unlock', 'key', CU.attempt === 'pending' ? 'quiet' : 'primary'))) : null,
+            at ? el('div', { class: 'cu-out ' + CU.attempt, role: 'status' }, el('b', {}, at[0]), ' · ' + at[1]) : null,
+          ], null, 'custody'));
+        }
         add('Account', card(null, [
           el('div', { class: 'hero' },
             logo(72, { square: true }),
