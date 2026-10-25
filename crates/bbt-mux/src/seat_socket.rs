@@ -544,6 +544,29 @@ impl GuiLane {
         }
     }
 }
+async fn gui_read_events(
+    client: &LogicClient,
+    id: Ulid,
+    stream: String,
+    after: u64,
+    limit: usize,
+    wait_ms: Option<u64>,
+) -> Result<GuiReply> {
+    let filter = crate::gui_events::filters(client.gui_messaging_subjects().await?);
+    let (envelopes, next, through) = client
+        .bus
+        .read_page_wait(&stream, filter, after, limit, wait_ms)
+        .await?;
+    let events = envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {
+        seq: e.seq,
+        subject: e.event.subject,
+        source: e.event.source,
+        ts: e.event.ts,
+        payload: e.event.payload,
+    }).collect();
+    Ok(GuiReply::EventsRead { op: id, stream, events, next, through })
+}
+
 async fn gui_attach_lane(client: &LogicClient) -> Result<(GuiLane, Option<crate::bus::Delivery>)> {
     let reference = client.gui_device().await?;
     let filter = crate::gui_events::filters(client.gui_messaging_subjects().await?);
@@ -735,6 +758,7 @@ async fn gui_session(
     // Dropping the session aborts these waiters, not a running provider's permit.
     let mut knowledge_reads = tokio::task::JoinSet::new();
     let mut debug_reads = tokio::task::JoinSet::new();
+    let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
             tokio::select! {
@@ -781,6 +805,17 @@ async fn gui_session(
                             let client = client.clone();
                             let origin = crate::mcp::Origin {door,issued_by:issued_by.clone()};
                             debug_reads.spawn(async move { (id,client.gui_debug(id,query,origin).await) });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::EventsRead {id,stream,after,limit,wait_ms:Some(wait_ms)} = &request.action {
+                        let id=*id;
+                        if *wait_ms>60_000 || event_reads.len()>=2 {
+                            send(&mut write,&GuiReply::Error {op:id,reason:"EventsRead allows wait_ms <= 60000 and at most two waiting reads per connection".into()}).await?;
+                        } else {
+                            let client=client.clone();
+                            let (stream,after,limit,wait_ms)=(stream.clone(),*after,*limit,*wait_ms);
+                            event_reads.spawn(async move {(id,gui_read_events(&client,id,stream,after,limit,Some(wait_ms)).await)});
                         }
                         continue;
                     }
@@ -931,12 +966,7 @@ async fn gui_session(
                                 let frame=client.captures.focus(id,bbt_proto::SeatId::from_u128(seat.0)).await.map_err(invalid)?;
                                 Ok(GuiReply::Focused {op:id,frame})
                             }
-                            GuiAction::EventsRead {id,stream,after,limit,wait_ms:_}=> {
-                                let filter=crate::gui_events::filters(client.gui_messaging_subjects().await?);
-                                let (envelopes,next,through)=client.bus.read_page(&stream,filter,after,limit).await?;
-                                let events=envelopes.into_iter().map(|e| bbt_proto::gui::RetainedEvent {seq:e.seq,subject:e.event.subject,source:e.event.source,ts:e.event.ts,payload:e.event.payload}).collect();
-                                Ok(GuiReply::EventsRead {op:id,stream,events,next,through})
-                            }
+                            GuiAction::EventsRead {id,stream,after,limit,wait_ms}=>gui_read_events(&client,id,stream,after,limit,wait_ms).await,
                             GuiAction::EventsStreams {id}=> {
                                 // The operator can browse every registered stream; the
                                 // current subject grants still filter each EventsRead.
@@ -1012,6 +1042,11 @@ async fn gui_session(
                         Ok(data)=>GuiReply::Debug {op,data},
                         Err(error)=>GuiReply::Error {op,reason:crate::debug::sanitize(serde_json::json!(error.to_string())).as_str().unwrap_or("debug read refused").into()},
                     };
+                    send(&mut write,&reply).await?;
+                }
+                Some(completed)=event_reads.join_next(),if !event_reads.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("waiting event read interrupted"))?;
+                    let reply=result.unwrap_or_else(|error|GuiReply::Error {op,reason:error.to_string()});
                     send(&mut write,&reply).await?;
                 }
                 ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {

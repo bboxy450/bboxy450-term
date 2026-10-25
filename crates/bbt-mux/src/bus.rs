@@ -3,11 +3,12 @@
 
 use std::collections::{BTreeMap, VecDeque};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use ed25519_dalek::SigningKey;
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{Notify, mpsc, oneshot};
 use ulid::Ulid;
 
 use crate::store::{
@@ -804,6 +805,7 @@ pub struct Broker {
     streams: BTreeMap<String, Stream>,
     consumers: BTreeMap<String, Consumer>,
     gui_attachments: BTreeMap<Ulid, GuiAttachment>,
+    appends: Arc<AppendSignal>,
 }
 
 impl Broker {
@@ -825,6 +827,7 @@ impl Broker {
             streams: BTreeMap::new(),
             consumers: BTreeMap::new(),
             gui_attachments: BTreeMap::new(),
+            appends: Default::default(),
         };
         for (name, bytes) in broker.catalog.list("consumer/")? {
             broker
@@ -967,6 +970,9 @@ impl Broker {
         if envelope.seq != 0 && envelope.seq <= previous {
             self.streams.get_mut(stream).unwrap().gui_notify();
             return Ok(envelope);
+        }
+        if envelope.seq != 0 {
+            self.appends.broadcast();
         }
         if envelope.seq != 0
             && !supplied
@@ -1588,8 +1594,81 @@ enum Command {
 #[derive(Clone)]
 pub struct BusHandle {
     tx: mpsc::Sender<Command>,
+    appends: Arc<AppendSignal>,
     #[cfg(test)]
     pub(crate) gui_read_faults: std::sync::Arc<GuiReadFaults>,
+}
+
+/// An append broadcasts once, independently of the number of browsing readers.
+/// Registrations live only in Notify; they are not consumers or cursor rows.
+#[derive(Default)]
+struct AppendSignal {
+    changed: Notify,
+    #[cfg(test)]
+    broadcasts: std::sync::atomic::AtomicUsize,
+    #[cfg(test)]
+    waiting: std::sync::atomic::AtomicUsize,
+    #[cfg(test)]
+    registered: Notify,
+}
+impl AppendSignal {
+    fn broadcast(&self) {
+        #[cfg(test)]
+        self.broadcasts.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.changed.notify_waiters();
+    }
+}
+
+#[cfg(test)]
+struct WaitingReader<'a>(&'a AppendSignal);
+#[cfg(test)]
+impl<'a> WaitingReader<'a> {
+    fn new(signal: &'a AppendSignal) -> Self {
+        signal.waiting.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        signal.registered.notify_waiters();
+        Self(signal)
+    }
+}
+#[cfg(test)]
+impl Drop for WaitingReader<'_> {
+    fn drop(&mut self) {
+        self.0.waiting.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+async fn wait_for_page<F, Fut>(
+    signal: &AppendSignal,
+    after: u64,
+    wait_ms: u64,
+    mut read: F,
+) -> Result<RetainedPage>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<RetainedPage>>,
+{
+    if wait_ms > 60_000 {
+        return Err(invalid("EventsRead wait_ms exceeds 60000"));
+    }
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_millis(wait_ms);
+    loop {
+        // Register before reading: an append between the caller's snapshot and
+        // this registration is found by the recheck, not lost until a later append.
+        let changed = signal.changed.notified();
+        tokio::pin!(changed);
+        changed.as_mut().enable();
+        let page = match tokio::time::timeout_at(deadline, read()).await {
+            Ok(page) => page?,
+            Err(_) => return Ok((vec![], None, after)),
+        };
+        if !page.0.is_empty() || page.2 > after || wait_ms == 0 {
+            return Ok(page);
+        }
+        #[cfg(test)]
+        let _waiting = WaitingReader::new(signal);
+        if tokio::time::timeout_at(deadline, changed).await.is_err() {
+            return Ok((vec![], None, after));
+        }
+    }
 }
 #[cfg(test)]
 #[derive(Default)]
@@ -1604,6 +1683,7 @@ impl BusHandle {
             return Err(invalid("invalid router capacity"));
         }
         let (tx, mut rx) = mpsc::channel(capacity);
+        let appends = broker.appends.clone();
         handle.spawn_blocking(move || {
             let mut broker = broker;
             while let Some(command) = rx.blocking_recv() {
@@ -1683,6 +1763,7 @@ impl BusHandle {
         });
         Ok(Self {
             tx,
+            appends,
             #[cfg(test)]
             gui_read_faults: Default::default(),
         })
@@ -1860,6 +1941,26 @@ impl BusHandle {
             .await
             .map_err(|_| invalid("event router stopped"))?;
         rx.await.map_err(|_| invalid("event router stopped"))?
+    }
+    /// #328: wait outside the router task and its bounded command queue. The
+    /// post-registration page recheck is also the no-lost-wakeup barrier.
+    pub(crate) async fn read_page_wait(
+        &self,
+        stream: &str,
+        filter: Vec<String>,
+        after: u64,
+        limit: usize,
+        wait_ms: Option<u64>,
+    ) -> Result<RetainedPage> {
+        match wait_ms {
+            None | Some(0) => self.read_page(stream, filter, after, limit).await,
+            Some(ms) => {
+                wait_for_page(&self.appends, after, ms, || {
+                    self.read_page(stream, filter.clone(), after, limit)
+                })
+                .await
+            }
+        }
     }
     /// Registered stream names in order. This only copies broker metadata:
     /// no log scan, consumer, read mark or acknowledgement.
