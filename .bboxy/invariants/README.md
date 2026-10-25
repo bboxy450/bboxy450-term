@@ -4,7 +4,7 @@ type: "note"
 number: 138
 title: "Invariants — the law the day runs under"
 created: "2026-10-22T21:14:24Z"
-updated: "2026-10-25T10:39:28Z"
+updated: "2026-10-25T12:18:12Z"
 ---
 # Invariants — the law the day runs under
 
@@ -42,7 +42,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[ctl-never-prints-secrets]] ctl never prints a capability or a Keychain secret | `cargo test -p bboxy450-term --locked --test ctl ctl_never_prints_secrets -- --exact` | pending C-0 (slow, gated) |
 | [[watched-replay-priority]] watched seats get at least half of the replay pages when both lanes are runnable | `cargo test -p bbt-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact` | pending R5h (slow, gated) |
 | [[no-seat-starves]] no seat starves under a full retained-notification queue; every pending seat admitted within one rotation of the retry sweep | `cargo test -p bbt-supervisor --locked --lib supervisor::capture_read_tests::no_seat_starves_under_full_queue -- --exact` | active; retained retry turn and deterministic credit-count regression, 95ba7ba2 |
-| [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `sh scripts/e2e-unattended.sh` | pending U-3 (slow, gated) |
+| [[e2e-runs-unattended]] the e2e night runs unattended: no operator input, no login-Keychain access, no window, no build or signature | `sh scripts/e2e-unattended.sh` | active (U-3, 6dfbf569; slow tier, gate night) |
 | [[never-block-swarm]] never block the swarm: no open task is parked on a person, and no test needs the operator | `sh scripts/never-block.sh` | held at the adding commit |
 | [[messaging-never-held]] a custody hold never holds local delivery | `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact` | active (NG1, 27a77a51) |
 | [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --test logic ring_reads_are_batched -- --exact` | pending Sable's batched ReadRing (slow, gated) |

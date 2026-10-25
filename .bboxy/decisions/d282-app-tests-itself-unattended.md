@@ -17,7 +17,7 @@ links:
   - { to: "[[e2e-runs-unattended]]", rel: constrains }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:18:29Z"
-updated: "2026-10-24T19:24:37Z"
+updated: "2026-10-25T12:18:12Z"
 ---
 # Decision 282: the app tests itself, unattended
 
@@ -32,6 +32,8 @@ Decided by the operator on the morning of 2026-10-24, verbatim: "well all the sm
 **The one operator act that remains.** Enrolling the automation device: one root signature on its `DeviceGrant`, once, with the scope written in the grant (e2e writes and `ctl` under the operator principal). After that, nothing: no Keychain dialog (file custody), no trust prompt (recipes), no notification prompt (persisted), no display (headless), no build or signature (pre-built). Revocation is one root signature too.
 
 **Order.** U-0 the `-file` custody backend and the automation identity with `--unattended` (#281). U-1 `ctl app start --headless` with the real GUI client (C-1 of [[ctl-cli]]). U-2 the runner. U-3 the invariant [[e2e-runs-unattended]] in the slow tier of local CI. Executors start in parallel; the runner is the only piece that waits for the other three.
+
+**Complete (2026-10-25).** U-0 file custody and per-run test accounts (Kestrel, 6ea6b23e), U-1 the headless app (Aster, afff4758), U-2 the night runner (Seraph, 7d4d599e), U-3 the invariant [[e2e-runs-unattended]] active on `scripts/e2e-unattended.sh` (Seraph, 6dfbf569). The first unattended night ran amber on 2026-10-24 with every partial tracked; the operator's words of that morning are a passing check.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
 
