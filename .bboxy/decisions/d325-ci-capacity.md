@@ -15,7 +15,7 @@ links:
   - { to: "[[d8-open-source]]", rel: builds-on }
   - { to: "[[no-chokepoints]]", rel: builds-on }
 created: "2026-10-25T16:37:17Z"
-updated: "2026-10-25T16:37:17Z"
+updated: "2026-10-25T16:43:02Z"
 ---
 # Decision 325: the cheapest CI that actually runs
 
@@ -52,6 +52,8 @@ A gate runs in a clean detached worktree with its own empty target, so every gat
 **Reason.** The question asked for the cheapest CI that actually runs. Step 1 is free and removes the largest repeated cost in every gate. Step 2 is the price of a coffee a week and is the only way the Linux backends get built at all. Step 3 is the only macOS capacity that is cheap: every rented or hosted Mac costs more in four to five months than the box, and the hosted minutes cost more in a week. Rejected: hosted macOS minutes (a), rented Macs (b) unless the operator wants no purchase, in which case a small host at about $50 to $130 is the fallback and Scaleway and AWS are not.
 
 **What it changes in the record.** [[d15-local-ci]] stands for the agents' presubmits and gains the portable tier on the Linux box and the postsubmit on the second Mac; the sixth instance of [[no-chokepoints]] is amended from "no wrapper" to "no shared server": the cache is back with one server per agent. GitHub Actions stays manual-dispatch on the private repository and becomes the free CI of the **public** crates when [[d8-open-source]] publishes them, where hosted minutes cost nothing.
+
+**Measured after the fact (the Oracle's 175-log parse, same day):** compile 52 %, test run 36 %, six binaries with real-clock waits over eight of thirty-seven hours. The order of the steps stands; the data adds that the second lever after the cache is the tests themselves ([[presubmit-tests-fast]]), which no purchase buys back, so the tests get fixed before the box is bought.
 
 **Operator's call.** Step 3 is a purchase; the Architect recommends it and does not make it. Steps 1 and 2 need no one's approval beyond this record.
 

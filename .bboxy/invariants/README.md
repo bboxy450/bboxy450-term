@@ -4,7 +4,7 @@ type: "note"
 number: 138
 title: "Invariants — the law the day runs under"
 created: "2026-10-22T21:14:24Z"
-updated: "2026-10-25T16:18:56Z"
+updated: "2026-10-25T16:43:02Z"
 ---
 # Invariants — the law the day runs under
 
@@ -48,6 +48,7 @@ runs every invariant before every handoff, except those marked `slow: true` in f
 | [[ring-reads-batched]] a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat | `cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact` | active (R5j, 00fb087c) |
 | [[kill-only-own-pids]] a cleanup kills only PIDs it recorded as its own children, never by name or pattern | `sh scripts/kill-own-pids.sh` | active |
 | [[main-red-bounded]] main is red at most until the next revert; nothing but a revert lands while red | `sh scripts/main-red-bounded.sh` | pending the main watch (slow, gated) |
+| [[presubmit-tests-fast]] no presubmit test binary over 60 s, no wall-clock waits; durations through an injected clock or the night tier | `sh scripts/fast-tests.sh` | pending per-binary times in presubmit.log (slow, gated) |
 | [[no-chokepoints]] no bottlenecks and no chokepoints, in the swarm and in the product | `sh scripts/never-block.sh && sh scripts/cross-os.sh` | held at the adding commit; product instances gated by #268 and #276 |
 
 A violation halts the work that broke it: the task goes `blocked` with

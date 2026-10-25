@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T16:40:09Z"
+updated: "2026-10-25T16:43:02Z"
 ---
 # Landing
 
@@ -49,6 +49,10 @@ Prints, from `git diff --name-only` and `cargo metadata`: the touched crates; th
 ## 3. Presubmit: `scripts/presubmit.sh [BASE]`
 
 On the candidate, in the Executor's own target with the wrappers clear and `CARGO_BUILD_JOBS=2`: `cargo test --locked -p <affected…>`; strict clippy on the affected crates; `sh scripts/invariants.sh` (the default tier); the golden dispatch tests of [[d320-dispatch-by-noun]] when a dispatcher file changed; and, when `parity: yes`, the lab check and the catalogue cases of the touched components only, never the whole catalogue. **Parity in the lab tier (Wren's two holes, 2026-10-25):** a lab-only cut does not change the native side, so the truth it compares against is the **native render set the last green postsubmit stored** (one directory per green sha under the parity store, pointer `.bboxy/runs/parity-last-green`); the presubmit captures the lab pages and runs the compare against that set, building no product crate; only when no stored set exists does it build `bboxybook` alone. A change to one of the **shared lab files**, `lab/web/lab.css`, `lab/web/tokens.js` (generated from `design/tokens.toml`), `lab/web/glow.js` or `lab/web/components.js`, touches every case: at presubmit it runs the lab check plus a **fixed sample of one case per page**, and the whole catalogue runs in postsubmit with revert-first. A per-page edit (`lab/web/<page>.html`) maps to that page's manifest cases, as the scoped filter already does. **Bound 15 minutes**, enforced; a presubmit that runs past it fails with `presubmit_timeout`, and the cut is split, not the bound raised. **Timing-bound tests do not run in presubmit**: a test whose assertion is a wall-clock or CPU bound is tagged (a cargo feature or an `#[ignore]` the postsubmit lifts) and runs in postsubmit, where the machine is not also running three other presubmits. Presubmit writes one line to `.bboxy/runs/presubmit.log`: sha, tier, affected crates, seconds, verdict.
+
+## 3a. Fast tests (the Oracle's gate-time data, 2026-10-25)
+
+Of 36.9 cargo hours across 175 gate logs, compile was 52 % (the dependency cache of [[d325-ci-capacity]] attacks the dependency share of it), test run 36 %, and six test binaries holding 52 to 72 second real-clock waits summed to over eight hours. So the presubmit tier has a **fast-test rule**, invariant [[presubmit-tests-fast]]: no test binary over 60 s, no wall-clock waits; a duration contract is tested through an injected clock or a shortened test duration, or in the night tier. `presubmit.sh` records per-binary durations in `presubmit.log` so the rule is checkable. The post-test 12 % is the invariants' separate `cargo test` invocations; `invariants.sh` runs the default tier's cargo checks as **one** invocation with a filter list where the crate allows it, one link instead of twenty.
 
 ## 4. Slots
 
