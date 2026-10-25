@@ -173,7 +173,9 @@ fn four_watched_seats_advance_during_a_large_replay_and_match_serial_screens() {
         runtime.handle(),
     )
     .unwrap();
-    logic.client.enable_capture_diagnostics();
+    // This fixture audits every trace update; the production try_lock recorder
+    // may honestly miss samples under contention, even when replay is exact.
+    logic.client.enable_fixture_capture_diagnostics();
     supervisor.enable_capture_diagnostics();
     let swarm = Ulid::new();
     let mut expected_bytes = BTreeMap::new();
@@ -309,6 +311,7 @@ time.sleep(60)
     }
     let diagnostics = logic.client.capture_diagnostics();
     assert!(diagnostics.enabled);
+    assert!(diagnostics.fixture_lossless);
     assert_eq!(diagnostics.missed, 0);
     assert_eq!(diagnostics.untracked_seat_samples, 0);
     for &seat in &order {
