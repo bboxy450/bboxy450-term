@@ -283,3 +283,170 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
+pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    Ok(match command {
+        Command::Spawn {
+            harness,
+            name,
+            cwd,
+            swarm,
+            new_tab,
+            role,
+        } => {
+            // The launcher's defaults (live.rs `spawn_spec`): the first seat's swarm, else a
+            // new one; the backend validates the spec as it does for the GUI.
+            let swarm = match swarm {
+                Some(swarm) => swarm,
+                None => client
+                    .seats()?
+                    .first()
+                    .map_or_else(Ulid::new, |s| s.record.swarm),
+            };
+            let cwd = match cwd {
+                Some(cwd) => cwd,
+                None => std::env::current_dir().map_err(|e| e.to_string())?,
+            };
+            let seat = client.spawn(SpawnSpec {
+                swarm: SwarmId::from_u128(swarm.0),
+                harness_kind: harness.clone(),
+                name,
+                role,
+                cwd: cwd.to_string_lossy().into_owned(),
+                location: Where::Local,
+                resume: None,
+                placement: new_tab.then(|| bbt_proto::seat_state::Placement::NewTab {
+                    tab: bbt_proto::TabId::from_u128(Ulid::new().0),
+                }),
+            })?;
+            vec![json!({ "kind": "spawned", "seat": seat, "harness": harness, "swarm": swarm })]
+        }
+        Command::Seats => client.seats()?.iter().map(seat_line).collect(),
+        Command::Capture { path, seat } => {
+            let seat = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
+                None => None,
+            };
+            // A stale frame says so, so a judge never takes it for the current one.
+            let (path, frame) = client.capture(&path, seat)?;
+            vec![json!({ "kind": "captured", "path": path, "seat": seat,
+                "stale": frame.stale, "occluded": frame.occluded,
+                "frame_presented_at": frame.presented_at_ms, "offscreen":frame.offscreen,
+                "frame_seq":frame.frame_seq,"rendered_at_ms":frame.rendered_at_ms })]
+        }
+        Command::Screen {
+            seat,
+            human,
+            scrollback,
+            cells,
+        } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let (op, mut screen) = client.screen_with(seat, cells)?;
+            if let Some((from, to)) = scrollback {
+                // The history rows of the range: its capture records replayed into a fresh
+                // terminal the seat's size, gaps marked where the ring has none (#27).
+                let records = client.history(seat, from, to)?;
+                screen.rows = replay_rows(&records, screen.cols, screen.rows.len());
+                screen.cells = None;
+            }
+            if human {
+                let mut lines: Vec<Value> = screen.rows.into_iter().map(Value::String).collect();
+                lines.push(Value::String(format!(
+                    "-- cursor {},{} · {}",
+                    screen.cursor.0, screen.cursor.1, screen.title
+                )));
+                lines
+            } else {
+                vec![
+                    json!({ "ok": true, "op": op, "noun": "seat", "verb": "screen", "data": screen }),
+                ]
+            }
+        }
+        Command::Resize { seat, cols, rows } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let (_, screen) = client.screen(seat)?;
+            let op = client.resize(seat, screen.generation, cols, rows)?;
+            vec![
+                json!({ "ok": true, "op": op, "noun": "seat", "verb": "resize",
+                "data": { "seat": seat, "generation": screen.generation, "cols": cols, "rows": rows } }),
+            ]
+        }
+        Command::Type { seat, text } => input(client, &seat, "type", |_| Ok(text.into_bytes()))?,
+        Command::Key { seat, keys } => input(client, &seat, "key", |modes| {
+            let mut bytes = vec![];
+            for key in &keys {
+                bytes.extend(key_bytes(key, modes)?);
+            }
+            Ok(bytes)
+        })?,
+        Command::Paste { seat, source } => {
+            let mut text = vec![];
+            if source == "-" {
+                std::io::stdin().read_to_end(&mut text)
+            } else {
+                std::fs::File::open(&source).and_then(|mut f| f.read_to_end(&mut text))
+            }
+            .map_err(|e| format!("seat paste {source}: {e}"))?;
+            paste(client, &seat, &text)?
+        }
+        Command::Wait {
+            seat,
+            on_screen,
+            frame_seq,
+            timeout,
+            ..
+        } if on_screen || frame_seq.is_some() => {
+            // Window truth, not the model: the owner's latest produced layout (ctl-cli §1a).
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = Ulid::new();
+            let deadline = std::time::Instant::now() + timeout;
+            loop {
+                let layout = match client.ui(bbt_proto::gui::UiRequest::Layout) {
+                    Ok(layout) => Some(layout),
+                    Err(reason) if reason.starts_with("ui_not_ready") => None,
+                    Err(reason) => return Err(reason),
+                };
+                if let Some(layout) = &layout {
+                    let pane = layout.panes.iter().find(|pane| pane.seat == seat);
+                    let met = match frame_seq {
+                        Some(n) => layout.frame_seq >= n,
+                        None => pane.is_some(),
+                    };
+                    if met {
+                        break vec![json!({ "ok": true, "op": op, "done": true,
+                            "data": { "seat": seat, "frame_seq": layout.frame_seq,
+                                "pane": pane.map(|p| json!({ "rect": p.rect, "cols": p.cols,
+                                    "rows": p.rows, "focused": p.focused })) } })];
+                    }
+                }
+                if std::time::Instant::now() >= deadline {
+                    let seen = layout.map_or("no produced frame yet".into(), |l| {
+                        format!("the window is at frame {}", l.frame_seq)
+                    });
+                    return Err(format!(
+                        "{TIMEOUT_PREFIX}{op}\nwaited {} ms; {seen}",
+                        timeout.as_millis()
+                    ));
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+        Command::Wait {
+            seat,
+            state,
+            text,
+            subagent,
+            grade,
+            timeout,
+            ..
+        } => {
+            let predicate = WaitPredicate::new(state, text, subagent, grade)?;
+            let started = std::time::Instant::now();
+            wait_for_seat(client, &seat, &predicate, timeout, || started.elapsed())?
+        }
+        _ => {
+            return Err(no_flat_form());
+        }
+    })
+}

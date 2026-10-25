@@ -110,3 +110,91 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
+pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    let to_value = |v: &dyn erased::Serialize| v.to_json();
+    Ok(match command {
+        Command::Delegate { task, seat } => {
+            let seats = client.seats()?;
+            let seat = resolve(&seats, &seat)?;
+            let response = client.task(TaskRequest::Delegate {
+                task_path: task.clone(),
+                seat_id: seat.record.id,
+                role: None,
+            })?;
+            vec![
+                json!({ "kind": "delegated", "task": task, "seat": seat.record.id, "response": to_value(&response) }),
+            ]
+        }
+        Command::TaskCreate {
+            title,
+            verify,
+            brief,
+        } => {
+            let mut row = client.record_write(task_create(&title, &verify, brief.as_deref()))?;
+            row["kind"] = json!("task");
+            vec![row]
+        }
+        Command::Reports { since } => {
+            let mut cards = vec![];
+            let mut after = None;
+            loop {
+                let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
+                    unassigned: false,
+                    swarm_id: None,
+                    status: None,
+                    assignee: None,
+                    after,
+                    limit: Some(PAGE),
+                })?
+                else {
+                    return Err("reports: unexpected task response".into());
+                };
+                cards.extend(items);
+                match next {
+                    Some(next) if Some(next) != after => after = Some(next),
+                    _ => break,
+                }
+            }
+            let mut out = vec![];
+            for card in cards {
+                if since
+                    .as_deref()
+                    .is_some_and(|since| card.updated.as_deref().is_none_or(|at| at < since))
+                {
+                    continue;
+                }
+                let TaskResponse::Item { item } = client.task(TaskRequest::Status {
+                    task_path: Some(card.path.clone()),
+                    task_id: None,
+                })?
+                else {
+                    return Err("reports: unexpected task response".into());
+                };
+                let report = &item.metadata["report"];
+                if report.is_null() {
+                    continue;
+                }
+                out.push(json!({
+                    "kind": "report",
+                    "task": card.id,
+                    "path": card.path,
+                    "title": card.title,
+                    "status": card.status,
+                    "assignee": card.assignee,
+                    "updated": card.updated,
+                    "summary": report["summary"],
+                    "commit": report["commit"],
+                    "reported_by": report["reported_by"],
+                    "verify_result": item.metadata["verify_result"],
+                }));
+            }
+            out
+        }
+
+        _ => {
+            return Err(no_flat_form());
+        }
+    })
+}

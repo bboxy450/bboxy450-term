@@ -31,3 +31,22 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
+pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    Ok(match command {
+        Command::E2e { group } => {
+            let mut loader = crate::knowledge::E2eLoader::new(crate::knowledge::promises()?);
+            // Validate the group before sending any provider request. The
+            // projection still supplies the global summary for filtered rows.
+            crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?;
+            while let Some(call) = loader.next_request() {
+                loader.respond(client.knowledge(&call));
+            }
+            crate::knowledge::e2e_lines(loader.snapshot(), group.as_deref())?
+        }
+        _ => {
+            return Err(no_flat_form());
+        }
+    })
+}

@@ -26,3 +26,16 @@ pub(super) fn parse(words: &[&str], _cx: &super::ParseCx) -> Result<Option<Comma
         _ => return Ok(None),
     }))
 }
+
+/// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
+pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    Ok(match command {
+        Command::Identity(request) => {
+            let (op, response) = client.identity(request)?;
+            vec![json!({"kind":"identity", "op":op, "response":response})]
+        }
+        _ => {
+            return Err(no_flat_form());
+        }
+    })
+}

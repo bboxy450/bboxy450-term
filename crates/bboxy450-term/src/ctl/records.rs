@@ -123,3 +123,26 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
+pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
+    Ok(match command {
+        Command::RecordWrite { source } => {
+            let mut text = String::new();
+            if source == "-" {
+                std::io::stdin().read_to_string(&mut text)
+            } else {
+                std::fs::File::open(&source).and_then(|mut f| f.read_to_string(&mut text))
+            }
+            .map_err(|e| format!("record write {source}: {e}"))?;
+            let args = serde_json::from_str(&text)
+                .map_err(|e| format!("record write {source}: not JSON: {e}"))?;
+            let mut row = client.record_write(args)?;
+            row["kind"] = json!("record");
+            vec![row]
+        }
+        _ => {
+            return Err(no_flat_form());
+        }
+    })
+}
