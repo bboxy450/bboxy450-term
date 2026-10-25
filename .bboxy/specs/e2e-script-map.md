@@ -48,9 +48,9 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | R6 | `scripts/e2e/R6.sh` | partial | a waiting seat posts one desktop notification; clicking it raises the window, switches space | |
 | M1 | `scripts/e2e/M1.sh` | partial | script not implemented: a DM, a channel post and a swarm-stream post from the composer each arrive at the right seats with a receipt; the operator principal signs as the device | |
 | M2 | `scripts/e2e/M2.sh` | partial | script not implemented: the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
-| M3 | `scripts/e2e/M3.sh` | partial | script not implemented: the operator delegates a task by #N or path to a seat; the seat's frontmatter says claimed and its row shows the task; the seat gets one oracle-class message | |
-| M4 | `scripts/e2e/M4.sh` | partial | script not implemented: a report with verify_result whose command differs from verify, or whose exit code is non-zero, is refused on accept with the reason named | |
-| M5 | `scripts/e2e/M5.sh` | partial | script not implemented: the operator alone lists open unassigned tasks account-wide; a seat asking gets the existing refusal | |
+| M3 | `scripts/e2e/M3.sh` | partial | harness: stand-in; real-harness receipt; the seat row shows the task (assigned-task readback and a window capture alone do not prove that row) | |
+| M4 | `scripts/e2e/M4.sh` | full | — | |
+| M5 | `scripts/e2e/M5.sh` | partial | harness: stand-in; a real Worker and real Oracle harness ask for the unassigned inventory (the admitted seat MCP bridge is exercised by deterministic fixtures) | |
 | M6 | `scripts/e2e/M6.sh` | partial | script not implemented: groups stay their own destination; a message to a muted seat waits; priority delays, never deletes | |
 | F1 | `scripts/e2e/F1.sh` | partial | script not implemented: the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls | |
 | F2 | `scripts/e2e/F2.sh` | partial | script not implemented: unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read | |

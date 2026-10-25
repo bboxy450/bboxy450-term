@@ -1,0 +1,3 @@
+#!/bin/sh
+# A deterministic harness, not Claude or a model. Admission and MCP are the app's real path.
+exec python3 -I -B "$(dirname "$0")/../task_agent.py"

@@ -7,21 +7,46 @@
 //! is green only when all passed, and the exit code follows it. Every promise's e2e record
 //! is written through `record write`: created on the first night, updated on the next.
 use serde_json::Value;
-use std::process::Command;
+use std::{os::unix::fs::PermissionsExt, process::Command};
 
 #[test]
 fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let scripts = tempfile::tempdir().unwrap();
+    let bin = scripts.path().join("T1.fixture-bin");
+    std::fs::create_dir(&bin).unwrap();
+    for (name, body) in [
+        (
+            "claude",
+            "#!/bin/sh\ne2e_private_probe\nwhile read -r line; do :; done\n",
+        ),
+        ("e2e_private_probe", "#!/bin/sh\necho E2E_FIXTURE_ONLY\n"),
+    ] {
+        let path = bin.join(name);
+        std::fs::write(&path, body).unwrap();
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
     // T1 passes in full only if ctl reaches this promise's own app; T2 fails with its reason;
     // T3 passes but says it proves only part of its promise (#316).
     std::fs::write(
         scripts.path().join("T1.sh"),
-        "# coverage: full\n\"$BBT\" ctl seat ls >/dev/null && [ -d \"$E2E_WORK\" ] && kill -0 \"$E2E_APP\"\n",
+        r#"# coverage: full
+set -eu
+"$BBT" ctl seat ls >/dev/null
+[ -d "$E2E_WORK" ] && kill -0 "$E2E_APP"
+seat=$("$BBT" ctl seat spawn claude --role executor --place tab --cwd "$E2E_WORK" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["data"]["seat"])')
+"$BBT" ctl seat wait "$seat" --text '(?m)^E2E_FIXTURE_ONLY$' --timeout 20000
+"#,
     )
     .unwrap();
     std::fs::write(
         scripts.path().join("T3.sh"),
-        "# coverage: partial; missing: resizing a pane; no stale cells\nexit 0\n",
+        r#"# coverage: partial; missing: resizing a pane; no stale cells
+set -eu
+seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["data"]["seat"])')
+"$BBT" ctl seat type "$seat" 'command -v e2e_private_probe >/dev/null && echo E2E_FIXTURE_LEAKED || echo E2E_FIXTURE_ABSENT'
+"$BBT" ctl seat key "$seat" enter
+"$BBT" ctl seat wait "$seat" --text '(?m)^E2E_FIXTURE_ABSENT$' --timeout 20000
+"#,
     )
     .unwrap();
     std::fs::write(

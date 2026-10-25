@@ -155,7 +155,7 @@ async fn write_records(
     verdicts: Vec<Verdict>,
 ) -> (Vec<String>, Vec<String>) {
     let functions: Vec<String> = verdicts.iter().map(|(id, ..)| id.clone()).collect();
-    let app = match App::start(root, repository).await {
+    let app = match App::start(root, repository, None).await {
         Ok(app) => app,
         Err(reason) => {
             println!("{}", json!({ "kind": "record", "error": reason }));
@@ -369,13 +369,16 @@ fn upsert(
 }
 
 /// One promise: a fresh windowless app with ctl on, the script against it, then an orderly
-/// shutdown. Returns the script's exit code and the tail of its output.
+/// shutdown. An adjacent `<ID>.fixture-bin` supplies deterministic harnesses to this app
+/// only. Returns the script's exit code and the tail of its output.
 async fn promise(
     root: &Path,
     script: &Path,
     executable: &Path,
 ) -> Result<(Option<i32>, String), String> {
-    let app = App::start(root, &root.join("repository")).await?;
+    let fixture = script.with_extension("fixture-bin");
+    let fixture = fixture.is_dir().then_some(fixture);
+    let app = App::start(root, &root.join("repository"), fixture.as_deref()).await?;
     println!(
         "{}",
         app.line("promise", root.file_name().and_then(|name| name.to_str()))
@@ -417,13 +420,30 @@ impl App {
             "mode": self.status["mode"], "custody_backend": self.status["custody_backend"],
             "windows": self.status["windows"], "issued_by": self.issued_by })
     }
-    async fn start(root: &Path, repository: &Path) -> Result<Self, String> {
+    async fn start(
+        root: &Path,
+        repository: &Path,
+        fixture_bin: Option<&Path>,
+    ) -> Result<Self, String> {
         let run = root.join("run");
         for dir in [&root.join("zsh-config"), &root.join("work"), repository] {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
         let account = root.join("account");
-        let started = ctl(&run, repository, &root.join("zsh-config"))
+        let mut launch = ctl(&run, repository, &root.join("zsh-config"));
+        // A deterministic harness is local to this promise's app and its real seats.
+        // Do not mutate the runner's PATH or the separate records app's environment.
+        if let Some(bin) = fixture_bin {
+            let bin = bin.canonicalize().map_err(|e| e.to_string())?;
+            let inherited = std::env::var_os("PATH").unwrap_or_default();
+            let path =
+                std::env::join_paths(std::iter::once(bin).chain(std::env::split_paths(&inherited)))
+                    .map_err(|e| e.to_string())?;
+            launch
+                .env("PATH", path)
+                .env("BBT", std::env::current_exe().map_err(|e| e.to_string())?);
+        }
+        let started = launch
             .args([
                 "app",
                 "start",
