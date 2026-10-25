@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T16:22:41Z"
+updated: "2026-10-25T16:23:42Z"
 ---
 # Landing
 
@@ -84,7 +84,7 @@ Executors land their own cuts with `land.sh` and hand off the landing line and t
 
 ## 13. Shapes taken and left
 
-Taken from Creativity's twelve: the expediter robot (the watch and `land.sh`, the Oracle tasting and not carrying), the call auction (postsubmit batching), offline and online conform (presubmit on proxies, full in postsubmit), parts not score and append-only registries (via [[d320-dispatch-by-noun]]), blast radius (the affected set), pheromones (`overlap.sh`), crane time (the scheduled scale run), the container standard (contract changes land alone and first), the darts foul line (timing tests out of presubmit, isolated retry as the flake test). Left: release trains (waiting on the clock is a queue), single-token file leases (serialises people), a merge-queue bot with full gates (a queue again). Wren's gap, the share of flakes among gate failures, is answered by the record: of about fourteen failed gates on 2026-10-25, three were environmental (PTY exhaustion during a scale run, the shared compile cache), two were test maintenance, eight were real defects found under load, one unnamed. Load is a test oracle here; the quarantine is therefore narrow.
+Taken from Creativity's twelve: the expediter robot (the watch and `land.sh`, the Oracle tasting and not carrying), the call auction (postsubmit batching), offline and online conform (presubmit on proxies, full in postsubmit), parts not score and append-only registries (via [[d320-dispatch-by-noun]]), blast radius (the affected set), pheromones (`overlap.sh`), crane time (the scheduled scale run), the container standard (contract changes land alone and first), the darts foul line (timing tests out of presubmit, isolated retry as the flake test). Left: release trains (waiting on the clock is a queue), single-token file leases (serialises people), a merge-queue bot with full gates (a queue again). Wren's gap, the share of flakes among gate failures, is answered by the record: of about fourteen failed gates on 2026-10-25, three were environmental (PTY exhaustion during a scale run, the shared compile cache), two were test maintenance, eight were real defects found under load, one unnamed. The Oracle's own count of the same day, from its record: of about twelve reds, five were real misses a presubmit on the affected set catches in minutes, four were real product bugs that appeared only under load, one a fixture bug, two unexplained; and about six gates were thrown away to quiet windows and rebases. Both counts say the same thing: most reds were real and cheap to find earlier, and the waste was gate length times reruns times rebases, not flakiness. Load is a test oracle here; the quarantine is therefore narrow, and the presubmit must be the thing that catches the five.
 
 ## AGENTS.md text
 
