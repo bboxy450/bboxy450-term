@@ -38,6 +38,16 @@ enum Acquired {
         drawable: Drawable,
     },
 }
+/// An acquired target is owned by exactly one following frame submission.
+pub struct AcquiredFrame {
+    frame: Acquired,
+    wait: Duration,
+}
+impl AcquiredFrame {
+    pub fn wait(&self) -> Duration {
+        self.wait
+    }
+}
 impl Acquired {
     fn texture(&self) -> &wgpu::Texture {
         match self {
@@ -324,15 +334,7 @@ impl Gpu {
         self.renderer.context.queue.submit([encoder.finish()]);
         Ok(())
     }
-    pub fn draw(
-        &mut self,
-        ops: Vec<Paint>,
-        scale: f32,
-        time_ms: f32,
-        drawable: Option<Drawable>,
-        frame_id: u64,
-        panes: Option<Panes<'_>>,
-    ) -> Result<Option<(Duration, Duration)>, String> {
+    pub fn acquire(&mut self, drawable: Option<Drawable>) -> Result<Option<AcquiredFrame>, String> {
         let acquire = Instant::now();
         let frame = if let Some(drawable) = drawable {
             let raw = drawable.texture();
@@ -396,6 +398,18 @@ impl Gpu {
             }
         };
         let wait = acquire.elapsed();
+        Ok(Some(AcquiredFrame { frame, wait }))
+    }
+    pub fn draw(
+        &mut self,
+        ops: Vec<Paint>,
+        scale: f32,
+        time_ms: f32,
+        acquired: AcquiredFrame,
+        frame_id: u64,
+        panes: Option<Panes<'_>>,
+    ) -> Result<Option<(Duration, Duration)>, String> {
+        let AcquiredFrame { frame, wait } = acquired;
         let encode = Instant::now();
         self.renderer.begin_frame();
         self.materials.begin_frame();

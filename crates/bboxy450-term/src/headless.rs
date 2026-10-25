@@ -355,6 +355,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     }
                 }
                 if dirty && submitted == rendered {
+                    app.project_scene(true);
                     let layouts = app.solve_ui(size)?;
                     let (next, changed) = crate::pane_controls(
                         &model,
