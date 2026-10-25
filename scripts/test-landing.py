@@ -106,8 +106,9 @@ class Repository:
         self.state.mkdir()
         self.environment = dict(os.environ, BBOXY_LANDING_STATE_DIR=str(self.state),
                                 CARGO_TARGET_DIR=str(self.state / "target"),
-                                BBOXY_CARGO_TARGET_DIR=str(self.state / "target"))
-        for name in ("landing.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh",
+                                RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
+        self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
+        for name in ("landing.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
                      "main_watch.py", "main-watch.sh"):
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
@@ -117,13 +118,12 @@ class Repository:
         for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "licenses",
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
-        self.write("scripts/quarantine-test.sh", '#!/bin/sh\nexec cargo test "$@"\n')
         self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
 printf 'ci-local: source %s normal\\n' "$sha"
-printf '%s\\n' "$BBOXY_GATE_SLOT $CARGO_TARGET_DIR" >> "$BBOXY_LANDING_STATE_DIR/wide.log"
+printf '%s\\n' "$BBOXY_GATE_SLOT $BBOXY_CARGO_TARGET_DIR" >> "$BBOXY_LANDING_STATE_DIR/wide.log"
 cargo test --workspace --locked
 echo 'ci-local: all gates passed'
 printf 'ci-local: result %s normal 0\\n' "$sha"
@@ -349,9 +349,10 @@ class StateTests(unittest.TestCase):
             first = landing.build_environment(Path("/tmp/fixture-checkout-a"))
             again = landing.build_environment(Path("/tmp/fixture-checkout-a"))
             other = landing.build_environment(Path("/tmp/fixture-checkout-b"))
-        self.assertEqual(first["CARGO_TARGET_DIR"], again["CARGO_TARGET_DIR"])
-        self.assertNotEqual(first["CARGO_TARGET_DIR"], other["CARGO_TARGET_DIR"])
-        self.assertEqual(Path(first["CARGO_TARGET_DIR"]).parent, Path("/tmp/fixture-warm-target").resolve())
+        self.assertNotIn("CARGO_TARGET_DIR", first)
+        self.assertEqual(first["BBOXY_CARGO_TARGET_DIR"], again["BBOXY_CARGO_TARGET_DIR"])
+        self.assertNotEqual(first["BBOXY_CARGO_TARGET_DIR"], other["BBOXY_CARGO_TARGET_DIR"])
+        self.assertEqual(Path(first["BBOXY_CARGO_TARGET_DIR"]).parent, Path("/tmp/fixture-warm-target").resolve())
 
     def test_canonical_state_is_shared_across_worktrees(self):
         with patch.dict(os.environ, {"XDG_STATE_HOME": "/tmp/landing-state-fixture"}, clear=True):
@@ -381,8 +382,12 @@ class PresubmitTests(unittest.TestCase):
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
-        self.assertEqual(calls[0], ["test", "--locked", "-p", "c"])
-        self.assertEqual(calls[1][:4], ["clippy", "--locked", "-p", "c"])
+        for call in calls[:2]:
+            index = call.index("--target-dir")
+            self.assertTrue(Path(call[index + 1]).resolve().is_relative_to((self.repo.state / "target").resolve()))
+        test_args = calls[0][:1] + calls[0][3:]
+        self.assertEqual(test_args, ["test", "--locked", "-p", "c", "--no-fail-fast"])
+        self.assertEqual(calls[1][:1] + calls[1][3:6], ["clippy", "--locked", "-p", "c"])
         rows = (self.repo.state / "presubmit.log").read_text().splitlines()
         self.assertEqual(len(rows), 1)
         self.assertEqual(json.loads(rows[0])["verdict"], "green")
@@ -461,9 +466,9 @@ class PresubmitTests(unittest.TestCase):
         self.assertEqual(len({r["operation"] for r in rows}), 1)
         self.assertIn("retrying once warm", result.stdout)
         targets = [json.loads(line) for line in (self.repo.state / "targets.jsonl").read_text().splitlines()]
-        self.assertEqual(len({t["CARGO_TARGET_DIR"] for t in targets}), 1)
-        self.assertTrue(all(t["CARGO_TARGET_DIR"] == t["BBOXY_CARGO_TARGET_DIR"] for t in targets))
-        self.assertTrue(all(Path(t["CARGO_TARGET_DIR"]).is_relative_to(self.repo.state.resolve()) for t in targets))
+        self.assertEqual(len({t["BBOXY_CARGO_TARGET_DIR"] for t in targets}), 1)
+        self.assertTrue(all(t["CARGO_TARGET_DIR"] is None for t in targets))
+        self.assertTrue(all(Path(t["BBOXY_CARGO_TARGET_DIR"]).is_relative_to(self.repo.state.resolve()) for t in targets))
 
     def test_run_timeout_during_a_test_does_not_retry(self):
         self.cut("crates/c/src/lib.rs")
@@ -526,6 +531,90 @@ class GateReceiptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("dirty source tree", result.stderr)
         self.assertNotIn("ci-local: source", result.stdout)
+
+
+class SlotTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repository()
+        self.addCleanup(self.repo.close)
+        self.repo.tooling()
+        self.repo.write("scripts/ci-local.sh", '''#!/bin/sh
+set -eu
+sha=$(git rev-parse HEAD)
+printf 'ci-local: source %s normal\\n' "$sha"
+python3 - <<'PY'
+import json,os,pathlib,subprocess
+state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
+target=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])
+assert 'CARGO_TARGET_DIR' not in os.environ
+assert not list(target.iterdir()), 'a candidate inherited an old target'
+row={'tree':str(pathlib.Path.cwd().resolve()),'target':str(target.resolve()),
+     'sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}
+with (state/'slot-calls.jsonl').open('a') as stream:stream.write(json.dumps(row)+'\\n')
+(target/'candidate-artifact').write_text(row['sha'])
+PY
+echo 'ci-local: all gates passed'
+printf 'ci-local: result %s normal 0\\n' "$sha"
+''')
+        self.repo.base = self.repo.commit("Fixture shared slot entrypoint")
+        self.slots = (self.repo.state / "slots").resolve()
+
+    def gate(self, sha):
+        result = self.repo.cli("ci-local")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        log = self.repo.state / "slot-ci.log"
+        log.write_text(result.stdout + result.stderr)
+        self.assertEqual(landing.gate_proof(log, sha)["tested_sha"], sha)
+        return json.loads((self.repo.state / "slot-calls.jsonl").read_text().splitlines()[-1])
+
+    def test_two_commits_reuse_slot_paths_with_empty_targets_and_keep_the_caller(self):
+        unrelated = self.repo.state / "target/caller-artifact"
+        unrelated.parent.mkdir()
+        unrelated.write_text("retained")
+        first = self.gate(self.repo.base)
+        self.repo.write("crates/c/src/lib.rs", "// second signed candidate\n")
+        second_sha = self.repo.commit("Fixture second candidate")
+        second = self.gate(second_sha)
+        slot = self.slots / "bboxy450-gate-slot-1"
+        self.assertEqual(first["tree"], str(slot / "tree"))
+        self.assertEqual(first["target"], str(slot / "target"))
+        self.assertEqual(first["tree"], second["tree"])
+        self.assertEqual(first["target"], second["target"])
+        self.assertNotEqual(first["sha"], second["sha"])
+        self.assertEqual(unrelated.read_text(), "retained")
+        self.assertFalse(slot.exists())
+        self.assertNotIn(str(slot / "tree"), run("git", "worktree", "list", "--porcelain", cwd=self.repo.root))
+
+    def test_dead_owner_reclaims_its_known_tree_and_target(self):
+        dead = subprocess.Popen([sys.executable, "-c", "pass"])
+        self.assertEqual(dead.wait(timeout=5), 0)
+        slot = self.slots / "bboxy450-gate-slot-1"
+        slot.mkdir(parents=True)
+        (slot / "pid").write_text(str(dead.pid))
+        (slot / "owner.json").write_text(json.dumps({"pid": dead.pid, "token": "dead"}))
+        (slot / "target").mkdir()
+        (slot / "target/old-artifact").write_text("retired")
+        run("git", "worktree", "add", "--detach", str(slot / "tree"), self.repo.base, cwd=self.repo.root)
+        row = self.gate(self.repo.base)
+        self.assertEqual(row["tree"], str(slot / "tree"))
+        self.assertFalse(slot.exists())
+
+    def test_live_owner_and_held_transition_are_skipped_without_deletion(self):
+        live = self.slots / "bboxy450-gate-slot-1"
+        live.mkdir(parents=True)
+        (live / "pid").write_text(str(os.getpid()))
+        sentinel = live / "owner-data"
+        sentinel.write_text("live")
+        self.assertEqual(self.gate(self.repo.base)["tree"], str(self.slots / "bboxy450-gate-slot-2/tree"))
+        self.assertEqual(sentinel.read_text(), "live")
+        sentinel.unlink()
+        (live / "pid").unlink()
+        live.rmdir()
+        with landing.slot_guard(live) as held:
+            self.assertTrue(held)
+            row = self.gate(self.repo.base)
+            self.assertEqual(row["tree"], str(self.slots / "bboxy450-gate-slot-2/tree"))
+            self.assertFalse(live.exists())
 
 
 class LandTests(unittest.TestCase):
@@ -807,7 +896,9 @@ class QuarantineTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
         self.assertIn("--no-fail-fast", calls[0])
-        self.assertEqual(calls[1], ["test", "--locked", "-p", "c", "--", "--exact", "fixture_test"])
+        self.assertEqual(calls[1][:2], ["test", "--target-dir"])
+        self.assertEqual(Path(calls[1][2]).resolve(), (self.repo.state / "target").resolve())
+        self.assertEqual(calls[1][:1] + calls[1][3:], ["test", "--locked", "-p", "c", "--", "--exact", "fixture_test"])
 
     def test_failure_alone_and_zero_test_retry_both_block(self):
         self.listed()
@@ -849,7 +940,7 @@ if cfg.get('fail') and not after:
  print("error: test failed, to rerun pass '-p c --test fixture'")
  raise SystemExit(101)
 if not cfg.get('missing_store'):
- target=pathlib.Path(os.environ['CARGO_TARGET_DIR'])
+ target=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])
  (target/'parity/native').mkdir(parents=True,exist_ok=True)
  (target/'parity/native/fixture.png').write_bytes(b'fixture native pixels'+(b' after tests' if after else b''))
  (target/'parity/cases.json').write_text('[]')

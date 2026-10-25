@@ -4,6 +4,8 @@ Shell entry points keep the same contract on every worktree. All Git commands
 use argument arrays; fixture runs use their own repository and shared-state dir.
 """
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import importlib.util
 import io
@@ -33,11 +35,26 @@ class Refusal(Exception):
         self.code = code
 
 
+def cargo_invocation(argv, environment=None):
+    if not argv or argv[0] != "cargo":
+        return argv, environment
+    environment = dict(os.environ if environment is None else environment)
+    target = environment.pop("CARGO_TARGET_DIR", None) or environment.get("BBOXY_CARGO_TARGET_DIR")
+    if target:
+        environment["BBOXY_CARGO_TARGET_DIR"] = target
+    before_harness = argv[:argv.index("--")] if "--" in argv else argv
+    if (target and len(argv) > 1 and argv[1] in {"build", "check", "test", "clippy", "run", "bench", "doc", "rustc"}
+            and not any(a == "--target-dir" or str(a).startswith("--target-dir=") for a in before_harness)):
+        argv = [*argv[:2], "--target-dir", target, *argv[2:]]
+    return argv, environment
+
+
 def command(argv, *, cwd=None, capture=True, check=True, **kwargs):
-    result = subprocess.run(argv, cwd=cwd, text=True,
+    argv, environment = cargo_invocation(argv, kwargs.pop("env", None))
+    result = subprocess.run(argv, cwd=cwd, text=True, env=environment,
                             capture_output=capture, **kwargs)
     if check and result.returncode:
-        raise Refusal(f"command_failed ({result.returncode}): {' '.join(argv)}\n"
+        raise Refusal(f"command_failed ({result.returncode}): {' '.join(str(a) for a in argv)}\n"
                       f"{result.stderr if capture else ''}".rstrip())
     return result
 
@@ -206,6 +223,7 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
     cargo = argv[0] == "cargo" or any(Path(arg).name == "quarantine-test.sh" for arg in argv)
     fixtures = any(Path(arg).name == "test-landing.py" for arg in argv)
     switch("compile" if cargo else "test" if fixtures else "other")
+    argv, env = cargo_invocation(argv, env)
     child = subprocess.Popen(argv, cwd=root, env=env, text=True,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     try:
@@ -328,7 +346,7 @@ def scoped_parity(root, data, output):
         cases = json.loads((stored / "cases.json").read_text())
     else:
         checked(["cargo", "build", "-p", "bboxybook", "--locked"], root)
-        target = Path(os.environ.get("CARGO_TARGET_DIR", root / "target"))
+        target = Path(os.environ.get("BBOXY_CARGO_TARGET_DIR") or os.environ.get("CARGO_TARGET_DIR") or root / "target")
         binary = target.resolve() / "debug/bboxybook"
         cases = json.loads(command([str(binary), "manifest"], cwd=root).stdout)
     cases = parity_cases(cases, data)
@@ -414,11 +432,13 @@ def presubmit(base):
     if not math.isfinite(run_bound) or not 0 < run_bound <= 900:
         raise Refusal("invalid_run_bound: maximum is 900 seconds")
     operation = uuid.uuid4().hex
+    check_root, check_environment = candidate_environment(root, sha)
     for attempt in range(2):
         clean_source(root)
         if git("rev-parse", "HEAD", cwd=root) != sha:
             raise Refusal("candidate_changed_during_presubmit")
-        record = presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation)
+        record = presubmit_attempt(check_root, sha, base, data, build_cap, run_bound, attempt, operation,
+                                   environment=check_environment)
         clean_source(root)
         if git("rev-parse", "HEAD", cwd=root) != sha:
             raise Refusal("candidate_changed_during_presubmit")
@@ -446,7 +466,7 @@ def stop_worker(child):
         child.wait()
 
 
-def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation):
+def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, operation, *, environment=None):
     output = state_directory() / "presubmits" / (sha + "-" + uuid.uuid4().hex[:8])
     output.mkdir(parents=True, mode=0o700)
     result_path = output / "affected.json"
@@ -472,9 +492,9 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
                     pass
     with (output / "commands.log").open("w") as stream:
         child = subprocess.Popen(["sh", str(root / "scripts/presubmit.sh"), "--worker",
-                                  base, str(result_path)], cwd=root, stdout=stream,
-                                 stderr=subprocess.STDOUT, start_new_session=True,
-                                 env=build_environment(root))
+                                  base, str(result_path)], cwd=root,
+                                 env=build_environment(root) if environment is None else environment, stdout=stream,
+                                 stderr=subprocess.STDOUT, start_new_session=True)
         atomic_write(output / "process.json", json.dumps({"pid": child.pid, "pgid": child.pid,
                                                           "sha": sha, "started": now(),
                                                           "attempt": attempt, "operation": operation}) + "\n")
@@ -523,18 +543,25 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
     return record
 
 
-def build_environment(root):
-    # Test executables bake checkout-relative paths in. A caller's warm target
-    # is a parent, never a cache shared between different source locations.
+def build_environment(root, *, target=None):
     environment = dict(os.environ)
-    parent = Path(environment.get("BBOXY_CARGO_TARGET_DIR")
-                  or environment.get("CARGO_TARGET_DIR") or root / "target")
-    if not parent.is_absolute():
-        parent = root / parent
-    key = hashlib.sha256(os.fsencode(root.resolve())).hexdigest()[:20]
-    target = str(parent.resolve() / ("checkout-" + key))
-    environment.update(CARGO_TARGET_DIR=target, BBOXY_CARGO_TARGET_DIR=target,
-                       CARGO_BUILD_JOBS="2")
+    if target is None:
+        # Explicit legacy callers (including private fixtures) override an
+        # inherited transport; never borrow another checkout's Cargo artifacts.
+        parent = Path(environment.get("CARGO_TARGET_DIR")
+                      or environment.get("BBOXY_CARGO_TARGET_DIR") or root / "target")
+        if not parent.is_absolute():
+            parent = root / parent
+        key = hashlib.sha256(os.fsencode(root.resolve())).hexdigest()[:20]
+        target = parent.resolve() / ("checkout-" + key)
+    environment.pop("CARGO_TARGET_DIR", None)
+    environment.update(BBOXY_CARGO_TARGET_DIR=str(Path(target).resolve()),
+                       CARGO_BUILD_JOBS="2", CARGO_INCREMENTAL="0",
+                       CARGO_PROFILE_DEV_DEBUG="0", CARGO_PROFILE_TEST_DEBUG="0",
+                       CARGO_PROFILE_DEV_OPT_LEVEL="1", CARGO_PROFILE_TEST_OPT_LEVEL="1",
+                       CARGO_PROFILE_DEV_DEBUG_ASSERTIONS="true", CARGO_PROFILE_TEST_DEBUG_ASSERTIONS="true")
+    for name in ("CARGO_LOG", "CARGO_TERM_COLOR", "CARGO_TERM_PROGRESS_WHEN", "CARGO_TERM_PROGRESS_WIDTH"):
+        environment.pop(name, None)
     return environment
 
 
@@ -571,7 +598,7 @@ def wide_check(root, data, gate_log=None):
         output = state_directory() / "presubmits" / (sha + "-" + uuid.uuid4().hex[:8])
         output.mkdir(parents=True, mode=0o700)
         gate_log = output / "commands.log"
-        environment = build_environment(root)
+        check_root, environment = candidate_environment(root, sha)
         environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
         print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
         with gate_log.open("w") as stream:
@@ -670,62 +697,168 @@ def main_guard(root, base):
             raise Refusal("main_red: only an all-revert cut may land", 76)
 
 
+def slot_directory():
+    return state_directory() / "slots" if os.environ.get("BBOXY_LANDING_STATE_DIR") else Path("/tmp")
+
+
+def common_repository(root):
+    path = Path(git("rev-parse", "--git-common-dir", cwd=root))
+    return (root / path).resolve()
+
+
+@contextmanager
+def slot_guard(path, *, blocking=False):
+    # Short per-slot filesystem transitions only. Other slots never wait.
+    with path.with_name("." + path.name + ".lock").open("a") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(stream, fcntl.LOCK_UN)
+
+
+def remove_slot(path, root):
+    if any(p.name not in {"pid", "owner.json", "tree", "target"} for p in path.iterdir()):
+        raise Refusal("slot_has_unknown_files: " + str(path))
+    tree = path / "tree"
+    if tree.exists():
+        if tree.is_symlink() or common_repository(tree) != common_repository(root):
+            raise Refusal("slot_tree_is_not_this_repository")
+        git("worktree", "remove", "--force", str(tree), cwd=root)
+    target = path / "target"
+    if target.exists():
+        if target.is_symlink():
+            raise Refusal("slot_target_is_symlink")
+        shutil.rmtree(target)
+    (path / "pid").unlink(missing_ok=True)
+    (path / "owner.json").unlink(missing_ok=True)
+    path.rmdir()
+
+
 class Slot:
-    def __init__(self):
+    def __init__(self, label="land", preferred=None):
         self.path = None
         self.number = None
         self.token = uuid.uuid4().hex
+        self.root = repository()
+        self.label, self.preferred = label, preferred
+        self.previous_environment = {}
 
     def __enter__(self):
-        directory = state_directory() / "slots" if os.environ.get("BBOXY_LANDING_STATE_DIR") else Path("/tmp")
+        directory = slot_directory()
         directory.mkdir(parents=True, exist_ok=True)
         limit = 3 if shutil.disk_usage(Path.home()).free >= 25 * 1024 ** 3 else 2
-        for number in range(1, limit + 1):
+        numbers = [self.preferred] if self.preferred is not None else range(1, limit + 1)
+        for number in numbers:
+            if number not in range(1, limit + 1):
+                continue
             path = directory / f"bboxy450-gate-slot-{number}"
             if path.is_symlink():
                 continue
-            if path.exists():
-                try:
-                    pid = int((path / "pid").read_text())
-                    if pid <= 0:
-                        continue
-                    os.kill(pid, 0)
+            with slot_guard(path) as held:
+                if not held:
                     continue
-                except ProcessLookupError:
-                    # Shared protocol authorizes reclaiming a dead owner's slot,
-                    # not deleting arbitrary contents under /tmp.
-                    if any(p.name not in ("pid", "owner.json") for p in path.iterdir()):
-                        continue
-                    (path / "pid").unlink(missing_ok=True)
-                    (path / "owner.json").unlink(missing_ok=True)
+                if path.exists():
                     try:
-                        path.rmdir()
-                    except OSError:
+                        pid = int((path / "pid").read_text())
+                        if pid <= 0:
+                            continue
+                        os.kill(pid, 0)
                         continue
-                except (ValueError, OSError):
-                    continue
-            try:
+                    except ProcessLookupError:
+                        try:
+                            remove_slot(path, self.root)
+                        except (OSError, Refusal):
+                            continue
+                    except (ValueError, OSError):
+                        continue
                 path.mkdir()
-            except FileExistsError:
-                continue
-            atomic_write(path / "pid", str(os.getpid()) + "\n")
-            atomic_write(path / "owner.json", json.dumps({"pid": os.getpid(), "token": self.token}) + "\n")
-            self.path, self.number = path, number
-            print(f"land: slot {number} of {limit}", flush=True)
+                owner = {"pid": os.getpid(), "token": self.token,
+                         "repository": str(common_repository(self.root))}
+                atomic_write(path / "pid", str(os.getpid()) + "\n")
+                atomic_write(path / "owner.json", json.dumps(owner) + "\n")
+                self.path, self.number = path.resolve(), number
+            values = {"BBOXY_GATE_SLOT_ROOT": str(self.path),
+                      "BBOXY_GATE_SLOT_TOKEN": self.token,
+                      "BBOXY_GATE_SLOT_OWNER": str(os.getpid())}
+            self.previous_environment = {k: os.environ.get(k) for k in values}
+            os.environ.update(values)
+            print(f"{self.label}: {'gate ' if self.label == 'ci-local' else ''}slot {number} of {limit}", flush=True)
             return self
         raise Refusal(f"all {limit} slots are taken", 75)
 
     def __exit__(self, *unused):
-        if self.path is None:
-            return
         try:
-            data = json.loads((self.path / "owner.json").read_text())
-            if data.get("token") == self.token and data.get("pid") == os.getpid():
-                (self.path / "pid").unlink()
-                (self.path / "owner.json").unlink()
-                self.path.rmdir()
-        except OSError as error:
-            print(f"land: slot_cleanup: {error}", file=sys.stderr)
+            if self.path is not None:
+                with slot_guard(self.path, blocking=True):
+                    data = json.loads((self.path / "owner.json").read_text())
+                    if data.get("token") == self.token and data.get("pid") == os.getpid():
+                        remove_slot(self.path, self.root)
+        finally:
+            for key, value in self.previous_environment.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+
+def active_slot(root):
+    value = os.environ.get("BBOXY_GATE_SLOT_ROOT")
+    if not value:
+        return None
+    path = Path(value)
+    # Child fixture repositories inherit environment, never their parent's lease.
+    if path.parent.resolve() != slot_directory().resolve():
+        return None
+    if not re.fullmatch(r"bboxy450-gate-slot-[123]", path.name):
+        return None
+    try:
+        owner = json.loads((path / "owner.json").read_text())
+        if (owner.get("token") != os.environ.get("BBOXY_GATE_SLOT_TOKEN")
+                or str(owner.get("pid")) != os.environ.get("BBOXY_GATE_SLOT_OWNER")
+                or owner.get("repository") != str(common_repository(root))):
+            return None
+        os.kill(int(owner["pid"]), 0)
+    except (OSError, ValueError, KeyError):
+        return None
+    return path
+
+
+def candidate_environment(root, sha):
+    path = active_slot(root)
+    if path is None:
+        return root, build_environment(root)
+    tree, target = path / "tree", path / "target"
+    if tree.exists():
+        if common_repository(tree) != common_repository(root):
+            raise Refusal("slot_tree_is_not_this_repository")
+        git("checkout", "-f", sha, cwd=tree)
+        git("clean", "-fdx", cwd=tree)
+    else:
+        git("worktree", "add", "--detach", str(tree), sha, cwd=root)
+    if target.exists():
+        if target.is_symlink():
+            raise Refusal("slot_target_is_symlink")
+        shutil.rmtree(target)
+    target.mkdir()
+    return tree, build_environment(tree, target=target)
+
+
+def ci_local(arguments):
+    if any(arg not in {"--parity", "--slow", "--after-tests"} for arg in arguments):
+        raise Refusal("unknown ci-local flag")
+    root = repository()
+    clean_source(root)
+    sha = git("rev-parse", "HEAD", cwd=root)
+    with Slot("ci-local"):
+        tree, environment = candidate_environment(root, sha)
+        environment["BBOXY_GATE_SLOT"] = "none"
+        return command(["sh", "scripts/ci-local.sh", *arguments], cwd=tree,
+                       env=environment, capture=False, check=False).returncode
 
 
 def announcement(sha, subject):
@@ -874,6 +1007,8 @@ def land(gate_log=None):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "ci-local":
+        return ci_local(sys.argv[2:])
     delegates = {"quarantine": ("quarantine", "administer"),
                  "quarantine-test": ("quarantine", "test"),
                  "main-watch": ("main_watch", "run")}

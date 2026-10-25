@@ -212,16 +212,32 @@ def one(root, api):
         return 0 if record["effective_verdict"] == "green" else 1
     work = root / "scratchpad/landing-watch"
     work.mkdir(parents=True, exist_ok=True)
-    tree = work / ("tree-" + uuid.uuid4().hex)
+    tree = work / "tree"
     target = work / "target"
     output = api.state_directory() / "postsubmits" / (sha + "-" + uuid.uuid4().hex[:8])
     output.mkdir(parents=True, mode=0o700)
     api.atomic_write(output / "paths.json", json.dumps({"tree": str(tree), "target": str(target)}) + "\n")
+    if tree.exists():
+        if tree.is_symlink() or api.common_repository(tree) != api.common_repository(root):
+            raise api.Refusal("watch_tree_is_not_this_repository")
+        api.git("worktree", "remove", "--force", str(tree), cwd=root)
     api.git("worktree", "add", "--detach", str(tree), sha, cwd=root)
     started = api.now()
     try:
-        environment = dict(os.environ, CARGO_TARGET_DIR=str(target), CARGO_BUILD_JOBS="2",
-                           BBOXY_GATE_SLOT="none", PARITY_OUT=str(target / "parity"))
+        marker = target / ".bboxy-checkout.json"
+        binding = {"tree": str(tree.resolve()), "target": str(target.resolve())}
+        try:
+            bound = json.loads(marker.read_text()) == binding
+        except (OSError, ValueError):
+            bound = False
+        if target.exists() and not bound:
+            if target.is_symlink():
+                raise api.Refusal("watch_target_is_symlink")
+            shutil.rmtree(target)
+        target.mkdir(exist_ok=True)
+        api.atomic_write(marker, json.dumps(binding) + "\n")
+        environment = api.build_environment(tree, target=target)
+        environment.update(BBOXY_GATE_SLOT="none", PARITY_OUT=str(target / "parity"))
         code, text = run_ci(api, tree, output, environment, sha)
         selection = test_selector(text, target / "parity/report.json") if code else None
         failure = selection["name"] if code else "-"

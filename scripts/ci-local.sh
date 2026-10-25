@@ -6,76 +6,38 @@
 # The watcher's --after-tests continuation reports post-test checks only.
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
-after_tests=false
-if [ "${1:-}" = --after-tests ]; then
-    after_tests=true
-    shift
-fi
 gate_clean() {
     [ -z "$(git status --porcelain --untracked-files=no)" ] &&
     [ -z "$(git ls-files --others --exclude-standard -- crates scripts lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
 }
 if ! gate_clean; then echo 'ci-local: dirty source tree; no exact-SHA proof' >&2; exit 2; fi
+if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
+    ci_entry=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+    exec python3 -I "$ci_entry/landing.py" ci-local "$@"
+fi
+after_tests=false
+if [ "${1:-}" = --after-tests ]; then
+    after_tests=true
+    shift
+fi
 ci_source_root=$(git rev-parse --show-toplevel)
 ci_source=$(git rev-parse HEAD)
+cd "$ci_source_root"
+ci_target=${CARGO_TARGET_DIR:-${BBOXY_CARGO_TARGET_DIR:-target}}
+case "$ci_target" in /*) ;; *) ci_target="$ci_source_root/$ci_target" ;; esac
+unset CARGO_TARGET_DIR
 gate_sha=$ci_source
 gate_mode=normal
 [ "$#" -eq 0 ] || gate_mode=extended
 [ "$after_tests" = false ] || gate_mode=after-tests
 printf 'ci-local: source %s %s\n' "$gate_sha" "$gate_mode"
-cd "$ci_source_root"
-ci_target=${CARGO_TARGET_DIR:-${BBOXY_CARGO_TARGET_DIR:-target}}
-case "$ci_target" in /*) ;; *) ci_target="$ci_source_root/$ci_target" ;; esac
-unset CARGO_TARGET_DIR
-
-ci_remove_slot() {
-    cd "$ci_source_root" || return 1
-    if [ -e "$1/tree/.git" ]; then
-        git -C "$ci_source_root" worktree remove --force "$1/tree" || return 1
-    fi
-    rm -rf -- "$1"
-}
-ci_status=0
-# Gate slots are claimed atomically here (mkdir), so two agents starting at once cannot overrun
-# the limit: 3 while ~ has at least 25 GiB free, else 2. A slot whose owner pid is gone is reclaimed.
-# BBOXY_GATE_SLOT=none skips the claim (scoped runs that are not full gates).
-if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
-    free=$(df -g "$HOME" | awk 'NR==2 {print $4}')
-    limit=2; [ "${free:-0}" -ge 25 ] && limit=3
-    slot=""
-    for n in 1 2 3; do
-        [ "$n" -gt "$limit" ] && break
-        d="/tmp/bboxy450-gate-slot-$n"
-        if [ -d "$d" ] && ! kill -0 "$(cat "$d/pid" 2>/dev/null || echo 0)" 2>/dev/null; then
-            ci_remove_slot "$d" || continue
-        fi
-        if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; slot=$n; break; fi
-    done
-    if [ -z "$slot" ]; then echo "ci-local: all $limit gate slots are taken; retry when one is released" >&2; exit 75; fi
-    trap 'ci_status=$?; trap - EXIT; ci_remove_slot "$d" || ci_status=1; exit "$ci_status"' EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
-    echo "ci-local: gate slot $slot of $limit"
-    # Clean source and target at repeatable paths, without cleaning the caller.
-    ci_tree="$d/tree"
-    git worktree add --detach "$ci_tree" "$ci_source"
-    if ! cmp -s "$ci_source_root/scripts/ci-local.sh" "$ci_tree/scripts/ci-local.sh"; then
-        echo 'ci-local: entry script differs from the committed source' >&2
-        exit 2
-    fi
-    git -C "$ci_tree" checkout -f "$ci_source"
-    git -C "$ci_tree" clean -fdx
-    ci_target="$d/target"
-    mkdir "$ci_target"
-    cd "$ci_tree"
-fi
 export BBOXY_CARGO_TARGET_DIR="$ci_target"
 # shellcheck source=scripts/cache-env.sh
 . ./scripts/cache-env.sh
 # Keep profile environment identical across gates; it is part of the cache key.
 export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
 export CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
-printf 'ci-local: paths tree %s target %s\n' "$(pwd -P)" "$BBOXY_CARGO_TARGET_DIR"
+printf 'ci-local: checkout %s target %s\n' "$(pwd -P)" "$BBOXY_CARGO_TARGET_DIR"
 if [ "$after_tests" = false ]; then
     sh scripts/layering.sh
     python3 -I scripts/test-landing.py
