@@ -1,0 +1,53 @@
+R5h cmdloop 967-real-PTY / 50-watched single-attempt evidence
+
+Oracle brief 47102d24-3af9-439f-81a4-e7250880b1ff: finish NG1 preflight, then build exact merged main 2ad1d733 and run one frame attempt in a self-called quiet window. No second attempt.
+Source 2ad1d73315a27d6280dcc97a2cb44fe47958e1dc; git verify-commit exit 0, machine key 9B07E849480C68328CA20684844ECC0587DE7AB0. Frozen clean tree /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/tree.
+No production source edit, RPC, fixture predicate or deadline change in this evidence branch.
+Raw artifact root /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx.
+
+Build: nice -n 10 cargo build --release --locked -p bboxy450-term --message-format=json-render-diagnostics — exit 0 /419.210994 s. Actual artifact opt_level 3, debug_assertions true, debuginfo 0. Wrappers empty, two Cargo jobs, explicit memory custody.
+Binary SHA256 307c6171e7c6c71ee5dea295c448dc5b585bc3c7f03db2172e45835250f7dc7a; before/after equal. Retained standalone copy exists after target removal.
+
+QUIET opened f70f89e4, tightened b00496e8 to 23:31 PDT after all actual gates drained; closed cdb8bb36 immediately after the attempt/reap. Source edits only during the drain.
+Process correction: Rook accepted Seraph's offered yield while parity was at 1100/1664. Oracle ff148538 ruled running gates must finish; Rook acknowledged this mistake and will not request another running-gate stop. Interrupted gate evidence remained with its owner.
+Launch 2026-10-24 23:02:18 PDT, app PID89516; ps found zero active peer full gates, loadavg1 5.90380859375 (<8), disk free 42828394496 bytes (>10 GiB), ptmx_max 999.
+Command sh scripts/gates.sh frame; GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10; release O3/debug assertions and BBOXY_TEST_CUSTODY=memory. Runtime log explicitly witnessed Some(Memory), label memory custody (debug).
+Verdict EXIT 1 / 80.659837 s; not wrapper timeout. All 967 real PTYs created; all 969 recorded PIDs gone, ps exit 1/no rows. No rerun.
+
+Settling/checkpoint acceptance: watched panes reached SETTLE then the first IDLE boundary; idle witness 0 frames /0 callbacks, guard violations 0. Capture MEASURE/stop/first-settled boundaries all present.
+Stop-to-first-settled logic wall 6.405780083 s; checkpoint RPC 0 calls /0 ns =0.0 percent (<=10 percent). Logic missed delta 0, untracked 0, checkpoint in_flight count 0 at both cuts. This is the official interval, not Finish.
+MEASURE-to-stop wall 10.004711625 s; checkpoint RPC 0.0 percent, informational only. Supervisor missed delta 24 in that informational interval, 0 in stop-to-settled.
+Full frame timing gate FAILS: CPU p99 461.370833 ms vs 4 ms; input-to-GPU 8708.888333 ms vs 26.666666667 ms at 75 Hz. No overall frame-budget pass is claimed.
+Frame-work p99 31.510 ms, 46 measured frames, probe_clipped false. Input admission-to-prepared 8359.388875 ms (95.9869 percent); prepared-to-encoded 325.788375 ms; encoded-to-GPU 23.711083 ms.
+Native first SETTLE poll to last logged Finish poll: 19.4973345 s, frame/callback/completed deltas +1/+1/+1; source1024 direct redraw/frame +0/+0, source4 tick +1/+1, source5 live-model frames +1; other source deltas zero. Final pending_redraw/messages/output false, paused frame and GPU complete and stable counts true.
+
+CPU mechanism: bbt-rt/src/fault.rs:16 reads CLOCK_THREAD_CPUTIME_ID; stall.rs:726-730 subtracts consecutive frame-end samples. Thus its p99 includes work between redraws. At sample index4 the CPU delta is 461.370833 ms and paired frame-work wall is 15.889790 ms; at least 445.481043 ms CPU lies outside that recorded redraw work. Exact callback/function unproven; this is not renderer-only CPU attribution.
+Input mechanism: model_received is observed in main.rs:2960. Before-model latency dominates, but no per-probe ingest/GUI/UI callback chain was collected, so that exact phase split remains unproven.
+Logic MEASURE completion-accounted spans: ReadRing RPC 8.792088847 s /10.004711625 s (87.879 percent), replay page 9.049265552 s, parse 0.253165692 s, maintenance 0.351676689 s, checkpoint 0. Stop-to-settled ReadRing 5.216893960 s /6.405780083 s (81.440 percent). These nested/inclusive waits are not UI CPU; do not add them.
+Only 8192 spans retained per recorder. Logic overwritten at stop/settled 34224/85304, supervisor 100083/131310; retained clipping cannot prove full interval coverage. Totals are completion-accounted, owner copies non-atomic and seat rows aged. Repeated PAUSED does not identify a unique final tail. No physical scanout/keystroke proof.
+
+Cleanup: lsof target exit 1/no rows; own release target retired 1287565312 allocated bytes. Free after 43321098240 bytes. Standalone binary/raw packet retained; no owned load remains.
+
+Artifact hashes:
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/build.log — SHA256 4e5fb9420365158d38e59d034c2c26db61bfa26599941557a4795727c450457f
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/binary.json — SHA256 e58e1983eb3a993c9f9596637cbc6887ba6f7d16854d248ef0f24124e790044f
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/result.json — SHA256 08851a7c13312d13c485e8217c5b0fc2586e7cd7773d8ddb69b4538207814092
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/command.json — SHA256 ff6edde3defdc0c42c0aa553faf6b97e7111a4a110f8260577f34bb1b275d654
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/stderr.log — SHA256 89415598e654f12995510f5f8e61c33948607a875efc2e02c61e4746df62e409
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/stdout.log — SHA256 5e5ed773937d47ffd058d83d0a4ee937a531867bd151f47650af2038711a3452
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/reaped.json — SHA256 0402a8a8e7b0a5bfbbf158e2157da001916a89a9a65cbd57b7527f396ede1936
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/r5-frame.q2gCcz/report.json — SHA256 eabaaa7023bca9f6aec7260ec90016cb34f257ddce515845dba8ad2c97094348
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/run-1/r5-frame.q2gCcz/report.capture.json — SHA256 2accfdea6a7dd0006f0ad891d258f887010d1891530693010c7360ac3285ec0d
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/analysis.json — SHA256 bff6cec91c8150fa457d5f47b9ffa772463f8f66f824542f3a07d2d57aef84c8
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/phase-summary.json — SHA256 0e179d70b85470d762377b830d23852b5faf419387aca3557dbf29795605d7df
+/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5h-cmdloop-frame-21ls51yx/cleanup.json — SHA256 399a9467a21f815fe7215fa98aefa9cdd772d04fc2eaaf22530173f2565613d8
+
+Read-only model-path follow-up (Oracle cda51f4d); no new run or source edit.
+Probe admission is Control mpsc(8), then exercise -> GuiTask actions(64) -> local outgoing VecDeque -> Wire.out(64) -> one socket writer (stall.rs:507/650; load.rs:589/673/1253-1256). The next stages are server/PTY/ring/logic, then GUI delivery. No per-probe timestamps were captured at these intermediate boundaries.
+GUI reader runs on Tokio and forwards through mpsc(8) (load.rs:590). One drain_gui task calls the apply closure synchronously before queuing Applied (load.rs:731-732). That closure applies Grids, rebuilds/publishes and only then queues its ACK. The reader can read independently until its bounded queue fills; that queue's occupancy/time series was not recorded.
+The IO apply path calls model::build over all 967 records (load.rs:964; model.rs:872), prepares the 50 watched screens (load.rs:974; model.rs:1185), then publishes (load.rs:976). Production live.rs:264/267/269 and :1124-1132 use the same per-update build/prepare/publish-before-ACK shape. These are IO/Tokio task operations, not UI-thread CPU.
+The published-model handoff is Latest ArrayQueue(1), force_push replacing the old entry (bbt-rt/queues.rs:65-82), consumed as an Arc by main.rs:2929. Its occupancy is structurally 0 or 1, not a growing FIFO; publication-to-take delay was not measured. A numeric queue-wait/apply/publish allocation of the 8.359 s is therefore UNPROVEN.
+A concrete unmetered path exists: main.rs:3149 calls App::drain before taking the Metal tick. The tick-none early return at :3166-3170 precedes phases.drain assignment at :3172 and every successful-frame meter sample. App::drain can take/project a new Model at :2929/:3004 even when this redraw never encodes. Scene::set_model clones swarms and rebuilds the full seat index/967 SeatRows (scene.rs:421/:460/:468); replacing live_state can drop the old Arc on UI. This path can consume CPU outside the paired successful-frame work; its count/duration was not instrumented, so it is a candidate mechanism, not proof that one particular apply consumed the whole 445 ms gap.
+UiEvent::Wake drains the DirtySet at main.rs:3699; wake.rs:51 resets wake admission then, before frame consumption. The retained first-SETTLE witness counts 66459 wake events, message/output/model source wakes 45681/42183/4011. A source can share a wake and these counts are cumulative, not MEASURE-only and not queue depths; do not add them or infer per-function CPU.
+A model::build or PanePreparer cost alone cannot directly explain the UI-thread CPU delta: they execute on IO. Conversely the successful-frame phase list omits aborted/tickless redraw work, so the 15.89 ms paired frame phase does not bound all model projection done between completed frames.
+Needed before fixing: bounded buffered timestamps/counters for probe enqueue/write, GUI receive/apply-start/apply-end/publish, Latest.take and UI early-return/Scene projection/old-model drop CPU; preserve all workload, publication-before-ACK, timing and idle rules. No new 967 attempt, diagnostic patch or product fix selected in this read-only follow-up.
