@@ -311,8 +311,49 @@ fn queue_action(outgoing: &mut VecDeque<GuiAction>, action: GuiAction) {
     outgoing.push_back(action);
 }
 
+fn scroll_readback(history: &mut History, model: &mut Arc<Model>, grids: &Grids) -> bool {
+    let position = history.take_position();
+    let reply = history.take_completion();
+    if position.is_none() && reply.is_none() {
+        return false;
+    }
+    let readback = Arc::make_mut(&mut Arc::make_mut(model).scroll);
+    if let Some(located) = position {
+        readback.displayed(
+            located.seat,
+            grids.baseline(located.seat),
+            located.baseline,
+            located.position,
+        );
+    }
+    if let Some(reply) = reply {
+        readback.reply = Some(reply);
+    }
+    true
+}
+fn scroll_refused(
+    model: &mut Arc<Model>,
+    seat: SeatId,
+    generation: u64,
+    request: bboxy450_term::scrollback::Request,
+    reason: &str,
+) -> bool {
+    let Some(id) = request.op else { return false };
+    Arc::make_mut(&mut Arc::make_mut(model).scroll).reply =
+        Some(bboxy450_term::scrollback::Reply {
+            id,
+            seat,
+            generation,
+            result: Err(reason.chars().take(256).collect()),
+        });
+    true
+}
+
 fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> bool {
     history.forget(seat);
+    if model.scroll.observed(seat, None) {
+        Arc::make_mut(&mut Arc::make_mut(model).scroll).forget(seat);
+    }
     if model.history.contains_key(&seat) {
         Arc::make_mut(model).history.remove(&seat);
         true
@@ -1008,15 +1049,16 @@ async fn run_with_control(
                     UiMsg::Scroll {seat,generation,request}=> {
                         if let (Some((view,sequence)),Some(screen)) = (grids.baseline(*seat),grids.screen(*seat))
                             && view.generation == *generation {
-                            if let Err(reason) = history.request(*seat,view,sequence,screen,*request) {
-                                logger.write(format!("history {seat}: {reason}"));
-                                history.forget(*seat);
-                            }
-                            if !history.contains(*seat) && model.history.contains_key(seat) {
-                                Arc::make_mut(&mut model).history.remove(seat);
-                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
-                            }
-                        }
+                                if let Err(reason) = history.request(*seat,view,sequence,screen,*request) {
+                                    logger.write(format!("history {seat}: {reason}"));
+                                    history.failed(*seat,reason);
+                                }
+                                let changed = !history.contains(*seat) && model.history.contains_key(seat);
+                                if changed { Arc::make_mut(&mut model).history.remove(seat); }
+                                let completed = scroll_readback(&mut history,&mut model,&grids);
+                                if changed { publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?; }
+                                else if completed { updates.publish(model.clone()); }
+                        } else if scroll_refused(&mut model,*seat,*generation,*request,"history_view_unavailable") { updates.publish(model.clone()); }
                     }
                     UiMsg::DocumentRead {id,read}=> {
                         if let Some(action)=document_reader.admit(*id,read.clone()) { queue_action(&mut outgoing,action); }
@@ -1050,6 +1092,7 @@ async fn run_with_control(
                                 logger.write(format!("history {seat}: {reason}"));
                             }
                         }
+                        scroll_readback(&mut history,&mut model,&grids);
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     }
                 },
@@ -1133,6 +1176,7 @@ async fn run_with_control(
                         }
                         GuiReply::Seats(next)=> {
                             seats=next.into_iter().map(|seat|(seat.record.id,seat)).collect();
+                            Arc::make_mut(&mut Arc::make_mut(&mut model).scroll).retain(|seat| seats.contains_key(&Ulid(seat.0.0)));
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             if lost {
                                 lost=false; backend_lost(None);
@@ -1169,7 +1213,10 @@ async fn run_with_control(
                             };
                             match grids.apply(seat,&update) {
                                 Ok(changed)=> {
+                                    let scroll_changed = model.scroll.observed(seat,grids.baseline(seat));
+                                    if scroll_changed { Arc::make_mut(&mut Arc::make_mut(&mut model).scroll).observe(seat,grids.baseline(seat)); }
                                     if changed.is_some() {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                                    else if scroll_changed {updates.publish(model.clone());}
                                     controls.observed(seat,&grids);
                                     // A valid byte-equivalent update still needs
                                     // its ack; an unwatched in-flight one does not.
@@ -1199,7 +1246,7 @@ async fn run_with_control(
                             operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
                             publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
                             if matches!(&terminal_reply,Some(ActionReply::History(_)))
-                                && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now())
+                                && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now(),&reason)
                                 && return_live(&mut history,&mut model,seat) {
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
@@ -1226,6 +1273,7 @@ async fn run_with_control(
                         GuiReply::History {seat,records,next}=> {
                             if terminal_reply == Some(ActionReply::History(seat))
                                 && let Err(reason) = history.accept(seat,records,next) {
+                                history.failed(seat,reason);
                                 let changed = return_live(&mut history,&mut model,seat);
                                 logger.write(format!("history {seat}: {reason}"));
                                 if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
@@ -1318,6 +1366,9 @@ async fn run_with_control(
                 }
                 retained.push_front(message);
             }
+        }
+        if scroll_readback(&mut history, &mut model, &grids) {
+            updates.publish(model.clone());
         }
     }
     let stopped = session.shutdown().await;
@@ -3153,6 +3204,7 @@ mod tests {
                 request: bboxy450_term::scrollback::Request {
                     anchor: bboxy450_term::scrollback::Anchor::Live,
                     lines: 1,
+                    op: None,
                 },
             })
             .await

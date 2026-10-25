@@ -1,0 +1,147 @@
+{
+  "source": "c27e45feb69f290c18d237ef6b623c554bc7d523",
+  "exit": 0,
+  "seconds": 1118.48,
+  "workspace": {
+    "passed": 1407,
+    "failed": 0,
+    "ignored": 29
+  },
+  "invariants": {
+    "checks": 24,
+    "failures": 0,
+    "slow_skipped": 10
+  },
+  "smoke": "idle passed: frames=0 callbacks=0 seconds=10.001 windows=0 mode=headless",
+  "ci_sha256": "015ab24ece513115ecaa79b3773dabf9a8e7acc3a28e2847029204beac49d332",
+  "cleanup": {
+    "path": "/Users/feral/mydev/bboxy450-term-nyx/target/ui-scroll-dev",
+    "files": 10260,
+    "allocated_bytes": 4111659008,
+    "lsof_exit": 1,
+    "ci_pid": 9274,
+    "ci_exit": 0,
+    "source": "c27e45feb69f290c18d237ef6b623c554bc7d523",
+    "removed": true
+  },
+  "gate_base": "c7e2ef04",
+  "upstream_at_handoff": "1f970e11660121b514fe7cae14e5c8117ae586e1",
+  "preflight": [
+    {
+      "name": "workspace",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 971.526
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 106.585
+    },
+    {
+      "name": "invariants",
+      "command": [
+        "sh",
+        "scripts/invariants.sh"
+      ],
+      "exit": 0,
+      "seconds": 831.797
+    }
+  ],
+  "code": [
+    {
+      "path": "crates/bboxy450-term/src/ctl.rs",
+      "sha256": "7c685eecc48c92588136dcf5758f80ebf55d9c825d91a4a9c8db21f54a985271"
+    },
+    {
+      "path": "crates/bboxy450-term/src/live.rs",
+      "sha256": "d90ab7efaa26fffb29adf0de2f14837b9d6266c0f678026a1303b362d107efad"
+    },
+    {
+      "path": "crates/bboxy450-term/src/main.rs",
+      "sha256": "adc3c51a1f75a9e37da75e206db0309c028f79848c014b8129227d8c50853f65"
+    },
+    {
+      "path": "crates/bboxy450-term/src/model.rs",
+      "sha256": "18e6cf3c192044165f2c3a73ff7cefd882149ebb4444c9f8a60bdb140f0ee16c"
+    },
+    {
+      "path": "crates/bboxy450-term/src/scrollback.rs",
+      "sha256": "9dbb335a909b07f73c50c6dd9d763aa7732bdbbf4a4c503e4d9ccae9d9e1e480"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/headless.rs",
+      "sha256": "ee4ffd548b407972428d2a3aebfe862b787acde4f3909bb9bddde0f2feff5c46"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/scrollback.rs",
+      "sha256": "f9964e149ff946ac358c5c6cd0ebca16972f01de5bede12a981d8858d3886c9f"
+    },
+    {
+      "path": "crates/bbt-proto/src/gui.rs",
+      "sha256": "8a49efc9dd679f203085d75e30091da75fe22df0d2d40035d34f9828ab79554f"
+    }
+  ],
+  "limits": [
+    "NORMAL CI was the approved cut; parity/scale and other slow checks were not run (10 skipped).",
+    "No new history parser, RPC, queue capacity, replay quantum, heap budget, key interpretation or paint implementation.",
+    "Main advanced with NG1 during the gate; exact gated source remains frozen for Oracle integration."
+  ],
+  "logs": [
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-ci.log",
+      "sha256": "015ab24ece513115ecaa79b3773dabf9a8e7acc3a28e2847029204beac49d332"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-preflight-workspace.log",
+      "sha256": "20f7b7b09245ca9a334c0ea1ff9e0b399e700da023979843dd8d847be73ee730"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-preflight-clippy.log",
+      "sha256": "06dbd8528aa03bea146c2c6585875b125fff456f95cec65ec954a78882534b3e"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-preflight-invariants.log",
+      "sha256": "b012db65c3a77c2b0c70eb964329d80d90c922c1c95b1cab65f31f6b205bc0d0"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-headless.log",
+      "sha256": "0017a401e275a07f8c74dfe3beaaf0714642328c39152b47c99dfa1da6a61d93"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-cleanup.json",
+      "sha256": "f08ca1c67fd332110cbc56bc56c840b2fe7c34b81060c726ac3e90e98ac1a4b6"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-plan.log",
+      "sha256": "fbfdd3ce72c632e905d1201d233a18561e27dcb13af7c0e4feb45b83510c2d32"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-prior-checks.log",
+      "sha256": "1e4df78e065f1eb1144e58bc76bd6455ee62054896d894a0f5af9132964c24c5"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-history.json",
+      "sha256": "15a505f039ac3ee994ff9239fdcaf3049977902b7d49c8ab03cfe02c0f2e4df8"
+    },
+    {
+      "path": ".bboxy/runs/ui-scroll-c27e45fe-hunks.json",
+      "sha256": "30cde6fd98aa2ab0d6c2f7f73ec9d471cba1a93c49f16546f232e7d73d11582e"
+    }
+  ]
+}

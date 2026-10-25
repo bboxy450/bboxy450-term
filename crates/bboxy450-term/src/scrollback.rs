@@ -25,6 +25,7 @@ pub enum Anchor {
     Current,
     Top,
     Live,
+    Row(u64),
 }
 
 /// One coalesced intent per pane, even while its IO queue is full or disconnected.
@@ -32,6 +33,8 @@ pub enum Anchor {
 pub struct Request {
     pub anchor: Anchor,
     pub lines: i64,
+    /// Local window-operation correlation, never a history/bus cursor.
+    pub op: Option<Ulid>,
 }
 
 impl Request {
@@ -39,6 +42,7 @@ impl Request {
         Self {
             anchor: Anchor::Current,
             lines,
+            op: None,
         }
     }
 
@@ -46,6 +50,7 @@ impl Request {
         Self {
             anchor: Anchor::Top,
             lines: 0,
+            op: None,
         }
     }
 
@@ -53,13 +58,27 @@ impl Request {
         Self {
             anchor: Anchor::Live,
             lines: 0,
+            op: None,
         }
+    }
+
+    pub const fn row(row: u64) -> Self {
+        Self {
+            anchor: Anchor::Row(row),
+            lines: 0,
+            op: None,
+        }
+    }
+    pub fn correlated(mut self, op: Ulid) -> Self {
+        self.op = Some(op);
+        self
     }
 
     /// Relative motions accumulate; a new absolute intent replaces the old one.
     pub fn merge(&mut self, next: Self) {
         if next.anchor == Anchor::Current {
             self.lines = self.lines.saturating_add(next.lines);
+            self.op = next.op;
         } else {
             *self = next;
         }
@@ -109,6 +128,86 @@ pub struct GapMarker {
 pub struct Historical {
     pub screen: Arc<Screen>,
     pub gaps: Vec<GapMarker>,
+    pub top_row: u64,
+}
+
+pub use bbt_proto::gui::UiScrollPosition as Position;
+#[derive(Clone, Debug)]
+pub struct Reply {
+    pub id: Ulid,
+    pub seat: SeatId,
+    pub generation: u64,
+    pub result: Result<Position, String>,
+}
+#[derive(Clone, Copy)]
+struct Pending {
+    id: Ulid,
+    seat: SeatId,
+    generation: u64,
+}
+#[derive(Clone, Default)]
+pub struct Readback {
+    pub reply: Option<Reply>,
+    live: BTreeMap<SeatId, (View, u64, u64)>,
+}
+impl Readback {
+    pub fn position(&self, seat: SeatId, historical: Option<&Historical>) -> Position {
+        historical.map_or_else(
+            || Position {
+                top_row: self.live.get(&seat).map(|(_, _, row)| *row),
+                live: true,
+            },
+            |history| Position {
+                top_row: Some(history.top_row),
+                live: false,
+            },
+        )
+    }
+    pub fn observe(&mut self, seat: SeatId, baseline: Option<(View, u64)>) -> bool {
+        if self
+            .live
+            .get(&seat)
+            .is_some_and(|(view, sequence, _)| baseline != Some((*view, *sequence)))
+        {
+            self.live.remove(&seat);
+            true
+        } else {
+            false
+        }
+    }
+    pub fn observed(&self, seat: SeatId, baseline: Option<(View, u64)>) -> bool {
+        self.live
+            .get(&seat)
+            .is_some_and(|(view, sequence, _)| baseline != Some((*view, *sequence)))
+    }
+    pub fn displayed(
+        &mut self,
+        seat: SeatId,
+        current: Option<(View, u64)>,
+        baseline: (View, u64),
+        position: Position,
+    ) {
+        if position.live
+            && current == Some(baseline)
+            && let Some(row) = position.top_row
+        {
+            self.live.insert(seat, (baseline.0, baseline.1, row));
+        } else {
+            self.live.remove(&seat);
+        }
+    }
+    pub fn forget(&mut self, seat: SeatId) {
+        self.live.remove(&seat);
+    }
+    pub fn retain(&mut self, valid: impl Fn(SeatId) -> bool) {
+        self.live.retain(|seat, _| valid(*seat));
+    }
+}
+
+pub struct DisplayPosition {
+    pub seat: SeatId,
+    pub baseline: (View, u64),
+    pub position: Position,
 }
 
 pub type DisplayUpdate = (SeatId, Result<Option<Arc<Historical>>, &'static str>);
@@ -207,7 +306,9 @@ impl Playback {
             return Err("history_viewport_exceeds_budget");
         }
         let base = Term::new_with_spare_rows(screen.cols, screen.rows, 0, 0);
-        let display_heap = screen_heap(&screen) + 2 * screen.rows * mem::size_of::<GapMarker>();
+        let display_heap = screen_heap(&screen)
+            + mem::size_of::<Historical>()
+            + 2 * screen.rows * mem::size_of::<GapMarker>();
         let mandatory = base
             .retained_heap_bytes()
             .ok_or("history_heap_accounting_incomplete")?
@@ -300,6 +401,9 @@ impl Playback {
         self.goal = match request.anchor {
             Anchor::Top => Goal::Row(0u64.saturating_add_signed(request.lines.saturating_neg())),
             Anchor::Live => Goal::BehindLive(request.lines.max(0) as u64),
+            Anchor::Row(row) => {
+                Goal::Row(row.saturating_add_signed(request.lines.saturating_neg()))
+            }
             Anchor::Current => match self.goal {
                 Goal::Row(row) => {
                     Goal::Row(row.saturating_add_signed(request.lines.saturating_neg()))
@@ -377,13 +481,16 @@ impl Playback {
         // Historical cells can hold hyperlinks absent from the live viewport.
         // Reserve the actual largest published heap, including marker capacity,
         // for both the UI's previous model and the newly published model.
-        self.display_heap = self
-            .display_heap
-            .max(screen_heap(&screen) + gaps.capacity() * mem::size_of::<GapMarker>());
+        self.display_heap = self.display_heap.max(
+            screen_heap(&screen)
+                + mem::size_of::<Historical>()
+                + gaps.capacity() * mem::size_of::<GapMarker>(),
+        );
         self.displayed = Some(row);
         Some(Arc::new(Historical {
             screen: Arc::new(screen),
             gaps,
+            top_row: row,
         }))
     }
 
@@ -516,6 +623,9 @@ pub struct History {
     last_request: Option<SeatId>,
     last_work: Option<SeatId>,
     retry_at: Option<Instant>,
+    pending: Option<Pending>,
+    completion: Option<Reply>,
+    position: Option<DisplayPosition>,
 }
 
 impl History {
@@ -527,26 +637,96 @@ impl History {
         screen: Arc<Screen>,
         request: Request,
     ) -> Result<(), &'static str> {
+        self.position = None;
+        if let Some(id) = request.op {
+            self.pending = Some(Pending {
+                id,
+                seat,
+                generation: view.generation,
+            });
+            self.completion = None;
+        } else {
+            self.finish(seat, Err("history_superseded"));
+        }
+        let result = self.request_inner(seat, view, sequence, screen, request);
+        match result {
+            Ok(Some(position)) => {
+                self.position = Some(DisplayPosition {
+                    seat,
+                    baseline: (view, sequence),
+                    position,
+                });
+                self.finish(seat, Ok(position));
+            }
+            Err(reason) => self.finish(seat, Err(reason)),
+            Ok(None) => (),
+        }
+        result.map(|_| ())
+    }
+    fn request_inner(
+        &mut self,
+        seat: SeatId,
+        view: View,
+        sequence: u64,
+        screen: Arc<Screen>,
+        request: Request,
+    ) -> Result<Option<Position>, &'static str> {
         if let std::collections::btree_map::Entry::Vacant(entry) = self.seats.entry(seat) {
-            if request.anchor != Anchor::Top && request.lines <= 0 {
-                return Ok(());
+            if matches!(request.anchor, Anchor::Current | Anchor::Live) && request.lines <= 0 {
+                return Ok(Some(Position::default()));
             }
             let mut playback = Playback::new(view, sequence, screen.clone())?;
             playback.goal = Goal::BehindLive(0);
             entry.insert(playback);
         }
-        if !self
-            .seats
-            .get_mut(&seat)
-            .unwrap()
-            .request(request, sequence, &screen)
-        {
-            self.seats.remove(&seat);
+        let playback = self.seats.get_mut(&seat).unwrap();
+        if playback.view != view {
+            return Err("history_view_changed");
         }
-        Ok(())
+        if !playback.request(request, sequence, &screen) {
+            let position = Position {
+                top_row: (playback.complete && playback.through == sequence)
+                    .then_some(playback.live_row)
+                    .flatten(),
+                live: true,
+            };
+            self.seats.remove(&seat);
+            return Ok(Some(position));
+        }
+        if let Some(row) = playback.displayed
+            && playback.row() == Some(row)
+        {
+            return Ok(Some(Position {
+                top_row: Some(row),
+                live: false,
+            }));
+        }
+        Ok(None)
+    }
+    fn finish(&mut self, seat: SeatId, result: Result<Position, &str>) {
+        if self.pending.is_some_and(|pending| pending.seat == seat) {
+            let pending = self.pending.take().unwrap();
+            self.completion = Some(Reply {
+                id: pending.id,
+                seat,
+                generation: pending.generation,
+                result: result.map_err(|reason| reason.chars().take(256).collect()),
+            });
+        }
+    }
+    pub fn failed(&mut self, seat: SeatId, reason: &str) {
+        self.finish(seat, Err(reason));
+        self.forget(seat);
+    }
+    pub fn take_completion(&mut self) -> Option<Reply> {
+        self.completion.take()
+    }
+    pub fn take_position(&mut self) -> Option<DisplayPosition> {
+        self.position.take()
     }
 
     pub fn forget(&mut self, seat: SeatId) {
+        self.finish(seat, Err("history_superseded"));
         self.seats.remove(&seat);
         if self.seats.is_empty() {
             self.retry_at = None;
@@ -556,9 +736,17 @@ impl History {
     pub fn retain(&mut self, valid: impl Fn(SeatId, View, &Screen) -> bool) {
         self.seats
             .retain(|&seat, playback| valid(seat, playback.view, &playback.template));
+        if let Some(pending) = self.pending
+            && !self.seats.contains_key(&pending.seat)
+        {
+            self.finish(pending.seat, Err("history_view_unavailable"));
+        }
     }
 
     pub fn disconnected(&mut self) {
+        if let Some(pending) = self.pending {
+            self.finish(pending.seat, Err("history_disconnected"));
+        }
         self.flight = None;
         self.retry_at = None;
         // A later connection cannot answer an old request. Keep the displayed
@@ -607,7 +795,7 @@ impl History {
 
     /// Only the correlated terminal result may release this request's fence.
     /// A timeout is ambiguous and never authorizes an overlapping retry.
-    pub fn rejected(&mut self, retry: bool, now: Instant) -> Option<SeatId> {
+    pub fn rejected(&mut self, retry: bool, now: Instant, reason: &str) -> Option<SeatId> {
         let flight = self.flight.take()?;
         if self
             .seats
@@ -620,7 +808,7 @@ impl History {
             self.retry_at = Some(now + HISTORY_RETRY);
             None
         } else {
-            self.forget(flight.seat);
+            self.failed(flight.seat, reason);
             Some(flight.seat)
         }
     }
@@ -681,14 +869,41 @@ impl History {
                     .map(|(&s, _)| s)
             })?;
         self.last_work = Some(seat);
-        match self.seats.get_mut(&seat).unwrap().step() {
+        self.position = None;
+        let playback = self.seats.get_mut(&seat).unwrap();
+        let baseline = (playback.view, playback.through);
+        let result = playback.step();
+        match result {
             Ok(Step::Pending) => None,
-            Ok(Step::Display(screen)) => Some((seat, Ok(Some(screen)))),
+            Ok(Step::Display(screen)) => {
+                let position = Position {
+                    top_row: Some(screen.top_row),
+                    live: false,
+                };
+                self.position = Some(DisplayPosition {
+                    seat,
+                    baseline,
+                    position,
+                });
+                self.finish(seat, Ok(position));
+                Some((seat, Ok(Some(screen))))
+            }
             Ok(Step::Live) => {
+                let position = Position {
+                    top_row: self.seats[&seat].live_row,
+                    live: true,
+                };
+                self.position = Some(DisplayPosition {
+                    seat,
+                    baseline,
+                    position,
+                });
+                self.finish(seat, Ok(position));
                 self.seats.remove(&seat);
                 Some((seat, Ok(None)))
             }
             Err(reason) => {
+                self.finish(seat, Err(reason));
                 self.seats.remove(&seat);
                 Some((seat, Err(reason)))
             }

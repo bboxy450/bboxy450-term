@@ -88,6 +88,7 @@ pub enum UiRequest {
     Open(UiTarget),
     Key(Vec<String>),
     Focus { seat: Ulid },
+    Scroll { seat: Ulid, motion: UiScroll },
     Layout,
 }
 impl UiRequest {
@@ -108,7 +109,35 @@ impl UiRequest {
             Self::Focus { seat } if *seat == Ulid::nil() => {
                 Err("invalid_ui_focus: expected a seat ID")
             }
+            Self::Scroll { seat, .. } if *seat == Ulid::nil() => {
+                Err("invalid_ui_scroll: expected a seat ID")
+            }
             _ => Ok(()),
+        }
+    }
+}
+/// The window's existing history navigation, in absolute zero-based row coordinates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "body", rename_all = "kebab-case")]
+pub enum UiScroll {
+    Top,
+    Bottom,
+    PageUp,
+    PageDown,
+    Row(u64),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiScrollPosition {
+    /// Unknown for an unindexed live view; never a guessed zero.
+    pub top_row: Option<u64>,
+    pub live: bool,
+}
+impl Default for UiScrollPosition {
+    fn default() -> Self {
+        Self {
+            top_row: None,
+            live: true,
         }
     }
 }
@@ -176,6 +205,8 @@ pub struct UiPane {
     pub cols: u16,
     pub rows: u16,
     pub focused: bool,
+    #[serde(default)]
+    pub scroll: UiScrollPosition,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayoutNode {
@@ -778,6 +809,40 @@ mod tests {
 #[cfg(test)]
 mod ui_tests {
     use super::*;
+    #[test]
+    fn scroll_rows_stay_unsigned_and_live_positions_can_be_unindexed() {
+        let seat = Ulid::new();
+        for motion in [
+            UiScroll::Top,
+            UiScroll::Bottom,
+            UiScroll::PageUp,
+            UiScroll::PageDown,
+            UiScroll::Row(u64::MAX),
+        ] {
+            let request = UiRequest::Scroll { seat, motion };
+            assert!(request.validate().is_ok());
+            let value = serde_json::to_value(&request).unwrap();
+            assert_eq!(serde_json::from_value::<UiRequest>(value).unwrap(), request);
+        }
+        assert!(
+            UiRequest::Scroll {
+                seat: Ulid::nil(),
+                motion: UiScroll::Top
+            }
+            .validate()
+            .is_err()
+        );
+        let legacy: UiPane = serde_json::from_value(serde_json::json!({"seat":seat,"rect":[0.,0.,80.,24.],"cols":80,"rows":24,"focused":true})).unwrap();
+        assert_eq!(legacy.scroll, UiScrollPosition::default());
+        assert_eq!(
+            serde_json::to_value(UiScrollPosition::default()).unwrap(),
+            serde_json::json!({"top_row":null,"live":true})
+        );
+        assert!(
+            serde_json::from_value::<UiScroll>(serde_json::json!({"kind":"row","body":-1}))
+                .is_err()
+        );
+    }
     #[test]
     fn ui_requests_keep_their_scope_and_reject_unbounded_input() {
         let request = UiRequest::Key(vec!["cmd-t".into(), "esc".into()]);

@@ -34,6 +34,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui open <graph|settings|launcher|docs <path>>
   ui key <named-key>...                  cmd-t cmd-g cmd-m cmd-comma esc enter tab arrows
   ui focus <seat>                        select its pane through the GUI owner
+  ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
   ui layout                              solved window tree, pane grids, focus and tab
   seat ls
   seat spawn <claude|codex|zsh> [--place tab] [--role oracle|architect|creativity|executor|shell]
@@ -138,6 +139,10 @@ impl Endpoint {
 pub enum Command {
     Ui(bbt_proto::gui::UiRequest),
     UiFocus(String),
+    UiScroll {
+        seat: String,
+        motion: bbt_proto::gui::UiScroll,
+    },
     Identity(bbt_proto::identity::IdentityRequest),
     Spawn {
         harness: String,
@@ -336,6 +341,7 @@ pub const VERBS: &[(&str, &str, &str)] = &[
     ("ui", "open", "Ui"),
     ("ui", "key", "Ui"),
     ("ui", "focus", "Ui"),
+    ("ui", "scroll", "Ui"),
     ("ui", "layout", "Ui"),
     ("identity", "status", "Identity"),
     ("identity", "unlock", "Identity"),
@@ -496,6 +502,20 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let command = match words.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         ["ui", "layout"] => Command::Ui(bbt_proto::gui::UiRequest::Layout),
         ["ui", "focus", seat] => Command::UiFocus(seat.into()),
+        ["ui", "scroll", seat, motion] => Command::UiScroll {
+            seat: seat.into(),
+            motion: match motion {
+                "top" => bbt_proto::gui::UiScroll::Top,
+                "bottom" => bbt_proto::gui::UiScroll::Bottom,
+                "page-up" => bbt_proto::gui::UiScroll::PageUp,
+                "page-down" => bbt_proto::gui::UiScroll::PageDown,
+                _ => return Err(format!("{USAGE_PREFIX}ui scroll <pane> top|bottom|page-up|page-down|row N")),
+            },
+        },
+        ["ui", "scroll", seat, "row", row] => Command::UiScroll {
+            seat: seat.into(),
+            motion: bbt_proto::gui::UiScroll::Row(row.parse().map_err(|_| format!("{USAGE_PREFIX}ui scroll row requires an unsigned zero-based row"))?),
+        },
         ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
             "graph" => bbt_proto::gui::UiTarget::Graph,
             "settings" => bbt_proto::gui::UiTarget::Settings,
@@ -1714,6 +1734,7 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
         }
         Command::Ui(_)
         | Command::UiFocus(_)
+        | Command::UiScroll { .. }
         | Command::Watch { .. }
         | Command::Rename { .. }
         | Command::Restart { .. }
@@ -2120,6 +2141,11 @@ fn run_verb(
         }
         Command::AppResize { cols, rows } => {
             serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Resize { cols, rows })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::UiScroll { seat, motion } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Scroll { seat, motion })?)
                 .map_err(|e| e.to_string())?
         }
         Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
@@ -2748,6 +2774,7 @@ mod tests {
             "ui open graph",
             "ui key cmd-t esc",
             "ui focus s",
+            "ui scroll s top",
             "ui layout",
             "identity status",
             "identity unlock",
@@ -2864,6 +2891,32 @@ mod tests {
         ] {
             let error = parse_full(&args(line)).unwrap_err();
             assert_eq!(classify(&error).exit, 2, "{line}: {error}");
+        }
+    }
+    #[test]
+    fn ui_scroll_parses_only_the_typed_window_motions() {
+        use bbt_proto::gui::UiScroll;
+        for (text, expected) in [
+            ("top", UiScroll::Top),
+            ("bottom", UiScroll::Bottom),
+            ("page-up", UiScroll::PageUp),
+            ("page-down", UiScroll::PageDown),
+            ("row 18446744073709551615", UiScroll::Row(u64::MAX)),
+        ] {
+            let parsed = parse_full(&args(&format!("ui scroll pane {text}"))).unwrap();
+            assert!(
+                matches!(parsed.command, Command::UiScroll {seat, motion} if seat == "pane" && motion == expected)
+            );
+        }
+        for line in [
+            "ui scroll pane",
+            "ui scroll pane up",
+            "ui scroll pane row",
+            "ui scroll pane row -1",
+            "ui scroll pane row 18446744073709551616",
+            "ui scroll pane top extra",
+        ] {
+            assert!(parse_full(&args(line)).is_err(), "{line}");
         }
     }
     #[test]

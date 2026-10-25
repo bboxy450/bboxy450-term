@@ -1,0 +1,37 @@
+{
+  "status": "all resolved or named upstream before successful normal CI",
+  "entries": [
+    {
+      "check": "initial all-targets check",
+      "result": "failed on two crate-root imports and a missing Request.op initializer; fixed before focused validation"
+    },
+    {
+      "check": "first CLI filter",
+      "result": "0 matched on --bin; corrected to --lib; actual CLI test1/0 and full workspace passed"
+    },
+    {
+      "check": "headless fixture iterations",
+      "result": "unsupported --place right; wrong generic refusal expectation; initial pane visibility race; documented --on-screen absent on the old base; final two-seat count typo. Corrected fixture to existing placement/produced-layout boundary and matching relay error. Successful full gate includes accepted --on-screen API."
+    },
+    {
+      "check": "live tail index review",
+      "result": "added exact View/sequence witness; stale replay may not claim a row for newer live data; regression passes"
+    },
+    {
+      "check": "UI lint launch",
+      "result": "omitted target override, stopped exact ownedPID35555 EXIT130; only new owned cache removed583995392bytes; no pass claimed"
+    },
+    {
+      "check": "first normal gate attempt671bcb89",
+      "result": "atomic EXIT75, no CI stage or slot claimed; retried only after disk capacity changed"
+    },
+    {
+      "check": "corrected gate launcher",
+      "result": "one wrong checkout suffix caused FileNotFoundError before ci-local; corrected to consume actual next-gate.json metadata"
+    },
+    {
+      "check": "main pending #318",
+      "result": "built logic test filter matched0, recorded in new-pending-invariant.json; Oracle/Architect fixed pending slow/gate flags upstream, included in successful gate"
+    }
+  ]
+}

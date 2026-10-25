@@ -958,3 +958,162 @@ fn seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame() {
     assert!(rows[0]["error"]["frame_seq"].is_u64(), "{rows:?}");
     assert!(!shot.exists());
 }
+
+#[test]
+fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("scroll-account");
+    f.run = account.join("run");
+    let start = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = start["data"]["pid"].as_u64().map(|n| n as u32);
+    assert_eq!(start["data"]["custody_backend"], "file");
+    let seat = f.ok(&["seat", "spawn", "zsh", "--name", "scroll-pane"])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let initial = await_value(&f, || {
+        let layout = f.ok(&["ui", "layout"]);
+        layout["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|pane| pane["seat"] == seat)
+            .then_some(layout)
+    });
+    let pane = |layout: &Value| {
+        layout["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["seat"] == seat)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(
+        pane(&initial)["scroll"],
+        serde_json::json!({"top_row":null,"live":true})
+    );
+    let peer = f.ok(&["seat", "spawn", "zsh", "--name", "scroll-peer"])["data"]["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    await_value(&f, || {
+        let layout = f.ok(&["ui", "layout"]);
+        layout["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|pane| pane["seat"] == peer)
+            .then_some(layout)
+    });
+    f.ok(&["ui", "focus", &peer]);
+    let line_count = pane(&initial)["rows"].as_u64().unwrap() * 4 + 120;
+    let script = format!("for i in {{1..{line_count}}}; do printf 'scroll-%03d\\n' $i; done\r");
+    f.ok(&["seat", "type", &seat, &script]);
+    let last_line = format!("scroll-{line_count:03}");
+    f.ok(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        &last_line,
+        "--timeout",
+        "15000",
+    ]);
+    let before = f.ok(&["ui", "layout"]);
+    assert_eq!(before["data"]["focused"], peer);
+    let top = f.ok(&["ui", "scroll", &seat, "top"]);
+    assert_eq!(
+        pane(&top)["scroll"],
+        serde_json::json!({"top_row":0,"live":false})
+    );
+    assert_eq!(top["data"]["focused"], before["data"]["focused"]);
+    assert_eq!(
+        top["data"]["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|pane| pane["seat"] == peer)
+            .unwrap()["scroll"]["live"],
+        true
+    );
+    assert_eq!(top["data"]["tab"], before["data"]["tab"]);
+    assert!(
+        top["data"]["frame_seq"].as_u64().unwrap() > before["data"]["frame_seq"].as_u64().unwrap()
+    );
+    let top_png = f.root.path().join("scroll-top.png");
+    f.ok(&["seat", "capture", &seat, top_png.to_str().unwrap()]);
+    let at = f.ok(&["ui", "scroll", "scroll-pane", "row", "40"]);
+    assert_eq!(
+        pane(&at)["scroll"],
+        serde_json::json!({"top_row":40,"live":false})
+    );
+    let at_png = f.root.path().join("scroll-row40.png");
+    f.ok(&["seat", "capture", &seat, at_png.to_str().unwrap()]);
+    assert!(
+        png_pixels(&top_png).2 != png_pixels(&at_png).2,
+        "the actual pane pixels must change with the historical row"
+    );
+    let page = pane(&at)["rows"].as_u64().unwrap().saturating_sub(1).max(1);
+    let down = f.ok(&["ui", "scroll", &seat, "page-down"]);
+    assert_eq!(pane(&down)["scroll"]["top_row"], 40 + page);
+    let up = f.ok(&["ui", "scroll", &seat, "page-up"]);
+    assert_eq!(pane(&up)["scroll"]["top_row"], 40);
+    let same = f.ok(&["ui", "scroll", &seat, "row", "40"]);
+    assert_eq!(
+        pane(&same)["scroll"]["top_row"],
+        40,
+        "an unchanged cached row still completes"
+    );
+    let anchored_frame = same["data"]["frame_seq"].as_u64().unwrap();
+    f.ok(&["seat", "rename", &seat, "scroll-renamed"]);
+    let renamed = await_value(&f, || {
+        let layout = f.ok(&["ui", "layout"]);
+        (layout["data"]["frame_seq"].as_u64().unwrap() > anchored_frame).then_some(layout)
+    });
+    assert_eq!(
+        pane(&renamed)["scroll"]["top_row"],
+        40,
+        "metadata publication must keep the historical display"
+    );
+    let bottom = f.ok(&["ui", "scroll", &seat, "bottom"]);
+    assert_eq!(pane(&bottom)["scroll"]["live"], true);
+    let bottom_again = f.ok(&["ui", "scroll", &seat, "bottom"]);
+    assert_eq!(
+        pane(&bottom_again)["scroll"]["live"],
+        true,
+        "already-live is a completed command"
+    );
+    let far = f.ok(&["ui", "scroll", &seat, "row", "18446744073709551615"]);
+    assert_eq!(
+        pane(&far)["scroll"]["live"],
+        true,
+        "u64::MAX must clamp at the tail, never wrap to row zero"
+    );
+    let known = pane(&far)["scroll"]["top_row"].as_u64().unwrap();
+    assert!(known >= line_count.saturating_sub(pane(&far)["rows"].as_u64().unwrap()));
+    f.ok(&["ui", "open", "launcher"]);
+    let (code, rows) = f.ctl(&["ui", "scroll", &seat, "top"]);
+    assert_eq!(code, 1);
+    assert_eq!(rows[0]["error"]["kind"], "refused");
+    assert!(
+        rows[0]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("not_on_screen"),
+        "{rows:?}"
+    );
+    f.ok(&["ui", "key", "esc"]);
+    assert_eq!(pane(&f.ok(&["ui", "layout"]))["scroll"]["live"], true);
+    assert_eq!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(), 2);
+    f.ok(&["app", "stop"]);
+    f.pid = None;
+}
