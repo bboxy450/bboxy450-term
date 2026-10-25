@@ -29,3 +29,9 @@ R6 is a separate frozen branch aster-notification-adapter at 4a9ee9f4, with its 
 Raw command logs, status hashes and process metadata:
 /Users/feral/mydev/bboxy450-term-exec4/scratchpad/placement-20261025T0213/
 No operator identity, login Keychain, desktop input, NSWindow, scanout timing, new socket, publication or merge claimed. No owned workload remains during the quiet window.
+
+2026-10-25 post-quiet checks (QUIET END 12ffe717)
+rebased-focused — EXIT101,137.714s, compile-only: the strengthened test referred to private model::Grids. Corrected to crate::grids::Grids; no runtime assertion or product deadline changed. SHA256 c2c363e3e1737fa9c84d8353623eff9de4aa49b179e57863be4bdcdb0e38cb2b.
+cargo fmt --all touched 27 unrelated paths. Those formatting-only changes were removed before the corrected run; exact removed diff/path list are retained in scratch. No unrelated source edit is included.
+rebased-anchor — EXIT0,3/0,210.720s; the strengthened pending-request/model-publication and retained-sibling-ratio assertion passed. SHA256 ddc3c06b0909ca015d28288d15b391d35a3e9595321f78f2bbc3d9302f01a195.
+L2 syntax/header check — EXIT0; shell parser, embedded Python compile and canonical header/map agreement. Script SHA256 6373e9e8a6aaafa12848f1c6748dfcf51c97ecbbdb5459a48efce27eeca14a9d. Runtime remains unrun.

@@ -246,7 +246,7 @@ mod operator_tests {
             })
             .collect();
         model.spawned(op, SeatId::from_u128(5));
-        let model = crate::model::build(&records, &crate::model::Grids::new(), &model);
+        let model = crate::model::build(&records, &crate::grids::Grids::new(), &model);
         let leaf = |id| SplitNode::Leaf(SeatId::from_u128(id));
         assert_eq!(
             model.ui.window.sidebar.swarms[0].tabs[0].tree,
