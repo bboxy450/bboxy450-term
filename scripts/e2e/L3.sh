@@ -26,8 +26,9 @@ for kind in ('claude', 'codex'):
     launched = ctl('seat', 'spawn', kind, '--role', 'executor', '--place', 'tab',
                    '--cwd', str(work), '--name', 'L3 ' + kind + ' wiring stand-in')
     seat = launched['data']['seat']
+    # The shim writes its frames before READY on the same owned PTY. Inspect
+    # their published state after that marker; no newer wait flags are needed.
     ctl('seat', 'wait', seat, '--text', 'L3_LAUNCH_READY ' + seat, '--timeout', '30000')
-    ctl('seat', 'wait', seat, '--state', 'active', '--timeout', '30000')
     row = seats()[seat]
     proof = json.loads((work / (seat + '.launch.json')).read_text())
     assert proof['harness'] == 'stand-in' and proof['kind'] == kind, proof
