@@ -4872,16 +4872,7 @@ impl ApplicationHandler<UiEvent> for App {
         }
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-        let _callback = bbt_rt::diagnostics::callback(match &event {
-            WindowEvent::RedrawRequested => bbt_rt::diagnostics::Phase::WindowRedraw,
-            WindowEvent::KeyboardInput { .. } | WindowEvent::Ime(_) => {
-                bbt_rt::diagnostics::Phase::WindowKeyboard
-            }
-            WindowEvent::MouseInput { .. }
-            | WindowEvent::MouseWheel { .. }
-            | WindowEvent::CursorMoved { .. } => bbt_rt::diagnostics::Phase::WindowPointer,
-            _ => bbt_rt::diagnostics::Phase::WindowOther,
-        });
+        let _callback = stall::window_callback(&event);
         if self.smoke && !self.cadence_test {
             if let WindowEvent::Occluded(occluded) = &event {
                 // A locked display can toggle occlusion throughout the night.

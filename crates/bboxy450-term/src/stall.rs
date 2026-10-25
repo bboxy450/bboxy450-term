@@ -18,6 +18,21 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
+/// Read-only callback classification lives with the measurements. The app's
+/// one keyboard dispatch remains in its input adapter.
+pub fn window_callback(event: &winit::event::WindowEvent) -> bbt_rt::diagnostics::Span<'static> {
+    use bbt_rt::diagnostics::{Phase, callback};
+    use winit::event::WindowEvent;
+    callback(match event {
+        WindowEvent::RedrawRequested => Phase::WindowRedraw,
+        WindowEvent::KeyboardInput { .. } | WindowEvent::Ime(_) => Phase::WindowKeyboard,
+        WindowEvent::MouseInput { .. }
+        | WindowEvent::MouseWheel { .. }
+        | WindowEvent::CursorMoved { .. } => Phase::WindowPointer,
+        _ => Phase::WindowOther,
+    })
+}
+
 pub const HELP: &str = "  --stall-test          R5 functional fixture (debug guards required)\n  --stall-headless      render without an NSWindow\n  --stall-real          real PTYs; otherwise explicitly synthetic state fixtures\n  --stall-frame-gate    also enforce timing limits; requires starting loadavg <=8\n  --stall-seats N       fixture rows / real PTYs (default 1000 synthetic)\n  --stall-watched N     encoded watched panes (default 15)\n  --stall-seconds N     measured overlap (default 5, range 3..60)\n  --stall-idle N        settled idle seconds (default 2)\n  --stall-report PATH   JSON result (required)\n  --stall-run-dir PATH  fresh private directory (default /tmp/r5-<id>)";
 
 #[derive(Clone, Debug)]
