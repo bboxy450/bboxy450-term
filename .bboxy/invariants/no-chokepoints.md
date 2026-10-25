@@ -15,7 +15,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-24T19:32:03Z"
-updated: "2026-10-25T14:37:58Z"
+updated: "2026-10-25T16:18:56Z"
 ---
 # No bottlenecks and no chokepoints
 
@@ -53,7 +53,12 @@ run on 0e97dc32: 6 824 round trips, 93 % of an 8 618 ms input-to-GPU, decode
 the shared dispatchers every `ctl` cut edits (the `UiRequest`, `GuiAction` and
 `GuiReply` enums, the `VERBS` table, `apply_ui` and its headless twin), so each
 landing forced two or three peers to rebase (decision [[d320-dispatch-by-noun]]:
-one module per noun, registered from a table; judgement until the modules exist).
+one module per noun, registered from a table; judgement until the modules exist);
+the Oracle's serial merged-tree run before every landing and the five
+scale-measurement quiet windows that stopped every gate on 2026-10-25 (decision
+[[d321-out-of-integration-hell]]: self-service landing with a bounded presubmit,
+a batched postsubmit with culprit finding and revert-first, the measurement
+moved to a scheduled slot; gate [[main-red-bounded]]).
 
 **Wire grammar of the self-service protocol (2026-10-24).** Self-service only
 works when every detector parses the channel the same way, so the slot and
