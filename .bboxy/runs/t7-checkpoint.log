@@ -1,0 +1,25 @@
+T7 checkpoint — Velvet Vulpine <EXECUTOR>
+Brief: Oracle 1e450ba4-72d9-425b-8406-bac89d80b976; ending c13b0ba5.
+Own worktree: bboxy450-term-exec6, velvet-t7. This is a checkpoint, not a final gate/handoff.
+
+Mechanisms
+- app close::Intent::prepare captures actual Stage split path/ratios, tab/swarm and the UI restoration handle; no optimistic lifecycle mutation.
+- IO Model.closes confirms only matching registry operation, generation and deadline. Metadata rebuilds prune/restore through the existing UI edits. The original sidebar order is restored too; a real three-PTY test caught the shared undo edit appending the row.
+- A confirmed retained transition removes the grace row and emits exactly '<name> closed; its history is kept' once. No record/ring deletion.
+- Retained close/undo hit regions come from the painted component layout; Cmd-Z is local once, Ctrl-Z remains PTY input, editor/launcher routes retain their keys.
+- CloseSeat/UndoCloseSeat follow the existing admitted window relay and ctl_record journal; the window alone derives Position. ctl reports relayed, never claims restoration before metadata confirms it.
+- ClosedStrip uses the shared retained kit, supplied remaining time and native token sources. Same Sidebar/SwarmCard extra-child port, no renderer/shader/pass addition.
+- close::status(&model::Model, Instant) is a pure bounded readback: slots[{seat,swarm,tab}], grace[{seat,swarm,remaining_ms,undo}], notices[{swarm,text,time,truncated}], omitted and complete. No IO or second record reader. U1 AppStatus transport hookup remains for the accepted U1 union.
+
+Actual checks, all with explicit memory custody and own target/t7-dev
+- cargo test -p bboxy450-term --locked --lib close::tests: 4 passed, exit 0; target/t7-proof/t7-status-unit.log.
+- cargo test -p bboxy450-term --locked --bin bboxy450-term t7_: 2 passed, exit 0; target/t7-proof/t7-app-unit-2.log.
+- cargo test -p bbt-ui --locked --test closed_strip: 1 passed across 8 context combinations, exit 0; target/t7-proof/t7-ui-unit.log.
+- real_io_echo_resize_reflow_and_logic_loss_retains_last_frame: exit 0; target/t7-proof/t7-real-io-2.log. Same real PID/generation, tab/tree/row order, screen after unwatch/rewatch; then resize/reflow and logic-loss tests pass, owned children reaped. The first run failed on row order and is retained in t7-real-io.log.
+- cargo clippy --workspace --all-targets --locked -- -D warnings: exit 0; target/t7-proof/t7-clippy-2.log.
+- sh -n scripts/e2e/T7.sh: exit 0. Runtime night script is not yet claimed green.
+
+Paired visual work
+- All 32 new T7 web/native cases captured/rendered in the first exploratory cut. Initial report is deliberately red/unproven: own harness diagnostic/clipping issues plus old lab split allocation/tiled pane overrides.
+- Oracle e4fc0bad-7b34-4329-9e94-c1202ebf3d36 ruled native's accepted solver/paint correct. Wren's lab normalization landed as 683e6bd. No renderer/tolerance compensation.
+- Fresh paired 32-case parity and exact clean full ci-local --parity remain required. Existing 72-review baseline and retained Settings gallery remain intact.

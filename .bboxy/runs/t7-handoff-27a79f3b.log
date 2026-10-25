@@ -1,0 +1,50 @@
+T7 signed-source handoff — Velvet Vulpine <EXECUTOR>
+Source: 27a79f3b11b35ba79a1261a7c0b8868e9c803af1, branch velvet-t7, own worktree exec6.
+Base: accepted main 8240d359; exact clean detached ci-local --parity EXIT 0, 3791.441 s.
+
+Mechanisms
+crates/bboxy450-term/src/close.rs:27 — capture actual Scene split tree/path/ratios/tab/swarm/revision/generation; confirm authoritative close handles.
+crates/bboxy450-term/src/close.rs:184 — restore sidebar order/tree and focus in the surviving window, retain one exact expiry notice and history.
+crates/bboxy450-term/src/close.rs:317 — bounded slots/grace/notices readback with omission/completeness labels.
+crates/bboxy450-term/src/main.rs:198 — shared native/ctl close and undo owner; Cmd-Z does not steal text-editor or PTY control.
+crates/bboxy450-term/src/scene.rs:507 — solved Scene position for close; :535 close/undo hit regions; sidebar uses shared ClosedStrip.
+crates/bbt-ui/src/modules/closed_strip.rs:22 — density-sized collapsed strip with strike, ceil seconds, undo chip and draining hairline.
+crates/bboxy450-term/src/focus_ack.rs:70 — bounded correlated focus waits prior accepted placements and completed frame/generation; no early relay-success claim.
+crates/bboxy450-term/src/headless.rs:171 — same focus owner; :202 same close intents; both hosts keep explicit Stage rather than stale IO stage.
+crates/bboxy450-term/src/ctl.rs:1440 — offscreen image gives not_on_screen and focus hint; offscreen text remains readable.
+crates/bbt-proto/src/gui.rs:217 / crates/bbt-mux/src/gui_capture.rs / seat_socket.rs — additive admitted close/undo/focus relay; existing Origin, journal and store fences preserved.
+crates/bboxybook/src/close.rs:20 — 32 public poses, shared native kit and independent geometry; gallery.rs:367 puts them in the default current gate.
+crates/bboxybook/capture-inputs.js — public close pose and viewport routing; no tolerance changes.
+crates/bboxybook/capture.mjs / crates/bboxy-firehose/reference/capture.mjs — wait for a valid integer DevTools port instead of treating an empty file as ready.
+scripts/e2e/T7.sh:1 — declared partial coverage; exact matching-seat not_on_screen error required; same PID/gen/position/extent, real grace, expiry and readable history assertions.
+.bboxy/specs/e2e-script-map.md — same-commit T7 partial row. Its tracking cell is blank; no task was fabricated.
+
+Verification
+Exact full gate: workspace 1314 passed, 0 failed, 24 ignored; strict Clippy -D warnings 0; headless idle 0 frames/0 callbacks/10.002 s/windows0; 24 invariants/0 failures/8 named slow skips.
+Current parity: 2176 cases; 2072 required/measured; 0 unproven/mismatches. Advisory key set unchanged: icons48, documents16, materials8; 0 new/removed keys. T7 32/32 measured, 0 reviews.
+Historical diagnostic: 1664 cases, 851 pixel reviews, non-gating and no invented geometry.
+Dev precheck: workspace1310/0/24ignored on87a25477; strict Clippy0 on final27a79f3b; UI e2e11/0 and knowledge e2e3/0 after reference update; five consecutive current9-test headless suites0 on88554466. Full exact gate independently covers the final rebase.
+File-account final runtime: EXIT0/63.996s at same exact source, one real60s grace, accounts retired and child reaping verified. Three-pane triplet EXIT0, inspected. See t7-runtime-27a79f3b.log and both binary hashes in verdict.
+Capture readiness regression: actual source block fails on old empty port file, succeeds after fix with reads2/port43210; both JS syntax checks0. Capture-error guard: matching typed seat0; timeout/other seat/malformed/success each1; sh -n0.
+
+Failures and stops retained honestly
+4589ba45 full gate EXIT101: early focus relay race, fixed by correlated completed-frame ACK; no waiver.
+35f7dd69 full gate EXIT101: canonical test omitted close layer, fixed exact set+32 assertions. Raw earlier failure remains t7-ci-35f7dd69-failed.log.
+e982d3c1 precheck SIGINT -2 on Oracle immediate T9 rebase; not a pass.
+88554466 early full gate143/39.092s: launch continued past failed ancestry check; stopped own PGID, rebased new reference/map inputs, target/source removed.
+Final runtime first attempt EXIT1: fixture socket root too long (SUN_LEN), fixed by short owned worktree-local fixture roots; account retired; same binary final retry0.
+
+Limits
+T7.sh remains partial for solved pane rectangle/focus after undo and visible-grace-strip assertions; C-3 supplies the later observer. Separate triplet image inspection is not a machine assertion or PNG identity proof.
+Two app hashes are different Cargo dev/test profile artifacts from the same clean source; recorded as distinct, Oracle d52c42a1 explicitly accepts this. No further binary investigation or rerun.
+No release, push or merge performed. No operator input, identity, Keychain or OS desktop injection. Source worktree stayed clean after CI. Build target and own inactive dev target removed; gallery/reports/manifests/hash index and named Settings baselines retained.
+Main advanced after the freeze through #279/HK-1 and the new preflight policy; Oracle merges overlap in main.rs/cockpit.rs and verifies the merged tree after QUIET END.
+
+Milestones
+.bboxy/runs/t7-ci-27a79f3b.log:1025 — test headless_cli_starts_real_gui_types_captures_and_stops_without_a_window ... ok
+.bboxy/runs/t7-ci-27a79f3b.log:1026 — test t7_headless_close_uses_the_window_intent_and_restores_the_same_split ... ok
+.bboxy/runs/t7-ci-27a79f3b.log:3285 — idle passed: frames=0 callbacks=0 seconds=10.002 windows=0 mode=headless
+.bboxy/runs/t7-ci-27a79f3b.log:3485 — geometry: 2072 required; 2072 measured; 0 unproven; 0 mismatches
+.bboxy/runs/t7-ci-27a79f3b.log:3486 — parity gate: pass (72 pixel reviews advisory)
+.bboxy/runs/t7-ci-27a79f3b.log:3498 — invariants: 24 checks, 0 failures, 8 slow checks skipped
+.bboxy/runs/t7-ci-27a79f3b.log:3499 — ci-local: all gates passed

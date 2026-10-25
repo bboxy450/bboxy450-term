@@ -101,7 +101,7 @@ fn num(v: &Value, key: &str) -> Result<f32> {
         .map(|n| n as f32)
         .ok_or_else(|| format!("invalid pane {key}").into())
 }
-fn view(item: &Value) -> Result<Pane> {
+pub(crate) fn view(item: &Value) -> Result<Pane> {
     let v = &item["args"][0];
     let o = &item["args"][1];
     let mut row = seat_rows::seat(v, o, None);

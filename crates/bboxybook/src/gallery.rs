@@ -364,6 +364,7 @@ pub fn parity_cases() -> Vec<Case> {
     out.extend(crate::seat_rows::cases());
     out.extend(crate::tabs::cases());
     out.extend(crate::swarms::cases());
+    out.extend(crate::close::cases());
     out.extend(crate::panes::cases());
     out.extend(crate::title_bars::cases());
     out.extend(crate::launchers::cases());
@@ -467,11 +468,13 @@ mod tests {
         assert_eq!(layers, BTreeSet::from([
             "materials", "style", "atoms", "components", "floating-surfaces",
             "seat-row", "tabs", "swarms", "panes", "titlebars", "launchers",
-            "streams", "graphs", "settings", "perf", "documents", "paths",
+            "streams", "graphs", "settings", "perf", "documents", "paths", "close",
         ]));
         assert!(paths.contains("components/button-cozy-dark.png"));
         assert!(paths.contains("components/edge-fade-cozy-dark.png"));
         assert!(paths.contains("style/modal-cozy-dark.png"));
+        assert_eq!(all.iter().filter(|case| case.component == "close").count(), 32);
+        assert!(paths.contains("close/in-grace-cozy-dark.png"));
         assert!(!paths.contains("settings_tab/new-harness-cozy-dark.png"));
     }
     #[test]

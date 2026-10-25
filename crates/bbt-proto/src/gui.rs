@@ -65,6 +65,17 @@ pub struct AppStatus {
     pub generation: u64,
     pub frame_seq: u64,
     pub windows: usize,
+    /// Bounded readback of the retained close/grace UI, absent on older hosts.
+    #[serde(default)]
+    pub close: serde_json::Value,
+}
+/// The completed frame which acknowledged a focus command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FocusFrame {
+    #[serde(with = "text_id")]
+    pub seat: SeatId,
+    pub generation: u64,
+    pub frame_seq: u64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
@@ -202,11 +213,25 @@ pub enum GuiAction {
         seat: Ulid,
         generation: u64,
     },
-    /// Focus a seat in the window (ctl-cli §1a): relayed to the window, which focuses it as
-    /// its own row click does.
+    /// Close through the window, which captures its solved layout before scheduling grace.
+    CloseSeat {
+        id: Ulid,
+        seat: Ulid,
+    },
+    /// Restore a window close during grace, through its retained restoration handle.
+    UndoCloseSeat {
+        id: Ulid,
+        seat: Ulid,
+    },
+    /// Focus in the window, as its own row click does.
     FocusSeat {
         id: Ulid,
         seat: Ulid,
+    },
+    /// Only the GUI owner may acknowledge an applied focus.
+    Focused {
+        id: Ulid,
+        result: Result<FocusFrame, String>,
     },
     /// Page a retained stream by the caller's cursor (ctl-cli §1a, #272): read-only, no
     /// attachment, no ack, never a second consumer of the operator's lane; filtered to the
@@ -413,11 +438,27 @@ pub enum GuiReply {
         seat: SeatId,
         spec: SpawnSpec,
     },
-    /// Sent to the window: focus this seat, asked through another operator door.
+    /// Sent to the window: close this seat using its solved Position.
+    OperatorClose {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    /// Sent to the window: undo this seat's close during grace.
+    OperatorUndoClose {
+        op: Ulid,
+        #[serde(with = "text_id")]
+        seat: SeatId,
+    },
+    /// Sent to the window: focus this seat, as its own row click does.
     OperatorFocus {
         op: Ulid,
         #[serde(with = "text_id")]
         seat: SeatId,
+    },
+    Focused {
+        op: Ulid,
+        frame: FocusFrame,
     },
     /// A page of retained events, oldest first; `next` is the cursor to continue from.
     EventsRead {
@@ -505,6 +546,19 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn close_readback_is_optional_for_older_app_status_replies() {
+        let mut wire = serde_json::json!({
+            "running":true,"mode":"headless","unattended":false,
+            "backend_ready":true,"gui_ready":true,"events_ready":true,
+            "custody_backend":"memory","generation":1,"frame_seq":1,"windows":0
+        });
+        let legacy: AppStatus = serde_json::from_value(wire.clone()).unwrap();
+        assert!(legacy.close.is_null());
+        wire["close"] = serde_json::json!({"slots":[],"grace":[],"notices":[],"complete":true});
+        let current: AppStatus = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(serde_json::to_value(current).unwrap(), wire);
     }
     #[test]
     fn gui_ids_keep_canonical_ulid_text_and_reject_malformed_ids() {

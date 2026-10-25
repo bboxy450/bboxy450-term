@@ -1,0 +1,13 @@
+T7 final integration checkpoint
+
+Signed source 76a8247c717e2e6b7ab6c42b2903c207bb989318; accepted-main base 5e85ef2f (documents checkpoint 2).
+The source union retains document_reply plus closes in Model default/build,
+the document Knowledge assertions and the real three-PTY close assertions,
+document-first LocalPage routing plus UndoClose, and all UI message match arms.
+Document close-before-activation, !document.open IME gating, original attention
+landing Instant and Settings preference/notification channels remain intact.
+
+Strict check: cargo clippy --workspace --all-targets --locked -- -D warnings
+EXIT 0; 40.645 seconds. Raw output: t7-clippy-final.log.
+Earlier scoped proofs are in t7-scoped-verification.log. The full clean gate
+on the resulting exact source is pending; no final acceptance is claimed.

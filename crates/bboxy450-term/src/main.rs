@@ -74,8 +74,14 @@ pub enum UiEvent {
     /// A capture asked through an operator door (`ctl capture`); answered when written.
     CaptureFor(live::CaptureAsk),
     /// Focus a seat, asked through an operator door (`ctl seat focus`).
-    FocusFor(SeatId),
+    FocusFor(bboxy450_term::focus_ack::Ask),
+    FocusDeadline(bbt_mux::Ulid),
     App(live::AppEvent),
+    CloseFor {
+        id: bbt_mux::Ulid,
+        seat: SeatId,
+        undo: bool,
+    },
     /// No frame was presented for this capture in time (occluded, or the display asleep).
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
@@ -184,6 +190,29 @@ fn app_status(
         generation,
         frame_seq,
         windows,
+        close: bboxy450_term::close::status(model, Instant::now()),
+    }
+}
+
+/// Both GUI owners derive close requests from the same retained scene.
+fn close_request(
+    scene: &scene::Scene,
+    model: &bboxy450_term::model::Model,
+    seat: SeatId,
+    id: bbt_mux::Ulid,
+    undo: bool,
+    now: Instant,
+) -> Result<live::UiMsg, String> {
+    if undo {
+        model
+            .closes
+            .undo_in(&model.ui, seat, now)
+            .map(|_| live::UiMsg::UndoClose { seat })
+    } else {
+        scene
+            .close_intent(model, seat, id, now)
+            .map(live::UiMsg::Close)
+            .map_err(|reason| reason.to_string())
     }
 }
 
@@ -192,7 +221,10 @@ fn now_ms() -> u64 {
 }
 
 /// The startup pipe carries only public readiness; all logs stay on stderr.
-fn write_app_ready(status: bbt_proto::gui::AppStatus) {
+fn write_app_ready(mut status: bbt_proto::gui::AppStatus) {
+    // The startup pipe is a small readiness line. Retained UI is requested
+    // separately through `app status`, under the admitted GUI frame bound.
+    status.close = serde_json::Value::Null;
     bbt_rt::handle().spawn(async move {
         use tokio::io::AsyncWriteExt;
         if let Ok(mut bytes) = serde_json::to_vec(&status) {
@@ -393,6 +425,7 @@ enum RoutedKey {
     OpenGraph,
     OpenSettings,
     MuteFocused,
+    UndoClose,
     SettingsKey(SettingsKey),
     LocalPage(PageCommand),
     ToggleHud,
@@ -570,6 +603,13 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
                 RoutedKey::Local
             } else {
                 RoutedKey::OpenSettings
+            };
+        }
+        if query.is_none() && physical == PhysicalKey::Code(KeyCode::KeyZ) {
+            return if repeat {
+                RoutedKey::Local
+            } else {
+                RoutedKey::UndoClose
             };
         }
         if physical == PhysicalKey::Code(KeyCode::KeyM) {
@@ -1260,6 +1300,7 @@ struct App {
     message_history: messaging::History,
     events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
+    close_regions: Vec<(SeatId, Rect, bool)>,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
     reject_report: Option<composer::Report>,
     reject_focus: bool,
@@ -1305,6 +1346,7 @@ struct App {
     capture_pending: bool,
     /// Operator captures waiting for the next presented frame.
     ctl_captures: Vec<live::CaptureAsk>,
+    ctl_focus: bboxy450_term::focus_ack::Pending,
     /// When the last frame was presented; a capture of it names this time.
     last_presented: Option<std::time::SystemTime>,
     pending_resize: Option<LogicalSize<f64>>,
@@ -1787,6 +1829,32 @@ impl App {
             self.composer_client.groups(),
             self.task_records.nodes(),
         );
+        if let Some(swarm) = self.live_state.as_ref().and_then(|m| {
+            m.ui.window
+                .sidebar
+                .swarms
+                .iter()
+                .find(|s| Some(s.id) == self.composer_scope)
+        }) {
+            self.conversation
+                .entries
+                .extend(swarm.stream.iter().filter_map(|item| {
+                    if let bbt_ui_model::StreamItem::Presence { text, time, .. } = item {
+                        Some(bbt_ui::modules::stream_dock::Entry::Message {
+                            data: Box::new(bbt_ui::modules::stream_dock::Message {
+                                text: text.clone(),
+                                time: time.clone(),
+                                presence: true,
+                                kind: Some("presence".into()),
+                                ..Default::default()
+                            }),
+                            show_channel: None,
+                        })
+                    } else {
+                        None
+                    }
+                }));
+        }
         self.conversation.entries.extend(
             self.task_records
                 .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view))),
@@ -2244,6 +2312,15 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        if let Some(answer) = self
+            .ctl_focus
+            .fail("focus_superseded: a newer UI focus action replaced this request")
+        {
+            self.answer_focus(answer);
+        }
+        self.focus_action_applied(action);
+    }
+    fn focus_action_applied(&mut self, action: FocusAction) {
         if self.document.open {
             self.close_document();
         }
@@ -2368,6 +2445,62 @@ impl App {
                 .write(format!("notification focused seat {seat}"));
         }
     }
+    fn answer_focus(&mut self, answer: bboxy450_term::focus_ack::Answer) {
+        self.queue(live::UiMsg::Focused {
+            id: answer.id,
+            result: answer.result,
+        });
+    }
+    fn poll_focus(&mut self) {
+        let Some(model) = self.live_state.as_deref() else {
+            return;
+        };
+        let effect = self.ctl_focus.poll(
+            model,
+            self.scene.focused(),
+            |seat| self.pane_bounds.iter().any(|(id, _)| *id == seat),
+            self.meter.total_frames(),
+        );
+        match effect {
+            Some(bboxy450_term::focus_ack::Effect::Apply(seat)) => {
+                let generation = model.ui.seats[&seat].process_generation;
+                self.focus_action_applied(FocusAction::Activate(seat, FocusOrigin::Row));
+                if self.scene.focused() == Some(seat) {
+                    self.ctl_focus
+                        .applied(self.meter.total_frames() + 1, generation);
+                    self.request_redraw();
+                } else if let Some(answer) = self
+                    .ctl_focus
+                    .fail("not_on_screen: focus could not activate the requested pane")
+                {
+                    self.answer_focus(answer);
+                }
+            }
+            Some(bboxy450_term::focus_ack::Effect::Answer(answer)) => self.answer_focus(answer),
+            None => (),
+        }
+    }
+    fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
+        let Some(model) = &self.live_state else {
+            return;
+        };
+        match close_request(&self.scene, model, seat, id, undo, Instant::now()) {
+            Ok(message) => self.queue(message),
+            Err(reason) => self.logger.write(format!(
+                "{} {seat} refused: {reason}",
+                if undo { "undo close" } else { "close" }
+            )),
+        }
+    }
+    fn undo_latest_close(&mut self) {
+        if let Some(seat) = self
+            .live_state
+            .as_ref()
+            .and_then(|m| m.closes.latest(Instant::now()))
+        {
+            self.close_seat(seat, bbt_mux::Ulid::new(), true);
+        }
+    }
     fn queue(&mut self, message: live::UiMsg) {
         if self.closing || self.live_commands.is_none() {
             return;
@@ -2405,7 +2538,10 @@ impl App {
                     height: (rect.h * scale).round() as u32,
                 }),
                 None => {
-                    self.answer_capture(ask.id, Err(format!("seat {seat} has no pane on screen")));
+                    self.answer_capture(
+                        ask.id,
+                        Err(format!("not_on_screen: seat {seat} has no pane on screen")),
+                    );
                     return;
                 }
             },
@@ -2768,6 +2904,19 @@ impl App {
                     .then_some((op, request.outcome.clone()))
                 })
                 .collect();
+            let restored = state.ui.window.stage.focused.filter(|id| {
+                self.live_state.as_ref().is_some_and(|old| {
+                    old.ui
+                        .seats
+                        .get(id)
+                        .zip(state.ui.seats.get(id))
+                        .is_some_and(|(a, b)| {
+                            matches!(a.lifecycle, bbt_ui_model::Lifecycle::ClosedGrace { .. })
+                                && b.lifecycle == bbt_ui_model::Lifecycle::Open
+                                && a.process_generation == b.process_generation
+                        })
+                })
+            });
             self.focus
                 .reconcile(self.live_state.as_ref().map(|old| &old.ui), &state.ui);
             if self.document.open && self.document_return.is_none() {
@@ -2797,6 +2946,9 @@ impl App {
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             self.live_state = Some(state);
+            if let Some(seat) = restored {
+                self.focus_action(FocusAction::Activate(seat, FocusOrigin::Keyboard));
+            }
             let records_changed = self
                 .task_records
                 .replies(&self.live_state.as_ref().unwrap().operation_results);
@@ -2826,7 +2978,10 @@ impl App {
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
                     if !self.document.open {
-                        self.focus_action(FocusAction::Activate(*seat, FocusOrigin::Keyboard));
+                        self.focus_action_applied(FocusAction::Activate(
+                            *seat,
+                            FocusOrigin::Keyboard,
+                        ));
                     } else {
                         self.logger
                             .write(format!("spawn {op} placed; document return focus retained"));
@@ -2843,6 +2998,7 @@ impl App {
             self.verify();
         }
         self.drive_document();
+        self.poll_focus();
         self.flush_commands();
         sources
     }
@@ -3021,6 +3177,7 @@ impl App {
         }
         let bounds = self.scene.pane_bounds(&layouts);
         self.task_regions = self.scene.task_regions(&layouts);
+        self.close_regions = self.scene.close_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         if let Some(model) = &self.live_state
             && self.local_tab.is_none()
@@ -3261,6 +3418,7 @@ impl App {
                 status.custody_backend = self.app_custody.clone();
                 write_app_ready(status);
             }
+            self.poll_focus();
             for ask in std::mem::take(&mut self.ctl_captures) {
                 let frame = bbt_proto::gui::CaptureFrame {
                     stale: false,
@@ -3373,10 +3531,28 @@ impl ApplicationHandler<UiEvent> for App {
                 self.capture_pending = true;
                 self.request_redraw();
             }
-            UiEvent::FocusFor(seat) => {
-                // The same activation a sidebar row click makes.
-                self.focus_action(FocusAction::Activate(seat, FocusOrigin::Row));
+            UiEvent::CloseFor { id, seat, undo } => {
+                self.close_seat(seat, id, undo);
                 self.request_redraw();
+            }
+            UiEvent::FocusFor(ask) => {
+                let id = ask.id;
+                if let Some(answer) = self.ctl_focus.set(ask) {
+                    self.answer_focus(answer);
+                }
+                let proxy = self.proxy.clone();
+                let timer = bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(bboxy450_term::focus_ack::DEADLINE).await;
+                    let _ = proxy.send_event(UiEvent::FocusDeadline(id));
+                });
+                self.ctl_focus.arm(timer.abort_handle());
+                self.drain();
+                self.request_redraw();
+            }
+            UiEvent::FocusDeadline(id) => {
+                if let Some(answer) = self.ctl_focus.expire(id) {
+                    self.answer_focus(answer);
+                }
             }
             UiEvent::CaptureFor(ask) => {
                 if self.gpu.is_none() {
@@ -4102,6 +4278,17 @@ impl ApplicationHandler<UiEvent> for App {
                     self.conversation_reads(true);
                     return;
                 }
+                if let Some((seat, _, undo)) =
+                    self.close_regions.iter().copied().find(|(_, rect, _)| {
+                        self.pointer[0] >= rect.x
+                            && self.pointer[0] < rect.right()
+                            && self.pointer[1] >= rect.y
+                            && self.pointer[1] < rect.bottom()
+                    })
+                {
+                    self.close_seat(seat, bbt_mux::Ulid::new(), undo);
+                    return;
+                }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
@@ -4269,6 +4456,7 @@ impl ApplicationHandler<UiEvent> for App {
                     RoutedKey::OpenSettings => self.open_settings("Account"),
                     RoutedKey::SettingsKey(key) => self.settings_key(key),
                     RoutedKey::MuteFocused => self.mute_focused(),
+                    RoutedKey::UndoClose => self.undo_latest_close(),
                     RoutedKey::LocalPage(command) => {
                         if self.document.open {
                             self.document_command(command);
@@ -4347,7 +4535,10 @@ const PENDING_OPERATIONS: usize = 32;
 fn is_operation(message: &live::UiMsg) -> bool {
     matches!(
         message,
-        live::UiMsg::Messaging { .. } | live::UiMsg::Task { .. }
+        live::UiMsg::Messaging { .. }
+            | live::UiMsg::Task { .. }
+            | live::UiMsg::Close(_)
+            | live::UiMsg::UndoClose { .. }
     )
 }
 
@@ -5214,6 +5405,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         message_history: messaging::History::default(),
         events_seen: None,
         task_regions: Default::default(),
+        close_regions: vec![],
         reject: None,
         reject_report: None,
         reject_focus: false,
@@ -5266,6 +5458,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         capture,
         capture_pending: true,
         ctl_captures: Vec::new(),
+        ctl_focus: Default::default(),
         last_presented: None,
         pending_resize: None,
         animate,
@@ -5713,12 +5906,15 @@ mod input_tests {
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
-                live::UiMsg::Messaging { .. }
+                live::UiMsg::Close(_)
+                | live::UiMsg::UndoClose { .. }
+                | live::UiMsg::Messaging { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }
                 | live::UiMsg::AttentionFocus { .. }
                 | live::UiMsg::MarkEventsRead { .. }
+                | live::UiMsg::Focused { .. }
                 | live::UiMsg::AppReply { .. }
                 | live::UiMsg::Captured { .. } => {
                     panic!("pane admission fixture produced a messaging intent")
@@ -7117,5 +7313,47 @@ mod composer_host_tests {
                 ..
             })
         ));
+    }
+    #[test]
+    fn t7_command_z_is_local_once_and_control_z_remains_terminal_input() {
+        let logical = Key::Character("z".into());
+        let press = test_key(
+            &logical,
+            PhysicalKey::Code(KeyCode::KeyZ),
+            Some("z"),
+            ModifiersState::SUPER,
+            false,
+        );
+        let mut keyboard = keyboard::State::default();
+        assert_eq!(
+            route_input(&mut keyboard, &press, 3 << 18, None),
+            RoutedKey::UndoClose
+        );
+        let mut repeat = press.clone();
+        repeat.repeat = true;
+        assert_eq!(
+            route_input(&mut keyboard, &repeat, 3 << 18, None),
+            RoutedKey::Local
+        );
+        let mut release = press.clone();
+        release.state = ElementState::Released;
+        assert_eq!(
+            route_input(&mut keyboard, &release, 3 << 18, None),
+            RoutedKey::Local
+        );
+        let control = test_key(
+            &logical,
+            PhysicalKey::Code(KeyCode::KeyZ),
+            Some("z"),
+            ModifiersState::CONTROL,
+            false,
+        );
+        assert_eq!(route_key(&control, 0, None), RoutedKey::Terminal(vec![26]));
+        assert_ne!(
+            route_composer(&press, 0, ComposeField::Body),
+            RoutedKey::UndoClose
+        );
+        assert_ne!(route_settings(&press, 0, true), RoutedKey::UndoClose);
+        assert_ne!(route_key(&press, 0, Some("")), RoutedKey::UndoClose);
     }
 }

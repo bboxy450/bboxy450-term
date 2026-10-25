@@ -40,7 +40,7 @@
     get: () => components,
     set(value) {
       components = value;
-      for (const name of ['sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
+      for (const name of ['splitView', 'sidebar', 'pane', 'seatRow', 'tabRow', 'miniGrid',
         'spaceHeader', 'graphPage', 'provenanceCard', 'subscriptionsCard', 'e2eChecklist',
       'externalLane', 'epicGroup', 'streamTabs', 'messageRow', 'composer', 'reportCard', 'glyph', 'titleStrip', 'subagentRows', 'taskRow', 'artifactRow', 'titleBar', 'picker', 'settingsPage', 'docView', 'docModal', 'perfHud']) {
         const original = value[name];
@@ -167,7 +167,7 @@
       const r={key,rect:bounds(node)};
       if(leaf(node)&&!node.classList.contains('glyph')&&!node.classList.contains('hicon')&&!node.querySelector(':scope > .mark')&&node.textContent){Object.assign(r,{kind:'text',...textDiag(node)});r.key=key;}
       r.css={font:css.font,line_height:css.lineHeight,background:css.backgroundColor,shadow:css.boxShadow,opacity:css.opacity,border_radius:css.borderRadius,flex:css.flex,padding:css.padding};out.push(r);
-      if(!leaf(node)&&!(window.bboxyPaneFixture&&node.classList.contains('term'))){const counts={};for(const ch of [...node.childNodes]){
+      if(!leaf(node)&&!((window.bboxyPaneFixture||window.bboxyCloseFixture)&&node.classList.contains('term'))){const counts={};for(const ch of [...node.childNodes]){
         if(ch.nodeType===Node.TEXT_NODE&&ch.textContent.trim()){out.push({...rawTextDiag(ch),key:(path?path+'/':'')+'text'});continue;}
         // A kit block's rim canvas (rim-glow §8) is its paint surface, not a part: native draws the rim as a material.
         if(ch.nodeType!==Node.ELEMENT_NODE||ch.matches('canvas.rim'))continue;
@@ -559,8 +559,7 @@
       const border=parseFloat(css.borderLeftWidth)||0;
       return JSON.parse(JSON.stringify({version:1,layer:'titlebars',args:call?.args||[{title:'bboxy450-term',crumb:'swarm / Vesper Greywind',sidebarOpen:true}],host:bounds(node),ancestor_clip:css.overflow==='hidden'?{rect:{x:r.x-origin.x+border,y:r.y-origin.y+border,w:r.width-2*border,h:r.height-2*border},radii:radii(css).map(v=>Math.max(0,v-border))}:null,parts:parts(node,'bar')},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
     }
-    if(window.bboxyPaneFixture){
-      const items=calls.filter(c=>c.name==='pane'&&c.node?.isConnected&&root.contains(c.node)).map(c=>{
+    const paneItems=(source=calls.filter(c=>c.name==='pane'&&c.node?.isConnected&&root.contains(c.node)))=>source.map(c=>{
         c.node.dataset.bboxyPane='';
         const glow=glows.find(g=>g.wrap.contains(c.node));
         // The root's placement/available width belongs to the enclosing fixture.
@@ -586,6 +585,31 @@
         for(const child of term.childNodes)walk(child);
         return {args:c.args,lines,host:{x:r.x,y:r.y,w:r.w},parts:diagnostics,glow:glow?{seed:glow.seed,time_ms:0,focused:glow.focused,swell:glow.swell,attention:glow.attention}:null};
       });
+    if(window.bboxyCloseFixture){
+      const sb=calls.find(c=>c.name==='sidebar'&&c.node?.isConnected&&root.contains(c.node)),split=calls.find(c=>c.name==='splitView'&&c.node?.isConnected&&root.contains(c.node));
+      if(!sb||!split)throw Error('missing T7 sidebar or split constructor');
+      root.dataset.bboxyClose='';const diagnostics=[{key:'frame',rect:bounds(root)},{key:'sidebar',rect:bounds(sb.node)},{key:'stage',rect:bounds(split.node.parentElement)}];
+      for(const strip of sb.node.querySelectorAll('.closed-strip')) {
+        const id=strip.dataset.closed,k='closed/'+id;
+        diagnostics.push({key:k,rect:bounds(strip)});
+        for(const [name,sel,tx]of [['x','.x',true],['hicon','.hicon',false],['tname','.tname',true],['left','.left',false],['undo','.undo',false],['grace','.grace',false]]) {
+          const n=strip.querySelector(sel);if(!n)throw Error('missing grace part '+name);
+          diagnostics.push(tx?{...textDiag(n),key:k+'/'+name}:{key:k+'/'+name,rect:bounds(n)});
+        }
+      }
+      const leaves=t=>t.key?[t]:[...leaves(t.a),...leaves(t.b)];
+      const panes=paneItems(leaves(split.args[0]).map(seat=>({args:[seat,split.args[1]?.paneOpts?.(seat)||{}],node:split.node.querySelector('.pane[data-key="'+seat.key+'"]')})));
+      const model=JSON.parse(JSON.stringify(sb.args[0]));
+      for(const space of model.spaces||[])for(const closed of space.closed||[]) {
+        const strip=sb.node.querySelector('[data-closed="'+closed.seat.key+'"]'),anim=strip.querySelector('.grace').getAnimations()[0];
+        closed.remaining_ms=Math.max(0,closed.graceMs+(anim?.effect.getTiming().delay||0)-(anim?.currentTime||0));
+      }
+      const notice=calls.find(c=>c.name==='messageRow'&&c.node?.isConnected&&sb.node.contains(c.node));
+      if(notice)diagnostics.push({key:'notice',rect:bounds(notice.node)});
+      return JSON.parse(JSON.stringify({version:1,layer:'close',model,options:sb.args[1],tree:split.args[0],host:bounds(root),sidebar_width:280,panes,notice:notice?.args[0]||null,parts:diagnostics},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
+    }
+    if(window.bboxyPaneFixture){
+      const items=paneItems();
       if(!items.length)throw Error('missing Pane constructor');
       return JSON.parse(JSON.stringify({version:1,layer:'panes',scope:'Pane and Strip; notes and adjacent SeatRows are shared fixture context',items},(k,v)=>typeof v==='function'?{$callback:true}:v instanceof Node?undefined:v));
     }

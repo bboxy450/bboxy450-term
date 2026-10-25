@@ -22,5 +22,6 @@ Aster's read-only map arrives in six parts and fills the rows below; a row is on
 | T2 | `scripts/e2e/T2.sh` | partial | the full compare (the script truncates it) | |
 | T5 | `scripts/e2e/T5.sh` | partial | the app restarted, not only logic killed | |
 | T6 | `scripts/e2e/T6.sh` | partial | the harness resumed by session id (only the zsh respawn is proven) | |
+| T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
 
 Owner: Corvin Duskmantle <ARCHITECT>; rows by Aster Cinderwing <EXECUTOR> under the Oracle's brief.

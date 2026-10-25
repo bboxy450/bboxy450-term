@@ -43,6 +43,10 @@ pub enum UiMsg {
     },
     /// Compatibility for the existing verification and default-shell callers.
     SpawnZsh,
+    Close(crate::close::Intent),
+    UndoClose {
+        seat: bbt_proto::SeatId,
+    },
     /// UI consumed this retained result; no additional GUI socket RPC.
     ConsumeSpawn {
         id: bbt_mux::Ulid,
@@ -108,6 +112,10 @@ pub enum UiMsg {
         id: bbt_mux::Ulid,
         error: Option<String>,
         frame: bbt_proto::gui::CaptureFrame,
+    },
+    Focused {
+        id: bbt_mux::Ulid,
+        result: std::result::Result<bbt_proto::gui::FocusFrame, String>,
     },
     /// The GUI owner's public lifecycle answer; never process credentials.
     AppReply {
@@ -785,7 +793,10 @@ impl Session {
                 | GuiReply::OperatorSpawned { .. }
                 | GuiReply::Screen { .. }
                 | GuiReply::EventsRead { .. }
+                | GuiReply::OperatorClose { .. }
+                | GuiReply::OperatorUndoClose { .. }
                 | GuiReply::OperatorFocus { .. }
+                | GuiReply::Focused { .. }
                 | GuiReply::Hosts(_)
                 | GuiReply::HostState { .. } => {}
                 _ => return Err(invalid("unexpected GUI startup reply")),

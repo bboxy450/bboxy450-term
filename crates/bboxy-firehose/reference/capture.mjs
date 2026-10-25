@@ -61,8 +61,11 @@ const results = [];
 try {
   let port;
   for (let i = 0; i < 100; i++) {
-    try { port = Number((await fs.readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); break; }
-    catch { await pause(50); }
+    try {
+      const candidate = Number((await fs.readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]);
+      if (Number.isInteger(candidate) && candidate > 0 && candidate <= 65535) { port = candidate; break; }
+    } catch {}
+    await pause(50);
   }
   if (!port) throw Error(`Chrome did not start: ${stderr}`);
   const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();

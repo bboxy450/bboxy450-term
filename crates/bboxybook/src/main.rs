@@ -175,6 +175,7 @@ fn run() -> Result<()> {
         } else {
             match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref() {
                 Some("providers") => provider_cases(),
+                Some("close") => bboxybook::close::cases(),
                 Some("paths") => bboxybook::paths::cases(),
                 Some("graphs") => bboxybook::graphs::cases(),
                 Some("settings") => bboxybook::settings::cases(),

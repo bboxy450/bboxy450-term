@@ -152,7 +152,7 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
             .iter()
             .any(|r| r == "HEADLESS-CTL-42")
     );
-    f.ok(&[
+    let other = f.ok(&[
         "seat",
         "spawn",
         "zsh",
@@ -161,7 +161,21 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
         "--place",
         "tab",
     ]);
-    f.ok(&["seat", "focus", seat]);
+    let other = other["data"]["seat"].as_str().unwrap();
+    let focused = f.ok(&["seat", "focus", other]);
+    assert_eq!(focused["data"]["applied"], true);
+    assert!(focused["data"]["frame_seq"].as_u64().unwrap() > 0);
+    // Text is readable while off screen. Images refuse instead of capturing
+    // whichever pane happens to occupy the old rectangle.
+    f.ok(&["seat", "screen", seat]);
+    let hidden = f.root.path().join("off-screen.png");
+    let (code, rows) = f.ctl(&["seat", "capture", seat, hidden.to_str().unwrap()]);
+    assert_eq!(code, 1);
+    assert_eq!(rows[0]["error"]["kind"], "not_on_screen");
+    assert_eq!(rows[0]["error"]["hint"], "ctl seat focus <seat>");
+    let focused = f.ok(&["seat", "focus", seat]);
+    assert_eq!(focused["data"]["seat"], seat);
+    assert!(focused["data"]["generation"].as_u64().unwrap() > 0);
     let png = f.root.path().join("pane.png");
     let before_capture = f.ok(&["app", "status"]);
     let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);
@@ -189,6 +203,97 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
     assert_eq!(code, 4, "{rows:?}");
     // The endpoint disappears during logic shutdown. Wait for the independent
     // supervisor and GUI completion, not an arbitrary outage duration.
+    await_value(&f, || {
+        f.log()
+            .contains("headless GUI stopped: Ok(())")
+            .then_some(Value::Bool(true))
+    });
+    f.pid = None;
+}
+
+#[test]
+fn t7_headless_close_uses_the_window_intent_and_restores_the_same_split() {
+    let mut f = Fixture::new();
+    f.start();
+    let mut ids = vec![];
+    for name in ["left", "victim", "right"] {
+        let row = f.ok(&["seat", "spawn", "zsh", "--name", name]);
+        ids.push(row["data"]["seat"].as_str().unwrap().to_owned());
+    }
+    let seat = &ids[1];
+    f.ok(&["seat", "focus", seat]);
+    let before = await_value(&f, || {
+        let row = f.ok(&["app", "status"]);
+        (row["data"]["close"]["slots"].as_array()?.len() == 3).then_some(row)
+    });
+    assert_eq!(before["data"]["close"]["complete"], true);
+    let row = f.ok(&["seat", "ls"]);
+    let original = row["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat.as_str())
+        .unwrap()
+        .clone();
+    let first = f.root.path().join("t7-before.png");
+    f.ok(&["seat", "capture", seat, first.to_str().unwrap()]);
+    f.ok(&["seat", "close", seat]);
+    let closed = await_value(&f, || {
+        let row = f.ok(&["app", "status"]);
+        let close = &row["data"]["close"];
+        (close["slots"].as_array()?.len() == 2 && close["grace"].as_array()?.len() == 1)
+            .then_some(row)
+    });
+    assert_eq!(closed["data"]["close"]["grace"][0]["seat"], *seat);
+    assert_eq!(closed["data"]["close"]["grace"][0]["undo"], true);
+    assert!(
+        closed["data"]["close"]["grace"][0]["remaining_ms"]
+            .as_u64()
+            .unwrap()
+            <= 60_000
+    );
+    let hidden = f.root.path().join("t7-hidden.png");
+    assert_ne!(
+        f.ctl(&["seat", "capture", seat, hidden.to_str().unwrap()])
+            .0,
+        0
+    );
+    f.ok(&["seat", "undo-close", seat]);
+    await_value(&f, || {
+        let row = f.ok(&["app", "status"]);
+        (row["data"]["close"]["slots"] == before["data"]["close"]["slots"]
+            && row["data"]["close"]["grace"].as_array()?.is_empty())
+        .then_some(row)
+    });
+    let row = f.ok(&["seat", "ls"]);
+    let restored = row["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat.as_str())
+        .unwrap();
+    assert_eq!(
+        restored["record"]["generation"],
+        original["record"]["generation"]
+    );
+    assert_eq!(restored["state"]["process"], original["state"]["process"]);
+    let last = f.root.path().join("t7-restored.png");
+    // Capture succeeds only if the restored tab is actually on screen.
+    await_value(&f, || {
+        let (code, rows) = f.ctl(&["seat", "capture", seat, last.to_str().unwrap()]);
+        (code == 0).then(|| rows.last().unwrap().clone())
+    });
+    let size = |path| {
+        let png = std::fs::read(path).unwrap();
+        assert!(png.starts_with(b"\x89PNG\r\n\x1a\n"));
+        png[16..24].to_vec()
+    };
+    assert_eq!(
+        size(first),
+        size(last),
+        "undo changed the actual pane extent"
+    );
+    f.ok(&["app", "stop"]);
     await_value(&f, || {
         f.log()
             .contains("headless GUI stopped: Ok(())")
@@ -337,6 +442,7 @@ fn unattended_without_a_test_account_is_refused_before_native_custody() {
     let root = tempfile::tempdir().unwrap();
     let out = Command::new(BIN)
         .args(["--headless", "--unattended"])
+        .env("BBOXY_TEST_CUSTODY", "memory")
         .current_dir(root.path())
         .stdin(Stdio::null())
         .output()

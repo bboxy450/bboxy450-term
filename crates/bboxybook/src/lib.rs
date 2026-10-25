@@ -3,6 +3,7 @@
     reason = "headless storybook tool, not the app UI thread"
 )]
 pub mod atoms;
+pub mod close;
 pub mod components;
 pub mod fixtures;
 pub mod gallery;

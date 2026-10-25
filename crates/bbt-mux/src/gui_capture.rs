@@ -36,6 +36,14 @@ pub(crate) enum Notice {
         seat: bbt_proto::SeatId,
         spec: bbt_proto::SpawnSpec,
     },
+    Close {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    },
+    UndoClose {
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    },
     Focus {
         op: Ulid,
         seat: bbt_proto::SeatId,
@@ -54,6 +62,8 @@ impl Notice {
             Self::Spawned { op, seat, spec } => {
                 bbt_proto::GuiReply::OperatorSpawned { op, seat, spec }
             }
+            Self::Close { op, seat } => bbt_proto::GuiReply::OperatorClose { op, seat },
+            Self::UndoClose { op, seat } => bbt_proto::GuiReply::OperatorUndoClose { op, seat },
             Self::Focus { op, seat } => bbt_proto::GuiReply::OperatorFocus { op, seat },
         }
     }
@@ -63,6 +73,7 @@ pub(crate) struct Captures {
     asks: broadcast::Sender<Notice>,
     pending: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::CaptureFrame, String>>>>,
     app: Mutex<HashMap<Ulid, oneshot::Sender<bbt_proto::gui::AppStatus>>>,
+    focus: Mutex<HashMap<Ulid, oneshot::Sender<Result<bbt_proto::gui::FocusFrame, String>>>>,
 }
 impl Default for Captures {
     fn default() -> Self {
@@ -70,6 +81,7 @@ impl Default for Captures {
             asks: broadcast::channel(8).0,
             pending: Mutex::default(),
             app: Mutex::default(),
+            focus: Mutex::default(),
         }
     }
 }
@@ -153,12 +165,66 @@ impl Captures {
     pub(crate) fn attached(&self) -> bool {
         self.asks.receiver_count() > 0
     }
-    /// Asks the window to focus a seat; refused when no window listens.
-    pub(crate) fn focus(&self, op: Ulid, seat: bbt_proto::SeatId) -> Result<(), String> {
+    /// Resolve only after the owner confirms a completed frame, never on relay.
+    pub(crate) async fn focus(
+        &self,
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+    ) -> Result<bbt_proto::gui::FocusFrame, String> {
+        let (done, answer) = oneshot::channel();
+        {
+            let mut pending = self.focus.lock().unwrap_or_else(|e| e.into_inner());
+            pending.retain(|_, sender| !sender.is_closed());
+            if pending.len() >= 64 || pending.contains_key(&op) {
+                return Err("Busy: focus relay is full or this operation is pending".into());
+            }
+            pending.insert(op, done);
+        }
+        let result = if self.asks.send(Notice::Focus { op, seat }).is_err() {
+            Err("no window is attached to focus".into())
+        } else {
+            match tokio::time::timeout(WAIT, answer).await {
+                Ok(Ok(result)) => result,
+                _ => Err("focus_timeout: the GUI owner did not acknowledge focus".into()),
+            }
+        };
+        self.focus
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&op);
+        result.and_then(|frame| {
+            if frame.seat == seat && frame.frame_seq > 0 {
+                Ok(frame)
+            } else {
+                Err("focus_superseded: GUI acknowledged another pane or an incomplete frame".into())
+            }
+        })
+    }
+    pub(crate) fn focused(&self, id: Ulid, result: Result<bbt_proto::gui::FocusFrame, String>) {
+        if let Some(done) = self
+            .focus
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id)
+        {
+            let _ = done.send(result);
+        }
+    }
+    /// The window derives Position and uses its ordinary close/undo controller.
+    pub(crate) fn close(
+        &self,
+        op: Ulid,
+        seat: bbt_proto::SeatId,
+        undo: bool,
+    ) -> Result<(), String> {
         self.asks
-            .send(Notice::Focus { op, seat })
+            .send(if undo {
+                Notice::UndoClose { op, seat }
+            } else {
+                Notice::Close { op, seat }
+            })
             .map(drop)
-            .map_err(|_| "no window is attached to focus".into())
+            .map_err(|_| "no window is attached to close or undo".into())
     }
     /// The window's answer; an id nobody waits for is ignored.
     pub(crate) fn answer(&self, id: Ulid, answer: Result<bbt_proto::gui::CaptureFrame, String>) {
@@ -180,6 +246,52 @@ impl Captures {
 mod tests {
     use super::*;
     use std::sync::Arc;
+
+    #[tokio::test]
+    async fn focus_waits_for_the_gui_frame_answer_and_keeps_its_correlation() {
+        let captures = Arc::new(Captures::default());
+        let seat = bbt_proto::SeatId::from_u128(5);
+        assert!(
+            captures
+                .focus(Ulid(1), seat)
+                .await
+                .unwrap_err()
+                .contains("no window")
+        );
+        let mut owner = captures.subscribe();
+        let task = tokio::spawn({
+            let captures = captures.clone();
+            async move { captures.focus(Ulid(2), seat).await }
+        });
+        assert!(
+            matches!(owner.recv().await.unwrap(),Notice::Focus {op,seat:id} if op==Ulid(2) && id==seat)
+        );
+        assert!(
+            !task.is_finished(),
+            "a relay receipt is not an applied focus"
+        );
+        captures.focused(
+            Ulid(999),
+            Ok(bbt_proto::gui::FocusFrame {
+                seat,
+                generation: 7,
+                frame_seq: 9,
+            }),
+        );
+        assert!(
+            !task.is_finished(),
+            "another operation cannot acknowledge this focus"
+        );
+        captures.focused(
+            Ulid(2),
+            Ok(bbt_proto::gui::FocusFrame {
+                seat,
+                generation: 7,
+                frame_seq: 9,
+            }),
+        );
+        assert_eq!(task.await.unwrap().unwrap().frame_seq, 9);
+    }
 
     #[tokio::test]
     async fn lifecycle_uses_the_gui_owner_and_only_commits_stop_after_the_reply() {
@@ -211,6 +323,7 @@ mod tests {
             generation: 7,
             frame_seq: 1,
             windows: 0,
+            close: serde_json::Value::Null,
         };
         captures.app_answer(id, status.clone());
         assert_eq!(task.await.unwrap().unwrap(), status);

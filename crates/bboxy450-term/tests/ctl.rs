@@ -804,14 +804,62 @@ async fn ctl_capture_is_answered_by_the_window() {
             .expect("the window is asked to focus")
             .unwrap();
         if let Event::Reply(reply) = event
-            && let GuiReply::OperatorFocus { seat, .. } = *reply
+            && let GuiReply::OperatorFocus { op, seat } = *reply
         {
             assert_eq!(seat.to_string(), spawned);
+            assert!(
+                !focus.is_finished(),
+                "focus must wait for the window's frame acknowledgment"
+            );
+            session
+                .send(GuiAction::Focused {
+                    id: op,
+                    result: Ok(bbt_proto::gui::FocusFrame {
+                        seat,
+                        generation: 1,
+                        frame_seq: 7,
+                    }),
+                })
+                .await
+                .unwrap();
             break;
         }
     }
     let (ok, lines) = focus.await.unwrap();
     assert!(ok && lines[0]["verb"] == "focus", "{lines:?}");
+    for undo in [false, true] {
+        let close = tokio::task::spawn_blocking({
+            let (run, root, spawned) = (run.clone(), root.clone(), spawned.clone());
+            move || {
+                ctl_in(
+                    &run,
+                    &root,
+                    &["seat", if undo { "undo-close" } else { "close" }, &spawned],
+                )
+            }
+        });
+        loop {
+            let event = tokio::time::timeout(Duration::from_secs(20), session.event())
+                .await
+                .expect("window receives T7 relay")
+                .unwrap();
+            if let Event::Reply(reply) = event {
+                match *reply {
+                    GuiReply::OperatorClose { seat, .. } if !undo => {
+                        assert_eq!(seat.to_string(), spawned);
+                        break;
+                    }
+                    GuiReply::OperatorUndoClose { seat, .. } if undo => {
+                        assert_eq!(seat.to_string(), spawned);
+                        break;
+                    }
+                    _ => (),
+                }
+            }
+        }
+        let (ok, lines) = close.await.unwrap();
+        assert!(ok && lines[0]["data"]["relayed"] == true, "{lines:?}");
+    }
 
     // SIGTERM to logic closes the door: gui.endpoint is removed (invariant #261). The
     // restarted logic writes a fresh one, with a new capability.
