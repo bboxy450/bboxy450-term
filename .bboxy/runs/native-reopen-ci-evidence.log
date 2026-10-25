@@ -1,0 +1,75 @@
+{
+  "gate": {
+    "argv": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "source": "ede04d9539dba90705839feb2998cf22ef40c896",
+    "worktree": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/gate-tree",
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/gate-tree/target",
+    "utc": "2026-10-25T11:41:22.129328+00:00",
+    "started": 1792928482.129303,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/native-reopen-ci.log",
+    "pid": 10394,
+    "pgid": 10394,
+    "exit": 0,
+    "elapsed_s": 1542.452222108841,
+    "sha256": "9eb6432f03a2d57f1b21158329ca082f92b10377d818c52ceab8b3e25b576625"
+  },
+  "workspace": {
+    "groups": 205,
+    "passed": 1424,
+    "failed": 0,
+    "ignored": 29
+  },
+  "selected_test_lines": [
+    {
+      "line": 1823,
+      "text": "test logic::native_reopen_tests::allowed_native_unlock_reports_reopen_busy_then_refresh_recovers_without_another_attempt ... ok"
+    },
+    {
+      "line": 1924,
+      "text": "test native_two_item_regrant_keeps_the_second_hold_and_completes_in_pending_order ... ok"
+    },
+    {
+      "line": 2123,
+      "text": "test native_cancelled_and_unknown_outcomes_survive_logic_restart_without_replay ... ok"
+    },
+    {
+      "line": 3371,
+      "text": "idle passed: frames=0 callbacks=0 seconds=10.005 windows=0 mode=headless"
+    },
+    {
+      "line": 3453,
+      "text": "invariants: 25 checks, 0 failures, 9 slow checks skipped"
+    },
+    {
+      "line": 3454,
+      "text": "ci-local: all gates passed"
+    }
+  ],
+  "retirement": {
+    "lsof_exit": 1,
+    "lsof_output_bytes": 0,
+    "target": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-native-reopen-i8t9ey1h/gate-tree/target",
+    "allocated_bytes_removed": 4674879488,
+    "gate_worktree_removed": true,
+    "utc": "2026-10-25T12:08:13.237473+00:00"
+  },
+  "source_paths_equal_to_gated_head": [
+    "crates/bbt-proto/src/identity.rs",
+    "crates/bbt-mux/src/identity/mod.rs",
+    "crates/bbt-mux/src/identity/status.rs",
+    "crates/bbt-mux/src/identity/custodied.rs",
+    "crates/bbt-mux/src/identity/chain.rs",
+    "crates/bbt-mux/src/identity/unlock.rs",
+    "crates/bbt-mux/src/identity/reopen_tests.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/provenance/author.rs",
+    "crates/bboxy450-term/src/settings.rs",
+    "crates/bboxy450-term/src/live.rs"
+  ],
+  "prior_evidence": "native-reopen-prechecks.log retains first workspace completion timeout; no captured cause, no waiver. Early paired 30/30 runs are non-reproduction only.",
+  "scope": "Typed reopen_failed, noninteractive refresh retry, one native attempt. Tests use a fake native store and disposable account; no operator Keychain or physical interaction. No SQL product change.",
+  "movement": "Main advanced from ee7a00d8 to 4eaa63ce during gate. Oracle 55b5a7be requests rebase after QUIET r5j-ui-frame END."
+}
