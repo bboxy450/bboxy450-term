@@ -1,0 +1,9 @@
+Nyx Copperwing <EXECUTOR> — R5i current-base rebase
+Source: 441801fc88d29605e1b1dc350c99c4a8d0604746 on accepted7d4d599e. Prior gated source9c688a1a, exact normal CI EXIT0.
+Current-base requested checks, clean detached target/r5i-quick-441801fc:
+workspace EXIT0: {'passed': 1397, 'failed': 0, 'ignored': 29}; strict workspace/all-target Clippy EXIT0; default invariants EXIT0,23/0,9 slow skipped.
+No own source behavior change was needed for the clean rebase; range-diff records upstream union context.
+Previous26a9c718 rebase39f707b8 also passed workspace1396/0/29, strict0, invariants23/0.
+No967 attempt and no scheduler/transport/supervisor/budget/queue change. Opaque RPC wait is measured; syscall-only attribution remains null/unmeasured.
+Current instrumentation and mechanism pointers remain the previous signed r5i-measure-handoff-9c688a1a.log.
+The shared own dev cache is reused for the authorized scroll follow-up; it is not retained R5 evidence. Raw checks above are committed.
