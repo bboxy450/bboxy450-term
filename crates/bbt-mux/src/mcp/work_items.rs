@@ -933,6 +933,10 @@ fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
             hash.update(b"operator:");
             hash.update(device.to_bytes());
         }
+        Recipient::OperatorLocal(reference) => {
+            hash.update(b"operator-local:");
+            hash.update(reference.to_bytes());
+        }
     }
     hash.update(event.as_bytes());
     Ulid::from_bytes(hash.finalize()[..16].try_into().unwrap())

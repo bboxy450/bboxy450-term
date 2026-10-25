@@ -98,7 +98,7 @@ impl Ledger {
             CREATE INDEX IF NOT EXISTS msg_ready ON msg_deliveries(recipient,evidence,class,eligible_ms,message);
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
-            CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL,actual_device TEXT);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
         let ledger = Self {
             store,
@@ -374,6 +374,7 @@ impl Ledger {
         _routes: &[Route],
         same_device: &std::collections::BTreeSet<Recipient>,
         now: u64,
+        actual_device: Option<Ulid>,
     ) -> Result<StoredMessage> {
         let binding = super::pending::binding(intent)?;
         super::pending::check_upgrade_content(intent, envelope)?;
@@ -390,11 +391,11 @@ impl Ledger {
             return Err(invalid("completion has no matching original local intent"));
         }
         let signed = serde_json::to_vec(envelope)?;
-        let existing: Option<(Vec<u8>, String)> = tx
+        let existing: Option<(Vec<u8>, String, Option<String>)> = tx
             .query_row(
-                "SELECT envelope,intent_digest FROM msg_signatures WHERE message=?1",
+                "SELECT envelope,intent_digest,actual_device FROM msg_signatures WHERE message=?1",
                 [sqlint(sequence)?],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
             .optional()?;
         let message = StoredMessage {
@@ -406,19 +407,23 @@ impl Ledger {
             held_out,
             bus: None,
         };
-        if let Some((bytes, digest)) = existing {
-            if bytes != signed || digest != binding.digest {
+        if let Some((bytes, digest, device)) = existing {
+            if bytes != signed
+                || digest != binding.digest
+                || device != actual_device.map(|id| id.to_string())
+            {
                 return Err(invalid("intent already has a different signed completion"));
             }
         } else {
             let publication_id = Ulid::new();
             tx.execute(
-                "INSERT INTO msg_signatures VALUES(?1,?2,?3,?4)",
+                "INSERT INTO msg_signatures VALUES(?1,?2,?3,?4,?5)",
                 params![
                     sqlint(sequence)?,
                     signed,
                     binding.digest,
-                    publication_id.to_string()
+                    publication_id.to_string(),
+                    actual_device.map(|id| id.to_string()),
                 ],
             )?;
             let receipts: Vec<Receipt> = {
@@ -433,6 +438,12 @@ impl Ledger {
             for mut receipt in receipts {
                 receipt.signature = bbt_proto::messaging::SignatureState::Signed;
                 receipt.signature_reason = None;
+                if let Some(device) = actual_device {
+                    receipt.sender_device = Some(device);
+                    if receipt.recipient.is_operator() {
+                        receipt.recipient_device = Some(device);
+                    }
+                }
                 receipt.note = "signature confirmed for the original local intent".into();
                 if !same_device.contains(&receipt.recipient)
                     && receipt.evidence == Evidence::SenderStored
@@ -457,7 +468,7 @@ impl Ledger {
                 &message,
                 publication_id,
                 serde_json::json!({
-                    "id":intent.id,"signature":"signed","upgrade_of":binding,"envelope":envelope,
+                    "id":intent.id,"signature":"signed","upgrade_of":binding,"actual_device":actual_device,"envelope":envelope,
                 }),
             )?;
         }

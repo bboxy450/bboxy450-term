@@ -2723,7 +2723,7 @@ impl Worker {
                         );
                     }
                 },
-                bbt_proto::messaging::Recipient::Operator(_) => match task_swarm {
+                bbt_proto::messaging::Recipient::Operator(_) | bbt_proto::messaging::Recipient::OperatorLocal(_) => match task_swarm {
                     Some(swarm) => swarm,
                     None => {
                         return crate::mcp::error(
@@ -2775,7 +2775,7 @@ impl Worker {
             let mut request = crate::messaging::wire::SendRequest::text(
                 match wake.to {
                     bbt_proto::messaging::Recipient::Seat(seat) => format!("seats/{seat}/inbox"),
-                    bbt_proto::messaging::Recipient::Operator(_) => "operator/inbox".into(),
+                    bbt_proto::messaging::Recipient::Operator(_) | bbt_proto::messaging::Recipient::OperatorLocal(_) => "operator/inbox".into(),
                 },
                 wake.summary.clone(),
             );
