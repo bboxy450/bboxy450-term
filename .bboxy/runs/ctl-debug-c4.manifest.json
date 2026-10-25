@@ -1,0 +1,268 @@
+{
+  "brief": "fada5a8d-5597-47aa-9257-382c0609582e",
+  "ruling": "5d7354d4-46da-4216-9dfc-5c5108d4bb51",
+  "source": "d1097a861cd94d8c4b30c6974e2826ad3413f28e",
+  "branch": "aster-ctl-debug",
+  "base": "e327544193cc88ff62da187c94427baddaeacd7d",
+  "source_commits": [
+    "d1097a861cd94d8c4b30c6974e2826ad3413f28e G 9B07E849480C68328CA20684844ECC0587DE7AB0 Document off-UI bootstrap IO for process log sinks",
+    "7b0d98fbe65e573c13d888a1d300ef089b9e9086 G 9B07E849480C68328CA20684844ECC0587DE7AB0 Add bounded read-only ctl debug diagnostics"
+  ],
+  "changed_files": [
+    {
+      "path": "crates/bboxy450-term/src/cockpit.rs",
+      "sha256": "a524080ef9abe2e2f110e97bdcf4140c959178016ff770f7330ed9c042638093"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl.rs",
+      "sha256": "bd51cd8f79f6e7b4dc2e276263090e88b5b0535426a850b93403ef4595fea668"
+    },
+    {
+      "path": "crates/bboxy450-term/src/ctl/debug.rs",
+      "sha256": "546b9374e0f3ba3064f73f60fc4460936ffc137df38b1dd9490332c0c858333c"
+    },
+    {
+      "path": "crates/bboxy450-term/src/live.rs",
+      "sha256": "48de7caf46321f708ce78e282b6f767e3be421c0d520cb8eeaa0ec39c6be6bea"
+    },
+    {
+      "path": "crates/bboxy450-term/tests/ctl.rs",
+      "sha256": "be4258280fb246c9a1671050d5c97ffdbd2927d520927a6768d110c6df35be4a"
+    },
+    {
+      "path": "crates/bbt-mux/src/debug.rs",
+      "sha256": "a79ff16d977afac2d4b9ddd04361d85849b3d5faec7e493c3148bad750ded60e"
+    },
+    {
+      "path": "crates/bbt-mux/src/lib.rs",
+      "sha256": "36589e1495d8776b159e9497b04139516cbb94d699480dd835bea70e3f7727d7"
+    },
+    {
+      "path": "crates/bbt-mux/src/logic.rs",
+      "sha256": "2d271d16ec9ca5e009c5ac4803f1c37b2ddbb8748073b9e397e6825395eaba20"
+    },
+    {
+      "path": "crates/bbt-mux/src/seat_socket.rs",
+      "sha256": "4a7e658385d0fc7dd880d1fa96e42d604c442015f0a4ee333c43af273a4e6e8a"
+    },
+    {
+      "path": "crates/bbt-proto/src/gui.rs",
+      "sha256": "e1a91b630403c9049b9c18ea0e89133a1078c98487bd83a09ed921c0c6223574"
+    }
+  ],
+  "ci": {
+    "source": "d1097a861cd94d8c4b30c6974e2826ad3413f28e",
+    "cwd": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-d1097a86",
+    "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-target-d1097a86",
+    "command": [
+      "sh",
+      "scripts/ci-local.sh"
+    ],
+    "started": "2026-10-25T06:41:57.383671+00:00",
+    "custody": "debug memory default; explicit private file-account fixtures",
+    "profiles": "O1 + debug assertions, direct compiler, no debuginfo/incremental",
+    "pid": 92803,
+    "pgid": 92803,
+    "driver_pid": 92783,
+    "exit": 0,
+    "elapsed_s": 1156.0176344579668,
+    "finished": "2026-10-25T07:01:13.403219+00:00",
+    "log_sha256": "edaf30b21f48591d914aa95edd7b2f463574037c610de4b79e43514179723725"
+  },
+  "cleanup": {
+    "time": "2026-10-25T07:02:04.750931+00:00",
+    "targets": [
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-target-d1097a86",
+        "allocated_bytes_freed": 4061790208,
+        "lsof_exit": 1
+      },
+      {
+        "path": "/Users/feral/mydev/bboxy450-term-exec4/target/tests",
+        "allocated_bytes_freed": 107171840,
+        "lsof_exit": 1
+      }
+    ],
+    "allocated_cache_bytes_freed": 4168962048,
+    "worktree_removed": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-d1097a86",
+    "worktree_clean_before_removal": true,
+    "tracked_process_group_empty": true
+  },
+  "raw_records": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/check.py",
+      "bytes": 1516,
+      "sha256": "b60993678d9bca7117914e380bd33e752394aa00a1d0499830aa278ec7a04c1e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-cleanup.json",
+      "bytes": 634,
+      "sha256": "1d3612a95c275fcf0860a5ff4c3b072865caa714b56d0895471f621c79129c69"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci-reap.json",
+      "bytes": 39,
+      "sha256": "aca8df3f336fa1aee2b99154936961a6d436cf30b136c5c08edae1498c408e39"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci.log",
+      "bytes": 215528,
+      "sha256": "edaf30b21f48591d914aa95edd7b2f463574037c610de4b79e43514179723725"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci.process.json",
+      "bytes": 583,
+      "sha256": "58ce8bdcb2a98cd79f81c927c62ef168d4caff976bd5eab38c37a6b1be9458f5"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/ci.status.json",
+      "bytes": 765,
+      "sha256": "d2afc7d007968019a09cc64ca262fe42da03995367eca92b764ef9af6cb3ea9c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy-io-annotation.log",
+      "bytes": 154,
+      "sha256": "2c4b5278e49c63037c2acc3db33e5ea087981eddae5ab69b4adffaca44e84bda"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy-io-annotation.process.json",
+      "bytes": 464,
+      "sha256": "599251540b1296d6677362a5b9bc68c3583c66ebafbde392b99482af7f3441ee"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy-io-annotation.status.json",
+      "bytes": 321,
+      "sha256": "613b080b04ed3e2e7598f0420a081b181ed512ef0170e805c9477d52db4d1eee"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy.log",
+      "bytes": 13529,
+      "sha256": "6531cb9c41d7d7cd48a674aeef71df6629ef642247a0485b88c543d67b78ed36"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy.process.json",
+      "bytes": 419,
+      "sha256": "23eab616805361b35eec2ac926c4890ad9a206666a335cf7115edd0f30cc3943"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/clippy.status.json",
+      "bytes": 324,
+      "sha256": "2c93f173575a60fa92370d0b709d82d4b4266c44da74da273dfe3beebe6555dd"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/dev-cache-move.json",
+      "bytes": 313,
+      "sha256": "49d0e544fb1cba7805b593726a61970873434a9bca05a2ab88ba8cfcbec26be8"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-ctl.log",
+      "bytes": 5332,
+      "sha256": "471ed89ccf4763a942399185faa2af671d370cfe67883ef7f71de56cbf876aa1"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-ctl.process.json",
+      "bytes": 841,
+      "sha256": "f4b1908a9b1b11e81950710da70a104f1eabe341b628256a7b669ca7d532ef75"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-ctl.status.json",
+      "bytes": 433,
+      "sha256": "2b16327374bc35767bd73a61754fa8c777db7d94d37872115b99df8cb29e1d03"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-fixed.log",
+      "bytes": 2160,
+      "sha256": "ddec5b1ebcec6a55227f864e50122d53cae80320b4535ea33ec6317289c52335"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-fixed.process.json",
+      "bytes": 708,
+      "sha256": "e1592c592722ec8686dd88c86da827f1d206626dc0777dc73a7ef2b3b1816eaf"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-fixed.status.json",
+      "bytes": 303,
+      "sha256": "6e9edf28c6589209e5900fe9e8dbc17712802f3f923ee0ac301f1ff525404829"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-sql-types.log",
+      "bytes": 607,
+      "sha256": "d89f60d3b1075c9ff4985750a02fbf924a2ef808ceae4ed0b66ab05c3bb72a24"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-sql-types.process.json",
+      "bytes": 708,
+      "sha256": "29dfac20a77fbf87ab9c3af97ea89e2ba76c7a964975d4db7668ea387351c6b9"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux-sql-types.status.json",
+      "bytes": 302,
+      "sha256": "97f252cc678db8b26d31c058cb0e15a30c38d0331df9d6a9f443bc1aae774439"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux.log",
+      "bytes": 10429,
+      "sha256": "a86572124b795d452c25b3d891f58784018fdb817ffe2bc05906f436d670a8e7"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux.process.json",
+      "bytes": 1807,
+      "sha256": "692182f128b83c446d220f8f78740d6f02afeb93d0f1dfaa24c950717b9e6378"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-mux.status.json",
+      "bytes": 303,
+      "sha256": "b7ac785016106e33d679db6d9bd108e6c92edaca7b609e94584252c4c48882c8"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-secret-invariant.log",
+      "bytes": 277,
+      "sha256": "f675e5405274e83fa168f6b94e2da16cfaadc996c99919dc663bcd8528813e6d"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-secret-invariant.process.json",
+      "bytes": 782,
+      "sha256": "9fe4244ee522933193ea3aa071b43ce329251bd7fcfbd66d6cb88f9266422b77"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/focused-secret-invariant.status.json",
+      "bytes": 376,
+      "sha256": "574cc5d8a5066d11695eba77af8d5fbe016b5c07198a53afaa76faa05eec1f81"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/gate.py",
+      "bytes": 1898,
+      "sha256": "b593e904c8f9f5f416797e34299c2104e5258db4ddd903be6b8085f45ced4e8c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/invariants.log",
+      "bytes": 5173,
+      "sha256": "817ca4fcff57c23be097e7386a56f620084de647361fe483a4eda45a3d941cc9"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/invariants.process.json",
+      "bytes": 339,
+      "sha256": "53dbdbb223693916ff070c19de28b616ad121644ef9c5e525971de405d8a7f63"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/invariants.status.json",
+      "bytes": 242,
+      "sha256": "3cc4bf4693b69927587cf9a485b6afa9fa13492456e19e0c204798b484a108e2"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/workspace.log",
+      "bytes": 184102,
+      "sha256": "37623bb7a5dabf800f93628d8eea6f753806ec9fa2d2770af033857c1c11703e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/workspace.process.json",
+      "bytes": 382,
+      "sha256": "b92bcca7f8d6c536c73d12032fed9f389b32b78b41d61c875c5b0256d0c01104"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/c4-debug-20261024T2310/workspace.status.json",
+      "bytes": 284,
+      "sha256": "8c4d77e6d1fef9204230589e66f59f1a190342699c912e8c52b21463ea802ea6"
+    }
+  ]
+}
