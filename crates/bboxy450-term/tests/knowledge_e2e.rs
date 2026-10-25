@@ -127,10 +127,12 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     assert_eq!(calls[0], "changes_since");
     assert_eq!(loader.snapshot().project().summary.tone, Tone::Amber);
     let lines = e2e_lines(loader.snapshot(), None).unwrap();
-    assert_eq!(lines.len(), 55);
-    assert_eq!(lines[54]["state"], "amber");
-    assert_eq!(lines[54]["passed"], 52);
-    assert_eq!(lines[54]["manual"], 1);
+    // One row per promise, then the summary.
+    let n = promises().unwrap().len();
+    assert_eq!(lines.len(), n + 1);
+    assert_eq!(lines[n]["state"], "amber");
+    assert_eq!(lines[n]["passed"], n - 2);
+    assert_eq!(lines[n]["manual"], 1);
     assert_eq!(
         lines[0]["tracked_tasks"],
         json!([{"ref":"#1","status":"running"}])
@@ -140,7 +142,12 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     assert!(drawn.contains("AMBER") && drawn.contains("1 failure tracked"));
     assert!(drawn.contains("fixture") && drawn.contains("03:12"));
     let group = e2e_lines(loader.snapshot(), Some("terminal")).unwrap();
-    assert_eq!(group.len(), 9);
+    let terminal = promises()
+        .unwrap()
+        .iter()
+        .filter(|p| p.group == "terminal")
+        .count();
+    assert_eq!(group.len(), terminal + 1);
     assert_eq!(
         group.last(),
         lines.last(),
@@ -154,7 +161,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     assert_eq!(drive(&mut loader, &fixture)[0], "changes_since");
     assert_eq!(loader.snapshot().project().summary.tone, Tone::Red);
     assert_eq!(
-        e2e_lines(loader.snapshot(), None).unwrap()[54]["untracked"],
+        e2e_lines(loader.snapshot(), None).unwrap()[n]["untracked"],
         1
     );
     assert!(screen(&loader).contains("untracked"));
@@ -164,7 +171,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     drive(&mut loader, &fixture);
     assert_eq!(loader.snapshot().project().summary.tone, Tone::Green);
     assert_eq!(
-        e2e_lines(loader.snapshot(), None).unwrap()[54]["state"],
+        e2e_lines(loader.snapshot(), None).unwrap()[n]["state"],
         "green"
     );
     assert!(screen(&loader).contains("GREEN"));
@@ -181,7 +188,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
         "cached pass rows cannot keep a green verdict"
     );
     assert_eq!(
-        e2e_lines(loader.snapshot(), None).unwrap()[54]["state"],
+        e2e_lines(loader.snapshot(), None).unwrap()[n]["state"],
         "red"
     );
     assert!(loader.snapshot().faults[0].contains("fixture offline"));
@@ -234,6 +241,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
             }),
         );
     }
+    let records = promises.len();
     let mut watch = Watch::new(promises);
     assert!(watch.next_action().is_none());
     watch.observe(true);
@@ -253,7 +261,8 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
         }
         calls
     };
-    assert_eq!(drive(&mut watch), 56);
+    // The changes page, the list page, then one fetch per record.
+    assert_eq!(drive(&mut watch), records + 2);
     let snapshot = watch.publication().unwrap();
     assert_eq!(snapshot.project().summary.tone, Tone::Green);
     assert!(watch.next_action().is_none(), "idle never polls");
@@ -262,7 +271,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     }
     assert_eq!(
         drive(&mut watch),
-        56,
+        records + 2,
         "wakes coalesce to one bounded refresh"
     );
     assert!(
@@ -310,7 +319,11 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     assert!(watch.next_action().is_none());
     assert!(watch.publication().is_none());
     watch.observe(true);
-    assert_eq!(drive(&mut watch), 56, "reopen forces a fresh snapshot");
+    assert_eq!(
+        drive(&mut watch),
+        records + 2,
+        "reopen forces a fresh snapshot"
+    );
     assert_eq!(
         watch.publication().unwrap().project().summary.tone,
         Tone::Green

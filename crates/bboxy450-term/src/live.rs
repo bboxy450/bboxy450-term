@@ -2299,6 +2299,8 @@ mod tests {
     async fn live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events() {
         use bbt_ui::modules::e2e_checklist::Tone;
         use serde_json::{Value, json};
+        let promises = knowledge::promises().unwrap();
+        let terminal = promises.iter().filter(|p| p.group == "terminal").count();
         let root = tempfile::Builder::new()
             .prefix("a3-live-")
             .tempdir()
@@ -2409,7 +2411,7 @@ mod tests {
         until(&updates, &mut current, |m| {
             m.e2e
                 .as_ref()
-                .is_some_and(|e| e.records.len() == 54 && e.faults.is_empty())
+                .is_some_and(|e| e.records.len() == promises.len() && e.faults.is_empty())
         })
         .await;
         assert_eq!(
@@ -2448,7 +2450,7 @@ mod tests {
         assert_eq!(lines[0]["run_by"], "fixture-seat");
         let (ok, group) = ctl(Some("terminal")).await.unwrap();
         assert!(ok);
-        assert_eq!(group.len(), 9);
+        assert_eq!(group.len(), terminal + 1);
         assert_eq!(
             group.last(),
             lines.last(),
@@ -2527,7 +2529,7 @@ mod tests {
             .unwrap()
             .unwrap();
         eprintln!(
-            "PASS A3: 54 live records; screen == ctl JSON; terminal group8 + global summary; doc/task wakes amber -> red -> green; provider fault red; close/reopen recovers; children reaped"
+            "PASS A3: one live record per promise; screen == ctl JSON; terminal group + global summary; doc/task wakes amber -> red -> green; provider fault red; close/reopen recovers; children reaped"
         );
     }
 

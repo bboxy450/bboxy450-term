@@ -5,7 +5,7 @@
 # hook review through the seat's own PTY under decision #270's rule.
 # Usage: sh scripts/e2e-seed.sh            build, start (or reuse) the app, seat, delegate
 #        sh scripts/e2e-seed.sh --dry-run  print every step, run nothing
-#        sh scripts/e2e-seed.sh verify     the task's gate: 54 untested records, one per promise
+#        sh scripts/e2e-seed.sh verify     the task's gate: 55 untested records, one per promise
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 root=$(pwd)
@@ -135,6 +135,6 @@ Seated $seat (Codex, executor) and delegated #$number.
 Next, at the window:
   1. If the script stopped at Codex's hook review, review it there; otherwise nothing to approve.
   2. Watch the seat: it orients, then writes .bboxy/e2e records through the app.
-  3. Completion: $bin ctl e2e list --human   ends with the summary: untested 54, missing 0, doubled 0;
+  3. Completion: $bin ctl e2e list --human   ends with the summary: untested 55, missing 0, doubled 0;
      $bin ctl task get '#$number'          shows the report and its verify_result (exit 0).
 EOF

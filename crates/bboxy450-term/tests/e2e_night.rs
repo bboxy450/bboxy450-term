@@ -55,18 +55,18 @@ fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
                 .unwrap()
                 .contains("the fixture says no")
     }));
-    for id in ["T3", "T4", "T5", "T6", "T7", "T8"] {
+    for id in ["T3", "T4", "T5", "T6", "T7", "T8", "T9"] {
         assert_eq!(verdict(id), "untested", "{id}");
     }
     let summary = lines.last().unwrap();
     assert_eq!(summary["kind"], "summary");
     assert_eq!(summary["state"], "red");
     assert_eq!(summary["passed"], 1);
-    assert_eq!(summary["total"], 8);
+    assert_eq!(summary["total"], 9);
     assert_eq!(summary["unwritten"], serde_json::json!([]), "{lines:?}");
     assert_eq!(output.status.code(), Some(1), "red exits 1");
     let written: Vec<&Value> = lines.iter().filter(|l| l["kind"] == "record").collect();
-    assert_eq!(written.len(), 8, "{written:?}");
+    assert_eq!(written.len(), 9, "{written:?}");
     let record = |id: &str| {
         std::fs::read_to_string(records.path().join(format!(".bboxy/e2e/{id}.md"))).unwrap()
     };

@@ -41,6 +41,11 @@ window.E2E_PROMISES = [
   "text": "OSC 7501 state from a harness shows as reported grade; a harness that stays silent shows idle, never an invented state"
  },
  {
+  "id": "T9",
+  "group": "terminal",
+  "text": "`ctl seat restart` gives a seat its next process generation: the same seat, the old process gone, its screen and history kept (or the gap marked), a fresh shell or a harness resumed by session id"
+ },
+ {
   "id": "L1",
   "group": "launcher and placement",
   "text": "⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn"

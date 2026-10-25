@@ -11,13 +11,13 @@ fn the_real_spec_is_the_only_canonical_promise_list() {
         "../../../.bboxy/specs/e2e-acceptance.md"
     ))
     .unwrap();
-    assert_eq!(promises.len(), 54);
+    assert_eq!(promises.len(), 55);
     assert_eq!(
         (promises[0].id.as_str(), promises[0].group.as_str()),
         ("T1", "terminal")
     );
     assert_eq!(
-        (promises[53].id.as_str(), promises[53].group.as_str()),
+        (promises[54].id.as_str(), promises[54].group.as_str()),
         ("P2", "performance")
     );
     assert!(promises[0].text.contains("real PTY"));
@@ -37,7 +37,7 @@ fn the_real_spec_is_the_only_canonical_promise_list() {
         ..Default::default()
     };
     let out = view.project();
-    assert_eq!(out.summary.untested, 54);
+    assert_eq!(out.summary.untested, 55);
     assert_eq!(out.summary.tone, Tone::Red);
     assert!(out.rows.iter().all(|r| r.record.is_none()));
 }
