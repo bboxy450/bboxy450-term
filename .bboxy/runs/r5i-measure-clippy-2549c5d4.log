@@ -1,0 +1,210 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling winnow v1.0.4
+    Checking bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mermaid)
+    Checking futures-sink v0.3.34
+    Checking futures-core v0.3.34
+    Checking toml_datetime v1.1.2+spec-1.1.0
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxybook)
+    Checking bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-term v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-term)
+   Compiling equivalent v1.0.3
+    Checking bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy-firehose)
+   Compiling indexmap v2.14.2
+    Checking bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-desktop-notifications)
+    Checking serde_spanned v1.1.2
+    Checking target-triple v1.0.1
+    Checking termcolor v1.4.1
+    Checking glob v0.3.4
+    Checking toml_edit v0.25.17+spec-1.1.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking hashbrown v0.17.1
+    Checking bboxy450-desktop-notifications-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-desktop-notifications-windows)
+    Checking bboxy450-keychain-windows v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-keychain-windows)
+   Compiling quote v1.0.47
+   Compiling syn v3.0.9
+   Compiling syn v2.0.119
+    Checking proc-macro-crate v3.5.0
+    Checking bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-desktop-notifications-linux)
+   Compiling toml_parser v1.1.5+spec-1.1.0
+   Compiling toml v0.9.12+spec-1.1.0
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui-model)
+    Checking bbt-yarn-macros v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-yarn-macros)
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling tokio-macros v2.7.2
+   Compiling bytemuck_derive v1.12.1
+   Compiling futures-macro v0.3.34
+   Compiling ref-cast-impl v1.0.27
+    Checking ref-cast v1.0.27
+   Compiling foreign-types-macros v0.2.4
+    Checking tokio v1.54.1
+    Checking futures-util v0.3.34
+    Checking foreign-types v0.5.0
+    Checking core-graphics v0.23.2
+   Compiling darling_core v0.20.11
+    Checking thiserror v2.0.21
+    Checking bytemuck v1.25.2
+    Checking winit v0.30.13
+    Checking naga-types v30.0.1
+    Checking tungstenite v0.30.0
+    Checking wgpu-types v30.0.1
+    Checking tiny-skia-path v0.12.0
+    Checking rgb v0.8.53
+   Compiling zerocopy-derive v0.8.63
+   Compiling zeroize_derive v1.5.0
+   Compiling thiserror-impl v1.0.69
+   Compiling strum_macros v0.28.0
+    Checking zeroize v1.9.1
+    Checking generic-array v0.14.7
+    Checking der v0.7.10
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking digest v0.10.7
+    Checking inout v0.1.4
+    Checking cipher v0.4.4
+    Checking sha2 v0.10.9
+    Checking hmac v0.12.1
+    Checking zerocopy v0.8.63
+    Checking serde v1.0.229
+    Checking signature v2.2.0
+    Checking thiserror v1.0.69
+    Checking hkdf v0.12.4
+    Checking crypto-bigint v0.5.5
+    Checking filedescriptor v0.8.3
+    Checking portable-pty v0.9.0
+    Checking rfc6979 v0.4.0
+    Checking strum v0.28.0
+   Compiling darling_macro v0.20.11
+    Checking ctr v0.9.2
+    Checking spki v0.7.3
+    Checking aead v0.5.2
+    Checking universal-hash v0.5.1
+    Checking aes v0.8.4
+    Checking curve25519-dalek v4.1.3
+    Checking arrayvec v0.7.8
+    Checking bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-ui)
+    Checking serde_yaml v0.9.34+deprecated
+    Checking serde-big-array v0.5.1
+    Checking pkcs8 v0.10.2
+    Checking bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core)
+    Checking polycool v0.4.0
+    Checking serdect v0.2.0
+    Checking fluent-uri v0.4.1
+    Checking kurbo v0.13.1
+    Checking sec1 v0.7.3
+    Checking lyon_geom v1.0.20
+    Checking email_address v0.2.9
+    Checking tiny-skia v0.12.0
+    Checking bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-plugin)
+   Compiling darling v0.20.11
+    Checking lyon_path v1.0.19
+    Checking svgtypes v0.16.1
+    Checking elliptic-curve v0.13.8
+   Compiling derive_builder_core v0.20.2
+    Checking lyon_tessellation v1.0.22
+    Checking usvg v0.48.1
+    Checking ecdsa v0.16.9
+    Checking primeorder v0.13.6
+    Checking polyval v0.6.2
+    Checking dbl v0.3.2
+    Checking bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-keychain-file)
+    Checking cmac v0.7.2
+   Compiling derive_builder_macro v0.20.2
+    Checking ghash v0.5.1
+    Checking pkcs1 v0.7.5
+    Checking serdect v0.3.0
+    Checking ed25519 v2.2.3
+    Checking sha3 v0.10.9
+    Checking blake2 v0.10.6
+    Checking sha1 v0.10.7
+   Compiling bitfields-impl v1.0.3
+   Compiling snafu-derive v0.9.2
+   Compiling derive_more-impl v2.1.1
+   Compiling num_enum_derive v0.7.6
+    Checking argon2 v0.5.3
+    Checking cx448 v0.1.1
+    Checking sha1-checked v0.10.0
+    Checking resvg v0.48.1
+    Checking bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-rt)
+    Checking tokio-tungstenite v0.30.0
+    Checking num_enum v0.7.6
+    Checking derive_builder v0.20.2
+    Checking ed25519-dalek v2.2.0
+    Checking aes-gcm v0.10.3
+    Checking eax v0.5.0
+    Checking p521 v0.13.3
+    Checking p256 v0.13.2
+    Checking p384 v0.13.1
+    Checking bitfields v1.0.3
+    Checking k256 v0.13.4
+    Checking x25519-dalek v2.0.1
+    Checking aes-kw v0.2.1
+    Checking ocb3 v0.1.0
+    Checking cfb-mode v0.8.2
+    Checking camellia v0.1.0
+    Checking blowfish v0.9.1
+    Checking cast5 v0.11.1
+    Checking idea v0.5.1
+    Checking twofish v0.7.1
+    Checking des v0.8.1
+    Checking md-5 v0.10.6
+    Checking ripemd v0.1.3
+    Checking block-padding v0.3.3
+    Checking curve25519-dalek v5.0.0
+    Checking bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-keychain)
+    Checking tokio-util v0.7.19
+    Checking derive_more v2.1.1
+    Checking snafu v0.9.2
+    Checking trybuild v1.0.120
+    Checking ed25519-dalek v3.0.0
+    Checking bbt-yarn v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-yarn)
+    Checking ppv-lite86 v0.2.21
+    Checking half v2.7.1
+    Checking ahash v0.8.12
+    Checking jsonschema-value v0.60.1
+    Checking referencing v0.60.1
+    Checking rand_chacha v0.9.0
+    Checking rand_chacha v0.3.1
+    Checking rand v0.8.8
+    Checking rand v0.9.5
+    Checking naga v30.0.1
+    Checking jsonschema v0.60.1
+    Checking ulid v1.2.1
+    Checking num-bigint-dig v0.8.6
+    Checking bbt-supervisor v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-supervisor)
+    Checking bboxy450-harness-wake-up v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bboxy450-harness-wake-up)
+    Checking bbt-proto v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-proto)
+    Checking dsa v0.6.3
+    Checking rsa v0.9.10
+    Checking pgp v0.21.0
+    Checking bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-doc)
+    Checking bbt-mux v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-mux)
+    Checking wgpu-naga-bridge v30.0.1
+    Checking wgpu-hal v30.0.1
+    Checking wgpu-core-deps-apple v30.0.1
+    Checking wgpu-core v30.0.1
+    Checking wgpu v30.0.1
+    Checking bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-render)
+error: large size difference between variants
+   --> crates/bboxy450-term/src/stall.rs:408:1
+    |
+408 | / pub enum Control {
+409 | |     Probe(u64),
+    | |     ---------- the second-largest variant contains at least 8 bytes
+410 | |     Finish(Measurements),
+    | |     -------------------- the largest variant contains at least 240 bytes
+411 | | }
+    | |_^ the entire enum is at least 240 bytes
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#large_enum_variant
+    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+    |
+410 -     Finish(Measurements),
+410 +     Finish(Box<Measurements>),
+    |
+
+error: could not compile `bboxy450-term` (bin "bboxy450-term") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `bboxy450-term` (bin "bboxy450-term" test) due to 1 previous error

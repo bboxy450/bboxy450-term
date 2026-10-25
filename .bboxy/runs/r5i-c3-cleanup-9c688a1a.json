@@ -1,0 +1,17 @@
+{
+  "authorization": "b620fd19-cc9e-4034-ab41-2a9a81e1e2e3",
+  "source": "ff0d7433",
+  "accepted_main": "9287f136",
+  "reason": "C3 accepted; full parity pixels/binaries unused this hour; JSON, manifests, reports, logs and committed hashes retained",
+  "root": "/Users/feral/mydev/bboxy450-term-nyx/target/c3-gate-ff0d7433",
+  "at": "2026-10-25T07:36:51.117797+00:00",
+  "lsof_exit": 1,
+  "files": 13720,
+  "allocated_bytes_removed": 591708160,
+  "skipped": [],
+  "retired_filter": "all .png paths plus bboxy450-term-ff0d7433 and bboxybook-ff0d7433 in the pinned manifest",
+  "per_file_hashes": ".bboxy/runs/c3-ctl-ui-hashes-ff0d7433.jsonl",
+  "per_file_manifest_sha256": "e87043d59e7079a9aa152c3c472ed49f3b471b4e4a4f693bb5eaffc2c4a56edc",
+  "full_retired_inventory": "target/r5i/c3-cleanup.json",
+  "full_retired_inventory_sha256": "45c203ec9f2e2e9f30b6c4f91a07ccbe3173804acdc90898ade9c3fbc8255034"
+}

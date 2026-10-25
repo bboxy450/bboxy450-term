@@ -18,6 +18,20 @@ use std::{
 };
 use tokio::sync::{mpsc, oneshot};
 
+/// Read-only callback classification lives with the measurements. The app's
+/// one keyboard dispatch remains in its input adapter.
+pub fn window_callback(event: &winit::event::WindowEvent) -> bbt_rt::diagnostics::Span<'static> {
+    use bbt_rt::diagnostics::{Phase, callback};
+    use winit::event::WindowEvent;
+    callback(match event {
+        WindowEvent::RedrawRequested => Phase::WindowRedraw,
+        WindowEvent::MouseInput { .. }
+        | WindowEvent::MouseWheel { .. }
+        | WindowEvent::CursorMoved { .. } => Phase::WindowPointer,
+        _ => Phase::WindowOther,
+    })
+}
+
 pub const HELP: &str = "  --stall-test          R5 functional fixture (debug guards required)\n  --stall-headless      render without an NSWindow\n  --stall-real          real PTYs; otherwise explicitly synthetic state fixtures\n  --stall-frame-gate    also enforce timing limits; requires starting loadavg <=8\n  --stall-seats N       fixture rows / real PTYs (default 1000 synthetic)\n  --stall-watched N     encoded watched panes (default 15)\n  --stall-seconds N     measured overlap (default 5, range 3..60)\n  --stall-idle N        settled idle seconds (default 2)\n  --stall-report PATH   JSON result (required)\n  --stall-run-dir PATH  fresh private directory (default /tmp/r5-<id>)";
 
 #[derive(Clone, Debug)]
@@ -386,13 +400,14 @@ impl Progress {
         self.phase.load(Ordering::Acquire)
     }
     pub fn set_phase(&self, phase: u8) {
+        bbt_rt::diagnostics::set_period(phase);
         self.phase.store(phase, Ordering::Release);
     }
 }
 
 pub enum Control {
     Probe(u64),
-    Finish(Measurements),
+    Finish(Box<Measurements>),
 }
 
 #[derive(Serialize, Default)]
@@ -414,6 +429,7 @@ pub struct Measurements {
     pub cpu_samples_ms: Vec<f64>,
     pub frame_work_samples_ms: Vec<f64>,
     pub probe_clipped: bool,
+    pub diagnostics: serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -467,6 +483,40 @@ impl Report {
     }
 }
 
+/// Numeric snapshots are not atomic cuts. Nested wall times are inclusive.
+pub fn diagnostic_report() -> serde_json::Value {
+    let snapshot = bbt_rt::diagnostics::snapshot();
+    let samples: Vec<_> = snapshot.samples.iter().map(|row| serde_json::json!({
+        "period":row.period,"phase":row.phase,"calls":row.calls,"active":row.active,"work":row.work,"bytes":row.bytes,
+        "wall_ns":row.wall_ns,"wall_max_ns":row.wall_max_ns,
+        "cpu_ns":row.cpu_ns,"cpu_max_ns":row.cpu_max_ns,"cpu_samples":row.cpu_samples,"cpu_errors":row.cpu_errors,
+    })).collect();
+    serde_json::json!({
+        "enabled":snapshot.enabled,"process_id":std::process::id(),"sampled_ns":snapshot.sampled_ns,
+        "clock":"nanoseconds since R5i diagnostics enable, independent of capture.json clock; null = not observed",
+        "periods":["setup","warm","measure","settle","idle","finished"],
+        "scopes":"inclusive: callback > drain > projection; publish > build/prepare/drop/Latest; request = inclusive RPC wait, overlaps supervisor work",
+        "read_ring_bytes":"request=output payload; work=request seats (one per call); terminal decode work=records",
+        "read_ring_request_scope":"SupervisorConnection::request including RPC wait/transport decode; syscall-only timing unavailable at the logic boundary",
+        "read_ring_syscall_ns":serde_json::Value::Null,
+        "tickless_redraw_work":"models projected before a redraw returned with no Metal tick",
+        "counters":samples,
+        "probe":{"id":snapshot.probe_id,"seat_u128":snapshot.probe_seat.to_string(),"generation":snapshot.probe_generation,
+            "ring_sequence":snapshot.probe_sequence,"stamps":snapshot.probe.into_iter().collect::<BTreeMap<_,_>>()},
+    })
+}
+fn model_has_probe(model: &Model) -> bool {
+    if !bbt_rt::diagnostics::probe_pending(bbt_rt::diagnostics::ProbeStage::ModelPublished) {
+        return false;
+    }
+    let Some((id, seat, _)) = bbt_rt::diagnostics::probe_info() else {
+        return false;
+    };
+    model
+        .screens
+        .get(&SeatId::from_u128(seat))
+        .is_some_and(|screen| probe_acknowledged(screen, &format!("R5P{id:08X}")))
+}
 pub struct Native {
     pub config: Config,
     pub progress: Arc<Progress>,
@@ -503,6 +553,7 @@ impl Native {
         messages: UiSender,
         wake: impl Fn() + Send + Sync + 'static,
     ) -> Self {
+        bbt_rt::diagnostics::enable();
         let progress = Arc::new(Progress::default());
         let (commands, input) = mpsc::channel(8);
         let (stop, stopped) = oneshot::channel();
@@ -578,6 +629,9 @@ impl Native {
         }
     }
     pub fn model_received(&mut self, model: &Model) {
+        self.model_received_at(model, bbt_rt::diagnostics::now());
+    }
+    pub fn model_received_at(&mut self, model: &Model, received_at: Option<u64>) {
         if self.model_ms.is_none()
             && let Some((id, start)) = self.probe_started
             && model
@@ -586,7 +640,17 @@ impl Native {
                 .any(|screen| probe_acknowledged(screen, &format!("R5P{id:08X}")))
         {
             self.model_ms = Some(start.elapsed().as_secs_f64() * 1000.);
+            bbt_rt::diagnostics::probe_mark_at(
+                bbt_rt::diagnostics::ProbeStage::LatestTaken,
+                received_at,
+            );
         }
+    }
+    pub fn model_applied(&self) {
+        bbt_rt::diagnostics::probe_after(
+            bbt_rt::diagnostics::ProbeStage::LatestTaken,
+            bbt_rt::diagnostics::ProbeStage::ModelApplied,
+        );
     }
     pub fn poll(
         &mut self,
@@ -650,7 +714,13 @@ impl Native {
         if phase == MEASURE && self.probe_started.is_none() && self.cpu.len() >= 8 {
             let id = 1;
             let admitted = Instant::now();
+            bbt_rt::diagnostics::arm_probe(id);
+            let admitted_at = bbt_rt::diagnostics::now();
             if self.commands.try_send(Control::Probe(id)).is_ok() {
+                bbt_rt::diagnostics::probe_mark_at(
+                    bbt_rt::diagnostics::ProbeStage::Admitted,
+                    admitted_at,
+                );
                 self.probe_started = Some((id, admitted));
             }
         }
@@ -692,10 +762,15 @@ impl Native {
                 cpu_samples_ms: self.cpu.clone(),
                 frame_work_samples_ms: self.wall.clone(),
                 probe_clipped: self.probe_clipped,
+                diagnostics: diagnostic_report(),
             };
             // Pressure leaves finalization pending. Only the result channel
             // can report an error, after the IO owner has completed teardown.
-            if self.commands.try_send(Control::Finish(metrics)).is_ok() {
+            if self
+                .commands
+                .try_send(Control::Finish(Box::new(metrics)))
+                .is_ok()
+            {
                 self.finish_sent = true;
             }
         }
@@ -709,9 +784,14 @@ impl Native {
             return None;
         }
         self.settle_logged_phase = Some(witness.phase);
+        let mut value = serde_json::to_value(witness).expect("numeric settle witness serializes");
+        value["diagnostics"] = diagnostic_report();
         Some(format!(
             "R5 settle sources=0:messages,1:output,2:prepared,3:demo,4:display_tick,5:live_model,1024:direct {}",
-            serde_json::to_string(&witness).expect("numeric settle witness serializes")
+            serde_json::to_string(
+                &serde_json::json!({"settle":witness,"diagnostics":diagnostic_report()})
+            )
+            .expect("numeric settle witness serializes")
         ))
     }
     pub fn frame(
@@ -776,6 +856,7 @@ impl Native {
                     [cell_width, line_height],
                 ) {
                     self.probe_frame = Some(frame);
+                    bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::Encoded);
                     self.probe_clipped = false;
                     self.encoded_ms = self
                         .probe_started
@@ -793,6 +874,10 @@ impl Native {
             && let Some((_, start)) = self.probe_started
         {
             self.input_ms = Some(at.saturating_duration_since(start).as_secs_f64() * 1000.);
+            bbt_rt::diagnostics::probe_mark_at(
+                bbt_rt::diagnostics::ProbeStage::GpuComplete,
+                bbt_rt::diagnostics::at(at),
+            );
         }
     }
 }

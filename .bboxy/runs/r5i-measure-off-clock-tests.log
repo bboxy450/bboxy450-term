@@ -1,0 +1,12 @@
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-rt)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.48s
+     Running unittests src/lib.rs (target/r5i-dev/debug/deps/bbt_rt-67af987360f158f7)
+
+running 4 tests
+test diagnostics::tests::disabled_hooks_never_sample_clocks_or_allocate_state ... ok
+test diagnostics::tests::callback_guard_accounts_for_early_return_and_in_flight ... ok
+test diagnostics::tests::enabled_counters_are_partitioned_by_start_period_and_bounded ... ok
+test diagnostics::tests::probe_requires_the_pinned_ack_and_does_not_stitch_across_gaps ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+

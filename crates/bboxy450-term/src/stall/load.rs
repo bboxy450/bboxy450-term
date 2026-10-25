@@ -559,7 +559,7 @@ impl GuiTrace {
 
 struct Wire {
     out: mpsc::Sender<GuiAction>,
-    incoming: mpsc::Receiver<Result<GuiReply, String>>,
+    incoming: mpsc::Receiver<(Result<GuiReply, String>, Option<u64>)>,
     reader: tokio::task::JoinHandle<()>,
     writer: tokio::task::JoinHandle<()>,
     trace: Arc<GuiTrace>,
@@ -592,6 +592,7 @@ impl Wire {
         let reader = tokio::spawn(async move {
             let mut read = BufReader::new(read);
             loop {
+                let receive = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::GuiReceive);
                 let parsed = match bbt_mux::seat_socket::read_line(&mut read).await {
                     Ok(Some(line)) => {
                         serde_json::from_slice::<GuiReply>(&line).map_err(|e| e.to_string())
@@ -599,12 +600,14 @@ impl Wire {
                     Ok(None) => Err("r5-gui-eof".into()),
                     Err(e) => Err(e.to_string()),
                 };
+                receive.finish(1, 0);
+                let received_at = bbt_rt::diagnostics::now();
                 if let Ok(GuiReply::Update { seat, update }) = &parsed {
                     received_trace
                         .record(*seat, |row| row.received = Some(UpdateCursor::of(update)));
                 }
                 let end = parsed.is_err();
-                if reply.send(parsed).await.is_err() || end {
+                if reply.send((parsed, received_at)).await.is_err() || end {
                     break;
                 }
             }
@@ -612,6 +615,13 @@ impl Wire {
         let written_trace = trace.clone();
         let writer = tokio::spawn(async move {
             while let Some(action) = requests.recv().await {
+                let probe =
+                    matches!(&action, GuiAction::Input { bytes, .. } if bytes.starts_with(b"R5P"));
+                if probe {
+                    bbt_rt::diagnostics::probe_mark(
+                        bbt_rt::diagnostics::ProbeStage::WriterDequeued,
+                    );
+                }
                 let applied = match &action {
                     GuiAction::Applied {
                         seat,
@@ -635,8 +645,14 @@ impl Wire {
                     break;
                 };
                 bytes.push(b'\n');
+                if probe {
+                    bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::WriteStarted);
+                }
                 if write.write_all(&bytes).await.is_err() {
                     break;
+                }
+                if probe {
+                    bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::Written);
                 }
                 if let Some((seat, cursor)) = applied {
                     written_trace.record(seat, |row| row.applied_written = Some(cursor));
@@ -668,7 +684,7 @@ impl GuiTask {
     fn start(
         wire: Wire,
         outgoing: VecDeque<GuiAction>,
-        apply: impl FnMut(SeatId, &Update) -> Result<bool, String> + Send + 'static,
+        apply: impl FnMut(SeatId, &Update, Option<u64>) -> Result<bool, String> + Send + 'static,
     ) -> Self {
         let (actions, incoming) = mpsc::channel(64);
         let task = tokio::spawn(drain_gui(wire, outgoing, incoming, apply));
@@ -699,7 +715,7 @@ async fn drain_gui(
     mut wire: Wire,
     mut outgoing: VecDeque<GuiAction>,
     mut actions: mpsc::Receiver<GuiAction>,
-    mut apply: impl FnMut(SeatId, &Update) -> Result<bool, String>,
+    mut apply: impl FnMut(SeatId, &Update, Option<u64>) -> Result<bool, String>,
 ) -> Result<(), String> {
     let mut input = None;
     loop {
@@ -709,8 +725,17 @@ async fn drain_gui(
                 GuiAction::Input { id, .. } => Some(*id),
                 _ => None,
             };
+            let queued_at = id.and_then(|_| bbt_rt::diagnostics::now());
             match wire.out.try_send(action) {
-                Ok(()) => input = id.or(input),
+                Ok(()) => {
+                    if id.is_some() {
+                        bbt_rt::diagnostics::probe_mark_at(
+                            bbt_rt::diagnostics::ProbeStage::WireEnqueued,
+                            queued_at,
+                        );
+                    }
+                    input = id.or(input);
+                }
                 Err(mpsc::error::TrySendError::Full(action)) => {
                     outgoing.push_front(action);
                     writer_blocked = true;
@@ -725,10 +750,14 @@ async fn drain_gui(
                 Some(action)=>outgoing.push_back(action),
                 None=>return Err("r5-gui-actions-closed".into()),
             },
-            reply=wire.incoming.recv()=>match reply.ok_or("r5-gui-reader-closed")?? {
+            reply=wire.incoming.recv()=> {
+              let (reply, received_at) = reply.ok_or("r5-gui-reader-closed")?;
+              match reply? {
                 GuiReply::Update {seat,update}=> {
                     let cursor=UpdateCursor::of(&update);
-                    let paused=apply(seat,&update)?;
+                    let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::GuiApply);
+                    let paused=apply(seat,&update,received_at)?;
+                    measurement.finish(1,0);
                     outgoing.push_back(GuiAction::Applied {seat,view:cursor.view,sequence:cursor.sequence});
                     wire.trace.record(seat, |row| {
                         row.applied=Some(cursor);
@@ -742,6 +771,7 @@ async fn drain_gui(
                     return Err(error);
                 }
                 _=>{},
+              }
             },
             _=async {drop(capacity.reserve_owned().await);},if writer_blocked=>{},
         }
@@ -924,6 +954,7 @@ async fn settle_timeout(
         }
     }
     let table = serde_json::json!({
+        "diagnostics": super::diagnostic_report(),
         "reason": reason,
         "phase_at_timeout": phase,
         "panes_at_timeout": panes,
@@ -961,7 +992,12 @@ fn publish(
     preparer: &mut PanePreparer,
     updates: &Latest<Arc<Model>>,
 ) -> Result<(), String> {
+    let _measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ModelPublish);
     let mut next = model::build(records, grids, previous);
+    let probe = super::model_has_probe(&next);
+    if probe {
+        bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::ModelBuilt);
+    }
     // A fixture grid keeps the probe's entire row visible. The production
     // membership builder's one-row fallback would make 50 sliver panes.
     for swarm in &mut next.ui.window.sidebar.swarms {
@@ -972,8 +1008,19 @@ fn publish(
         }
     }
     preparer.prepare(&mut next).map_err(|e| e.to_string())?;
-    *previous = Arc::new(next);
+    if probe {
+        bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::ModelPrepared);
+    }
+    let next = Arc::new(next);
+    {
+        let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::IoOldModelDrop);
+        *previous = next;
+    }
+    let _latest = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::LatestPublish);
     updates.publish(previous.clone());
+    if probe {
+        bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::ModelPublished);
+    }
     Ok(())
 }
 
@@ -1113,6 +1160,7 @@ async fn exercise(
         preparer,
     });
     let (state, latest_state) = watch::channel(PaneState::default());
+    bbt_rt::diagnostics::probe_target(panes[0].0.0.0, 1);
     let gui_trace = Arc::new(GuiTrace::new(panes.iter().map(|(seat, _)| *seat)));
     let mut gui = if config.real {
         let wire = Wire::open(core, gui_trace.clone()).await?;
@@ -1121,28 +1169,49 @@ async fn exercise(
         let updates = updates.clone();
         let progress = progress.clone();
         let watched = config.watched;
-        Some(GuiTask::start(wire, watches.into(), move |seat, update| {
-            if work
-                .grids
-                .apply(seat, update)
-                .map_err(|e| e.to_string())?
-                .is_some()
-            {
-                publish(
-                    &records,
-                    &work.grids,
-                    &mut work.previous,
-                    &mut work.preparer,
-                    &updates,
-                )?;
-            }
-            progress.updates.fetch_add(1, Ordering::Relaxed);
-            state.send_replace(PaneState::from_model(&work.previous, watched));
-            Ok(work
-                .grids
-                .screen(seat)
-                .is_some_and(|screen| contains(&screen, "R5PAUSED")))
-        }))
+        Some(GuiTask::start(
+            wire,
+            watches.into(),
+            move |seat, update, received_at| {
+                let apply_started = bbt_rt::diagnostics::now();
+                let changed = work
+                    .grids
+                    .apply(seat, update)
+                    .map_err(|e| e.to_string())?
+                    .is_some();
+                if let Some((id, target, _)) = bbt_rt::diagnostics::probe_info()
+                    && seat.0.0 == target
+                    && work.grids.screen(seat).is_some_and(|screen| {
+                        super::probe_acknowledged(&screen, &format!("R5P{id:08X}"))
+                    })
+                {
+                    bbt_rt::diagnostics::probe_mark_at(
+                        bbt_rt::diagnostics::ProbeStage::GuiReceived,
+                        received_at,
+                    );
+                    bbt_rt::diagnostics::probe_mark_at(
+                        bbt_rt::diagnostics::ProbeStage::GuiApplyStarted,
+                        apply_started,
+                    );
+                    bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::GuiApplied);
+                }
+                if changed {
+                    publish(
+                        &records,
+                        &work.grids,
+                        &mut work.previous,
+                        &mut work.preparer,
+                        &updates,
+                    )?;
+                }
+                progress.updates.fetch_add(1, Ordering::Relaxed);
+                state.send_replace(PaneState::from_model(&work.previous, watched));
+                Ok(work
+                    .grids
+                    .screen(seat)
+                    .is_some_and(|screen| contains(&screen, "R5PAUSED")))
+            },
+        ))
     } else {
         None
     };
@@ -1251,12 +1320,15 @@ async fn exercise(
             biased;
             command=commands.recv()=>match command {
                 Some(Control::Probe(id))=>{
+                    bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::ControlReceived);
                     pending_probe=Some(id);progress.probe.store(id,Ordering::Release);
                     if let Some(gui)=&gui {
                         gui.actions.send(GuiAction::Input {seat:panes[0].0,generation:1,id:Ulid::new(),bytes:format!("R5P{id:08X}\n").into_bytes()}).await.map_err(|_|"r5-gui-actions-closed")?;
+                        bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::GuiEnqueued);
                     }
                 }
                 Some(Control::Finish(metrics))=>{
+                    let metrics = *metrics;
                     let (failures,timing_failures)=assess(config,&metrics,&sides);
                     // Metrics are already frozen. Reuse the existing producer-stop
                     // cut, and export without taking a fresh settled observation.
@@ -2004,6 +2076,7 @@ mod tests {
         reason = "tokio::test owns a non-UI runtime for this socket regression"
     )]
     async fn gui_keeps_applying_and_acknowledging_while_side_finish_is_held() {
+        bbt_rt::diagnostics::enable();
         const COUNT: u64 = 128;
         let (client, server) = UnixStream::pair().unwrap();
         let trace = Arc::new(GuiTrace::new([SeatId::from_u128(1)]));
@@ -2012,7 +2085,9 @@ mod tests {
         let gui = GuiTask::start(
             Wire::from_stream(client, [0; 32], trace.clone()),
             VecDeque::new(),
-            move |_, update| {
+            move |_, update, received_at| {
+                assert!(received_at.is_some());
+                assert!(received_at <= bbt_rt::diagnostics::now());
                 let Update::Snapshot { snapshot } = update else {
                     panic!("fixture sends snapshots")
                 };
@@ -2082,6 +2157,15 @@ mod tests {
         assert_eq!(row.applied.unwrap().sequence, COUNT);
         assert_eq!(row.applied_written, row.applied);
         assert_eq!(row.applied_has_paused, Some(false));
+        for phase in ["GuiReceive", "GuiApply"] {
+            let calls: u64 = bbt_rt::diagnostics::snapshot()
+                .samples
+                .iter()
+                .filter(|row| row.phase == phase)
+                .map(|row| row.calls)
+                .sum();
+            assert!(calls >= COUNT, "missing completed {phase} spans");
+        }
         release.send(()).unwrap();
         waiting.await.unwrap().unwrap();
         drop(gui);
@@ -2104,7 +2188,7 @@ mod tests {
             let mut gui = GuiTask::start(
                 Wire::from_stream(client, [0; 32], Arc::new(GuiTrace::default())),
                 VecDeque::new(),
-                |_, _| Ok(false),
+                |_, _, _| Ok(false),
             );
             let (_, mut write) = server.into_split();
             write_reply(

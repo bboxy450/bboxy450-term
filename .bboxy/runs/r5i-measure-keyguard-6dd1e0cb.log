@@ -1,0 +1,36 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling smallvec v1.16.3
+   Compiling serde_json v1.0.154
+   Compiling log v0.4.34
+   Compiling parking_lot_core v0.9.12
+   Compiling parking_lot v0.12.5
+   Compiling syn v3.0.9
+   Compiling bitflags v2.13.2
+   Compiling serde_derive v1.0.229
+   Compiling serde-big-array v0.5.1
+   Compiling arrayvec v0.7.8
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.43s
+     Running unittests src/lib.rs (target/r5i-dev/debug/deps/bbt_core-f89ed0825d49aec3)
+
+running 1 test
+test kitty_keyboard_invariant ... FAILED
+
+failures:
+
+---- kitty_keyboard_invariant stdout ----
+
+thread 'kitty_keyboard_invariant' (35412719) panicked at crates/bbt-core/src/keyboard.rs:1385:21:
+second key interpretation: /Users/feral/mydev/bboxy450-term-nyx/crates/bbt-core/../bboxy450-term/src/stall.rs: KeyboardInput
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    kitty_keyboard_invariant
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 108 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p bbt-core --lib`

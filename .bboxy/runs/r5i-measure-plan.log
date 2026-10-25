@@ -1,0 +1,34 @@
+# R5i measurement cut
+
+ROLE: EXECUTOR — Nyx Copperwing. Oracle briefs f5ce846f and c57c4c6a;
+priority 0d3919a4: R5i first, UI scroll next. Scope refinement 76a07d9e:
+no bbt-supervisor edits. C-3 remains frozen on its accepted source ff0d7433.
+
+- `bbt-rt/src/diagnostics.rs`: fixed process-local atomics, inclusive wall
+  spans and callback-boundary thread CPU; setup/warm/measure/settle/idle
+  partitions. Enabled only by the existing stall fixture. Disabled hooks skip
+  clocks, counters and allocation. Completed totals plus active counts expose
+  unfinished callbacks at the sample boundary.
+- App model/live/stall publishers and UI main/scene: model build, preparation,
+  publication, Latest take, projection, SeatRow rebuild, old Arc drop, and
+  tickless redraws that still projected. Callback guards include early returns.
+- Probe: existing input bytes/IDs, existing queues and ACKs. Observe admission,
+  writer, logic output, GUI receive/apply, prepared model, UI apply and GPU
+  completion. The marker requires the pinned acknowledgement delimiter; PTY
+  echo and missing sequences cannot prove it. Ring replay and direct live
+  events are named separately.
+- Mux logic: ReadRing request attempts/seats/output bytes, terminal decode/apply
+  and GUI snapshot publication. SupervisorConnection returns already-decoded
+  data; its inclusive request wait is not a syscall-only measurement. The JSON
+  says syscall-only time is unavailable. Supervisor/transport stay untouched.
+- Report/settle JSON: bounded numeric observations; nested times are inclusive;
+  unobserved stamps are null; the R5i clock is independent of capture.json's
+  existing clock. No gate budget, scheduler, replay quantum or queue changes.
+
+Verification: counter/off-path and marker tests; controlled real GUI socket receive/apply
+proof and the existing synthetic headless fixture with memory custody; strict workspace Clippy;
+workspace tests and default invariants; exact clean normal atomic CI. No 967
+attempt. Rook owns the subsequent measured attempt.
+
+Callback kinds: window redraw, pointer and other; key events remain inside the
+one existing adapter and are covered by the complete WindowOther callback.

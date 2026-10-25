@@ -83,4 +83,58 @@ fn synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io() 
     assert_eq!(value["metrics"]["idle_frames"], 0);
     assert_eq!(value["metrics"]["guard_violations"], 0);
     assert_eq!(value["failures"], serde_json::json!([]));
+    let diagnostic = &value["metrics"]["diagnostics"];
+    assert_eq!(diagnostic["enabled"], true);
+    assert!(diagnostic["read_ring_syscall_ns"].is_null());
+    let counters = diagnostic["counters"].as_array().unwrap();
+    for phase in [
+        "ReadRingRequest",
+        "ReadRingTerminalDecode",
+        "LogicViewPublish",
+        "ModelBuild",
+        "PanePrepare",
+        "UiProjection",
+        "UiSeatRows",
+        "UiOldModelDrop",
+        "WindowRedraw",
+    ] {
+        assert!(
+            counters
+                .iter()
+                .any(|row| row["period"] == 2 && row["phase"] == phase),
+            "missing {phase}"
+        );
+    }
+    assert!(counters.iter().any(|row| row["phase"] == "ModelBuild"
+        && row["calls"].as_u64().unwrap() > 0
+        && row["work"].as_u64().unwrap() >= 1000));
+    assert!(
+        counters
+            .iter()
+            .filter(|row| row["phase"] == "WindowRedraw")
+            .all(|row| row["calls"] == 0)
+    );
+    let stamps = &diagnostic["probe"]["stamps"];
+    for stage in [
+        "Admitted",
+        "ControlReceived",
+        "ModelBuilt",
+        "ModelPrepared",
+        "ModelPublished",
+        "LatestTaken",
+        "ProjectionStarted",
+        "ProjectionFinished",
+        "ModelApplied",
+        "Encoded",
+        "GpuComplete",
+    ] {
+        assert!(
+            stamps.as_object().unwrap().contains_key(stage),
+            "missing {stage}"
+        );
+        assert!(stamps[stage].is_null() || stamps[stage].as_u64().is_some());
+    }
+    // Synthetic state is not a ring read or GUI socket observation.
+    assert!(stamps["LogicOutputRead"].is_null());
+    assert!(stamps["GuiReceived"].is_null());
 }

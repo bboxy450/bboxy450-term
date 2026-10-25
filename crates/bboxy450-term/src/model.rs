@@ -854,6 +854,7 @@ impl Model {
 /// Pure assembly on IO. Keep the current layout when its membership is unchanged
 /// and keep every unchanged screen Arc; no screen content is copied here.
 pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
+    let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ModelBuild);
     let bootstrap = !previous.metadata_initialized
         && previous.ui.seats.is_empty()
         && previous.spawns.is_empty();
@@ -1133,6 +1134,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
     );
     next.attention = next.attention_episodes.paint();
     next.place_ready_spawns();
+    measurement.finish(seats.len() as u64, 0);
     next
 }
 
@@ -1181,6 +1183,7 @@ impl PanePreparer {
     }
     pub fn prepare(&mut self, model: &mut Model) -> bbt_render::Result<()> {
         bbt_rt::assert_not_ui_thread();
+        let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::PanePrepare);
         self.cached
             .retain(|seat, _| model.screens.contains_key(seat));
         let theme = model.ui.window.theme;
@@ -1210,6 +1213,7 @@ impl PanePreparer {
             frames.insert(seat, self.cached[&seat].frame.clone());
         }
         model.frames = frames;
+        measurement.finish(model.screens.len() as u64, 0);
         Ok(())
     }
 }

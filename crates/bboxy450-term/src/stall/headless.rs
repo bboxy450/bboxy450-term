@@ -82,6 +82,7 @@ pub fn run(config: Config) -> Result<(), String> {
             controller.model_received(&next);
             model = next;
             scene.set_model(&model, &model.ui.window.stage);
+            controller.model_applied();
             true
         } else {
             false

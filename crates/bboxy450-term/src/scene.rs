@@ -419,6 +419,11 @@ impl Scene {
         .with_env_rim()
     }
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
+        let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiProjection);
+        bbt_rt::diagnostics::probe_after(
+            bbt_rt::diagnostics::ProbeStage::LatestTaken,
+            bbt_rt::diagnostics::ProbeStage::ProjectionStarted,
+        );
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
@@ -468,6 +473,7 @@ impl Scene {
             .enumerate()
             .map(|(i, (id, _))| (*id, i))
             .collect();
+        let rows = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiSeatRows);
         self.seats = model
             .ui
             .seats
@@ -506,6 +512,12 @@ impl Scene {
                 row
             })
             .collect();
+        rows.finish(self.seats.len() as u64, 0);
+        measurement.finish(model.ui.seats.len() as u64, 0);
+        bbt_rt::diagnostics::probe_after(
+            bbt_rt::diagnostics::ProbeStage::LatestTaken,
+            bbt_rt::diagnostics::ProbeStage::ProjectionFinished,
+        );
     }
     pub fn close_intent(
         &self,
