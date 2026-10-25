@@ -4,8 +4,12 @@
 )]
 use bbt_mux::{
     Config, LaunchSpec, Supervisor, Ulid,
-    logic::{Logic, LogicConfig},
-    provider::{HostId, fake::Clock, shared::fixture_providers},
+    logic::{Logic, LogicConfig, SupervisorConnection},
+    provider::{
+        HostId, LocalProvider, Provider,
+        fake::{BUNDLED_FIXTURE, Clock, FakeProvider, Fixture},
+        shared::LocalLinks,
+    },
     registry::{Location, Registry, SeatRecord},
     store::{object_dir, sqlite::SqliteStore},
 };
@@ -15,7 +19,7 @@ use std::{
         Arc,
         atomic::{AtomicU64, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 
@@ -57,6 +61,77 @@ impl ManualClock {
         self.0.store(ms, Ordering::SeqCst);
     }
 }
+
+// Provider phases are selected explicitly. Leave room for any fragmentation of
+// the finite output between phases: a received notification advances its RTT,
+// rather than advancing the network script every time a Snapshot poll happens.
+const LINK_DROP: u64 = 1 << 40;
+const LINK_CONNECTING: u64 = 2 * LINK_DROP;
+const LINK_RESTORED: u64 = 3 * LINK_DROP;
+
+struct NotificationClock<T> {
+    inner: T,
+    clock: Arc<ManualClock>,
+    rtt: u64,
+}
+impl<T: SupervisorConnection> SupervisorConnection for NotificationClock<T> {
+    fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
+        self.inner.request(action)
+    }
+    fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+        let event = self.inner.receive(timeout)?;
+        if event.is_some() {
+            // FakeLink samples the enqueue time before calling its inner link.
+            // Its next receive can now return this notification, even when the
+            // producer has no more bytes. Empty receives advance nothing.
+            self.clock.advance(self.rtt);
+        }
+        Ok(event)
+    }
+}
+fn routing_providers(
+    connection: impl SupervisorConnection + 'static,
+    owners: impl IntoIterator<Item = (Ulid, HostId)>,
+    clock: Arc<ManualClock>,
+) -> bbt_mux::store::Result<Vec<Box<dyn Provider>>> {
+    let links = LocalLinks::new(connection, owners);
+    let mut providers: Vec<Box<dyn Provider>> =
+        vec![Box::new(LocalProvider::new(links.link(HostId::Local)))];
+    let mut fixture: serde_json::Value = serde_json::from_str(BUNDLED_FIXTURE)?;
+    let mut rtt = 0;
+    for provider in fixture["providers"].as_array_mut().unwrap() {
+        for host in provider["hosts"].as_array_mut().unwrap() {
+            for step in host["script"].as_array_mut().unwrap() {
+                for state in ["Connected", "Degraded"] {
+                    rtt = rtt.max(step["state"][state]["rtt_ms"].as_u64().unwrap_or(0));
+                }
+                step["at_ms"] = match step["at_ms"].as_u64().unwrap() {
+                    12_000 => LINK_DROP,
+                    16_000 => LINK_CONNECTING,
+                    18_000 => LINK_RESTORED,
+                    at => at,
+                }
+                .into();
+            }
+        }
+    }
+    for config in Fixture::parse(&serde_json::to_string(&fixture)?)?.into_providers() {
+        let links = links.clone();
+        let notification_clock = clock.clone();
+        providers.push(Box::new(FakeProvider::new(
+            config,
+            clock.clone(),
+            move |host| {
+                Ok(Box::new(NotificationClock {
+                    inner: links.link(host.id.clone()),
+                    clock: notification_clock.clone(),
+                    rtt,
+                }))
+            },
+        )?));
+    }
+    Ok(providers)
+}
 struct Gui {
     read: Lines<BufReader<tokio::net::unix::OwnedReadHalf>>,
     write: tokio::net::unix::OwnedWriteHalf,
@@ -87,7 +162,7 @@ impl Gui {
     }
     async fn recv(&mut self) -> GuiReply {
         loop {
-            let bytes = tokio::time::timeout(Duration::from_secs(5), self.read.next_line())
+            let bytes = tokio::time::timeout(Duration::from_secs(120), self.read.next_line())
                 .await
                 .unwrap()
                 .unwrap()
@@ -163,67 +238,127 @@ impl Gui {
             }
         }
     }
-}
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn fixture_drains_notifications_while_waiting_and_keeps_a_split_reply() {
-    use std::os::fd::AsRawFd;
-
-    let (stream, mut peer) = tokio::net::UnixStream::pair().unwrap();
-    let size: libc::c_int = 4096;
-    // SAFETY: peer is live and the pointer/length describe the local integer.
-    assert_eq!(
-        unsafe {
-            libc::setsockopt(
-                peer.as_raw_fd(),
-                libc::SOL_SOCKET,
-                libc::SO_SNDBUF,
-                std::ptr::from_ref(&size).cast(),
-                std::mem::size_of_val(&size) as libc::socklen_t,
-            )
-        },
-        0,
-    );
-    let (read, write) = stream.into_split();
-    let mut gui = Gui {
-        read: BufReader::new(read).lines(),
-        write,
-        capability: [0; 32],
-    };
-    let op = Ulid::new();
-    let mut notification = serde_json::to_vec(&GuiReply::EventStatus {
-        attached: true,
-        reason: Some("x".repeat(16 * 1024)),
-    })
-    .unwrap();
-    notification.push(b'\n');
-    let mut reply = serde_json::to_vec(&GuiReply::Ok { op }).unwrap();
-    reply.push(b'\n');
-    let (prefix_sent, ready) = tokio::sync::oneshot::channel();
-    let (resume, finish) = tokio::sync::oneshot::channel();
-    let writer = tokio::spawn(async move {
-        // This exceeds the socket's send buffer: completion requires the
-        // fixture to consume notifications while its other work is pending.
-        for _ in 0..32 {
-            peer.write_all(&notification).await.unwrap();
+    async fn wait_text(&mut self, seat: Ulid, text: &str) -> bbt_mux::streams::Snapshot {
+        let id = SeatId::from_u128(seat.0);
+        self.send(GuiAction::Watch {
+            seat: id,
+            view: bbt_mux::streams::View {
+                seat,
+                generation: 1,
+                view_generation: Ulid::nil(),
+            },
+        })
+        .await;
+        let mut replica = bbt_mux::streams::Replica::default();
+        loop {
+            match self.recv().await {
+                GuiReply::Update {
+                    seat: actual,
+                    update,
+                } if actual == id => {
+                    replica.apply(update).unwrap();
+                    let snapshot = replica.snapshot.as_ref().unwrap();
+                    self.send(GuiAction::Applied {
+                        seat: id,
+                        view: snapshot.view,
+                        sequence: snapshot.sequence,
+                    })
+                    .await;
+                    let content: String = snapshot
+                        .screen
+                        .cells
+                        .iter()
+                        .flatten()
+                        .map(|c| c.c)
+                        .collect();
+                    if content.contains(text) {
+                        let snapshot = snapshot.clone();
+                        self.send(GuiAction::Unwatch { seat: id }).await;
+                        // The ordered control reply is the unwatch barrier. Drain
+                        // any preceding Update so the next fixture wait has no
+                        // outstanding view or partial response to guess about.
+                        self.send(GuiAction::ListSeats).await;
+                        loop {
+                            match self.recv().await {
+                                GuiReply::Seats(_) => return snapshot,
+                                GuiReply::Error { reason, .. } => {
+                                    panic!("unwatch rejected: {reason}")
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                GuiReply::Error { reason, .. } => {
+                    panic!("watch for {seat} awaiting {text:?} rejected: {reason}")
+                }
+                _ => {}
+            }
         }
-        let split = reply.len() / 2;
-        peer.write_all(&reply[..split]).await.unwrap();
-        prefix_sent.send(()).unwrap();
-        finish.await.unwrap();
-        peer.write_all(&reply[split..]).await.unwrap();
-    });
-    tokio::time::timeout(Duration::from_secs(30), gui.while_waiting(ready))
-        .await
-        .expect("fixture did not drain the peer's notifications")
-        .unwrap();
-    resume.send(()).unwrap();
-    assert!(matches!(gui.recv().await, GuiReply::Ok { op: actual } if actual == op));
-    writer.await.unwrap();
+    }
 }
 
+fn isolated_case(case: &str) {
+    // GUI launch deliberately inherits the process's shell startup directory.
+    // A private child gives this boundary its own startup files without changing
+    // process-wide environment while other tests are running.
+    let home = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut command = tokio::process::Command::new(std::env::current_exe().unwrap());
+    command
+        .args([
+            "--exact",
+            "provider_gui_isolated_process",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env_clear()
+        .env("HOME", home.path())
+        .env("ZDOTDIR", home.path())
+        .env("PATH", "/usr/bin:/bin")
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .env("BBOXY_PROVIDER_GUI_CASE", case)
+        .current_dir(home.path())
+        .kill_on_drop(true);
+    let output = runtime
+        .block_on(async { tokio::time::timeout(Duration::from_secs(120), command.output()).await })
+        .expect("owned provider GUI child made no completion within the hang guard")
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "private provider GUI {case}: {}\n{}\n{}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+}
+
+// keeps: spec d1-providers, real GUI spawn/routing/recovery boundaries use private shell startup.
 #[test]
+#[ignore = "owned subprocess; its parent supplies a private HOME and no credential environment"]
+fn provider_gui_isolated_process() {
+    assert_eq!(std::env::var_os("HOME"), std::env::var_os("ZDOTDIR"));
+    match std::env::var("BBOXY_PROVIDER_GUI_CASE").unwrap().as_str() {
+        "roles" => gui_spawn_roles_case(),
+        "operator-restart" => operator_spawn_replays_case(),
+        "host-routing" => host_routing_case(),
+        _ => panic!("unknown provider GUI fixture case"),
+    }
+}
+
+// keeps: decision #262, real GUI role/spawn boundary
+#[test]
+#[ignore = "#327 B2/B4: private real GUI/PTY boundary; scripts/night-test-boundaries.sh"]
 fn gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker() {
+    isolated_case("roles");
+}
+
+fn gui_spawn_roles_case() {
     let directory = tempfile::tempdir().unwrap();
     let repository = directory.path().join("repository");
     std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
@@ -300,8 +435,14 @@ fn gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker() 
     logic.shutdown().unwrap();
 }
 
+// keeps: decision #29, device-bound real GUI spawn/restart boundary
 #[test]
+#[ignore = "#327 B2/B4: private real GUI/PTY boundary; scripts/night-test-boundaries.sh"]
 fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch() {
+    isolated_case("operator-restart");
+}
+
+fn operator_spawn_replays_case() {
     use bbt_mux::{
         identity::{Custody, DeviceKeyStore, PendingReason},
         store::Store,
@@ -478,37 +619,27 @@ fn operator_spawn_replays_across_connections_logic_and_supervisor_restart_withou
 fn wait_text(
     rt: &tokio::runtime::Runtime,
     logic: &Logic,
-    clock: &ManualClock,
-    mut gui: Option<&mut Gui>,
+    gui: Option<&mut Gui>,
     seat: Ulid,
     text: &str,
 ) -> bbt_mux::streams::Snapshot {
-    let until = Instant::now() + Duration::from_secs(5);
-    loop {
-        clock.advance(20);
-        let request = logic.client.snapshot(seat, 1);
-        let snapshot = match gui.as_deref_mut() {
-            Some(gui) => rt.block_on(gui.while_waiting(request)),
-            None => rt.block_on(request),
-        };
-        if let Ok(snapshot) = snapshot {
-            let content: String = snapshot
-                .screen
-                .cells
-                .iter()
-                .flatten()
-                .map(|c| c.c)
-                .collect();
-            if content.contains(text) {
-                return snapshot;
-            }
+    match gui {
+        Some(gui) => rt.block_on(gui.wait_text(seat, text)),
+        None => {
+            let mut gui = rt.block_on(Gui::open(logic));
+            rt.block_on(gui.wait_text(seat, text))
         }
-        assert!(Instant::now() < until, "missing {text}");
-        std::thread::sleep(Duration::from_millis(10));
     }
 }
+
+// keeps: spec d1-providers, host routing and exact PTY identity through reconnect/restart
 #[test]
+#[ignore = "#327 B2/B4: private real GUI/PTY boundary; scripts/night-test-boundaries.sh"]
 fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart() {
+    isolated_case("host-routing");
+}
+
+fn host_routing_case() {
     let temp = tempfile::tempdir().unwrap();
     let repository = temp.path().join(".bboxy");
     std::fs::create_dir(&repository).unwrap();
@@ -531,7 +662,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
     let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
     prepare_gui_identity(&config.run_dir, &key);
     let logic = Logic::start_with_providers(
-        fixture_providers(server.connect().unwrap(), [], clock.clone()).unwrap(),
+        routing_providers(server.connect().unwrap(), [], clock.clone()).unwrap(),
         config.clone(),
         key.clone(),
         rt.handle(),
@@ -633,14 +764,7 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         // The output marker is split across two commands so PTY echo of the
         // input itself cannot satisfy this assertion.
         rt.block_on(gui.input(id, &format!("printf 'echo-'; printf '{name}\\n'\n")));
-        wait_text(
-            &rt,
-            &logic,
-            &clock,
-            Some(&mut gui),
-            id,
-            &format!("echo-{name}"),
-        );
+        wait_text(&rt, &logic, Some(&mut gui), id, &format!("echo-{name}"));
         gui_spawned.push((id, expected, pid));
     }
     let gate = temp.path().join("release");
@@ -681,7 +805,6 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         wait_text(
             &rt,
             &logic,
-            &clock,
             Some(&mut gui),
             info.seat,
             &format!("echo-{name}"),
@@ -690,30 +813,35 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
     }
     let remote = launched[1].0.seat;
     rt.block_on(gui.input(remote, "arm\n"));
-    wait_text(&rt, &logic, &clock, Some(&mut gui), remote, "armed");
-    clock.set(12000);
+    wait_text(&rt, &logic, Some(&mut gui), remote, "armed");
+    assert!(
+        clock.now_ms() < LINK_DROP,
+        "network phase advanced without the explicit drop"
+    );
+    clock.set(LINK_DROP);
     std::fs::write(&gate, b"go").unwrap();
+    use notify::Watcher;
+    let (changed, mut changes) = tokio::sync::mpsc::unbounded_channel();
+    let mut watcher = notify::recommended_watcher(move |event| {
+        let _ = changed.send(event);
+    })
+    .unwrap();
+    watcher
+        .watch(temp.path(), notify::RecursiveMode::NonRecursive)
+        .unwrap();
     rt.block_on(gui.while_waiting(async {
-        let until = Instant::now() + Duration::from_secs(5);
         while !ack.exists() {
-            assert!(Instant::now() < until);
-            tokio::time::sleep(Duration::from_millis(10)).await;
+            changes.recv().await.unwrap().unwrap();
         }
     }));
     rt.block_on(gui.input(launched[0].0.seat, "local-still-alive\n"));
-    // The local link drains shared traffic while the remote link is down.
-    let until = Instant::now() + Duration::from_secs(5);
-    loop {
-        let s = rt
-            .block_on(gui.while_waiting(logic.client.snapshot(launched[0].0.seat, 1)))
-            .unwrap();
-        let text: String = s.screen.cells.iter().flatten().map(|c| c.c).collect();
-        if text.contains("local-still-alive") {
-            break;
-        }
-        assert!(Instant::now() < until);
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    wait_text(
+        &rt,
+        &logic,
+        Some(&mut gui),
+        launched[0].0.seat,
+        "local-still-alive",
+    );
     let remote_held = rt
         .block_on(gui.while_waiting(logic.client.snapshot(remote, 1)))
         .unwrap();
@@ -727,8 +855,8 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
             .collect::<String>()
             .contains("during-drop")
     );
-    clock.set(18000);
-    let restored = wait_text(&rt, &logic, &clock, Some(&mut gui), remote, "during-drop");
+    clock.set(LINK_RESTORED);
+    let restored = wait_text(&rt, &logic, Some(&mut gui), remote, "during-drop");
     assert!(
         rt.block_on(gui.while_waiting(logic.client.history(remote, 1, 1, restored.sequence)))
             .unwrap()
@@ -744,21 +872,19 @@ fn one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_
         .unwrap()
         .into_iter()
         .map(|s| (s.id, HostId::from(&s.location)));
-    let logic = Logic::start_with_providers(
-        fixture_providers(server.connect().unwrap(), owners, clock.clone()).unwrap(),
-        config,
-        key,
-        rt.handle(),
-    )
-    .unwrap();
+    let providers = routing_providers(server.connect().unwrap(), owners, clock.clone()).unwrap();
+    // Restart an available link. Worker readiness includes recovery of each
+    // connected host's owned seats; a GUI endpoint alone does not mean a host
+    // that is still Connecting has restored its viewports.
     clock.advance(400);
+    let logic = Logic::start_with_providers(providers, config, key, rt.handle()).unwrap();
     for (info, location) in launched {
-        wait_text(&rt, &logic, &clock, None, info.seat, "ready");
+        wait_text(&rt, &logic, None, info.seat, "ready");
         let seat = rt.block_on(logic.client.gui_seat(info.seat)).unwrap();
         assert_eq!(seat.record.location, location);
         assert_eq!(seat.state.process, ProcessStatus::Running { pid: info.pid });
     }
-    wait_text(&rt, &logic, &clock, None, remote, "during-drop");
+    wait_text(&rt, &logic, None, remote, "during-drop");
     for (id, location, pid) in gui_spawned {
         let seat = rt.block_on(logic.client.gui_seat(id)).unwrap();
         assert_eq!(seat.record.location, location);

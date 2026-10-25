@@ -1612,12 +1612,16 @@ fn mcp_framing_is_bounded_and_protocol_errors_never_echo_input() {
     }
 }
 
-/// Runs only by explicit request: calls the installed, authenticated clients
-/// against synthetic seat state. Output is parsed in memory, never exported.
+/// Real installed clients under a private HOME need a test credential; unproven.
+/// This driver never inherits the operator's client account or copies a credential.
 #[test]
-#[ignore = "live installed-client interop; BBOXY_TEST_EXE must name the built app"]
+#[ignore = "real installed clients need a private test credential; unproven; never inherit operator HOME"]
 fn mcp_installed_claude_and_codex_call_orient() {
     use std::process::{Command, Stdio};
+    let private_home = tempfile::Builder::new()
+        .prefix("bbt-mcp-private-home-")
+        .tempdir()
+        .unwrap();
     let fixture = Fixture::new();
     let exe = std::env::var("BBOXY_TEST_EXE").expect("set BBOXY_TEST_EXE to the built app");
     let cwd = fixture._temp.path().join("client-repo");
@@ -1636,7 +1640,7 @@ fn mcp_installed_claude_and_codex_call_orient() {
         json!({"mcpServers":{"bboxy":{"command":exe,"args":["mcp"]}}}).to_string(),
     )
     .unwrap();
-    let before = configuration_digests();
+    let before = configuration_digests(private_home.path());
     let prompt = "This is a synthetic MCP interop fixture. Call the bboxy orient tool exactly once, then say the role name and class it returns. Use no other tools, read no files, and change no settings.";
     for (program, seat) in [("claude", fixture.own.id), ("codex", fixture.peer.id)] {
         let endpoint = fixture
@@ -1644,7 +1648,14 @@ fn mcp_installed_claude_and_codex_call_orient() {
             .block_on(fixture.client().endpoint(seat))
             .unwrap();
         let mut command = Command::new(program);
-        command.current_dir(&cwd).stdin(Stdio::null());
+        command
+            .env_clear()
+            .env("HOME", private_home.path())
+            .env("CLAUDE_CONFIG_DIR", private_home.path().join(".claude"))
+            .env("CODEX_HOME", private_home.path().join(".codex"))
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .current_dir(&cwd)
+            .stdin(Stdio::null());
         for name in [
             "CLAUDECODE",
             "CLAUDE_CODE_SESSION_ID",
@@ -1692,11 +1703,11 @@ fn mcp_installed_claude_and_codex_call_orient() {
                 .args(["-c","mcp_servers.bboxy.args=[\"mcp\"]","-c","mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]","-c","mcp_servers.bboxy.enabled_tools=[\"orient\"]"])
                 .arg(prompt);
         }
-        let (status, out, err) = bounded_client(command, Duration::from_secs(120));
+        let (status, out, err) = bounded_client(command, Duration::from_secs(120), &private_home);
         let diagnostics = String::from_utf8_lossy(&err).to_ascii_lowercase();
         assert!(
             status.success(),
-            "{program} exit={status}; stdout_bytes={} stderr_bytes={} trust_text={} config_text={}",
+            "real installed clients under a private HOME need a test credential; unproven: {program} exit={status}; stdout_bytes={} stderr_bytes={} trust_text={} config_text={}",
             out.len(),
             err.len(),
             diagnostics.contains("trust"),
@@ -1740,7 +1751,7 @@ fn mcp_installed_claude_and_codex_call_orient() {
         );
     }
     assert_eq!(
-        configuration_digests(),
+        configuration_digests(private_home.path()),
         before,
         "named user config files changed during interop"
     );
@@ -1752,9 +1763,15 @@ fn mcp_installed_claude_and_codex_call_orient() {
 fn bounded_client(
     mut command: std::process::Command,
     timeout: Duration,
+    private_home: &tempfile::TempDir,
 ) -> (std::process::ExitStatus, Vec<u8>, Vec<u8>) {
     use std::os::unix::process::CommandExt;
     use std::process::Stdio;
+    // Inspect the environment of the actual command before spawn, not the
+    // parent's HOME. Only a directory this test owns is accepted.
+    require_private_client_home(&command, private_home).expect(
+        "NEVER BLOCK SWARM: installed-client interop refuses inherited HOME; use only a throwaway HOME created by this test",
+    );
     command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -1803,8 +1820,47 @@ fn bounded_client(
     (status, out.join().unwrap(), err.join().unwrap())
 }
 
-fn configuration_digests() -> std::collections::BTreeMap<PathBuf, Option<String>> {
-    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+fn require_private_client_home(
+    command: &std::process::Command,
+    private_home: &tempfile::TempDir,
+) -> std::io::Result<()> {
+    let explicit_home = command
+        .get_envs()
+        .find(|(name, _)| *name == std::ffi::OsStr::new("HOME"))
+        .and_then(|(_, value)| value);
+    if explicit_home != Some(private_home.path().as_os_str()) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "inherited or foreign HOME is forbidden for installed-client interop",
+        ));
+    }
+    Ok(())
+}
+
+// keeps: invariant never-block-swarm, Oracle b4760d4a requires a pre-spawn private-HOME guard.
+#[test]
+fn installed_client_guard_refuses_inherited_or_foreign_home_before_spawn() {
+    let private_home = tempfile::tempdir().unwrap();
+    let foreign_home = tempfile::tempdir().unwrap();
+    let mut command = std::process::Command::new("never-executed-client-fixture");
+    for home in [None, Some(foreign_home.path())] {
+        if let Some(home) = home {
+            command.env("HOME", home);
+        }
+        assert_eq!(
+            require_private_client_home(&command, &private_home)
+                .unwrap_err()
+                .kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
+    }
+    command.env_clear().env("HOME", private_home.path());
+    require_private_client_home(&command, &private_home).unwrap();
+}
+
+fn configuration_digests(
+    home: &std::path::Path,
+) -> std::collections::BTreeMap<PathBuf, Option<String>> {
     [
         ".claude/settings.json",
         ".claude/settings.local.json",
