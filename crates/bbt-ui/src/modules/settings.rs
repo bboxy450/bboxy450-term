@@ -735,6 +735,16 @@ impl Build<'_> {
         )
     }
     fn button(&self, k: &str, v: &str, ico: Option<&str>, kind: &str) -> c::Element {
+        self.button_sized(k, v, ico, kind, 13.)
+    }
+    fn button_sized(
+        &self,
+        k: &str,
+        v: &str,
+        ico: Option<&str>,
+        kind: &str,
+        size: f32,
+    ) -> c::Element {
         let co = if kind == "primary" {
             ui::Color::OnAccent
         } else if kind == "link" {
@@ -766,7 +776,7 @@ impl Build<'_> {
         if let Some(i) = ico {
             kids.push(icon("", i, 14., co).into());
         }
-        kids.push(txt("", v, font(13., 400, false, co)).into());
+        kids.push(txt("", v, font(size, 400, false, co)).into());
         row(
             k,
             if kind == "ghost" {
@@ -2256,7 +2266,21 @@ impl Settings {
         let held = value.hold.is_some();
         let pending = value.attempt.as_deref() == Some("pending");
         let waiting = color(TOKENS.color.state.waiting);
-        let ok = color(TOKENS.color.ui.ok);
+        let chip = |value: &str, co| {
+            row(
+                "",
+                surface(
+                    badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                    1.,
+                    6.,
+                    [0., 8., 0., 8.],
+                    Some(20.),
+                ),
+                6.,
+                vec![txt("", value, font(11., 400, false, co)).into()],
+            )
+        };
+        let status_color = |co| mixed(b.ctx, co, b.ctx.theme.palette().fg, 0.7);
         let tier = match value.tier.as_str() {
             "keychain" => "login Keychain · native",
             "file" => "file · test account",
@@ -2276,7 +2300,7 @@ impl Settings {
                 "card0/r0",
                 "Device key",
                 Some("where the device leaf key lives"),
-                b.chip("", tier, false, None, None),
+                chip(tier, ui::Color::Foreground),
                 false,
                 false,
                 false,
@@ -2286,16 +2310,13 @@ impl Settings {
                 "card0/r1",
                 "Access rule",
                 Some("the Keychain item’s ACL"),
-                b.chip(
-                    "",
+                chip(
                     acl,
-                    false,
-                    Some(if value.acl == "designated" {
-                        ok
+                    status_color(if value.acl == "designated" {
+                        TOKENS.color.ui.ok
                     } else {
-                        waiting
+                        TOKENS.color.state.waiting
                     }),
-                    None,
                 ),
                 false,
                 false,
@@ -2310,8 +2331,7 @@ impl Settings {
                 } else {
                     "available"
                 }),
-                b.chip(
-                    "",
+                chip(
                     if held {
                         if value.attempt.as_deref() == Some("granted") {
                             "signature pending"
@@ -2321,9 +2341,11 @@ impl Settings {
                     } else {
                         "ready"
                     },
-                    false,
-                    Some(if held { waiting } else { ok }),
-                    None,
+                    status_color(if held {
+                        TOKENS.color.state.waiting
+                    } else {
+                        TOKENS.color.ui.ok
+                    }),
                 ),
                 false,
                 !held && value.attempt.is_none(),
@@ -2334,13 +2356,13 @@ impl Settings {
         if let Some(hold) = &value.hold {
             let mut detail = c::Text::new(
                 "Clear it with Unlock here or ",
-                font(13., 400, false, ui::Color::Foreground),
+                font(12.5, 400, false, ui::Color::Foreground),
             );
             detail.runs.push(c::TextRun {
                 value: "bboxy450-term ctl identity unlock".into(),
-                style: font(12., 400, true, ui::Color::Foreground),
+                style: font(10., 400, true, ui::Color::Foreground),
             });
-            detail.runs.push(c::TextRun{value:": one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns.".into(),style:font(13.,400,false,ui::Color::Foreground)});
+            detail.runs.push(c::TextRun{value:": one interactive Keychain access, macOS shows its own dialog, then the no-dialog default returns.".into(),style:font(12.5,400,false,ui::Color::Foreground)});
             let button = if pending {
                 "Waiting for macOS…"
             } else if value.attempt.as_deref() == Some("unknown") {
@@ -2353,20 +2375,20 @@ impl Settings {
                     "custody/hold-margin",
                     plain(
                         None,
-                        [9., 0., if value.attempt.is_some() { 0. } else { 6. }, 0.],
+                        [10., 0., if value.attempt.is_some() { 0. } else { 6. }, 0.],
                         0.,
                     ),
                     0.,
                     vec![
                         col(
                             "custody/hold",
-                            surface(waiting, 0.12, 6., [9., 11., 9., 11.], None),
+                            surface(waiting, 0.12, 6., [10., 12., 10., 12.], None),
                             6.,
                             vec![
                                 wrap(
                                     "custody/reason",
                                     format!("Pending: {}; signing held", hold.reason),
-                                    font(13., 700, false, ui::Color::Foreground),
+                                    font(12.5, 600, false, ui::Color::Foreground),
                                 )
                                 .into(),
                                 named("custody/detail", c::Element::Text(detail)).into(),
@@ -2374,7 +2396,7 @@ impl Settings {
                                     "custody/act",
                                     plain(None, [0.; 4], 0.),
                                     0.,
-                                    vec![natural(b.button(
+                                    vec![natural(b.button_sized(
                                         "custody/unlock",
                                         button,
                                         Some(if value.attempt.as_deref() == Some("unknown") {
@@ -2383,6 +2405,7 @@ impl Settings {
                                             "key"
                                         }),
                                         if pending { "quiet" } else { "primary" },
+                                        12.5,
                                     ))],
                                 )
                                 .into(),
@@ -2441,10 +2464,10 @@ impl Settings {
             _ => None,
         };
         if let Some((title, detail, co)) = outcome {
-            let mut text = c::Text::new(title, font(12., 600, false, co));
+            let mut text = c::Text::new(title, font(10., 600, false, co));
             text.runs.push(c::TextRun {
                 value: format!(" · {detail}"),
-                style: font(12., 400, false, ui::Color::Muted),
+                style: font(10., 400, false, ui::Color::Muted),
             });
             children.push(
                 col(
@@ -2458,7 +2481,7 @@ impl Settings {
                                 badge(b.ctx, STYLE.tint.badge_alpha as f32),
                                 1.,
                                 6.,
-                                [6., 11., 6., 11.],
+                                [6., 12., 6., 12.],
                                 None,
                             ),
                             0.,
