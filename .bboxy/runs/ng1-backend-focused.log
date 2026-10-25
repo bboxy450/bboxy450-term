@@ -115,3 +115,35 @@ Command cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture
 EXIT 101; elapsed 261.3584587079822 s including build; runtime 90.53 s, 2 passed / 1 failed.
 Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/gui-live-1.log SHA256 df76cff67d59f53fb59c9383c69574912ce0d7bdf2046c56373fd5e2a2b4d8f0
 The new GUI fixture incorrectly waited for another seat's private inbox on the operator event lane. operator_subjects intentionally excludes seats/*/inbox; the fixture now proves that seat delivery through its recipient's authoritative message list and awaits only operator-visible events. No product filter, capacity, assertion on delivery/grade/bytes or deadline changed. Added timeout row diagnostics for any distinct remaining failure. Native journal and app custody commands were not run because the first command failed.
+
+## Real admitted GUI, native journal and app custody
+
+Source d0b2a7b21bf212846389ba6458f414290314c0c1
+Command cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture
+EXIT 0; elapsed 135.21122137497878 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/gui-live-2.log SHA256 ac609df6cd2b65a123024cc6bb47d286340bceadc489386d5ffe0079098b6b6c
+
+Source d0b2a7b21bf212846389ba6458f414290314c0c1
+Command cargo test -p bbt-mux --locked --lib mcp::journal::tests -- --nocapture
+EXIT 0; elapsed 84.16944166598842 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/journal-local-2.log SHA256 eb7e14e5a478d7fafb9bc25b7123089aac72de0567736100b33a60e4b0517bc5
+
+Source d0b2a7b21bf212846389ba6458f414290314c0c1
+Command cargo test -p bboxy450-term --locked --test custody -- --nocapture
+EXIT 0; elapsed 141.2521374169737 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/app-live-custody-2.log SHA256 deb25d253ac53f3348dc0d23e4915203453d2799d1425761256bb65b00666fcd
+
+Source 56883989ed09055e932c037f58d0f211a76e3fb3
+Command cargo test -p bboxy450-term --locked --test messaging_ui pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position -- --exact --nocapture
+EXIT 101; elapsed 3.007776958984323 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/stale-grade-red.log SHA256 26e0dd1d047b7b9ea4a7cc6eea20b3885699c58328e81aeeb437b527436b16da
+
+Source 56883989ed09055e932c037f58d0f211a76e3fb3
+Command cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact --nocapture
+EXIT 0; elapsed 42.06035620899638 s including build.
+Raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-ng1-3yk17vz0/seat-device-red.log SHA256 f890eda7b142aad6c7a4e63fc8f4bbcb0021eea954248714c159f7d3e9075971
+
+gui-live-2: 3/0, real held GUI fixture 30.30 s; journal-local-2: 13/0 including all #315 native journal tests, local principal cross-door replay and native refusal; app-live-custody-2: 1/0 in 30.26 s, real supervisor/PTY echo during hold and FIFO release.
+stale-grade-red: EXIT101 with actual Some(pending) vs expected Some(signed). A stale projection with an equal or later display timestamp could revoke the visible grade; the History row merge now refuses Signed -> Pending independently of clocks. No grade, debt, clock or ordering assertion loosened.
+seat-device-red is a positive control despite the provisional label: EXIT0, 1/0 in 30.27 s. All four completions already contain the observed actual device, including seat messages, and the named invariant now also runs the remote exclusion/FIFO fixture. The driver expected both probes to fail and exited1 because that device hypothesis was disproved. No device-attribution production change was made.
+Kestrel posted signed rebased #315 successor 0e0e9d2e04a2609eb5513baf30650b73d4b26ebb on accepted T7 714163f2 in f4c85280; Oracle 4dab3d61 explicitly permits consuming that rebase. NG1 will rebase before its workspace preflight; peer gate results are claims, not our validation.

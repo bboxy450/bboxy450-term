@@ -234,7 +234,13 @@ impl History {
         if self
             .rows
             .iter()
-            .any(|old| old.row.id == row.id && old.projected_at > projected_at)
+            .any(|old| {
+                old.row.id == row.id
+                    && (old.projected_at > projected_at
+                        // A display clock cannot revoke a confirmed signature.
+                        || (old.row.signature == wire::SignatureState::Signed
+                            && row.signature == wire::SignatureState::Pending))
+            })
         {
             return;
         }

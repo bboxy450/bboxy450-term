@@ -3,9 +3,7 @@ id: 01M5QP9QJZJERD9TMX5T65J287
 type: invariant
 number: 286
 title: "a custody hold never holds local delivery: envelopes travel with an honest pending grade and are signed when custody returns, never dropped or forged"
-status: pending
-slow: true
-gate: pending-ng1
+status: active
 check: cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: communication gated on a key is a swarm that stops when a Keychain locks; the operator ran into it on the first real morning
 links:
@@ -14,7 +12,7 @@ links:
   - { to: "[[id1-seat-chain]]", rel: constrains }
   - { to: "[[never-block-swarm]]", rel: sibling }
 created: "2026-10-24T19:30:43Z"
-updated: "2026-10-25T03:10:58Z"
+updated: "2026-10-25T04:37:31Z"
 ---
 # A custody hold never holds local delivery
 
@@ -35,15 +33,24 @@ digest, with the delivered bytes unchanged and no second delivery; the
 recipient identity moves and no second consumer appears.
 
 **Check.** `cargo test -p bbt-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. The test does not exist yet; NG1 creates it (a fixture holds
-custody, sends, asserts pending delivery and the lane, releases custody,
-asserts signing in order and the grade upgrade) and its commit removes `slow`
-and `gate` from this file.
+— exit 0 held. The test covers first-ever held startup through the real admitted
+GUI socket and local seat APIs, pending operator and seat delivery, the durable
+events lane, recovery on the same operator reference and consumer, immutable
+intent and event bytes, bound signed upgrades, FIFO and no second native
+delivery. Its remote fixture proves unsigned work remains local until signed.
 
 **Cost of a violation.** Communication gated on a key is a swarm that stops
 when a Keychain locks; the operator ran into it on the first real morning.
 
-**Evidence.** None yet (pending NG1). Counter-evidence: `GuiEventsHeld: signing
-held` on the release app, 2026-10-24.
+**Evidence.** NG1 source `d0b2a7b21bf212846389ba6458f414290314c0c1`:
+`cargo test -p bbt-mux --locked --test messaging_flow -- --nocapture` — exit 0,
+3 passed; the real GUI custody recovery fixture completed in 30.30 s.
+Raw log SHA256 `ac609df6cd2b65a123024cc6bb47d286340bceadc489386d5ffe0079098b6b6c`;
+The exact named check on `56883989ed09055e932c037f58d0f211a76e3fb3` also passed
+with the remote guard and all completion/device bindings, SHA256
+`f890eda7b142aad6c7a4e63fc8f4bbcb0021eea954248714c159f7d3e9075971`.
+Details and earlier failing controls in `.bboxy/runs/ng1-backend-focused.log`.
+Counter-evidence before NG1: `GuiEventsHeld: signing held` on the release app,
+2026-10-24.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
