@@ -113,6 +113,7 @@ raise SystemExit(int(pathlib.Path('bad').exists()))
         result = self.command("culprit", self.base, red, "exact_test")
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertEqual(json.loads(result.stdout)["verdict"], "unresolved")
+        self.assertEqual(json.loads(result.stdout)["revert_range"], self.base + ".." + red)
         self.options.pop("recovery_test")
         self.configure()
         selector = self.repo.state / "selector.json"
@@ -121,6 +122,7 @@ raise SystemExit(int(pathlib.Path('bad').exists()))
         result = self.command("culprit", self.base, red, "exact_test", environment=env)
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("test_not_observed", json.loads(result.stdout)["reason"])
+        self.assertEqual(json.loads(result.stdout)["revert_range"], self.base + ".." + red)
         calls = [json.loads(x) for x in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
         self.assertEqual(calls[-1], ["test", "--locked", "-p", "c", "--lib", "exact_test", "--", "--exact", "exact_test"])
 

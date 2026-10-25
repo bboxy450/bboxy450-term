@@ -324,7 +324,7 @@ def check_main(api, root):
         if not later:
             pending.append(row["sha"])
             continue
-        culprit = row.get("culprit")
+        culprit = row.get("revert_range") or row.get("culprit")
         for n, sha in enumerate(later):
             subject = api.git("show", "-s", "--format=%s", sha, cwd=root)
             body = api.git("show", "-s", "--format=%B", sha, cwd=root)
@@ -519,6 +519,7 @@ def main():
     parser.add_argument("command", choices=("culprit", "revert", "main-red-bounded", "scale-night", "night-all"))
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args()
+    root = None
     try:
         root = api.repository()
         if args.command == "culprit":
@@ -546,6 +547,18 @@ def main():
         return code
     except (api.Refusal, OSError, ValueError) as error:
         result = {"verdict": "unresolved", "culprit": None, "reason": str(error)}
+        if root is not None and args.command == "culprit" and len(args.arguments) == 3:
+            # Compilation, unavailable selectors and zero-test runs cannot
+            # identify a landing. The watcher still needs the validated batch
+            # so it can follow revert-first rather than leave main red forever.
+            try:
+                fixture(api, root)
+                green, red = (resolve(api, root, revision) for revision in args.arguments[:2])
+                chain = api.git("rev-list", "--first-parent", red, cwd=root).splitlines()
+                if green in chain and green != red:
+                    result.update(green=green, red=red, test=args.arguments[2], revert_range=green + ".." + red)
+            except (api.Refusal, OSError, ValueError):
+                pass  # invalid ranges/fixture authority never instruct a revert
         print(json.dumps(result, sort_keys=True))
         return getattr(error, "code", 2)
 
