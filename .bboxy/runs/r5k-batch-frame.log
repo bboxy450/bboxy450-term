@@ -1,0 +1,48 @@
+R5k + R5j batching: ONE combined967-real-PTY /50-watched measured attempt
+Owner: Rook Ashwhisker <EXECUTOR>
+Oracle brief:3f20a5ee-2802-4ddf-a686-97fb8faa6a60. NG1 dd2f12a3 was a delayed brief; accepted27a77a51 and active#286 already verified, no duplicate NG1 work.
+Pinned measured source:00fb087c38d8e7a4184069d2f94aa17f324a55c8 (machine-signed accepted R5k wake coalescing + Sable batch union). UI-clock38d67a8b and later resize/task landings are not included; source was pinned by the brief. No source edits for this run.
+Own clean detached build tree; cargo build --release --locked -p bboxy450-term --message-format=json-render-diagnostics: EXIT0/348.708356917s. Profile opt3/debug_assertions=true/overflow_checks=false; direct compiler,2jobs; private memory custody selector.
+Build log SHA2561b723ff5ab557103d7eb84ccb5d3f830850a7773f0fd1ce1f40b3a724b287bae.
+Retained binary /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-batch-frame-b5zk9tf5/bboxy450-term SHA256b5d289bee904bf6b9258671ea71b85de4394d254a767f56c5f8783484e21694d; identical before/after, independent of retired target.
+
+Window and attempt:
+QUIET START c5c83142-cc07-4cf9-9b8b-1588fbda9ac0 until09:10PDT initial drain cap; existing gate66695 allowed to finish, own pre-existing build finished. Concrete update bf891584-f989-48ee-bbae-a52c0bc742c7 until08:57PDT, conservatively rounded down from gate exit08:27:41+30min.
+Started2026-10-25T15:29:21.476213Z: gate/appPID3696, driver3666. Active peer gates0; load1=2.76708984375; diskfree65,567,383,552B. Start DMc82a5715-1847-4622-9a27-891b00a182ae.
+sh scripts/gates.sh frame with GATE_SEATS=967 GATE_WATCHED=50 GATE_SECONDS=10; unchanged10s idle,1GB stdout and2s faulty read, no GATE_BUDGET and no fixture/deadline/policy edit. Runtime memory custody positively witnessed, label=memory custody(debug).
+EXIT 1; elapsed 75.098913041991s; outer_timeout=False. No retry.
+All969 recorded PIDs gone: both runner ps1/no rows and independent ps1/no rows. QUIET END3bdc236d-d194-4380-8340-5d2539b3d4f3 posted immediately after reap; all peers released before read-only postprocessing.
+
+Verdict: performance timing FAILED, no passed gate claim.
+CPU p99=292.185292ms (>4ms), input-to-GPU=1075.935834ms (>26.666666667ms,75Hz). Frame-work p99=28.015458ms; optional GATE_BUDGET unset, so8.33ms was not script-gated and is numerically exceeded.
+30measured encoded frames; each of50watched panes10–12 encoded changes; bus10003.04696events/s; stdout1,000,000,000B; fault-read2001.045042ms. Idle0frames/0callbacks, blocking guards0, input probe unclipped.
+Watched first-settled boundary present; stop-to-settled logic interval1.549793625s. CheckpointRpc0completed/0ns and no checkpoint RPC in flight at either endpoint: observed0% in the official interval; measure-overlap also0%. This is completion-accounted observation over this workload, not a claim about all durations or pure disk/barrier cost.
+
+Wake coalescing and scene projection:
+MEASURE: WindowRedraw61 (older831f371b attempt53708), TicklessRedraw31 with work0, UiProjection14 for2844model publications/30encoded frames. Projection wall3.397460ms total; UiOldModelDrop18/1.765290ms inclusive wall. UserWake54054/31.624008ms callback CPU; AboutToWait54260/9.523747ms CPU.
+Same configured967/50/1GB fixture; changed captured/publication counts and host/union conditions prevent isolated causal speedup attribution. Callback/projection counts show the intended mechanism. No weakened traffic or timing assertion.
+
+Exact per-frame callback CPU join:
+All30samples align with raw CPU endpoints; no null joins and0attribution errors. P99 is also max: sample index0,frame8. Wall interval1051.692541ms, CPU292.185292ms. Outside instrumented callback bookends234.120497ms (80.1274066%); WindowRedraw27.919793ms, UserWake23.055417ms, AboutToWait6.951667ms, UserStallPoll0.137918ms.
+Largest retained redraw slice callback88582:27.657334ms, from wall44118803417 to44146844917ns, CPU636524166 to664181500ns, clipped_end=true. The sample aggregates callbacks plus uncovered CPU; it is not one292ms callback. Dispatch/diagnostic-bookkeeping attribution outside these bookends remains unprofiled.
+Source caveat: this is the FIRST retained MEASURE frame endpoint interval. stall.rs:777 clears samples at MEASURE but preserves last_cpu; callback-frame tracker also preserves its previous endpoint. The interval can cross the phase boundary from the prior frame. Endpoint semantics are unchanged; no claim it is pure within-MEASURE callback work.
+Across30joined intervals: CPU952.368375ms, outside345.659980ms, WindowRedraw564.114712ms, UserWake31.680670ms, AboutToWait9.496245ms; callback joins carry exclusive CPU, not inclusive phase wall.
+
+Input and ingestion partition:
+Admitted->Written0.103292ms; Written->LogicOutputRead590.377833ms; logic->GUI20.460334ms; GUI applied->ModelBuilt0.576792ms; PanePrepared0.323917ms; ModelPublished->LatestTaken425.588875ms; LatestTaken->ProjectionStarted0.197625ms; projection0.225208ms; ModelApplied->Encoded20.507291ms; Encoded->GPU17.557709ms.
+The two largest observed waiting gaps are before logic read and after model publication. They are not exclusive CPU; the exact wake/dispatch wait remains unprofiled.
+MEASURE ReadRingRequest1421calls/6.866844368s inclusive; terminal decode161599records/1.333063538s inclusive; bytes162,804,163request output. Source logic.rs:5321 instruments each ReadRingBatch and :6627 singleton fallback, finishing work=1 per RPC. The old report metadata saying work=request seats(one per call) is stale after batching; never infer seat count from1421.
+
+Capture stop-to-settled partition (inclusive, do not sum nested phases):
+Logic: ReadRingRpc188/469.358920ms (30.2853%wall), Parse185.549928ms (11.9726%), maintenance58.898578ms (3.8004%). CheckpointRPC0%, Checkpoint wrapper1/1.181083ms. Logic missed0/untracked0, overwritten13954; supervisor missed98/untracked0, overwritten3948. MEASURE logic missed1, supervisor missed70.
+Logic MEASURE10.003667542s: ReadRingRPC1279/6.490667110s, Parse1.234694173s, Maintenance0.384441971s, CheckpointRPC0completed. Supervisor query4.821253414s and sweep8.200886599s overlap; no CPU/barrier inference.
+Recorder snapshots are sequential non-atomic and completion-accounted; in-flight arrays preserved. Cumulative max/pending peaks not delta-subtracted;8192-span retained clipping is partial/lower-bound after overwrite. R5i and capture clocks are independent: never subtract across them.
+
+Raw and derived evidence: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-batch-frame-b5zk9tf5
+Report /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-batch-frame-b5zk9tf5/run-1/r5-frame.q8pGBp/report.json SHA256 11727022306eec8584b0eefb8d576c3b6a3c485621f6ba4f83983cd72a556fcf
+Capture /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-r5k-batch-frame-b5zk9tf5/run-1/r5-frame.q8pGBp/report.capture.json SHA256 cb2fabd6c094cbdec25fef9ca22cb3413cc7234d0647e36e5d25d05466a1ae59
+stderr SHA256 857bdae7a2abdb68b383e74403a82e6ec550dd7a5fe87ba6e4c598899461149d
+analysis/summary.json, partition.json, counters.csv, probe-timeline.csv, callback-frame-summary.json, callback-frame-rows.json, capture-partition.json; analysis/files.json binds every retained artifact hash. All3 postprocessing scripts EXIT0; no product code modified.
+
+Cleanup: lsof +D owned target EXIT1/no rows before deletion. Retired 1311334400 allocated bytes, free before=64021053440 after=65370476544. Only own target and clean detached tree removed; binary/raw evidence retained. No process, build or quiet window remains owned by this measurement.
+Stage/callback partition DM02b13392-fafc-45a3-971e-9c265d063a25 recipient-stored, model receipt unproven. No further fix chosen or extra run performed.
