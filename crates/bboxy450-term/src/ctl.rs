@@ -266,6 +266,33 @@ pub struct Parsed {
     pub human: bool,
 }
 
+/// What a noun's `parse` may read of the command line besides its words.
+pub(super) struct ParseCx<'a> {
+    pub flags: &'a std::collections::BTreeMap<String, String>,
+    pub swarm: Option<Ulid>,
+    pub human_flag: bool,
+    pub unassigned_flag: bool,
+    pub on_screen_flag: bool,
+    pub cells_flag: bool,
+    pub headless: bool,
+    pub ctl: bool,
+    pub unattended: bool,
+}
+type NounParse = fn(&[&str], &ParseCx) -> Result<Option<Command>, String>;
+/// Each noun's parser (decision #320), asked in turn; a verb is parsed in its noun's file.
+const NOUN_PARSERS: &[NounParse] = &[
+    ui::parse,
+    debug::parse,
+    seat::parse,
+    message::parse,
+    task::parse,
+    e2e::parse,
+    records::parse,
+    events::parse,
+    identity::parse,
+    app::parse,
+];
+
 /// Parses everything after `ctl`; returns the endpoint file override and the command.
 pub fn parse(args: &[String]) -> Result<(Option<PathBuf>, Command), String> {
     parse_full(args).map(|p| (p.endpoint, p.command))
@@ -349,399 +376,24 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     let ulid = |v: &String| v.parse::<Ulid>().map_err(|_| format!("not an id: {v}"));
     let flag = |name: &str| flags.get(name).cloned();
     let swarm = flag("swarm").as_ref().map(ulid).transpose()?;
-    let command = match words.iter().map(String::as_str).collect::<Vec<_>>()[..] {
-        ["ui", "clock", "freeze"] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
-            bbt_proto::gui::UiClockCommand::Freeze,
-        )),
-        ["ui", "clock", "advance", ms] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
-            bbt_proto::gui::UiClockCommand::Advance {
-                ms: ms.parse::<u64>().map_err(|_| {
-                    format!("{USAGE_PREFIX}ui clock advance requires unsigned integer milliseconds")
-                })?,
-            },
-        )),
-        ["ui", "clock", "resume"] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
-            bbt_proto::gui::UiClockCommand::Resume,
-        )),
-        ["ui", "layout"] => Command::Ui(bbt_proto::gui::UiRequest::Layout),
-        ["ui", "focus", seat] => Command::UiFocus(seat.into()),
-        ["ui", "scroll", seat, motion] => Command::UiScroll {
-            seat: seat.into(),
-            motion: match motion {
-                "top" => bbt_proto::gui::UiScroll::Top,
-                "bottom" => bbt_proto::gui::UiScroll::Bottom,
-                "page-up" => bbt_proto::gui::UiScroll::PageUp,
-                "page-down" => bbt_proto::gui::UiScroll::PageDown,
-                _ => return Err(format!("{USAGE_PREFIX}ui scroll <pane> top|bottom|page-up|page-down|row N")),
-            },
-        },
-        ["ui", "scroll", seat, "row", row] => Command::UiScroll {
-            seat: seat.into(),
-            motion: bbt_proto::gui::UiScroll::Row(row.parse().map_err(|_| format!("{USAGE_PREFIX}ui scroll row requires an unsigned zero-based row"))?),
-        },
-        ["ui", "notification-click", seat] => Command::UiNotificationClick(seat.into()),
-        ["debug", "notifications"] => Command::DebugNotifications,
-        ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
-            "graph" => bbt_proto::gui::UiTarget::Graph,
-            "settings" => bbt_proto::gui::UiTarget::Settings,
-            "launcher" => bbt_proto::gui::UiTarget::Launcher,
-            _ => return Err(format!("{USAGE_PREFIX}ui open graph|settings|launcher|docs <path>")),
-        })),
-        ["ui", "open", "docs", path] => {
-            let request = bbt_proto::gui::UiRequest::Open(bbt_proto::gui::UiTarget::Docs(path.into()));
-            request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
-            Command::Ui(request)
-        },
-        ["ui", "key", ref keys @ ..] => {
-            let request = bbt_proto::gui::UiRequest::Key(keys.iter().map(|s| s.to_string()).collect());
-            request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
-            Command::Ui(request)
-        },
-
-        ["spawn", harness] => Command::Spawn {
-            harness: harness.into(),
-            name: flag("name"),
-            cwd: flag("cwd").map(PathBuf::from),
-            swarm,
-            role: flag("role"),
-            new_tab: match flag("placement").as_deref() {
-                None => false,
-                Some("new-tab") => true,
-                Some(other) => {
-                    return Err(format!(
-                        "--placement: only new-tab is supported, not {other}"
-                    ));
-                }
-            },
-        },
-        ["seats"] => Command::Seats,
-        ["dm", seat, text] => Command::Dm {
-            seat: seat.into(),
-            text: text.into(),
-        },
-        ["post", destination, text] => Command::Post {
-            destination: destination.into(),
-            text: text.into(),
-            swarm,
-        },
-        ["inbox"] => Command::Inbox {
-            since: flag("since")
-                .map(|v| {
-                    v.parse()
-                        .map_err(|_| format!("--since: not a sequence: {v}"))
-                })
-                .transpose()?
-                .unwrap_or(0),
-        },
-        ["receipts", message] => Command::Receipts {
-            message: ulid(&message.to_owned())?,
-        },
-        ["delegate", task, seat] => Command::Delegate {
-            task: task.into(),
-            seat: seat.into(),
-        },
-        ["reports"] => Command::Reports {
-            since: flag("since"),
-        },
-        ["e2e"] => Command::E2e {
-            group: flag("group"),
-        },
-        ["seat", "screen", seat] => Command::Screen {
-            seat: seat.into(),
-            human: human_flag,
-            scrollback: flag("scrollback")
-                .map(|range| {
-                    range
-                        .split_once("..")
-                        .and_then(|(a, b)| Some((a.parse::<u64>().ok()?, b.parse::<u64>().ok()?)))
-                        .filter(|(a, b)| a <= b && b - a <= SCROLLBACK_SEQUENCES)
-                        .ok_or(format!(
-                            "{USAGE_PREFIX}--scrollback FROM..TO, capture sequences, at most {SCROLLBACK_SEQUENCES} apart, not {range}"
-                        ))
-                })
-                .transpose()?,
-            cells: cells_flag,
-        },
-        ["seat", "rename", seat, name] => Command::Rename {
-            seat: seat.into(),
-            name: name.into(),
-        },
-        ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
-        ["seat", "restart", seat] => Command::Restart { seat: seat.into() },
-        ["seat", "close", seat] => Command::Close { seat: seat.into() },
-        ["seat", "undo-close", seat] => Command::UndoClose { seat: seat.into() },
-        ["seat", "watch", seat] => Command::Watch {
-            seat: seat.into(),
-            timeout: Duration::from_millis(
-                flag("timeout")
-                    .map(|v| {
-                        v.parse::<u64>()
-                            .ok()
-                            .filter(|ms| (1..=3_600_000).contains(ms))
-                            .ok_or(format!("{USAGE_PREFIX}--timeout: 1 to 3600000 ms, not {v}"))
-                    })
-                    .transpose()?
-                    .unwrap_or(30_000),
-            ),
-        },
-        ["seat", "resize", seat, size] => {
-            let (cols, rows) = size
-                .split_once('x')
-                .and_then(|(c, r)| Some((c.parse::<u16>().ok()?, r.parse::<u16>().ok()?)))
-                .ok_or(format!("{USAGE_PREFIX}seat resize: COLSxROWS, not {size}"))?;
-            Command::Resize {
-                seat: seat.into(),
-                cols,
-                rows,
-            }
-        }
-        ["seat", "type", seat, text] => Command::Type {
-            seat: seat.into(),
-            text: text.into(),
-        },
-        ["seat", "key", seat, ref keys @ ..] if !keys.is_empty() => Command::Key {
-            seat: seat.into(),
-            keys: keys.iter().map(|k| k.to_string()).collect(),
-        },
-        ["seat", "paste", seat, source] => Command::Paste {
-            seat: seat.into(),
-            source: source.into(),
-        },
-        ["seat", "wait", seat] => {
-            let (state, text) = (flag("state"), flag("text"));
-            let frame_seq = flag("frame-seq")
-                .map(|v| {
-                    v.parse::<u64>()
-                        .map_err(|_| format!("{USAGE_PREFIX}--frame-seq: a frame number, not {v}"))
-                })
-                .transpose()?;
-            let conditions = [
-                state.is_some(),
-                text.is_some(),
-                on_screen_flag,
-                frame_seq.is_some(),
-            ];
-            if conditions.iter().filter(|set| **set).count() != 1 {
-                return Err(format!(
-                    "seat wait: one of --state, --text, --on-screen or --frame-seq\n{USAGE}"
-                ));
-            }
-            if (flag("subagent").is_some() || flag("grade").is_some()) && state.is_none() {
-                return Err(format!("{USAGE_PREFIX}--subagent and --grade require --state"));
-            }
-            if flag("grade").as_deref().is_some_and(|grade| grade != "reported") {
-                return Err(format!("{USAGE_PREFIX}--grade: reported"));
-            }
-            Command::Wait {
-                seat: seat.into(),
-                state,
-                text,
-                subagent: flag("subagent"),
-                grade: flag("grade"),
-                on_screen: on_screen_flag,
-                frame_seq,
-                timeout: Duration::from_millis(
-                    flag("timeout")
-                        .map(|v| {
-                            v.parse::<u64>()
-                                .ok()
-                                .filter(|ms| (1..=3_600_000).contains(ms))
-                                .ok_or(format!("--timeout: 1 to 3600000 ms, not {v}"))
-                        })
-                        .transpose()?
-                        .unwrap_or(30_000),
-                ),
-            }
-        }
-        ["seat", "ls"] => Command::Seats,
-        ["seat", "spawn", harness] => {
-            if let Some(place) = flag("place").or(flag("placement")) {
-                use bbt_proto::gui::{SpawnPlace, UiSpawn};
-                let place = match place.as_str() {
-                    "right" => SpawnPlace::Right,
-                    "down" => SpawnPlace::Down,
-                    "tab" | "new-tab" => SpawnPlace::Tab,
-                    "space" => SpawnPlace::Space,
-                    _ => return Err(format!("{USAGE_PREFIX}--place: expected right|down|tab|space")),
-                };
-                let pick = UiSpawn {
-                    harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
-                    cwd: std::path::absolute(flag("cwd").unwrap_or_else(|| ".".into()))
-                        .map_err(|e| format!("{USAGE_PREFIX}--cwd: {e}"))?.to_string_lossy().into_owned(),
-                };
-                let request = bbt_proto::gui::UiRequest::Spawn(Box::new(pick));
-                request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
-                let bbt_proto::gui::UiRequest::Spawn(pick) = request else { unreachable!() };
-                Command::SpawnAt(pick)
-            } else {
-                // The no-placement backend lane also serves bare Session callers.
-                Command::Spawn {harness:harness.into(),name:flag("name"),cwd:flag("cwd").map(PathBuf::from),swarm,role:flag("role"),new_tab:false}
-            }
-        },
-        ["seat", "capture", target, path] => Command::Capture {
-            path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
-            seat: (target != "window").then(|| target.to_string()),
-        },
-        ["message", "send", to, text] => Command::Send {
-            to: Some(to.into()),
-            text: text.into(),
-            reply_to: flag("reply-to").as_ref().map(ulid).transpose()?,
-            swarm,
-        },
-        ["message", "send", text] if flags.contains_key("reply-to") => Command::Send {
-            to: None,
-            text: text.into(),
-            reply_to: flag("reply-to").as_ref().map(ulid).transpose()?,
-            swarm,
-        },
-        ["message", "post", destination, text] => Command::Post {
-            destination: destination.into(),
-            text: text.into(),
-            swarm,
-        },
-        ["message", "inbox"] => Command::Inbox {
-            since: flag("since")
-                .map(|v| {
-                    v.parse()
-                        .map_err(|_| format!("--since: not a sequence: {v}"))
-                })
-                .transpose()?
-                .unwrap_or(0),
-        },
-        ["message", "receipts", message] => Command::Receipts {
-            message: ulid(&message.to_owned())?,
-        },
-        ["message", "ack", message] => Command::Ack {
-            message: ulid(&message.to_owned())?,
-        },
-        ["task", "delegate", task, seat] => Command::Delegate {
-            task: task.into(),
-            seat: seat.into(),
-        },
-        ["task", "list"] => Command::TaskList {
-            unassigned: unassigned_flag,
-            seat: flag("seat"),
-            status: flag("status"),
-        },
-        ["task", "get" | "status", task] => Command::TaskGet { task: task.into() },
-        ["task", "report", task] => Command::TaskReport {
-            task: task.into(),
-            summary: flag("summary")
-                .ok_or_else(|| format!("{USAGE_PREFIX}task report needs --summary TEXT"))?,
-            commit: flag("commit"),
-            verify_result: flag("verify-result")
-                .map(|value| serde_json::from_str(&value).map_err(|e| {
-                    format!("{USAGE_PREFIX}task report --verify-result: {e}")
-                }))
-                .transpose()?,
-        },
-        ["task", "accept", task] => Command::TaskAccept { task: task.into() },
-        ["task", "reject", task] => Command::TaskReject {
-            task: task.into(),
-            reason: flag("reason")
-                .ok_or_else(|| format!("{USAGE_PREFIX}task reject needs --reason TEXT"))?,
-        },
-        ["task", "create", title] => Command::TaskCreate {
-            title: title.into(),
-            verify: flag("verify")
-                .ok_or_else(|| format!("{USAGE_PREFIX}task create needs --verify CMD"))?,
-            brief: flag("brief"),
-        },
-        ["e2e", "list"] => Command::E2e {
-            group: flag("group"),
-        },
-        ["record", "write", source] => Command::RecordWrite {
-            source: source.into(),
-        },
-        ["record", "fetch", locator] => Command::RecordFetch {
-            locator: locator.into(),
-        },
-        ["record", "search", query] => Command::RecordSearch {
-            query: records::search_query(query, flag("type").as_deref())?,
-            cursor: flag("cursor"),
-        },
-        ["record", "changes"] => Command::RecordChanges {
-            since: flag("since")
-                .filter(|s| !s.is_empty())
-                .ok_or_else(|| format!("{USAGE_PREFIX}record changes requires --since CURSOR"))?,
-        },
-        ["events", "streams"] => Command::EventsStreams,
-        ["debug", "logs", process] => Command::Debug {
-            request: bbt_proto::gui::DebugRequest::Logs {
-                process: match process {
-                    "app" => bbt_proto::gui::DebugProcess::App,
-                    "logic" => bbt_proto::gui::DebugProcess::Logic,
-                    "supervisor" => bbt_proto::gui::DebugProcess::Supervisor,
-                    _ => return Err(format!("{USAGE_PREFIX}debug logs: app, logic or supervisor")),
-                },
-                since: flag("since").map(|s| s.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}debug logs --since: byte offset"))).transpose()?.unwrap_or(0),
-            }, snapshot: None,
-        },
-        ["debug", "journal", query] => {
-            bbt_mux::debug::journal_query(query).map_err(|e|format!("{USAGE_PREFIX}{e}"))?;
-            Command::Debug {request:bbt_proto::gui::DebugRequest::Journal {query:query.into()},snapshot:None}
-        },
-        ["debug", "fault", "ring-gap", seat, range] => {
-            let (from,to) = range.split_once("..").ok_or_else(||format!("{USAGE_PREFIX}ring-gap needs FROM..TO capture sequences"))?;
-            let from = from.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}invalid gap start"))?;
-            let to = to.parse::<u64>().map_err(|_|format!("{USAGE_PREFIX}invalid gap end"))?;
-            if from==0 || to<from || to-from>=4096 { return Err(format!("{USAGE_PREFIX}ring-gap needs 1..4096 positive capture sequences")); }
-            Command::DebugFault {seat:(*seat).into(),from,to}
-        },
-        ["debug", "metrics"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Metrics,snapshot:None},
-        ["debug", "ps"] => Command::Debug {request:bbt_proto::gui::DebugRequest::Ps,snapshot:None},
-        ["debug", "snapshot", path] => {
-            let path = std::path::absolute(path).map_err(|_|format!("{USAGE_PREFIX}debug snapshot requires a local file path"))?;
-            let destination = path.to_str().filter(|s|s.len()<=4096).ok_or_else(||format!("{USAGE_PREFIX}debug snapshot path must be UTF-8, at most 4096 bytes"))?.to_owned();
-            Command::Debug {request:bbt_proto::gui::DebugRequest::Snapshot {destination},snapshot:Some(path)}
-        },
-        ["events", "tail"] => {
-            let stream = flag("stream").filter(|s| !s.is_empty() && s.len() <= 128)
-                .ok_or_else(|| format!("{USAGE_PREFIX}events tail requires --stream NAME (events streams lists names)"))?;
-            let since = flag("since").map(|s| s.parse::<u64>()
-                .map_err(|_| format!("{USAGE_PREFIX}--since requires a stream sequence")))
-                .transpose()?.unwrap_or(0);
-            let subject = flag("subject");
-            if subject.as_ref().is_some_and(|s| s.is_empty() || s.len() > 256) {
-                return Err(format!("{USAGE_PREFIX}--subject requires a nonempty subject glob up to 256 bytes"));
-            }
-            let timeout = flag("timeout").map(|s| s.parse::<u64>().ok()
-                .filter(|ms| (1..=3_600_000).contains(ms))
-                .ok_or_else(|| format!("{USAGE_PREFIX}--timeout: 1 to 3600000 ms")))
-                .transpose()?.unwrap_or(30_000);
-            Command::EventsTail {stream,since,subject,timeout:Duration::from_millis(timeout)}
-        },
-        ["identity", "status"] => Command::Identity(bbt_proto::identity::IdentityRequest::Status),
-        ["identity", "unlock"] => Command::Identity(bbt_proto::identity::IdentityRequest::Unlock),
-        ["app", "endpoint"] => Command::AppEndpoint,
-        ["app", "start"] => Command::AppStart {
-            headless,
-            ctl,
-            unattended,
-            test_account: flag("test-account").map(PathBuf::from),
-            record_notifications: match flag("notifications").as_deref() {
-                None => false,
-                Some("record") if flags.contains_key("test-account") => true,
-                _ => return Err(format!("{USAGE_PREFIX}--notifications record requires --test-account DIR")),
-            },
-        },
-        ["app", "status"] => Command::AppStatus,
-        ["app", "resize", size] => {
-            let (cols, rows) = size
-                .split_once('x')
-                .and_then(|(c, r)| Some((c.parse::<u16>().ok()?, r.parse::<u16>().ok()?)))
-                .filter(|&(c, r)| (2..=512).contains(&c) && (1..=256).contains(&r))
-                .ok_or(format!(
-                    "{USAGE_PREFIX}app resize: COLSxROWS, 2-512 by 1-256, not {size}"
-                ))?;
-            Command::AppResize { cols, rows }
-        }
-        ["app", "stop"] => Command::AppStop,
-        ["capture", path] => Command::Capture {
-            path: std::path::absolute(path).map_err(|e| format!("capture {path}: {e}"))?,
-            seat: flag("seat"),
-        },
-        _ => {
+    let words: Vec<&str> = words.iter().map(String::as_str).collect();
+    let cx = ParseCx {
+        flags: &flags,
+        swarm,
+        human_flag,
+        unassigned_flag,
+        on_screen_flag,
+        cells_flag,
+        headless,
+        ctl,
+        unattended,
+    };
+    let parsed = NOUN_PARSERS
+        .iter()
+        .find_map(|parse| parse(&words, &cx).transpose());
+    let command = match parsed {
+        Some(command) => command?,
+        None => {
             return Err(match verb {
                 Some((noun, v)) => {
                     format!("{USAGE_PREFIX}wrong arguments for {noun} {v}; see ctl --help")
@@ -806,7 +458,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     if (flags.contains_key("subagent") || flags.contains_key("grade"))
         && !matches!(&command, Command::Wait { .. })
     {
-        return Err(format!("{USAGE_PREFIX}--subagent and --grade apply only to seat wait"));
+        return Err(format!(
+            "{USAGE_PREFIX}--subagent and --grade apply only to seat wait"
+        ));
     }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
@@ -1781,7 +1435,15 @@ pub fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> 
                 std::thread::sleep(Duration::from_millis(100));
             }
         }
-        Command::Wait { seat, state, text, subagent, grade, timeout, .. } => {
+        Command::Wait {
+            seat,
+            state,
+            text,
+            subagent,
+            grade,
+            timeout,
+            ..
+        } => {
             let predicate = WaitPredicate::new(state, text, subagent, grade)?;
             let started = std::time::Instant::now();
             wait_for_seat(client, &seat, &predicate, timeout, || started.elapsed())?

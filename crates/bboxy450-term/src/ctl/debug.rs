@@ -89,3 +89,89 @@ macro_rules! debug_commands {
     };
 }
 pub(super) use debug_commands;
+
+/// `ctl debug …` and its pre-grammar aliases, parsed into this noun's commands; `None`
+/// when the words are not this noun's.
+pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
+    let flags = cx.flags;
+    let flag = |name: &str| flags.get(name).cloned();
+    Ok(Some(match *words {
+        ["debug", "notifications"] => Command::DebugNotifications,
+        ["debug", "logs", process] => Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Logs {
+                process: match process {
+                    "app" => bbt_proto::gui::DebugProcess::App,
+                    "logic" => bbt_proto::gui::DebugProcess::Logic,
+                    "supervisor" => bbt_proto::gui::DebugProcess::Supervisor,
+                    _ => {
+                        return Err(format!(
+                            "{USAGE_PREFIX}debug logs: app, logic or supervisor"
+                        ));
+                    }
+                },
+                since: flag("since")
+                    .map(|s| {
+                        s.parse::<u64>()
+                            .map_err(|_| format!("{USAGE_PREFIX}debug logs --since: byte offset"))
+                    })
+                    .transpose()?
+                    .unwrap_or(0),
+            },
+            snapshot: None,
+        },
+        ["debug", "journal", query] => {
+            bbt_mux::debug::journal_query(query).map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Debug {
+                request: bbt_proto::gui::DebugRequest::Journal {
+                    query: query.into(),
+                },
+                snapshot: None,
+            }
+        }
+        ["debug", "fault", "ring-gap", seat, range] => {
+            let (from, to) = range.split_once("..").ok_or_else(|| {
+                format!("{USAGE_PREFIX}ring-gap needs FROM..TO capture sequences")
+            })?;
+            let from = from
+                .parse::<u64>()
+                .map_err(|_| format!("{USAGE_PREFIX}invalid gap start"))?;
+            let to = to
+                .parse::<u64>()
+                .map_err(|_| format!("{USAGE_PREFIX}invalid gap end"))?;
+            if from == 0 || to < from || to - from >= 4096 {
+                return Err(format!(
+                    "{USAGE_PREFIX}ring-gap needs 1..4096 positive capture sequences"
+                ));
+            }
+            Command::DebugFault {
+                seat: (*seat).into(),
+                from,
+                to,
+            }
+        }
+        ["debug", "metrics"] => Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Metrics,
+            snapshot: None,
+        },
+        ["debug", "ps"] => Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Ps,
+            snapshot: None,
+        },
+        ["debug", "snapshot", path] => {
+            let path = std::path::absolute(path)
+                .map_err(|_| format!("{USAGE_PREFIX}debug snapshot requires a local file path"))?;
+            let destination = path
+                .to_str()
+                .filter(|s| s.len() <= 4096)
+                .ok_or_else(|| {
+                    format!("{USAGE_PREFIX}debug snapshot path must be UTF-8, at most 4096 bytes")
+                })?
+                .to_owned();
+            Command::Debug {
+                request: bbt_proto::gui::DebugRequest::Snapshot { destination },
+                snapshot: Some(path),
+            }
+        }
+        _ => return Ok(None),
+    }))
+}

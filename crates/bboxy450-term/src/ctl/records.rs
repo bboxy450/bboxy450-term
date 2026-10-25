@@ -1,4 +1,5 @@
 //! Record reads use the same bounded provider DTOs as the window's document loader.
+use super::*;
 use super::{Client, USAGE_PREFIX, Value};
 use bbt_mux::knowledge::data_source as d;
 use serde::Serialize;
@@ -97,3 +98,28 @@ macro_rules! record_commands {
     };
 }
 pub(super) use record_commands;
+
+/// `ctl record …` and its pre-grammar aliases, parsed into this noun's commands; `None`
+/// when the words are not this noun's.
+pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
+    let flags = cx.flags;
+    let flag = |name: &str| flags.get(name).cloned();
+    Ok(Some(match *words {
+        ["record", "write", source] => Command::RecordWrite {
+            source: source.into(),
+        },
+        ["record", "fetch", locator] => Command::RecordFetch {
+            locator: locator.into(),
+        },
+        ["record", "search", query] => Command::RecordSearch {
+            query: records::search_query(query, flag("type").as_deref())?,
+            cursor: flag("cursor"),
+        },
+        ["record", "changes"] => Command::RecordChanges {
+            since: flag("since")
+                .filter(|s| !s.is_empty())
+                .ok_or_else(|| format!("{USAGE_PREFIX}record changes requires --since CURSOR"))?,
+        },
+        _ => return Ok(None),
+    }))
+}

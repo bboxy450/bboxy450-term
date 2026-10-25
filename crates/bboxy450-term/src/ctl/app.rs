@@ -305,6 +305,47 @@ macro_rules! app_commands {
 }
 pub(super) use app_commands;
 
+/// `ctl app …` and its pre-grammar aliases, parsed into this noun's commands; `None`
+/// when the words are not this noun's.
+pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
+    let flags = cx.flags;
+    let flag = |name: &str| flags.get(name).cloned();
+    let headless = cx.headless;
+    let ctl = cx.ctl;
+    let unattended = cx.unattended;
+    Ok(Some(match *words {
+        ["app", "endpoint"] => Command::AppEndpoint,
+        ["app", "start"] => Command::AppStart {
+            headless,
+            ctl,
+            unattended,
+            test_account: flag("test-account").map(PathBuf::from),
+            record_notifications: match flag("notifications").as_deref() {
+                None => false,
+                Some("record") if flags.contains_key("test-account") => true,
+                _ => {
+                    return Err(format!(
+                        "{USAGE_PREFIX}--notifications record requires --test-account DIR"
+                    ));
+                }
+            },
+        },
+        ["app", "status"] => Command::AppStatus,
+        ["app", "resize", size] => {
+            let (cols, rows) = size
+                .split_once('x')
+                .and_then(|(c, r)| Some((c.parse::<u16>().ok()?, r.parse::<u16>().ok()?)))
+                .filter(|&(c, r)| (2..=512).contains(&c) && (1..=256).contains(&r))
+                .ok_or(format!(
+                    "{USAGE_PREFIX}app resize: COLSxROWS, 2-512 by 1-256, not {size}"
+                ))?;
+            Command::AppResize { cols, rows }
+        }
+        ["app", "stop"] => Command::AppStop,
+        _ => return Ok(None),
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

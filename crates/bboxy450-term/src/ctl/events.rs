@@ -1,4 +1,5 @@
 //! Browse retained pages with the CLI's own stream cursor. Never attach or ACK.
+use super::*;
 use super::{Client, PAGE, TIMEOUT, TIMEOUT_PREFIX, Ulid, Value, json};
 use std::{
     io::Write,
@@ -135,3 +136,49 @@ macro_rules! events_commands {
     };
 }
 pub(super) use events_commands;
+
+/// `ctl events …` and its pre-grammar aliases, parsed into this noun's commands; `None`
+/// when the words are not this noun's.
+pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
+    let flags = cx.flags;
+    let flag = |name: &str| flags.get(name).cloned();
+    Ok(Some(match *words {
+        ["events", "streams"] => Command::EventsStreams,
+        ["events", "tail"] => {
+            let stream = flag("stream").filter(|s| !s.is_empty() && s.len() <= 128)
+            .ok_or_else(|| format!("{USAGE_PREFIX}events tail requires --stream NAME (events streams lists names)"))?;
+            let since = flag("since")
+                .map(|s| {
+                    s.parse::<u64>()
+                        .map_err(|_| format!("{USAGE_PREFIX}--since requires a stream sequence"))
+                })
+                .transpose()?
+                .unwrap_or(0);
+            let subject = flag("subject");
+            if subject
+                .as_ref()
+                .is_some_and(|s| s.is_empty() || s.len() > 256)
+            {
+                return Err(format!(
+                    "{USAGE_PREFIX}--subject requires a nonempty subject glob up to 256 bytes"
+                ));
+            }
+            let timeout = flag("timeout")
+                .map(|s| {
+                    s.parse::<u64>()
+                        .ok()
+                        .filter(|ms| (1..=3_600_000).contains(ms))
+                        .ok_or_else(|| format!("{USAGE_PREFIX}--timeout: 1 to 3600000 ms"))
+                })
+                .transpose()?
+                .unwrap_or(30_000);
+            Command::EventsTail {
+                stream,
+                since,
+                subject,
+                timeout: Duration::from_millis(timeout),
+            }
+        }
+        _ => return Ok(None),
+    }))
+}
