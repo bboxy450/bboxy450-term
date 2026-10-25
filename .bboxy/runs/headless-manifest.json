@@ -1,7 +1,7 @@
 {
-  "status": "SCOPED PROOF GREEN; FINAL FULL CI/PARITY PENDING",
-  "source": "4181393da3b1d07501889453048e63a261d0615a",
-  "base": "5609d6de",
+  "status": "REQUIRED GATES PASSED; READY FOR ORACLE VERIFICATION",
+  "source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+  "base": "76e89004c642356effa318f62a68c35c345ec900",
   "artifact_root": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z",
   "commands": {
     "headless-test-5": {
@@ -340,6 +340,170 @@
       "ended": "2026-10-24T21:31:47.619113+00:00",
       "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/headless-ci-retry.log",
       "log_sha256": "0064fa2419a988168b87a30fff16cd942056155947bee0627c3b9399d7684b8e"
+    },
+    "spawn-cap-before": {
+      "source": "fbe3043c292159a18d27ad6374eb5ae89fe69f32",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "headless_consumes_launch_results",
+        "--locked",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "started": "2026-10-24T22:36:00.117738+00:00",
+      "pid": 56811,
+      "exit": 101,
+      "seconds": 146.20092987501994,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/spawn-cap-before.log",
+      "log_sha256": "20fd9876f9121f4e224a3674de1b39fad7d869804ede7a0806c5a7cef9892642"
+    },
+    "spawn-cap-after": {
+      "source": "48d76b97d1206b2d12277fd3a04cdaed0e7e842f",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "headless_consumes_launch_results",
+        "--locked",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "started": "2026-10-24T22:39:22.053117+00:00",
+      "pid": 63443,
+      "exit": 0,
+      "seconds": 45.981012125033885,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/spawn-cap-after.log",
+      "log_sha256": "d5c9ec0d003fd1fcc62eb9622e5ea55f1097c30abb53260eafa558885eb677f5"
+    },
+    "spawn-fix-clippy": {
+      "source": "48d76b97d1206b2d12277fd3a04cdaed0e7e842f",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": "2026-10-24T22:40:21.686178+00:00",
+      "pid": 65306,
+      "exit": 0,
+      "seconds": 6.540151458000764,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/spawn-fix-clippy.log",
+      "log_sha256": "7ec5864fa960faf6094c68afdb1409cb516a66ba5bd94938b40d7c25e308ac6a"
+    },
+    "spawn-fix-headless": {
+      "source": "48d76b97d1206b2d12277fd3a04cdaed0e7e842f",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "--locked",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "started": "2026-10-24T22:40:28.401815+00:00",
+      "pid": 65541,
+      "exit": 0,
+      "seconds": 37.19796875002794,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/spawn-fix-headless.log",
+      "log_sha256": "cd262ed91615c887d0c9addf96dd8a64bc2071ea4310c3349a59955830429863"
+    },
+    "integration-clippy": {
+      "source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "started": "2026-10-25T00:13:03.784641+00:00",
+      "pid": 50056,
+      "exit": 0,
+      "seconds": 54.35658366599819,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/integration-clippy.log",
+      "log_sha256": "6766c20497ab8fb579081dab960dd30da3b01f579604dcd230e1ce524d133f1d"
+    },
+    "integration-headless": {
+      "source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "--locked",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "started": "2026-10-25T00:13:58.253600+00:00",
+      "pid": 51103,
+      "exit": 0,
+      "seconds": 222.575781459047,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/integration-headless.log",
+      "log_sha256": "a29ded74ffacec4f66303268bbd32dde899c19d01f1f604665d8feca585e5e26"
+    },
+    "headless-ci-final": {
+      "source": "a5e5c7ddc82ff3ee22a987baa395c17cb554a04c",
+      "worktree": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364",
+      "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364/target",
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "started": "2026-10-24T22:57:32.212558+00:00",
+      "other_gates": [
+        "24598 sh scripts/ci-local.sh --parity",
+        "44177 sh scripts/ci-local.sh --parity"
+      ],
+      "pid": 224,
+      "exit": 0,
+      "seconds": 3766.842034816742,
+      "ended": "2026-10-25T00:00:19.054820+00:00",
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/headless-ci-final.log",
+      "log_sha256": "445bf4aad045d5e658afd2df73b2977037f0337f425267d54b3844a542b7211e"
+    },
+    "headless-ci-integration": {
+      "source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+      "worktree": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364",
+      "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364/target",
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh"
+      ],
+      "started": "2026-10-25T00:18:39.788983+00:00",
+      "other_gates": [
+        "46627 sh scripts/ci-local.sh --parity"
+      ],
+      "pid": 57030,
+      "exit": 0,
+      "seconds": 1052.525020122528,
+      "ended": "2026-10-25T00:36:12.314220+00:00",
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/headless-ci-integration.log",
+      "log_sha256": "667caa44a071dbc350d23746b1fedace0fd978dec4ceb14bfe40303fd4a0fa02"
     }
   },
   "plain_shell_proof": {
@@ -471,5 +635,347 @@
       "app.log": "73e8b9eb9469c47629409a089b3faf3de459eb2010b4a70501273e68642afcf2"
     }
   },
-  "provenance_gap_summary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/provenance-gap-summary.json"
+  "provenance_gap_summary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/provenance-gap-summary.json",
+  "parity_source": "a5e5c7ddc82ff3ee22a987baa395c17cb554a04c",
+  "plain_shell_proof_memory": {
+    "verdict": "pass",
+    "source": "48d76b97d1206b2d12277fd3a04cdaed0e7e842f",
+    "started": {
+      "backend_ready": true,
+      "custody_backend": "memory",
+      "events_ready": true,
+      "frame_seq": 1,
+      "generation": 1,
+      "gui_ready": true,
+      "mode": "headless",
+      "pid": 67894,
+      "run_dir": "/tmp/aster-u1-3d0c_5c1/run",
+      "running": true,
+      "unattended": false,
+      "windows": 0
+    },
+    "screen": {
+      "cols": 159,
+      "cursor": [
+        5,
+        36
+      ],
+      "cursor_style": {
+        "blinking": false,
+        "shape": "Block"
+      },
+      "generation": 1,
+      "modes": 163985,
+      "rows": [
+        "feral@Maksims-Mac-mini repository % printf '\\n\\033[1;36mHEADLESS GUI\\033[0m\\nReal zsh, real PTY, offscreen GPU.\\nHEADLESS-SHELL-PROOF-42\\n'",
+        "",
+        "HEADLESS GUI",
+        "Real zsh, real PTY, offscreen GPU.",
+        "HEADLESS-SHELL-PROOF-42",
+        "feral@Maksims-Mac-mini repository %",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "seat": "01M5R17HSNFQR5FBQNZFEHGAG6",
+      "sequence": 5,
+      "title": ""
+    },
+    "pane": {
+      "frame_presented_at": null,
+      "frame_seq": 23,
+      "occluded": false,
+      "offscreen": true,
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/plain-shell-proof-6/pane.png",
+      "rendered_at_ms": 1792881707181,
+      "seat": "01M5R17HSNFQR5FBQNZFEHGAG6",
+      "stale": false
+    },
+    "window": {
+      "frame_presented_at": null,
+      "frame_seq": 28,
+      "occluded": false,
+      "offscreen": true,
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/plain-shell-proof-6/window.png",
+      "rendered_at_ms": 1792881707245,
+      "seat": null,
+      "stale": false
+    },
+    "stopped": {
+      "backend_ready": false,
+      "custody_backend": "memory",
+      "events_ready": false,
+      "frame_seq": 28,
+      "generation": 1,
+      "gui_ready": false,
+      "mode": "headless",
+      "running": false,
+      "unattended": false,
+      "windows": 0
+    },
+    "binary_sha256": "830b00434257aa314b4aa0db82b617f824d6a6cb557d9fc5821efb24098794b3",
+    "hashes": {
+      "calls.json": "5a489959391ed3d49c316d3144741ccd1d98364e14c129f212231e13377a574a",
+      "pane.png": "cfc149ecd0419262eb84e8496d0527796e570dc7e3aea697a720a82ae63aca47",
+      "window.png": "3ea921a5fb3d597c41d4ae56d716a5219e72c54268b6d8e077471fc194fd0d29",
+      "app.log": "35675c4a65bb5348c40076756a05fcf872c2efd670c88840a8b36fa5752a19de"
+    }
+  },
+  "plain_shell_proof_file": {
+    "verdict": "pass",
+    "source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+    "started": {
+      "backend_ready": true,
+      "custody_backend": "file",
+      "events_ready": true,
+      "frame_seq": 1,
+      "generation": 1,
+      "gui_ready": true,
+      "mode": "headless",
+      "pid": 56849,
+      "run_dir": "/tmp/aster-u1-file-q4jdiiwj/account/run",
+      "running": true,
+      "unattended": true,
+      "windows": 0
+    },
+    "screen": {
+      "cols": 159,
+      "cursor": [
+        5,
+        36
+      ],
+      "cursor_style": {
+        "blinking": false,
+        "shape": "Block"
+      },
+      "generation": 1,
+      "modes": 163985,
+      "rows": [
+        "feral@Maksims-Mac-mini repository % printf '\\n\\033[1;36mHEADLESS GUI\\033[0m\\nReal zsh, real PTY, offscreen GPU.\\nHEADLESS-SHELL-PROOF-42\\n'",
+        "",
+        "HEADLESS GUI",
+        "Real zsh, real PTY, offscreen GPU.",
+        "HEADLESS-SHELL-PROOF-42",
+        "feral@Maksims-Mac-mini repository %",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "seat": "01M5R6R6N1VRR8K1NSQAFR7B88",
+      "sequence": 4,
+      "title": ""
+    },
+    "pane": {
+      "frame_presented_at": null,
+      "frame_seq": 26,
+      "occluded": false,
+      "offscreen": true,
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/plain-shell-proof-7-file/pane.png",
+      "rendered_at_ms": 1792887495733,
+      "seat": "01M5R6R6N1VRR8K1NSQAFR7B88",
+      "stale": false
+    },
+    "window": {
+      "frame_presented_at": null,
+      "frame_seq": 27,
+      "occluded": false,
+      "offscreen": true,
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/plain-shell-proof-7-file/window.png",
+      "rendered_at_ms": 1792887495763,
+      "seat": null,
+      "stale": false
+    },
+    "stopped": {
+      "backend_ready": false,
+      "custody_backend": "file",
+      "events_ready": false,
+      "frame_seq": 27,
+      "generation": 1,
+      "gui_ready": false,
+      "mode": "headless",
+      "running": false,
+      "unattended": true,
+      "windows": 0
+    },
+    "binary_sha256": "d49791a01d8512bdf851bb1766f00c319ae5676fb41cc5597e0b9139355b4109",
+    "hashes": {
+      "calls.json": "534f8e20646846ee63db5217cff98995c4722ebe78f3cd08ae1df7f95a3825d0",
+      "pane.png": "cfc149ecd0419262eb84e8496d0527796e570dc7e3aea697a720a82ae63aca47",
+      "window.png": "90de4c45acc04354d36948f9e7315ecc956de1160f8d2540cd72e54b0165e99e",
+      "app.log": "fed11c6d5170ade06ae3e6cb41b9d56c0155305a699547f5bc7ac2a9c09eabf2"
+    }
+  },
+  "render_equivalence": {
+    "old_source": "a5e5c7ddc82ff3ee22a987baa395c17cb554a04c",
+    "new_source": "f4a8a17dec1438bc43f72e5471d5be952551d90d",
+    "base": "76e89004c642356effa318f62a68c35c345ec900",
+    "paths": [
+      "crates/bbt-render",
+      "crates/bbt-ui",
+      "crates/bboxybook",
+      "lab",
+      "crates/bboxy450-term/src/scene.rs",
+      "crates/bboxy450-term/src/gpu.rs"
+    ],
+    "own_render_diff_identical": true,
+    "old_diff_sha256": "89b8446865d1b17f26526e4514327956c04d344ef3872b4e8ce98b26505dacd9",
+    "new_diff_sha256": "89b8446865d1b17f26526e4514327956c04d344ef3872b4e8ce98b26505dacd9"
+  },
+  "parity": {
+    "status": {
+      "source": "a5e5c7ddc82ff3ee22a987baa395c17cb554a04c",
+      "worktree": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364",
+      "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364/target",
+      "argv": [
+        "sh",
+        "scripts/ci-local.sh",
+        "--parity"
+      ],
+      "started": "2026-10-24T22:57:32.212558+00:00",
+      "other_gates": [
+        "24598 sh scripts/ci-local.sh --parity",
+        "44177 sh scripts/ci-local.sh --parity"
+      ],
+      "pid": 224,
+      "exit": 0,
+      "seconds": 3766.842034816742,
+      "ended": "2026-10-25T00:00:19.054820+00:00"
+    },
+    "case_count": 2144,
+    "required": 2040,
+    "measured": 2040,
+    "statuses": {
+      "review pixels": 72,
+      "within policy": 2072
+    },
+    "max_rect_error": 0.5,
+    "max_baseline_error": 0.046875,
+    "hashes": {
+      "headless-ci-final.log": "445bf4aad045d5e658afd2df73b2977037f0337f425267d54b3844a542b7211e",
+      "headless-ci-final.status.json": "63689c9654c524f4d5402bcfe89c9137fc72edbc01ba53f47e9d2cdeeba2bd13",
+      "ci-dc912364/target/parity/report.json": "da353e72a2e4a54e3238865bec413a51c45a3ff4195f342120fdd0be6a6e60d7",
+      "ci-dc912364/target/debug/bboxy450-term": "830b00434257aa314b4aa0db82b617f824d6a6cb557d9fc5821efb24098794b3",
+      "ci-dc912364/target/debug/bboxybook": "096d54a8ae7b69d9693f615f405d924509d2707ad7361042dd568ea887190627"
+    }
+  },
+  "parity_gallery": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/parity-a5e5c7dd",
+  "parity_file_hashes": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/parity-a5e5c7dd-files.json",
+    "sha256": "fc36a339ad82ab4952be16942516fc3e35414f6ccddf0733246c78ae5ce5fb9c"
+  },
+  "cleanup": {
+    "removed": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/ci-dc912364/target",
+    "logical_unique_bytes": 7286260160,
+    "allocated_unique_bytes": 7334178816,
+    "parity_gallery": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/parity-a5e5c7dd",
+    "binaries_retained": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/kept-binaries",
+    "completed_at": 1792888741.1128619
+  },
+  "private_account_cleanup": {
+    "owned_throwaway_directory": "/tmp/aster-u1-file-q4jdiiwj",
+    "removed": true,
+    "public_evidence_retained": true
+  },
+  "retained_binaries": {
+    "f4a8a17d-bboxybook": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/kept-binaries/f4a8a17d-bboxybook",
+      "sha256": "abc98a38631449b0e7f9142c392280b49d47f3972e4dd745653812ddf8fc3ece"
+    },
+    "f4a8a17d-bboxy450-term": {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/aster-headless-20261024T192621Z/kept-binaries/f4a8a17d-bboxy450-term",
+      "sha256": "d49791a01d8512bdf851bb1766f00c319ae5676fb41cc5597e0b9139355b4109"
+    }
+  },
+  "normal_gate_ruling": "Oracle1b0b74d1-0b70-4a6b-bc75-ec108d39a949; normal CI enough for f4a8a17d since own render diff matches a5e5c7dd",
+  "known_focus_gap": "T7 owns applied-frame focus/capture acknowledgment; U1 preserves that agreed ownership"
 }
