@@ -963,6 +963,10 @@ async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>
     }
 }
 
+#[allow(
+    clippy::disallowed_methods,
+    reason = "child bootstrap opens its private stderr file on IO, guarded off the UI thread"
+)]
 fn child(config: &Config, entry: &str) -> Result<Child> {
     bbt_rt::assert_not_ui_thread();
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
