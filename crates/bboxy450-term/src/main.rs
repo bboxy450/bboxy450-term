@@ -34,7 +34,7 @@ use bbt_ui_model::{
     layout::Rect,
     tokens::Theme,
 };
-use display_link::{Clock, DisplayLink, Mode};
+use display_link::{Clock, DisplayLink, Mode, WakeAction, wake_action};
 use e2e_checklist::{LocalTab, PageCommand};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -3424,6 +3424,7 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_close(event_loop);
             }
             UiEvent::Wake => {
+                let sources = self.inbox.dirty.drain();
                 if self.smoke && self.gpu.is_none() {
                     self.smoke_wake_seen = true;
                 }
@@ -3431,7 +3432,19 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
-                self.request_redraw();
+                match wake_action(
+                    &sources,
+                    self.pacer.as_ref().is_some_and(DisplayLink::is_active),
+                ) {
+                    WakeAction::Ignore => {}
+                    WakeAction::Tick => {
+                        if let Some(window) = &self.window {
+                            self.redraw_pending.set(true);
+                            window.request_redraw();
+                        }
+                    }
+                    WakeAction::Invalidate => self.request_redraw(),
+                }
             }
             UiEvent::BeginIdle => {
                 let counts = (
@@ -4908,7 +4921,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     // `ctl --help` and `e2e --help` are their own usages, printed by them.
-    if hook_args.first().is_none_or(|arg| arg != "ctl" && arg != "e2e")
+    if hook_args
+        .first()
+        .is_none_or(|arg| arg != "ctl" && arg != "e2e")
         && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")
     {
         println!("{HELP}\n{}", stall::HELP);
