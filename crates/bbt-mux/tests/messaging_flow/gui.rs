@@ -472,6 +472,16 @@ async fn exercise() {
             .unwrap(),
         ids.len() as i64
     );
+    let devices: Vec<Option<String>> = ledger
+        .connection()
+        .unwrap()
+        .prepare("SELECT actual_device FROM msg_signatures ORDER BY message")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .collect::<std::result::Result<_, _>>()
+        .unwrap();
+    assert_eq!(devices, vec![Some(actual_device.to_string()); ids.len()]);
     drop(gui);
     logic.shutdown().unwrap();
     supervisor.shutdown().unwrap();

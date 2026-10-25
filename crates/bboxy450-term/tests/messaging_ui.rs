@@ -485,6 +485,8 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
     });
     history.row(&signed, None, 101);
     history.row(&pending, None, 100); // An old publication cannot undo a newer grade.
+    history.row(&pending, None, 101); // Equal display clocks cannot revoke a completion.
+    history.row(&pending, None, 102); // A later stale projection cannot either.
     let entries = history.entries(&model, &Default::default(), &[]);
     assert!(
         entries

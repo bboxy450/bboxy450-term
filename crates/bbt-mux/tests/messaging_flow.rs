@@ -44,6 +44,7 @@ impl SeatKeys for FirstHeld {
 
 #[test]
 fn custody_hold_never_holds_local_delivery() {
+    remote_pending_fixture();
     gui::exercise_held_startup();
     let root = tempfile::tempdir().unwrap();
     let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
@@ -193,6 +194,10 @@ fn custody_hold_never_holds_local_delivery() {
 
 #[test]
 fn pending_remote_delivery_waits_and_signed_completions_follow_admission_order() {
+    remote_pending_fixture();
+}
+
+fn remote_pending_fixture() {
     let root = tempfile::tempdir().unwrap();
     let account = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
     let registry = Registry::new(account);
