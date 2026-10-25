@@ -1,3 +1,15 @@
+---
+id: 01M5SYC0G6XJG24W8S19Y730G8
+type: quarantine
+number: 324
+title: "flaky quarantine: tests that do not block while being fixed, each with owner, task, date and expiry; still run, still logged; failing alone is a failure"
+status: active
+links:
+  - { to: "[[landing]]", rel: spec }
+  - { to: "[[d321-out-of-integration-hell]]", rel: decision }
+created: "2026-10-25T16:30:16Z"
+updated: "2026-10-25T16:30:16Z"
+---
 # Flaky quarantine (#321 rule 4)
 
 A test is listed here only with an owner, a task and a date. It still runs everywhere. When a run's
