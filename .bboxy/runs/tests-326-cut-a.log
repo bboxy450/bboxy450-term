@@ -140,3 +140,29 @@ Raw command/result index (all runner times include compilation):
 Strict precheck: cargo clippy --workspace --all-targets --locked -- -D warnings — EXIT 0, runner 99.269521917 s; raw log SHA256 ed2ac3cce44f6a73304ac6f1faab9563d30f26ecaaa46d6cd234ae9e81405244.
 
 Authoritative after inventory: cargo test -p bbt-mux --locked -- --list — EXIT 0; 378 cases / 34 binaries; all 363 original cases still listed. Four new mux unit tests belong to this cut; the other eleven additions are accepted P-1 plugin_registry cases from the rebase, not attributed to this cut. Raw inventory SHA256 183845cecd72d12a4c43dea8b67386240fb0f0e7366c4ccb8955c8997064a8df.
+
+Exact normal CI (completed, supersedes the pending-gate note above)
+----------------------------------------------------------------
+Source: 2fe2e84903937204087acd61fb91870fe4dafd3e (Boxy machine signature verified).
+Command: sh scripts/ci-local.sh; normal tier, no --parity or --slow.
+Clean detached source at /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326a-73zsjgow/ci-tree; own warmed target /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326a-73zsjgow/target.
+Wrappers cleared; CARGO_BUILD_JOBS=2; dev/test O1, debug info0, debug assertions true;
+BBOXY_TEST_CUSTODY=memory. Warm dependencies, not a cold-target timing claim.
+EXIT0, 2224.673240s; same source HEAD after, tracked tree clean, 'all gates passed'.
+Raw: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-tests-326a-73zsjgow/cut-a-ci-2.log; SHA256 8412f8c0e918b969d3b2fd8e377b204acb9c67f2d2e8559f7df7292d8e2c546c.
+Workspace results: 1500 passed, 0 failed, 31 ignored; 209 libtest groups incl. doc tests.
+With invariant subprocess results: 1503 passed, 0 failed; 213 libtest groups.
+Strict workspace/all-target Clippy0 and UI lint0; no quarantine retry in this log.
+Headless smoke: memory custody witnessed, windows0, frames0/callbacks0 over10.005s,
+orderly shutdown and both cockpit children reaped.
+Default invariants:26 pass,0 failures,10 named slow skips. No scale/parity claim.
+Default socket and lifecycle binaries: each0pass/1ignored/0.00s, backed by the fast
+policy proof and exact real-boundary night run documented above, not absence alone.
+Atomic slot1 released after exit; release announcement c4b1469b-cc09-4ea5-a3f4-180cfd923fb2.
+
+Landing transition: Oracle356faa3e directs author self-land via scripts/land.sh.
+The original author branch remains frozen. The same owned clean CI checkout is now
+rook-tests-326a-land, the sole active writing branch, keeping its warm target paired
+with the checkout path as required by Oracle4c1c35e0. Original writer has no new edits.
+Only this evidence log changes after the green source; landing's own presubmit will
+check the rebased candidate. #326 Cut B and full #327 remain uncompleted work.
