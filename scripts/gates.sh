@@ -6,7 +6,16 @@
 # GATE_RUN_DIR (/tmp; the run dir is deleted on exit). macOS caps PTYs at
 # kern.tty.ptmx_max (default 511); every line reports the seat count used.
 set -eu
-cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+cargo() {
+    subcommand=$1
+    shift
+    if [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
+        command cargo "$subcommand" --target-dir "$BBOXY_CARGO_TARGET_DIR" "$@"
+    else
+        command cargo "$subcommand" "$@"
+    fi
+}
 case "${1:-}" in
   frame)
     # The app custody selector exists only with debug assertions. Keep the
@@ -19,8 +28,10 @@ case "${1:-}" in
     parent=${GATE_RUN_DIR:-/tmp}
     output=$(mktemp -d "$parent/r5-frame.XXXXXX")
     echo "R5 frame artifacts: $output; ptmx_max=$limit requested=$count" >&2
+    # macOS sh supports the descriptor limit used by this macOS-only probe.
+    # shellcheck disable=SC3045
     ulimit -n 8192
-    target=${CARGO_TARGET_DIR:-target}
+    target=${BBOXY_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-target}}
     exec "$target/release/bboxy450-term" --stall-test --stall-real --stall-frame-gate \
       --stall-seats "$count" --stall-watched "${GATE_WATCHED:-50}" \
       --stall-seconds "${GATE_SECONDS:-10}" --stall-idle 10 \
@@ -31,4 +42,4 @@ case "${1:-}" in
   *) echo "usage: sh scripts/gates.sh memory|bus|poller|frame" >&2; exit 2 ;;
 esac
 cargo build --release --locked -q -p bboxy-firehose
-exec cargo test --release --locked -q -p bbt-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1
+cargo test --release --locked -q -p bbt-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1

@@ -82,6 +82,7 @@ A test that fails under load and passes alone is a bug with an owner and a task,
 Land the day you claim or split the cut. Contract changes (`bbt-proto`, `ctl` verb tables, the gallery manifest) land alone and first. Before you start, `sh scripts/overlap.sh` shows which other branches touch your files. **No `QUIET` windows for measurement**: the 967-seat scale run is the night's, after the e2e night; the day uses a proxy inside a presubmit slot.
 
 **Shared artifacts, separate servers** ([[d325-ci-capacity]]): after entering your worktree, source `scripts/cache-env.sh` before Cargo. It selects a stable path-derived port in 4300–5299 for that worktree and a shared 50 GB local disk cache, clearing the workspace wrapper. Startup is bounded to ten seconds; missing or unavailable cache prints `cache: off (<reason>)` and compilation continues directly. Server I/O failure falls back to the local compiler. Never edit `~/.cargo/config.toml`; keep `CARGO_BUILD_JOBS=2` and your own target.
+For prechecks pass `--target-dir` (scripts carry it as `BBOXY_CARGO_TARGET_DIR`), never export `CARGO_TARGET_DIR`: its path enters the Rust cache key and prevents shared dependency hits; keep the profile environment identical too.
 
 Report the real exit code. A shared-tree run proves nothing: other agents' in-flight files leak into it.
 

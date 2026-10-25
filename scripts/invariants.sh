@@ -79,7 +79,18 @@ for invariant_file in .bboxy/invariants/*.md; do
     if [ -z "$check_command" ]; then
         printf 'invariant %s: fail (missing check)\n' "$invariant_name"
         invariant_failures=$((invariant_failures + 1))
-    elif sh -c "$check_command"; then
+    elif sh -c '
+        cargo() {
+            subcommand=$1
+            shift
+            if [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
+                command cargo "$subcommand" --target-dir "$BBOXY_CARGO_TARGET_DIR" "$@"
+            else
+                command cargo "$subcommand" "$@"
+            fi
+        }
+        eval "$1"
+    ' invariant-check "$check_command"; then
         printf 'invariant %s: pass\n' "$invariant_name"
     else
         check_exit=$?

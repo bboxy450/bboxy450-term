@@ -17,8 +17,12 @@ cd -- "$parity_root"
 if [ -z "$selected_cases" ]; then scripts/lab-check.sh; fi
 parity_out="${PARITY_OUT:-target/parity}"
 mkdir -p "$parity_out"
-cargo build -p bboxybook --locked
-bboxybook_bin="${CARGO_TARGET_DIR:-target}/debug/bboxybook"
+if [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
+    cargo build -p bboxybook --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+else
+    cargo build -p bboxybook --locked
+fi
+bboxybook_bin="${BBOXY_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-target}}/debug/bboxybook"
 # The old registry has no complete geometry fixtures. Retain its pixel report
 # alongside the current gate; never invent geometry or relax the current gate.
 if [ -z "${BBOXYBOOK_GALLERY:-}" ] && [ -z "$selected_cases" ]; then

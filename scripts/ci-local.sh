@@ -1,7 +1,7 @@
 #!/bin/sh
 # Local CI: the same gates as .github/workflows/ci.yml, run before every handoff and acceptance.
 # Run it in a clean worktree of the commit being handed off, never in the shared tree:
-#   git worktree add --detach /tmp/ci-<name> <sha>; cd there; CARGO_TARGET_DIR=<own dir> sh scripts/ci-local.sh
+#   git worktree add --detach /tmp/ci-<name> <sha>; cd there; sh scripts/ci-local.sh
 # Usage: sh scripts/ci-local.sh [--parity] [--slow]
 # The watcher's --after-tests continuation reports post-test checks only.
 # --parity runs visual parity; --slow also runs the scale gates.
@@ -16,17 +16,26 @@ gate_clean() {
     [ -z "$(git ls-files --others --exclude-standard -- crates scripts lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
 }
 if ! gate_clean; then echo 'ci-local: dirty source tree; no exact-SHA proof' >&2; exit 2; fi
-gate_sha=$(git rev-parse HEAD)
+ci_source_root=$(git rev-parse --show-toplevel)
+ci_source=$(git rev-parse HEAD)
+gate_sha=$ci_source
 gate_mode=normal
 [ "$#" -eq 0 ] || gate_mode=extended
 [ "$after_tests" = false ] || gate_mode=after-tests
 printf 'ci-local: source %s %s\n' "$gate_sha" "$gate_mode"
-# shellcheck source=scripts/cache-env.sh
-. "$(dirname "$0")/cache-env.sh"
-# Disk is tight: gates need no incremental cache and no debug info (about half the target size).
-export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}" CARGO_PROFILE_DEV_DEBUG="${CARGO_PROFILE_DEV_DEBUG:-0}" CARGO_PROFILE_TEST_DEBUG="${CARGO_PROFILE_TEST_DEBUG:-0}"
-# Bulk replay/render checks need O1 inside the startup budget; keep debug guards on.
-export CARGO_PROFILE_DEV_OPT_LEVEL="${CARGO_PROFILE_DEV_OPT_LEVEL:-1}" CARGO_PROFILE_TEST_OPT_LEVEL="${CARGO_PROFILE_TEST_OPT_LEVEL:-1}" CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
+cd "$ci_source_root"
+ci_target=${CARGO_TARGET_DIR:-${BBOXY_CARGO_TARGET_DIR:-target}}
+case "$ci_target" in /*) ;; *) ci_target="$ci_source_root/$ci_target" ;; esac
+unset CARGO_TARGET_DIR
+
+ci_remove_slot() {
+    cd "$ci_source_root" || return 1
+    if [ -e "$1/tree/.git" ]; then
+        git -C "$ci_source_root" worktree remove --force "$1/tree" || return 1
+    fi
+    rm -rf -- "$1"
+}
+ci_status=0
 # Gate slots are claimed atomically here (mkdir), so two agents starting at once cannot overrun
 # the limit: 3 while ~ has at least 25 GiB free, else 2. A slot whose owner pid is gone is reclaimed.
 # BBOXY_GATE_SLOT=none skips the claim (scoped runs that are not full gates).
@@ -37,23 +46,46 @@ if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
     for n in 1 2 3; do
         [ "$n" -gt "$limit" ] && break
         d="/tmp/bboxy450-gate-slot-$n"
-        if [ -d "$d" ] && ! kill -0 "$(cat "$d/pid" 2>/dev/null || echo 0)" 2>/dev/null; then rm -rf "$d"; fi
+        if [ -d "$d" ] && ! kill -0 "$(cat "$d/pid" 2>/dev/null || echo 0)" 2>/dev/null; then
+            ci_remove_slot "$d" || continue
+        fi
         if mkdir "$d" 2>/dev/null; then echo $$ > "$d/pid"; slot=$n; break; fi
     done
     if [ -z "$slot" ]; then echo "ci-local: all $limit gate slots are taken; retry when one is released" >&2; exit 75; fi
-    trap 'rm -rf "/tmp/bboxy450-gate-slot-$slot"' EXIT INT TERM
+    trap 'ci_status=$?; trap - EXIT; ci_remove_slot "$d" || ci_status=1; exit "$ci_status"' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
     echo "ci-local: gate slot $slot of $limit"
+    # Clean source and target at repeatable paths, without cleaning the caller.
+    ci_tree="$d/tree"
+    git worktree add --detach "$ci_tree" "$ci_source"
+    if ! cmp -s "$ci_source_root/scripts/ci-local.sh" "$ci_tree/scripts/ci-local.sh"; then
+        echo 'ci-local: entry script differs from the committed source' >&2
+        exit 2
+    fi
+    git -C "$ci_tree" checkout -f "$ci_source"
+    git -C "$ci_tree" clean -fdx
+    ci_target="$d/target"
+    mkdir "$ci_target"
+    cd "$ci_tree"
 fi
+export BBOXY_CARGO_TARGET_DIR="$ci_target"
+# shellcheck source=scripts/cache-env.sh
+. ./scripts/cache-env.sh
+# Keep profile environment identical across gates; it is part of the cache key.
+export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0
+export CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true
+printf 'ci-local: paths tree %s target %s\n' "$(pwd -P)" "$BBOXY_CARGO_TARGET_DIR"
 if [ "$after_tests" = false ]; then
     sh scripts/layering.sh
     python3 -I scripts/test-landing.py
-    cargo build --workspace --locked
-    cargo clippy --workspace --all-targets --locked -- -D warnings
+    cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+    cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
     sh scripts/quarantine-test.sh --workspace --locked
 fi
 sh scripts/ui-lint.sh
-cargo build -p bboxy450-term --locked
-smoke_bin="${CARGO_TARGET_DIR:-target}/debug/bboxy450-term"
+cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"
 case "$smoke_bin" in
   /*) ;;
   *) smoke_bin="$(pwd)/$smoke_bin" ;;

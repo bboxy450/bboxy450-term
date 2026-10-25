@@ -2,6 +2,19 @@
 # Source after entering the worktree. Cache availability never gates compilation.
 bboxy_cache_env() {
     export RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER=''
+    # Keep per-run paths and display settings out of the Rust cache key.
+    if [ -n "${CARGO_TARGET_DIR:-}" ]; then
+        BBOXY_CARGO_TARGET_DIR=$CARGO_TARGET_DIR
+    fi
+    if [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
+        case "$BBOXY_CARGO_TARGET_DIR" in
+            /*) ;;
+            *) BBOXY_CARGO_TARGET_DIR="$(pwd -P)/$BBOXY_CARGO_TARGET_DIR" ;;
+        esac
+        export BBOXY_CARGO_TARGET_DIR
+    fi
+    unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
+    export CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0
     if ! command -v sccache >/dev/null 2>&1; then
         printf 'cache: off (sccache missing)\n' >&2
         return 0
@@ -22,7 +35,6 @@ bboxy_cache_env() {
     # An inherited Unix socket would override the worktree's TCP port.
     unset SCCACHE_SERVER_UDS
     export SCCACHE_SERVER_PORT SCCACHE_DIR SCCACHE_CACHE_SIZE SCCACHE_IGNORE_SERVER_IO_ERROR
-    export CARGO_INCREMENTAL="${CARGO_INCREMENTAL:-0}"
     if bboxy_cache_reason=$(python3 - <<'PY'
 import os
 import socket
