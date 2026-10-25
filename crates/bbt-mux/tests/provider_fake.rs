@@ -55,6 +55,56 @@ fn ssh() -> HostId {
 }
 
 #[test]
+fn a_ring_batch_checks_every_logical_host_before_forwarding_any_member() {
+    use bbt_supervisor::protocol::{MAX_RING_BATCH_BYTES, RingRead};
+    let local = Ulid::new();
+    let remote = Ulid::new();
+    let unknown = Ulid::new();
+    let spy = Arc::new(Mutex::new(Spy::default()));
+    let links = bbt_mux::provider::shared::LocalLinks::new(
+        SpyLink(spy.clone()),
+        [(local, HostId::Local), (remote, ssh())],
+    );
+    let read = |seat| RingRead {
+        attachment: Attachment {
+            seat,
+            generation: 1,
+            writer_lease: Ulid::new(),
+        },
+        from: 1,
+        to: 2,
+    };
+    let batch = |reads| Action::ReadRingBatch {
+        reads,
+        max_bytes: MAX_RING_BATCH_BYTES as u32,
+    };
+    let mut link = links.link(HostId::Local);
+    let error = link
+        .request(batch(vec![read(local), read(remote)]))
+        .unwrap_err();
+    assert_eq!(
+        error.to_string(),
+        "ring batch crosses supervisor host boundary"
+    );
+    assert!(
+        spy.lock().unwrap().actions.is_empty(),
+        "valid prefix was forwarded"
+    );
+    let mut remote_link = links.link(ssh());
+    assert!(
+        remote_link
+            .request(batch(vec![read(remote), read(unknown)]))
+            .is_err()
+    );
+    assert!(
+        spy.lock().unwrap().actions.is_empty(),
+        "unknown remote member was forwarded"
+    );
+    remote_link.request(batch(vec![read(remote)])).unwrap();
+    assert_eq!(spy.lock().unwrap().actions.len(), 1);
+}
+
+#[test]
 fn fixture_is_the_host_source_and_invalid_scripts_are_rejected() {
     let clock = Arc::new(ManualClock::default());
     let mut hosts = Vec::new();

@@ -669,6 +669,7 @@ impl Supervisor {
             active: None,
             next_token: 2,
             pending_io: Vec::new(),
+            pending_batches: Vec::new(),
             capture_diagnostics: capture_diagnostics.clone(),
         };
         let thread = thread::Builder::new()
@@ -888,6 +889,7 @@ struct Actor {
     active: Option<(Ulid, Ulid)>,
     next_token: usize,
     pending_io: Vec<PendingIo>,
+    pending_batches: Vec<PendingRingBatch>,
     capture_diagnostics: Arc<capture_diagnostics::Recorder>,
     // Dropped after seats, so their queued close/flush jobs are drained first.
     capture_writer: CaptureWriter,
@@ -896,6 +898,7 @@ struct Actor {
 enum Dispatch {
     Ready(Result<Reply, Failure>),
     Pending(CaptureResponse, capture_diagnostics::Guard),
+    Batch(PendingRingBatch),
 }
 struct PendingIo {
     client: Ulid,
@@ -903,6 +906,81 @@ struct PendingIo {
     reply: Option<mpsc::SyncSender<Result<Reply, Failure>>>,
     response: CaptureResponse,
     diagnostic: capture_diagnostics::Guard,
+}
+
+struct PendingRingRead {
+    result: RingReadResult,
+    response: Option<CaptureResponse>,
+}
+
+struct PendingRingBatch {
+    client: Ulid,
+    request_id: Ulid,
+    reply: Option<mpsc::SyncSender<Result<Reply, Failure>>>,
+    members: Vec<PendingRingRead>,
+    max_bytes: usize,
+    diagnostic: capture_diagnostics::Guard,
+}
+
+fn batch_limit() -> Failure {
+    Failure::new(FailureCode::Limit, "ring history exceeds batch byte budget")
+}
+
+fn batch_wire_bytes(request_id: Ulid, results: &[RingReadResult]) -> io::Result<usize> {
+    crate::transport::encode(&Frame::new(Message::Reply {
+        request_id,
+        result: Ok(Reply::RingHistoryBatch {
+            results: results.to_vec(),
+        }),
+    }))
+    .map(|bytes| bytes.len())
+}
+
+fn bounded_batch_reply(
+    request_id: Ulid,
+    results: Vec<RingReadResult>,
+    max_bytes: usize,
+) -> Result<Reply, Failure> {
+    let encoding_failed = || Failure::new(FailureCode::Invalid, "ring batch reply encoding failed");
+    let mut bounded: Vec<_> = results
+        .iter()
+        .map(|row| RingReadResult {
+            seat: row.seat,
+            generation: row.generation,
+            from: row.from,
+            to: row.to,
+            result: Err(batch_limit()),
+        })
+        .collect();
+    let mut used = batch_wire_bytes(request_id, &bounded).map_err(|_| encoding_failed())?;
+    if used > max_bytes {
+        return Err(Failure::new(
+            FailureCode::Invalid,
+            "batch budget cannot contain member results",
+        ));
+    }
+    // Replacing a JSON array member changes only its own encoded length. Reserve
+    // named errors first, so one oversized member cannot erase a later small one.
+    for (index, candidate) in results.into_iter().enumerate() {
+        let reserved = serde_json::to_vec(&bounded[index])
+            .map_err(|_| encoding_failed())?
+            .len();
+        let actual = serde_json::to_vec(&candidate)
+            .map_err(|_| encoding_failed())?
+            .len();
+        if let Some(next) = used
+            .checked_sub(reserved)
+            .and_then(|n| n.checked_add(actual))
+            && next <= max_bytes
+        {
+            used = next;
+            bounded[index] = candidate;
+        }
+    }
+    if !batch_wire_bytes(request_id, &bounded).is_ok_and(|bytes| bytes <= max_bytes) {
+        return Err(encoding_failed());
+    }
+    Ok(Reply::RingHistoryBatch { results: bounded })
 }
 
 impl Drop for Actor {
@@ -998,6 +1076,10 @@ impl Actor {
                                     diagnostic,
                                 })
                             }
+                            Dispatch::Batch(mut batch) => {
+                                batch.reply = Some(reply);
+                                self.pending_batches.push(batch);
+                            }
                         }
                     }
                     Err(mpsc::TryRecvError::Empty) => break,
@@ -1081,12 +1163,29 @@ impl Actor {
                     },
                 }
             }
-            turn.pending(self.pending_io.len(), 0, 0);
+            turn.pending(self.pending_capture_slots(), 0, 0);
             turn.finish(capture_diagnostics::Outcome::Ok, 0, 0);
         }
     }
 
     fn dispatch(&mut self, client: Ulid, frame: Frame<Request>) -> Dispatch {
+        if matches!(&frame.body.action, Action::ReadRingBatch { .. }) {
+            let mut span = self.capture_diagnostics.start(
+                capture_diagnostics::Phase::SupervisorDispatch,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            );
+            span.request(frame.body.request_id);
+            span.pending(self.pending_capture_slots(), 0, 0);
+            let result = self.dispatch_ring_batch(client, frame);
+            span.finish(diagnostic_outcome(&result), 0, 0);
+            return match result {
+                Ok(batch) => Dispatch::Batch(batch),
+                Err(error) => Dispatch::Ready(Err(error)),
+            };
+        }
         if !matches!(
             &frame.body.action,
             Action::RingRecovery { .. }
@@ -1114,7 +1213,7 @@ impl Actor {
             to,
         );
         dispatch.request(frame.body.request_id);
-        dispatch.pending(self.pending_io.len(), 0, 0);
+        dispatch.pending(self.pending_capture_slots(), 0, 0);
         let mut query = self.capture_diagnostics.start(
             capture_diagnostics::Phase::SupervisorQuery,
             seat,
@@ -1141,7 +1240,7 @@ impl Actor {
                     "logic lease was replaced or disconnected",
                 ));
             }
-            if self.pending_io.len() >= CHANNEL_CAPACITY {
+            if self.pending_capture_slots() >= CHANNEL_CAPACITY {
                 return Err(Failure::new(
                     FailureCode::Busy,
                     "too many pending ring requests",
@@ -1179,6 +1278,128 @@ impl Actor {
         }
     }
 
+    fn pending_capture_slots(&self) -> usize {
+        self.pending_io.len()
+            + self
+                .pending_batches
+                .iter()
+                .map(|batch| batch.members.len())
+                .sum::<usize>()
+    }
+
+    fn dispatch_ring_batch(
+        &mut self,
+        client: Ulid,
+        frame: Frame<Request>,
+    ) -> Result<PendingRingBatch, Failure> {
+        if frame.version != VERSION {
+            return Err(Failure::new(FailureCode::Version, "unsupported version"));
+        }
+        if !self.clients.contains_key(&client) {
+            return Err(disconnected());
+        }
+        if frame.body.request_id.is_nil() {
+            return Err(Failure::new(FailureCode::Invalid, "nil request id"));
+        }
+        if self.active.is_none()
+            || self.active != frame.body.logic_lease.map(|lease| (client, lease))
+        {
+            return Err(Failure::new(
+                FailureCode::StaleLease,
+                "logic lease was replaced or disconnected",
+            ));
+        }
+        let Action::ReadRingBatch { reads, max_bytes } = frame.body.action else {
+            unreachable!()
+        };
+        if reads.is_empty()
+            || reads.len() > MAX_RING_BATCH_MEMBERS
+            || max_bytes as usize > MAX_RING_BATCH_BYTES
+        {
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "invalid ring batch count or byte budget",
+            ));
+        }
+        let mut identities = std::collections::BTreeSet::new();
+        if reads
+            .iter()
+            .any(|read| !identities.insert((read.attachment.seat, read.attachment.generation)))
+        {
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "duplicate ring batch member",
+            ));
+        }
+        let limits: Vec<_> = reads
+            .iter()
+            .map(|read| RingReadResult {
+                seat: read.attachment.seat,
+                generation: read.attachment.generation,
+                from: read.from,
+                to: read.to,
+                result: Err(batch_limit()),
+            })
+            .collect();
+        if !batch_wire_bytes(frame.body.request_id, &limits)
+            .is_ok_and(|bytes| bytes <= max_bytes as usize)
+        {
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "batch budget cannot contain member results",
+            ));
+        }
+        if self.pending_capture_slots() + reads.len() > CHANNEL_CAPACITY {
+            return Err(Failure::new(
+                FailureCode::Busy,
+                "too many pending ring requests",
+            ));
+        }
+        let mut members = Vec::with_capacity(reads.len());
+        let mut diagnostic = self.capture_diagnostics.start(
+            capture_diagnostics::Phase::SupervisorQuery,
+            Ulid::nil(),
+            0,
+            0,
+            0,
+        );
+        diagnostic.request(frame.body.request_id);
+        // request() only admits a query and returns its receiver. No member is
+        // awaited until every member has been validated and admitted/refused.
+        for (read, mut result) in reads.into_iter().zip(limits) {
+            let response = (|| {
+                if read.from > read.to {
+                    return Err(Failure::new(FailureCode::Invalid, "invalid history range"));
+                }
+                let seat = self.seat_mut(read.attachment.seat, read.attachment.generation)?;
+                seat.check_writer(client, &read.attachment)?;
+                seat.ring
+                    .as_ref()
+                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "no ring configured"))?
+                    .request(CaptureQuery::History {
+                        from: read.from,
+                        to: read.to,
+                    })
+            })();
+            let response = match response {
+                Ok(response) => Some(response),
+                Err(error) => {
+                    result.result = Err(error);
+                    None
+                }
+            };
+            members.push(PendingRingRead { result, response });
+        }
+        Ok(PendingRingBatch {
+            client,
+            request_id: frame.body.request_id,
+            reply: None,
+            members,
+            max_bytes: max_bytes as usize,
+            diagnostic,
+        })
+    }
+
     fn complete_io(&mut self) {
         let mut ready = Vec::new();
         for i in (0..self.pending_io.len()).rev() {
@@ -1198,6 +1419,48 @@ impl Actor {
                 let _ = reply.try_send(result);
             } else {
                 self.socket_reply(pending.client, pending.request_id, result);
+            }
+        }
+        for index in (0..self.pending_batches.len()).rev() {
+            let batch = &mut self.pending_batches[index];
+            for member in &mut batch.members {
+                let Some(response) = &member.response else {
+                    continue;
+                };
+                let result = match response.try_recv() {
+                    Ok(Ok(Reply::RingHistory { history })) => Ok(history),
+                    Ok(Ok(_)) => Err(Failure::new(
+                        FailureCode::Invalid,
+                        "ring batch reply mismatch",
+                    )),
+                    Ok(Err(error)) => Err(error),
+                    Err(mpsc::TryRecvError::Empty) => continue,
+                    Err(mpsc::TryRecvError::Disconnected) => Err(Failure::new(
+                        FailureCode::Io,
+                        "capture reply unavailable; outcome unknown",
+                    )),
+                };
+                member.response = None;
+                member.result.result = result;
+            }
+            if batch.members.iter().any(|member| member.response.is_some()) {
+                continue;
+            }
+            let batch = self.pending_batches.swap_remove(index);
+            let result = bounded_batch_reply(
+                batch.request_id,
+                batch
+                    .members
+                    .into_iter()
+                    .map(|member| member.result)
+                    .collect(),
+                batch.max_bytes,
+            );
+            batch.diagnostic.finish(diagnostic_outcome(&result), 0, 0);
+            if let Some(reply) = batch.reply {
+                let _ = reply.try_send(result);
+            } else {
+                self.socket_reply(batch.client, batch.request_id, result);
             }
         }
     }
@@ -1350,6 +1613,7 @@ impl Actor {
             }
             Action::RingRecovery { .. }
             | Action::ReadRing { .. }
+            | Action::ReadRingBatch { .. }
             | Action::PublishCheckpoint { .. } => unreachable!("ring IO is deferred"),
             Action::Input {
                 attachment,
@@ -1647,6 +1911,7 @@ impl Actor {
     }
 
     fn disconnect(&mut self, id: Ulid) {
+        self.pending_batches.retain(|batch| batch.client != id);
         if let Some(Target::Socket { token, mut peer }) = self.clients.remove(&id) {
             let _ = self.poll.registry().deregister(&mut peer.stream);
             self.routes.remove(&token);
@@ -1722,6 +1987,7 @@ impl Actor {
                         response,
                         diagnostic,
                     }),
+                    Dispatch::Batch(batch) => self.pending_batches.push(batch),
                 }
                 if !self.clients.contains_key(&id) {
                     return;
@@ -2519,6 +2785,219 @@ fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), 
 mod capture_read_tests {
     use super::*;
 
+    fn batch_row(id: u128, bytes: Vec<u8>) -> RingReadResult {
+        let seat = Ulid::from(id);
+        let end = bytes.len() as u64;
+        RingReadResult {
+            seat,
+            generation: 1,
+            from: 1,
+            to: 1,
+            result: Ok(Box::new(crate::ring::History {
+                status: crate::ring::Status {
+                    generation: 1,
+                    first_sequence: 1,
+                    committed_sequence: 1,
+                    captured_sequence: 1,
+                    byte_start: 0,
+                    byte_end: end,
+                    hot_bytes: end,
+                    paused: false,
+                    recovery_notice: None,
+                    capture: Default::default(),
+                },
+                records: vec![crate::ring::IndexedEvent {
+                    event: Event::Output {
+                        seat,
+                        generation: 1,
+                        seq: 1,
+                        bytes,
+                    },
+                    row: None,
+                }],
+                gap: None,
+                next: None,
+            })),
+        }
+    }
+
+    #[test]
+    fn ring_batch_byte_limit_refuses_only_the_member_that_does_not_fit() {
+        let first = batch_row(1, b"first".to_vec());
+        let oversized = batch_row(2, vec![255; OUTPUT_CHUNK_BYTES]);
+        let last = batch_row(3, b"last".to_vec());
+        let expected_first = first.clone();
+        let expected_last = last.clone();
+        let id = Ulid::new();
+        let mut refused = oversized.clone();
+        refused.result = Err(batch_limit());
+        let budget = crate::transport::encode(&Frame::new(Message::Reply {
+            request_id: id,
+            result: Ok(Reply::RingHistoryBatch {
+                results: vec![first.clone(), refused, last.clone()],
+            }),
+        }))
+        .unwrap()
+        .len();
+        let Reply::RingHistoryBatch { results } =
+            bounded_batch_reply(id, vec![first, oversized, last], budget).unwrap()
+        else {
+            panic!("batch reply required")
+        };
+        assert_eq!(results[0], expected_first);
+        assert_eq!(results[2], expected_last);
+        assert_eq!((results[1].from, results[1].to), (1, 1));
+        assert_eq!(
+            results[1].result.as_ref().unwrap_err().code,
+            FailureCode::Limit
+        );
+        assert!(batch_wire_bytes(id, &results).unwrap() <= budget);
+        assert!(bounded_batch_reply(id, results, 1).is_err());
+    }
+
+    #[test]
+    fn ring_batch_collects_independent_results_and_reserves_every_leaf_until_done() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let client = Ulid::new();
+        let id = Ulid::new();
+        let good = batch_row(1, b"good".to_vec());
+        let expected = good.clone();
+        let (good_tx, good_rx) = mpsc::sync_channel(1);
+        good_tx
+            .send(Ok(Reply::RingHistory {
+                history: good.result.clone().unwrap(),
+            }))
+            .unwrap();
+        let (last_tx, last_rx) = mpsc::sync_channel(1);
+        let mut gone = batch_row(2, vec![]);
+        gone.result = Err(Failure::new(FailureCode::NotFound, "seat gone"));
+        let (tx, rx) = mpsc::sync_channel(1);
+        actor.pending_batches.push(PendingRingBatch {
+            client,
+            request_id: id,
+            reply: Some(tx),
+            max_bytes: MAX_RING_BATCH_BYTES,
+            diagnostic: actor.capture_diagnostics.start(
+                capture_diagnostics::Phase::SupervisorQuery,
+                Ulid::nil(),
+                0,
+                0,
+                0,
+            ),
+            members: vec![
+                PendingRingRead {
+                    result: good,
+                    response: Some(good_rx),
+                },
+                PendingRingRead {
+                    result: gone,
+                    response: None,
+                },
+                PendingRingRead {
+                    result: batch_row(3, vec![]),
+                    response: Some(last_rx),
+                },
+            ],
+        });
+        actor.complete_io();
+        assert!(matches!(rx.try_recv(), Err(mpsc::TryRecvError::Empty)));
+        assert_eq!(
+            actor.pending_capture_slots(),
+            3,
+            "retained ready data remains charged"
+        );
+        assert!(actor.pending_batches[0].members[0].response.is_none());
+        last_tx
+            .send(Err(Failure::new(FailureCode::Busy, "capture queue full")))
+            .unwrap();
+        actor.complete_io();
+        let Reply::RingHistoryBatch { results } = rx.try_recv().unwrap().unwrap() else {
+            panic!()
+        };
+        assert_eq!(actor.pending_capture_slots(), 0);
+        assert_eq!(results[0], expected);
+        assert_eq!(
+            results[1].result.as_ref().unwrap_err().code,
+            FailureCode::NotFound
+        );
+        assert_eq!(
+            results[2].result.as_ref().unwrap_err().code,
+            FailureCode::Busy
+        );
+        assert!(rx.try_recv().is_err(), "one aggregate reply only");
+    }
+
+    #[test]
+    fn ring_batch_admission_validates_structure_and_keeps_gone_members_separate() {
+        let root = tempfile::tempdir().unwrap();
+        let mut actor = fixture_actor(root.path());
+        let client = Ulid::new();
+        let lease = Ulid::new();
+        let (tx, _rx) = mpsc::sync_channel(1);
+        actor.clients.insert(client, Target::Local(tx));
+        actor.active = Some((client, lease));
+        let reads: Vec<_> = (1..=MAX_RING_BATCH_MEMBERS)
+            .map(|n| RingRead {
+                attachment: Attachment {
+                    seat: Ulid::from(n as u128),
+                    generation: 1,
+                    writer_lease: Ulid::new(),
+                },
+                from: 1,
+                to: 2,
+            })
+            .collect();
+        let frame = |reads, max_bytes| {
+            Frame::new(Request::new(
+                Some(lease),
+                Action::ReadRingBatch { reads, max_bytes },
+            ))
+        };
+        assert!(
+            actor
+                .dispatch_ring_batch(client, frame(vec![], MAX_RING_BATCH_BYTES as u32))
+                .is_err()
+        );
+        assert!(
+            actor
+                .dispatch_ring_batch(client, frame(reads.clone(), 1))
+                .is_err()
+        );
+        let mut duplicate = reads.clone();
+        duplicate[1] = duplicate[0].clone();
+        assert!(
+            actor
+                .dispatch_ring_batch(client, frame(duplicate, MAX_RING_BATCH_BYTES as u32))
+                .is_err()
+        );
+        let mut too_many = reads.clone();
+        too_many.push(reads[0].clone());
+        assert!(
+            actor
+                .dispatch_ring_batch(client, frame(too_many, MAX_RING_BATCH_BYTES as u32))
+                .is_err()
+        );
+        assert!(
+            actor
+                .dispatch_ring_batch(
+                    client,
+                    frame(reads.clone(), MAX_RING_BATCH_BYTES as u32 + 1)
+                )
+                .is_err()
+        );
+        let batch = actor
+            .dispatch_ring_batch(client, frame(reads, MAX_RING_BATCH_BYTES as u32))
+            .unwrap();
+        assert_eq!(batch.members.len(), MAX_RING_BATCH_MEMBERS);
+        assert!(batch.members.iter().all(|m| m.response.is_none()
+            && m.result.result.as_ref().unwrap_err().code == FailureCode::NotFound));
+        actor.pending_batches.push(batch);
+        assert_eq!(actor.pending_capture_slots(), MAX_RING_BATCH_MEMBERS);
+        actor.disconnect(client);
+        assert_eq!(actor.pending_capture_slots(), 0);
+    }
+
     fn fixture_actor(root: &std::path::Path) -> Actor {
         let journal = root.join("journal");
         let poll = Poll::new().unwrap();
@@ -2544,6 +3023,7 @@ mod capture_read_tests {
             next_token: 2,
             pending_io: Vec::new(),
             capture_diagnostics: Arc::new(capture_diagnostics::Recorder::default()),
+            pending_batches: Vec::new(),
             capture_writer,
         }
     }
