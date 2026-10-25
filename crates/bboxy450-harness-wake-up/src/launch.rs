@@ -63,6 +63,57 @@ pub fn cleanup_overlay(overlay: &Path, endpoint: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
+/// Retire only a recorded short alias whose socket is absent. The caller binds
+/// `overlay` to the seat's retained launch; the overlay itself is preserved.
+pub fn cleanup_stale_runtime_alias(overlay: &Path, endpoint: Option<&Path>) -> Result<bool> {
+    use std::os::unix::fs::MetadataExt;
+    let Some(endpoint) = endpoint else {
+        return Ok(false);
+    };
+    let Some(alias) = endpoint.parent().filter(|parent| *parent != overlay) else {
+        return Ok(false);
+    };
+    let name = alias.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    if alias.parent() != Some(Path::new("/tmp"))
+        || !name
+            .strip_prefix("bboxy-cx-")
+            .is_some_and(|id| id.parse::<crate::Ulid>().is_ok())
+        || endpoint.file_name() != Some(std::ffi::OsStr::new("codex.sock"))
+    {
+        return Err(invalid("unowned runtime socket alias"));
+    }
+    let before = match std::fs::symlink_metadata(alias) {
+        Ok(meta) => meta,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+    let directory = std::fs::symlink_metadata(overlay)?;
+    // SAFETY: geteuid has no arguments or side effects.
+    let uid = unsafe { libc::geteuid() };
+    if !before.file_type().is_symlink()
+        || before.uid() != uid
+        || !directory.is_dir()
+        || directory.uid() != uid
+        || directory.mode() & 0o077 != 0
+        || std::fs::read_link(alias)? != overlay
+    {
+        return Err(invalid("unowned runtime socket alias"));
+    }
+    match std::fs::metadata(endpoint) {
+        Ok(_) => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
+    let after = std::fs::symlink_metadata(alias)?;
+    if (after.dev(), after.ino()) != (before.dev(), before.ino())
+        || std::fs::read_link(alias)? != overlay
+    {
+        return Err(invalid("runtime socket alias changed during cleanup"));
+    }
+    std::fs::remove_file(alias)?;
+    Ok(true)
+}
+
 fn runtime_endpoint(overlay: &Path) -> Result<PathBuf> {
     let endpoint = overlay.join("codex.sock");
     if endpoint.as_os_str().as_encoded_bytes().len() < 104 {
@@ -460,5 +511,79 @@ mod runtime_tests {
         assert!(!overlay.exists());
         assert!(alias.symlink_metadata().is_err());
         assert!(root.path().exists());
+    }
+
+    struct AliasFixture {
+        _root: tempfile::TempDir,
+        overlay: PathBuf,
+        endpoint: PathBuf,
+    }
+    impl AliasFixture {
+        fn new() -> Self {
+            let root = tempfile::tempdir().unwrap();
+            let overlay = root.path().join("x".repeat(120));
+            std::fs::DirBuilder::new()
+                .mode(0o700)
+                .create(&overlay)
+                .unwrap();
+            let endpoint = runtime_endpoint(&overlay).unwrap();
+            Self {
+                _root: root,
+                overlay,
+                endpoint,
+            }
+        }
+        fn alias(&self) -> &Path {
+            self.endpoint.parent().unwrap()
+        }
+    }
+    impl Drop for AliasFixture {
+        fn drop(&mut self) {
+            if std::fs::read_link(self.alias()).ok().as_ref() == Some(&self.overlay) {
+                let _ = std::fs::remove_file(self.alias());
+            }
+        }
+    }
+
+    #[test]
+    fn stale_alias_cleanup_preserves_the_overlay_and_is_idempotent() {
+        let fixture = AliasFixture::new();
+        let retained = fixture.overlay.join("retained");
+        std::fs::write(&retained, b"retained launch data").unwrap();
+        assert!(cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
+        assert!(fixture.alias().symlink_metadata().is_err());
+        assert_eq!(std::fs::read(retained).unwrap(), b"retained launch data");
+        assert!(!cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
+    }
+
+    #[test]
+    fn a_present_socket_keeps_its_alias_until_the_socket_is_gone() {
+        let fixture = AliasFixture::new();
+        let listener = std::os::unix::net::UnixListener::bind(&fixture.endpoint).unwrap();
+        assert!(!cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
+        assert_eq!(
+            std::fs::read_link(fixture.alias()).unwrap(),
+            fixture.overlay
+        );
+        drop(listener);
+        std::fs::remove_file(&fixture.endpoint).unwrap();
+        assert!(cleanup_stale_runtime_alias(&fixture.overlay, Some(&fixture.endpoint)).unwrap());
+    }
+
+    #[test]
+    fn another_seats_alias_and_a_public_overlay_are_never_removed() {
+        use std::os::unix::fs::PermissionsExt;
+        let first = AliasFixture::new();
+        let other = AliasFixture::new();
+        assert!(cleanup_stale_runtime_alias(&first.overlay, Some(&other.endpoint)).is_err());
+        for fixture in [&first, &other] {
+            assert_eq!(
+                std::fs::read_link(fixture.alias()).unwrap(),
+                fixture.overlay
+            );
+        }
+        std::fs::set_permissions(&first.overlay, std::fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(cleanup_stale_runtime_alias(&first.overlay, Some(&first.endpoint)).is_err());
+        assert_eq!(std::fs::read_link(first.alias()).unwrap(), first.overlay);
     }
 }

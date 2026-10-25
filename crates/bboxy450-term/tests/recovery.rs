@@ -7,13 +7,21 @@
 #[path = "support/events.rs"]
 mod events;
 use bboxy450_term::cockpit::{Config, Event, Session};
-use bbt_mux::{Ulid, streams::Replica};
+use bbt_mux::{
+    Ulid,
+    store::{Store, sqlite::SqliteStore},
+    streams::Replica,
+};
 use bbt_proto::{
     GuiAction, GuiReply, GuiSeat, ProcessStatus, Screen, SeatId, SpawnSpec, SwarmId, Update, View,
     Where,
 };
 use events::StateEvents;
-use std::{os::unix::fs::PermissionsExt, path::Path, time::Duration};
+use std::{
+    os::unix::fs::PermissionsExt,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 
 async fn script(path: &Path, text: String) {
     tokio::fs::write(path, text).await.unwrap();
@@ -25,10 +33,38 @@ async fn script(path: &Path, text: String) {
 #[test]
 #[ignore = "private Codex service stand-in, exercised by the recovery tests"]
 fn codex_service_fixture() {
-    let socket = std::env::var_os("BBT_RECOVERY_CODEX_SOCKET").unwrap();
-    let listener = std::os::unix::net::UnixListener::bind(socket).unwrap();
-    for stream in listener.incoming() {
-        drop(stream.unwrap());
+    let socket = PathBuf::from(std::env::var_os("BBT_RECOVERY_CODEX_SOCKET").unwrap());
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            use tokio::signal::unix::{SignalKind, signal};
+            let mut hangup = signal(SignalKind::hangup()).unwrap();
+            let mut terminate = signal(SignalKind::terminate()).unwrap();
+            let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+            loop {
+                tokio::select! {
+                    _ = hangup.recv() => break,
+                    _ = terminate.recv() => break,
+                    stream = listener.accept() => drop(stream.unwrap()),
+                }
+            }
+            // Like the real Codex server, retire the locator on lifetime HUP.
+            drop(listener);
+            std::fs::remove_file(socket).unwrap();
+        });
+}
+
+struct AliasGuard {
+    path: PathBuf,
+    target: PathBuf,
+}
+impl Drop for AliasGuard {
+    fn drop(&mut self) {
+        if std::fs::read_link(&self.path).ok().as_ref() == Some(&self.target) {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
 }
 
@@ -206,17 +242,87 @@ async fn until_text(session: &mut Session, seat: SeatId, replica: &mut Replica, 
     .unwrap();
 }
 async fn restarted(session: &mut Session) -> Vec<GuiSeat> {
-    tokio::time::timeout(Duration::from_secs(15), async {
+    restart_catalogue(async || session.event().await)
+        .await
+        .unwrap()
+}
+async fn restart_catalogue(
+    mut event: impl AsyncFnMut() -> bbt_mux::store::Result<Event>,
+) -> bbt_mux::store::Result<Vec<GuiSeat>> {
+    let started = tokio::time::Instant::now();
+    let mut last = String::from("waiting for process exit/recovery");
+    // Session gives startup 30 s after observing/reaping the old processes.
+    // This is a hang watchdog, not a stricter recovery performance budget.
+    tokio::time::timeout(Duration::from_secs(60), async {
         loop {
-            if let Event::Reply(reply) = session.event().await.unwrap()
-                && let GuiReply::Seats(seats) = *reply
-            {
-                return seats;
+            match event().await? {
+                Event::Reply(reply) => {
+                    if let GuiReply::Seats(seats) = *reply {
+                        println!(
+                            "restart catalogue after {:?}; last={last}",
+                            started.elapsed()
+                        );
+                        return Ok(seats);
+                    }
+                    last = "non-catalogue reply".into();
+                }
+                Event::Exited { process, status } => last = format!("{process} exited: {status}"),
+                Event::Disconnected(reason) => {
+                    if reason.starts_with("recovery failed:") {
+                        return Err(bbt_mux::store::invalid(reason));
+                    }
+                    last = format!("disconnected: {reason}");
+                }
             }
         }
     })
     .await
-    .unwrap()
+    .map_err(|_| {
+        bbt_mux::store::invalid(format!(
+            "restart catalogue watchdog elapsed after {:?}; last={last}",
+            started.elapsed()
+        ))
+    })?
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_accepts_completion_within_the_sessions_startup_budget() {
+    // Session allows 30 s for recovery startup. A scheduling delay within that
+    // budget must not turn a functional catalogue assertion into a speed test.
+    let seats = restart_catalogue(async || {
+        tokio::time::sleep(Duration::from_secs(16)).await;
+        Ok(Event::Reply(Box::new(GuiReply::Seats(Vec::new()))))
+    })
+    .await
+    .unwrap();
+    assert!(seats.is_empty());
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_preserves_terminal_recovery_failures() {
+    let error = restart_catalogue(async || {
+        Ok(Event::Disconnected(
+            "recovery failed: startup refused".into(),
+        ))
+    })
+    .await
+    .unwrap_err();
+    assert_eq!(error.to_string(), "recovery failed: startup refused");
+}
+
+#[tokio::test(start_paused = true)]
+async fn restart_catalogue_still_rejects_a_hang() {
+    let started = tokio::time::Instant::now();
+    let error = restart_catalogue(async || std::future::pending().await)
+        .await
+        .unwrap_err();
+    assert_eq!(started.elapsed(), Duration::from_secs(60));
+    assert!(error.to_string().contains("watchdog elapsed"));
+    assert!(
+        error
+            .to_string()
+            .contains("waiting for process exit/recovery")
+    );
 }
 async fn durable(root: &Path, seat: &GuiSeat, sequence: u64) {
     let path = root.join(format!(
@@ -368,6 +474,31 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         Some("fixture-codex-thread"),
     )
     .await;
+    let store =
+        SqliteStore::open(&root.path().join(format!("run/seat-{}", codex.record.id))).unwrap();
+    let old_codex_endpoint: Option<PathBuf> =
+        serde_json::from_slice(&store.get("adapter_runtime_endpoint").unwrap().unwrap()).unwrap();
+    let old_codex_endpoint = old_codex_endpoint.unwrap();
+    let old_alias = AliasGuard {
+        path: old_codex_endpoint.parent().unwrap().into(),
+        target: std::fs::read_link(old_codex_endpoint.parent().unwrap()).unwrap(),
+    };
+    assert_eq!(old_alias.path.parent(), Some(Path::new("/tmp")));
+    assert!(
+        old_alias
+            .path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("bboxy-cx-")
+    );
+    assert!(
+        old_alias.target.starts_with(
+            root.path()
+                .join(format!("run/seat-{}/overlays", codex.record.id))
+        )
+    );
     watch(&mut session, &zsh).await;
     let mut replica = Replica::default();
     input(
@@ -451,7 +582,21 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     let argv_hold = root.path().join("codex-hold-argv");
     tokio::fs::write(&argv_hold, b"").await.unwrap();
     session.supervisor.start_kill().unwrap();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if !old_codex_endpoint.exists() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("old Codex fixture did not retire its socket on supervisor death");
     let seats = restarted(&mut session).await;
+    let old_alias_retired = matches!(
+        old_alias.path.symlink_metadata(),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound
+    );
     assert_eq!(seats.len(), 3);
     for old in [&zsh, &claude, &codex] {
         let new = seats.iter().find(|s| s.record.id == old.record.id).unwrap();
@@ -565,6 +710,11 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         "supervisor recovery: 3 stable seat IDs, gen1->2, zsh/Claude/Codex new PIDs; 100x30, retained screen, explicit gap, actual resume argv, post-restart echo; stale Input ID preserved, drops1/2 counted, stale input file absent, stale resize rejected at PTY30x100"
     );
     session.shutdown().await.unwrap();
+    assert!(
+        old_alias_retired,
+        "old generation runtime alias survived generation 2 start: {}",
+        old_alias.path.display()
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

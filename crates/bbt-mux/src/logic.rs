@@ -3655,6 +3655,28 @@ impl Worker {
                 "generation {previous}, committed through capture sequence {} ({} bytes)",
                 state.sequence, state.byte_end
             );
+            // Resolve the old launch only through this seat's private store,
+            // before launch() replaces its retained paths. Never scan /tmp or
+            // remove a still-present socket or the predecessor's overlay.
+            if let Some(bytes) = store
+                .get("adapter_overlay")?
+                .filter(|bytes| !bytes.is_empty())
+            {
+                let name = std::str::from_utf8(&bytes)?;
+                if !name.starts_with("launch-") || name[7..].parse::<Ulid>().is_err() {
+                    return Err(invalid("invalid retained overlay name"));
+                }
+                let endpoint = store
+                    .get("adapter_runtime_endpoint")?
+                    .filter(|bytes| !bytes.is_empty())
+                    .map(|bytes| serde_json::from_slice::<Option<PathBuf>>(&bytes))
+                    .transpose()?
+                    .flatten();
+                bboxy450_harness_wake_up::launch::cleanup_stale_runtime_alias(
+                    &root.join("overlays").join(name),
+                    endpoint.as_deref(),
+                )?;
+            }
             record.generation = previous
                 .checked_add(1)
                 .ok_or_else(|| invalid("generation exhausted"))?;

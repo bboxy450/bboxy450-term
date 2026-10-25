@@ -1,0 +1,17 @@
+#279 stale alias and assigned fixture follow-ups — development proof
+Sable Embertail <EXECUTOR>; candidate d06e9d79 on accepted 7892d85f; own exec3.
+NOT A FINAL HANDOFF: focused checks below are proven; exact normal CI/strict lint and completion of fairness repetitions remain pending after QUIET r5h-frame.
+
+Mechanisms:
+launch.rs:68 — remove only the recorded own short alias, exact private overlay/UID/inode match and absent socket; preserve overlay and any present socket; no /tmp scan.
+logic.rs:3658 — read predecessor paths from that exact seat store before new generation overwrites launch state.
+recovery.rs:244 — await the actual recovery catalogue; preserve terminal startup errors; a 60 s hang watchdog covers Session's 30 s startup allowance plus death observation; last event and elapsed time on timeout. Every original Screen/generation/PID/input/argv assertion remains.
+capture_fairness.rs:176 — explicit existing fixture-lossless diagnostics for a complete trace audit; assert the mode. Production try_lock recorder and replay/admission remain unchanged; original zero-miss, per-seat cursor, exact Screen, <=16 pages and one-page/turn assertions remain.
+
+Alias regression: baseline test-only 98379213 EXIT101 solely for old alias surviving generation2 after all original recovery assertions and orderly shutdown. Fixed663feccd EXIT0 (1/0); runtime guards4/0. See exact commands/hashes in JSON.
+Recovery flake: ten baseline loaded runs passed at load1 31.29–31.67; the reported stochastic timeout was not reproduced. Paused-clock source8175f4c4 deterministically fails on a catalogue arriving16s into the original15s wrapper (test0.00s), within the product's allowed30s startup. Fixed d06e9d79 full recovery suite8/0/1 helper ignored; three paused tests prove delayed completion, original terminal error and true hang rejection. Ten fixed loaded real supervisor-kill repetitions also pass; observed recovery catalogue waits0.46–0.63s, not a throughput claim.
+Fairness classification: Recorder::update increments missed when its diagnostic Mutex try_lock would block (supervisor.rs:324-328). Its existing bounded_trace_retains_totals_and_reports_overwrite_and_contention unit intentionally expects1; this is observer sample loss, not capture/replay loss. Ten unchanged baseline runs passed at load1 13.10–15.04, so no stochastic reproduction is claimed. Fixed single run passes all exact assertions. Explicit lossless-mode assertion prevents silently dropping audit coverage; existing contention/lossless controls will run after quiet.
+
+Quiet compliance error: a tool batch returned Rook START, then started the next repeat loop before model inspection. Exact own runner27712 and bounded workers27724/27725 stopped at2026-10-25T02:25:23Z after fresh command/start matching; post-stop ps exit1, no recorded survivors. Partial completed iterations are retained in JSON, not claimed as ten. Outer run exit130. Iteration8's wrapper was interrupted before command-ledger completion, not counted. No new job until Rook END/deadline; own runner now checks recorded quiet state before workers/every test. Oracle and Rook notified.
+
+All six candidate commits have G signatures. No push/merge. No renderer/UI/lab/protocol/custody/Config/input-probe edits. No native harness/model probe repeated; the companion used here is the existing private real-socket stand-in, with actual supervisor SIGKILL. No operator input or Keychain.
