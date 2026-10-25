@@ -1,0 +1,59 @@
+ROLE: EXECUTOR — Nyx Copperwing. R5i-measure.
+Source: 9c688a1a9b522bc557ecad29b050825772b012f2 on 92107d42.
+Exact normal CI: EXIT0,1192.887s, slot2, PID50181; workspace1366/0/29, strict0, UI lint0, headless idle0/0/10.004s, invariants23/0 (9 slow skipped).
+Owned build target removed:15683141632 allocated bytes; source checkout clean.
+Main moved during gate:0e82311f,26a9c718,9c9299b1; source stayed frozen.
+Required implementation/verification complete; Oracle verifies/merges. UI scroll next.
+
+Mechanism:
+- bbt-rt/src/diagnostics.rs — fixed atomic counters, start-period attribution,
+  callback thread CPU, completed/active counts, one bounded probe timeline;
+  default-disabled hooks skip clocks, counter changes and allocation.
+- app main.rs:3292/4115/4427/4793 — Latest take, drain, old-model Arc drop,
+  tickless projection counts and complete callback boundaries including returns.
+- app scene.rs:421 and model.rs:854 — model assembly, frame preparation,
+  Scene projection and SeatRow rebuilding; ordinary spans measure wall time.
+- app live.rs:268 and stall/load.rs:988 — publication/Latest/old-Arc costs,
+  actual GUI read/apply observations. Existing bounded queues and ACKs retained.
+- mux logic.rs:4641/4721 — ReadRing attempts/seats/output bytes and terminal
+  decode/apply. Both replay and direct live probe outputs are distinguished.
+- stall.rs:487/634 — report/settle JSON and native observed-model stamps;
+  existing flat settle keys preserved, missing observations remain null.
+
+Scope limits:
+- No bbt-supervisor, transport, protocol, queue, scheduling, budget or paint edits.
+- SupervisorConnection::request returns decoded history; request_ns is inclusive
+  RPC/transport wait. Syscall-only time is explicitly null/unavailable, per
+  refined scope76a07d9e; never labelled as a syscall. Existing capture.json has
+  its own clock; R5i stamps use one separate in-process monotonic origin.
+- Times are inclusive. CPU is sampled only for callbacks; cpu_samples=0 is
+  unmeasured, not proof of zero CPU. Keys are included in WindowOther; the one
+  key adapter and Kitty guard remain unchanged.
+- Latest publication can include dropping an evicted unread Arc. Tickless work
+  counts Scene::set_model calls within that drain, not distinct durable models.
+- R5i keeps the existing one-probe-per-run workload. No 967 run by Nyx.
+
+Preflight:
+- Workspace2549c5d4:1366/0/29 ignored. The subsequent Rust change boxes only
+  Control::Finish's one-time payload; stall13/0 and actual completion1/0 pass.
+- Strict workspace/all-target Clippy0 and default invariants23/0,9 slow skipped
+  on0e3307bc. Rebase to9c688a1a adds only upstream spec changes; crates/scripts
+  are byte-identical (git diff --quiet exit0). Rebased corpus6/0.
+- Recorder4/0; Kitty1/0; controlled real GUI socket applies/ACKs128 updates while
+  side work is held and verifies receive timestamps/counters.
+- First workspace7f4d5a94:1364/2/29. Own keyboard classification/source guard
+  and own .md evidence note/corpus failures fixed, not waived. Helper move6dd
+  also tripped the global key guard; key discrimination was removed completely.
+- Strict2549 failed large_enum_variant; completion boxing fixed it, no allow.
+- Development debug2-PTY stress exited1 at the unchanged settle guard at load42.5
+  before proposed timeline assertions; raw15MB retained under target/r5i.
+  Pre-instrumentation optimizedff0d control exited0 at load15.2. Different
+  profiles/load: this is not a causal regression classification. Final tests
+  verify counters and honest nulls, not a new performance budget.
+
+Cleanup:
+- b620fd19 authorized retirement of unused owned merged galleries/binaries.
+  C3:13720 files,591708160 allocated bytes removed; lsof1/no handles; every
+  retired hash matches committed c3-ctl-ui-hashes-ff0d7433.jsonl. Reports,
+  manifests and JSON retained; inventory target/r5i/c3-cleanup.json. Retired
+  C3 PNG/binary paths must not be cited as live evidence.

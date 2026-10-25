@@ -1,0 +1,13 @@
+{
+  "source": "9c688a1a9b522bc557ecad29b050825772b012f2",
+  "files": {
+    ".bboxy/runs/r5i-measure-ci-9c688a1a.log": "861ae7b0eebf37e3557aca14ed327b616c96ae24f68b6ad879022825ac880eea",
+    ".bboxy/runs/r5i-measure-preflight-7f4d5a94.log": "f721ac8f72ce6ead52f12bd3a161a204bac9b122119fc48931c1b73113521aef",
+    ".bboxy/runs/r5i-measure-keyguard-6dd1e0cb.log": "a40c48e8601df1491bd67ca731d17b6abd1c55ccb99c5d22c55dd91ce2ad255e",
+    ".bboxy/runs/r5i-measure-clippy-2549c5d4.log": "ba9eb4aade168bd9222e65be41095a5d3ae236696e81b045e701444aa80fed30",
+    ".bboxy/runs/r5i-measure-off-clock-tests.log": "40da39e32e159ca29f1487b062bca373f346b75baf3026d40eeba9f536661158",
+    ".bboxy/runs/r5i-c3-cleanup-9c688a1a.json": "134f830435123908f87923ae4ed6d43c58c7cccae45c6a2d7cb2f3aba8ada556",
+    ".bboxy/runs/r5i-measure-verdict-9c688a1a.json": "4d29a686a4777ac871c1a4424dd1615ee62ff4622c42700e37c9cfc509e397b1",
+    ".bboxy/runs/r5i-measure-handoff-9c688a1a.log": "f21fd9bb44e6406b318468a4d52c5be8a9ff53bd110df323675cc4db9dbefa05"
+  }
+}

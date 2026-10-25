@@ -1,0 +1,101 @@
+{
+  "source": "9c688a1a9b522bc557ecad29b050825772b012f2",
+  "base": "92107d4274b1e816dcd05a9f9a32f4ca2fc7edb7",
+  "command": [
+    "sh",
+    "scripts/ci-local.sh"
+  ],
+  "exit": 0,
+  "elapsed_seconds": 1192.887376708968,
+  "slot": 2,
+  "worktree": "/Users/feral/mydev/bboxy450-term-nyx/target/r5i-verify",
+  "worktree_clean": true,
+  "workspace": {
+    "passed": 1366,
+    "failed": 0,
+    "ignored": 29
+  },
+  "strict_clippy": 0,
+  "ui_lint": 0,
+  "smoke": {
+    "mode": "headless",
+    "windows": 0,
+    "frames": 0,
+    "callbacks": 0,
+    "seconds": 10.004
+  },
+  "invariants": {
+    "checks": 23,
+    "failures": 0,
+    "slow_skipped": 9
+  },
+  "gate_allocated_bytes_removed": 15683141632,
+  "source_file_sha256": {
+    ".bboxy/runs/r5i-measure-plan.log": "f4d8a1dc47a466ae649aa4c8e5f9f51259356f264676c2516b5be228e7c218ab",
+    "crates/bboxy450-term/src/live.rs": "1f4aacc8764012ebf4c5798ebc7da99a120bf10ab873ebd2edadefb52476c06e",
+    "crates/bboxy450-term/src/main.rs": "42022881e7b1650d52fe1d7a2fba07a41078a777a8162adc378f9cf8fe268c7c",
+    "crates/bboxy450-term/src/model.rs": "5520906a0d83724b96cbd2c17797624c59e88fcfadb8772ed36e25ba725205f2",
+    "crates/bboxy450-term/src/scene.rs": "2234302088210373b810d8c380f8500f2c8f565257913214401509a8c8face90",
+    "crates/bboxy450-term/src/stall.rs": "488d7edb2c7f638b74ec1c8f982cd446e46284c4a057f220b2cec3a11ee2c061",
+    "crates/bboxy450-term/src/stall/headless.rs": "f9e96bf5ab55d7653e9c8aad057822b6120c17957dde4c34f600d5242dc04f6b",
+    "crates/bboxy450-term/src/stall/load.rs": "bc8a20d8b3467bc235aedf38fea88035f71344790d70c6d482b65ddb8ad398d4",
+    "crates/bboxy450-term/tests/r5_stall.rs": "7afdc615fef02407e21903ad0abda3d649331e4e72dc5b6cacd8624c860878e3",
+    "crates/bbt-mux/src/logic.rs": "b646068a494d7be08bab5e36041c0c1b6cd8e571f89e731a581ab3f0ebed16d3",
+    "crates/bbt-rt/src/diagnostics.rs": "47f70f0a00a9a40bf8bf19253bf8eb5a464c6cc520e17b32e5a2e3d74f99c190",
+    "crates/bbt-rt/src/lib.rs": "32c6c98b34bab4990685cd77ff74a8c354854d55ccf39c68eff03d0eaa20fde5"
+  },
+  "main_moved_during_gate": [
+    "0e82311f Kestrel identity unlock",
+    "26a9c718 Aster ctl debug",
+    "9c9299b1 Corvin UI-scroll coordinates"
+  ],
+  "limits": [
+    "R5i clock independent of existing capture.json epoch",
+    "inclusive scopes; cpu_samples0 means CPU not measured",
+    "ReadRing request is opaque RPC/transport wait; syscall-only is null by refined scope",
+    "one existing probe per run; no 967 attempt; UI scroll is the next cut"
+  ],
+  "history": {
+    "capacity": {
+      "exit": 75,
+      "before_any_build": true,
+      "proof": "target/r5i-gate-9c688a1a9b52/capacity-75-status.json"
+    },
+    "first_workspace": {
+      "source": "7f4d5a94",
+      "exit": 101,
+      "passed": 1364,
+      "failed": 2,
+      "ignored": 29,
+      "causes": [
+        "own extra key classification violating source guard",
+        "own .md evidence note parsed as unnumbered record"
+      ]
+    },
+    "helper_source_guard": {
+      "source": "6dd1e0cb",
+      "exit": 101,
+      "resolution": "removed key classification entirely, WindowOther covers it"
+    },
+    "strict": {
+      "source": "2549c5d4",
+      "exit": 101,
+      "resolution": "boxed one-time completion payload"
+    },
+    "development_real2": {
+      "exit": 101,
+      "profile": "unoptimized debug, load42.48",
+      "reason": "existing settle guard before new assertions",
+      "raw": "target/r5i/pipeline-tests.log",
+      "raw_sha256": "19a0122c2cfd81f859a921a9c69847af49aa55954e82ac94a62ce44177c9a47d",
+      "source_binding": "uncommitted development cut, not accepted-source proof"
+    },
+    "optimized_pre_instrumentation_control": {
+      "source": "ff0d7433",
+      "exit": 0,
+      "load": 15.24,
+      "proof": "target/r5i/pre-instrumentation-control/result.json",
+      "causal_comparison": "unproven: different profiles and host loads"
+    }
+  }
+}
