@@ -121,6 +121,24 @@ fn flood(out: &mut impl Write, cycle: &[u8], mut remaining: Option<u64>) -> io::
 )]
 fn paced(out: &mut impl Write, bytes: &[u8], options: &Options) -> io::Result<()> {
     let started = Instant::now();
+    paced_with_clock(
+        out,
+        bytes,
+        options,
+        || started.elapsed(),
+        std::thread::sleep,
+        || SIGNAL.load(Ordering::Relaxed) != 0,
+    )
+}
+
+fn paced_with_clock(
+    out: &mut impl Write,
+    bytes: &[u8],
+    options: &Options,
+    mut elapsed: impl FnMut() -> Duration,
+    mut pause: impl FnMut(Duration),
+    mut stopped: impl FnMut() -> bool,
+) -> io::Result<()> {
     let mut rng = Rng(options.seed);
     let mut emitted = 0u128;
     let mut lines = 0u128;
@@ -129,7 +147,7 @@ fn paced(out: &mut impl Write, bytes: &[u8], options: &Options) -> io::Result<()
     loop {
         let mut offset = 0;
         while offset < bytes.len() {
-            if SIGNAL.load(Ordering::Relaxed) != 0 {
+            if stopped() {
                 return Ok(());
             }
             let max_bytes = match options.rate {
@@ -167,11 +185,11 @@ fn paced(out: &mut impl Write, bytes: &[u8], options: &Options) -> io::Result<()
                 });
             }
             let deadline = options.rate.elapsed_for(emitted, lines).max(real_time);
-            while let Some(delay) = deadline.checked_sub(started.elapsed()) {
-                if SIGNAL.load(Ordering::Relaxed) != 0 {
+            while let Some(delay) = deadline.checked_sub(elapsed()) {
+                if stopped() {
                     return Ok(());
                 }
-                std::thread::sleep(delay.min(Duration::from_millis(20)));
+                pause(delay.min(Duration::from_millis(20)));
             }
             offset = end;
         }
@@ -181,4 +199,60 @@ fn paced(out: &mut impl Write, bytes: &[u8], options: &Options) -> io::Result<()
         }
     }
     out.flush()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    fn render(bytes: &[u8], options: &Options) -> (Vec<u8>, Duration) {
+        let elapsed = Cell::new(Duration::ZERO);
+        let mut output = Vec::new();
+        paced_with_clock(
+            &mut output,
+            bytes,
+            options,
+            || elapsed.get(),
+            |delay| {
+                // A zero-duration yield still lets a real monotonic clock
+                // progress; give the virtual clock that same progress.
+                elapsed.set(elapsed.get() + delay.max(Duration::from_nanos(1)));
+            },
+            || false,
+        )
+        .unwrap();
+        (output, elapsed.get())
+    }
+
+    // keeps: spec 2026-10-22-t-terminal-fidelity §T1
+    #[test]
+    fn byte_and_line_rate_caps_keep_the_exact_stream() {
+        let expected = scene_bytes(&SCENES[9]);
+        let lines = expected.iter().filter(|byte| **byte == b'\n').count();
+        assert!(lines > 0);
+        for rate in [
+            format!("{}B/s", expected.len() * 4),
+            format!("{}lines/s", lines * 4),
+        ] {
+            let options =
+                Options::parse(["--scene", "osc7501-codex", "--rate", &rate].map(str::to_owned))
+                    .unwrap();
+            let (output, elapsed) = render(&expected, &options);
+            assert_eq!(output, expected);
+            assert!(elapsed >= Duration::from_millis(250));
+        }
+    }
+
+    // keeps: spec 2026-10-22-t-terminal-fidelity §T1
+    #[test]
+    fn real_pacing_preserves_scene_bytes() {
+        let expected = scene_bytes(&SCENES[5]);
+        let options = Options::parse(
+            ["--scene", "alternate", "--pace", "real", "--seed", "42"].map(str::to_owned),
+        )
+        .unwrap();
+        let (output, _) = render(&expected, &options);
+        assert_eq!(output, expected);
+    }
 }

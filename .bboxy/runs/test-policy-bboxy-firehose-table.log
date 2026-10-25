@@ -1,0 +1,30 @@
+# bboxy-firehose test-policy sweep (#327)
+
+Base: `5c6d0edce8b7094062e4cf6a77a575b6b8923e27`. All 14 original entries are accounted for below; 15 after (two tests moved, one refusal split). All 15 retained/moved/new tests are tagged `spec 2026-10-22-t-terminal-fidelity §T1`. No deletion.
+
+| Original test / file | Classification | Disposition | Preserved contract |
+|---|---|---|---|
+| `crates/bboxy-firehose/tests/cli.rs` — `named_scene_and_bounded_loops_are_exact_bytes` | D | keep | Same scene bytes repeated exactly three times; success and empty stderr retained. |
+| `crates/bboxy-firehose/tests/cli.rs` — `seed_is_reproducible_and_reorders_the_complete_corpus` | D | keep | Same seed repeatability and complete seeded corpus bytes retained. |
+| `crates/bboxy-firehose/tests/cli.rs` — `listing_and_checks_never_emit_terminal_control_bytes` | D | keep | Public --list/--check outputs retain line/count/hash and no-escape assertions. |
+| `crates/bboxy-firehose/tests/cli.rs` — `invalid_inputs_fail_before_emitting_ansi` | D + B2 | rewrite/split | All eight refused argument vectors use Options::parse; one real CLI refusal retains exit 2, empty stdout, and nonempty stderr. |
+| `crates/bboxy-firehose/tests/cli.rs` — `byte_and_line_rate_caps_keep_the_exact_stream` | D + B1 | move to private clock seam | Same stream, byte and line rate cases; virtual elapsed >=250 ms replaces physical >=240 ms. Now src/main.rs::tests with the same name. |
+| `crates/bboxy-firehose/tests/cli.rs` — `real_pacing_preserves_scene_bytes` | D + B1 | move to private clock seam | Same alternate scene, real pacing and seed; exact bytes retained without wall-clock playback. |
+| `crates/bboxy-firehose/tests/cli.rs` — `rates_have_explicit_units_and_cumulative_deadlines` | D | keep | Pure rate parsing and cumulative Duration results retained. |
+| `crates/bboxy-firehose/tests/cli.rs` — `playback_needs_no_corpus_files_in_its_working_directory` | D | keep | Real embedded-binary boundary retains empty-cwd independent exact playback. |
+| `crates/bboxy-firehose/tests/cli.rs` — `interrupting_slow_playback_restores_modes_without_waiting_for_the_rate` | D + B1 | rewrite wall-clock assertion | First output signals installed handler; SIGINT only owned child, exit 130 and exact restore suffix retained. Removes <500 ms wall-clock assertion. |
+| `crates/bboxy-firehose/tests/cli.rs` — `a_closed_downstream_pipe_stops_an_infinite_flood_cleanly` | D | keep | Owned child pipe close and clean process exit retained. |
+| `crates/bboxy-firehose/tests/corpus.rs` — `frozen_semantic_screens_survive_arbitrary_pty_chunking` | D | keep | Same frozen terminal hashes at whole/1/7/64/4096-byte chunking. |
+| `crates/bboxy-firehose/tests/corpus.rs` — `originals_are_control_only_and_embedded_verbatim` | D | keep | Original Claude/Codex provenance and embedded-byte contracts retained; not a disposable constant snapshot. |
+| `crates/bboxy-firehose/tests/corpus.rs` — `scenes_exercise_real_grid_effects_and_leave_modes_balanced` | D | keep | Actual terminal grid/mode effects retained verbatim. |
+| `crates/bboxy-firehose/tests/corpus.rs` — `cursor_scenes_are_steady_and_the_next_scene_restores_the_default` | D | keep | Actual steady cursor and next-scene default restoration retained verbatim. |
+
+## Coverage and mechanism
+
+- T1 embedded corpus, list/check, bounded loops, seed ordering, rate units, refusal, read-only cwd, SIGINT restoration, closed downstream pipe, and real terminal screen semantics all retain tests.
+- `paced_with_clock` is private. Its body equals the original pacer after substituting elapsed/pause/stop callbacks; the public caller still supplies Instant, the original 20 ms sleep cap and the same signal flag. Production behavior, flags, error prose and corpus are unchanged.
+- Four corpus test bodies and all 14 corpus/provenance/hash files are byte-identical to the base. No manifest, dependency, wire or golden edit.
+- Real CLI boundaries remain only where T1 directly names the binary output or OS signal/pipe behavior; parser cases use the existing pure Options seam. No boundary is replaced by a mock.
+- Reported test-run time: 0.99 s before, 0.22 s after; 14/0 to 15/0, no ignored tests. These are measurements, never pass predicates. Explicit test sleep calls: 0 before / 0 after; two physical pacing waits and one wall-clock speed assertion removed.
+- Crate tests, inventory and strict all-target clippy exited 0; exact command states and raw output are retained for the combined evidence commit. No operator, Keychain, production identity or network fixture.
+- No active peer path overlap at the base. One combined land/presubmit covers the four assigned crates; no per-crate full gate.

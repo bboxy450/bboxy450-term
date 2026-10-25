@@ -43,6 +43,7 @@ fn screen(term: &Term) -> Vec<u8> {
     .unwrap()
 }
 
+// keeps: spec 2026-10-22-t-terminal-fidelity §T1
 #[test]
 fn frozen_semantic_screens_survive_arbitrary_pty_chunking() {
     let mut mismatches = Vec::new();
@@ -70,6 +71,7 @@ fn frozen_semantic_screens_survive_arbitrary_pty_chunking() {
     assert!(mismatches.is_empty(), "{}", mismatches.join("\n"));
 }
 
+// keeps: spec 2026-10-22-t-terminal-fidelity §T1
 #[test]
 fn originals_are_control_only_and_embedded_verbatim() {
     for (scene_name, original) in [
@@ -109,6 +111,7 @@ fn originals_are_control_only_and_embedded_verbatim() {
     }
 }
 
+// keeps: spec 2026-10-22-t-terminal-fidelity §T1
 #[test]
 fn scenes_exercise_real_grid_effects_and_leave_modes_balanced() {
     use bbt_core::term::{TermMode, cell::Flags};
@@ -177,6 +180,7 @@ fn scenes_exercise_real_grid_effects_and_leave_modes_balanced() {
     }
 }
 
+// keeps: spec 2026-10-22-t-terminal-fidelity §T1
 #[test]
 fn cursor_scenes_are_steady_and_the_next_scene_restores_the_default() {
     use bbt_core::ansi::CursorShape;
