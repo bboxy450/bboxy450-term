@@ -4049,9 +4049,12 @@ fn mcp_record_numbers_resolve_before_the_existing_task_authority_fences() {
 #[test]
 fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_bytes() {
     let mut f = Fixture::new();
-    f.task_file(f.task_metadata());
-    let nested = f.config.repository.join(".bboxy/nested");
-    std::fs::create_dir(&nested).unwrap();
+    // The provenance observer legitimately numbers newly observed files. Keep
+    // this allocator input in its excluded artifact subtree, so that observer
+    // cannot allocate 9002 before this claim. Index allocation still scans every
+    // nested Markdown record and type, including this BOM/CRLF spec.
+    let nested = f.config.repository.join(".bboxy/artifacts/number-inputs");
+    std::fs::create_dir_all(&nested).unwrap();
     std::fs::write(
         nested.join("spec.md"),
         format!(
