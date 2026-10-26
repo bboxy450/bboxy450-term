@@ -14,7 +14,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-25T16:22:41Z"
-updated: "2026-10-25T23:46:08Z"
+updated: "2026-10-26T05:08:41Z"
 ---
 # Landing
 
@@ -28,7 +28,7 @@ A **cut** is one Executor's change on one branch, meant to land the day it is cl
 
 ## 0a. Where the landing state lives (Aster's ruling request, 2026-10-25)
 
-The live landing state is **one machine-wide mutable directory, never committed and never per worktree**: `${XDG_STATE_HOME:-$HOME/.local/state}/bboxy450-term/landing/`, holding `main-status`, `landings.log`, `presubmit.log`, `postsubmit.log` and `parity-last-green`; every script reads and writes there, and **`BBOXY_LANDING_STATE_DIR`** overrides it for fixture runs on throwaway repositories, which is the only override. The native render sets the postsubmit stores are cache, not state: `${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-term/parity/<sha>/`, the pointer in the state directory naming the current green sha. **Evidence enters the record once a day, not per landing:** the night runner copies the day's `landings.log` and `postsubmit.log` into `.bboxy/runs/landing/<date>-landings.log` and `<date>-postsubmit.log` and lands them through `records-push.sh`, so the record carries provenance while `main` never churns on a log line. Wherever this spec names `.bboxy/runs/<file>` for a live file, read the state directory; the committed copies are the daily snapshots. The invariant check `main-red-bounded.sh` reads the live state directory, honouring the override.
+The live landing state is **one machine-wide mutable directory, never committed and never per worktree**: `${XDG_STATE_HOME:-$HOME/.local/state}/bboxy450-term/landing/`, holding `main-status`, `landings.log`, `presubmit.log`, `postsubmit.log` and `parity-last-green`; every script reads and writes there, and **`BBOXY_LANDING_STATE_DIR`** overrides it for fixture runs on throwaway repositories, which is the only override. The native render sets the postsubmit stores are cache, not state: `${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-term/parity/<sha>/`, the pointer in the state directory naming the current green sha. **Evidence is a hash and a summary, never the raw log** ([[d341-three-wastes-cut]]): raw logs stay in this directory and in the runner's scratch; the record keeps the command, the exit, the raw log's sha256 and five to twenty lines of summary. **Evidence enters the record once a day, not per landing:** the night runner copies the day's `landings.log` and `postsubmit.log` into `.bboxy/runs/landing/<date>-landings.log` and `<date>-postsubmit.log` and lands them through `records-push.sh`, so the record carries provenance while `main` never churns on a log line. Wherever this spec names `.bboxy/runs/<file>` for a live file, read the state directory; the committed copies are the daily snapshots. The invariant check `main-red-bounded.sh` reads the live state directory, honouring the override.
 
 ## 1. The flow
 
@@ -78,7 +78,7 @@ A numbered record with one table: test, crate, owner, task number, since, expire
 
 ## 9. Size and overlap
 
-A cut lands the day it is claimed or is split. Contract changes (`bbt-proto`, the `ctl` verb tables, the gallery manifest) land alone and first, as the switch before the load. Big work lands as stacked small landings behind flags, in the noun modules of [[d320-dispatch-by-noun]]. **`scripts/overlap.sh [BRANCH]`** lists the other `origin/*` branches ahead of `main` whose touched paths intersect the branch's, so two Executors see a collision before they write it rather than at the merge; a claim line in the channel names the paths it will touch.
+A cut lands the day it is claimed or is split. Contract changes (`bbt-proto`, the `ctl` verb tables, the gallery manifest) land alone and first, as the switch before the load, **when other agents need the contract before its implementation is ready**; when one author does both and the wire golden proves every old byte unchanged, contract and first implementation land as one cut ([[d341-three-wastes-cut]]). Big work lands as stacked small landings behind flags, in the noun modules of [[d320-dispatch-by-noun]]. **`scripts/overlap.sh [BRANCH]`** lists the other `origin/*` branches ahead of `main` whose touched paths intersect the branch's, so two Executors see a collision before they write it rather than at the merge; a claim line in the channel names the paths it will touch.
 
 ## 10. Roles in the flow
 

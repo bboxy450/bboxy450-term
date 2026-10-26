@@ -88,13 +88,15 @@ Report the real exit code. A shared-tree run proves nothing: other agents' in-fl
 
 ## Handoff format (DM to the Oracle)
 
-1. Signed commit SHA, and the branch or worktree.
-2. Files changed with `file:line` and the mechanism, one line each.
-3. Every command you ran with its **real** exit status, failures included.
-4. Evidence per acceptance line of the brief.
-5. What was not checked, and what you deliberately left alone.
+At most eight lines (decision #341); every other detail lives in the evidence file it points at:
 
-6. The `LANDED <sha>` line, or `land.sh`'s exit code and why.
+1. The signed sha and how it landed (`LANDED <sha>`, or `land.sh`'s exit and why).
+2. The verdict against the brief's acceptance, one line.
+3. Test and check counts, passed and failed.
+4. The evidence path: a file holding commands with real exits, `file:line` changes, the raw log's sha256, and what was not checked.
+5. Anything left undone, one line.
+
+Raw logs stay out of `.bboxy/runs`: commit the command, the exit, the log's sha256 and a five-to-twenty-line summary.
 
 An Executor's report is a claim. A landing is accepted when the postsubmit is green on or after it and the Oracle's review of the landed code raised nothing; the Oracle reverts otherwise.
 
