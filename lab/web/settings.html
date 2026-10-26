@@ -43,7 +43,7 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
     // a swap in flight keeps the bundled provider answering; a refused swap stays on it and says why
     const knRoot = { name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-bboxy', records: 418, answering: 'logic · in process' };
     const knMore = s === 'knowledge · swap pending' ? { pending: { to: 'bboxy450-term-data_source-stub' } }
-      : s === 'knowledge · swap refused' ? { refused: 'swap to bboxy450-term-data_source-stub refused · conformance: fetch returned a different digest for 1 of 418 records; still answered by the bundled provider' } : null;
+      : s === 'knowledge · swap refused' ? { refused: 'swap to bboxy450-term-data_source-stub refused · provider_busy; still answered by the bundled provider' } : null;
     const kn = knMore ? { roots: [{ ...knRoot, ...knMore }], offered: C.SET.knowledge.offered } : s === 'knowledge · swapped to the stub' ? { roots: [{ name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-stub', records: 418, answering: 'bboxy450-term-data_source-stub · pid 4312, over stdio', digests: '418 of 418 record digests identical, no file moved' }], offered: C.SET.knowledge.offered } : null;
     frame.append(C.settingsPage({ section: draft ? 'Harnesses' : pl ? 'Plugins' : nv ? 'Notifications' : mv ? 'Messaging' : cu ? 'Account' : kn ? 'Knowledge' : s, draftHarness: draft, notifications: nv, custody: cu, knowledge: kn, messaging: mv, plugins: pl })); body.append(frame);
   } });

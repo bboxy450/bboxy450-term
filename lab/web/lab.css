@@ -362,6 +362,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .settings .toggle.on { background: var(--accent); }
 .settings .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left var(--hover-ms); }
 .settings .toggle.on::after { left: 14px; background: #fff; }
+.settings .sel.disabled { opacity: .4; cursor: not-allowed; }   /* a picker held while its swap is pending, dimmed as the pending toggle is */
 .settings .toggle.disabled { opacity: .4; cursor: not-allowed; }   /* notifications off: the rows keep their values, greyed */
 .settings .nh { display: inline-flex; align-items: center; gap: var(--s3); } .settings .nh .hicon { width: 16px; height: 16px; }
 .settings .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-idle); display: inline-block; flex: none; }
