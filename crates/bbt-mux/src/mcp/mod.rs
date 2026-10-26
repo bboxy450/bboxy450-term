@@ -1,5 +1,6 @@
 //! MCP is a client of the admitted seat socket; logic remains the authority.
 
+pub(crate) mod attention;
 pub mod bridge;
 pub(crate) mod journal;
 pub(crate) mod knowledge;

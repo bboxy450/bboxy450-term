@@ -64,6 +64,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
         "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}
     })).collect();
     tools.extend(super::messaging::catalogue(&super::Actor::from(actor)));
+    tools.extend(super::attention::catalogue());
     tools.extend(super::work_items::catalogue(&super::Actor::from(actor)));
     tools.extend(super::seats::catalogue(actor));
     tools.extend(super::knowledge::catalogue(actor));

@@ -2,6 +2,7 @@
 //! Local issuer material is distinct from the deferred OpenPGP account chain.
 
 pub mod api;
+pub mod attention;
 pub mod keys;
 pub mod ledger;
 pub mod pending;

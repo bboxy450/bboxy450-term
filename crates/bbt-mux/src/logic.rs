@@ -2447,6 +2447,9 @@ impl Worker {
         let authority = crate::mcp::Actor::from(&actor);
         call.validate()?;
         let journal = self.control_journal(id)?;
+        if crate::mcp::attention::handles(&call.tool) {
+            return self.attention_call(&actor, &call, &journal);
+        }
         if crate::mcp::seats::handles(&call.tool) {
             return match self.prepare_seat_control(&actor, &record, &call) {
                 Ok(request) if request.is_read() => {
@@ -2516,6 +2519,39 @@ impl Worker {
                     crate::mcp::tools::retained_documents(&source, &actor, &record, &call, old)
                 })
             }
+        }
+    }
+    fn attention_call(
+        &self,
+        actor: &crate::mcp::SeatActor,
+        call: &crate::mcp::Call,
+        journal: &crate::mcp::journal::Journal,
+    ) -> Result<serde_json::Value> {
+        use crate::mcp::{self, attention as tool};
+        let read = || {
+            let value = self
+                .registry
+                .get(actor.seat_id)
+                .and_then(|record| tool::view(&record).map_err(invalid));
+            match value {
+                Ok(value) => mcp::success(call.op_id, value),
+                Err(error) => mcp::error(call.op_id, "unavailable", &error.to_string()),
+            }
+        };
+        match tool::prepare(call) {
+            Ok(tool::Request::Get) => journal.checked(actor, call, read()),
+            Ok(tool::Request::Set(rule)) => journal.effect(actor, call, || {
+                match self.registry.set_attention(actor.seat_id, actor.process_generation, rule) {
+                    Ok(_) => read(),
+                    Err(error) if error.downcast_ref::<std::io::Error>()
+                        .is_some_and(|e| e.kind() == std::io::ErrorKind::InvalidData) => {
+                        mcp::error(call.op_id, "rejected", &error.to_string())
+                    }
+                    Err(_) => mcp::error(call.op_id, "unknown",
+                        "attention outcome unavailable; retain the operation ID and read your policy"),
+                }
+            }),
+            Err(reason) => journal.checked(actor, call, mcp::error(call.op_id, "rejected", &reason)),
         }
     }
     fn knowledge_call(

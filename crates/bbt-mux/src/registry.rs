@@ -5,7 +5,7 @@ use ulid::Ulid;
 use crate::store::{Result, Store, invalid, sqlite::SqliteStore};
 
 pub use bbt_proto::registry::{
-    Class, CloseRecord, Lifecycle, Location, Position, Role, SeatRecord,
+    AttentionPolicy, AttentionRule, Class, CloseRecord, Lifecycle, Location, Position, Role, SeatRecord,
 };
 
 #[derive(Clone)]
@@ -56,6 +56,22 @@ impl Registry {
         )?;
         tx.commit()?;
         Ok(result)
+    }
+    /// Only the admitted control owner supplies this seat and generation.
+    pub fn set_attention(
+        &self,
+        id: Ulid,
+        generation: u64,
+        rule: AttentionRule,
+    ) -> Result<AttentionPolicy> {
+        self.update(id, |record| {
+            if record.generation != generation {
+                return Err(invalid("stale attention process generation"));
+            }
+            let policy = crate::messaging::attention::updated(record.attention.as_ref(), rule)?;
+            record.attention = Some(policy.clone());
+            Ok(policy)
+        })
     }
     pub fn close(
         &self,

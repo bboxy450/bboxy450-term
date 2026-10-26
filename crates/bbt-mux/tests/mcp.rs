@@ -1162,7 +1162,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 21);
+    assert_eq!(tools.len(), 23);
     assert!(
         tools
             .iter()
@@ -1975,8 +1975,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 21);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 33);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 23);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 35);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -5138,4 +5138,116 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
         seat["message"]["envelope"].get("issued_by").is_none(),
         "{seat}"
     );
+}
+
+// keeps: spec messaging-attention MA-2 (own-seat tools, no borrowed Oracle authority)
+#[test]
+fn mcp_attention_is_owned_by_the_admitted_receiver_and_never_grants_other_seats() {
+    let f = Fixture::new();
+    let own = f.own.id;
+    let before = data(f.call(own, Ulid::new(), "attention_get", json!({})));
+    assert_eq!(before["seat_id"], json!(own));
+    assert_eq!(before["policy"], json!({"rules":[]}));
+    assert_eq!(before["defaults"]["conversation"], "digest");
+    assert_eq!(before["defaults"]["event"], "inbox");
+    let epoch = f.epoch(own);
+    let set = data(f.mutate(
+        own,
+        Ulid::new(),
+        "attention_set",
+        json!({
+            "destination":"#status", "class":"event", "mode":"wake"
+        }),
+    ));
+    assert_eq!(
+        set["policy"]["rules"],
+        json!([
+            {"destination":"channels/status","class":"event","mode":"wake"}
+        ])
+    );
+    assert_eq!(f.epoch(own), epoch);
+    assert!(!f.registry().get(own).unwrap().muted);
+    for caller in [own, f.oracle.id] {
+        let catalogue = f
+            .runtime
+            .block_on(f.client().control_catalogue(caller, 1))
+            .unwrap();
+        for name in ["attention_get", "attention_set"] {
+            let tool = catalogue["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|tool| tool["name"] == name)
+                .unwrap();
+            assert_eq!(tool["annotations"]["readOnlyHint"], name == "attention_get");
+            assert!(tool["inputSchema"]["properties"].get("seat_id").is_none());
+            let result = f.call(caller, Ulid::new(), name, if name == "attention_get" {
+                json!({"seat_id":f.peer.id})
+            } else {
+                json!({"seat_id":f.peer.id,"destination":"channels/status","class":"event","mode":"wake"})
+            });
+            assert_eq!(result["isError"], true, "{result}");
+        }
+    }
+    for args in [
+        json!({"destination":"channels/status","class":"event","mode":"mute"}),
+        json!({"destination":"channels/status","class":"unknown","mode":"wake"}),
+        json!({"destination":"channels/*","class":"event","mode":"wake"}),
+    ] {
+        assert_eq!(
+            f.mutate(own, Ulid::new(), "attention_set", args)["isError"],
+            true
+        );
+    }
+    assert_eq!(
+        data(f.call(own, Ulid::new(), "attention_get", json!({})))["policy"],
+        set["policy"]
+    );
+    assert_eq!(f.registry().get(f.peer.id).unwrap().attention, None);
+    assert_eq!(f.registry().get(f.oracle.id).unwrap().attention, None);
+}
+
+// keeps: spec messaging-attention MA-2 (durability and existing operation replay)
+#[test]
+fn mcp_attention_replay_survives_restart_without_rolling_back_a_later_policy() {
+    let mut f = Fixture::new();
+    let own = f.own.id;
+    let op = Ulid::new();
+    let args = json!({"destination":"channels/work","class":"conversation","mode":"inbox"});
+    let first = f.mutate(own, op, "attention_set", args.clone());
+    assert_eq!(first["isError"], false);
+    data(f.mutate(
+        own,
+        Ulid::new(),
+        "attention_set",
+        json!({
+            "destination":"channels/work","class":"conversation","mode":"digest"
+        }),
+    ));
+    assert_eq!(f.mutate(own, op, "attention_set", args.clone()), first);
+    let reused = f.mutate(
+        own,
+        op,
+        "attention_set",
+        json!({
+            "destination":"channels/work","class":"conversation","mode":"wake"
+        }),
+    );
+    assert_eq!(reused["structuredContent"]["error"]["code"], "op_id_reused");
+    f.registry()
+        .update(own, |record| {
+            record.name = "renamed receiver".into();
+            Ok(())
+        })
+        .unwrap();
+    f.restart();
+    assert_eq!(f.mutate(own, op, "attention_set", args), first);
+    let current = data(f.call(own, Ulid::new(), "attention_get", json!({})));
+    assert_eq!(
+        current["policy"]["rules"],
+        json!([
+            {"destination":"channels/work","class":"conversation","mode":"digest"}
+        ])
+    );
+    assert_eq!(f.registry().get(own).unwrap().name, "renamed receiver");
 }
