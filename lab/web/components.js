@@ -171,6 +171,9 @@
         : blocked.map(h => h.id + ' · ' + h.blocked).join('\n');
       right.append(el('span', { class: 'held' + (seat.muted ? '' : ' blocked'), title: tip }, 'held ' + held.length));
     }
+    // deferred wakes (messaging-attention §3, MA-8): messages admitted to a digest wait for its window; the row says how many and when it
+    // delivers. A digest delays a wake and never holds a message (messaging-never-held), so this is a plain count, not the held colour.
+    if (seat.deferred) right.append(el('span', { class: 'deferred', title: seat.deferred.n + ' deferred to a digest · delivers at ' + seat.deferred.at + ' or at 50, whichever first · stored, never held' }, seat.deferred.n + ' at ' + seat.deferred.at));
     // noise hint (messaging.md routing discipline 4): the seat's share of stream messages is over the threshold; shown to the Oracle
     if (seat.noise) right.append(el('span', { class: 'noise', title: 'stream share ' + Math.round(seat.noise * 100) + '% over the ' + Math.round((seat.noiseMax || .25) * 100) + '% threshold · route progress by DM' }, 'noisy ' + Math.round(seat.noise * 100) + '%'));
     // seats are sockets: broker telemetry, counts only, never who
@@ -1546,18 +1549,21 @@
     // provider reads the same records or refuses with a reason the app shows
     knowledge: { roots: [{ name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-bboxy', records: 418, answering: 'logic · in process' }],
       offered: ['bboxy450-term-data_source-bboxy', 'bboxy450-term-data_source-stub'] },
+    // messaging attention (messaging-attention §3, MA-8): per seat, (destination, class) → wake | inbox | digest. policy null means the
+    // role default (an omitted policy on the seat record); deferred is the pending digest; muted is the operator's mute, not the policy
+    messaging: { seat: { name: 'Sable Embertail', role: 'executor' }, policy: null, deferred: { n: 7, at: '14:30' }, muted: false },
     appearance: { theme: 'auto', density: 'cozy', rim: TOKENS.glow.rim, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
   const SET = JSON.parse(JSON.stringify(SET_DEF));
   SET.roles.creativity.prompt += ' Name the Censor when it fires.'; SET.harness.pi.role = 'creativity';
-  // settingsPage({ section, onChange, notifications, custody, plugins, knowledge }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
+  // settingsPage({ section, onChange, notifications, custody, plugins, knowledge, messaging }) — onChange(section, key, value): 'appearance' and 'notifications' per field; 'roles' /
   // 'harness' with the record, null on delete. notifications: a state's own values instead of SET.notifications
   function settingsPage(opts) {
     opts = opts || {};
     const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
-    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Shortcuts'];
-    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Shortcuts: 'keys' };
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Messaging', 'Shortcuts'];
+    const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Messaging: 'tray', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
     const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
     const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
@@ -1566,6 +1572,7 @@
       roles: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M5 19h14M5.5 16 3.5 7l5 3.5L12 5l3.5 5.5 5-3.5-2 9z"/></svg>',
       book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/></svg>',
       bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
+      tray: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 13h4l1.5 3h5L16 13h4"/><path d="M4 13 6.5 5h11L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg>',
       keys: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M7.5 14h9"/></svg>',
       search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></svg>',
       copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a1 1 0 0 1 1-1h9"/></svg>',
@@ -1574,7 +1581,8 @@
     };
     const icon = name => ICON_SVG[name] ? harnessIcon(name) : el('span', { class: 'hicon', html: SVG[name] || '' });
     let cur = opts.section || 'Account', draftRole = null, draftHarness = opts.draftHarness || null;
-    const NV = opts.notifications || SET.notifications;   // a reference state can pass its own
+    const NV = opts.notifications || SET.notifications;
+    const MV = opts.messaging || SET.messaging;   // a reference state can pass its own
     const CU = opts.custody || null;   // Account custody (#280, #315): drawn only when given, so the default Account is unchanged
     const PL = opts.plugins || SET.plugins, KN = opts.knowledge || SET.knowledge;
     const root = el('div', { class: 'settings' });
@@ -1818,6 +1826,25 @@
           group('Per harness', 'off silences every seat of that harness'),
           ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
           note('A muted seat (⌘M) never notifies and keeps the ordinary waiting rim.'),
+        ]));
+      }
+      if (cur === 'Messaging' || needle) {
+        // onChange('messaging', '<destination>.<class>', mode). Role defaults (§3): an omitted cell reads its role's default; a cell that
+        // differs gets the accent dot and a reset. Always-wake rules and the operator's mute are shown, never set here
+        const ATTN = { oracle: { direct: { conversation: 'wake', event: 'inbox' }, channel: { conversation: 'wake', event: 'inbox' } },
+          architect: { direct: { conversation: 'wake', event: 'inbox' }, channel: { conversation: 'inbox', event: 'inbox' } },
+          executor: { direct: { conversation: 'wake', event: 'inbox' }, channel: { conversation: 'digest', event: 'inbox' } } };
+        ATTN.creativity = ATTN.architect;
+        const m = MV, def = ATTN[m.seat.role] || ATTN.executor, pol = m.policy || {};
+        const mode = (d, c) => (pol[d] && pol[d][c]) || def[d][c];
+        const setM = (d, c) => x => { m.policy = { ...pol, [d]: { ...(pol[d] || {}), [c]: x } }; emit('messaging', d + '.' + c, x); draw(); };
+        const line = (d, c, label) => { const ch = mode(d, c) !== def[d][c]; return row(label, null, seg(['wake', 'inbox', 'digest'], mode(d, c), setM(d, c)), ch, () => setM(d, c)(def[d][c])); };
+        add('Messaging', card('Messaging', [
+          el('div', { class: 'att-seat' }, el('b', {}, m.seat.name), chip(m.seat.role + ' defaults'), m.deferred ? el('span', { class: 'att-def' }, m.deferred.n + ' deferred · digest at ' + m.deferred.at) : null),
+          m.muted ? el('div', { class: 'pl-alert att-mute', role: 'status' }, '⚠ muted by the operator: this seat’s traffic is held both ways until unmuted (⌘M); the policy below applies after') : null,
+          group('Direct and by name'), line('direct', 'conversation', 'Conversation'), line('direct', 'event', 'Events'),
+          group('Channels'), line('channel', 'conversation', 'Conversation'), line('channel', 'event', 'Events'),
+          note('Always wakes, for conversation only: a message from the operator, a task delegated to this seat, a reply in a thread it started; a seat cannot set itself to miss its own work. Events never wake by default, whoever sent them. A digest delivers once, at 10 min or 50 messages, listing every message by id: it delays a wake and never holds a message. A change applies to messages stored after it.'),
         ]));
       }
       if (cur === 'Shortcuts' || needle) add('Shortcuts', card('Shortcuts', [el('div', { class: 'keys' }, ...SET.shortcuts.map(([l, k]) => el('div', { class: 'kr' }, el('span', {}, l), el('span', { class: 'kbd' }, k))))]));

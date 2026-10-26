@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Settings in the launcher). Left nav, cards in the design-system material. Account (sign-in, root key, devices), Cloud providers, SSH machines, Roles with default system prompts and send permissions, Harnesses, Plugins (trust, tier, contract, health, the call and hook timeline, the slow-hook warning), Knowledge (roots and their provider, swappable, no file moves), Appearance, Notifications (on by default, only in the background, per harness; off greys the rest; a muted seat never notifies), Shortcuts. Rows that differ from config.toml get the dot and a reset. Read-mostly: values shown, edits are local to the demo.',
-  states: ['Account', 'custody · held', 'custody · unlock pending', 'custody · cancelled', 'custody · unknown', 'custody · granted', 'custody · signer returned', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Plugins', 'Knowledge', 'knowledge · swapped to the stub', 'Shortcuts', 'in a tab'],
+  states: ['Account', 'custody · held', 'custody · unlock pending', 'custody · cancelled', 'custody · unknown', 'custody · granted', 'custody · signer returned', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'new harness', 'Appearance', 'Notifications', 'notifications · off', 'notifications · one harness off', 'Messaging', 'messaging · oracle', 'messaging · overridden', 'messaging · muted', 'Plugins', 'Knowledge', 'knowledge · swapped to the stub', 'Shortcuts', 'in a tab'],
   render(s, body) {
     if (s === 'in a tab') {
       const model = C.makeModel(10, 'phone');
@@ -21,6 +21,11 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
     const draft = s === 'new harness' ? { name: 'aider', command: 'aider --model sonnet', ci: 7, icon: 'zsh', role: 'executor', wake: 'pty', stateFrom: 'output cadence', hooks: false } : null;
     // notifications states pass their own values, so the page's other states keep the defaults
     const nv = s === 'notifications · off' ? { enabled: false, only_when_not_frontmost: true, disabled_harnesses: ['codex'] } : s === 'notifications · one harness off' ? { enabled: true, only_when_not_frontmost: false, disabled_harnesses: ['codex'] } : null;
+    // messaging states (messaging-attention §3, MA-8): role defaults, one override with its reset, and the operator's mute over a policy
+    const MS = { 'Messaging': C.SET.messaging,
+      'messaging · oracle': { seat: { name: 'Vesper', role: 'oracle' }, policy: null, deferred: null, muted: false },
+      'messaging · overridden': { seat: { name: 'Wren Thistledown', role: 'creativity' }, policy: { channel: { conversation: 'digest' } }, deferred: { n: 3, at: '14:40' }, muted: false },
+      'messaging · muted': { seat: { name: 'Sable Embertail', role: 'executor' }, policy: null, deferred: { n: 7, at: '14:30' }, muted: true } }, mv = MS[s] || null;
     // custody states (#280, #315): the native Keychain path; a hold names itself and its two exits, then the outcome of one attempt
     const CUS = { 'custody · held': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' } },
       'custody · unlock pending': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' }, attempt: 'pending' },
@@ -30,6 +35,6 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
       'custody · signer returned': { tier: 'keychain', acl: 'designated', hold: null, attempt: 'returned', op: 'op-7f3a91c2' } }, cu = CUS[s] || null;
     // knowledge · swapped: the same root read by the stub provider over stdio; every record digest identical, no file moved
     const kn = s === 'knowledge · swapped to the stub' ? { roots: [{ name: '.bboxy', path: '~/mydev/bboxy450-term/.bboxy', provider: 'bboxy450-term-data_source-stub', records: 418, answering: 'bboxy450-term-data_source-stub · pid 4312, over stdio', digests: '418 of 418 record digests identical, no file moved' }], offered: C.SET.knowledge.offered } : null;
-    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : cu ? 'Account' : kn ? 'Knowledge' : s, draftHarness: draft, notifications: nv, custody: cu, knowledge: kn })); body.append(frame);
+    frame.append(C.settingsPage({ section: draft ? 'Harnesses' : nv ? 'Notifications' : mv ? 'Messaging' : cu ? 'Account' : kn ? 'Knowledge' : s, draftHarness: draft, notifications: nv, custody: cu, knowledge: kn, messaging: mv })); body.append(frame);
   } });
 </script></body></html>

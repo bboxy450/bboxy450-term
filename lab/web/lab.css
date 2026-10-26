@@ -689,6 +689,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 
 /* mute: a muted seat is 1:1 with the operator; its row stays, marked; its strip shows the toggle */
 .seat-row .held { font-family: var(--font-mono); font-size: var(--t-tiny); line-height: 14px; padding: 0 5px; border-radius: var(--r-tag); white-space: nowrap; color: var(--c-waiting); background: color-mix(in srgb, var(--c-waiting) 14%, transparent); }
+.seat-row .deferred { font-family: var(--font-mono); font-size: var(--t-tiny); line-height: 12px; padding: 0 5px; border-radius: var(--r-tag); white-space: nowrap; color: var(--fg-dim); border: var(--hair-w) solid var(--line); }
 .seat-row .held.blocked { color: var(--fg-dim); background: transparent; border: var(--hair-w) dashed var(--line); line-height: 12px; }
 .seat-row .mutemark { --icon: 11px; color: var(--c-waiting); display: inline-flex; flex: none; }
 .seat-row.muted .name { opacity: .7; }
@@ -1705,3 +1706,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .kn-n { font-size: var(--t-small); color: var(--fg-dim); }
 .kn-ans { font-size: var(--t-small); color: var(--fg-dim); padding-left: var(--s2); }
 .kn-ans b { color: var(--fg); font-weight: 600; }
+
+/* Settings › Messaging (messaging-attention §3, MA-8): per-seat wake policy, destination × class */
+.settings .att-seat { display: flex; align-items: center; gap: var(--s8); flex-wrap: wrap; padding: var(--s4) 0 var(--s8); }
+.settings .att-def { font-family: var(--font-mono); font-size: var(--t-caption); color: var(--fg-dim); }
+.settings .att-mute { margin: 0 0 var(--s4); }
