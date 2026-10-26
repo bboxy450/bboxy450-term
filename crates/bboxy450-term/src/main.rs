@@ -2410,12 +2410,11 @@ impl App {
             }
             self.queue(message);
         }
-        if let Some(request) = knowledge {
-            if let Err(reason) = request.and_then(|r| self.knowledge_request(r))
-                && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab
-            {
-                controller.error = Some(reason);
-            }
+        if let Some(request) = knowledge
+            && let Err(reason) = request.and_then(|r| self.knowledge_request(r))
+            && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab
+        {
+            controller.error = Some(reason);
         }
         if let Some(request) = plugin_request {
             if let Err(reason) = request.and_then(|request| self.plugin_request(request))
