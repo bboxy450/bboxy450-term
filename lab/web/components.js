@@ -1796,12 +1796,17 @@
           ...PL.map(p => { const sys = p.contract.name, prov = p.name.split('-').pop();
             const trust = p.trust === 'trusted' ? chip('trusted', 'ok') : chip(p.repo_local ? 'repo-local · not trusted' : 'not trusted', 'warn');
             const comp = p.contract.ok === true ? chip(sys + ' ' + p.contract.version + ' ✓') : p.contract.ok === false ? chip(sys + ' ' + p.contract.version + ' ✕ ' + p.contract.failing, 'bad') : chip(sys + ' ' + p.contract.version);
-            const ctl = p.root ? el('span', { class: 'pl-root' }, 'provider of ' + p.root) : p.trust !== 'trusted' ? btn('Trust…', null, 'primary') : toggle(p.enabled, x => { p.enabled = x; emit('plugins', p.name, { enabled: x }); draw(); });
+            // no optimistic state (P-1 Settings binding): a pending trust or enable keeps the last observed value, with a caption, until the
+            // observation arrives; a refusal leaves the observed value and says why. Replay re-sends the same intent and shows pending again
+            const pend = p.pending && el('span', { class: 'pl-pend', role: 'status' }, { trust: 'trusting…', enable: 'enabling…', disable: 'disabling…' }[p.pending.verb]);
+            const ctl = p.root ? el('span', { class: 'pl-root' }, 'provider of ' + p.root) : p.trust !== 'trusted' ? (pend || btn('Trust…', null, 'primary'))
+              : el('span', { class: 'pl-ctl' }, pend, toggle(p.enabled, x => { p.enabled = x; emit('plugins', p.name, { enabled: x }); draw(); }, !!p.pending));
             return el('div', { class: 'pl-card' + (p.alerts ? ' alert' : '') + ' h-' + p.health.state.replace(' ', '-') },
               el('div', { class: 'pl-h' }, healthDot(p.health), el('b', {}, p.name + (p.bundled ? ' (bundled)' : '')), el('span', { class: 'pl-ver' }, p.version || ''), el('span', { class: 'pl-sp' }), ctl),
               el('div', { class: 'pl-chips' }, trust, chip('tier ' + p.tier + (p.local ? ' (local)' : '')), comp, p.auth ? chip(p.auth === 'ok' ? 'logged in' : p.auth, p.auth === 'ok' ? '' : 'warn') : null, p.grant ? chip(p.grant) : null, p.trace ? chip('trace') : null,
                 el('span', { class: 'pl-health' }, p.health.state + (p.health.say ? ' · ' + p.health.say : '')), p.auth === 'needs login' || p.health.state === 'crashed' ? btn('Re-run setup', null, 'quiet') : null),
               ...(p.alerts || []).map(a => el('div', { class: 'pl-alert', role: 'status' }, '⚠ ', a)),
+              p.refused ? el('div', { class: 'pl-alert', role: 'status' }, '⚠ ' + p.refused.verb + ' refused · ' + p.refused.reason) : null,
               p.trust === 'trusted' ? timeline(p) : null); })]));
       }
       if (cur === 'Knowledge' || needle) {

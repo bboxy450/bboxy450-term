@@ -1688,6 +1688,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .pl-h b, .kn-h b { font-family: var(--font-mono); font-weight: 600; font-size: var(--t-small); }
 .pl-ver { font-family: var(--font-mono); font-size: var(--t-small); color: var(--fg-dim); }
 .pl-sp { flex: 1; }
+.pl-ctl { display: inline-flex; align-items: center; gap: var(--s5); }
+.pl-pend { font-size: var(--t-small); color: var(--fg-dim); }
 .pl-root { font-size: var(--t-small); color: var(--fg-dim); }
 .pl-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); margin-top: var(--s4); padding-left: calc(8px + var(--s4)); }
 .pl-health { font-size: var(--t-small); color: var(--fg-dim); margin-left: var(--s2); }
