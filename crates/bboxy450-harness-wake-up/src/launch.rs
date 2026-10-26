@@ -344,7 +344,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "-c".into(),
                 "check_for_update_on_startup=false".into(),
                 "-c".into(),
-                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]".into(),
+                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\",\"BBOXY_RUN_DIR\"]".into(),
             ]);
             notes.push("Codex skill text is in per-launch developer_instructions; a per-session skill path remains unverified");
             if record.hooks {

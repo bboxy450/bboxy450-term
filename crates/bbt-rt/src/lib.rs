@@ -20,6 +20,7 @@ pub mod diagnostics;
 #[cfg(feature = "runtime")]
 pub mod fault;
 mod meter;
+pub mod error_journal;
 #[cfg(feature = "runtime")]
 mod queues;
 mod wake;

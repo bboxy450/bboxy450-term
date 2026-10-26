@@ -83,6 +83,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
         })
     };
     let logger = Logger::new();
+    let diagnostics_sink = sink.clone();
+    let _diagnostics = bbt_rt::error_journal::Server::start(crate::diagnostic_root(args)?, move |n| diagnostics_sink(UiEvent::ErrorCount(n))).ok();
     let (context, rendering) = tokio::sync::oneshot::channel();
     context
         .send(live::RenderContext {
@@ -172,6 +174,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
+                    UiEvent::ErrorCount(count) => { if app.unread_errors != count { app.unread_errors = count; dirty = true; } }
                     UiEvent::Wake => capacity_wait = false,
                     UiEvent::CommandsReady(ready) => app.commands_ready(ready),
                     UiEvent::BackendInfo {
@@ -431,13 +434,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     if let Some(page) = &app.local_page_layout {
                         base.extend(page.paint());
                     }
-                    let foreground = app.scene.foreground_with_document(
+                    let mut foreground = app.scene.foreground_with_document(
                         size,
                         app.launcher_layout.as_ref(),
                         None,
                         app.conversation_layout.as_ref(),
                         app.document_layout.as_ref(),
                     );
+                    foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                     gpu.draw_layers_notifying(
                         base,
                         foreground,

@@ -442,6 +442,7 @@ version = "0.0.1"
 dependencies = [
  "crossbeam-queue",
  "libc",
+ "serde_json",
  "tokio",
 ]
 

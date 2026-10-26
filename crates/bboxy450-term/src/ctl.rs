@@ -95,6 +95,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   events streams                          retained stream names, no consumer attached
   events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
   debug logs <app|logic|supervisor> [--since BYTE_OFFSET]   bounded page, next_since
+  debug errors [--since UNIX_MS] [--seat ID] failures; unfiltered reads mark retained errors read
   debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
   debug metrics                           logic + GUI history heap/page counters
   debug fault ring-gap <seat> <from>..<to>  test-account retained-history gap mask
@@ -1392,6 +1393,8 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         return Ok(());
     }
     let parsed = parse_full(args);
+    let failure_root = parsed.as_ref().ok().and_then(|p| p.endpoint.as_deref()).unwrap_or(default_endpoint).parent().map(Path::to_path_buf);
+    let failure_operation = parsed.as_ref().ok().and_then(|p| p.verb).map_or_else(|| "command".into(), |(n,v)| format!("{n}/{v}"));
     // The noun-verb grammar answers in the ctl-cli §2 and §3 shapes; the flat names keep
     // their own output for one release.
     let noun_verb = parsed
@@ -1404,7 +1407,11 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         {
             eprintln!("bboxy450-term ctl {word}: deprecated, use: ctl {new}");
         }
-        return match run_main(args, default_endpoint) {
+        let result = run_main(args, default_endpoint);
+        if let Err(reason) = &result {
+            if let Some(root) = &failure_root { bbt_rt::error_journal::report_to(root, bbt_rt::error_journal::Failure::new("ctl", &failure_operation, reason)); }
+        }
+        return match result {
             Err(reason) if reason.starts_with(TIMEOUT_PREFIX) => {
                 let (op, message) = reason[TIMEOUT_PREFIX.len()..]
                     .split_once('\n')
@@ -1439,6 +1446,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         )
     });
     if let Err(reason) = result {
+        if let Some(root) = &failure_root { bbt_rt::error_journal::report_to(root, bbt_rt::error_journal::Failure::new("ctl", &failure_operation, &reason)); }
         let (op, fail) = operation_failure(op, &reason);
         let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
             "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
@@ -1558,6 +1566,12 @@ fn run_verb(
         .unwrap_or_else(|| default_endpoint.to_path_buf());
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
+    // File-only diagnostics remain readable after a backend exit.
+    if let Command::Debug { request: bbt_proto::gui::DebugRequest::Errors { since, seat }, .. } = &parsed.command {
+        let root = endpoint_file.parent().ok_or("diagnostics run directory unavailable")?;
+        let data = bbt_rt::error_journal::read(root, *since, seat.as_ref().map(ToString::to_string).as_deref(), true).map_err(|e| e.to_string())?;
+        return print_reply(&mut out, noun, verb, op.unwrap_or_else(fresh), data, parsed.human);
+    }
     if let Command::AppStart {
         headless,
         ctl,

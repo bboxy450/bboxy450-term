@@ -39,6 +39,7 @@ impl Context {
             }
             DebugRequest::Logs { process, since } => logs(&self.root, *process, *since)?,
             DebugRequest::Journal { query } => journal(&self.root, query)?,
+            DebugRequest::Errors { since, seat } => bbt_rt::error_journal::read(&self.root, *since, seat.as_ref().map(ToString::to_string).as_deref(), true)?,
             DebugRequest::Ps => process_tree(self.peers, &self.processes)?,
             DebugRequest::Metrics => json!({
                 "sampled_at_ms": crate::store::now_ms(),

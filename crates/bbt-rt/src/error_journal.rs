@@ -1,0 +1,662 @@
+//! Best-effort failure reporting. Producers only send bounded nonblocking
+//! datagrams; one run-owned background thread performs every file operation.
+use serde_json::{Value, json};
+use std::fs::{File, OpenOptions};
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{
+    Arc, OnceLock,
+    atomic::{AtomicBool, AtomicU64, Ordering},
+};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+pub const MAX_STDERR: usize = 4096;
+pub const MAX_RECORD: usize = 16 * 1024;
+pub const MAX_FILE: u64 = 1024 * 1024;
+pub const ARCHIVES: usize = 2;
+pub const MAX_ROWS: usize = 256;
+const SOCKET: &str = "diagnostics.sock";
+const ACTIVE: &str = "diagnostics.jsonl";
+const READ: &str = ".diagnostics-read";
+static DIRECTORY: OnceLock<PathBuf> = OnceLock::new();
+static SERIAL: AtomicU64 = AtomicU64::new(0);
+
+/// Configure once at process bootstrap, before handling a seat or UI request.
+pub fn configure(root: &Path) {
+    let _ = DIRECTORY.set(root.to_path_buf());
+}
+
+pub fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u64::MAX as u128) as u64
+}
+
+#[derive(Clone, Debug)]
+pub struct Failure {
+    pub source: String,
+    pub operation: String,
+    pub message: String,
+    pub seat: Option<String>,
+    pub harness: Option<String>,
+    pub exit_code: Option<i32>,
+    pub duration_ms: Option<u64>,
+    pub stderr: String,
+}
+impl Failure {
+    pub fn new(source: &str, operation: &str, message: impl ToString) -> Self {
+        Self {
+            source: source.into(),
+            operation: operation.into(),
+            message: message.to_string(),
+            seat: None,
+            harness: None,
+            exit_code: None,
+            duration_ms: None,
+            stderr: String::new(),
+        }
+    }
+    pub fn seat(mut self, seat: impl ToString) -> Self {
+        self.seat = Some(seat.to_string());
+        self
+    }
+    pub fn harness(mut self, harness: impl ToString) -> Self {
+        self.harness = Some(harness.to_string());
+        self
+    }
+    pub fn exit(mut self, exit: Option<i32>) -> Self {
+        self.exit_code = exit;
+        self
+    }
+    pub fn duration(mut self, elapsed: Duration) -> Self {
+        self.duration_ms = Some(elapsed.as_millis().min(u64::MAX as u128) as u64);
+        self
+    }
+    pub fn stderr(mut self, bytes: &[u8]) -> Self {
+        self.stderr =
+            String::from_utf8_lossy(&bytes[bytes.len().saturating_sub(MAX_STDERR)..]).into();
+        self
+    }
+    fn value(self) -> Value {
+        let at_ms = now_ms();
+        json!({"version":1,"id":format!("{at_ms}-{}-{}",std::process::id(),SERIAL.fetch_add(1,Ordering::Relaxed)),
+            "at_ms":at_ms,"pid":std::process::id(),"source":scrub(&self.source,64),
+            "operation":scrub(&self.operation,128),"message":scrub(&self.message,1024),
+            "seat":self.seat.map(|s|scrub(&s,64)),"harness":self.harness.map(|s|scrub(&s,64)),
+            "exit_code":self.exit_code,"duration_ms":self.duration_ms,"stderr":scrub(&self.stderr,MAX_STDERR)})
+    }
+}
+
+/// Never enqueue raw argv, request bodies, environment maps or credentials.
+/// A suspicious diagnostic line is withheld in full; long opaque tokens and
+/// control sequences are also withheld, including when no field label exists.
+pub fn scrub(text: &str, limit: usize) -> String {
+    let tail = &text[text
+        .char_indices()
+        .map(|(i, _)| i)
+        .find(|i| text.len() - i <= limit)
+        .unwrap_or(text.len())..];
+    let mut result = String::new();
+    for line in tail.lines() {
+        if !result.is_empty() {
+            result.push('\n');
+        }
+        let lower = line.to_ascii_lowercase();
+        let assignment = line.split_whitespace().any(|word| {
+            word.split_once(['=', ':']).is_some_and(|(key, _)| {
+                let key = key.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_');
+                key.len() >= 2
+                    && key
+                        .bytes()
+                        .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+            })
+        });
+        if assignment
+            || [
+                "token",
+                "secret",
+                "password",
+                "capability",
+                "authorization",
+                "bearer ",
+                "private_key",
+                "signing_key",
+                "api_key",
+                "api-key",
+                "credential",
+                "seed=",
+                "seed:",
+                "sk-",
+                "ghp_",
+                "github_pat_",
+            ]
+            .iter()
+            .any(|s| lower.contains(s))
+        {
+            result.push_str("[redacted sensitive diagnostic line]");
+            continue;
+        }
+        for (index, word) in line.split_whitespace().enumerate() {
+            if index > 0 {
+                result.push(' ');
+            }
+            let opaque = word
+                .split(|c: char| !c.is_ascii_alphanumeric() && !"_-+/=.".contains(c))
+                .any(|part| part.len() >= 32);
+            if opaque || word.contains('\u{1b}') {
+                result.push_str("[redacted token]");
+            } else {
+                result.extend(word.chars().filter(|c| !c.is_control()));
+            }
+        }
+    }
+    if result.len() > limit {
+        result.truncate(result.floor_char_boundary(limit));
+    }
+    result
+}
+
+/// No file IO, lock wait, retry, runtime job or dependency on a live sink.
+pub fn report(failure: Failure) -> bool {
+    DIRECTORY.get().is_some_and(|root| report_to(root, failure))
+}
+pub fn report_to(root: &Path, failure: Failure) -> bool {
+    let Ok(bytes) = serde_json::to_vec(&failure.value()) else {
+        return false;
+    };
+    if bytes.len() > MAX_RECORD {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        let Ok(sender)=std::os::unix::net::UnixDatagram::unbound() else {return false;};
+        sender.set_nonblocking(true).is_ok() && sender.send_to(&bytes,root.join(SOCKET)).is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (root, bytes);
+        false
+    }
+}
+
+fn private(root: &Path, name: &str, create: bool, append: bool) -> io::Result<File> {
+    #[cfg(unix)]
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+    let mut opts = OpenOptions::new();
+    opts.read(true).write(create).create(create).append(append);
+    #[cfg(unix)]
+    opts.mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+    let file = opts.open(root.join(name))?;
+    let m = file.metadata()?;
+    if !m.is_file() {
+        return Err(io::Error::other("diagnostics source is not a regular file"));
+    }
+    #[cfg(unix)]
+    {
+        // SAFETY: geteuid takes no pointer and mutates no process state.
+        if m.uid() != unsafe { libc::geteuid() } || m.mode() & 0o077 != 0 || m.nlink() != 1 {
+            return Err(io::Error::other(
+                "diagnostics source must be owned and private",
+            ));
+        }
+    }
+    Ok(file)
+}
+struct Lock(File);
+impl Drop for Lock {
+    fn drop(&mut self) {
+        let _ = self.0.unlock();
+    }
+}
+fn lock(root: &Path) -> io::Result<Lock> {
+    let file = private(root, ".diagnostics-lock", true, false)?;
+    file.try_lock().map_err(io::Error::other)?;
+    Ok(Lock(file))
+}
+fn append(root: &Path, bytes: &[u8], max: u64) -> io::Result<()> {
+    if bytes.len() + 1 > MAX_RECORD || bytes.len() as u64 + 1 > max {
+        return Err(io::Error::other("diagnostic record exceeds bound"));
+    }
+    let _lock = lock(root)?;
+    let mut file = private(root, ACTIVE, true, true)?;
+    if file.metadata()?.len() + bytes.len() as u64 + 1 > max {
+        for n in (1..=ARCHIVES).rev() {
+            let from = if n == 1 {
+                ACTIVE.into()
+            } else {
+                format!("diagnostics.{}.jsonl", n - 1)
+            };
+            let to = format!("diagnostics.{n}.jsonl");
+            if let Ok(meta) = std::fs::symlink_metadata(root.join(&from)) {
+                if !meta.is_file() || meta.file_type().is_symlink() {
+                    return Err(io::Error::other("invalid diagnostic archive"));
+                }
+                std::fs::rename(root.join(from), root.join(to))?;
+            }
+        }
+        file = private(root, ACTIVE, true, true)?;
+    }
+    let mut line = Vec::with_capacity(bytes.len() + 1);
+    line.extend_from_slice(bytes);
+    line.push(b'\n');
+    file.write_all(&line)
+}
+
+fn normalized(row: Value) -> Option<Value> {
+    if row["version"] != 1 {
+        return None;
+    }
+    let id = row["id"].as_str()?;
+    if id.len() > 96
+        || id.split('-').count() != 3
+        || id
+            .split('-')
+            .any(|p| p.is_empty() || !p.bytes().all(|b| b.is_ascii_digit()))
+    {
+        return None;
+    }
+    let optional = |key: &str| match &row[key] {
+        Value::Null => Some(Value::Null),
+        Value::String(text) => Some(scrub(text, 64).into()),
+        _ => None,
+    };
+    let exit = match &row["exit_code"] {
+        Value::Null => None,
+        _ => Some(i32::try_from(row["exit_code"].as_i64()?).ok()?),
+    };
+    let duration = match &row["duration_ms"] {
+        Value::Null => None,
+        _ => Some(row["duration_ms"].as_u64()?),
+    };
+    Some(
+        json!({"version":1,"id":id,"at_ms":row["at_ms"].as_u64()?,"pid":u32::try_from(row["pid"].as_u64()?).ok()?,
+        "source":scrub(row["source"].as_str()?,64),"operation":scrub(row["operation"].as_str()?,128),
+        "message":scrub(row["message"].as_str()?,1024),"stderr":scrub(row["stderr"].as_str().unwrap_or(""),MAX_STDERR),
+        "seat":optional("seat")?,"harness":optional("harness")?,"exit_code":exit,"duration_ms":duration}),
+    )
+}
+
+/// Bounded local file view, also usable when a backend has already stopped.
+/// An unfiltered read acknowledges through the last returned row. Filtered
+/// reads leave the global unread cursor unchanged.
+pub fn read(
+    root: &Path,
+    since: Option<u64>,
+    seat: Option<&str>,
+    acknowledge: bool,
+) -> io::Result<Value> {
+    let mut all = Vec::new();
+    let mut malformed = 0;
+    for name in (1..=ARCHIVES)
+        .rev()
+        .map(|n| format!("diagnostics.{n}.jsonl"))
+        .chain([ACTIVE.into()])
+    {
+        let file = match private(root, &name, false, false) {
+            Ok(file) => file,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e),
+        };
+        // Never allocate an unbounded line from a damaged/external file.
+        let mut reader = BufReader::new(file).take(MAX_FILE + MAX_RECORD as u64);
+        loop {
+            let mut line = Vec::new();
+            let n = (&mut reader)
+                .take(MAX_RECORD as u64 + 1)
+                .read_until(b'\n', &mut line)?;
+            if n == 0 {
+                break;
+            }
+            if line.last() != Some(&b'\n') || line.len() > MAX_RECORD {
+                malformed += 1;
+                break;
+            }
+            match serde_json::from_slice::<Value>(&line)
+                .ok()
+                .and_then(normalized)
+            {
+                Some(row) => all.push(row),
+                _ => malformed += 1,
+            }
+        }
+    }
+    let cursor = private(root, READ, false, false).ok().and_then(|mut f| {
+        let mut text = String::new();
+        Read::by_ref(&mut f)
+            .take(128)
+            .read_to_string(&mut text)
+            .ok()?;
+        Some(text)
+    });
+    let seen = cursor
+        .as_ref()
+        .and_then(|id| {
+            all.iter()
+                .position(|row| row["id"].as_str() == Some(id.as_str()))
+        })
+        .map_or(0, |n| n + 1);
+    let unread = all.len().saturating_sub(seen);
+    let selected: Vec<_> = all
+        .iter()
+        .filter(|row| {
+            since.is_none_or(|t| row["at_ms"].as_u64().is_some_and(|n| n >= t))
+                && seat.is_none_or(|seat| row["seat"].as_str() == Some(seat))
+        })
+        .collect();
+    let omitted = selected.len().saturating_sub(MAX_ROWS);
+    let selected: Vec<_> = selected.into_iter().skip(omitted).cloned().collect();
+    if acknowledge && since.is_none() && seat.is_none() {
+        if let Some(id) = selected.last().and_then(|r| r["id"].as_str()) {
+            let temp = format!(
+                ".diagnostics-read-{}-{}-{}",
+                std::process::id(),
+                now_ms(),
+                SERIAL.fetch_add(1, Ordering::Relaxed)
+            );
+            let mut f = private(root, &temp, true, false)?;
+            f.set_len(0)?;
+            f.write_all(id.as_bytes())?;
+            if let Err(error) = std::fs::rename(root.join(&temp), root.join(READ)) {
+                let _ = std::fs::remove_file(root.join(temp));
+                return Err(error);
+            }
+        }
+    }
+    Ok(
+        json!({"available":true,"rows":selected,"unread_before":unread,"unread":if acknowledge&&since.is_none()&&seat.is_none(){0}else{unread},"omitted":omitted,"malformed":malformed,
+        "cursor_expired":cursor.is_some()&&seen==0,"snapshot":"best_effort across rotation; malformed or incomplete rows are not returned",
+        "retention_bytes":MAX_FILE*(ARCHIVES as u64+1),"acknowledged":acknowledge&&since.is_none()&&seat.is_none()}),
+    )
+}
+
+pub struct Server {
+    stop: Arc<AtomicBool>,
+    #[cfg(unix)]
+    root: PathBuf,
+    ready: std::sync::mpsc::Receiver<io::Result<()>>,
+}
+impl Server {
+    /// Spawning is memory-only for the caller. Socket/filesystem startup is
+    /// entirely on this owned thread; failure never prevents app startup.
+    pub fn start(root: PathBuf, notify: impl Fn(u64) + Send + 'static) -> io::Result<Self> {
+        let stop = Arc::new(AtomicBool::new(false));
+        let stopping = stop.clone();
+        let (ready_tx, ready) = std::sync::mpsc::sync_channel(1);
+        #[cfg(unix)]
+        let path = root.clone();
+        std::thread::Builder::new()
+            .name("bbt-error-journal".into())
+            .stack_size(256 * 1024)
+            .spawn(move || {
+                #[cfg(unix)]
+                {
+                    let outcome = serve(&root, &stopping, notify, &ready_tx);
+                    if let Err(error) = outcome {
+                        let _ = ready_tx.try_send(Err(error));
+                    }
+                }
+                #[cfg(not(unix))]
+                {
+                    let _ = (root, stopping, notify);
+                    let _ = ready_tx
+                        .try_send(Err(io::Error::other("diagnostics transport unavailable")));
+                }
+            })?;
+        Ok(Self {
+            stop,
+            #[cfg(unix)]
+            root: path,
+            ready,
+        })
+    }
+    pub fn ready(&self) -> &std::sync::mpsc::Receiver<io::Result<()>> {
+        &self.ready
+    }
+}
+impl Drop for Server {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        #[cfg(unix)]
+        if let Ok(s) = std::os::unix::net::UnixDatagram::unbound() {
+            let _ = s.set_nonblocking(true);
+            let _ = s.send_to(&[], self.root.join(SOCKET));
+        }
+    }
+}
+#[cfg(unix)]
+fn serve(
+    root: &Path,
+    stop: &AtomicBool,
+    notify: impl Fn(u64),
+    ready: &std::sync::mpsc::SyncSender<io::Result<()>>,
+) -> io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(root)?;
+    let directory = std::fs::symlink_metadata(root)?;
+    // SAFETY: geteuid takes no arguments and mutates no process state.
+    let uid = unsafe { libc::geteuid() };
+    if !directory.is_dir() || directory.mode() & 0o077 != 0 || directory.uid() != uid {
+        return Err(io::Error::other(
+            "diagnostics run directory must be owned and private",
+        ));
+    }
+    let lease = private(root, ".diagnostics-owner", true, false)?;
+    lease.try_lock().map_err(io::Error::other)?;
+    let _lease = Lock(lease);
+    let socket = root.join(SOCKET);
+    if let Ok(m) = std::fs::symlink_metadata(&socket) {
+        if !m.file_type().is_socket() {
+            return Err(io::Error::other("invalid diagnostics socket"));
+        }
+        std::fs::remove_file(&socket)?;
+    }
+    let receiver = std::os::unix::net::UnixDatagram::bind(&socket)?;
+    std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
+    receiver.set_read_timeout(Some(Duration::from_secs(1)))?;
+    let _ = ready.try_send(Ok(()));
+    let mut prior = None;
+    let mut bytes = [0u8; MAX_RECORD + 1];
+    while !stop.load(Ordering::Relaxed) {
+        match receiver.recv(&mut bytes) {
+            Ok(n) if n > 0 && n <= MAX_RECORD => {
+                if let Some(row) = serde_json::from_slice::<Value>(&bytes[..n])
+                    .ok()
+                    .and_then(normalized)
+                {
+                    if let Ok(data) = serde_json::to_vec(&row) {
+                        let _ = append(root, &data, MAX_FILE);
+                    }
+                }
+            }
+            Ok(_) => {}
+            Err(e)
+                if [
+                    io::ErrorKind::WouldBlock,
+                    io::ErrorKind::TimedOut,
+                    io::ErrorKind::Interrupted,
+                ]
+                .contains(&e.kind()) => {}
+            Err(e) => return Err(e),
+        }
+        if let Ok(data) = read(root, None, None, false) {
+            let n = data["unread"].as_u64().unwrap_or(0);
+            if prior != Some(n) {
+                prior = Some(n);
+                notify(n);
+            }
+        }
+    }
+    let _ = std::fs::remove_file(socket);
+    Ok(())
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+    struct Root(PathBuf);
+    impl Root {
+        fn new() -> Self {
+            let p = std::env::temp_dir().join(format!(
+                "bbt-errors-{}-{}-{}",
+                std::process::id(),
+                now_ms(),
+                SERIAL.fetch_add(1, Ordering::Relaxed)
+            ));
+            std::fs::DirBuilder::new().mode(0o700).create(&p).unwrap();
+            Self(p)
+        }
+    }
+    impl Drop for Root {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    // keeps: operator error journal; secret/env values never reach disk or readers
+    #[test]
+    fn diagnostic_redaction_tail_and_file_boundary_remove_secret_values() {
+        let raw = format!(
+            "old-prefix{}\nCODEX_THREAD_ID=parent-private\nAuthorization: Bearer topsecret\n{{\"MY_ENV\":\"hidden\"}}\nlast failure",
+            "x".repeat(5000)
+        );
+        let value = Failure::new("hook", "SessionStart", "failed")
+            .harness("codex")
+            .seat("01M5WZKA3MZC8BRJ601TFF7FH1")
+            .exit(Some(1))
+            .duration(Duration::from_millis(3))
+            .stderr(raw.as_bytes())
+            .value();
+        let text = value.to_string();
+        for secret in ["old-prefix", "parent-private", "topsecret", "hidden"] {
+            assert!(!text.contains(secret), "leaked {secret}");
+        }
+        assert!(text.contains("last failure"));
+        assert_eq!(value["exit_code"], 1);
+        assert_eq!(value["duration_ms"], 3);
+        let mut forged = value;
+        forged["stderr"] = "password=unsafe".into();
+        forged["env"] = json!({"PRIVATE":"unsafe"});
+        let normalized = normalized(forged).unwrap().to_string();
+        assert!(!normalized.contains("unsafe"));
+        assert!(!normalized.contains("PRIVATE"));
+        assert!(!scrub("opaque aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 100).contains("aaaa"));
+    }
+
+    // keeps: bounded diagnostics retention; filters never acknowledge other seats
+    #[test]
+    fn diagnostic_rotation_filters_and_acknowledgement_keep_complete_records() {
+        let root = Root::new();
+        for i in 1..=20 {
+            let mut value = Failure::new("ctl", "screen", format!("failure {i}"))
+                .seat(if i % 2 == 0 { "alpha" } else { "beta" })
+                .value();
+            value["at_ms"] = i.into();
+            let bytes = serde_json::to_vec(&value).unwrap();
+            append(&root.0, &bytes, 768).unwrap();
+        }
+        for name in [ACTIVE, "diagnostics.1.jsonl", "diagnostics.2.jsonl"] {
+            let metadata = std::fs::metadata(root.0.join(name)).unwrap();
+            assert!(metadata.len() <= 768);
+            assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
+        }
+        let before = read(&root.0, None, None, false).unwrap();
+        assert!(before["unread"].as_u64().unwrap() > 0);
+        assert_eq!(
+            before["rows"].as_array().unwrap().last().unwrap()["at_ms"],
+            20
+        );
+        let filtered = read(&root.0, Some(19), Some("alpha"), true).unwrap();
+        assert!(!filtered["acknowledged"].as_bool().unwrap());
+        assert!(
+            filtered["rows"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|r| r["seat"] == "alpha" && r["at_ms"].as_u64().unwrap() >= 19)
+        );
+        assert_eq!(
+            read(&root.0, None, None, false).unwrap()["unread"],
+            before["unread"]
+        );
+        read(&root.0, None, None, true).unwrap();
+        assert_eq!(read(&root.0, None, None, false).unwrap()["unread"], 0);
+    }
+
+    // keeps: diagnostics are best effort; a full/missing sink never waits on IO
+    #[test]
+    fn diagnostic_sender_reports_a_missing_or_full_sink_without_waiting_for_a_reader() {
+        let root = Root::new();
+        assert!(!report_to(
+            &root.0,
+            Failure::new("hook", "SessionStart", "missing")
+        ));
+        let _receiver = std::os::unix::net::UnixDatagram::bind(root.0.join(SOCKET)).unwrap();
+        let mut full = false;
+        for _ in 0..4096 {
+            if !report_to(&root.0, Failure::new("hook", "SessionStart", "full")) {
+                full = true;
+                break;
+            }
+        }
+        assert!(full, "bounded kernel datagram queue did not fill");
+        assert!(!report_to(
+            &root.0,
+            Failure::new("hook", "SessionStart", "still full")
+        ));
+        assert!(!root.0.join(ACTIVE).exists());
+    }
+
+    // keeps: nonblocking cross-process-compatible sink; unread count follows durable rows
+    #[test]
+    fn diagnostic_sink_captures_failure_fields_and_notifies_after_read_acknowledgement() {
+        let root = Root::new();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let server = Server::start(root.0.clone(), move |n| {
+            let _ = tx.send(n);
+        })
+        .unwrap();
+        server
+            .ready()
+            .recv_timeout(Duration::from_secs(60))
+            .unwrap()
+            .unwrap();
+        assert!(report_to(
+            &root.0,
+            Failure::new("hook", "UserPromptSubmit", "nonzero exit")
+                .seat("alpha")
+                .harness("codex")
+                .exit(Some(1))
+                .stderr(b"hook stderr")
+        ));
+        while rx.recv_timeout(Duration::from_secs(60)).unwrap() != 1 {}
+        let data = read(&root.0, None, None, true).unwrap();
+        let rows = data["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["operation"], "UserPromptSubmit");
+        assert_eq!(rows[0]["seat"], "alpha");
+        assert_eq!(rows[0]["harness"], "codex");
+        assert_eq!(rows[0]["exit_code"], 1);
+        assert_eq!(rows[0]["stderr"], "hook stderr");
+        while rx.recv_timeout(Duration::from_secs(60)).unwrap() != 0 {}
+        drop(server);
+    }
+
+    // keeps: the journal cannot follow a run-file symlink into credentials
+    #[test]
+    fn diagnostic_reader_and_writer_refuse_symlink_sources() {
+        let root = Root::new();
+        let secret = root.0.join("private-data");
+        std::fs::write(&secret, "do not read").unwrap();
+        std::os::unix::fs::symlink(&secret, root.0.join(ACTIVE)).unwrap();
+        assert!(append(&root.0, b"{}", MAX_FILE).is_err());
+        assert!(read(&root.0, None, None, false).is_err());
+        assert_eq!(std::fs::read_to_string(secret).unwrap(), "do not read");
+    }
+}
