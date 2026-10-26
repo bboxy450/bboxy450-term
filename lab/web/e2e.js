@@ -3,7 +3,7 @@ window.E2E_PROMISES = [
  {
   "id": "T1",
   "group": "terminal",
-  "text": "⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement"
+  "text": "⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement; \"within one frame\" counts frames from the frame that admits the input: the next produced frame already shows the placed pane in its starting state, and the harness behind it comes up asynchronously, labelled as starting"
  },
  {
   "id": "T2",

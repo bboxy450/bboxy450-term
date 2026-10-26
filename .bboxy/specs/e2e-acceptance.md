@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-25T01:06:35Z"
+updated: "2026-10-26T03:25:39Z"
 ---
 # E2E acceptance
 
@@ -41,7 +41,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 
 ### terminal
 
-- **T1** ⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement
+- **T1** ⌘T on a Claude, Codex or zsh row opens a real PTY seat in a pane within one frame, named from the furry pool, in the chosen placement; "within one frame" counts frames from the frame that admits the input: the next produced frame already shows the placed pane in its starting state, and the harness behind it comes up asynchronously, labelled as starting
 - **T2** typing in a focused pane reaches the program; the echo appears within one frame; a 100 kB paste arrives intact
 - **T3** resizing a pane or the window resizes the PTY and the program redraws at the new size with no stale cells; under a window owner the layout owns the PTY size, so the night drives it with `ctl app resize <cols>x<rows>` and asserts `stty` in the seat equals the pane size `seat ls` reports
 - **T4** a pane shows real cells: colours, bold, italics, underline, wide glyphs and emoji align to the grid; the cursor shape follows the program
