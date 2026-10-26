@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T02:59:02Z"
+updated: "2026-10-26T03:56:06Z"
 ---
 # Messaging attention
 
@@ -101,9 +101,9 @@ One Executor per row, landed through `land.sh`, each small enough to land the da
 | MA-3 | Native delivery consults the policy; inbox always written; the receipt carries `wake` | `bbt-mux` | the [[notices-never-wake]] test; [[messaging-never-held]] still held |
 | MA-4 | Digests on the App clock, window and cap, one delivery listing ids in order | `bbt-mux` | frozen-clock tests at the window and the cap |
 | MA-5 | `reply_to` validation and `unknown_thread` with the hint; `supersedes`, the done check against task records and answered threads, and suppression of a redelivered id (§4a) | `bbt-mux`, `bbt-proto` | refusal and hint tests; a superseded and a done message stored with `wake: none` and its reason; a redelivered id never woken twice |
-| MA-6 | Orient reports the policy; `ctl seat attention` | `bbt-mux`, `bboxy450-term` | ctl tests; an Orient fixture |
+| MA-6 | Orient reports the policy; `ctl seat attention <seat>` **reads** it, as an optional field on an existing seat read reply (the Oracle's scope cut, 2026-10-25) | `bbt-mux`, `bboxy450-term` | ctl tests; an Orient fixture |
 | MA-7 | `wake` ledger lines and the nightly token fill | `bbt-mux`, `scripts/` | a ledger fixture |
-| MA-8 | Settings › Messaging per seat; the sidebar row shows deferred count and the next digest time | `bbt-ui`, lab | parity cases for the new states |
+| MA-8 | Settings › Messaging per seat, where the operator **sets** another seat's policy, and the matching setter on `ctl seat attention`; the sidebar row shows deferred count and the next digest time | `bbt-ui`, lab, `bboxy450-term` | parity cases for the new states; ctl setter tests |
 | MA-9 | e2e promise and night script together: an event never wakes an idle seat under defaults, a DM does, a digest arrives once **at its cap of 50** (the deterministic path; the window path is proven at unit level on the injected time port) | `e2e-acceptance` §1, `scripts/e2e/` | the night script, coverage full; added with its script so the night never shows an untested promise |
 
 MA-1 lands first, alone, as the contract; MA-2 to MA-7 follow in any order behind it; MA-8 and MA-9 last.
