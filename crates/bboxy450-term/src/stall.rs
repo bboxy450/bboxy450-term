@@ -497,6 +497,94 @@ fn serialize_callback_cpu<S: Serializer>(
     }).serialize(serializer)
 }
 
+const FRAME_PHASE_SAMPLES: usize = 8192;
+
+/// The native window can split projection out of drain; the headless path
+/// supplies only raw phases and must not invent that split.
+pub struct FramePhases {
+    pub raw: Phases,
+    pub project_scene: Option<Duration>,
+}
+impl From<Phases> for FramePhases {
+    fn from(raw: Phases) -> Self {
+        Self {
+            raw,
+            project_scene: None,
+        }
+    }
+}
+
+#[derive(Clone, Serialize)]
+struct FramePhaseSample {
+    frame: u64,
+    drain_ns: u64,
+    project_scene_ns: Option<u64>,
+    layout_ns: u64,
+    draw_ns: u64,
+    encode_ns: u64,
+    present_wait_ns: u64,
+    gpu_execution_ns: Option<u64>,
+}
+#[derive(Default)]
+struct FramePhaseSamples {
+    seen: u64,
+    samples: Vec<FramePhaseSample>,
+}
+impl FramePhaseSamples {
+    fn record(&mut self, frame: u64, phases: Phases, project_scene: Option<Duration>) {
+        self.seen += 1;
+        if self.samples.len() == FRAME_PHASE_SAMPLES {
+            return;
+        }
+        let ns = |time: Duration| time.as_nanos().min(u64::MAX as u128) as u64;
+        self.samples.push(FramePhaseSample {
+            frame,
+            drain_ns: ns(phases.drain),
+            project_scene_ns: project_scene.map(ns),
+            layout_ns: ns(phases.layout),
+            draw_ns: ns(phases.draw),
+            encode_ns: ns(phases.encode),
+            present_wait_ns: ns(phases.present_wait),
+            gpu_execution_ns: None,
+        });
+    }
+    fn gpu(&mut self, frame: u64, time: Duration) {
+        // Completions can arrive out of order or after MEASURE. Match the
+        // retained frame, never the newest row or the completion's period.
+        if let Ok(index) = self.samples.binary_search_by_key(&frame, |row| row.frame) {
+            self.samples[index].gpu_execution_ns =
+                Some(time.as_nanos().min(u64::MAX as u128) as u64);
+        }
+    }
+    fn report(&self) -> serde_json::Value {
+        let row = |times: Vec<Option<u64>>, allocation: Option<f64>| {
+            let available: Vec<_> = times.iter().flatten().map(|ns| *ns as f64 / 1e6).collect();
+            let p99 = (!available.is_empty()).then(|| percentile(&available, 0.99));
+            serde_json::json!({
+                "p99_ms":p99,"allocation_ms":allocation,
+                "available":available.len(),"unavailable":times.len()-available.len(),
+                "within_allocation":p99.zip(allocation).map(|(value,limit)|value<=limit),
+            })
+        };
+        serde_json::json!({
+            "period":"measure","sample_limit":FRAME_PHASE_SAMPLES,
+            "frames_seen":self.seen,"clipped_frames":self.seen-self.samples.len() as u64,
+            "clock":"raw CPU phase wall durations in ns; Metal GPU execution is parallel and never added to CPU; null means unavailable",
+            "availability":"GPU samples observed by this snapshot only; unavailable may be pending, invalid or lost by the bounded completion channel; clipped frames are excluded from every row",
+            "mapping":"budgets.md d8df8dfa: drain=raw drain-project_scene; projection=project_scene+layout+draw; encode_submit=encode; cpu_path=raw drain+layout+draw+encode; present_wait is report-only",
+            "rows":{
+                "drain":row(self.samples.iter().map(|s|s.project_scene_ns.and_then(|project|s.drain_ns.checked_sub(project))).collect(),Some(1.5)),
+                "projection":row(self.samples.iter().map(|s|s.project_scene_ns.map(|project|project+s.layout_ns+s.draw_ns)).collect(),Some(1.0)),
+                "encode_submit":row(self.samples.iter().map(|s|Some(s.encode_ns)).collect(),Some(1.0)),
+                "cpu_path":row(self.samples.iter().map(|s|Some(s.drain_ns+s.layout_ns+s.draw_ns+s.encode_ns)).collect(),Some(4.0)),
+                "gpu_execution":row(self.samples.iter().map(|s|s.gpu_execution_ns).collect(),Some(6.0)),
+                "present_wait":row(self.samples.iter().map(|s|Some(s.present_wait_ns)).collect(),None),
+            },
+            "samples":self.samples,
+        })
+    }
+}
+
 #[derive(Serialize, Default)]
 pub struct Measurements {
     pub cpu_p50_ms: f64,
@@ -517,6 +605,7 @@ pub struct Measurements {
     /// Index-aligned with cpu_samples_ms; null means no prior endpoint observed.
     pub frame_callback_cpu: Vec<Option<FrameCallbackCpu>>,
     pub frame_work_samples_ms: Vec<f64>,
+    pub frame_budget: serde_json::Value,
     pub probe_clipped: bool,
     pub diagnostics: serde_json::Value,
 }
@@ -615,6 +704,7 @@ pub struct Native {
     phase: u8,
     cpu: Vec<f64>,
     wall: Vec<f64>,
+    frame_phases: FramePhaseSamples,
     previous: BTreeMap<SeatId, Arc<bbt_proto::Screen>>,
     changes: BTreeMap<String, u64>,
     probe_started: Option<(u64, Instant)>,
@@ -686,6 +776,7 @@ impl Native {
             phase: SETUP,
             cpu: vec![],
             wall: vec![],
+            frame_phases: FramePhaseSamples::default(),
             previous: BTreeMap::new(),
             changes: BTreeMap::new(),
             probe_started: None,
@@ -776,6 +867,7 @@ impl Native {
                 self.cpu.clear();
                 self.frame_callback_cpu.clear();
                 self.wall.clear();
+                self.frame_phases = FramePhaseSamples::default();
                 self.changes.clear();
                 self.previous.clear();
             }
@@ -854,6 +946,7 @@ impl Native {
                 cpu_samples_ms: self.cpu.clone(),
                 frame_callback_cpu: self.frame_callback_cpu.clone(),
                 frame_work_samples_ms: self.wall.clone(),
+                frame_budget: self.frame_phases.report(),
                 probe_clipped: self.probe_clipped,
                 diagnostics: diagnostic_report(),
             };
@@ -877,12 +970,11 @@ impl Native {
             return None;
         }
         self.settle_logged_phase = Some(witness.phase);
-        let mut value = serde_json::to_value(witness).expect("numeric settle witness serializes");
-        value["diagnostics"] = diagnostic_report();
         Some(format!(
             "R5 settle sources=0:messages,1:output,2:prepared,3:demo,4:display_tick,5:live_model,1024:direct {}",
             serde_json::to_string(
-                &serde_json::json!({"settle":witness,"diagnostics":diagnostic_report()})
+                &serde_json::json!({"settle":witness,"diagnostics":diagnostic_report(),
+                    "frame_budget":finishing.then(||self.frame_phases.report())})
             )
             .expect("numeric settle witness serializes")
         ))
@@ -892,7 +984,7 @@ impl Native {
         frame: u64,
         model: &Model,
         bounds: &[(SeatId, bbt_ui_model::layout::Rect)],
-        phases: Phases,
+        phases: impl Into<FramePhases>,
         cpu: Duration,
         scale: f32,
     ) {
@@ -920,6 +1012,11 @@ impl Native {
         if self.progress.phase() != MEASURE {
             return;
         }
+        let FramePhases {
+            raw: phases,
+            project_scene,
+        } = phases.into();
+        self.frame_phases.record(frame, phases, project_scene);
         if self.cpu.len() < 8192 {
             self.cpu.push(cpu.as_secs_f64() * 1000.);
             self.frame_callback_cpu.push(attribution);
@@ -979,6 +1076,10 @@ impl Native {
             );
         }
     }
+    /// Existing asynchronous Metal samples only; this never polls or waits.
+    pub fn gpu_execution(&mut self, frame: u64, time: Duration) {
+        self.frame_phases.gpu(frame, time);
+    }
 }
 impl Drop for Native {
     fn drop(&mut self) {
@@ -1026,6 +1127,99 @@ pub fn headless(config: Config) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn measured_phases() -> Phases {
+        Phases {
+            drain: Duration::from_micros(2000),
+            layout: Duration::from_micros(200),
+            draw: Duration::from_micros(300),
+            encode: Duration::from_micros(400),
+            present_wait: Duration::from_millis(20),
+        }
+    }
+
+    // keeps: spec budgets frame samples; ICD logic-gui
+    #[test]
+    fn frame_budget_pairs_out_of_order_gpu_by_frame_and_keeps_parallel_clocks() {
+        let mut frames = FramePhaseSamples::default();
+        for id in [41, 42, 43] {
+            frames.record(id, measured_phases(), Some(Duration::from_micros(500)));
+        }
+        frames.gpu(43, Duration::from_millis(7));
+        frames.gpu(40, Duration::from_secs(9)); // Not a measured frame.
+        frames.gpu(41, Duration::from_millis(5));
+        let packet = serde_json::to_value(Measurements {
+            frame_budget: frames.report(),
+            ..Default::default()
+        })
+        .unwrap();
+        let budget = &packet["frame_budget"];
+        let rows = &budget["rows"];
+        assert_eq!(rows["drain"]["p99_ms"], 1.5);
+        assert_eq!(rows["projection"]["p99_ms"], 1.0);
+        assert_eq!(rows["encode_submit"]["p99_ms"], 0.4);
+        // Both paint construction and command encoding count. Neither host
+        // present wait nor parallel GPU execution is added to the CPU path.
+        assert_eq!(rows["cpu_path"]["p99_ms"], 2.9);
+        assert_eq!(rows["present_wait"]["p99_ms"], 20.);
+        assert!(rows["present_wait"]["within_allocation"].is_null());
+        assert_eq!(rows["gpu_execution"]["p99_ms"], 7.);
+        assert_eq!(rows["gpu_execution"]["within_allocation"], false);
+        assert_eq!(rows["gpu_execution"]["available"], 2);
+        assert_eq!(rows["gpu_execution"]["unavailable"], 1);
+        assert_eq!(budget["samples"][0]["gpu_execution_ns"], 5_000_000);
+        assert!(budget["samples"][1]["gpu_execution_ns"].is_null());
+        assert_eq!(budget["samples"][2]["gpu_execution_ns"], 7_000_000);
+        assert_eq!(budget["samples"][0]["encode_ns"], 400_000);
+        assert_eq!(budget["frames_seen"], 3);
+        assert_eq!(budget["clipped_frames"], 0);
+    }
+
+    // keeps: spec budgets unavailable samples never count as zero
+    #[test]
+    fn frame_budget_distinguishes_missing_gpu_and_projection_from_observed_zero() {
+        let mut frames = FramePhaseSamples::default();
+        assert!(frames.report()["rows"]["cpu_path"]["p99_ms"].is_null());
+        frames.record(4, measured_phases(), None);
+        // An invalid split is unavailable too; never hide it by saturation.
+        frames.record(5, measured_phases(), Some(Duration::from_secs(1)));
+        let frozen = frames.report();
+        assert!(frozen["rows"]["gpu_execution"]["p99_ms"].is_null());
+        assert!(frozen["rows"]["gpu_execution"]["within_allocation"].is_null());
+        assert_eq!(frozen["rows"]["gpu_execution"]["unavailable"], 2);
+        assert!(frozen["rows"]["drain"]["p99_ms"].is_null());
+        assert_eq!(frozen["rows"]["drain"]["unavailable"], 2);
+        assert_eq!(frozen["rows"]["projection"]["unavailable"], 1);
+        assert_eq!(frozen["rows"]["cpu_path"]["available"], 2);
+        frames.gpu(4, Duration::ZERO);
+        assert_eq!(frames.report()["rows"]["gpu_execution"]["p99_ms"], 0.);
+        assert_eq!(frames.report()["rows"]["gpu_execution"]["available"], 1);
+        assert!(frozen["samples"][0]["gpu_execution_ns"].is_null());
+    }
+
+    // keeps: spec budgets bounded raw frame samples with explicit clipping
+    #[test]
+    fn frame_budget_clips_at_the_bound_without_reassigning_gpu_samples() {
+        let mut frames = FramePhaseSamples::default();
+        for frame in 1..=FRAME_PHASE_SAMPLES as u64 + 2 {
+            frames.record(frame, measured_phases(), Some(Duration::ZERO));
+        }
+        frames.gpu(FRAME_PHASE_SAMPLES as u64 + 1, Duration::ZERO);
+        frames.gpu(1, Duration::from_millis(1));
+        let report = frames.report();
+        assert_eq!(
+            report["samples"].as_array().unwrap().len(),
+            FRAME_PHASE_SAMPLES
+        );
+        assert_eq!(report["frames_seen"], FRAME_PHASE_SAMPLES as u64 + 2);
+        assert_eq!(report["clipped_frames"], 2);
+        assert_eq!(report["rows"]["gpu_execution"]["available"], 1);
+        assert_eq!(
+            report["rows"]["gpu_execution"]["unavailable"],
+            FRAME_PHASE_SAMPLES - 1
+        );
+        assert_eq!(report["samples"][0]["gpu_execution_ns"], 1_000_000);
+    }
 
     // keeps: spec seats-967-frame §3
     #[test]

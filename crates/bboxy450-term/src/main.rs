@@ -5479,7 +5479,9 @@ impl App {
             .as_mut()
             .unwrap()
             .acquire(tick.as_mut().and_then(|tick| tick.drawable.take()))?;
+        let project_start = self.stall.as_ref().map(|_| Instant::now());
         self.project_scene(frame.is_some());
+        let project_scene = project_start.map(|start| start.elapsed());
         let Some(frame) = frame else {
             if (self.animate && fifo)
                 || !self.inbox.messages.is_empty()
@@ -5623,7 +5625,10 @@ impl App {
                     self.meter.total_frames(),
                     model,
                     &self.pane_bounds,
-                    phases,
+                    stall::FramePhases {
+                        raw: phases,
+                        project_scene,
+                    },
                     cpu,
                     scale,
                 );
@@ -5632,9 +5637,10 @@ impl App {
             self.gpu
                 .as_ref()
                 .unwrap()
-                .collect_gpu(&mut self.budget, |id, at| {
+                .collect_gpu(&mut self.budget, |sample| {
                     if let Some(stall) = stall {
-                        stall.gpu_complete(id, at);
+                        stall.gpu_execution(sample.frame, sample.time);
+                        stall.gpu_complete(sample.frame, sample.completed_at);
                     }
                 });
             if !self.animate || self.clock.is_frozen() {
@@ -5806,9 +5812,10 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::StallPoll => {
                 let stall = &mut self.stall;
                 if let Some(gpu) = &self.gpu {
-                    gpu.collect_gpu(&mut self.budget, |id, at| {
+                    gpu.collect_gpu(&mut self.budget, |sample| {
                         if let Some(stall) = stall {
-                            stall.gpu_complete(id, at);
+                            stall.gpu_execution(sample.frame, sample.time);
+                            stall.gpu_complete(sample.frame, sample.completed_at);
                         }
                     });
                 }
@@ -6016,7 +6023,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.gpu
                         .as_ref()
                         .unwrap()
-                        .collect_gpu(&mut self.budget, |_, _| {});
+                        .collect_gpu(&mut self.budget, |_| {});
                     self.logger.write(self.budget.report());
                 }
                 let epoch = self.idle_quiet.begin(

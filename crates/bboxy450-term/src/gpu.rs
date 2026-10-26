@@ -296,10 +296,10 @@ impl Gpu {
     pub fn collect_gpu(
         &self,
         budget: &mut crate::budget::Budget,
-        mut complete: impl FnMut(u64, Instant),
+        mut complete: impl FnMut(&GpuSample),
     ) {
         for sample in self.gpu_samples.try_iter() {
-            complete(sample.frame, sample.completed_at);
+            complete(&sample);
             budget.gpu(sample);
         }
     }
