@@ -1,0 +1,85 @@
+{
+  "runtime_app_base": "a4ad6dc9c40746e32b43e006c6394e2c34f81c6f",
+  "binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term",
+  "binary_sha256": "2aa01785a24480aa0f8d8fdb3ed092e9d64521d7f4bbf0f102f4f07cc52ba91a",
+  "root": "/private/tmp/at5-edtkan5y",
+  "initial_ready": {
+    "running": true,
+    "mode": "headless",
+    "unattended": true,
+    "backend_ready": true,
+    "gui_ready": true,
+    "events_ready": false,
+    "custody_backend": "file",
+    "generation": 1,
+    "frame_seq": 1,
+    "windows": 0,
+    "close": null
+  },
+  "app_crash_returncode": -9,
+  "owned_before": {
+    "49865": {
+      "parent": 49850,
+      "birth": "Mon Oct 26 05:14:59 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term"
+    },
+    "49877": {
+      "parent": 49865,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term"
+    },
+    "49878": {
+      "parent": 49865,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term"
+    },
+    "49884": {
+      "parent": 49877,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/bin/zsh"
+    }
+  },
+  "survivors_after_app_crash": {
+    "49877": {
+      "parent": 49865,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term"
+    },
+    "49878": {
+      "parent": 49865,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term"
+    },
+    "49884": {
+      "parent": 49877,
+      "birth": "Mon Oct 26 05:15:00 2026",
+      "command": "/bin/zsh"
+    }
+  },
+  "restart_ready": null,
+  "restart_returncode": 1,
+  "restart_supervisor_log": "Error: Custom { kind: AddrInUse, error: \"another live supervisor owns the control socket: ownership lock Os { code: 35, kind: WouldBlock, message: \\\"Resource temporarily unavailable\\\" }\" }\n",
+  "cleanup_remaining_matching_pids": [],
+  "artifacts": {
+    "report.json": "15210e24851770eb7c2677c473b6075085cb8d29ffa16d9489b5fa6ceba45312",
+    "calls.jsonl": "3d363abd7e576c3f0b5c74447ca7896327893c45ee34c2caaf512e218bfbe027",
+    "first.log": "653e01ab9cb7257a5f88fe465bf50920041d5fbb78def45522038d4c95912d37",
+    "restart.log": "55262fe355b0b567bdddc24175fe096121f33e7a97431bab7264ed737bead849"
+  },
+  "source_refs": {
+    "crates/bboxy450-term/src/cockpit.rs:427": "EOF deliberately parks old children after GUI crash",
+    "crates/bboxy450-term/src/cockpit.rs:618": "fresh Session always starts a new supervisor",
+    "crates/bboxy450-term/src/cockpit.rs:872": "new supervisor process; no adoption of existing listener",
+    "crates/bbt-supervisor/src/transport.rs:247": "live ownership lock refuses second supervisor",
+    ".bboxy/specs/ctl-cli.md:68": "explicit stop destroys seats; adoption is named separate"
+  },
+  "promise": "T5 app crash/relaunch preserves the same PTYs and UI state",
+  "status": "failure reproduced once; no product change; T5 stays partial",
+  "scope": "one real zsh seat in a private file-account headless app; no remote model or operator identity",
+  "unproven": [
+    "multiple seats after app relaunch",
+    "same-PTY GUI reattachment",
+    "layout/focus/scroll restoration",
+    "programs never notice"
+  ]
+}
