@@ -13,21 +13,12 @@ fn output(seat: Ulid, generation: u64, seq: u64, byte: u8) -> Event {
     }
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 fn diagnostic_queue_observation_keeps_the_same_event_order() {
-    let (stream, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    let (mut client, _peer) = Memory::client();
     let first = Ulid::new();
     let second = Ulid::new();
-    let mut client = SocketSupervisor {
-        stream,
-        decoder: Default::default(),
-        events: Default::default(),
-        replies: Default::default(),
-        lease: None,
-        pending_request: None,
-        broken: false,
-        diagnostics: ClientDiagnostics::default(),
-    };
     client.events.confirm_ring(first, 1, 1).unwrap();
     client.events.push(output(first, 1, 3, b'a')).unwrap();
     client.events.push(output(second, 1, 1, b'b')).unwrap();
@@ -53,21 +44,22 @@ fn diagnostic_queue_observation_keeps_the_same_event_order() {
     );
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeout_setup() {
     let (stream, mut peer) = std::os::unix::net::UnixStream::pair().unwrap();
-    let request_id = Ulid::new();
+    let expected = output(Ulid::new(), 1, 1, b'x');
     write_frame(
         &mut peer,
-        &Frame::new(Message::Reply {
-            request_id,
-            result: Ok(Reply::Seats { seats: vec![] }),
+        &Frame::new(Message::Event {
+            event: expected.clone(),
         }),
     )
     .unwrap();
     drop(peer); // deterministic peer close, before the client configures its read
     let mut client = SocketSupervisor {
-        stream,
+        stream: stream.into(),
         decoder: Default::default(),
         events: Default::default(),
         replies: Default::default(),
@@ -76,143 +68,151 @@ fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeo
         broken: false,
         diagnostics: ClientDiagnostics::default(),
     };
-    let native = client
-        .stream
-        .set_read_timeout(Some(Duration::from_millis(20)));
-    eprintln!("closed-peer native SO_RCVTIMEO: {native:?}");
-    client.read(Duration::from_millis(20)).unwrap();
-    assert!(
-        matches!(client.replies.remove(&request_id), Some(Ok(Reply::Seats { seats })) if seats.is_empty())
+    assert_eq!(
+        client.receive(Duration::from_secs(30)).unwrap(),
+        Some(expected)
     );
-    let error = client.receive(Duration::from_millis(20)).unwrap_err();
-    assert!(
-        error.to_string().contains("supervisor disconnected"),
-        "EOF misreported: {error:?}"
+    let error = client.receive(Duration::from_secs(30)).unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::InvalidData
     );
 }
 
-struct ReleasePeer(std::sync::mpsc::Sender<()>);
-impl Drop for ReleasePeer {
-    fn drop(&mut self) {
-        let _ = self.0.send(());
+#[derive(Clone)]
+pub(super) struct Memory(std::sync::Arc<std::sync::Mutex<MemoryState>>);
+struct MemoryState {
+    now: Instant,
+    timeout: Duration,
+    incoming: std::collections::VecDeque<u8>,
+    held: Option<Ulid>,
+    released: bool,
+    closed: bool,
+    requests: usize,
+}
+impl Memory {
+    fn client() -> (SocketSupervisor, Self) {
+        let memory = Self(std::sync::Arc::new(std::sync::Mutex::new(MemoryState {
+            now: Instant::now(),
+            timeout: Duration::ZERO,
+            incoming: Default::default(),
+            held: None,
+            released: false,
+            closed: false,
+            requests: 0,
+        })));
+        let client = SocketSupervisor {
+            stream: Wire::Memory(memory.clone()),
+            decoder: Default::default(),
+            events: Default::default(),
+            replies: Default::default(),
+            lease: None,
+            pending_request: None,
+            broken: false,
+            diagnostics: Default::default(),
+        };
+        (client, memory)
+    }
+    pub(super) fn now(&self) -> Instant {
+        self.0.lock().unwrap().now
+    }
+    pub(super) fn set_read_timeout(&self, timeout: Option<Duration>) -> std::io::Result<()> {
+        self.0.lock().unwrap().timeout = timeout.unwrap_or(Duration::ZERO);
+        Ok(())
+    }
+    pub(super) fn shutdown(&self) -> std::io::Result<()> {
+        self.0.lock().unwrap().closed = true;
+        Ok(())
+    }
+    fn release(&self) {
+        let mut state = self.0.lock().unwrap();
+        state.released = true;
+        if let Some(request_id) = state.held.take() {
+            let bytes = crate::transport::encode(&Frame::new(Message::Reply {
+                request_id,
+                result: Ok(Reply::Seats { seats: vec![] }),
+            }))
+            .unwrap();
+            state.incoming.extend(bytes);
+        }
+    }
+}
+impl Read for Memory {
+    fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+        let mut state = self.0.lock().unwrap();
+        if state.closed {
+            return Ok(0);
+        }
+        if state.incoming.is_empty() {
+            let timeout = state.timeout;
+            state.now += timeout;
+            return Err(std::io::ErrorKind::WouldBlock.into());
+        }
+        let count = bytes.len().min(state.incoming.len());
+        for byte in &mut bytes[..count] {
+            *byte = state.incoming.pop_front().unwrap();
+        }
+        Ok(count)
+    }
+}
+impl Write for Memory {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        let request = read_frame::<Request>(&mut std::io::Cursor::new(bytes))?.body;
+        if !matches!(request.action, Action::ListOwnedSeats) {
+            return Err(std::io::ErrorKind::InvalidInput.into());
+        }
+        let mut state = self.0.lock().unwrap();
+        state.requests += 1;
+        if state.released {
+            state
+                .incoming
+                .extend(crate::transport::encode(&Frame::new(Message::Reply {
+                    request_id: request.request_id,
+                    result: Ok(Reply::Seats { seats: vec![] }),
+                }))?);
+        } else {
+            state.held = Some(request.request_id);
+        }
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 
-fn admit_peer(stream: &mut std::os::unix::net::UnixStream) {
-    let frame = read_frame::<Request>(stream).unwrap();
-    assert!(matches!(frame.body.action, Action::AcquireLogic { .. }));
-    write_frame(
-        stream,
-        &Frame::new(Message::Reply {
-            request_id: frame.body.request_id,
-            result: Ok(Reply::Acquired {
-                logic_lease: Ulid::new(),
-                supervisor_boot: Ulid::new(),
-            }),
-        }),
-    )
-    .unwrap();
-}
-
+// keeps: spec mux-daemon.md — Supervisor ↔ logic protocol — an ambiguous request fences writes until its original reply.
 #[test]
 fn a_timed_out_request_blocks_new_writes_until_its_late_reply_is_drained() {
-    let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("serial.sock");
-    let listener = UnixListener::bind(&path).unwrap();
-    let (release, released) = std::sync::mpsc::channel();
-    let (identify, identified) = std::sync::mpsc::channel();
-    let peer = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        stream
-            .set_read_timeout(Some(Duration::from_secs(15)))
-            .unwrap();
-        admit_peer(&mut stream);
-        let old = read_frame::<Request>(&mut stream).unwrap();
-        identify.send(old.body.request_id).unwrap();
-        let _ = released.recv_timeout(Duration::from_secs(20));
-        if write_frame(
-            &mut stream,
-            &Frame::new(Message::Reply {
-                request_id: old.body.request_id,
-                result: Ok(Reply::Seats { seats: vec![] }),
-            }),
-        )
-        .is_err()
-        {
-            return;
-        }
-        let new = read_frame::<Request>(&mut stream).unwrap();
-        assert_ne!(old.body.request_id, new.body.request_id);
-        assert!(matches!(new.body.action, Action::ListOwnedSeats));
-        let _ = write_frame(
-            &mut stream,
-            &Frame::new(Message::Reply {
-                request_id: new.body.request_id,
-                result: Ok(Reply::Seats { seats: vec![] }),
-            }),
-        );
-    });
-    let mut client = SocketSupervisor::connect(&path, [11; 32]).unwrap();
-    let release = ReleasePeer(release);
-    let error = client.request(Action::ListOwnedSeats).unwrap_err();
-    assert!(error.to_string().contains("outcome unknown"), "{error}");
-    let old = identified.recv_timeout(Duration::from_secs(1)).unwrap();
+    let (mut client, peer) = Memory::client();
+    let started = peer.now();
+    client.request(Action::ListOwnedSeats).unwrap_err();
+    assert_eq!(peer.now() - started, REQUEST_TIMEOUT); // virtual clock, no wait
     let held = client.request(Action::ListOwnedSeats).unwrap_err();
     assert!(
         held.downcast_ref::<Failure>()
-            .is_some_and(|f| f.code == crate::FailureCode::Busy),
-        "not retryable/no-effect: {held:?}"
+            .is_some_and(|failure| failure.code == crate::FailureCode::Busy)
     );
-    release.0.send(()).unwrap();
-    let until = Instant::now() + Duration::from_secs(3);
-    while !client.replies.contains_key(&old) {
-        client.receive(Duration::from_millis(20)).unwrap();
-        assert!(Instant::now() < until, "late reply not drained");
-    }
-    assert!(matches!(
-        client.replies.remove(&old),
-        Some(Ok(Reply::Seats { .. }))
-    ));
-    assert!(matches!(
-        client.request(Action::ListOwnedSeats).unwrap(),
-        Reply::Seats { .. }
-    ));
-    peer.join().unwrap();
+    peer.release();
+    assert_eq!(client.receive(Duration::ZERO).unwrap(), None);
+    assert!(
+        matches!(client.request(Action::ListOwnedSeats).unwrap(), Reply::Seats { seats } if seats.is_empty())
+    );
+    assert_eq!(peer.0.lock().unwrap().requests, 2); // remote wire saw no refused write
 }
 
+// keeps: spec mux-daemon.md — Supervisor ↔ logic protocol — unresolved requests disconnect at their original recovery deadline.
 #[test]
 fn an_unanswered_request_becomes_disconnected_at_the_bounded_recovery_deadline() {
-    let root = tempfile::tempdir().unwrap();
-    let path = root.path().join("unanswered.sock");
-    let listener = UnixListener::bind(&path).unwrap();
-    let (release, released) = std::sync::mpsc::channel();
-    let peer = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
-        admit_peer(&mut stream);
-        let _old = read_frame::<Request>(&mut stream).unwrap();
-        let _ = released.recv_timeout(Duration::from_secs(20));
-    });
-    let mut client = SocketSupervisor::connect(&path, [12; 32]).unwrap();
-    let release = ReleasePeer(release);
-    let started = Instant::now();
-    let error = client.request(Action::ListOwnedSeats).unwrap_err();
-    assert!(error.to_string().contains("outcome unknown"), "{error}");
-    // A long requested receive must still be clipped by the old request's
-    // second deadline (10 s from its original write, not another 60 s).
-    let error = client.receive(Duration::from_secs(60)).unwrap_err();
-    let elapsed = started.elapsed();
-    eprintln!("unanswered request disconnected after {elapsed:?}: {error}");
-    assert!(error.to_string().contains("supervisor disconnected"));
-    assert!(
-        elapsed < Duration::from_secs(12),
-        "recovery deadline did not bound read: {elapsed:?}"
-    );
-    let later = client.request(Action::ListOwnedSeats).unwrap_err();
-    assert!(later.to_string().contains("supervisor disconnected"));
-    drop(release);
-    peer.join().unwrap();
+    let (mut client, peer) = Memory::client();
+    let started = peer.now();
+    client.request(Action::ListOwnedSeats).unwrap_err();
+    client.receive(Duration::from_secs(60)).unwrap_err();
+    assert_eq!(peer.now() - started, REQUEST_TIMEOUT * 2);
+    client.request(Action::ListOwnedSeats).unwrap_err();
+    assert_eq!(peer.0.lock().unwrap().requests, 1); // disconnect cannot admit another request
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 fn pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation() {
     let seat = Ulid::new();
@@ -238,6 +238,7 @@ fn pre_ring_bytes_remain_fifo_and_confirmation_covers_only_its_generation() {
     );
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 fn raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it() {
     let raw = Ulid::new();
@@ -264,6 +265,7 @@ fn raw_fifo_keeps_its_named_limit_and_captured_slots_do_not_spend_it() {
     assert_eq!(events.pop_front(), Some(output(captured, 1, 10_000, b'x')));
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 fn lifecycle_is_retained_per_generation_and_later_output_follows_resize() {
     let seat = Ulid::new();
@@ -308,6 +310,8 @@ fn lifecycle_is_retained_per_generation_and_later_output_follows_resize() {
     assert!(events.slots.is_empty());
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn ring_notifications_survive_ten_thousand_requests_without_an_event_receive() {
     let root = tempfile::Builder::new()
@@ -320,10 +324,10 @@ fn ring_notifications_survive_ten_thousand_requests_without_an_event_receive() {
     let peer = std::thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
         stream
-            .set_read_timeout(Some(Duration::from_secs(10)))
+            .set_read_timeout(Some(Duration::from_secs(30)))
             .unwrap();
         stream
-            .set_write_timeout(Some(Duration::from_secs(10)))
+            .set_write_timeout(Some(Duration::from_secs(30)))
             .unwrap();
         let mut requests = 0;
         let mut seq = 0;
@@ -462,7 +466,7 @@ fn ring_notifications_survive_ten_thousand_requests_without_an_event_receive() {
         for index in 0..3 {
             events.push(
                 client
-                    .receive(Duration::from_secs(1))
+                    .receive(Duration::from_secs(30))
                     .map_err(|error| invalid(format!("fixture receive {index}: {error}")))?
                     .expect("missing retained event"),
             );

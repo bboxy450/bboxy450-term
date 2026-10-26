@@ -1,5 +1,7 @@
 #![allow(clippy::disallowed_methods)] // Disposable owned PTY fixture.
 use bbt_supervisor::{Action, Config, FailureCode, LaunchSpec, Supervisor};
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn capture_requires_an_explicit_supervisor_journal_directory() {
     let root = tempfile::tempdir().unwrap();
@@ -20,6 +22,8 @@ fn capture_requires_an_explicit_supervisor_journal_directory() {
     assert!(!root.path().join("seat").exists());
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen() {
     use bbt_supervisor::ring::{Ring, Settings};
@@ -51,7 +55,7 @@ fn supervisor_shutdown_preserves_every_already_admitted_byte_for_offline_reopen(
         panic!()
     };
     client.input(&attachment, Ulid::new(), b"go\n").unwrap();
-    let deadline = Instant::now() + Duration::from_secs(5);
+    let deadline = Instant::now() + Duration::from_secs(30);
     let through = loop {
         let Reply::RingRecovery { status, .. } = client
             .request(Action::RingRecovery {

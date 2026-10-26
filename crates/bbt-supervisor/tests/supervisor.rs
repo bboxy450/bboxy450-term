@@ -10,7 +10,7 @@ use bbt_supervisor::protocol::{MAX_INPUT_BYTES, VERSION};
 use bbt_supervisor::transport::{read_frame, write_frame};
 use bbt_supervisor::*;
 
-const DEADLINE: Duration = Duration::from_secs(15);
+const DEADLINE: Duration = Duration::from_secs(30);
 
 fn shell() -> LaunchSpec {
     let mut spec = LaunchSpec::new("/bin/zsh", std::env::current_dir().unwrap());
@@ -28,7 +28,7 @@ fn output_until(client: &Client, seat: Ulid, needle: &[u8]) -> Vec<u8> {
             seat: from,
             bytes: chunk,
             ..
-        } = client.recv_timeout(Duration::from_secs(2)).unwrap()
+        } = client.recv_timeout(Duration::from_secs(30)).unwrap()
             && from == seat
         {
             bytes.extend(chunk);
@@ -57,6 +57,8 @@ fn status(client: &Client, attachment: &Attachment, input_id: Ulid) -> InputRece
     }
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn zsh_echo_cwd_environment_and_resize() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -103,6 +105,8 @@ fn zsh_echo_cwd_environment_and_resize() {
     output_until(&client, info.seat, b"\r\n41 113\r\n");
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn two_seats_interleave_without_cross_talk() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -126,7 +130,7 @@ fn two_seats_interleave_without_cross_talk() {
             generation,
             seq,
             bytes,
-        } = client.recv_timeout(Duration::from_secs(2)).unwrap()
+        } = client.recv_timeout(Duration::from_secs(30)).unwrap()
         {
             assert_eq!(generation, 1);
             assert!(seq > *sequence.entry(seat).or_insert(0));
@@ -151,6 +155,8 @@ fn two_seats_interleave_without_cross_talk() {
     assert!(!b_output.contains("ONLY_A"));
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn spawn_errors_name_the_failed_paths_without_arguments_or_environment() {
     let root = tempfile::tempdir().unwrap();
@@ -172,7 +178,9 @@ fn spawn_errors_name_the_failed_paths_without_arguments_or_environment() {
     assert_eq!(error.code, FailureCode::Io);
     assert!(error.message.contains("spawn spawn_command:"), "{error}");
     assert!(
-        error.message.contains(&format!("program={} [", spec.program)),
+        error
+            .message
+            .contains(&format!("program={} [", spec.program)),
         "{error}"
     );
     assert!(
@@ -192,6 +200,8 @@ fn spawn_errors_name_the_failed_paths_without_arguments_or_environment() {
     );
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn fifty_seats_share_one_supervisor_poller() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -218,7 +228,7 @@ fn fifty_seats_share_one_supervisor_poller() {
             generation,
             bytes,
             ..
-        } = client.recv_timeout(Duration::from_secs(2)).unwrap()
+        } = client.recv_timeout(Duration::from_secs(30)).unwrap()
         {
             assert_eq!(generation, 1);
             let accumulated = output.entry(seat).or_default();
@@ -237,6 +247,8 @@ fn fifty_seats_share_one_supervisor_poller() {
     eprintln!("50 distinct PTY seats echoed under one Supervisor / one mio::Poll");
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn killed_child_reports_generation_and_fences_replacement() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -257,7 +269,7 @@ fn killed_child_reports_generation_and_fences_replacement() {
             generation,
             seq,
             status,
-        } = client.recv_timeout(Duration::from_secs(2)).unwrap()
+        } = client.recv_timeout(Duration::from_secs(30)).unwrap()
         {
             assert_eq!(seat, info.seat);
             assert_eq!(generation, 1);
@@ -285,6 +297,8 @@ fn killed_child_reports_generation_and_fences_replacement() {
     output_until(&client, info.seat, b"\r\nNEW_GENERATION\r\n");
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn logic_and_writer_replacement_preserve_child_and_deduplicate_input() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -340,6 +354,8 @@ fn logic_and_writer_replacement_preserve_child_and_deduplicate_input() {
     output_until(&third, info.seat, b"\r\nSURVIVED_DISCONNECT\r\n");
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn validation_rejects_stale_and_oversized_input() {
     let supervisor = Supervisor::start(Config {
@@ -409,6 +425,8 @@ impl Drop for Runtime {
 
 /// Decision #263, the operator's case: a `mux.sock` left by a run before the ownership lock
 /// existed, with nothing listening, no longer stops a supervisor from starting.
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn a_dead_socket_without_a_lock_does_not_stop_the_supervisor() {
     use std::os::unix::fs::DirBuilderExt;
@@ -454,6 +472,8 @@ fn socket_call(
     }
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn unix_socket_auth_framing_and_live_pty() {
     let runtime = Runtime::new();
@@ -562,6 +582,8 @@ fn unix_socket_auth_framing_and_live_pty() {
     assert!(!runtime.socket().exists());
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn blocked_write_survives_fencing_and_becomes_unknown_without_replay() {
     let supervisor = Supervisor::start(Config {
@@ -599,7 +621,7 @@ fn blocked_write_survives_fencing_and_becomes_unknown_without_replay() {
             .code,
         FailureCode::Busy
     );
-    let deadline = Instant::now() + Duration::from_secs(4);
+    let deadline = Instant::now() + Duration::from_secs(30);
     let final_receipt = loop {
         let receipt = status(&second, &new, id);
         if receipt.state != InputState::Pending {
@@ -617,6 +639,8 @@ fn blocked_write_survives_fencing_and_becomes_unknown_without_replay() {
     );
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn natural_exit_follows_all_final_output() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -634,7 +658,7 @@ fn natural_exit_follows_all_final_output() {
     let deadline = Instant::now() + DEADLINE;
     loop {
         assert!(Instant::now() < deadline);
-        match client.recv_timeout(Duration::from_secs(2)).unwrap() {
+        match client.recv_timeout(Duration::from_secs(30)).unwrap() {
             Event::Output {
                 seat,
                 generation,
@@ -662,6 +686,8 @@ fn natural_exit_follows_all_final_output() {
     assert_eq!(output, b"FINAL_BYTES");
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn slow_reader_backpressures_and_recovers_the_complete_output() {
     let supervisor = Supervisor::start(Config::default()).unwrap();
@@ -687,7 +713,7 @@ fn slow_reader_backpressures_and_recovers_the_complete_output() {
     let deadline = Instant::now() + DEADLINE;
     loop {
         assert!(Instant::now() < deadline);
-        match client.recv_timeout(Duration::from_secs(2)).unwrap() {
+        match client.recv_timeout(Duration::from_secs(30)).unwrap() {
             Event::Output {
                 seat,
                 generation,

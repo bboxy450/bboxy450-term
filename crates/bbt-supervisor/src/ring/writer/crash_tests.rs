@@ -57,6 +57,7 @@ fn read_json(path: &Path) -> Option<Value> {
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
 }
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 #[ignore = "private child of capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost"]
 fn capture_crash_child() {
@@ -130,6 +131,7 @@ fn capture_crash_child() {
     }
 }
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 #[ignore = "release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture"]
 fn capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost() {

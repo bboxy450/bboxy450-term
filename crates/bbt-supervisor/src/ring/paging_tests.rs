@@ -1,6 +1,7 @@
 use super::*;
 use crate::protocol::{Frame, Message, Reply};
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 fn output_weight_bounds_real_json_for_all_bytes_and_boundary_metadata() {
     let mut record = IndexedEvent {
@@ -80,6 +81,7 @@ pub(super) fn wire_page(page: &History) {
     );
 }
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 #[allow(clippy::disallowed_methods)] // Owned temporary hot/cold capture fixture.
 fn hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order() {
@@ -130,6 +132,7 @@ fn hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order() {
     assert_eq!(actual, expected);
 }
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 #[allow(clippy::disallowed_methods)] // Fault only the unrequested in-memory entry.
 fn a_full_page_returns_before_decoding_the_following_entry() {

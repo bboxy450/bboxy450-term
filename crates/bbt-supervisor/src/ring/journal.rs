@@ -516,6 +516,7 @@ mod tests {
     use crate::protocol::Event;
     use crate::ring::{Playback, Settings};
 
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn crash_rebuilds_two_seats_only_through_the_last_tick_and_rejects_torn_suffix() {
         let temp = tempfile::tempdir().unwrap();
@@ -571,6 +572,7 @@ mod tests {
             );
         }
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn old_segment_waits_for_every_sealed_projection_and_checkpoint() {
         let temp = tempfile::tempdir().unwrap();
@@ -588,6 +590,7 @@ mod tests {
         j.projected(b, rb.position, 1).unwrap();
         assert!(!old.exists());
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn metadata_only_debt_keeps_the_five_second_full_flush_deadline() {
         let temp = tempfile::tempdir().unwrap();
@@ -600,6 +603,7 @@ mod tests {
         j.commit(true).unwrap();
         assert!(!j.durable_due());
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn legacy_checkpoint_publication_offsets_remain_readable() {
         let temp = tempfile::tempdir().unwrap();
@@ -634,6 +638,7 @@ mod tests {
             state.byte_end
         );
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn bad_crc_and_oversized_header_never_commit_a_later_tick() {
         let temp = tempfile::tempdir().unwrap();
@@ -655,6 +660,7 @@ mod tests {
             .unwrap();
         assert_eq!(scan(&path).unwrap().1, first);
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn checkpoint_carries_offset_and_rotated_tail_replays_without_effects() {
         let temp = tempfile::tempdir().unwrap();

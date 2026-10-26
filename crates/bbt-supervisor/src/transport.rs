@@ -486,15 +486,18 @@ mod tests {
             serde_json::to_value(expected).unwrap()
         );
     }
+    // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
     fn replies_pass_unsent_events_with_fifo_order_in_both_lanes() {
         check_reply_priority(false);
     }
+    // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
     fn priority_replies_never_interleave_a_partially_written_event() {
         check_reply_priority(true);
     }
 
+    // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
     fn saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue() {
         use crate::{Event, Failure, FailureCode, Reply, Ulid};
@@ -565,6 +568,8 @@ mod tests {
         socket_ownership(path, unsafe { libc::geteuid() }).unwrap()
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn refused_socket_rebinds_without_replacing_a_live_socket_or_file() {
         let root = tempfile::tempdir().unwrap();
@@ -594,6 +599,8 @@ mod tests {
         assert_eq!(fs::read(&path).unwrap(), b"owned fixture");
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn ownership_lock_persists_and_a_lockless_socket_is_probed() {
         let root = tempfile::tempdir().unwrap();
@@ -648,6 +655,8 @@ mod tests {
         drop(bound);
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn invalid_lock_types_permissions_and_owner_are_rejected_without_changes() {
         use std::os::unix::fs::symlink;
@@ -698,6 +707,8 @@ mod tests {
         }
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn full_listener_backlog_is_live_and_never_unlinked() {
         use std::os::fd::AsRawFd;
@@ -745,6 +756,8 @@ mod tests {
         assert!(error.to_string().contains("live supervisor"));
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn fork_inherited_listener_is_live_until_the_child_releases_it() {
         use std::os::fd::AsRawFd;
@@ -809,6 +822,8 @@ mod tests {
         assert!(!path.exists());
     }
 
+    // keeps: decision #263
+    #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
     #[test]
     fn dropping_owner_releases_flock_while_a_fork_child_keeps_the_descriptor() {
         let root = tempfile::tempdir().unwrap();
@@ -894,6 +909,7 @@ mod tests {
         assert!(!path.exists());
     }
 
+    // keeps: decision #263
     #[test]
     #[ignore = "manual 2000-iteration parallel stale/live socket stress"]
     fn stale_and_live_socket_paths_survive_2000_parallel_iterations() {
@@ -941,6 +957,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
     fn fragmented_and_coalesced_frames_round_trip() {
         let frame = Frame::new(Request::new(None, Action::ListOwnedSeats));
@@ -956,6 +973,7 @@ mod tests {
         assert_eq!(decoder.push(&joined).unwrap(), vec![frame.clone(), frame]);
     }
 
+    // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
     fn rejects_lengths_versions_and_truncated_payloads() {
         for len in [0, MAX_FRAME_BYTES as u32 + 1, u32::MAX] {

@@ -27,6 +27,7 @@ fn scan(directory: &Path, forbidden: &[String], hits: &mut Vec<String>) -> usize
     texts
 }
 
+// keeps: decision #273
 #[test]
 fn host_has_no_program_specific_vocabulary() {
     // Split the needles so this audit does not match its own source.

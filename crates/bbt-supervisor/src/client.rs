@@ -8,6 +8,9 @@ use std::time::{Duration, Instant};
 use crate::store::{Result, invalid};
 use crate::{Action, Client, Event, Failure, Frame, Message, Reply, Ulid};
 
+mod wire;
+use wire::Wire;
+
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
 struct PendingRequest {
@@ -143,7 +146,7 @@ pub struct ClientDiagnostics {
 
 /// The same logic can run in a separate process against W2.1's private socket.
 pub struct SocketSupervisor {
-    stream: std::os::unix::net::UnixStream,
+    stream: Wire,
     decoder: crate::transport::Decoder<Message>,
     events: PendingEvents,
     replies: BTreeMap<Ulid, std::result::Result<Reply, Failure>>,
@@ -158,7 +161,7 @@ impl SocketSupervisor {
         let stream = std::os::unix::net::UnixStream::connect(path)?;
         stream.set_write_timeout(Some(REQUEST_TIMEOUT))?;
         let mut client = Self {
-            stream,
+            stream: stream.into(),
             decoder: Default::default(),
             events: PendingEvents::default(),
             replies: BTreeMap::new(),
@@ -194,7 +197,7 @@ impl SocketSupervisor {
             return Err(invalid("supervisor disconnected"));
         }
         if let Some(pending) = &self.pending_request
-            && Instant::now() >= pending.expires
+            && self.stream.now() >= pending.expires
         {
             let id = pending.id;
             self.broken = true;
@@ -210,7 +213,7 @@ impl SocketSupervisor {
         self.check_connection()?;
         self.diagnostics.read_calls = self.diagnostics.read_calls.saturating_add(1);
         let timeout = self.pending_request.as_ref().map_or(timeout, |pending| {
-            timeout.min(pending.expires.saturating_duration_since(Instant::now()))
+            timeout.min(pending.expires.saturating_duration_since(self.stream.now()))
         });
         if let Err(error) = self
             .stream
@@ -293,7 +296,7 @@ impl SupervisorConnection for SocketSupervisor {
         let request = crate::Request::new(self.lease, action);
         let id = request.request_id;
         let bytes = crate::transport::encode(&Frame::new(request))?;
-        let started = Instant::now();
+        let started = self.stream.now();
         // One unacknowledged wire request is the invariant behind the socket
         // queue's one-frame reply reserve, including after an ambiguous timeout.
         let previous = self.pending_request.replace(PendingRequest {
@@ -326,7 +329,7 @@ impl SupervisorConnection for SocketSupervisor {
                 }
                 return Ok(reply);
             }
-            if Instant::now() >= until {
+            if self.stream.now() >= until {
                 return Err(invalid(
                     "supervisor operation outcome unknown; query original id",
                 ));

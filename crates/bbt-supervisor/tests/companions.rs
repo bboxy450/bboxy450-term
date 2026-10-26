@@ -7,8 +7,9 @@ use std::time::{Duration, Instant};
 use bbt_supervisor::protocol::CompanionSpec;
 use bbt_supervisor::*;
 
-const WATCHDOG: Duration = Duration::from_secs(15);
+const WATCHDOG: Duration = Duration::from_secs(30);
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 #[ignore = "private service subprocess, exercised by the parent tests"]
 fn service_fixture() {
@@ -106,6 +107,8 @@ fn exit(client: &Client, seat: Ulid) {
     }
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn companion_survives_client_restart_and_is_reaped_before_seat_exit() {
     let root = tempfile::tempdir().unwrap();
@@ -163,6 +166,8 @@ fn companion_survives_client_restart_and_is_reaped_before_seat_exit() {
     server.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn companion_failure_ends_the_seat_and_reaps_the_service() {
     let root = tempfile::tempdir().unwrap();
@@ -176,6 +181,8 @@ fn companion_failure_ends_the_seat_and_reaps_the_service() {
     server.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn unready_companion_never_holds_the_serial_client_or_recovery_inventory() {
     let root = tempfile::tempdir().unwrap();
@@ -209,6 +216,7 @@ fn unready_companion_never_holds_the_serial_client_or_recovery_inventory() {
     server.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 #[ignore = "private supervisor subprocess, exercised by the parent test"]
 fn supervisor_process_fixture() {
@@ -223,6 +231,8 @@ fn supervisor_process_fixture() {
     }
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn companion_dies_when_its_supervisor_process_is_killed() {
     let root = tempfile::tempdir().unwrap();

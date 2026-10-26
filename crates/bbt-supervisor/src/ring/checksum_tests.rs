@@ -1,5 +1,6 @@
 use super::*;
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 fn crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails() {
     assert_eq!(crc32c(b""), 0);
@@ -43,6 +44,7 @@ fn crc_matches_the_table_for_all_bytes_unaligned_splits_and_short_tails() {
     );
 }
 
+// keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
 #[allow(clippy::disallowed_methods)] // Copy one pre-change synthetic blob into an owned tempdir.
 fn fixed_sha_vectors_and_a_software_written_cold_blob_still_verify() {

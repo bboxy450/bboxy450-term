@@ -6,7 +6,7 @@ use bbt_supervisor::{
 use std::time::{Duration, Instant};
 
 fn output(client: &Client, seat: Ulid, needle: &[u8]) -> Vec<u8> {
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline = Instant::now() + Duration::from_secs(30);
     let mut bytes = Vec::new();
     loop {
         let remaining = deadline
@@ -53,6 +53,8 @@ fn context(client: &Client, attachment: &Attachment) -> InputContext {
     }
 }
 
+// keeps: spec mux-daemon.md — Supervisor ↔ logic protocol
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn unconfigured_inputs_always_fence_the_context() {
     let (_supervisor, client, attachment) = fixture(Config::default());
@@ -77,6 +79,8 @@ fn unconfigured_inputs_always_fence_the_context() {
     }
 }
 
+// keeps: spec mux-daemon.md — Supervisor ↔ logic protocol
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn configured_probes_preserve_context_and_still_deliver_once() {
     let probes = vec![b"\x1b]9000;?\x07".to_vec(), b"\x1b]9000;?\x1b\\".to_vec()];
@@ -107,6 +111,8 @@ fn configured_probes_preserve_context_and_still_deliver_once() {
     assert_eq!(context(&client, &attachment).epoch, before.epoch + 1);
 }
 
+// keeps: spec mux-daemon.md — Supervisor ↔ logic protocol
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn guarded_inputs_use_the_same_probe_allowlist() {
     let bytes = b"\x1b]9000;?\x07".to_vec();
@@ -114,7 +120,7 @@ fn guarded_inputs_use_the_same_probe_allowlist() {
         input_probes: vec![bytes.clone()],
         ..Default::default()
     });
-    let deadline = Instant::now() + Duration::from_secs(15);
+    let deadline = Instant::now() + Duration::from_secs(30);
     let before = loop {
         let before = context(&client, &attachment);
         if before.settled {

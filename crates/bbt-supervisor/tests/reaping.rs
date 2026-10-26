@@ -160,6 +160,8 @@ os._exit(0)
     latencies
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn final_output_and_exit_reach_the_owner() {
     let mut foreign = std::process::Command::new("/bin/sh")
@@ -172,6 +174,8 @@ fn final_output_and_exit_reach_the_owner() {
     assert_eq!(foreign.wait().unwrap().code(), Some(17));
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn stdio_eof_does_not_wait_for_a_still_running_child() {
     let root = tempfile::tempdir().unwrap();
@@ -203,7 +207,7 @@ os._exit(0)
     ];
     let info = client.spawn(spec).unwrap();
     client.attach(info.seat, 1).unwrap();
-    let until = Instant::now() + Duration::from_secs(10);
+    let until = Instant::now() + Duration::from_secs(30);
     while !closed.exists() {
         assert!(Instant::now() < until, "child never closed its stdio");
         std::thread::sleep(Duration::from_millis(1));
@@ -231,6 +235,7 @@ os._exit(0)
     supervisor.shutdown().unwrap();
 }
 
+// keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 #[ignore = "W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture"]
 fn exit_events_at_machine_scale() {

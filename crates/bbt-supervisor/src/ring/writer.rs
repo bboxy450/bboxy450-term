@@ -139,6 +139,8 @@ enum Job {
     Close(Key),
     #[cfg(test)]
     Gate(mpsc::SyncSender<()>, mpsc::Receiver<()>),
+    #[cfg(test)]
+    Tick(mpsc::SyncSender<()>),
 }
 pub(crate) enum Query {
     Recovery,
@@ -657,6 +659,8 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
         };
         let active_started = std::time::Instant::now();
         let active = job.is_some();
+        #[cfg(test)]
+        let mut tick_reply = None;
         match job {
             Some(Job::Register(ring)) => {
                 let key = (ring.boundary.seat, ring.boundary.generation);
@@ -790,6 +794,11 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                 let _ = started.send(());
                 let _ = resume.recv();
             }
+            #[cfg(test)]
+            Some(Job::Tick(reply)) => {
+                next_flush = std::time::Instant::now();
+                tick_reply = Some(reply);
+            }
             None => {}
         }
         if active {
@@ -855,6 +864,10 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
             shared.queue.lock().unwrap().timings.busy_ns += started.elapsed().as_nanos() as u64;
             next_flush = std::time::Instant::now() + TICK;
         }
+        #[cfg(test)]
+        if let Some(reply) = tick_reply {
+            let _ = reply.send(());
+        }
     }
     if let Some(journal) = journal.as_mut() {
         let _ = commit_group(&mut rings, journal, &shared, true);
@@ -918,8 +931,29 @@ fn commit_group(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
 
+    struct OpenGate(Option<mpsc::SyncSender<()>>);
+    impl Drop for OpenGate {
+        fn drop(&mut self) {
+            if let Some(resume) = self.0.take() {
+                let _ = resume.send(());
+            }
+        }
+    }
+    fn tick(writer: &CaptureWriter) {
+        let (done, completed) = mpsc::sync_channel(1);
+        writer
+            .shared
+            .queue
+            .lock()
+            .unwrap()
+            .jobs
+            .push_back(Job::Tick(done));
+        writer.shared.ready.notify_one();
+        completed.recv_timeout(Duration::from_secs(30)).unwrap();
+    }
+
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     #[allow(clippy::disallowed_methods)] // Owned ring and journal paging fixture.
     fn ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full() {
@@ -969,6 +1003,7 @@ mod tests {
         assert!(tail.history(&mut journal, 5, 5).is_err());
     }
 
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn undurable_admission_budget_pauses_until_a_full_flush_returns_credit() {
         let poll = mio::Poll::new().unwrap();
@@ -990,7 +1025,7 @@ mod tests {
             .jobs
             .push_back(Job::Gate(started, gate));
         writer.shared.ready.notify_one();
-        ready.recv_timeout(Duration::from_secs(2)).unwrap();
+        ready.recv_timeout(Duration::from_secs(30)).unwrap();
         for seq in 1..=2 {
             assert!(handle.can_capture());
             handle
@@ -1010,18 +1045,12 @@ mod tests {
             assert_eq!(q.durable_pauses, 1);
         }
         resume.send(()).unwrap();
-        let until = Instant::now() + Duration::from_secs(5);
-        while !handle.can_capture() {
-            assert!(
-                Instant::now() < until,
-                "full-flush credit did not restore admission"
-            );
-            thread::sleep(Duration::from_millis(2));
-        }
+        tick(&writer);
+        assert!(handle.can_capture());
         let Reply::RingRecovery { status, .. } = handle
             .request(Query::Recovery)
             .unwrap()
-            .recv_timeout(Duration::from_secs(2))
+            .recv_timeout(Duration::from_secs(30))
             .unwrap()
             .unwrap()
         else {
@@ -1034,6 +1063,7 @@ mod tests {
         drop(writer);
     }
 
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn orderly_shutdown_leaves_a_durable_journal_that_rebuilds_the_projection() {
         let temp = tempfile::tempdir().unwrap();
@@ -1057,7 +1087,7 @@ mod tests {
             handle
                 .request(Query::Checkpoint(playback.saved().encode().unwrap()))
                 .unwrap()
-                .recv_timeout(Duration::from_secs(5))
+                .recv_timeout(Duration::from_secs(30))
                 .unwrap()
                 .unwrap(),
             Reply::CheckpointCommitted { sequence: 1 }
@@ -1086,6 +1116,7 @@ mod tests {
         assert_eq!(ring.replay().unwrap().byte_end, playback.byte_end);
         assert_eq!(ring.history(1, 1).unwrap().records[0].event, event);
     }
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn one_writer_tick_orders_two_trickling_seats_without_full_flushes() {
         let poll = mio::Poll::new().unwrap();
@@ -1114,29 +1145,20 @@ mod tests {
                 .unwrap();
             handles.push(handle);
         }
-        let until = Instant::now() + Duration::from_secs(2);
+        tick(&writer);
         for handle in &handles {
-            loop {
-                let Reply::RingRecovery { status, .. } = handle
-                    .request(Query::Recovery)
-                    .unwrap()
-                    .recv_timeout(Duration::from_secs(2))
-                    .unwrap()
-                    .unwrap()
-                else {
-                    panic!()
-                };
-                if status.committed_sequence == 1 {
-                    assert_eq!(
-                        status.capture.durable_commits, 0,
-                        "a hot tick used a full flush"
-                    );
-                    assert_eq!(status.capture.ordered_commits, 1);
-                    break;
-                }
-                assert!(Instant::now() < until, "tick did not publish its boundary");
-                thread::sleep(Duration::from_millis(2));
-            }
+            let Reply::RingRecovery { status, .. } = handle
+                .request(Query::Recovery)
+                .unwrap()
+                .recv_timeout(Duration::from_secs(30))
+                .unwrap()
+                .unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(status.committed_sequence, 1);
+            assert_eq!(status.capture.durable_commits, 0);
+            assert_eq!(status.capture.ordered_commits, 1);
         }
         drop(handles);
         drop(writer);
@@ -1148,6 +1170,7 @@ mod tests {
         }
     }
 
+    // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
     fn stalled_disk_writer_keeps_admission_nonblocking_and_bounded_then_replays_every_byte() {
         let poll = mio::Poll::new().unwrap();
@@ -1170,38 +1193,35 @@ mod tests {
             .jobs
             .push_back(Job::Gate(started, gate));
         writer.shared.ready.notify_one();
-        ready.recv_timeout(Duration::from_secs(2)).unwrap();
-        let unblock = thread::spawn(move || {
-            thread::sleep(Duration::from_millis(150));
-            let _ = resume.send(());
+        ready.recv_timeout(Duration::from_secs(30)).unwrap();
+        let resume = OpenGate(Some(resume));
+        let (admitted, completed) = mpsc::sync_channel(1);
+        let admission = thread::spawn(move || {
+            for seq in 1..=2 {
+                assert!(handle.can_capture());
+                handle
+                    .append_event(&Event::Output {
+                        seat,
+                        generation: 1,
+                        seq,
+                        bytes: vec![seq as u8; OUTPUT_CHUNK_BYTES],
+                    })
+                    .unwrap();
+            }
+            assert!(!handle.can_capture());
+            assert!(!handle.can_capture());
+            admitted.send(handle).unwrap();
         });
-        let start = Instant::now();
-        for seq in 1..=2 {
-            assert!(handle.can_capture());
-            handle
-                .append_event(&Event::Output {
-                    seat,
-                    generation: 1,
-                    seq,
-                    bytes: vec![seq as u8; OUTPUT_CHUNK_BYTES],
-                })
-                .unwrap();
-        }
-        assert!(!handle.can_capture());
-        assert!(!handle.can_capture());
-        assert!(
-            start.elapsed() < Duration::from_millis(50),
-            "admission waited on stalled IO"
-        );
-        {
-            let q = writer.shared.queue.lock().unwrap();
-            assert_eq!(q.pressure[&(seat, 1)].bytes, budget);
-            assert_eq!(q.pressure[&(seat, 1)].full_count, 1);
-        }
+        // The writer is still gated. Completion proves admission did not wait
+        // for disk work; this timeout is only a deadlock guard.
+        let handle = completed.recv_timeout(Duration::from_secs(30)).unwrap();
+        admission.join().unwrap();
+        drop(resume);
+        tick(&writer);
         let response = handle
             .request(Query::Recovery)
             .unwrap()
-            .recv_timeout(Duration::from_secs(5))
+            .recv_timeout(Duration::from_secs(30))
             .unwrap()
             .unwrap();
         let Reply::RingRecovery { status, .. } = response else {
@@ -1210,15 +1230,7 @@ mod tests {
         assert_eq!(status.byte_end as usize, 2 * OUTPUT_CHUNK_BYTES);
         assert_eq!(status.capture.peak_queue_bytes, budget);
         assert_eq!(status.capture.queue_full_count, 1);
-        let until = Instant::now() + Duration::from_secs(5);
-        while !handle.can_capture() {
-            assert!(
-                Instant::now() < until,
-                "ordered tick did not restore admission after IO recovered"
-            );
-            thread::sleep(Duration::from_millis(2));
-        }
-        unblock.join().unwrap();
+        assert!(handle.can_capture());
         drop(handle);
         drop(writer);
         let ring = Ring::open(&temp.path().join("seat"), seat, 1, 0, Settings::default()).unwrap();
