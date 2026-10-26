@@ -1430,6 +1430,73 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
 
 /// One noun-verb verb: connect (unless it only reads the run directory), issue its action,
 /// print its `data` in the §2 envelope, or `--human` as text.
+/// What a noun's `run_verb` may read besides its command (decision #320).
+struct VerbCx<'a> {
+    client: Client,
+    id: Ulid,
+    human: bool,
+    endpoint_file: PathBuf,
+    tail: &'a mut Option<events::Progress>,
+    capture_seat: &'a mut Option<Ulid>,
+    out: &'a mut std::io::StdoutLock<'static>,
+    noun: &'static str,
+    verb: &'static str,
+}
+type NounVerbRun = fn(VerbCx<'_>, Command) -> Result<(), String>;
+/// Each noun's noun-verb runner; a verb is run in its noun's file.
+const NOUN_VERB_RUNNERS: &[(&str, NounVerbRun)] = &[
+    ("debug", debug::run_verb),
+    ("events", events::run_verb),
+    ("record", records::run_verb),
+    ("ui", ui::run_verb),
+    ("seat", seat::run_verb),
+    ("app", app::run_verb),
+    ("message", message::run_verb),
+    ("task", task::run_verb),
+];
+/// Spawn, post, inbox, receipts, delegate, e2e list: a noun-verb command whose action the
+/// flat form already runs answers with that reply (each runner's default arm).
+pub(super) fn flat_reply(
+    client: &mut Client,
+    command: Command,
+    verb: &str,
+) -> Result<Value, String> {
+    Ok({
+        // Spawn, post, inbox, receipts, delegate, e2e list: the action's reply
+        // as the flat form already carries it, minus the flat form's own `kind`.
+        let mut rows: Vec<Value> = run(client, command)?
+            .into_iter()
+            .map(|mut row| {
+                if let Some(object) = row.as_object_mut() {
+                    object.remove("kind");
+                }
+                row
+            })
+            .collect();
+        if rows.len() == 1 && !matches!(verb, "inbox" | "receipts" | "list") {
+            rows.remove(0)
+        } else {
+            Value::Array(rows)
+        }
+    })
+}
+/// The one reply line of a noun-verb command (ctl-cli §2).
+pub(super) fn print_reply(
+    out: &mut impl Write,
+    noun: &str,
+    verb: &str,
+    op: Ulid,
+    data: Value,
+    human: bool,
+) -> Result<(), String> {
+    let line = if human {
+        serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?
+    } else {
+        json!({ "ok": true, "op": op, "noun": noun, "verb": verb, "data": data }).to_string()
+    };
+    writeln!(out, "{line}").map_err(|e| e.to_string())
+}
+
 fn run_verb(
     args: &[String],
     parsed: Parsed,
@@ -1445,14 +1512,6 @@ fn run_verb(
         .unwrap_or_else(|| default_endpoint.to_path_buf());
     let stdout = std::io::stdout();
     let mut out = stdout.lock();
-    let mut print = |op: Ulid, data: Value, human: bool| -> Result<(), String> {
-        let line = if human {
-            serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?
-        } else {
-            json!({ "ok": true, "op": op, "noun": noun, "verb": verb, "data": data }).to_string()
-        };
-        writeln!(out, "{line}").map_err(|e| e.to_string())
-    };
     if let Command::AppStart {
         headless,
         ctl,
@@ -1469,7 +1528,14 @@ fn run_verb(
             test_account.as_deref(),
             *record_notifications,
         )?;
-        return print(op.unwrap_or_else(fresh), data, parsed.human);
+        return print_reply(
+            &mut out,
+            noun,
+            verb,
+            op.unwrap_or_else(fresh),
+            data,
+            parsed.human,
+        );
     }
     if let Command::AppEndpoint = parsed.command {
         // The run directory and the generation, never the capability (#275).
@@ -1477,7 +1543,10 @@ fn run_verb(
             .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
         let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
         let id = op.unwrap_or_else(fresh);
-        return print(
+        return print_reply(
+            &mut out,
+            noun,
+            verb,
             id,
             json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
                 "generation": value["generation"] }),
@@ -1496,372 +1565,22 @@ fn run_verb(
     *op = Some(id);
     client.op = Some(id);
     let human = parsed.human;
-    let data = match parsed.command {
-        Command::DebugFault { seat, from, to } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            client.debug(bbt_proto::gui::DebugRequest::RingGap { seat, from, to })?
-        }
-        Command::Debug { request, snapshot } => {
-            debug::read(&mut client, request, snapshot.as_deref())?
-        }
-        Command::EventsStreams => json!({"streams":client.event_streams()?}),
-        Command::EventsTail {
-            subject, timeout, ..
-        } => {
-            return events::tail(
-                &mut client,
-                id,
-                tail.as_mut().expect("tail progress"),
-                subject.as_deref(),
-                timeout,
-                &mut out,
-            );
-        }
-        Command::RecordFetch { locator } => records::fetch(&mut client, locator)?,
-        Command::RecordSearch { query, cursor } => records::search(&mut client, query, cursor)?,
-        Command::RecordChanges { since } => records::changes(&mut client, since)?,
-        Command::Ui(request) => {
-            serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
-        }
-        Command::SpawnAt(pick) => {
-            let harness = pick.harness.clone();
-            let layout = client.ui(bbt_proto::gui::UiRequest::Spawn(pick))?;
-            let placed = layout
-                .spawned
-                .as_ref()
-                .ok_or("ui_frame_refused: spawn reply has no placement receipt")?;
-            json!({"seat":placed.seat,"swarm":placed.swarm,"harness":harness,
-                "spawn_op":placed.op,"placement":placed.placement,"layout_revision":placed.layout_revision,
-                "applied_layout_revision":placed.applied_layout_revision,
-                "frame_seq":layout.frame_seq,"layout":layout})
-        }
-        Command::UiFocus(seat) => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
-                .map_err(|e| e.to_string())?
-        }
-        // The window replies with its first produced layout at the new size (ctl-cli §1a).
-        Command::AppResize { cols, rows } => {
-            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Resize { cols, rows })?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::UiScroll { seat, motion } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Scroll { seat, motion })?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::UiNotificationClick(seat) => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::NotificationClick { seat })?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::DebugNotifications => {
-            client
-                .app(bbt_proto::gui::AppRequest::Notifications)?
-                .notifications
-        }
-        Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
-            .map_err(|e| e.to_string())?,
-        Command::AppStop => serde_json::to_value(app::stop(&mut client, &endpoint_file)?)
-            .map_err(|e| e.to_string())?,
-        Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
-        Command::Screen { .. }
-        | Command::Resize { .. }
-        | Command::Type { .. }
-        | Command::Key { .. }
-        | Command::Paste { .. }
-        | Command::Wait { .. } => {
-            // Already in the §2 shape (and --human for screen).
-            for line in run(&mut client, parsed.command)? {
-                match line {
-                    Value::String(text) => writeln!(out, "{text}"),
-                    line => writeln!(out, "{line}"),
-                }
-                .map_err(|e| e.to_string())?;
-            }
-            return Ok(());
-        }
-        Command::Rename { seat, name } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let op = client.mint();
-            client.call(
-                Some(op),
-                GuiAction::RenameSeat {
-                    id: op,
-                    seat,
-                    name: name.clone(),
-                },
-                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
-            )?;
-            json!({ "seat": seat, "name": name })
-        }
-        Command::Restart { seat } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.clone();
-            let op = client.mint();
-            client.call(
-                Some(op),
-                GuiAction::RestartSeat {
-                    id: op,
-                    seat: seat.id,
-                    generation: seat.generation,
-                },
-                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
-            )?;
-            json!({ "seat": seat.id, "from_generation": seat.generation })
-        }
-        command @ (Command::Close { .. } | Command::UndoClose { .. }) => {
-            let (seat, undo) = match command {
-                Command::Close { seat } => (seat, false),
-                Command::UndoClose { seat } => (seat, true),
-                _ => unreachable!(),
-            };
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let op = client.mint();
-            let reply = client.call(
-                Some(op),
-                if undo {
-                    GuiAction::UndoCloseSeat { id: op, seat }
-                } else {
-                    GuiAction::CloseSeat { id: op, seat }
-                },
-                |r| matches!(r,GuiReply::Ui {op:o,..} if *o==op),
-            )?;
-            let GuiReply::Ui { layout, .. } = reply else {
-                unreachable!()
-            };
-            if layout.frame_seq == 0 {
-                return Err(
-                    "close_frame_incomplete: the GUI owner returned no produced frame".into(),
-                );
-            }
-            json!({"seat":seat,"relayed":true,"applied":true,"action":if undo {"undo-close"} else {"close"},"frame_seq":layout.frame_seq,"layout":layout})
-        }
-        Command::Capture { path, seat } => {
-            let seat = match seat {
-                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
-                None => None,
-            };
-            *capture_seat = seat;
-            let (path, frame) = client.capture(&path, seat)?;
-            json!({ "path": path, "seat": seat,
-                "stale": frame.stale, "occluded": frame.occluded,
-                "frame_presented_at": frame.presented_at_ms, "offscreen":frame.offscreen,
-                "frame_seq":frame.frame_seq,"rendered_at_ms":frame.rendered_at_ms })
-        }
-        Command::Focus { seat } => {
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let op = client.mint();
-            let reply = client.call(
-                Some(op),
-                GuiAction::FocusSeat { id: op, seat },
-                |r| matches!(r, GuiReply::Focused { op: o, .. } if *o == op),
-            )?;
-            let GuiReply::Focused { frame, .. } = reply else {
-                unreachable!()
-            };
-            if frame.seat.0.0 != seat.0 {
-                return Err("focus_superseded: GUI acknowledged a different seat".into());
-            }
-            json!({"seat":seat,"applied":true,"generation":frame.generation,"frame_seq":frame.frame_seq})
-        }
-        Command::Watch { seat, timeout } => {
-            // State: the seat's retained stream paged by our own cursor, never the window's
-            // lane. Screen: polled, a line only when its capture sequence moves (#272).
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
-            let stream = format!("seat-{seat}");
-            let deadline = std::time::Instant::now() + timeout;
-            let (mut after, mut state, mut seen, mut events) = (0, None, None, 0u64);
-            loop {
-                while let (page, Some(next)) = client.events_read(&stream, after, 128)? {
-                    state = page
-                        .into_iter()
-                        .rev()
-                        .find(|e| e.subject.ends_with("/state"))
-                        .or(state);
-                    after = next;
-                }
-                let (page, _) = client.events_read(&stream, after, 128)?;
-                if let Some(last) = page.last() {
-                    after = last.seq;
-                }
-                for event in page.into_iter().filter(|e| e.subject.ends_with("/state")) {
-                    state = Some(event);
-                }
-                if let Some(event) = state.take() {
-                    events += 1;
-                    writeln!(
-                        out,
-                        "{}",
-                        json!({ "ok": true, "op": id, "event": {
-                        "kind": "state", "seat": seat, "seq": event.seq, "state": event.payload } })
-                    )
-                    .map_err(|e| e.to_string())?;
-                }
-                let (_, screen) = client.screen(seat)?;
-                if seen != Some(screen.sequence) {
-                    seen = Some(screen.sequence);
-                    events += 1;
-                    writeln!(
-                        out,
-                        "{}",
-                        json!({ "ok": true, "op": id, "event": {
-                        "kind": "screen", "seat": seat, "sequence": screen.sequence,
-                        "cursor": screen.cursor, "rows": screen.rows } })
-                    )
-                    .map_err(|e| e.to_string())?;
-                }
-                out.flush().map_err(|e| e.to_string())?;
-                if std::time::Instant::now() >= deadline {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(200));
-            }
-            writeln!(
-                out,
-                "{}",
-                json!({ "ok": true, "op": id, "done": true,
-                "data": { "seat": seat, "events": events } })
-            )
-            .map_err(|e| e.to_string())?;
-            return Ok(());
-        }
-        Command::Send {
-            to,
-            text,
-            reply_to,
-            swarm,
-        } => {
-            let seats = client.seats()?;
-            // A seat name or id addresses its inbox; anything else is a destination path.
-            let (destination, seat_swarm) = match to.as_deref() {
-                Some(to) if !to.contains('/') => {
-                    let seat = resolve(&seats, to)?;
-                    (
-                        format!("seats/{}/inbox", seat.record.id),
-                        Some(seat.record.swarm),
-                    )
-                }
-                Some(path) => (path.to_owned(), None),
-                None => (String::new(), None),
-            };
-            let swarm = swarm
-                .or(seat_swarm)
-                .or_else(|| swarms(&seats).first().copied())
-                .ok_or("no seats: pass --swarm")?;
-            let mut message = SendRequest::text(destination, text);
-            message.id = id;
-            message.reply_to = reply_to;
-            serde_json::to_value(client.messaging(swarm, Request::Send { message })?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::Ack { message } => {
-            let mut last = String::from("no seats, so no swarm to ask");
-            let mut answer = None;
-            for swarm in swarms(&client.seats()?) {
-                match client.messaging(
-                    swarm,
-                    Request::Acknowledge {
-                        message,
-                        agent: None,
-                    },
-                ) {
-                    Ok(response) => {
-                        answer = Some(response);
-                        break;
-                    }
-                    Err(reason) => last = reason,
-                }
-            }
-            serde_json::to_value(answer.ok_or(format!("ack {message}: {last}"))?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::TaskList {
-            unassigned,
-            seat,
-            status,
-        } => {
-            let assignee = match seat {
-                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id.to_string()),
-                None => None,
-            };
-            let mut cards = vec![];
-            let mut after = None;
-            loop {
-                let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
-                    unassigned,
-                    swarm_id: None,
-                    status: status.clone(),
-                    assignee: assignee.clone(),
-                    after,
-                    limit: Some(PAGE),
-                })?
-                else {
-                    return Err("task list: unexpected task response".into());
-                };
-                cards.extend(items);
-                match next {
-                    Some(next) if Some(next) != after => after = Some(next),
-                    _ => break,
-                }
-            }
-            serde_json::to_value(cards).map_err(|e| e.to_string())?
-        }
-        Command::TaskGet { task } => {
-            let request = match task.parse::<Ulid>() {
-                Ok(id) => TaskRequest::Status {
-                    task_path: None,
-                    task_id: Some(id),
-                },
-                Err(_) => TaskRequest::Status {
-                    task_path: Some(task),
-                    task_id: None,
-                },
-            };
-            serde_json::to_value(client.task(request)?).map_err(|e| e.to_string())?
-        }
-        Command::TaskReport {
-            task,
-            summary,
-            commit,
-            verify_result,
-        } => serde_json::to_value(client.task(TaskRequest::Report {
-            task_path: task,
-            summary,
-            commit,
-            verify_result,
-        })?)
-        .map_err(|e| e.to_string())?,
-        Command::TaskAccept { task } => {
-            serde_json::to_value(client.task(TaskRequest::Accept { task_path: task })?)
-                .map_err(|e| e.to_string())?
-        }
-        Command::TaskReject { task, reason } => {
-            serde_json::to_value(client.task(TaskRequest::Reject {
-                task_path: task,
-                reason,
-            })?)
-            .map_err(|e| e.to_string())?
-        }
-        command => {
-            // Spawn, post, inbox, receipts, delegate, e2e list: the action's reply
-            // as the flat form already carries it, minus the flat form's own `kind`.
-            let mut rows: Vec<Value> = run(&mut client, command)?
-                .into_iter()
-                .map(|mut row| {
-                    if let Some(object) = row.as_object_mut() {
-                        object.remove("kind");
-                    }
-                    row
-                })
-                .collect();
-            if rows.len() == 1 && !matches!(verb, "inbox" | "receipts" | "list") {
-                rows.remove(0)
-            } else {
-                Value::Array(rows)
-            }
-        }
+    let cx = VerbCx {
+        client,
+        id,
+        human,
+        endpoint_file,
+        tail,
+        capture_seat,
+        out: &mut out,
+        noun,
+        verb,
     };
-    print(id, data, human)
+    let noun_of = parsed.command.noun();
+    match NOUN_VERB_RUNNERS.iter().find(|(noun, _)| *noun == noun_of) {
+        Some((_, run)) => run(cx, parsed.command),
+        None => unreachable!("every noun with table verbs has a runner"),
+    }
 }
 
 /// Connects and names the issuer (`--as` or `BBOXY_CTL_ISSUER`, #269).

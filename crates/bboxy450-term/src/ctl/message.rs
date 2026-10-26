@@ -197,3 +197,70 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
         }
     })
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::Send {
+            to,
+            text,
+            reply_to,
+            swarm,
+        } => {
+            let seats = client.seats()?;
+            // A seat name or id addresses its inbox; anything else is a destination path.
+            let (destination, seat_swarm) = match to.as_deref() {
+                Some(to) if !to.contains('/') => {
+                    let seat = resolve(&seats, to)?;
+                    (
+                        format!("seats/{}/inbox", seat.record.id),
+                        Some(seat.record.swarm),
+                    )
+                }
+                Some(path) => (path.to_owned(), None),
+                None => (String::new(), None),
+            };
+            let swarm = swarm
+                .or(seat_swarm)
+                .or_else(|| swarms(&seats).first().copied())
+                .ok_or("no seats: pass --swarm")?;
+            let mut message = SendRequest::text(destination, text);
+            message.id = id;
+            message.reply_to = reply_to;
+            serde_json::to_value(client.messaging(swarm, Request::Send { message })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::Ack { message } => {
+            let mut last = String::from("no seats, so no swarm to ask");
+            let mut answer = None;
+            for swarm in swarms(&client.seats()?) {
+                match client.messaging(
+                    swarm,
+                    Request::Acknowledge {
+                        message,
+                        agent: None,
+                    },
+                ) {
+                    Ok(response) => {
+                        answer = Some(response);
+                        break;
+                    }
+                    Err(reason) => last = reason,
+                }
+            }
+            serde_json::to_value(answer.ok_or(format!("ack {message}: {last}"))?)
+                .map_err(|e| e.to_string())?
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

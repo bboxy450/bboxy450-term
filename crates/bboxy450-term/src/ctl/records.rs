@@ -146,3 +146,23 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
         }
     })
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::RecordFetch { locator } => records::fetch(&mut client, locator)?,
+        Command::RecordSearch { query, cursor } => records::search(&mut client, query, cursor)?,
+        Command::RecordChanges { since } => records::changes(&mut client, since)?,
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

@@ -450,3 +450,194 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
         }
     })
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        capture_seat,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::SpawnAt(pick) => {
+            let harness = pick.harness.clone();
+            let layout = client.ui(bbt_proto::gui::UiRequest::Spawn(pick))?;
+            let placed = layout
+                .spawned
+                .as_ref()
+                .ok_or("ui_frame_refused: spawn reply has no placement receipt")?;
+            json!({"seat":placed.seat,"swarm":placed.swarm,"harness":harness,
+                "spawn_op":placed.op,"placement":placed.placement,"layout_revision":placed.layout_revision,
+                "applied_layout_revision":placed.applied_layout_revision,
+                "frame_seq":layout.frame_seq,"layout":layout})
+        }
+        Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
+        Command::Screen { .. }
+        | Command::Resize { .. }
+        | Command::Type { .. }
+        | Command::Key { .. }
+        | Command::Paste { .. }
+        | Command::Wait { .. } => {
+            // Already in the §2 shape (and --human for screen).
+            for line in run(&mut client, command)? {
+                match line {
+                    Value::String(text) => writeln!(out, "{text}"),
+                    line => writeln!(out, "{line}"),
+                }
+                .map_err(|e| e.to_string())?;
+            }
+            return Ok(());
+        }
+        Command::Rename { seat, name } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RenameSeat {
+                    id: op,
+                    seat,
+                    name: name.clone(),
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat, "name": name })
+        }
+        Command::Restart { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.clone();
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::RestartSeat {
+                    id: op,
+                    seat: seat.id,
+                    generation: seat.generation,
+                },
+                |r| matches!(r, GuiReply::Ok { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat.id, "from_generation": seat.generation })
+        }
+        command @ (Command::Close { .. } | Command::UndoClose { .. }) => {
+            let (seat, undo) = match command {
+                Command::Close { seat } => (seat, false),
+                Command::UndoClose { seat } => (seat, true),
+                _ => unreachable!(),
+            };
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            let reply = client.call(
+                Some(op),
+                if undo {
+                    GuiAction::UndoCloseSeat { id: op, seat }
+                } else {
+                    GuiAction::CloseSeat { id: op, seat }
+                },
+                |r| matches!(r,GuiReply::Ui {op:o,..} if *o==op),
+            )?;
+            let GuiReply::Ui { layout, .. } = reply else {
+                unreachable!()
+            };
+            if layout.frame_seq == 0 {
+                return Err(
+                    "close_frame_incomplete: the GUI owner returned no produced frame".into(),
+                );
+            }
+            json!({"seat":seat,"relayed":true,"applied":true,"action":if undo {"undo-close"} else {"close"},"frame_seq":layout.frame_seq,"layout":layout})
+        }
+        Command::Capture { path, seat } => {
+            let seat = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id),
+                None => None,
+            };
+            *capture_seat = seat;
+            let (path, frame) = client.capture(&path, seat)?;
+            json!({ "path": path, "seat": seat,
+                "stale": frame.stale, "occluded": frame.occluded,
+                "frame_presented_at": frame.presented_at_ms, "offscreen":frame.offscreen,
+                "frame_seq":frame.frame_seq,"rendered_at_ms":frame.rendered_at_ms })
+        }
+        Command::Focus { seat } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let op = client.mint();
+            let reply = client.call(
+                Some(op),
+                GuiAction::FocusSeat { id: op, seat },
+                |r| matches!(r, GuiReply::Focused { op: o, .. } if *o == op),
+            )?;
+            let GuiReply::Focused { frame, .. } = reply else {
+                unreachable!()
+            };
+            if frame.seat.0.0 != seat.0 {
+                return Err("focus_superseded: GUI acknowledged a different seat".into());
+            }
+            json!({"seat":seat,"applied":true,"generation":frame.generation,"frame_seq":frame.frame_seq})
+        }
+        Command::Watch { seat, timeout } => {
+            // State: the seat's retained stream paged by our own cursor, never the window's
+            // lane. Screen: polled, a line only when its capture sequence moves (#272).
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let stream = format!("seat-{seat}");
+            let deadline = std::time::Instant::now() + timeout;
+            let (mut after, mut state, mut seen, mut events) = (0, None, None, 0u64);
+            loop {
+                while let (page, Some(next)) = client.events_read(&stream, after, 128)? {
+                    state = page
+                        .into_iter()
+                        .rev()
+                        .find(|e| e.subject.ends_with("/state"))
+                        .or(state);
+                    after = next;
+                }
+                let (page, _) = client.events_read(&stream, after, 128)?;
+                if let Some(last) = page.last() {
+                    after = last.seq;
+                }
+                for event in page.into_iter().filter(|e| e.subject.ends_with("/state")) {
+                    state = Some(event);
+                }
+                if let Some(event) = state.take() {
+                    events += 1;
+                    writeln!(
+                        out,
+                        "{}",
+                        json!({ "ok": true, "op": id, "event": {
+                        "kind": "state", "seat": seat, "seq": event.seq, "state": event.payload } })
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                let (_, screen) = client.screen(seat)?;
+                if seen != Some(screen.sequence) {
+                    seen = Some(screen.sequence);
+                    events += 1;
+                    writeln!(
+                        out,
+                        "{}",
+                        json!({ "ok": true, "op": id, "event": {
+                        "kind": "screen", "seat": seat, "sequence": screen.sequence,
+                        "cursor": screen.cursor, "rows": screen.rows } })
+                    )
+                    .map_err(|e| e.to_string())?;
+                }
+                out.flush().map_err(|e| e.to_string())?;
+                if std::time::Instant::now() >= deadline {
+                    break;
+                }
+                std::thread::sleep(Duration::from_millis(200));
+            }
+            writeln!(
+                out,
+                "{}",
+                json!({ "ok": true, "op": id, "done": true,
+                "data": { "seat": seat, "events": events } })
+            )
+            .map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

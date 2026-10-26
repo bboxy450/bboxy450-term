@@ -182,3 +182,34 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        tail,
+        mut out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::EventsStreams => json!({"streams":client.event_streams()?}),
+        Command::EventsTail {
+            subject, timeout, ..
+        } => {
+            return events::tail(
+                &mut client,
+                id,
+                tail.as_mut().expect("tail progress"),
+                subject.as_deref(),
+                timeout,
+                &mut out,
+            );
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

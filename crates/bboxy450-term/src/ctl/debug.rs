@@ -175,3 +175,32 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         _ => return Ok(None),
     }))
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::DebugFault { seat, from, to } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            client.debug(bbt_proto::gui::DebugRequest::RingGap { seat, from, to })?
+        }
+        Command::Debug { request, snapshot } => {
+            debug::read(&mut client, request, snapshot.as_deref())?
+        }
+        Command::DebugNotifications => {
+            client
+                .app(bbt_proto::gui::AppRequest::Notifications)?
+                .notifications
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

@@ -346,6 +346,32 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     }))
 }
 
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        endpoint_file,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::AppResize { cols, rows } => {
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Resize { cols, rows })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::AppStatus => serde_json::to_value(client.app(bbt_proto::gui::AppRequest::Status)?)
+            .map_err(|e| e.to_string())?,
+        Command::AppStop => serde_json::to_value(app::stop(&mut client, &endpoint_file)?)
+            .map_err(|e| e.to_string())?,
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

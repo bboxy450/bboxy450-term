@@ -98,3 +98,39 @@ pub(super) fn parse(words: &[&str], _cx: &super::ParseCx) -> Result<Option<Comma
         _ => return Ok(None),
     }))
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::Ui(request) => {
+            serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
+        }
+        Command::UiFocus(seat) => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Focus { seat })?)
+                .map_err(|e| e.to_string())?
+        }
+        // The window replies with its first produced layout at the new size (ctl-cli §1a).
+        Command::UiScroll { seat, motion } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::Scroll { seat, motion })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::UiNotificationClick(seat) => {
+            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::NotificationClick { seat })?)
+                .map_err(|e| e.to_string())?
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}

@@ -198,3 +198,87 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
         }
     })
 }
+
+/// This noun's noun-verb commands, run on the admitted connection; prints the one reply.
+pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), String> {
+    let super::VerbCx {
+        mut client,
+        out,
+        noun,
+        verb,
+        id,
+        human,
+        ..
+    } = cx;
+    let data = match command {
+        Command::TaskList {
+            unassigned,
+            seat,
+            status,
+        } => {
+            let assignee = match seat {
+                Some(seat) => Some(resolve(&client.seats()?, &seat)?.record.id.to_string()),
+                None => None,
+            };
+            let mut cards = vec![];
+            let mut after = None;
+            loop {
+                let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
+                    unassigned,
+                    swarm_id: None,
+                    status: status.clone(),
+                    assignee: assignee.clone(),
+                    after,
+                    limit: Some(PAGE),
+                })?
+                else {
+                    return Err("task list: unexpected task response".into());
+                };
+                cards.extend(items);
+                match next {
+                    Some(next) if Some(next) != after => after = Some(next),
+                    _ => break,
+                }
+            }
+            serde_json::to_value(cards).map_err(|e| e.to_string())?
+        }
+        Command::TaskGet { task } => {
+            let request = match task.parse::<Ulid>() {
+                Ok(id) => TaskRequest::Status {
+                    task_path: None,
+                    task_id: Some(id),
+                },
+                Err(_) => TaskRequest::Status {
+                    task_path: Some(task),
+                    task_id: None,
+                },
+            };
+            serde_json::to_value(client.task(request)?).map_err(|e| e.to_string())?
+        }
+        Command::TaskReport {
+            task,
+            summary,
+            commit,
+            verify_result,
+        } => serde_json::to_value(client.task(TaskRequest::Report {
+            task_path: task,
+            summary,
+            commit,
+            verify_result,
+        })?)
+        .map_err(|e| e.to_string())?,
+        Command::TaskAccept { task } => {
+            serde_json::to_value(client.task(TaskRequest::Accept { task_path: task })?)
+                .map_err(|e| e.to_string())?
+        }
+        Command::TaskReject { task, reason } => {
+            serde_json::to_value(client.task(TaskRequest::Reject {
+                task_path: task,
+                reason,
+            })?)
+            .map_err(|e| e.to_string())?
+        }
+        command => super::flat_reply(&mut client, command, verb)?,
+    };
+    super::print_reply(out, noun, verb, id, data, human)
+}
