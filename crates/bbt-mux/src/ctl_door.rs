@@ -163,53 +163,53 @@ pub async fn open(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: invariant ctl-opt-in
     #[test]
     fn the_window_keeps_its_door_and_a_supervisor_descendant_is_refused() {
-        let me = std::process::id();
-        let parent = parent(me).expect("this process has a parent");
-        // The window by pid.
+        // A synthetic ancestry makes classification independent of the runner's
+        // process tree. The real endpoint/ancestry boundary remains in gui_endpoint.
+        let parent = |pid| match pid {
+            42 => Some(30),
+            30 => Some(2),
+            2 => Some(1),
+            _ => Some(0),
+        };
         assert_eq!(
-            classify(
-                Some(me as i32),
+            classify_with(
+                Some(42),
                 Peers {
-                    supervisor: 1,
-                    gui: me
-                }
+                    supervisor: 2,
+                    gui: 42
+                },
+                parent
             ),
             Admit::Door(Door::Gui)
         );
-        // A descendant of the "supervisor" (here our parent) is refused, however deep.
         assert_eq!(
-            classify(
-                Some(me as i32),
+            classify_with(
+                Some(42),
                 Peers {
-                    supervisor: parent,
+                    supervisor: 2,
                     gui: 0
-                }
+                },
+                parent
             ),
             Admit::Refused(REFUSAL)
         );
-        // An unrelated chain comes through as ctl; an unknown pid is refused.
+        let unrelated = Peers {
+            supervisor: 99,
+            gui: 0,
+        };
         assert_eq!(
-            classify(
-                Some(me as i32),
-                Peers {
-                    supervisor: u32::MAX,
-                    gui: 0
-                }
-            ),
+            classify_with(Some(42), unrelated, parent),
             Admit::Door(Door::Ctl)
         );
-        assert_eq!(
-            classify(
-                None,
-                Peers {
-                    supervisor: u32::MAX,
-                    gui: 0
-                }
-            ),
-            Admit::Refused(UNPLACED)
-        );
+        for pid in [None, Some(-1)] {
+            assert_eq!(
+                classify_with(pid, unrelated, parent),
+                Admit::Refused(UNPLACED)
+            );
+        }
     }
 
     // keeps: invariant ctl-opt-in

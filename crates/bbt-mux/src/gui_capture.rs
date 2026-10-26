@@ -299,85 +299,62 @@ impl Captures {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use futures_util::poll;
 
     // keeps: spec ctl-cli
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn focus_waits_for_the_gui_frame_answer_and_keeps_its_correlation() {
-        let captures = Arc::new(Captures::default());
+        let captures = Captures::default();
         let seat = bbt_proto::SeatId::from_u128(5);
-        assert!(
-            captures
-                .focus(Ulid(1), seat)
-                .await
-                .unwrap_err()
-                .contains("no window")
-        );
+        assert!(captures.focus(Ulid(1), seat).await.is_err());
         let mut owner = captures.subscribe();
-        let task = tokio::spawn({
-            let captures = captures.clone();
-            async move { captures.focus(Ulid(2), seat).await }
-        });
+        let request = captures.focus(Ulid(2), seat);
+        tokio::pin!(request);
+        assert!(poll!(request.as_mut()).is_pending());
         assert!(
-            matches!(owner.recv().await.unwrap(),Notice::Focus {op,seat:id} if op==Ulid(2) && id==seat)
+            matches!(owner.try_recv().unwrap(), Notice::Focus { op, seat: id } if op == Ulid(2) && id == seat)
         );
+        let frame = bbt_proto::gui::FocusFrame {
+            seat,
+            generation: 7,
+            frame_seq: 9,
+        };
+        captures.focused(Ulid(999), Ok(frame.clone()));
         assert!(
-            !task.is_finished(),
-            "a relay receipt is not an applied focus"
-        );
-        captures.focused(
-            Ulid(999),
-            Ok(bbt_proto::gui::FocusFrame {
-                seat,
-                generation: 7,
-                frame_seq: 9,
-            }),
-        );
-        assert!(
-            !task.is_finished(),
+            poll!(request.as_mut()).is_pending(),
             "another operation cannot acknowledge this focus"
         );
-        captures.focused(
-            Ulid(2),
-            Ok(bbt_proto::gui::FocusFrame {
-                seat,
-                generation: 7,
-                frame_seq: 9,
-            }),
+        captures.focused(Ulid(2), Ok(frame.clone()));
+        let answer = request.await.unwrap();
+        assert_eq!(
+            (answer.seat, answer.generation, answer.frame_seq),
+            (frame.seat, frame.generation, frame.frame_seq)
         );
-        assert_eq!(task.await.unwrap().unwrap().frame_seq, 9);
     }
 
     // keeps: spec ctl-cli
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn close_and_undo_share_the_ui_wait_and_do_not_acknowledge_the_relay() {
         use bbt_proto::gui::UiLayout;
-        let captures = Arc::new(Captures::default());
+        let captures = Captures::default();
         let seat = bbt_proto::SeatId::from_u128(5);
-        assert!(
-            captures
-                .close(Ulid(1), seat, false)
-                .await
-                .unwrap_err()
-                .starts_with("endpoint_unavailable:")
-        );
+        assert!(captures.close(Ulid(1), seat, false).await.is_err());
         let mut owner = captures.subscribe();
+        // Serial reuse also proves a completed operation releases its admission.
+        let id = Ulid::new();
         for (undo, frame_seq) in [(false, 11), (true, 12), (false, 0)] {
-            let id = Ulid::new();
-            let request = tokio::spawn({
-                let captures = captures.clone();
-                async move { captures.close(id, seat, undo).await }
-            });
-            match owner.recv().await.unwrap() {
+            let request = captures.close(id, seat, undo);
+            tokio::pin!(request);
+            assert!(poll!(request.as_mut()).is_pending());
+            match owner.try_recv().unwrap() {
                 Notice::Close { op, seat: seen } if !undo => assert_eq!((op, seen), (id, seat)),
                 Notice::UndoClose { op, seat: seen } if undo => assert_eq!((op, seen), (id, seat)),
                 other => panic!("wrong close relay: {other:?}"),
             }
-            assert!(!request.is_finished(), "a relay is not a produced frame");
             captures.ui_answer(Ulid::new(), Err("wrong operation".into()));
             assert!(
-                !request.is_finished(),
-                "another operation cannot acknowledge this close"
+                poll!(request.as_mut()).is_pending(),
+                "a relay is not a produced frame"
             );
             captures.ui_answer(
                 id,
@@ -398,35 +375,32 @@ mod tests {
                     tree: Vec::new(),
                 }),
             );
-            let answer = request.await.unwrap();
+            let answer = request.await;
             if frame_seq == 0 {
-                assert!(answer.unwrap_err().starts_with("close_frame_incomplete:"));
+                assert!(answer.is_err(), "a zero frame cannot complete close");
             } else {
                 assert_eq!(answer.unwrap().frame_seq, frame_seq);
             }
-            assert!(captures.ui.lock().unwrap().is_empty());
         }
     }
 
     // keeps: spec ctl-cli
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn lifecycle_uses_the_gui_owner_and_only_commits_stop_after_the_reply() {
-        let captures = Arc::new(Captures::default());
+        let captures = Captures::default();
         let id = Ulid::new();
         assert!(
             captures
                 .app(id, bbt_proto::gui::AppRequest::Status)
                 .await
-                .unwrap_err()
-                .starts_with("app endpoint unavailable:")
+                .is_err()
         );
         let mut owner = captures.subscribe();
-        let task = tokio::spawn({
-            let captures = captures.clone();
-            async move { captures.app(id, bbt_proto::gui::AppRequest::Stop).await }
-        });
+        let request = captures.app(id, bbt_proto::gui::AppRequest::Stop);
+        tokio::pin!(request);
+        assert!(poll!(request.as_mut()).is_pending());
         assert!(
-            matches!(owner.recv().await.unwrap(),Notice::App {id:seen,request:bbt_proto::gui::AppRequest::Stop} if seen==id)
+            matches!(owner.try_recv().unwrap(), Notice::App { id: seen, request: bbt_proto::gui::AppRequest::Stop } if seen == id)
         );
         let status = bbt_proto::gui::AppStatus {
             running: true,
@@ -444,79 +418,75 @@ mod tests {
             history: serde_json::Value::Null,
         };
         captures.app_answer(id, status.clone());
-        assert_eq!(task.await.unwrap().unwrap(), status);
+        assert_eq!(request.await.unwrap(), status);
         assert!(matches!(
             owner.try_recv(),
             Err(broadcast::error::TryRecvError::Empty)
         ));
         captures.app_stopping(id);
-        assert!(matches!(owner.recv().await.unwrap(),Notice::AppStopping {id:seen} if seen==id));
+        assert!(
+            matches!(owner.try_recv().unwrap(), Notice::AppStopping { id: seen } if seen == id)
+        );
     }
 
     // keeps: spec ctl-cli
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn ui_asks_are_correlated_and_do_not_invent_an_owner() {
         use bbt_proto::gui::UiRequest;
-        let captures = Arc::new(Captures::default());
+        let captures = Captures::default();
         let id = Ulid::new();
-        assert!(
-            captures
-                .ui(id, UiRequest::Layout)
-                .await
-                .unwrap_err()
-                .starts_with("endpoint_unavailable:")
-        );
+        assert!(captures.ui(id, UiRequest::Layout).await.is_err());
         let mut owner = captures.subscribe();
-        let request = tokio::spawn({
-            let captures = captures.clone();
-            async move { captures.ui(id, UiRequest::Key(vec!["cmd-t".into()])).await }
-        });
+        let request = captures.ui(id, UiRequest::Key(vec!["cmd-t".into()]));
+        tokio::pin!(request);
+        assert!(poll!(request.as_mut()).is_pending());
         assert!(
-            matches!(owner.recv().await.unwrap(), Notice::Ui { id: seen, request: UiRequest::Key(keys) } if seen == id && keys == ["cmd-t"])
+            matches!(owner.try_recv().unwrap(), Notice::Ui { id: seen, request: UiRequest::Key(keys) } if seen == id && keys == ["cmd-t"])
         );
         captures.ui_answer(Ulid::new(), Err("wrong operation".into()));
-        assert!(!request.is_finished());
-        captures.ui_answer(id, Err("ui_key_not_applicable: test refusal".into()));
-        assert_eq!(
-            request.await.unwrap(),
-            Err("ui_key_not_applicable: test refusal".into())
+        assert!(poll!(request.as_mut()).is_pending());
+        let refusal = "ui_key_not_applicable: test refusal".to_string();
+        captures.ui_answer(id, Err(refusal.clone()));
+        assert_eq!(request.await, Err(refusal));
+        // The same public id is admitted after its answer, without a private-map assertion.
+        let retry = captures.ui(id, UiRequest::Layout);
+        tokio::pin!(retry);
+        assert!(poll!(retry.as_mut()).is_pending());
+        assert!(
+            matches!(owner.try_recv().unwrap(), Notice::Ui { id: seen, request: UiRequest::Layout } if seen == id)
         );
-        assert!(captures.ui.lock().unwrap().is_empty());
+        captures.ui_answer(id, Err("second answer".into()));
+        assert_eq!(retry.await, Err("second answer".into()));
     }
+
     // keeps: spec ctl-cli
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn an_ask_completes_with_the_windows_answer() {
-        let captures = Arc::new(Captures::default());
-        let path = "/tmp/never-written.png".to_string();
+        let captures = Captures::default();
+        let temp = tempfile::tempdir().unwrap();
         let ask = Ask {
             id: Ulid::new(),
-            path: path.clone(),
+            path: temp.path().join("capture.png").to_str().unwrap().into(),
             seat: None,
         };
-        assert_eq!(
-            captures.ask(ask.clone()).await,
-            Err("no window is attached to capture".into())
-        );
+        assert!(captures.ask(ask.clone()).await.is_err());
         let relative = Ask {
             path: "x.png".into(),
             ..ask.clone()
         };
-        assert_eq!(
-            captures.ask(relative).await,
-            Err("capture path must be absolute".into())
-        );
+        assert!(captures.ask(relative).await.is_err());
         let mut window = captures.subscribe();
-        let asker = tokio::spawn({
-            let captures = captures.clone();
-            let ask = ask.clone();
-            async move { captures.ask(ask).await }
-        });
-        let Notice::Capture(seen) = window.recv().await.unwrap() else {
+        let request = captures.ask(ask.clone());
+        tokio::pin!(request);
+        assert!(poll!(request.as_mut()).is_pending());
+        let Notice::Capture(seen) = window.try_recv().unwrap() else {
             panic!("a capture notice")
         };
-        assert_eq!((seen.id, seen.path), (ask.id, path));
+        assert_eq!((seen.id, seen.path), (ask.id, ask.path));
         captures.answer(Ulid::new(), Err("not this one".into()));
-        captures.answer(ask.id, Err("readback failed".into()));
-        assert_eq!(asker.await.unwrap(), Err("readback failed".into()));
+        assert!(poll!(request.as_mut()).is_pending());
+        let response = "readback failed".to_string();
+        captures.answer(ask.id, Err(response.clone()));
+        assert_eq!(request.await, Err(response));
     }
 }

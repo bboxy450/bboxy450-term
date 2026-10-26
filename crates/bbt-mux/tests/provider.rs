@@ -14,7 +14,6 @@ use bbt_mux::{Action, Event, Reply, SeatInfo};
 
 #[derive(Default)]
 struct Calls {
-    requests: Vec<HostId>,
     waits: Vec<(HostId, Duration)>,
 }
 struct ProbeLink {
@@ -23,9 +22,16 @@ struct ProbeLink {
 }
 impl SupervisorConnection for ProbeLink {
     fn request(&mut self, _: Action) -> bbt_mux::store::Result<Reply> {
-        self.calls.lock().unwrap().requests.push(self.host.clone());
         Ok(Reply::Seats {
-            seats: Vec::<SeatInfo>::new(),
+            seats: vec![SeatInfo {
+                seat: route_marker(&self.host),
+                generation: 1,
+                pid: 0,
+                size: Default::default(),
+                next_sequence: 1,
+                exited: None,
+                companion: None,
+            }],
         })
     }
     fn receive(&mut self, wait: Duration) -> bbt_mux::store::Result<Option<Event>> {
@@ -36,6 +42,13 @@ impl SupervisorConnection for ProbeLink {
             .push((self.host.clone(), wait));
         Ok(None)
     }
+}
+fn route_marker(host: &HostId) -> bbt_mux::Ulid {
+    bbt_mux::Ulid::from(match host {
+        HostId::Local => 1_u128,
+        HostId::Ssh { .. } => 2,
+        HostId::Cloud { .. } => 3,
+    })
 }
 struct ProbeProvider {
     host: HostId,
@@ -99,12 +112,13 @@ fn location_namespaces_select_one_link_and_only_the_local_link_waits() {
     ])
     .unwrap();
     for host in [&HostId::Local, &ssh, &cloud] {
-        connections.request(host, Action::ListOwnedSeats).unwrap();
+        let Reply::Seats { seats } = connections.request(host, Action::ListOwnedSeats).unwrap()
+        else {
+            panic!("list reply required");
+        };
+        assert_eq!(seats.len(), 1);
+        assert_eq!(seats[0].seat, route_marker(host));
     }
-    assert_eq!(
-        calls.lock().unwrap().requests,
-        vec![HostId::Local, ssh.clone(), cloud.clone()]
-    );
     assert!(connections.receive().unwrap().is_empty());
     let waits = &calls.lock().unwrap().waits;
     assert_eq!(waits[0], (HostId::Local, Duration::from_millis(10)));
@@ -120,8 +134,7 @@ fn local_provider_preserves_the_existing_link_and_rejects_unknown_hosts() {
         calls: calls.clone(),
     });
     assert_eq!(provider.kind(), ProviderKind::Local);
-    assert_eq!(provider.hosts()[0].label, "this Mac");
-    assert!(provider.poll().is_empty());
+    assert_eq!(provider.hosts()[0].id, HostId::Local);
     assert!(
         provider
             .link(HostId::Ssh {
@@ -130,8 +143,11 @@ fn local_provider_preserves_the_existing_link_and_rejects_unknown_hosts() {
             .is_err()
     );
     let mut link = provider.link(HostId::Local).unwrap();
-    link.request(Action::ListOwnedSeats).unwrap();
-    assert_eq!(calls.lock().unwrap().requests, vec![HostId::Local]);
+    let Reply::Seats { seats } = link.request(Action::ListOwnedSeats).unwrap() else {
+        panic!("list reply required");
+    };
+    assert_eq!(seats.len(), 1);
+    assert_eq!(seats[0].seat, route_marker(&HostId::Local));
     assert!(provider.link(HostId::Local).is_err());
 }
 

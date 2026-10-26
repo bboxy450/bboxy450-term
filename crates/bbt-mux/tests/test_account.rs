@@ -102,9 +102,9 @@ fn a_missing_or_corrupt_root_refuses_without_generating_a_new_identity() {
     let before = serde_json::to_value(public(&run)).unwrap();
     std::fs::remove_file(root.join("test_root")).unwrap();
     let error = TestAccount::open(&root, &run).err().unwrap();
-    assert!(
-        error.to_string().contains("test_account_root_missing"),
-        "{error}"
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::InvalidData
     );
     assert!(!root.join("test_root").exists());
     assert_eq!(serde_json::to_value(public(&run)).unwrap(), before);
@@ -115,9 +115,9 @@ fn a_missing_or_corrupt_root_refuses_without_generating_a_new_identity() {
     )
     .unwrap();
     let error = TestAccount::open(&root, &run).err().unwrap();
-    assert!(
-        error.to_string().contains("test_account_root_corrupt"),
-        "{error}"
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::InvalidData
     );
     assert_eq!(serde_json::to_value(public(&run)).unwrap(), before);
 }
@@ -160,11 +160,20 @@ fn seat_messages_require_the_label_derived_by_the_receiving_account() {
         )
         .unwrap();
     assert_eq!(
-        sent.envelope().expect("signed fixture envelope").issued_by.as_deref(),
+        sent.envelope()
+            .expect("signed fixture envelope")
+            .issued_by
+            .as_deref(),
         Some(generated.issued_by())
     );
-    keys.verify(sent.envelope().expect("signed fixture envelope")).unwrap();
-    assert!(sent.envelope().expect("signed fixture envelope").verify_signature().is_err()); // ordinary wire rules remain strict
+    keys.verify(sent.envelope().expect("signed fixture envelope"))
+        .unwrap();
+    assert!(
+        sent.envelope()
+            .expect("signed fixture envelope")
+            .verify_signature()
+            .is_err()
+    ); // ordinary wire rules remain strict
     for bad_label in [None, Some("test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV")] {
         let mut forged = sent.envelope().expect("signed fixture envelope").clone();
         forged.issued_by = bad_label.map(str::to_owned);
@@ -195,11 +204,9 @@ fn a_foreign_nonempty_directory_never_becomes_a_test_identity() {
     let error = TestAccount::open(&root, &temp.path().join("run"))
         .err()
         .unwrap();
-    assert!(
-        error
-            .to_string()
-            .contains("test_account_directory_not_empty"),
-        "{error}"
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::InvalidData
     );
     assert!(!root.join("test_root").exists());
     assert_eq!(

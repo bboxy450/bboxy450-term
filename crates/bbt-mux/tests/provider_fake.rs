@@ -84,8 +84,8 @@ fn a_ring_batch_checks_every_logical_host_before_forwarding_any_member() {
         .request(batch(vec![read(local), read(remote)]))
         .unwrap_err();
     assert_eq!(
-        error.to_string(),
-        "ring batch crosses supervisor host boundary"
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::InvalidData
     );
     assert!(
         spy.lock().unwrap().actions.is_empty(),

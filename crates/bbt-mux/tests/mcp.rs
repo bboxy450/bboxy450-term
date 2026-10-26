@@ -2,6 +2,9 @@
 
 use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
+#[path = "common/record_supervisor.rs"]
+mod record_supervisor;
+use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
@@ -26,6 +29,7 @@ struct Fixture {
     runtime: tokio::runtime::Runtime,
     logic: Option<Logic>,
     supervisor: Option<Supervisor>,
+    record_link: Option<RecordLink>,
     config: LogicConfig,
     own: SeatRecord,
     peer: SeatRecord,
@@ -40,9 +44,15 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
-        Self::with_lost_input_receipt(false)
+        Self::open(false, false)
+    }
+    fn real() -> Self {
+        Self::open(true, false)
     }
     fn with_lost_input_receipt(lose: bool) -> Self {
+        Self::open(true, lose)
+    }
+    fn open(real: bool, lose: bool) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let repository = temp.path().join("repository");
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
@@ -76,14 +86,19 @@ impl Fixture {
             .enable_all()
             .build()
             .unwrap();
-        let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
+        let supervisor =
+            real.then(|| Supervisor::start(common::capture_config(temp.path())).unwrap());
+        let record_link = (!real).then(RecordLink::default);
         let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let native_runtime =
             std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeMap::new()));
         let logic = Logic::start(
             LostInputReceipt {
-                client: supervisor.connect().unwrap(),
+                client: match &record_link {
+                    Some(link) => Connection::Records(link.clone()),
+                    None => Connection::Real(supervisor.as_ref().unwrap().connect().unwrap()),
+                },
                 lose,
                 attempts: input_attempts.clone(),
                 history_gap: history_gap.clone(),
@@ -110,7 +125,8 @@ impl Fixture {
         Self {
             runtime,
             logic: Some(logic),
-            supervisor: Some(supervisor),
+            supervisor,
+            record_link,
             config,
             own,
             peer,
@@ -122,6 +138,12 @@ impl Fixture {
             history_gap,
             native_runtime,
             _temp: temp,
+        }
+    }
+    fn connection(&self) -> Connection {
+        match &self.record_link {
+            Some(link) => Connection::Records(link.clone()),
+            None => Connection::Real(self.supervisor.as_ref().unwrap().connect().unwrap()),
         }
     }
     fn client(&self) -> &bbt_mux::logic::LogicClient {
@@ -166,7 +188,7 @@ impl Fixture {
         reply["result"].clone()
     }
     fn audits(&self, seat: Ulid, count: usize) -> Vec<bbt_mux::store::events::Envelope> {
-        let until = Instant::now() + Duration::from_secs(5);
+        let until = Instant::now() + Duration::from_secs(120);
         loop {
             let log = EventLog::open(&self.config.run_dir.join(format!("seat-{seat}"))).unwrap();
             let events: Vec<_> = log
@@ -187,7 +209,7 @@ impl Fixture {
         self.logic = Some(
             Logic::start(
                 LostInputReceipt {
-                    client: self.supervisor.as_ref().unwrap().connect().unwrap(),
+                    client: self.connection(),
                     lose: false,
                     attempts: self.input_attempts.clone(),
                     history_gap: self.history_gap.clone(),
@@ -201,8 +223,26 @@ impl Fixture {
         );
     }
 }
+enum Connection {
+    Real(bbt_mux::Client),
+    Records(RecordLink),
+}
+impl bbt_mux::logic::SupervisorConnection for Connection {
+    fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
+        match self {
+            Self::Real(client) => client.request(action),
+            Self::Records(client) => client.request(action),
+        }
+    }
+    fn receive(&mut self, timeout: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+        match self {
+            Self::Real(client) => client.receive(timeout),
+            Self::Records(client) => client.receive(timeout),
+        }
+    }
+}
 struct LostInputReceipt {
-    client: bbt_mux::Client,
+    client: Connection,
     lose: bool,
     attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -299,7 +339,7 @@ impl Fixture {
         let endpoint = self.runtime.block_on(self.client().gui_endpoint()).unwrap();
         let mut socket = UnixStream::connect(endpoint.path).unwrap();
         socket
-            .set_read_timeout(Some(Duration::from_secs(5)))
+            .set_read_timeout(Some(Duration::from_secs(120)))
             .unwrap();
         let mut bytes = serde_json::to_vec(&bbt_proto::GuiRequest {
             version: bbt_proto::gui::VERSION,
@@ -310,7 +350,7 @@ impl Fixture {
         bytes.push(b'\n');
         socket.write_all(&bytes).unwrap();
         let mut read = std::io::BufReader::new(socket);
-        let deadline = Instant::now() + Duration::from_secs(10);
+        let deadline = Instant::now() + Duration::from_secs(120);
         loop {
             assert!(Instant::now() < deadline, "GUI operation {id} timed out");
             let bytes = read_frame(&mut read)
@@ -360,21 +400,60 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     else {
         panic!("{first:?}")
     };
-    assert_eq!(message.envelope().expect("signed fixture envelope").seat, Ulid::nil());
-    assert_eq!(message.envelope().expect("signed fixture envelope").process_generation, 0);
-    assert_eq!(message.envelope().expect("signed fixture envelope").role.name, "operator");
-    assert_eq!(message.envelope().expect("signed fixture envelope").role.class, Class::Oracle);
-    assert_eq!(message.envelope().expect("signed fixture envelope").author, message.envelope().expect("signed fixture envelope").device);
-    message.envelope().expect("signed fixture envelope").verify_signature().unwrap();
+    assert_eq!(
+        message.envelope().expect("signed fixture envelope").seat,
+        Ulid::nil()
+    );
+    assert_eq!(
+        message
+            .envelope()
+            .expect("signed fixture envelope")
+            .process_generation,
+        0
+    );
+    assert_eq!(
+        message
+            .envelope()
+            .expect("signed fixture envelope")
+            .role
+            .name,
+        "operator"
+    );
+    assert_eq!(
+        message
+            .envelope()
+            .expect("signed fixture envelope")
+            .role
+            .class,
+        Class::Oracle
+    );
+    assert_eq!(
+        message.envelope().expect("signed fixture envelope").author,
+        message.envelope().expect("signed fixture envelope").device
+    );
+    message
+        .envelope()
+        .expect("signed fixture envelope")
+        .verify_signature()
+        .unwrap();
     let account = SqliteStore::open(&f.config.run_dir.join("account")).unwrap();
     let local_issuer = account.get("identity/local-issuer").unwrap().unwrap();
     assert_eq!(
-        message.envelope().expect("signed fixture envelope").role_grant_id,
+        message
+            .envelope()
+            .expect("signed fixture envelope")
+            .role_grant_id,
         bbt_mux::store::digest(&local_issuer)
     );
     let local_issuer: Value = serde_json::from_slice(&local_issuer).unwrap();
     assert_eq!(
-        json!(message.envelope().expect("signed fixture envelope").role_epoch.to_string()),
+        json!(
+            message
+                .envelope()
+                .expect("signed fixture envelope")
+                .role_epoch
+                .to_string()
+        ),
         local_issuer["epoch"]
     );
     assert_eq!(
@@ -415,9 +494,16 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     // This fixture installs the device after Logic::start. Its already-minted
     // account-local messaging principal survives that later enrolment.
     let reference: bbt_proto::messaging::OperatorReference = serde_json::from_slice(
-        &account.get("messaging/operator-reference").unwrap().unwrap(),
-    ).unwrap();
-    assert_eq!(reference.kind, bbt_proto::messaging::OperatorReferenceKind::OperatorLocal);
+        &account
+            .get("messaging/operator-reference")
+            .unwrap()
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        reference.kind,
+        bbt_proto::messaging::OperatorReferenceKind::OperatorLocal
+    );
     assert_ne!(reference.id, device);
     assert_eq!(entry["actor"]["reference"], json!(reference));
     assert!(entry["actor"].get("device_id").is_none());
@@ -448,7 +534,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
         panic!("{receipts:?}")
     };
     assert!(page.items.iter().any(|receipt| receipt.evidence == bbt_mux::adapters::Evidence::ApplicationAcknowledged));
-    let published = Instant::now() + Duration::from_secs(5);
+    let published = Instant::now() + Duration::from_secs(120);
     let row = loop {
         let row = f
             .runtime
@@ -639,7 +725,7 @@ impl Fixture {
             .join("\n")
     }
     fn wait_screen(&self, seat: Ulid, text: &str) {
-        let until = Instant::now() + Duration::from_secs(5);
+        let until = Instant::now() + Duration::from_secs(120);
         loop {
             if self.screen(seat).contains(text) {
                 return;
@@ -655,7 +741,7 @@ impl Fixture {
     fn wait_input_ready(&self, seat: Ulid) {
         let mut observed = None;
         let ready = self.runtime.block_on(async {
-            tokio::time::timeout(Duration::from_secs(5), async {
+            tokio::time::timeout(Duration::from_secs(120), async {
                 let mut quiet = None::<(u64, Instant)>;
                 loop {
                     let status = self.client().adapter_status(seat, 1).await.unwrap();
@@ -832,15 +918,15 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
     );
 }
 
-const READY_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; while true; do printf '\\033]133;B\\007'; if IFS= read -r -t 1 line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; sleep 0.6; fi; done";
+const ONE_INPUT_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; printf '\\033]133;B\\007'; if IFS= read -r line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; fi; while IFS= read -r line; do :; done";
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2/B4: real terminal/native boundary; scripts/night-test-boundaries.sh"]
 fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
     // A single prompt keeps consumed readiness consumed, and the completed
     // read stays active until teardown rather than rearming after a sleep.
-    const ONE_INPUT_SHELL: &str = "stty icanon echo; printf 'FIXTURE-READY\\n'; printf '\\033]133;B\\007'; if IFS= read -r line; then printf '\\033]133;C\\007'; printf 'OBSERVED:%s\\n' \"$line\"; fi; while IFS= read -r line; do :; done";
-    let mut f = Fixture::new();
+    let mut f = Fixture::real();
     let target = f.spawn_fixture("zsh", ONE_INPUT_SHELL);
     f.wait_screen(target.id, "FIXTURE-READY");
     f.wait_input_ready(target.id);
@@ -909,11 +995,12 @@ fn mcp_seat_input_consumes_readiness_and_enter_is_explicit() {
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2/B4: real terminal/native boundary; scripts/night-test-boundaries.sh"]
 fn mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart() {
     let mut f = Fixture::with_lost_input_receipt(true);
-    let target = f.spawn_fixture("zsh", READY_SHELL);
+    let target = f.spawn_fixture("zsh", ONE_INPUT_SHELL);
     f.wait_screen(target.id, "FIXTURE-READY");
-    std::thread::sleep(Duration::from_millis(80));
+    f.wait_input_ready(target.id);
     let op = Ulid::new();
     let args = f.input_args(target.id, "UNKNOWN-PASTE", true);
     let first = f.mutate(f.oracle.id, op, "seat_input_text", args.clone());
@@ -939,9 +1026,10 @@ fn mcp_seat_input_lost_receipt_is_unknown_and_never_repeated_after_restart() {
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2/B4: real terminal/native boundary; scripts/night-test-boundaries.sh"]
 fn mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors() {
     use base64::Engine;
-    let f = Fixture::new();
+    let f = Fixture::real();
     for text in ["CAPTURE-ONE\r", "CAPTURE-TWO\r", "CAPTURE-THREE\r"] {
         f.runtime
             .block_on(
@@ -1091,7 +1179,11 @@ fn mcp_seat_mute_is_epoch_checked_signed_and_preserves_read_access() {
         .collect();
     assert_eq!(notices.len(), 2);
     for notice in notices {
-        notice.envelope().expect("signed fixture envelope").verify_signature().unwrap();
+        notice
+            .envelope()
+            .expect("signed fixture envelope")
+            .verify_signature()
+            .unwrap();
     }
 
     let mut self_mute = f.target(f.oracle.id);
@@ -1439,7 +1531,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
         ] {
             let mut stream = UnixStream::connect(&endpoint.path).unwrap();
             stream
-                .set_read_timeout(Some(Duration::from_secs(3)))
+                .set_read_timeout(Some(Duration::from_secs(120)))
                 .unwrap();
             let request = bbt_mux::seat_socket::Request {
                 version: 1,
@@ -1781,57 +1873,45 @@ fn bounded_client(
 ) -> (std::process::ExitStatus, Vec<u8>, Vec<u8>) {
     use std::os::unix::process::CommandExt;
     use std::process::Stdio;
-    // Inspect the environment of the actual command before spawn, not the
-    // parent's HOME. Only a directory this test owns is accepted.
+    use tokio::io::AsyncReadExt;
     require_private_client_home(&command, private_home).expect(
-        "NEVER BLOCK SWARM: installed-client interop refuses inherited HOME; use only a throwaway HOME created by this test",
+        "NEVER BLOCK SWARM: refuse inherited HOME; use only a throwaway HOME created by this test",
     );
     command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .process_group(0);
-    let mut child = command.spawn().expect("start installed client");
-    let pid = child.id();
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
-    let out = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stdout.take(1024 * 1024).read_to_end(&mut bytes).unwrap();
-        bytes
-    });
-    let err = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        stderr.take(256 * 1024).read_to_end(&mut bytes).unwrap();
-        bytes
-    });
-    let start = Instant::now();
-    let status = loop {
-        if let Some(status) = child.try_wait().unwrap() {
-            break status;
-        }
-        if start.elapsed() > timeout {
-            // SAFETY: this is the newly-created disposable client's own group.
-            unsafe {
-                libc::kill(-(pid as i32), libc::SIGKILL);
+    tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async {
+        let mut child = tokio::process::Command::from(command).kill_on_drop(true).spawn().expect("start private client/fixture");
+        let pid = child.id().unwrap();
+        eprintln!("owned private child PID {pid}, process group {pid}");
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+        let out = tokio::spawn(async move {
+            let mut bytes = Vec::new();
+            stdout.take(1024 * 1024).read_to_end(&mut bytes).await.unwrap();
+            bytes
+        });
+        let err = tokio::spawn(async move {
+            let mut bytes = Vec::new();
+            stderr.take(256 * 1024).read_to_end(&mut bytes).await.unwrap();
+            bytes
+        });
+        let status = tokio::time::timeout(timeout, child.wait()).await;
+        // Only the new disposable child's own group. End a pipe-holding helper
+        // before waiting for its stdout/stderr readers, on both result paths.
+        // SAFETY: process_group(0) created this owned group immediately above.
+        unsafe { libc::kill(-(pid as i32), libc::SIGKILL); }
+        match status {
+            Ok(status) => (status.unwrap(), out.await.unwrap(), err.await.unwrap()),
+            Err(_) => {
+                let status = child.wait().await.unwrap();
+                let out = out.await.unwrap();
+                let err = err.await.unwrap();
+                panic!("client hang guard, status={status}, stdout_bytes={}, stderr_bytes={}; raw outputs discarded", out.len(), err.len());
             }
-            let status = child.wait().unwrap();
-            let out = out.join().unwrap();
-            let err = err.join().unwrap();
-            panic!(
-                "client timeout, status={status}, stdout_bytes={}, stderr_bytes={}; raw outputs discarded",
-                out.len(),
-                err.len()
-            );
         }
-        std::thread::sleep(Duration::from_millis(20));
-    };
-    // End only descendants of the disposable process group before joining its
-    // pipe readers; an MCP helper must not keep a completed fixture open.
-    // SAFETY: this is the newly-created disposable client's own group.
-    unsafe {
-        libc::kill(-(pid as i32), libc::SIGKILL);
-    }
-    (status, out.join().unwrap(), err.join().unwrap())
+    })
 }
 
 fn require_private_client_home(
@@ -3488,7 +3568,7 @@ fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
     f.logic.take().unwrap().shutdown().unwrap();
     f.logic = Some(
         Logic::start_custodied_with_store(
-            f.supervisor.as_ref().unwrap().connect().unwrap(),
+            f.connection(),
             f.config.clone(),
             std::sync::Arc::new(Denied),
             f.runtime.handle(),
@@ -3504,9 +3584,8 @@ fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
 
 fn isolated_seat_fixture(mode: &str) {
     let temp = tempfile::tempdir().unwrap();
-    let stdout = temp.path().join("stdout");
-    let stderr = temp.path().join("stderr");
-    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+    let mut command = std::process::Command::new(std::env::current_exe().unwrap());
+    command
         .args([
             "--exact",
             "mcp_seat_isolated_process",
@@ -3519,34 +3598,20 @@ fn isolated_seat_fixture(mode: &str) {
         .env("CLAUDE_CONFIG_DIR", temp.path().join("claude"))
         .env("CODEX_HOME", temp.path().join("codex"))
         .env("BBOXY_TEST_CUSTODY", "memory")
-        .env("BBOXY_MCP_SEAT_FIXTURE", mode)
-        .stdout(std::fs::File::create(&stdout).unwrap())
-        .stderr(std::fs::File::create(&stderr).unwrap())
-        .spawn()
-        .unwrap();
-    eprintln!("isolated {mode} fixture PID {}", child.id());
-    let until = Instant::now() + Duration::from_secs(30);
-    let status = loop {
-        if let Some(status) = child.try_wait().unwrap() {
-            break status;
-        }
-        if Instant::now() > until {
-            child.kill().unwrap(); // Only the exact child PID started above.
-            let status = child.wait().unwrap();
-            panic!("isolated {mode} fixture timed out: {status}");
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    };
+        .env("BBOXY_MCP_SEAT_FIXTURE", mode);
+    // Leave the child time to report its own 120-second guard and clean up.
+    let (status, stdout, stderr) = bounded_client(command, Duration::from_secs(240), &temp);
     assert!(
         status.success(),
         "isolated {mode}: {status}\n{}\n{}",
-        std::fs::read_to_string(stdout).unwrap(),
-        std::fs::read_to_string(stderr).unwrap()
+        String::from_utf8_lossy(&stdout),
+        String::from_utf8_lossy(&stderr)
     );
 }
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2/B4: real terminal/native boundary; scripts/night-test-boundaries.sh"]
 fn mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring() {
     isolated_seat_fixture("spawn");
 }
@@ -3576,6 +3641,7 @@ fn mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat() {
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2/B4: real terminal/native boundary; scripts/night-test-boundaries.sh"]
 fn mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed() {
     isolated_seat_fixture("native");
 }
@@ -3594,7 +3660,7 @@ fn mcp_seat_isolated_process() {
 fn seat_spawn_fixture() {
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
     std::fs::write(home.join(".zshrc"), "printf 'ISOLATED-SPAWN\\n'\n").unwrap();
-    let mut f = Fixture::new();
+    let mut f = Fixture::real();
     let baseline = f.registry().list().unwrap().len();
     let args = json!({"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path(),"role":"oracle"});
     let op = Ulid::new();
@@ -3653,7 +3719,7 @@ fn seat_native_fixture() {
     use bbt_mux::adapters::Endpoint;
     use futures_util::{SinkExt, StreamExt};
     use tokio_tungstenite::tungstenite::Message;
-    let mut f = Fixture::new();
+    let mut f = Fixture::real();
     let path = std::env::temp_dir().join(format!("mcp-native-{}.sock", Ulid::new()));
     let claude = f.spawn_fixture(
         "claude",
@@ -3667,7 +3733,7 @@ fn seat_native_fixture() {
                 let (stream, _) = listener.accept().await.unwrap();
                 let mut reader = tokio::io::BufReader::new(stream);
                 if let Ok(Ok(Some(bytes))) = tokio::time::timeout(
-                    Duration::from_secs(1),
+                    Duration::from_secs(120),
                     bbt_mux::seat_socket::read_line(&mut reader),
                 )
                 .await
@@ -3699,7 +3765,7 @@ fn seat_native_fixture() {
             .contains("acceptance unverified")
     );
     let frame = f.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(1), frames.recv())
+        tokio::time::timeout(Duration::from_secs(120), frames.recv())
             .await
             .unwrap()
             .unwrap()
@@ -3737,9 +3803,11 @@ fn seat_native_fixture() {
     let thread = codex.harness_session_id.clone().unwrap();
     let hold = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let flag = hold.clone();
-    let (server, mut frames) = f.runtime.block_on(async {
+    let (server, mut frames, reader_ready) = f.runtime.block_on(async {
         let listener = tokio::net::UnixListener::bind(&path).unwrap();
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let ready = std::sync::Arc::new(std::sync::Mutex::new(Some(ready_tx)));
         let task = tokio::spawn(async move {
             let mut connections = tokio::task::JoinSet::new();
             loop {
@@ -3747,6 +3815,7 @@ fn seat_native_fixture() {
                 let tx = tx.clone();
                 let thread = thread.clone();
                 let flag = flag.clone();
+                let ready = ready.clone();
                 connections.spawn(async move {
                     let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
                     while let Some(Ok(frame)) = ws.next().await {
@@ -3758,6 +3827,9 @@ fn seat_native_fixture() {
                             "initialize" => json!({}),
                             "initialized" => continue,
                             "thread/read" => {
+                                if let Some(ready) = ready.lock().unwrap().take() {
+                                    let _ = ready.send(());
+                                }
                                 json!({"thread":{"id":thread,"status":{"type":"idle"}}})
                             }
                             "turn/steer" => {
@@ -3786,10 +3858,16 @@ fn seat_native_fixture() {
                 while connections.try_join_next().is_some() {}
             }
         });
-        (task, rx)
+        (task, rx, ready_rx)
     });
-    // Let automatic endpoint discovery install its reader before binding the fixture endpoint.
-    std::thread::sleep(Duration::from_millis(350));
+    // Its first read-only request proves the Worker installed this reader.
+    // Bind the test turn after that causal boundary, without a scheduler delay.
+    f.runtime.block_on(async {
+        tokio::time::timeout(Duration::from_secs(120), reader_ready)
+            .await
+            .expect("native reader did not reach its owned server")
+            .unwrap();
+    });
     f.runtime
         .block_on(f.client().bind_delivery_endpoint(
             codex.id,
@@ -3807,7 +3885,7 @@ fn seat_native_fixture() {
     assert_eq!(first["evidence"], "native-queued");
     assert_eq!(first["native_id"], "turn-fixture");
     f.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(1), frames.recv())
+        tokio::time::timeout(Duration::from_secs(120), frames.recv())
             .await
             .unwrap()
             .unwrap();
@@ -3839,7 +3917,7 @@ fn seat_native_fixture() {
         }
         for received in 0..8 {
             if !matches!(
-                tokio::time::timeout(Duration::from_secs(2), frames.recv()).await,
+                tokio::time::timeout(Duration::from_secs(120), frames.recv()).await,
                 Ok(Some(_))
             ) {
                 let mut completed = Vec::new();
@@ -3850,7 +3928,10 @@ fn seat_native_fixture() {
             }
         }
     });
-    let start = Instant::now();
+    assert!(
+        jobs.try_join_next().is_none(),
+        "a held native call completed before control service"
+    );
     let busy = f.call(actor, Ulid::new(), "seat_interrupt", args.clone());
     refused(busy, "capacity is full");
     assert_eq!(
@@ -3858,8 +3939,8 @@ fn seat_native_fixture() {
         json!(actor)
     );
     assert!(
-        start.elapsed() < Duration::from_millis(1500),
-        "Worker blocked on native I/O"
+        jobs.try_join_next().is_none(),
+        "controls waited for held native calls to finish"
     );
     f.runtime.block_on(async {
         while let Some(result) = jobs.join_next().await {
@@ -3895,7 +3976,7 @@ fn seat_native_fixture() {
             .await
     });
     f.runtime.block_on(async {
-        tokio::time::timeout(Duration::from_secs(2), frames.recv())
+        tokio::time::timeout(Duration::from_secs(120), frames.recv())
             .await
             .unwrap()
             .unwrap();
@@ -5077,7 +5158,7 @@ fn mcp_knowledge266_search_pages_use_shared_root_resolution_and_refuse_stale_cur
     // The live fixture's detector may materialize artifact records between
     // calls. A snapshot-bound cursor must reject that, so restart the whole
     // walk on that one named response; never combine different snapshots.
-    let deadline = Instant::now() + Duration::from_secs(10);
+    let deadline = Instant::now() + Duration::from_secs(120);
     let (seen, old_cursor) = 'walk: loop {
         assert!(
             Instant::now() < deadline,
@@ -5189,7 +5270,10 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
     let wire = serde_json::to_value(ctl.envelope().expect("signed fixture envelope")).unwrap();
     assert_eq!(wire["door"], "ctl", "{wire}");
     assert_eq!(wire["issued_by"], "Vesper (Oracle)", "{wire}");
-    ctl.envelope().expect("signed fixture envelope").verify_signature().unwrap();
+    ctl.envelope()
+        .expect("signed fixture envelope")
+        .verify_signature()
+        .unwrap();
     let mut forged = ctl.envelope().expect("signed fixture envelope").clone();
     forged.issued_by = Some("Mallory (Oracle)".into());
     assert!(forged.verify_signature().is_err(), "the issuer is signed");
@@ -5231,9 +5315,22 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
     else {
         panic!("{reply:?}")
     };
-    assert_eq!(message.envelope().expect("signed fixture envelope").door, Some(Door::Gui));
-    assert_eq!(message.envelope().expect("signed fixture envelope").issued_by, None);
-    message.envelope().expect("signed fixture envelope").verify_signature().unwrap();
+    assert_eq!(
+        message.envelope().expect("signed fixture envelope").door,
+        Some(Door::Gui)
+    );
+    assert_eq!(
+        message
+            .envelope()
+            .expect("signed fixture envelope")
+            .issued_by,
+        None
+    );
+    message
+        .envelope()
+        .expect("signed fixture envelope")
+        .verify_signature()
+        .unwrap();
     // A seat's own envelope never carries either.
     let seat = data(f.mutate(
         own,

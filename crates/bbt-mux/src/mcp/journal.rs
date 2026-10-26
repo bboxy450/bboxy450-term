@@ -1323,6 +1323,7 @@ mod tests {
         );
     }
 
+    // keeps: spec mcp-control-plane
     #[test]
     fn concurrent_operation_retries_return_one_committed_result() {
         use std::sync::{
@@ -1363,7 +1364,6 @@ mod tests {
                     journal
                         .call(&actor, &call, || {
                             let ordinal = dispatched.fetch_add(1, Ordering::SeqCst);
-                            std::thread::sleep(std::time::Duration::from_millis(30));
                             super::super::success(call.op_id, json!({"ordinal":ordinal}))
                         })
                         .unwrap()
