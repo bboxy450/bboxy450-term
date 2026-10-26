@@ -917,7 +917,20 @@ async fn gui_session(
                                 if door==crate::mcp::Door::Ctl {client.captures.spawned(id,seat,spec);}
                                 Ok(GuiReply::Spawned {op:id,seat})
                             }
-                            GuiAction::Messaging {id,swarm_id,request}=>Ok(GuiReply::Messaging {op:id,response:client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
+                            GuiAction::Messaging {id,swarm_id,request}=> {
+                                let mute_seat=match &request {
+                                    bbt_proto::messaging::Request::Mute {seat,..} if door==crate::mcp::Door::Gui=>Some(*seat),
+                                    _=>None,
+                                };
+                                let response=client.gui_messaging(id,Ulid::from(swarm_id.0.0),request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                if matches!(&response,bbt_proto::messaging::Response::Muted {..}) && let Some(seat)=mute_seat {
+                                    // Read the committed metadata before the receipt. The
+                                    // window's own write must not wait for its event backlog.
+                                    let current=client.gui_seat(seat).await.map_err(|error|invalid(format!("unknown: mute committed; current seat state unavailable: {error}")))?;
+                                    send(&mut write,&GuiReply::Seat(current)).await?;
+                                }
+                                Ok(GuiReply::Messaging {op:id,response})
+                            },
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
                             GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
@@ -1401,6 +1414,126 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    // keeps: spec e2e-acceptance M6 (a committed mute is visible without draining the event lane).
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "night: real supervisor, PTY and GUI socket boundary"]
+    async fn mute_reply_refreshes_authoritative_seat_before_receipt_without_events() {
+        use bbt_proto::messaging::{Request, Response};
+        struct Keys;
+        impl crate::identity::DeviceKeyStore for Keys {
+            fn custody(&self) -> crate::identity::Custody {
+                crate::identity::Custody::Memory
+            }
+            fn load(&self, _: Ulid) -> crate::identity::Result<Option<ed25519_dalek::SigningKey>> {
+                Ok(Some(ed25519_dalek::SigningKey::from_bytes(&[91; 32])))
+            }
+            fn create(
+                &self,
+                _: Ulid,
+                _: &ed25519_dalek::SigningKey,
+            ) -> crate::identity::Result<()> {
+                Err(crate::identity::PendingReason::JournalConflict)
+            }
+        }
+        let root = tempfile::tempdir().unwrap();
+        let repository = root.path().join("repository");
+        std::fs::create_dir(&repository).unwrap();
+        let run = root.path().join("run");
+        assert!(matches!(
+            crate::identity::local_dev_issuer_with_store(&run, &Keys),
+            crate::identity::LocalIssuerOutcome::Ready(_)
+        ));
+        let supervisor = Supervisor::start(crate::Config {
+            journal_directory: Some(root.path().join("supervisor-journal")),
+            ..Default::default()
+        })
+        .unwrap();
+        let logic = Logic::start(
+            supervisor.connect().unwrap(),
+            LogicConfig {
+                run_dir: run,
+                repository,
+                ring: Default::default(),
+            },
+            ed25519_dalek::SigningKey::from_bytes(&[91; 32]),
+            &tokio::runtime::Handle::current(),
+        )
+        .unwrap();
+        let spec = LaunchSpec::new("/bin/cat", root.path());
+        let seat = spec.seat;
+        let swarm = Ulid::new();
+        logic
+            .client
+            .spawn(SeatRecord::new(seat, swarm, "mute fixture", "cat"), spec)
+            .await
+            .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(30), async {
+            for door in [crate::mcp::Door::Gui, crate::mcp::Door::Ctl] {
+                let capability = [74; 32];
+                let (peer, server) = tokio::net::UnixStream::pair()?;
+                let session = tokio::spawn(gui_session(
+                    server,
+                    logic.client.clone(),
+                    capability,
+                    door,
+                ));
+                let (read, mut write) = peer.into_split();
+                let mut read = BufReader::new(read);
+                let checked: Result<()> = async {
+                    // Never attach events: a state backlog must not be a
+                    // prerequisite for observing the operator's own write.
+                    for muted in [true, false, false] {
+                        let id = Ulid::new();
+                        send(&mut write, &GuiRequest {
+                            version: bbt_proto::gui::VERSION,
+                            capability,
+                            action: GuiAction::Messaging {
+                                id,
+                                swarm_id: bbt_proto::SwarmId::from_u128(swarm.0),
+                                request: Request::Mute {seat, muted},
+                            },
+                        }).await?;
+                        let mut snapshot = None;
+                        loop {
+                            let line = read_line(&mut read).await?
+                                .ok_or_else(|| invalid("mute connection closed"))?;
+                            match serde_json::from_slice::<GuiReply>(&line)? {
+                                GuiReply::Identity(_) => {},
+                                GuiReply::Seat(current) => {
+                                    if current.record.id != seat || current.record.muted != muted {
+                                        return Err(invalid("mute snapshot differs from the committed write"));
+                                    }
+                                    snapshot = Some(current);
+                                },
+                                GuiReply::Messaging {op, response: Response::Muted {..}} if op == id => {
+                                    if (door == crate::mcp::Door::Gui) != snapshot.is_some() {
+                                        return Err(invalid("GUI mute receipt preceded authoritative state, or ctl gained an unsolicited state reply"));
+                                    }
+                                    break;
+                                },
+                                other => return Err(invalid(format!("unexpected mute reply: {other:?}"))),
+                            }
+                        }
+                        let retained = logic.client.gui_seat(seat).await?;
+                        if retained.record.muted != muted || snapshot.as_ref().is_some_and(|s| s.record != retained.record) {
+                            return Err(invalid("mute snapshot was not authoritative"));
+                        }
+                    }
+                    Ok(())
+                }.await;
+                drop(read);
+                drop(write);
+                let stopped = session.await.map_err(|_| invalid("mute session interrupted"))?;
+                checked?;
+                stopped?;
+            }
+            Ok::<_, crate::store::Error>(())
+        }).await;
+        logic.shutdown().unwrap();
+        supervisor.shutdown().unwrap();
+        result.expect("mute response hang guard").unwrap();
+    }
 
     // keeps: decision #328 (a parked page read cannot hold up the connection's controls)
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

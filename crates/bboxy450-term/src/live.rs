@@ -424,8 +424,9 @@ impl ActionReplies {
             .position(|r| !matches!(r, ActionReply::Knowledge(_)))?;
         let expected = &self.0[at];
         let matches = match reply {
-            // Unsolicited seat state is wrapped in Event; a raw Seat is the
-            // terminal ScheduleClose/UndoClose result.
+            // Close/undo return Seat as their terminal result. Mute sends its
+            // committed Seat before Messaging; that snapshot cannot finish
+            // the pending Messaging slot or a later ordinary operation.
             GuiReply::Ok { .. } | GuiReply::Spawned { .. } | GuiReply::Seat(_) => {
                 *expected == ActionReply::Operation
             }
@@ -1867,6 +1868,58 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    // keeps: spec e2e-acceptance M6 (authoritative mute metadata must not release a request slot).
+    #[test]
+    fn mute_snapshot_preserves_its_receipt_and_the_next_operation() {
+        let op = Ulid::new();
+        let input = Ulid::new();
+        let seat = SeatId::from_u128(42);
+        let mut replies = ActionReplies::default();
+        replies.sent(&GuiAction::Messaging {
+            id: op,
+            swarm_id: SwarmId::from_u128(1),
+            request: bbt_proto::messaging::Request::Mute {
+                seat: Ulid(42),
+                muted: true,
+            },
+        });
+        replies.sent(&GuiAction::Input {
+            seat,
+            generation: 1,
+            id: input,
+            bytes: vec![b'x'],
+        });
+        let mut record = bbt_proto::registry::SeatRecord::new(Ulid(42), Ulid(1), "muted", "zsh");
+        record.muted = true;
+        let snapshot = GuiReply::Seat(GuiSeat {
+            record,
+            state: bbt_proto::SeatState {
+                generation: 1,
+                process: ProcessStatus::Running { pid: 1 },
+                activity: bbt_ui_model::Activity::Idle,
+                grade: bbt_ui_model::Grade::Reported,
+                title: String::new(),
+                detail: None,
+                turn_open: false,
+                observed_ms: 0,
+                subagents: vec![],
+            },
+        });
+        assert_eq!(replies.take(&snapshot), None);
+        assert_eq!(
+            replies.take(&GuiReply::Messaging {
+                op,
+                response: bbt_proto::messaging::Response::Muted { notice: None },
+            }),
+            Some(ActionReply::Messaging(op))
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Ok { op: input }),
+            Some(ActionReply::Operation)
+        );
+        assert_eq!(replies.take(&GuiReply::Ok { op: input }), None);
     }
 
     // keeps: spec c1-live-seats §2a

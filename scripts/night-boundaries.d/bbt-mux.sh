@@ -16,3 +16,4 @@ cargo test -p bbt-mux --locked --test mcp mcp_seat_input_lost_receipt_is_unknown
 cargo test -p bbt-mux --locked --test mcp mcp_seat_reads_page_real_capture_and_refuse_stale_view_cursors -- --ignored --exact --nocapture
 cargo test -p bbt-mux --locked --test mcp mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring -- --ignored --exact --nocapture
 cargo test -p bbt-mux --locked --test mcp mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed -- --ignored --exact --nocapture
+cargo test -p bbt-mux --locked --lib seat_socket::gui_tests::mute_reply_refreshes_authoritative_seat_before_receipt_without_events -- --ignored --exact --nocapture
