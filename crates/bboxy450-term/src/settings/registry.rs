@@ -375,6 +375,19 @@ mod tests {
         assert!(merge(&[entry(None)], vec![], true).is_empty());
     }
     #[test]
+    fn repairing_a_binary_does_not_keep_the_old_descriptor_refusal_as_current() {
+        let mut value = serde_json::to_value(entry(Some(1))).unwrap();
+        value["candidate"]["sha256"] = json!("b".repeat(64));
+        value["activation"]["needs_retrust"] = json!(true);
+        value["activation"]["inspection"] = json!({"shape":null,"refusal":{"code":"invalid_shape_json","message":"old binary"},"elapsed_ms":1,"stderr":"","stderr_truncated":false});
+        let entry: PluginEntry = serde_json::from_value(value).unwrap();
+        let view = plugin(&entry);
+        assert!(view.actionable);
+        assert_eq!(view.trust, "untrusted");
+        assert_eq!(view.contract.ok, None);
+        assert!(!view.health.say.unwrap().contains("old binary"));
+    }
+    #[test]
     fn unknown_plugin_effect_reuses_its_id_and_other_plugins_remain_independent() {
         let mut model = crate::model::Model::default();
         let mut requests = Requests::default();

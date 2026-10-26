@@ -2308,10 +2308,9 @@ impl App {
             self.queue(message);
         }
         if let Some(request) = plugin_request {
-            if let Err(reason) = request.and_then(|request| self.plugin_request(request)) {
-                if let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
-                    controller.error = Some(reason);
-                }
+            if let Err(reason) = request.and_then(|request| self.plugin_request(request))
+                && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+                controller.error = Some(reason);
             }
         } else if read_plugins {
             let _ = self.plugin_request(bbt_proto::gui::PluginRequest::List);
