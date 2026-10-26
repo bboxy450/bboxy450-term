@@ -10,6 +10,7 @@
 )]
 use serde_json::{Value, json};
 use std::{
+    ffi::OsStr,
     io::Write,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
@@ -472,8 +473,7 @@ impl App {
             std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
         }
         let account = root.join("account");
-        let mut launch = ctl(&run, repository, &root.join("zsh-config"));
-        launch.envs(isolate_home(&root.join("home"))?);
+        let mut launch = ctl(&run, repository, &root.join("zsh-config"))?;
         // A deterministic harness is local to this promise's app and its real seats.
         // Do not mutate the runner's PATH or the separate records app's environment.
         if let Some(bin) = fixture_bin {
@@ -542,7 +542,7 @@ impl App {
     }
 
     async fn stop(self) -> Result<(), String> {
-        let stopped = ctl(&self.run, &self.run, &self.run)
+        let stopped = ctl(&self.run, &self.run, &self.run)?
             .args(["app", "stop"])
             .output()
             .await
@@ -561,10 +561,15 @@ impl App {
 
 /// `bboxy450-term ctl --run-dir RUN …` from `cwd` (the app's repository on start), stdin
 /// closed, with the throwaway zsh configuration the app's seats inherit.
-fn ctl(run: &Path, cwd: &Path, zdotdir: &Path) -> tokio::process::Command {
-    let mut command = tokio::process::Command::new(
+fn ctl(run: &Path, cwd: &Path, zdotdir: &Path) -> Result<tokio::process::Command, String> {
+    let home = run
+        .parent()
+        .ok_or("app run directory has no promise parent")?
+        .join("home");
+    let mut command = isolated_command(
         std::env::current_exe().unwrap_or_else(|_| "bboxy450-term".into()),
-    );
+        &home,
+    )?;
     command
         .arg("ctl")
         .arg("--run-dir")
@@ -572,12 +577,36 @@ fn ctl(run: &Path, cwd: &Path, zdotdir: &Path) -> tokio::process::Command {
         .current_dir(cwd)
         .env("ZDOTDIR", zdotdir)
         .stdin(Stdio::null());
-    command
+    Ok(command.into())
 }
 
-/// Runs one promise's script with stdin closed; returns its exit code (None when it was
-/// stopped at the timeout) and the last lines of its output as evidence.
-/// Both sides of night-app use the same private home, even without a seed.
+/// Both sides of night-app start from an empty environment, then receive only
+/// system lookup/locale values, private homes and their explicit launch variables.
+fn isolated_command(program: impl AsRef<OsStr>, home: &Path) -> Result<Command, String> {
+    let mut command = Command::new(program);
+    command.env_clear();
+    for name in [
+        "PATH",
+        "TERM",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "LC_COLLATE",
+        "LC_MESSAGES",
+        "LC_MONETARY",
+        "LC_NUMERIC",
+        "LC_TIME",
+        "TMPDIR",
+    ] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    command.envs(isolate_home(home)?);
+    Ok(command)
+}
+
+/// Both sides use the same private home, even without a seed.
 fn isolate_home(home: &Path) -> Result<[(&'static str, PathBuf); 3], String> {
     std::fs::create_dir_all(home).map_err(|e| e.to_string())?;
     if !std::fs::symlink_metadata(home)
@@ -614,12 +643,11 @@ async fn run_script(
     let Some(promise) = work.parent() else {
         return (None, "script work directory has no promise parent".into());
     };
-    let environment = match isolate_home(&promise.join("home")) {
-        Ok(environment) => environment,
+    let mut command = match isolated_command("sh", &promise.join("home")) {
+        Ok(command) => command,
         Err(reason) => return (None, reason),
     };
-    let child = Command::new("sh")
-        .envs(environment)
+    let child = command
         .arg(script)
         .env("BBT", executable)
         .env("BBOXY_RUN_DIR", run)
@@ -665,6 +693,84 @@ pub fn exit_code(ok: bool) -> i32 {
 #[cfg(test)]
 mod fixture_home_tests {
     use super::*;
+
+    fn assert_private_environment(bytes: &[u8], home: &Path) {
+        let text = std::str::from_utf8(bytes).unwrap();
+        let values: std::collections::BTreeMap<_, _> = text
+            .lines()
+            .filter_map(|line| line.split_once('='))
+            .collect();
+        for key in values.keys() {
+            assert!(
+                *key == "CODEX_HOME"
+                    || !["CLAUDE_CODE_", "CODEX_", "ANTHROPIC_", "OPENAI_"]
+                        .iter()
+                        .any(|prefix| key.starts_with(*prefix)),
+                "caller environment key leaked: {key} (value withheld)"
+            );
+        }
+        for (key, value) in isolate_home(home).unwrap() {
+            assert_eq!(values.get(key), Some(&value.to_str().unwrap()));
+        }
+        assert!(!values.contains_key("BBOXY_NIGHT_CALLER_PROBE"));
+        assert!(!values.contains_key("NIGHT_UNLISTED_SECRET"));
+    }
+
+    // keeps: ICD night-app; neither launcher inherits harness markers or credentials
+    #[tokio::test]
+    async fn caller_harness_environment_is_removed_from_both_launchers() {
+        if std::env::var_os("BBOXY_NIGHT_CALLER_PROBE").is_none() {
+            let mut probe = Command::new(std::env::current_exe().unwrap());
+            probe.args([
+                "--exact",
+                "e2e_night::fixture_home_tests::caller_harness_environment_is_removed_from_both_launchers",
+                "--nocapture",
+            ]);
+            probe.env("BBOXY_NIGHT_CALLER_PROBE", "1");
+            for key in [
+                "CLAUDE_CODE_CHILD_SESSION",
+                "CLAUDE_CODE_MESSAGING_SOCKET",
+                "CLAUDE_CODE_MESSAGING_TOKEN",
+                "CODEX_THREAD_ID",
+                "CODEX_FUTURE_SENTINEL",
+                "ANTHROPIC_API_KEY",
+                "OPENAI_API_KEY",
+                "NIGHT_UNLISTED_SECRET",
+            ] {
+                probe.env(key, "night-caller-sentinel");
+            }
+            probe.env("CODEX_HOME", "/caller-codex-home-sentinel");
+            let output = probe.output().unwrap();
+            assert!(output.status.success(), "isolated environment probe failed");
+            assert!(String::from_utf8_lossy(&output.stdout).contains("1 passed"));
+            return;
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let home = temp.path().join("home");
+        let output = isolated_command("sh", &home)
+            .unwrap()
+            .args(["-c", "env"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_private_environment(&output.stdout, &home);
+
+        let work = temp.path().join("work");
+        std::fs::create_dir(&work).unwrap();
+        let script = temp.path().join("environment.sh");
+        std::fs::write(&script, b"env\n").unwrap();
+        let (exit, _) = run_script(
+            &script,
+            Path::new("unused-bbt"),
+            &temp.path().join("run"),
+            &work,
+            0,
+            "test-account:environment-regression",
+        )
+        .await;
+        assert_eq!(exit, Some(0));
+        assert_private_environment(&std::fs::read(work.join("output.log")).unwrap(), &home);
+    }
 
     // keeps: ICD night-app; a script never inherits the caller's harness home
     #[tokio::test]
