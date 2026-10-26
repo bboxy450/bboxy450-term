@@ -1,0 +1,49 @@
+{
+  "prerequisite": "0bd20ea89d84da012210de047b56e9614c17d1b3",
+  "ruling": "c5d315fd-4ef9-46d6-8bfb-df04d84820f5",
+  "checks": [
+    {
+      "log": ".bboxy/runs/landing-incremental-ledger-union.log",
+      "tests": 4,
+      "exit": 0,
+      "sha256": "bbbf23b6a9f77ec682b3ac7a396b29317beef233bb067ba6f048a59b939f80a9"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-resource-union.log",
+      "tests": 11,
+      "exit": 0,
+      "sha256": "1da64c3dc62efb65d87f514999a220bdea3f82473dda50e9859cc7c80b5b1d19"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-script-fixtures-red.log",
+      "tests": 2,
+      "exit": 1,
+      "sha256": "4c434e5669b530e6b41df2bf304dd34ebbaf61f96ad454a8914f7f6e49ce503e"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-script-fixtures-green.log",
+      "tests": 2,
+      "exit": 0,
+      "sha256": "d2561e0b136e16ff1c63eab04d68073ad036877fc29f975cb006a49ada43c1b3"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-admission-union.log",
+      "tests": 1,
+      "exit": 0,
+      "sha256": "7f9380da7c4c9ad686b1f674562ea0ad087ba3f2a329f1fa0476644453a8897d"
+    }
+  ],
+  "integration": [
+    "preserve observer wrap/options/attach/finish",
+    "trace logical CI command before resource wrapping",
+    "keep invariants parent unmetered",
+    "script moves replay only actual fixture commands for script cuts; records-only moves reuse them",
+    "explicit mixed recovery-scripts/records move reuses green Rust",
+    "preserve admission base field from 65b4046e"
+  ],
+  "source_hashes": {
+    "scripts/landing.py": "e965fa0c76cfde2eee042c64404a5b545f3e25cd4c6b6bc001e2932186ef4157",
+    "scripts/ci-local.sh": "b698eb094b41e9770def54e4c2b39ed8a656b9df6726e1f9bdbde3cf8976abb3",
+    "scripts/test-landing.py": "0fd17577131b78317d2c079a808aa32816be2b6e9d04b72d7d1093a214f48abb"
+  }
+}

@@ -1,0 +1,14 @@
+F.
+======================================================================
+FAIL: test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust (__main__.LandTests.test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 933, in test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust
+    self.assertEqual(result.stdout.count('nested fixture checks'), 2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 2
+
+----------------------------------------------------------------------
+Ran 2 tests in 14.659s
+
+FAILED (failures=1)

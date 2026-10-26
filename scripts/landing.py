@@ -420,15 +420,17 @@ def command_tools(argv, root):
 def execution_commands(root, sha, transcript, *, fixtures=False):
     commands = {}
     invariants = ["sh", "scripts/invariants.sh"]
-    def add(argv, tools=None):
+    def add(argv, tools=None, fixture=False):
         if tools is None:
             tools = command_tools(argv, root)
             if not fixtures:
                 tools = {tool for tool in tools if not Path(tool).name.startswith("test-")}
-        if tools:
+        if tools or fixture:
             key = tuple(argv)
             row = commands.setdefault(key, {"argv": list(argv), "tools": []})
             row["tools"] = sorted(set(row["tools"]) | tools)
+            if fixture:
+                row["fixtures"] = True
     for line in transcript.splitlines():
         argv = None
         try:
@@ -439,7 +441,7 @@ def execution_commands(root, sha, transcript, *, fixtures=False):
         except (ValueError, TypeError):
             continue
         if isinstance(argv, list) and argv and all(isinstance(arg, str) for arg in argv):
-            add(argv)
+            add(argv, fixture=fixtures and any(arg.startswith("scripts/test-") for arg in argv))
             if "scripts/invariants.sh" in argv:
                 invariants = argv
         match = re.fullmatch(r"invariant ([A-Za-z0-9_-]+): pass", line)
@@ -1163,8 +1165,11 @@ def land(gate_log=None):
             # intersection therefore includes those dependents within this cut.
             intersection = sorted(set(data["affected"]) & set(moved["affected"])) if moved else []
             changed_tools = set(moved["paths"]) if moved else set()
+            scripts_moved = any(path.startswith("scripts/") for path in changed_tools)
+            script_cut = any(path.startswith("scripts/") for path in data["paths"])
             replay = [row["argv"] for row in executed_commands.values()
-                      if changed_tools & set(row["tools"])]
+                      if changed_tools & set(row["tools"])
+                      or (scripts_moved and script_cut and row.get("fixtures"))]
             recheck = None
             if tested is not None and not common_paths and (intersection or replay):
                 if incremental_rechecks >= 5:
@@ -1206,6 +1211,8 @@ def land(gate_log=None):
                     prior = executed_commands.get(key, {"tools": []})
                     executed_commands[key] = {"argv": row["argv"],
                                               "tools": sorted(set(prior["tools"]) | set(row["tools"]))}
+                    if row.get("fixtures") or prior.get("fixtures"):
+                        executed_commands[key]["fixtures"] = True
                 tested = git("rev-parse", "HEAD", cwd=root)
             else:
                 print("land: moved changes are disjoint; reusing presubmit", flush=True)

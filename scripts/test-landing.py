@@ -905,6 +905,44 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 1)
 
+    def test_recovery_scripts_and_record_moves_reuse_a_green_rust_cut(self):
+        self.cut()
+        self.repo.movement('scripts/landing_recovery.py')
+        hook = self.repo.state / 'move-main.sh'
+        text = hook.read_text().replace('git commit -qm',
+            'mkdir -p .bboxy/invariants .bboxy/runs\n'
+            'printf "# fixture recovery test\\n" > scripts/test-landing-recovery.py\n'
+            'printf "fixture policy\\n" > .bboxy/invariants/main-red-bounded.md\n'
+            'printf "{}\\n" > .bboxy/runs/cache-pair.json\n'
+            'git add -- scripts/test-landing-recovery.py .bboxy\n'
+            'git commit -qm')
+        hook.write_text(text)
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+        self.assertNotIn('nested fixture checks', result.stdout)
+        checks = (self.repo.state / 'presubmit.log').read_text().splitlines()
+        self.assertEqual(len(checks), 1)
+
+    def test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust(self):
+        self.cut()
+        self.cut('scripts/fixture-gate.sh')
+        self.repo.movement('scripts/unrelated-helper.sh')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+        self.assertEqual(result.stdout.count('nested fixture checks'), 2)
+        checks = [json.loads(line) for line in (self.repo.state / 'presubmit.log').read_text().splitlines()]
+        self.assertEqual(checks[-1]['recheck'], {'affected': [], 'commands': [
+            ['python3', '-I', 'scripts/test-landing.py', '--all']]})
+
+    def test_a_record_only_move_reuses_a_script_cuts_fixture_result(self):
+        self.cut('scripts/fixture-gate.sh')
+        self.repo.movement('.bboxy/other.md')
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.count('nested fixture checks'), 1)
+
     def test_an_unexecuted_script_move_keeps_the_green_code_check(self):
         self.cut()
         self.repo.movement("scripts/not-executed.sh")
