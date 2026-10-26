@@ -84,6 +84,7 @@ impl Frames {
             view,
             sequence,
             lines,
+            pixel_size: None, // the submit owner supplies its actual PreparedGrid dimensions
             ingested: UiScreenIngestion {
                 view: ingress.view,
                 sequence: ingress.sequence,

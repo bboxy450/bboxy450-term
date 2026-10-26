@@ -5030,7 +5030,10 @@ impl App {
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
                     rendered: model.prepared_screens.get(seat).and_then(|source| {
-                        self.frame_observations.read(*seat, source, &mut terminal_text)
+                        self.frame_observations.read(*seat, source, &mut terminal_text).map(|mut rendered| {
+                            rendered.pixel_size = model.frames.get(seat).map(|grid| [grid.width, grid.height]);
+                            rendered
+                        })
                     }),
                 })
             })

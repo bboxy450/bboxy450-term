@@ -362,6 +362,9 @@ pub struct UiRenderedScreen {
     /// Omitted when the shared text budget cannot hold the complete grid.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lines: Option<Vec<String>>,
+    /// Device-pixel dimensions of the exact prepared grid, before pane clipping.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pixel_size: Option<[u32; 2]>,
     pub ingested: UiScreenIngestion,
 }
 

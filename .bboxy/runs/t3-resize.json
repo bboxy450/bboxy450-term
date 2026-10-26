@@ -1,0 +1,342 @@
+{
+  "promise": "T3 resizing PTY and repainting without stale cells",
+  "base": "8e2b74b293439952869f050721876ea0267d0ab4",
+  "status": "focused real headless cases, wire and strict lint held; author landing and postsubmit acceptance pending",
+  "source_refs": [
+    {
+      "source": "crates/bbt-proto/src/gui/ui.rs:367",
+      "mechanism": "optional device-pixel dimensions preserve old wire bytes"
+    },
+    {
+      "source": "crates/bboxy450-term/src/main.rs:5034",
+      "mechanism": "actual PreparedGrid width/height is copied by the produced-frame owner"
+    },
+    {
+      "source": "scripts/e2e/t3_resize.py:22",
+      "mechanism": "own raw PTY receives real SIGWINCH via a wakeup FD; ioctl agrees with real stty"
+    },
+    {
+      "source": "scripts/e2e/t3_resize.py:103",
+      "mechanism": "every old cell has actual sentinel ink; all new grid pixels and body gutters reject stale ink/background"
+    },
+    {
+      "source": "scripts/e2e/t3_resize.py:150",
+      "mechanism": "retains the window layout-owned direct-resize refusal"
+    },
+    {
+      "source": "scripts/e2e/t3_resize.py:153",
+      "mechanism": "independent window shrink/grow and pane-only split cases"
+    }
+  ],
+  "baseline": {
+    "result": {
+      "root": "/private/tmp/at3-qvq1qyjs",
+      "script": "scripts/e2e/T3.sh",
+      "startup": {
+        "backend_ready": true,
+        "close": null,
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 1,
+        "generation": 1,
+        "gui_ready": true,
+        "mode": "headless",
+        "pid": 39108,
+        "run_dir": "/private/tmp/at3-qvq1qyjs/run",
+        "running": true,
+        "unattended": true,
+        "windows": 0
+      },
+      "exit": 0,
+      "seconds": 3.654442071914673,
+      "stopped": {
+        "backend_ready": false,
+        "close": {
+          "complete": true,
+          "grace": [],
+          "notices": [],
+          "omitted": {
+            "grace": 0,
+            "notices": 0,
+            "slots": 0,
+            "truncated_notices": 0
+          },
+          "slots": [
+            {
+              "seat": "01M5VW3HAGV7M93Z909615M7QG",
+              "swarm": "01M5VW3HA4NXNBVYJYW27P4F3R",
+              "tab": "01M5VW3HA4MQE3HCM6CQ6029H7"
+            }
+          ]
+        },
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 67,
+        "generation": 1,
+        "gui_ready": false,
+        "mode": "headless",
+        "running": false,
+        "unattended": true,
+        "windows": 0
+      }
+    },
+    "coverage": "partial; only window resize/stty comparisons, no independent pane change or pixel assertion"
+  },
+  "cases": [
+    {
+      "action": "window-shrink",
+      "before": [
+        159,
+        54
+      ],
+      "after": [
+        49,
+        18
+      ],
+      "signals": 1,
+      "frame_seq": 63,
+      "sentinel_ink_cells": 8586,
+      "grid_pixels": 105840,
+      "wrong_grid_pixels": 0,
+      "stale_body_pixels": 0
+    },
+    {
+      "action": "window-grow",
+      "before": [
+        49,
+        18
+      ],
+      "after": [
+        79,
+        34
+      ],
+      "signals": 1,
+      "frame_seq": 78,
+      "sentinel_ink_cells": 882,
+      "grid_pixels": 322320,
+      "wrong_grid_pixels": 0,
+      "stale_body_pixels": 0
+    },
+    {
+      "action": "pane-split",
+      "before": [
+        79,
+        34
+      ],
+      "after": [
+        38,
+        34
+      ],
+      "signals": 1,
+      "frame_seq": 101,
+      "sentinel_ink_cells": 2686,
+      "grid_pixels": 155040,
+      "wrong_grid_pixels": 0,
+      "stale_body_pixels": 0
+    }
+  ],
+  "verdict": {
+    "cases_passed": 3,
+    "cases_failed": 0,
+    "new_grid_pixels_checked": 583200,
+    "old_cells_with_real_sentinel_ink": 12154,
+    "incorrect_new_grid_pixels": 0,
+    "stale_body_pixels": 0,
+    "wire_tests": "2 passed / 0 failed",
+    "strict_clippy_exit": 0,
+    "coverage_metadata_tests": "5 passed / 0 failed"
+  },
+  "retained_proof": {
+    "root": "/private/tmp/at3-v5p2vuas",
+    "script_seconds": 7.969888210296631,
+    "windows": 0,
+    "custody_backend": "file",
+    "artifacts_sha256": {
+      "t3-observations.json": "7bd311bcee2e13bb6b77d524bfc6d92f76af1d9b5b38eaaa877554358dbfc8a7",
+      "t3-pane-split-after-source.json": "4722c50f54272cb98dce201fb06acc3d12e8715e76c14da01f2f79375ce69d95",
+      "t3-pane-split-after.jsonl": "8a5121ead0c72f128f314e2dc6137b0af9c7fe61b09cb33c8a067e47bf54347a",
+      "t3-pane-split-after.png": "f360eb30b77df4549093f12ff62840203f397abb4fd7cfaa70bea203d2a250b6",
+      "t3-pane-split-before-source.json": "dfefa3e77db70372c21c76c5c026f6ec89bc4b76dfeb247040932129d185a3d8",
+      "t3-pane-split-before.jsonl": "21a6432d61e0bea50872bb6808d5f45764a72976f52db7aafcaa7debf9cfe3f6",
+      "t3-pane-split-before.png": "8b02fe3420f0ed2e9722134b882a832879cc4d681bc206bd7d35b1d6e7dbca24",
+      "t3-state.json": "1c93616a809fa456857998ad656b787699eaec9f40236886257c64815a493985",
+      "t3-window-grow-after-source.json": "6b1a1c562774d31ace98876a0db7c6e6783116d7ffc653abc6c4cba581f0dbdd",
+      "t3-window-grow-after.jsonl": "4e5bf3c70fd2690b79507f66276ae1da1b38da858ab8d49fe6b30f0f5e4b7701",
+      "t3-window-grow-after.png": "c2d76c84f2d14530e4d0b984154accc6b33fabda55171f97e5f94ded91a83db4",
+      "t3-window-grow-before-source.json": "8a1792ba017f228e3f66bf3609bee98341683be076812fe49bc139d27d3e83b6",
+      "t3-window-grow-before.jsonl": "52f9f1473399d404eb9c8b7cb2e7dcc5c2780badbc81522b47196c0b7b3007af",
+      "t3-window-grow-before.png": "a19b6d51d3d76dcac732237d4959bd53e131bf825b639cea72d8a7f4dcfc73bf",
+      "t3-window-shrink-after-source.json": "e6ed4aeaddf0706546d39b126839fbc54858a29c4c7da8fc1fa7bdf0dcc11e1c",
+      "t3-window-shrink-after.jsonl": "a667860f5725686c7743bdcac63a096c1bbd88c7f3dad3602aebfa698eb05660",
+      "t3-window-shrink-after.png": "540efe93bd771e660bc5451593e32d10f9a4fdfc7f7950bfe25622f0417deab0",
+      "t3-window-shrink-before-source.json": "159503334f89bc2936c32d45d4437b279d691f624779620da40891cd91366a95",
+      "t3-window-shrink-before.jsonl": "eba7484702692bc4099c646ad454c9ba73f7ea093a01ede6a51d50e3b0941f57",
+      "t3-window-shrink-before.png": "99c36ee5eb1b7bb466b99e308e81118297e7274bf92d6426bf648dd448aeb012"
+    },
+    "calls_sha256": "8a12a1c551cd68125833cf9771cf06c359f839bc4dc4a502cc65d720dfb804d4",
+    "visual_inspection": "read the actual white-A-before and pane-split-blue-after captures from the preceding successful run /private/tmp/at3-g7auvm38; final artifact-only rerun used identical program/rendering code"
+  },
+  "fixture_failure_and_fix": {
+    "first_exit": 1,
+    "diagnostic_exit": 1,
+    "mechanism": "initial helper imported rim_clock at module scope; actual in-seat Python lacked tomllib, and the captured terminal traceback names that import",
+    "diagnostic_root": "/private/tmp/at3-bzkmh11t",
+    "fix": "load PNG utilities only in the driver capture function; the real PTY helper has no image-reader dependency",
+    "next_exit": 0
+  },
+  "checks": [
+    {
+      "name": "build",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 88.71101403236389,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/build.log",
+      "log_sha256": "3a4cbcc4ce62bb3c6a54faf6475b4e63d1378cba0d0aa0b0f1275b230f6fa55f"
+    },
+    {
+      "name": "native",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t3-20261026/run_t3.py"
+      ],
+      "exit": 1,
+      "seconds": 46.73399233818054,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/native.log",
+      "log_sha256": "9809474d5d517c4df4223f63a93a6a65017731ab76d211c9aa8ad39f221ec7c2"
+    },
+    {
+      "name": "native-diagnostic",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t3-20261026/run_t3.py"
+      ],
+      "exit": 1,
+      "seconds": 1.2053508758544922,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/native-diagnostic.log",
+      "log_sha256": "be4706f796cff987845c082df18674c30597a80e9f03064fc759f2d8c083d6c4"
+    },
+    {
+      "name": "native-after-import-fix",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t3-20261026/run_t3.py"
+      ],
+      "exit": 0,
+      "seconds": 6.825492858886719,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/native-after-import-fix.log",
+      "log_sha256": "d6eb25fc2a6c9586b315f78f6662447397ddddcd88091490c432007d1bd52a1c"
+    },
+    {
+      "name": "native-final",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t3-20261026/run_t3.py"
+      ],
+      "exit": 0,
+      "seconds": 6.145317792892456,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/native-final.log",
+      "log_sha256": "5ebc87853080bf1bebd4395192af294ef18751ea2a47e89260932eafd434d90c"
+    },
+    {
+      "name": "native-final-policy",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t3-20261026/run_t3.py"
+      ],
+      "exit": 0,
+      "seconds": 8.624316930770874,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/native-final-policy.log",
+      "log_sha256": "b149551ce4bb8379c2f55d7fc9aa4da2238e4f54e205dfe9f0075ff1a3212ac4"
+    },
+    {
+      "name": "wire",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 18.884658813476562,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/wire.log",
+      "log_sha256": "d152c89a6a9d5acd3abe77aba88795db32b326b9a8b6957e5fe609325300c410"
+    },
+    {
+      "name": "strict",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-proto",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 13.84591817855835,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/strict.log",
+      "log_sha256": "7a57b6469ccad7fd2ddf8b936e3532c2f2a810ec9fce3a460d77299ddf0a92f5"
+    },
+    {
+      "name": "coverage-metadata",
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_ui.py"
+      ],
+      "exit": 0,
+      "seconds": 0.08852601051330566,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/coverage-metadata.log",
+      "log_sha256": "f96363f8d8dff4c4abed7197c63606ead0bd955ea4259bdcb5fb6f47dbe53992"
+    }
+  ],
+  "binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t3-20261026/t3-runtime-bboxy450-term",
+    "sha256": "e8070abc3b9c009d17ee394ae097e1a83caaff5c42d3ad8d20693a069b4cd8cd"
+  },
+  "code_manifest": {
+    "crates/bbt-proto/src/gui/ui.rs": "56157da1387263936cc0bd55894cf48dca78516c07f65eb1ca4c15c7d8307bf2",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "c4afb6196b223596869578519292be4f7d6642ad7d4e7fd390ad84eb5dcf4c92",
+    "crates/bboxy450-term/src/frame_observation.rs": "08409d71d0a4d1526a9c69a303a761e37b7826f4076e2cb884e9498a1b5da719",
+    "crates/bboxy450-term/src/main.rs": "360998c7a2bac3f8e669c631b992216f47705ef4f2e1cc04970a631b3b2dfaa0",
+    "scripts/e2e/T3.sh": "e5da1dd4b95bf84e8a283b54b31e9a931646f5bb8d759d5489ef445510c580c6",
+    "scripts/e2e/t3_resize.py": "c9d9a9effec018d599553aa236d04723428ce1ddb2ad0add54d3b2d745cf9c75"
+  },
+  "compatibility": {
+    "wire_version": 3,
+    "frozen_prefix_bytes": 52269,
+    "frozen_prefix_sha256": "d2539e7ffbaf9142f613e89eee364eb8fd77b08ca6dd10a02e258a3186df6f11",
+    "old_fixture_lines_unchanged": true
+  },
+  "gaps": [
+    "Headless macOS GPU/PTY proof only; no OS window/scanout or cross-platform runtime claim.",
+    "Split placement changes the pane independently of window size; divider dragging is not exercised.",
+    "Postsubmit and Oracle review remain unverified."
+  ]
+}
