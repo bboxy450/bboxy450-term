@@ -1,3 +1,11 @@
+---
+id: 01M5WT42ZH5RJVYX5QSCBDMN9Q
+type: evidence
+number: 359
+title: "MA-5 integrated current-main refusal and suppression evidence"
+created: "2026-10-26T18:46:46Z"
+updated: "2026-10-26T19:13:45Z"
+---
 # MA-5: current-main refusal and wake-suppression union
 
 Signed source: `f9cca27a76d9b19231428be3f8fae7e20e874e23`, branch `velvet-ma5-current-union`, rebased onto `8755bd115a9700695dc70ceb07c269c5f8ba24b0`. This combines the frozen refusal runtime and §4a suppression cuts; their original branches and historical proof files remain intact. The already-landed cache-budget commit was skipped.
@@ -29,3 +37,5 @@ Environment: source `scripts/cache-env.sh`; jobs 2, incremental 0, debug memory 
 Raw logs, step manifests, source/environment, preservation hashes and signature checks remain in `target/ma5-current-union-proof/f9cca27a76d9/`. The earlier `8fadbec50edd/` check set also passed 134/0 before main's frontend-lock fix landed; it is retained and is not substituted for the final-source checks above.
 
 Owned inactive target retirement: removed=True; lsof EXIT 1, stdout/stderr empty; allocated bytes removed=2,120,007,680. `retirement.json` and `retirement-lsof.log` retained. Existing proof binaries and galleries were untouched.
+
+Record-schema follow-up: required evidence frontmatter added to all three MA-5 notes, with unique numbers 357–359 against main's maximum 356. `cargo test -p bbt-doc --locked --target-dir target/m2-reply-box-dev --test corpus` — EXIT 0, 6 passed, 0 failed, 1.296 s; raw `target/ma5-current-union-proof/frontmatter/corpus-final.log`, SHA256 `c0eb65deeb203d2c53b76511411bc22c41ae4e071782f38b6433c70f3cfd460c`. Runtime source and its checks above are unchanged.

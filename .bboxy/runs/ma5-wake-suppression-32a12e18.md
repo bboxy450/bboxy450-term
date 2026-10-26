@@ -1,3 +1,11 @@
+---
+id: 01M5WT42Y4FGT3V2MPVN0YTNTY
+type: evidence
+number: 358
+title: "MA-5 wake suppression and replay evidence"
+created: "2026-10-26T06:21:04Z"
+updated: "2026-10-26T19:13:45Z"
+---
 # MA-5: superseded, done and duplicate wakes
 
 Signed source: `32a12e189bcd1af7cf9677f280f341bbacd9369e`, branch `velvet-ma5-wake-suppression`.

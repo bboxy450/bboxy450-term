@@ -1,3 +1,11 @@
+---
+id: 01M5WT42WYS0ZE470GYTF9VPCC
+type: evidence
+number: 357
+title: "MA-5 visible reply validation and typed refusal evidence"
+created: "2026-10-26T05:29:49Z"
+updated: "2026-10-26T19:13:45Z"
+---
 # MA-5: visible reply validation and typed refusals
 
 Source: `5140262246d30ce50b8d25cc1b7c4c2bd569a407` (signed), branch `velvet-ma5-thread-validation`.
