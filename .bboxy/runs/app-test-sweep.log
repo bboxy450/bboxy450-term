@@ -17,11 +17,22 @@ Verification (raw logs retained privately; paths and hashes in manifest):
 - app-headless-night-validation: EXIT0,17/0; app-remaining-night-validation-fixed-2: EXIT0,21/0.
 - app-sweep-live-unit-check: EXIT0,20/0,3 intentionally ignored boundary cases.
 - Initial remaining-boundary compilation failed E0609 because Context has no rim field; fixed to inspect actual pane layout. An accidental missing private driver launch exited2 and performed no test. Strengthened scene paint checks initially rejected two arbitrary fixture IDs at the shader seed validator; those fixtures now use a bounded deterministic seat ID. These red logs are retained.
-- app-rewritten-unit-validation-fixed: EXIT0; scene17/0 and notification recording/worker6/0. Author presubmit pending in this source commit; successor evidence records its actual result.
+- app-rewritten-unit-validation-fixed: EXIT0; scene17/0 and notification recording/worker6/0. Author presubmit on b0789d03 EXIT0, landed the exact checked SHA.
 
 Counts and timing:
-- Before:333 discovered,330 default and3 existing ignored. After expected:332 discovered,289 default and43 ignored (40 moved,1 deleted). Exact post-rebase runtime counts will come from the author log.
+- Before:333 discovered,330 default and3 existing ignored. After verified:332 discovered,289 default passed/0 failed and43 ignored (40 moved,1 deleted). All40 new exact night selectors passed.
 - Green before log e8773b66: test phase132.259320s; commands.log SHA2565b3ac6709a6e9b8ba09670f674f6262634c02f45b5e8126acd3c20180044adf9. Earlier red8d02 log test103.746069s is retained but is not a green baseline. Shared-load timing is advisory, not a speed verdict.
+
+
+Final author evidence:
+- `sh scripts/land.sh` on b0789d0393736ee87a3e96951454ba07fda0d476 — EXIT0; the checked SHA is the landed SHA, signed good. No retries or incremental rechecks.
+- BUILD316.350121s, RUN385.267489s, total check701.618237s. Driver including setup/release715.922136s. `test_seconds`378.297106s includes tooling/driver fixtures and invariant checks; it is not the app suite duration.
+- `sh scripts/quarantine-test.sh --locked -p bboxy450-term` — EXIT0,289 default app tests passed,0 failed,43 ignored;332 tests total. Strict `cargo clippy --locked -p bboxy450-term --all-targets -- -D warnings` — EXIT0.
+- `python3 -I scripts/test-landing.py --all` — EXIT0,129 fixtures/0 failures. `python3 -I scripts/test-resource-ledger.py` — EXIT0. `sh scripts/invariants.sh --affected bboxy450-term` —13 applicable checks/0 failures;11 slow and13 unaffected skipped.
+- Raw author log: /Users/feral/.local/state/bboxy450-term/landing/presubmits/b0789d0393736ee87a3e96951454ba07fda0d476-93680a35/commands.log; SHA256 aa27a6db9a418f0c97d41565291a85254746fe192d9390af6a8bce9b2947befe.
+- Like-for-like observation: sum of the first23 crate libtest results, excluding later invariant re-executions,92.56s before ->41.66s after (54.99% lower). Both are shared-load observations; no controlled speed verdict, full-workspace CI or parity claim. The cut changes no production rendering behavior.
+- Final rebase: app files byte-identical to the verified source; main's night selector prefix retained byte for byte,40 commands appended. No script conflict after green.107 peer-owned rows remain unchanged and explicitly listed, not silently treated as audited.
+- Own inactive artifacts retired after lsof empty:100,753,408 bytes old PNG/compiler artifacts plus1,452,175,360 bytes inactive dev target,1,552,928,768 total. Reports, logs and hashes retained; the author owns/releases its separate clean target.
 
 Coverage map:
 Each row below is tied to the actual runtime inventory. Kept and rewritten tests have keeps tags; every moved row names its exact night selector in app-test-sweep-map.json. No invariant check or wire golden is deleted or changed. No default-invariant check names a moved function; the pending restart_keeps_working_state anchor is untouched.

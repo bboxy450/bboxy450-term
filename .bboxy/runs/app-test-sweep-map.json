@@ -7,9 +7,6 @@
   "skipped": 107,
   "deleted": 1,
   "new_night_selectors": 40,
-  "expected_after_tests": 332,
-  "expected_default_tests": 289,
-  "expected_ignored_tests": 43,
   "classification_counts": {
     "D": 161,
     "B1": 5,
@@ -6511,7 +6508,340 @@
       "removed": 4
     }
   ],
-  "final_author_presubmit": "pending",
+  "final_author_presubmit": {
+    "affected": [
+      "bboxy450-term"
+    ],
+    "attempt": 0,
+    "binary_durations": [
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/bboxy450_term-ec64ec2d2b9e8e26",
+        "over_60s": false,
+        "seconds": 0.1
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/bboxy450_term-385072e00e980f81",
+        "over_60s": false,
+        "seconds": 0.6
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/cockpit-d968de4e99dec0ab",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl-07ce40ec093d505a",
+        "over_60s": false,
+        "seconds": 34.77
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl_records-66939c1eeccf92db",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/custody-5d0a1db1d62ab0f3",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/documents-91e657625c910b54",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/e2e_night-40196b691a0b80d6",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/headless-00bec12ba528c165",
+        "over_60s": false,
+        "seconds": 0.81
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/hosts-86222e7c17d10dc9",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/knowledge_e2e-efe3692ab977cec8",
+        "over_60s": false,
+        "seconds": 4.36
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/launcher-3d73da50ffe07a54",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/lifecycle-88432f7df7c94c5c",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_flow-3fa50f066f848b14",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_ui-c1a366f325feae45",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/native_signing-09e24b3f46b4a603",
+        "over_60s": false,
+        "seconds": 0.87
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/plugins-223bf8071798e092",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/r5_stall-54eda24cc2142a3b",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/recovery-936fec2d4a7ae130",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/scrollback-c2ece33c18a18ca3",
+        "over_60s": false,
+        "seconds": 0.1
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/settings-37f73124497ed2b5",
+        "over_60s": false,
+        "seconds": 0.05
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/test_account-257c904936b48658",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "doc-tests:bboxy450_term",
+        "over_60s": false,
+        "seconds": 0.0
+      },
+      {
+        "binary": "/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl-07ce40ec093d505a",
+        "over_60s": false,
+        "seconds": 34.0
+      }
+    ],
+    "build_cap_seconds": 1800.0,
+    "commands": [
+      {
+        "argv": [
+          "sh",
+          "scripts/quarantine-test.sh",
+          "--locked",
+          "-p",
+          "bboxy450-term"
+        ],
+        "tools": [
+          "scripts/quarantine-test.sh",
+          "scripts/quarantine.py"
+        ]
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-landing.py",
+          "--all"
+        ],
+        "fixtures": true,
+        "tools": []
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-resource-ledger.py"
+        ],
+        "fixtures": true,
+        "tools": [
+          "scripts/test-resource-ledger.py"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term"
+        ],
+        "tools": [
+          "scripts/invariants.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "bboxy450-prefix"
+        ],
+        "tools": [
+          "scripts/brand.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "cross-os-facade"
+        ],
+        "tools": [
+          "scripts/cross-os.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "images-resolve"
+        ],
+        "tools": [
+          "scripts/images.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "kill-only-own-pids"
+        ],
+        "tools": [
+          "scripts/kill-own-pids.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "layering"
+        ],
+        "tools": [
+          "scripts/layering.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "licenses-present"
+        ],
+        "tools": [
+          "scripts/licenses.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "local-first"
+        ],
+        "tools": [
+          "scripts/local-first.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "never-block-swarm"
+        ],
+        "tools": [
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "no-chokepoints"
+        ],
+        "tools": [
+          "scripts/cross-os.sh",
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "no-copyleft-deps"
+        ],
+        "tools": [
+          "scripts/deps-licences.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "ui-never-waits"
+        ],
+        "tools": [
+          "scripts/ui-lint.sh"
+        ]
+      }
+    ],
+    "compile_seconds": 316.35012141801417,
+    "error": null,
+    "exit": 0,
+    "finding": null,
+    "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/b0789d0393736ee87a3e96951454ba07fda0d476-93680a35/commands.log",
+    "operation": "af11b46b9785452a9c21893dc666dd7b",
+    "run_bound_seconds": 900.0,
+    "run_seconds": 385.26748908194713,
+    "seconds": 701.6182372079929,
+    "sha": "b0789d0393736ee87a3e96951454ba07fda0d476",
+    "test_seconds": 378.29710603988497,
+    "tests_started": true,
+    "tier": "code",
+    "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+    "unclassified_seconds": 6.970383042062167,
+    "verdict": "green",
+    "log_sha256": "aa27a6db9a418f0c97d41565291a85254746fe192d9390af6a8bce9b2947befe",
+    "crate_counts": {
+      "passed": 289,
+      "failed": 0,
+      "ignored": 43,
+      "total": 332
+    },
+    "crate_reported_seconds": 41.66,
+    "invariants": "13/0;11slow+13unaffected skipped"
+  },
   "note": "Skip means deliberately outside this cut, not blocked; lifecycle/custody were separately accepted in Rook f19545f7. Before/after runtime timing is advisory until measured in the controlled night.",
   "targeted_rewrite_checks": [
     {
@@ -6549,5 +6879,411 @@
       "exit": 0,
       "seconds": 27.836175374977756
     }
-  ]
+  ],
+  "after_tests": 332,
+  "default_tests": 289,
+  "ignored_tests": 43,
+  "observed_crate_time": {
+    "before": {
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/e8773b6676e681cf8e7e492e47ce11daa67f2e48-7d2c44e0/commands.log",
+      "crate_results": [
+        {
+          "binary": "unittests src/lib.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/bboxy450_term-ec64ec2d2b9e8e26)",
+          "result": "ok",
+          "passed": 80,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.1
+        },
+        {
+          "binary": "{ pid: 10014 }",
+          "result": "ok",
+          "passed": 124,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 13.46
+        },
+        {
+          "binary": "tests/cockpit.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/cockpit-d968de4e99dec0ab)",
+          "result": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.9
+        },
+        {
+          "binary": "tests/ctl.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl-07ce40ec093d505a)",
+          "result": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 34.0
+        },
+        {
+          "binary": "tests/ctl_records.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl_records-66939c1eeccf92db)",
+          "result": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.1
+        },
+        {
+          "binary": "tests/custody.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/custody-5d0a1db1d62ab0f3)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/documents.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/documents-91e657625c910b54)",
+          "result": "ok",
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/e2e_night.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/e2e_night-40196b691a0b80d6)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 7.27
+        },
+        {
+          "binary": "tests/headless.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/headless-00bec12ba528c165)",
+          "result": "ok",
+          "passed": 21,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 21.14
+        },
+        {
+          "binary": "tests/hosts.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/hosts-86222e7c17d10dc9)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/knowledge_e2e.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/knowledge_e2e-efe3692ab977cec8)",
+          "result": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 2.57
+        },
+        {
+          "binary": "tests/launcher.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/launcher-3d73da50ffe07a54)",
+          "result": "ok",
+          "passed": 20,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/lifecycle.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/lifecycle-88432f7df7c94c5c)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/messaging_flow.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_flow-3fa50f066f848b14)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.28
+        },
+        {
+          "binary": "tests/messaging_ui.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_ui-c1a366f325feae45)",
+          "result": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/native_signing.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/native_signing-09e24b3f46b4a603)",
+          "result": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.7
+        },
+        {
+          "binary": "tests/plugins.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/plugins-223bf8071798e092)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.34
+        },
+        {
+          "binary": "tests/r5_stall.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/r5_stall-54eda24cc2142a3b)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 6.84
+        },
+        {
+          "binary": "tests/recovery.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/recovery-936fec2d4a7ae130)",
+          "result": "ok",
+          "passed": 8,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 2.16
+        },
+        {
+          "binary": "tests/scrollback.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/scrollback-c2ece33c18a18ca3)",
+          "result": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.07
+        },
+        {
+          "binary": "tests/settings.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/settings-37f73124497ed2b5)",
+          "result": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.04
+        },
+        {
+          "binary": "tests/test_account.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/test_account-257c904936b48658)",
+          "result": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.59
+        },
+        {
+          "binary": "bboxy450_term",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        }
+      ],
+      "passed": 330,
+      "failed": 0,
+      "ignored": 3,
+      "reported_seconds": 92.56
+    },
+    "after": {
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/b0789d0393736ee87a3e96951454ba07fda0d476-93680a35/commands.log",
+      "crate_results": [
+        {
+          "binary": "unittests src/lib.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/bboxy450_term-ec64ec2d2b9e8e26)",
+          "result": "ok",
+          "passed": 80,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.1
+        },
+        {
+          "binary": "unittests src/main.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/bboxy450_term-385072e00e980f81)",
+          "result": "ok",
+          "passed": 118,
+          "failed": 0,
+          "ignored": 5,
+          "seconds": 0.6
+        },
+        {
+          "binary": "tests/cockpit.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/cockpit-d968de4e99dec0ab)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 5,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/ctl.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl-07ce40ec093d505a)",
+          "result": "ok",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 34.77
+        },
+        {
+          "binary": "tests/ctl_records.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/ctl_records-66939c1eeccf92db)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 3,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/custody.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/custody-5d0a1db1d62ab0f3)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/documents.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/documents-91e657625c910b54)",
+          "result": "ok",
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/e2e_night.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/e2e_night-40196b691a0b80d6)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/headless.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/headless-00bec12ba528c165)",
+          "result": "ok",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 17,
+          "seconds": 0.81
+        },
+        {
+          "binary": "tests/hosts.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/hosts-86222e7c17d10dc9)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/knowledge_e2e.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/knowledge_e2e-efe3692ab977cec8)",
+          "result": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 4.36
+        },
+        {
+          "binary": "tests/launcher.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/launcher-3d73da50ffe07a54)",
+          "result": "ok",
+          "passed": 20,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/lifecycle.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/lifecycle-88432f7df7c94c5c)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/messaging_flow.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_flow-3fa50f066f848b14)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/messaging_ui.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/messaging_ui-c1a366f325feae45)",
+          "result": "ok",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/native_signing.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/native_signing-09e24b3f46b4a603)",
+          "result": "ok",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.87
+        },
+        {
+          "binary": "tests/plugins.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/plugins-223bf8071798e092)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/r5_stall.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/r5_stall-54eda24cc2142a3b)",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/recovery.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/recovery-936fec2d4a7ae130)",
+          "result": "ok",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 6,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/scrollback.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/scrollback-c2ece33c18a18ca3)",
+          "result": "ok",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.1
+        },
+        {
+          "binary": "tests/settings.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/settings-37f73124497ed2b5)",
+          "result": "ok",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.05
+        },
+        {
+          "binary": "tests/test_account.rs (/private/tmp/bboxy450-gate-slot-1/target/debug/deps/test_account-257c904936b48658)",
+          "result": "ok",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.0
+        },
+        {
+          "binary": "bboxy450_term",
+          "result": "ok",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        }
+      ],
+      "passed": 289,
+      "failed": 0,
+      "ignored": 43,
+      "reported_seconds": 41.660000000000004
+    },
+    "method": "Sum libtest-reported durations for the first23 crate results, excluding later invariant re-executions; observed under shared load, no controlled speed verdict.",
+    "observed_reduction_percent": 54.991356957649096
+  },
+  "source_rebase_proof": {
+    "source": "b0789d0393736ee87a3e96951454ba07fda0d476",
+    "started": "2026-10-26T02:36:54.714881+00:00",
+    "author_pid": 73412,
+    "app_paths_unchanged_by_rebase": true
+  },
+  "selector_rebase_proof": {
+    "base_sha": "658a39ffb71b211d17d5fd43290499f0eea4411b",
+    "base_script_sha256": "bdeda044a7dd184ad92c7b31b59fe35b573d133b56fc35e2372410a4b77e67d9",
+    "append_only": true,
+    "extra": 40
+  },
+  "cleanup_allocated_bytes": 1552928768
 }
