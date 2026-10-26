@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:12:45Z"
+updated: "2026-10-26T18:56:48Z"
 ---
 # ICD: night runner ↔ app
 
@@ -23,7 +23,7 @@ updated: "2026-10-26T18:12:45Z"
 | Failure | an untracked partial or failure is red; a tracked one is amber; never a human in the loop |
 | Versioning | a script's coverage header is the source of its record |
 | Verified by | invariant e2e-runs-unattended; every promise |
-| Open | 50 of 55 promises partial on 2026-10-25; scripts inheriting the real HOME, fix in work |
+| Open | promises still partial outside the terminal group; the terminal group ran 9 of 9 full on 2026-10-26 (Aster, the canonical night script, exit 0 in 137 s, ten apps on file custody, no window); the scripts' real-HOME inheritance fixed at e28aa9bd, one private 0700 home with `HOME`, `CLAUDE_CONFIG_DIR` and `CODEX_HOME` shared by the app and its scripts, a symlinked home refused |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 

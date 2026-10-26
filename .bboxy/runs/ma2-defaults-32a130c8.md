@@ -1,3 +1,11 @@
+---
+id: 01M5WS5X68YCQEA4CYDCJW22KC
+type: evidence
+number: 356
+title: "MA-2 role precedence and direct wake regression evidence (Velvet)"
+created: "2026-10-26T18:57:16Z"
+updated: "2026-10-26T18:57:16Z"
+---
 # MA-2 attention defaults correction — 817e4b43
 
 Source: `32a130c88f68ad7750fa7e2673175c992aa592aa` (G signature), on `18c91d48ee7cf6f6565f2d851d57acebe0ec54fc`. Signed spec ruling `817e4b43` is in that base. Tests ran in exec6 with the source bytes retained in `target/ma2-defaults-proof/source.json`; the tracked tree stayed clean after the source commit.
