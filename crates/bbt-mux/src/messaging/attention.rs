@@ -30,12 +30,12 @@ pub struct Defaults {
 }
 
 pub fn defaults(role: &Role) -> Defaults {
-    let (conversation, direct_conversation, named_conversation) = if role.class == Class::Oracle {
-        (WakeMode::Wake, WakeMode::Wake, WakeMode::Wake)
-    } else if matches!(role.name.as_str(), "architect" | "creativity") {
+    let (conversation, direct_conversation, named_conversation) = if matches!(role.name.as_str(), "architect" | "creativity") {
         (WakeMode::Inbox, WakeMode::Wake, WakeMode::Wake)
+    } else if role.class == Class::Oracle {
+        (WakeMode::Wake, WakeMode::Wake, WakeMode::Wake)
     } else {
-        (WakeMode::Digest, WakeMode::Digest, WakeMode::Digest)
+        (WakeMode::Digest, WakeMode::Wake, WakeMode::Digest)
     };
     Defaults {
         conversation,

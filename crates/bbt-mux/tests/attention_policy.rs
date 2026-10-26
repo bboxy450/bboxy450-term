@@ -28,7 +28,7 @@ fn decide(seat: &SeatRecord, path: &str, kind: MessageKind, facts: Facts) -> Wak
     attention::decide(seat, path, kind, facts).unwrap()
 }
 
-// keeps: spec messaging-attention §3 (Class::Oracle first, then exact role names)
+// keeps: spec messaging-attention §3 (exact role names first, then Oracle class)
 #[test]
 fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
     for (name, class, conversation) in [
@@ -39,7 +39,8 @@ fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
         ("Architect", Class::Worker, WakeMode::Digest),
         ("architect", Class::Worker, WakeMode::Inbox),
         ("creativity", Class::Worker, WakeMode::Inbox),
-        ("architect", Class::Oracle, WakeMode::Wake),
+        ("architect", Class::Oracle, WakeMode::Inbox),
+        ("creativity", Class::Oracle, WakeMode::Inbox),
         ("unknown", Class::Oracle, WakeMode::Wake),
     ] {
         let receiver = seat(name, class);
@@ -53,6 +54,12 @@ fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
             conversation,
             "{name:?}/{class:?}"
         );
+        let dm = format!("seats/{}/inbox", receiver.id);
+        assert_eq!(
+            decide(&receiver, &dm, MessageKind::Text, Facts::default()),
+            WakeMode::Wake,
+            "{name:?}/{class:?} direct conversation"
+        );
         for kind in [
             MessageKind::Presence,
             MessageKind::SlotClaimed,
@@ -61,6 +68,10 @@ fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
         ] {
             assert_eq!(
                 decide(&receiver, "channels/room", kind, Facts::default()),
+                WakeMode::Inbox
+            );
+            assert_eq!(
+                decide(&receiver, &dm, kind, Facts::default()),
                 WakeMode::Inbox
             );
         }

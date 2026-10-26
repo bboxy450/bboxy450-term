@@ -5359,6 +5359,7 @@ fn mcp_attention_is_owned_by_the_admitted_receiver_and_never_grants_other_seats(
     assert_eq!(before["seat_id"], json!(own));
     assert_eq!(before["policy"], json!({"rules":[]}));
     assert_eq!(before["defaults"]["conversation"], "digest");
+    assert_eq!(before["defaults"]["direct_conversation"], "wake");
     assert_eq!(before["defaults"]["event"], "inbox");
     let epoch = f.epoch(own);
     let set = data(f.mutate(
@@ -5473,6 +5474,7 @@ fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
         assert_eq!(attention["role"], json!(record.role));
         assert_eq!(attention["policy"], json!({"rules":[]}));
         assert_eq!(attention["defaults"]["event"], "inbox");
+        assert_eq!(attention["defaults"]["direct_conversation"], "wake");
         assert_eq!(
             attention["defaults"]["conversation"],
             if record.role.class == Class::Oracle {
@@ -5490,6 +5492,18 @@ fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
             ])
         );
         assert_eq!(attention["muted"], false);
+    }
+    for name in ["architect", "creativity"] {
+        f.registry()
+            .update(f.oracle.id, |record| {
+                record.role.name = name.into();
+                Ok(())
+            })
+            .unwrap();
+        let orient = data(f.call(f.oracle.id, Ulid::new(), "orient", json!({})));
+        assert_eq!(orient["attention"]["defaults"]["conversation"], "inbox");
+        assert_eq!(orient["attention"]["defaults"]["direct_conversation"], "wake");
+        assert_eq!(orient["attention"]["defaults"]["event"], "inbox");
     }
     data(f.mutate(
         f.own.id,

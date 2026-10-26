@@ -520,6 +520,22 @@ impl AttentionFixture {
     }
 }
 
+// keeps: messaging-attention §3 ordinary Executor DMs wake without an override.
+#[test]
+fn executor_direct_conversation_wakes_immediately_by_default() {
+    let mut f = AttentionFixture::new();
+    let id = f.send(1_000);
+    assert_eq!(f.receipt(id).wake, Some(bbt_proto::messaging::ReceiptWake::Now));
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 1_000)
+        .unwrap()
+        .unwrap();
+    assert_eq!(work.messages.len(), 1);
+    assert_eq!(work.messages[0].view().id, id);
+    assert!(!work.text().starts_with("Bboxy message digest\n"));
+}
+
 // keeps: messaging-attention §3 admission pinning, all three modes and restart.
 #[test]
 fn admission_pins_wake_and_digest_while_inbox_history_leaves_the_native_scan() {
@@ -768,6 +784,7 @@ fn legacy_pending_receipts_migrate_without_replaying_completed_work() {
 #[test]
 fn digest_window_delivers_one_summary_at_its_first_deadline() {
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let first = f.send(1_000);
     let second = f.send(2_000);
     assert_eq!(
@@ -823,6 +840,7 @@ fn digest_window_delivers_one_summary_at_its_first_deadline() {
 #[test]
 fn digest_cap_flushes_fifty_once_while_the_clock_is_frozen() {
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let mut ids: Vec<_> = (0..49).map(|_| f.send(1_000)).collect();
     assert!(
         f.messaging
@@ -883,6 +901,7 @@ fn digest_cap_flushes_fifty_once_while_the_clock_is_frozen() {
 fn digest_summaries_do_not_merge_destinations() {
     use bbt_mux::messaging::tree::{Actor, Node, Right};
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let mut folder = Node::folder("channels/updates");
     folder.grants.insert(f.sender.id, vec![Right::Write]);
     f.messaging
@@ -957,6 +976,7 @@ fn digest_summaries_do_not_merge_destinations() {
 fn digest_releases_eligible_members_then_the_fenced_remainder_without_retiming() {
     use bbt_mux::messaging::tree::{Actor, Right};
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let peer = SeatRecord::new(Ulid::new(), f.receiver.swarm, "peer", "zsh");
     f.registry.insert(&peer).unwrap();
     let destination = format!("seats/{}/inbox", f.receiver.id);
@@ -1044,6 +1064,7 @@ fn digest_releases_eligible_members_then_the_fenced_remainder_without_retiming()
 #[test]
 fn digest_mixed_priorities_keep_id_order_and_cost_one_native_credit() {
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let mut oracle = SeatRecord::new(Ulid::new(), f.receiver.swarm, "oracle", "zsh");
     oracle.role.class = bbt_mux::registry::Class::Oracle;
     f.registry.insert(&oracle).unwrap();
@@ -1092,6 +1113,7 @@ fn digest_mixed_priorities_keep_id_order_and_cost_one_native_credit() {
 #[test]
 fn legacy_deferred_rows_keep_their_own_deadlines_and_summarize_once() {
     let mut f = AttentionFixture::new();
+    f.mode(bbt_proto::messaging::WakeMode::Digest);
     let first = f.send(1_000);
     let second = f.send(2_000);
     let db = f.ledger_store().connection().unwrap();
