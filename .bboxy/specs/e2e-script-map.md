@@ -27,7 +27,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
 | T6 | `scripts/e2e/T6.sh` | full | | |
 | T7 | `scripts/e2e/T7.sh` | full | | |
-| T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
+| T8 | `scripts/e2e/T8.sh` | full | — | Real-PTY OSC fixture; silent inferred idle, reported state, malformed reports rejected and produced-frame grade ink |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
 | L2 | `scripts/e2e/L2.sh` | full | — | Captured right/down/tab/space slots survive later keyboard focus before backend dispatch; exact starting/final rectangles, siblings, wrong/duplicate release refusals and original same-op replay |
@@ -174,6 +174,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** ctl.rs:251 (verbs absent); ctl-cli.md:60; e2e-acceptance.md:T7.
 
 ### T8
+
+**Current script:** A raw real-PTY harness fixture stays silent until commanded. The app must show inferred idle before any report. Valid OSC 7501 changes idle/working and tagged-child state to reported grade; clearing removes the child. Unknown state, invalid child ID, over-size payload and unsupported version must leave the valid idle state unchanged. Captures of the same idle seat and frozen frame clock compare actual glyph ink: reported is brighter inside the mark and inferred alone has the dashed outer ring. The fixture emits bytes and acknowledgements only; all verdicts read the app through ctl. No native client/model claim.
 
 **Promise:** OSC 7501 state from a harness shows as reported grade; a harness that stays silent shows idle, never an invented state.
 

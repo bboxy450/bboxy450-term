@@ -1,0 +1,83 @@
+{
+  "promise": "T8 OSC reports and grade ink",
+  "status": "native script exit0; author pending",
+  "fixture": "raw real-PTY reporting stand-in, not native client or model behaviour",
+  "source_refs": {
+    "scripts/e2e/t8_reports.py": "raw command barrier emits bytes only; verdicts read app state, actual layout and captured glyph pixels",
+    "scripts/e2e/T8.sh": "coverage full with explicit harness label"
+  },
+  "root": "/private/tmp/at8-m3wped6s",
+  "runtime_sha256": "7e18fe21664712f0c461998aa8b44562aa7e17ad1f70d3f5648104d27ca11f11",
+  "native_exit": 0,
+  "native_seconds": 5.6433327198028564,
+  "state_assertions": {
+    "silent_inferred_idle": 1,
+    "valid_idle_active_tagged_clear": 4,
+    "malformed_state_id_size_version": 4,
+    "same_seat_pixel_comparison": 1
+  },
+  "seat": "01M5W9YB21WVN155V4BKR6V4NX",
+  "grade_ink": {
+    "inferred": {
+      "inner": 4292,
+      "peak": 138,
+      "outer": 4252
+    },
+    "reported": {
+      "inner": 5938,
+      "peak": 191,
+      "outer": 0
+    }
+  },
+  "glyph_rect": [
+    268.0,
+    107.5,
+    11.0,
+    11.0
+  ],
+  "native_wrapper": {
+    "exit": 0,
+    "seconds": 6.226954698562622
+  },
+  "raw_log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t8-20261026/native-final.log",
+  "raw_log_sha256": "bd325f44d63c5e79634995779bea240f97ff949696c012c1fd8cad87a5e25f45",
+  "source_hashes": {
+    "scripts/e2e/T8.sh": "a61f21f62ed220b1008e4e51574863c829160bf263d2118ffdc75bff932bf2fc",
+    "scripts/e2e/t8_reports.py": "3ca37606288c92a5e702be5831b80476ee172c36959947909733882a31d784fb",
+    "scripts/e2e/T8.fixture-bin/claude": "26c59d6689cb8389e16b8810606abc44281db205fac65e0597b48ebec355fb74"
+  },
+  "artifacts": {
+    "work/t8-reported.jsonl": "96d0c3343ec7fafaf6e4f021aaaca2a09623b0aa1fb7021078ca31047096b754",
+    "work/t8-reported.png": "b7d490272e1c1efdcd1dbac6ad4c0e294530727563c5fd0aa90ad7bdf658f269",
+    "work/baseline.png": "8e7cee1ef014168ca89118c1584f5d586a3088f2e31de3f3f251db185b07af5e",
+    "work/output.log": "62e61c0fa4bad0e304f54bc6e3c8205979d88286bcf6ef3ce3151b2ab006dbc8",
+    "work/01M5W9YB21WVN155V4BKR6V4NX-screen.json": "ddf50105936a976cc221112bd8d520ee5819b995d25c078e8cceb9298422ee1c",
+    "work/t8-reported-layout.jsonl": "c767308b3ae99f07335b2288446254524ea971177211db49594595b1500b69ba",
+    "work/t8-working-layout.jsonl": "65dd1815ca7e24046367cffd73742c2373ca1d3d318e108352390c7c7412f185",
+    "work/t8-child-layout.jsonl": "702982c477adc23eedc66b23d80c8136fa2c855e838e7e17175655125a6ed349",
+    "work/t8-working.png": "37cf409de7aba077045bf56807e687db76a3807d02d3db06ce04194e493368df",
+    "work/t8-child.png": "5fd251df2c1d887f12065298db1a42b1666418ca67ceb43646d2b305750c8a73",
+    "work/t8-report.json": "40d6ad2d4e141ab3ac68194068037d9cf1a9270d7a66ec48a81599d704d07121",
+    "work/layout.json": "1f265a92db54fa98b69fca3c203101aa41c103f86088f341a5b9c81fdab222f1",
+    "work/t8-working.jsonl": "2b00c47a4db96c815fc3df864e08c0b04988988f356cbde4bdc8adb107fe9945",
+    "work/t8-child.jsonl": "70254d7801ba9cdd0deb5cb59d43173cc2787086ae067a98f9cdbcc568bb4af6",
+    "work/t8-inferred.png": "fc7844c7c80e801d676df894d39131a09d795490b0b8fffcfe6f7f3314e58b01",
+    "work/t8-inferred.jsonl": "575ef704e29386189dd0d90f1e6a97d7432ab450bb2d5d66e94e98d4ed5c7f7d",
+    "work/t8-inferred-layout.jsonl": "71eb65ad09946953a48004f419e42c9d07ef13e4e8bf4a6d4235310e51373bcb"
+  },
+  "limits": [
+    "No native AI/model claim; real protocol bytes from the admitted PTY",
+    "No OS presentation or timing SLO",
+    "postsubmit and Oracle review unverified"
+  ],
+  "coverage_test": {
+    "exit": 0,
+    "seconds": 0.07340502738952637,
+    "command": [
+      "python3",
+      "-IB",
+      "scripts/e2e/test_ui.py"
+    ],
+    "raw_log_sha256": "533131dad8973c589ae697ab1dd346cc55caa134cd1e536cedf26f1b057c0f1f"
+  }
+}
