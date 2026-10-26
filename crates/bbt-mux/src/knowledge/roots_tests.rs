@@ -10,7 +10,12 @@ use crate::{
     store::{Store, sqlite::SqliteStore},
 };
 use serde_json::{Value, json};
-use std::{fs, os::unix::fs::PermissionsExt, path::Path};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    os::unix::fs::PermissionsExt,
+    path::Path,
+};
 
 struct Fixture {
     temp: tempfile::TempDir,
@@ -112,7 +117,6 @@ impl Fixture {
         self.host
             .request(
                 self.index.clone(),
-                self.seats.clone(),
                 actor(),
                 self.journal.clone(),
                 Call {
@@ -191,6 +195,37 @@ impl Fixture {
         .await
         .unwrap()
     }
+    async fn inventory_from(&self, host: Host) -> BTreeMap<String, String> {
+        let index = self.index.clone();
+        let registry = self.seats.clone();
+        tokio::task::spawn_blocking(move || {
+            host.with_source(&index, &registry, |source| {
+                let mut cursor = None;
+                let mut seen = BTreeSet::new();
+                let mut records = BTreeMap::new();
+                loop {
+                    let page = source.list(d::ListRequest {
+                        filter: d::Filter::default(),
+                        cursor,
+                        limit: Some(d::MAX_PAGE),
+                    })?;
+                    assert!(page.items.len() <= d::MAX_PAGE);
+                    for item in page.items {
+                        assert!(records.insert(item.path, item.digest).is_none());
+                    }
+                    cursor = page.next;
+                    let Some(next) = &cursor else {
+                        break;
+                    };
+                    assert!(seen.insert(next.clone()), "proof listing repeated a cursor");
+                }
+                Ok(records)
+            })
+        })
+        .await
+        .unwrap()
+        .unwrap()
+    }
     fn observed(&self) -> Vec<Value> {
         fs::read_to_string(&self.trace)
             .unwrap()
@@ -199,13 +234,29 @@ impl Fixture {
             .collect()
     }
     fn unchanged(&self) {
-        for (path, bytes) in &self.original {
-            assert_eq!(
-                &fs::read(self.index.knowledge_root().join(path)).unwrap(),
-                bytes,
-                "record {path} changed or moved"
-            );
+        let mut pending = vec![self.index.knowledge_root().to_path_buf()];
+        let mut actual = BTreeMap::new();
+        while let Some(directory) = pending.pop() {
+            for child in fs::read_dir(directory).unwrap() {
+                let path = child.unwrap().path();
+                if path.is_dir() {
+                    pending.push(path);
+                } else if path.extension().is_some_and(|e| e == "md") {
+                    actual.insert(
+                        path.strip_prefix(self.index.knowledge_root())
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_owned(),
+                        fs::read(path).unwrap(),
+                    );
+                }
+            }
         }
+        assert_eq!(
+            actual, self.original,
+            "record set/paths/bytes changed or moved"
+        );
     }
 }
 fn assert_gone(pid: u32) {
@@ -231,6 +282,15 @@ impl Drop for Fixture {
 async fn actual_root_swap_and_back_preserves_418_records_and_persists_one_root_instance() {
     let f = Fixture::new(418, None);
     let before = f.status().await;
+    let original = f.inventory_from(f.host.clone()).await;
+    assert_eq!(original.len(), 418);
+    assert_eq!(
+        original,
+        f.original
+            .iter()
+            .map(|(p, b)| (p.clone(), crate::store::digest(b)))
+            .collect::<BTreeMap<_, _>>()
+    );
     assert_eq!(before.roots[0].records, Some(418));
     assert_eq!(before.offered.len(), 1);
     assert!(!f.trace.exists());
@@ -245,8 +305,11 @@ async fn actual_root_swap_and_back_preserves_418_records_and_persists_one_root_i
     assert!(!f.trace.exists());
     let entry = f.checked().await;
     let swapped = f.select(&entry).await;
-    assert_eq!(swapped.roots[0].digest, before.roots[0].digest);
-    assert_eq!(swapped.roots[0].records, Some(418));
+    assert_eq!(f.inventory_from(f.host.clone()).await, original);
+    assert_eq!(
+        swapped.roots[0].records, None,
+        "no full-root scan or invented external count in production status"
+    );
     let pid = swapped.roots[0].process.expect("actual stdio responder");
     assert_ne!(pid, std::process::id());
     assert_eq!(swapped.roots[0].provider.id, entry.candidate.id);
@@ -318,10 +381,10 @@ async fn actual_root_swap_and_back_preserves_418_records_and_persists_one_root_i
         },
     )
     .unwrap();
+    assert_eq!(f.inventory_from(reopened.clone()).await, original);
     let status = reopened
         .request(
             f.index.clone(),
-            f.seats.clone(),
             actor(),
             f.journal.clone(),
             Call {
@@ -334,7 +397,7 @@ async fn actual_root_swap_and_back_preserves_418_records_and_persists_one_root_i
         .await
         .unwrap();
     assert_eq!(status.roots[0].provider.id, entry.candidate.id);
-    assert_eq!(status.roots[0].digest, before.roots[0].digest);
+    assert_eq!(f.inventory_from(reopened.clone()).await, original);
     let new_pid = status.roots[0].process.unwrap();
     assert_ne!(pid, new_pid);
     let host = reopened.clone();
@@ -348,7 +411,7 @@ async fn actual_root_swap_and_back_preserves_418_records_and_persists_one_root_i
     };
     let back = f.ask(reset_id, reset.clone()).await.unwrap();
     assert_eq!(back.roots[0].provider.id, BUNDLED);
-    assert_eq!(back.roots[0].digest, before.roots[0].digest);
+    assert_eq!(f.inventory_from(f.host.clone()).await, original);
     assert_eq!(back.roots[0].records, Some(418));
     assert_eq!(
         f.ask(reset_id, reset).await.unwrap(),
@@ -407,5 +470,31 @@ async fn reset_is_independent_of_a_held_provider_read_and_refuses_its_old_comple
     connection.write_all(b"x").await.unwrap();
     assert_eq!(read.await.unwrap().unwrap_err().code, "root_changed");
     assert_gone(pid);
+    f.unchanged();
+}
+
+// keeps: ctl-cli operation replay; an uncompleted durable admission never dispatches again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn retained_unknown_selection_keeps_its_reason_and_never_executes_or_retries() {
+    let f = Fixture::new(1, None);
+    let request = KnowledgeRequest::Reset {
+        root: f.status().await.roots[0].id.clone(),
+    };
+    let id = Ulid::new();
+    let call = Call {
+        op_id: id,
+        tool: "knowledge_control".into(),
+        args: serde_json::to_value(&request).unwrap(),
+    };
+    assert!(f.journal.admit(actor(), &call).unwrap().1);
+    assert!(
+        f.ask(id, request)
+            .await
+            .unwrap_err()
+            .to_string()
+            .starts_with("unknown:")
+    );
+    assert_eq!(f.host.revision().unwrap(), 0);
+    assert!(!f.trace.exists());
     f.unchanged();
 }

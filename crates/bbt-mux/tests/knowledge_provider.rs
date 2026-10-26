@@ -212,7 +212,7 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     .await
     .unwrap();
     let pid = swapped.roots[0].process.unwrap();
-    assert_eq!(swapped.roots[0].digest, before.roots[0].digest);
+    assert_eq!(swapped.roots[0].records, None);
     let reference = logic
         .client
         .gui_knowledge("resolve".into(), json!({"locator":"#1"}))
@@ -346,7 +346,7 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     )
     .await;
     assert_eq!(back.roots[0].provider.id, "bboxy450-term-data_source-bboxy");
-    assert_eq!(back.roots[0].digest, before.roots[0].digest);
+    assert_eq!(back.roots[0].records, Some(2));
     let replay = logic.client.control_call(seat_id, 1, call).await.unwrap();
     assert_eq!(
         replay["isError"], true,

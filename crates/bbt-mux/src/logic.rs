@@ -7409,12 +7409,11 @@ impl Worker {
                             Ok((actor, call)) => {
                                 let host = self.knowledge_host.clone();
                                 let index = self.index.clone();
-                                let registry = self.registry.clone();
                                 let journal = self.operator_journal.clone();
                                 self.plugin_jobs.spawn_on(
                                     async move {
                                         let result = host
-                                            .request(index, registry, actor, journal, call, request)
+                                            .request(index, actor, journal, call, request)
                                             .await;
                                         let _ = reply.send(result);
                                     },

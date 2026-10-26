@@ -4,7 +4,7 @@ use serde_json::json;
 #[test]
 fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme() {
     let cases = settings::cases();
-    assert_eq!(cases.len(), 224);
+    assert_eq!(cases.len(), 240);
     assert_eq!(settings::legacy_cases().len(), 72);
     for state in [
         "Messaging",
@@ -14,6 +14,8 @@ fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme(
         "plugins · trust pending",
         "plugins · enable pending",
         "plugins · refused",
+        "knowledge · swap pending",
+        "knowledge · swap refused",
     ] {
         assert_eq!(cases.iter().filter(|case| case.state == state).count(), 8);
     }

@@ -22,17 +22,15 @@ pub(super) fn project(out: &mut Records, status: &KnowledgeStatus) {
                 answering: if root.refusal.is_some() {
                     "provider read unavailable".into()
                 } else if let Some(pid) = root.process {
-                    format!("{} · process {pid}", root.provider.name)
+                    format!("{} · pid {pid}, over stdio", root.provider.name)
                 } else if root.provider.id == BUNDLED {
                     "logic · in process".into()
                 } else {
                     "provider has not answered yet".into()
                 },
-                digests: root
-                    .digest
-                    .as_ref()
-                    .map(|digest| format!("record digests · {}", &digest[..digest.len().min(12)])),
+                digests: None,
                 refused: root.refusal.clone(),
+                pending: None,
             })
             .collect(),
         offered: status
@@ -58,6 +56,7 @@ pub(super) fn project(out: &mut Records, status: &KnowledgeStatus) {
     out.plugins.insert(
         0,
         bbt_ui::modules::settings::plugins::Plugin {
+            measurements_unavailable: true,
             name: BUNDLED.into(),
             bundled: true,
             candidate: BUNDLED.into(),
@@ -119,6 +118,7 @@ struct Pending {
     request: KnowledgeRequest,
     unknown: bool,
     serial: u64,
+    uncertain: bool,
 }
 impl Requests {
     pub fn issue(
@@ -135,6 +135,12 @@ impl Requests {
                 return true;
             };
             if matches!(row.reply, Reply::Unknown(_)) && pending.request.mutation() {
+                pending.unknown = true;
+                pending.uncertain = true;
+                true
+            } else if pending.uncertain
+                && matches!(&row.reply,Reply::Refused(reason) if reason.starts_with("held:"))
+            {
                 pending.unknown = true;
                 true
             } else {
@@ -164,6 +170,7 @@ impl Requests {
                 request: request.clone(),
                 unknown: false,
                 serial: 0,
+                uncertain: false,
             });
             op
         };
@@ -171,15 +178,45 @@ impl Requests {
     }
     pub fn decorate(&self, records: &mut Records, model: &Model) {
         for pending in self.0.iter().filter(|p| p.request.mutation()) {
-            let message=match model.operation_results.rows().find(|r|r.op==pending.op && r.serial>pending.serial).map(|r|&r.reply) {
-                Some(Reply::Refused(reason))=>Some(format!("Provider change refused · {reason}")),
-                Some(Reply::Unknown(reason))=>Some(format!("Provider outcome unknown · {reason}; retry retains the operation ID")),
-                None=>Some("Provider change pending; current selection is retained until the host answers.".into()),
-                _=>None,
+            let reply = model
+                .operation_results
+                .rows()
+                .find(|r| r.op == pending.op && r.serial > pending.serial)
+                .map(|r| &r.reply);
+            let to = match &pending.request {
+                KnowledgeRequest::Select { provider, .. } => model
+                    .knowledge_roots
+                    .as_ref()
+                    .and_then(|s| s.offered.iter().find(|p| p.id == *provider))
+                    .map(|p| p.name.clone())
+                    .unwrap_or_else(|| provider.clone()),
+                KnowledgeRequest::Reset { .. } => BUNDLED.into(),
+                KnowledgeRequest::Status => continue,
             };
-            if let Some(message) = message {
-                for root in &mut records.knowledge.roots {
-                    root.refused = Some(message.clone());
+            for root in &mut records.knowledge.roots {
+                match reply {
+                    None => {
+                        root.pending =
+                            Some(bbt_ui::modules::settings::knowledge::Pending { to: to.clone() })
+                    }
+                    Some(Reply::Refused(reason)) => {
+                        root.refused = Some(format!(
+                            "swap to {to} {} · {reason}; observed provider: {}",
+                            if pending.uncertain {
+                                "outcome unknown"
+                            } else {
+                                "refused"
+                            },
+                            root.provider
+                        ))
+                    }
+                    Some(Reply::Unknown(reason)) => {
+                        root.refused = Some(format!(
+                            "swap to {to} outcome unknown · {reason}; retry retains the operation ID; observed provider: {}",
+                            root.provider
+                        ))
+                    }
+                    _ => {}
                 }
             }
         }
@@ -209,7 +246,6 @@ mod tests {
                 provider: bundled.clone(),
                 revision: 7,
                 records: Some(2),
-                digest: Some("b".repeat(64)),
                 process: None,
                 refusal: None,
             }],

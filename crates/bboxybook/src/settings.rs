@@ -40,6 +40,8 @@ pub const STATES: &[&str] = &[
     "plugins · refused",
     "Knowledge",
     "knowledge · swapped to the stub",
+    "knowledge · swap pending",
+    "knowledge · swap refused",
     "Shortcuts",
     "in a tab",
 ];

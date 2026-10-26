@@ -61,6 +61,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
             refused: Some(format!(
                 "Provider switching is unavailable in this build; the bundled provider remains active.{read}"
             )),
+            pending: None,
         }],
         offered: vec![provider.into()],
     };
@@ -100,6 +101,7 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         .and_then(|value| value.as_str().map(str::to_owned))
         .unwrap_or_else(|| "unavailable".into());
     Plugin {
+        measurements_unavailable: true,
         candidate: entry.candidate.id.clone(),
         actionable: matches!(
             state,
@@ -113,7 +115,7 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         contract: Contract {
             name: named.map_or("unknown", |n| n.system.name()).into(),
             version: named.map_or("unknown", |n| n.system.version()).into(),
-            // Descriptor validation is not a business-method conformance claim.
+            // Only an explicit isolated check makes a method-conformance claim.
             ok: refusal
                 .map(|_| false)
                 .or_else(|| entry.conformance.as_ref().map(|c| c.ok)),

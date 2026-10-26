@@ -3,6 +3,12 @@ use super::*;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
+pub struct Pending {
+    pub to: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Root {
     pub name: String,
     pub path: String,
@@ -11,6 +17,7 @@ pub struct Root {
     pub answering: String,
     pub digests: Option<String>,
     pub refused: Option<String>,
+    pub pending: Option<Pending>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -53,6 +60,28 @@ impl Settings {
                 ],
             );
             let bundled = knowledge.offered.first() == Some(&root.provider);
+            let picker = b.select(
+                &format!("{key}/provider"),
+                &knowledge.offered,
+                &root.provider,
+                false,
+                false,
+            );
+            let picker = if root.pending.is_some() {
+                faded(picker, 0.4)
+            } else {
+                picker
+            };
+            let hint = root.pending.as_ref().map_or_else(
+                || {
+                    if bundled {
+                        "bundled, in process".into()
+                    } else {
+                        "a trusted plugin over stdio".into()
+                    }
+                },
+                |pending| format!("swapping to {}…", pending.to),
+            );
             let mut answering = vec![
                 b.text(
                     &format!("{key}/answering-label"),
@@ -91,18 +120,8 @@ impl Settings {
                 b.setting_row(
                     &format!("card0/r{i}"),
                     "Provider",
-                    Some(if bundled {
-                        "bundled, in process"
-                    } else {
-                        "a trusted plugin over stdio"
-                    }),
-                    b.select(
-                        &format!("{key}/provider"),
-                        &knowledge.offered,
-                        &root.provider,
-                        false,
-                        false,
-                    ),
+                    Some(&hint),
+                    picker,
                     !bundled,
                     false,
                     false,

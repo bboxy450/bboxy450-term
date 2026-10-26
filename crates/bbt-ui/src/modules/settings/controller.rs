@@ -272,7 +272,11 @@ impl Controller {
             Field::KnowledgeProvider(root) => {
                 (self.section == "Knowledge" || !self.query.trim().is_empty())
                     && values.knowledge_controls
-                    && values.knowledge.roots.iter().any(|r| r.name == *root)
+                    && values
+                        .knowledge
+                        .roots
+                        .iter()
+                        .any(|r| r.name == *root && r.pending.is_none())
             }
             Field::Attention { destination, class } => {
                 (self.section == "Messaging" || !self.query.trim().is_empty())
@@ -359,6 +363,12 @@ impl Controller {
     /// G3/G4's current host is a read-only reference. Never optimistically change
     /// a fixture's enable bit or a root's provider when no runtime can do the act.
     fn unavailable(&mut self, field: &Field, values: &Records) -> bool {
+        if let Field::KnowledgeProvider(root) = field
+            && values.knowledge_controls
+            && values.knowledge.roots.iter().any(|r| r.name == *root)
+        {
+            return false;
+        }
         if matches!(
             field,
             Field::PluginEnable(_) | Field::PluginTrust(_) | Field::KnowledgeProvider(_)
@@ -521,7 +531,9 @@ impl Controller {
                 }
                 match field {
                     Field::KnowledgeProvider(root) => {
-                        if self.editable(&Field::KnowledgeProvider(root.clone()), values) {
+                        if values.knowledge_controls
+                            && values.knowledge.roots.iter().any(|r| r.name == root)
+                        {
                             self.knowledge = Some(KnowledgeIntent::Reset { root });
                             self.error = None;
                         }
@@ -842,7 +854,7 @@ impl Regions {
                     self.hits.push((
                         node.rect,
                         Hit::Toggle(field.clone()),
-                        !view.values.knowledge_controls,
+                        !view.values.knowledge_controls || root.pending.is_some(),
                     ));
                 }
                 if let Some(node) = find(layout, &format!("card0/r{i}/diff")) {

@@ -105,6 +105,7 @@ impl Job {
                 if value["isError"] != true {
                     value["structuredContent"]["knowledge_root_revision"] = json!(revision);
                 }
+                value = mcp::knowledge::bounded(call.op_id, value, false);
                 journal
                     .checked_authorized(&actor, &call, value, |old| {
                         old["structuredContent"]["knowledge_root_revision"] == json!(revision)

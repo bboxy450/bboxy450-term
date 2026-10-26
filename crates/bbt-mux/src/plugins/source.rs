@@ -154,6 +154,9 @@ impl DataSourceProvider {
         self.observed.try_lock().ok().map(|value| value.clone())
     }
 
+    pub(crate) fn check_authority(&self) -> d::Result<()> {
+        self.current().map(|_| ())
+    }
     fn current(&self) -> d::Result<PathBuf> {
         if self.closed.load(Ordering::Acquire) {
             return Err(error("provider_closed", "this root instance is closed"));

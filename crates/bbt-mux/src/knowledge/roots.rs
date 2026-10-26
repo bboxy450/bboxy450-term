@@ -15,10 +15,8 @@ use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::{BTreeMap, BTreeSet},
     path::PathBuf,
     sync::{Arc, Mutex},
-    time::Instant,
 };
 use tokio::{runtime::Handle, sync::Semaphore};
 
@@ -211,6 +209,10 @@ impl Host {
             .lock()
             .map(|mut tasks| std::mem::take(&mut *tasks))
             .unwrap_or_default();
+        if external.is_none() && retired.is_empty() {
+            return;
+        }
+        bbt_rt::assert_not_ui_thread();
         self.0.handle.block_on(async {
             if let Some(source) = external {
                 source.close().await;
@@ -257,59 +259,7 @@ impl Host {
         self.current(revision)?;
         result
     }
-    fn summary(source: &dyn DataSource, timeout: std::time::Duration) -> d::Result<(u64, String)> {
-        let started = Instant::now();
-        let mut cursor = None;
-        let mut seen = BTreeSet::new();
-        let mut records = BTreeMap::new();
-        loop {
-            let page = source.list(d::ListRequest {
-                filter: d::Filter::default(),
-                cursor,
-                limit: Some(d::MAX_PAGE),
-            })?;
-            if page.items.len() > d::MAX_PAGE {
-                return Err(d::CommandError::new(
-                    "invalid_provider_result",
-                    "Root page exceeds 128 records.",
-                ));
-            }
-            for record in page.items {
-                if records.insert(record.path, record.digest).is_some() {
-                    return Err(d::CommandError::new(
-                        "invalid_provider_result",
-                        "Root listing repeated a path.",
-                    ));
-                }
-            }
-            cursor = page.next;
-            let Some(next) = &cursor else { break };
-            if !seen.insert(next.clone()) {
-                return Err(d::CommandError::new(
-                    "invalid_cursor",
-                    "Root listing repeated a cursor.",
-                ));
-            }
-            if started.elapsed() >= timeout || records.len() >= 16384 {
-                return Err(d::CommandError::new(
-                    "root_summary_unavailable",
-                    "Root listing exceeded the bounded summary; document reads remain available.",
-                ));
-            }
-        }
-        let mut digest = Sha256::new();
-        for (path, hash) in &records {
-            digest.update((path.len() as u64).to_be_bytes());
-            digest.update(path);
-            digest.update(hash);
-        }
-        Ok((records.len() as u64, hex::encode(digest.finalize())))
-    }
-    pub(crate) fn status(
-        &self,
-        index: &Index,
-        registry: &crate::registry::Registry,
-    ) -> Result<KnowledgeStatus> {
+    pub(crate) fn status(&self, index: &Index) -> Result<KnowledgeStatus> {
         let mut offered = vec![bundled()];
         for entry in self.0.plugins.refresh().map_err(portable)? {
             if entry.state() == State::Enabled
@@ -342,16 +292,28 @@ impl Host {
                 .map_err(|_| invalid("knowledge state unavailable"))?;
             (selected.binding.clone(), selected.external.clone())
         };
-        let summary = self.with_source(index, registry, |source| {
-            Self::summary(source, self.0.config.timeout)
-        });
-        let process = summary.as_ref().ok().and_then(|_| {
-            external
-                .ok()
-                .flatten()
-                .and_then(|p| p.observation())
-                .and_then(|o| o.pid)
-        });
+        let (records, process, refusal) = match external {
+            Ok(None) => (Some(index.documents.len() as u64), None, None),
+            Err(reason) => (
+                None,
+                None,
+                Some(format!("{}: {}", reason.code, reason.message)),
+            ),
+            Ok(Some(source)) => {
+                let observed = source.observation();
+                let refusal = source
+                    .check_authority()
+                    .err()
+                    .map(|e| e.to_string())
+                    .or_else(|| observed.as_ref().and_then(|o| o.error.clone()));
+                let process = if refusal.is_none() {
+                    observed.and_then(|o| o.pid)
+                } else {
+                    None
+                };
+                (None, process, refusal)
+            }
+        };
         let provider = offered
             .iter()
             .find(|p| p.id == binding.provider)
@@ -361,10 +323,6 @@ impl Host {
                 name: "selected provider unavailable".into(),
                 sha256: binding.sha256,
             });
-        let (records, digest, refusal) = match summary {
-            Ok((count, digest)) => (Some(count), Some(digest), None),
-            Err(reason) => (None, None, Some(reason.to_string())),
-        };
         self.current(binding.revision)?;
         Ok(KnowledgeStatus {
             offered,
@@ -374,20 +332,30 @@ impl Host {
                 provider,
                 revision: binding.revision,
                 records,
-                digest,
                 process,
                 refusal,
             }],
         })
     }
-    fn select(
-        &self,
-        actor: &Actor,
-        root: &str,
-        provider: &str,
-        sha256: Option<String>,
-        revision: u64,
-    ) -> Result<()> {
+    fn select(&self, actor: &Actor, request: &KnowledgeRequest, index: &Index) -> Result<()> {
+        let (root, provider, sha256, revision, force) = match request {
+            KnowledgeRequest::Select {
+                root,
+                provider,
+                sha256,
+                revision,
+            } => (
+                root.as_str(),
+                provider.as_str(),
+                sha256.clone(),
+                *revision,
+                false,
+            ),
+            KnowledgeRequest::Reset { root } => {
+                (root.as_str(), BUNDLED, None, self.revision()?, true)
+            }
+            KnowledgeRequest::Status => return Ok(()),
+        };
         if !matches!(actor, Actor::Operator{device_id,..} if !device_id.is_nil()) {
             return Err(invalid(
                 "operator_required: root selection is operator-only",
@@ -411,7 +379,7 @@ impl Host {
                     .ok_or_else(|| invalid("provider_missing"))?,
             )
         };
-        let binding = Binding {
+        let mut binding = Binding {
             root: self.0.root.to_string_lossy().into_owned(),
             provider: provider.into(),
             sha256,
@@ -440,7 +408,8 @@ impl Host {
                 .selected
                 .lock()
                 .map_err(|_| invalid("knowledge state unavailable"))?;
-            if selected.binding.revision == revision
+            if !force
+                && selected.binding.revision == revision
                 && selected.binding.provider == binding.provider
                 && selected.binding.sha256 == binding.sha256
                 && selected.binding.generation == binding.generation
@@ -451,30 +420,57 @@ impl Host {
         }
         if let Some(source) = &external {
             // An actual read must answer before persisting the new choice. No write or file move.
-            source.list(d::ListRequest {
+            let page = source.list(d::ListRequest {
                 filter: d::Filter::default(),
                 cursor: None,
                 limit: Some(1),
             })?;
+            if page.items.len() > 1 {
+                return Err(invalid(
+                    "invalid_provider_result: list ignored its one-record probe bound",
+                ));
+            }
+            // No synthetic record in an empty root. Otherwise resolve an actual
+            // known path; digests remain provider data, never a swap gate.
+            if let Some(known) = index
+                .documents
+                .keys()
+                .next()
+                .map(String::as_str)
+                .or_else(|| page.items.first().map(|r| r.path.as_str()))
+            {
+                let reference = source.resolve(d::ResolveRequest {
+                    locator: known.into(),
+                })?;
+                if reference.path != known {
+                    return Err(invalid(
+                        "invalid_provider_result: resolve returned a different path for the known record",
+                    ));
+                }
+            }
         }
         let mut selected = self
             .0
             .selected
             .lock()
             .map_err(|_| invalid("knowledge state unavailable"))?;
-        if selected.binding.revision != revision {
+        if !force && selected.binding.revision != revision {
             return Err(invalid("root_changed: refresh before selecting"));
         }
         let mut db = self.0.plugins.account().connection()?;
         let tx = db.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let stored = load(&tx, &self.0.id);
         let stored_revision = match stored {
-            Ok(_) if provider == BUNDLED && selected.binding.provider == "unavailable" => 0,
             Ok(binding) => binding.as_ref().map_or(0, |b| b.revision),
-            Err(_) if provider == BUNDLED && selected.binding.provider == "unavailable" => 0,
+            Err(_) if force => selected.binding.revision,
             Err(error) => return Err(error),
         };
-        if stored_revision != revision {
+        if force {
+            binding.revision = stored_revision
+                .max(selected.binding.revision)
+                .checked_add(1)
+                .ok_or_else(|| invalid("knowledge revision exhausted"))?;
+        } else if stored_revision != revision {
             return Err(invalid("root_changed: stored selection changed"));
         }
         if let Some(entry) = entry {
@@ -508,8 +504,17 @@ impl Host {
                 format!("{PREFIX}{}", self.0.id),
                 serde_json::to_vec(&binding)?
             ],
-        )?;
-        tx.commit()?;
+        )
+        .map_err(|e| {
+            invalid(format!(
+                "unknown: knowledge selection store failed; retain operation ID: {e}"
+            ))
+        })?;
+        tx.commit().map_err(|e| {
+            invalid(format!(
+                "unknown: knowledge selection commit failed; retain operation ID: {e}"
+            ))
+        })?;
         let old = std::mem::replace(
             &mut *selected,
             Selected {
@@ -532,7 +537,6 @@ impl Host {
     pub(crate) async fn request(
         &self,
         index: Arc<Index>,
-        registry: crate::registry::Registry,
         actor: Actor,
         journal: Journal,
         call: Call,
@@ -550,36 +554,39 @@ impl Host {
             if !matches!(&actor,Actor::Operator {device_id,..} if !device_id.is_nil()) {return Err(invalid("operator_required: knowledge controls are operator-only"));}
             let mutation = request.mutation();
             if mutation {
-                let (retained,fresh) = journal.admit(&actor,&call)?;
+                let (retained,fresh) = journal.admit(&actor,&call).map_err(|e|invalid(format!("unknown: knowledge admission unavailable; retain operation ID: {e}")))?;
                 if !fresh { return decode(retained); }
             }
             let result = (|| {
-                match request {
-                    KnowledgeRequest::Select { root, provider, revision, sha256 } => host.select(&actor,&root,&provider,sha256,revision)?,
-                    KnowledgeRequest::Reset { root } => host.select(&actor,&root,BUNDLED,None,host.revision()?)?,
-                    KnowledgeRequest::Status => {},
-                }
-                host.status(&index,&registry)
+                if request.mutation() {host.select(&actor,&request,&index)?;}
+                host.status(&index).map_err(|error|if mutation {invalid(format!("unknown: selection receipt unavailable; retain operation ID: {error}"))} else {error})
             })();
             let value = match result {
                 Ok(status) => {
                     let value=mcp::success(call.op_id, serde_json::json!({"status":status}));
-                    if serde_json::to_vec(&value)?.len()>d::MAX_PAGE_BYTES {mcp::error(call.op_id,"knowledge_inventory_too_large","Root controls exceed the bounded response; document reads remain available.")}
+                    if serde_json::to_vec(&value)?.len()>d::MAX_PAGE_BYTES {mcp::error(call.op_id,if mutation {"unknown"} else {"knowledge_inventory_too_large"},"Root response exceeds the bound; retain the operation ID. Document reads remain available.")}
                     else {value}
                 },
-                Err(error) => mcp::error(call.op_id,"knowledge_refused",&error.to_string()),
+                Err(error) => {
+                    let message=error.to_string();
+                    mcp::error(call.op_id,if message.starts_with("unknown:") {"unknown"} else {"knowledge_refused"},message.strip_prefix("unknown: ").unwrap_or(&message))
+                },
             };
-            decode(if mutation { journal.complete(&actor,&call,value)? } else { journal.checked(&actor,&call,value)? })
-        }).await.map_err(|_| invalid("knowledge outcome unknown; retain operation ID"))?
+            let recorded=if mutation {journal.complete(&actor,&call,value).map_err(|e|invalid(format!("unknown: knowledge receipt unavailable; retain operation ID: {e}")))} else {journal.checked(&actor,&call,value)}?;
+            decode(recorded)
+        }).await.map_err(|_| invalid("unknown: knowledge worker interrupted; retain operation ID"))?
     }
 }
 fn decode(value: serde_json::Value) -> Result<KnowledgeStatus> {
     if value["isError"] == true {
-        return Err(invalid(
-            value["structuredContent"]["error"]["message"]
+        let error = &value["structuredContent"]["error"];
+        return Err(invalid(format!(
+            "{}: {}",
+            error["code"].as_str().unwrap_or("unknown"),
+            error["message"]
                 .as_str()
-                .unwrap_or("knowledge refused"),
-        ));
+                .unwrap_or("knowledge result unavailable")
+        )));
     }
     serde_json::from_value(value["structuredContent"]["status"].clone()).map_err(Into::into)
 }

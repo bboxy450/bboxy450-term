@@ -37,7 +37,6 @@ pub struct KnowledgeRoot {
     pub provider: KnowledgeProvider,
     pub revision: u64,
     pub records: Option<u64>,
-    pub digest: Option<String>,
     pub process: Option<u32>,
     pub refusal: Option<String>,
 }

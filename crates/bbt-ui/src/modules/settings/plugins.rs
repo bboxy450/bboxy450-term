@@ -51,6 +51,9 @@ pub struct Plugin {
     pub candidate: String,
     #[serde(skip)]
     pub actionable: bool,
+    /// Live hosts without a timeline must not present an unmeasured zero.
+    #[serde(skip)]
+    pub measurements_unavailable: bool,
     pub name: String,
     pub bundled: bool,
     pub contract: Contract,
@@ -578,7 +581,16 @@ impl Settings {
                     .into(),
                 );
             }
-            if trusted {
+            if trusted && plugin.measurements_unavailable {
+                parts.push(
+                    b.note(
+                        &format!("{key}/measurements"),
+                        "Call and hook measurements unavailable",
+                        true,
+                    )
+                    .into(),
+                );
+            } else if trusted {
                 parts.push(timeline(b, &format!("{key}/timeline"), plugin).into());
             }
             let mut style = border(plain(None, [12., 0., 14., 0.], 0.), hair(b.ctx), false);
