@@ -195,6 +195,12 @@ pub fn surface_cases() -> Vec<Case> {
     let mut cases = vec![];
     for (page, state, slug, kind) in [
         ("launcher", "root", "root", "launcher"),
+        (
+            "launcher",
+            "root · over pattern",
+            "root-over-pattern",
+            "launcher",
+        ),
         ("documents", "as modal", "as-modal", "document"),
     ] {
         for density in gallery::DENSITIES {

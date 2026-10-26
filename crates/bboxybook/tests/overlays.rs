@@ -13,15 +13,16 @@ fn layer_matrix_distinguishes_full_primitives_from_module_surfaces() {
     let primitives = overlays::cases();
     let surfaces = overlays::surface_cases();
     assert_eq!(primitives.len(), 16);
-    assert_eq!(surfaces.len(), 16);
+    assert_eq!(surfaces.len(), 24);
     let keys = primitives
         .iter()
         .chain(&surfaces)
         .map(|c| c.relative())
         .collect::<BTreeSet<_>>();
-    assert_eq!(keys.len(), 32);
+    assert_eq!(keys.len(), 40);
     assert!(keys.contains("components/modal-cozy-dark.png"));
     assert!(keys.contains("launcher/root-cozy-dark.png"));
+    assert!(keys.contains("launcher/root-over-pattern-cozy-dark.png"));
     assert!(keys.contains("documents/as-modal-cozy-dark.png"));
     for case in &surfaces {
         let p = bboxybook::parity::CasePolicy::for_case(case).unwrap();

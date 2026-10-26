@@ -29,7 +29,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
-| L1 | `scripts/e2e/L1.sh` | partial | approved blur pixels; harness labels and role presets; search results | |
+| L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
 | L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |
 | L3 | `scripts/e2e/L3.sh` | partial | harness: stand-in; missing: real Claude/Codex consume the launch wiring; terminal zsh has no agent skill/MCP contract | Private HOME/config hashes, per-seat argv/overlays, pinned skill, real inherited MCP handshake/orient and published shim activity |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
@@ -189,6 +189,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Required assertions:** Centered launcher bounds and approved blur image, expected harness/preset rows, deterministic search results; Esc removes overlay and leaves seat set/control journal with zero Spawn effects.
 
 **Gaps at baseline afff4758:** ui open/key/query/select/layout and read-only launcher projection. seat key sends PTY bytes and cannot stand in for Cmd-T/Esc on app chrome.
+
+**Current script:** `launcher.py` drives the app-owned key route and reads text from actual positioned paint runs, never the launcher model. A frozen high-contrast terminal frame is captured before Cmd-T. `launcher-blur.mjs` puts that identical bitmap under the committed lab's `.spot-back` CSS in a private headless browser and compares the produced native frame outside the picker and its shadow (channel tolerance 8, changed-pixel budget 0.1%). Both absent blur and twice the approved blur must fail that same policy; the report records the region and reference hashes. Every preset's placement page is visited and escaped without spawning; search is checked for a positive result, no result and restoration. The original seat set and focus/tab must remain unchanged.
 
 **Baseline pointers:** ctl.rs:251; ctl-cli.md:47; launcher.rs.
 

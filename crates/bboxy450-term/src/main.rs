@@ -748,10 +748,12 @@ fn ui_layout_node(
         let length = runs
             .iter()
             .try_fold(0usize, |length, run| length.checked_add(run.text.len()));
-        length.filter(|length| *length <= *remaining_text).map(|length| {
-            *remaining_text -= length;
-            runs.iter().map(|run| run.text.as_str()).collect()
-        })
+        length
+            .filter(|length| *length <= *remaining_text)
+            .map(|length| {
+                *remaining_text -= length;
+                runs.iter().map(|run| run.text.as_str()).collect()
+            })
     } else {
         None
     };
@@ -7834,6 +7836,47 @@ mod smoke_tests {
 #[cfg(test)]
 mod input_tests {
     use super::*;
+
+    #[test]
+    fn produced_text_budget_omits_whole_runs_and_keeps_empty_distinct() {
+        use bbt_ui::components::{Layout, LayoutKind, PositionedRun};
+        let rect = bbt_ui_model::layout::Rect::new(0., 0., 200., 30.);
+        let style = bbt_ui::Style::new(bbt_ui::Preset::Card)
+            .resolve(bbt_ui::Context::new(Theme::Dark, bbt_ui::Density::Cozy))
+            .unwrap()
+            .text;
+        let text = |value: &str| Layout {
+            rect,
+            baseline: 20.,
+            kind: LayoutKind::Text {
+                runs: vec![PositionedRun {
+                    text: value.into(),
+                    style: style.clone(),
+                    rect,
+                    line_height: 30.,
+                    baseline: 20.,
+                }],
+                selectable: false,
+                ellipsis: false,
+                shadow: None,
+            },
+            children: vec![],
+        };
+        let layout = Layout {
+            rect,
+            baseline: 20.,
+            kind: LayoutKind::Stack,
+            children: vec![text("界界"), text("é"), text("x"), text("")],
+        };
+        let (mut nodes, mut bytes) = (5, 3);
+        let observed = ui_layout_node(&layout, &mut nodes, &mut bytes).unwrap();
+        assert_eq!(nodes, 0);
+        assert_eq!(bytes, 0);
+        assert_eq!(observed.children[0].text, None);
+        assert_eq!(observed.children[1].text.as_deref(), Some("é"));
+        assert_eq!(observed.children[2].text.as_deref(), Some("x"));
+        assert_eq!(observed.children[3].text.as_deref(), Some(""));
+    }
 
     fn input(seat: SeatId, id: u128, bytes: Vec<u8>) -> live::UiMsg {
         live::UiMsg::Input {
