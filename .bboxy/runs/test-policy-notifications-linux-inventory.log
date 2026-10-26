@@ -1,0 +1,9 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bboxy450-desktop-notifications-linux v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-linux)
+    Finished `test` profile [optimized] target(s) in 0.28s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bboxy450_desktop_notifications_linux-6f27eff00c292177)
+tests::research_marker_is_the_runtime_result: test
+
+1 test, 0 benchmarks
+   Doc-tests bboxy450_desktop_notifications_linux
+0 tests, 0 benchmarks
