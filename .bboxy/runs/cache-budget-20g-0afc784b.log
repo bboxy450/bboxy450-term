@@ -1,0 +1,5 @@
+Signed source0afc784b7916b8027ac924c93c7c6d5097e3c3f5 (G), requested by Oracleb31f4d16.
+One source line: SCCACHE_CACHE_SIZE=50G ->20G in scripts/cache-env.sh.
+sh -n scripts/cache-env.sh EXIT0; shellcheck scripts/cache-env.sh EXIT0.
+Owned idle build target target/m2-reply-box-dev: lsof -nP +D ABS_TARGET EXIT1, zero stdout/stderr, then retired.2088321024allocated bytes removed (du -sk before deletion). Other targets/galleries untouched. Free disk23GiB at final df, with peer activity; no isolated free-space delta claimed.
+No daemon restart, shared cache deletion or independent publish. MA-5 is saved at7a6ab2a7 before this priority cut.

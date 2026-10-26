@@ -1,0 +1,38 @@
+{
+  "source": "0afc784b7916b8027ac924c93c7c6d5097e3c3f5",
+  "branch": "velvet-cache-20g",
+  "scope": [
+    "scripts/cache-env.sh"
+  ],
+  "change": "SCCACHE_CACHE_SIZE 50G to20G, one line only",
+  "checks": [
+    {
+      "command": [
+        "sh",
+        "-n",
+        "scripts/cache-env.sh"
+      ],
+      "exit": 0
+    },
+    {
+      "command": [
+        "shellcheck",
+        "scripts/cache-env.sh"
+      ],
+      "exit": 0
+    }
+  ],
+  "retirement": {
+    "target": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-reply-box-dev",
+    "checked_at": "2026-10-26T05:03:59.860981+00:00",
+    "retired": true,
+    "lsof_exit": 1,
+    "lsof_stdout_bytes": 0,
+    "lsof_stderr_bytes": 0,
+    "allocated_bytes_removed": 2088321024
+  },
+  "limits": [
+    "No daemon restart or shared cache deletion.",
+    "No whole gate or independent publish; requested Oracle landing path."
+  ]
+}
