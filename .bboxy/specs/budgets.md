@@ -9,7 +9,7 @@ links:
   - { to: "[[resource-ledger]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-10-26T18:00:55Z"
 ---
 # Budgets
 
@@ -17,17 +17,21 @@ updated: "2026-10-26T16:18:20Z"
 
 ## Frame time at 120 Hz, 8.33 ms, under 967 seats with 50 watched
 
-| Stage | Owner | Allocation | Measured |
-|---|---|---|---|
-| Event drain and model update | window (`bbt-ui-model`) | 2.0 ms | not yet split |
-| Scene projection | window (`bbt-ui`) | 1.5 ms | 4 321 projections for 42 frames before Rook's fix |
-| Encode and submit | renderer (`bbt-render`) | 2.5 ms | encode 4.9 ms after the atlas fix (earlier, 33 ms) |
-| GPU and present | renderer | 1.0 ms | 8.9 ms GPU before the blur fix, at 75 Hz |
-| Margin | | 1.33 ms (16 %) | |
-| UI CPU p99 | window | under 4 ms (the invariant) | 292 ms on 0e97dc32 |
-| Input to GPU | logic and window | within 2 frame intervals, 16.7 ms (the invariant) | 1 076 ms |
+Two clocks run in parallel and are never added together: the **CPU path** of the window, capped by the frame invariant at **4 ms p99**, and the **GPU's own execution**, which overlaps the next frame's CPU work and must also fit the 8.33 ms frame. Corrected 2026-10-26 at Rook's question: a first version summed CPU stages to 6 ms against the invariant's 4, gave GPU a CPU-style row, and named no endpoints.
 
-The per-stage allocations are the Architect's first split of the invariant's total; the next partitioned 967 run measures each stage against its row, and a stage over its row is that owner's to fix or to argue for a reallocation, never a silent overrun.
+| Stage | Endpoints in the code (`bboxy450-term`, source 2dc967db) | Allocation p99 | Measured |
+|---|---|---|---|
+| Drain | frame start to the call of `project_scene` (`main.rs:5482`), the event drain and model update only; the current `phases.drain` (`main.rs:5492`) includes `project_scene` and is split by timing it separately | 1.5 ms | not yet split |
+| Projection | `project_scene` plus `phases.layout` | 1.0 ms | 4 321 projections for 42 frames before Rook's fix |
+| Encode and submit | `phases.draw`: CPU command encoding and submission | 1.0 ms | encode 4.9 ms after the atlas fix |
+| CPU margin | | 0.5 ms | |
+| **CPU path total** | the three above | **under 4 ms** (the invariant) | 292 ms on 0e97dc32 |
+| GPU execution | Metal's own GPU execution duration for the frame's command buffer (`gpu.rs:495-498`) | 6.0 ms | 8.9 ms before the blur fix, at 75 Hz |
+| GPU margin | | 2.33 ms | |
+| Present wait | `phases.present_wait`, the host's wait; reported, not allocated, expected near zero, since the UI thread never waits | report only | |
+| Input to GPU | end to end from input admission to the GPU completion of the frame that shows it | within 2 frame intervals, 16.7 ms (the invariant) | 1 076 ms |
+
+**How samples are kept.** The partitioned run records bounded raw per-frame samples of each phase and of the GPU duration, without changing thresholds or scheduling (Rook's proposal); a frame whose GPU duration is unavailable counts as unavailable, never as zero; the verdict per row is its p99 over available samples with the unavailable count beside it. A stage over its row is its owner's to fix or to argue for a reallocation, never a silent overrun.
 
 ## Logic catch-up and history
 
