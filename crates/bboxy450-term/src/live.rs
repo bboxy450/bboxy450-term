@@ -2433,6 +2433,7 @@ mod tests {
         use bbt_proto::events::*;
         let make_row = |sequence, activity| {
             let seat = GuiSeat {
+                attention: None,
                 record: bbt_proto::SeatRecord::new(Ulid(3), Ulid(1), "question fixture", "claude"),
                 state: bbt_proto::SeatState {
                     generation: 1,

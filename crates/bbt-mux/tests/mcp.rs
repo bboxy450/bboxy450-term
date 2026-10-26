@@ -5460,3 +5460,54 @@ fn mcp_attention_replay_survives_restart_without_rolling_back_a_later_policy() {
     );
     assert_eq!(f.registry().get(own).unwrap().name, "renamed receiver");
 }
+
+// keeps: spec messaging-attention §7 MA-6 — cold Orient includes effective policy inputs
+#[test]
+fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
+    let f = Fixture::new();
+    for record in [&f.own, &f.oracle] {
+        let orient = data(f.call(record.id, Ulid::new(), "orient", json!({})));
+        let attention = &orient["attention"];
+        assert_eq!(attention["seat_id"], json!(record.id));
+        assert_eq!(attention["role"], json!(record.role));
+        assert_eq!(attention["policy"], json!({"rules":[]}));
+        assert_eq!(attention["defaults"]["event"], "inbox");
+        assert_eq!(
+            attention["defaults"]["conversation"],
+            if record.role.class == Class::Oracle {
+                "wake"
+            } else {
+                "digest"
+            }
+        );
+        assert_eq!(
+            attention["always_wake"],
+            json!([
+                "operator_conversation",
+                "delegated_task",
+                "own_thread_reply"
+            ])
+        );
+        assert_eq!(attention["muted"], false);
+    }
+    data(f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "attention_set",
+        json!({"destination":"#status","class":"event","mode":"digest"}),
+    ));
+    let orient = data(f.call(f.own.id, Ulid::new(), "orient", json!({})));
+    assert_eq!(
+        orient["attention"]["policy"]["rules"],
+        json!([
+            {"destination":"channels/status","class":"event","mode":"digest"}
+        ])
+    );
+    assert!(
+        orient["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "message_list")
+    );
+}

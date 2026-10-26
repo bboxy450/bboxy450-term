@@ -862,7 +862,15 @@ async fn gui_session(
                                 client.captures.focused(id,result);
                                 Ok(GuiReply::Ok {op:id})
                             }
-                            GuiAction::ListSeats=>Ok(GuiReply::Seats(client.gui_seats().await?)),
+                            GuiAction::ListSeats=> {
+                                let mut seats=client.gui_seats().await?;
+                                if door==crate::mcp::Door::Ctl {
+                                    for seat in &mut seats {
+                                        seat.attention=Some(crate::mcp::attention::view(&seat.record).map_err(invalid)?);
+                                    }
+                                }
+                                Ok(GuiReply::Seats(seats))
+                            },
                             GuiAction::ListHosts=>Ok(GuiReply::Hosts(client.gui_hosts().await?)),
                             GuiAction::Identity(bbt_proto::identity::IdentityCall {id,request})=>Ok(GuiReply::IdentityControl {op:id,response:client.gui_identity_control(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::AttachEvents {id}=> {

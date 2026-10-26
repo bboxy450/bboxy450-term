@@ -245,6 +245,15 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     });
     assert_eq!(listed["harness"], "claude", "{listed}");
 
+    // MA-6: the operator reads the host's policy without borrowing the receiver's identity.
+    let policy = ctl(&run, &["seat", "attention", &seat]);
+    assert_eq!(policy[0]["noun"], "seat");
+    assert_eq!(policy[0]["verb"], "attention");
+    assert_eq!(policy[0]["data"]["seat_id"], seat);
+    assert_eq!(policy[0]["data"]["policy"], json!({"rules":[]}));
+    assert_eq!(policy[0]["data"]["defaults"]["event"], "inbox");
+    assert_eq!(policy[0]["data"]["muted"], false);
+
     // --role takes the launcher's preset table and guard (#262): an executor Claude is a
     // worker, Codex is never an oracle, and an unknown name is refused by that name.
     let repo = repository.to_str().unwrap();

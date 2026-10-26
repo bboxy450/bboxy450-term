@@ -11,6 +11,9 @@ pub use bbt_ui_model::{
 pub struct GuiSeat {
     pub record: SeatRecord,
     pub state: SeatState,
+    /// Receiver policy view on an operator read; absent from ordinary state publications.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attention: Option<serde_json::Value>,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeatState {

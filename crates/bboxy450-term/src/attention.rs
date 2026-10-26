@@ -204,6 +204,7 @@ mod tests {
 
     fn fixture(activity: Activity) -> GuiSeat {
         GuiSeat {
+            attention: None,
             record: SeatRecord::new(Ulid(1), Ulid(2), "fixture", "claude"),
             state: SeatState {
                 generation: 1,

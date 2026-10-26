@@ -3711,6 +3711,7 @@ impl Worker {
                 let value = json!({
                     "actor":actor,"seat":self.control_seat(record),"tasks":tasks,"tools":tools,
                     "destinations":destinations,
+                    "attention":crate::mcp::attention::view(record)?,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
                     "op_id_guidance":"ids are minted for you unless you retry",
                     "execution":tools::graph(&self.index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
@@ -6159,6 +6160,7 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
+            attention: None,
             record,
             state: SeatState {
                 generation: view.info.generation,

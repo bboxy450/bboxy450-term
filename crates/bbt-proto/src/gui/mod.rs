@@ -151,6 +151,7 @@ mod tests {
                         subagents: vec![],
                     };
                     let seat = GuiSeat {
+                        attention: None,
                         record: SeatRecord::new(Ulid::from(1), Ulid::from(2), "zsh", "zsh"),
                         state,
                     };
@@ -162,6 +163,24 @@ mod tests {
                 }
             }
         }
+    }
+    // keeps: spec messaging-attention §7 MA-6 — older seat replies omit the optional view
+    #[test]
+    fn attention_view_is_optional_and_round_trips_on_an_explicit_seat_read() {
+        let value = serde_json::json!({
+            "record":SeatRecord::new(Ulid::from(1), Ulid::from(2), "receiver", "zsh"),
+            "state":{"generation":1,"process":{"kind":"retained"},"activity":{"kind":"idle"},
+                "grade":"reported","title":"fixture","detail":null,"turn_open":false,
+                "observed_ms":0,"subagents":[]}
+        });
+        let mut seat: GuiSeat = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(seat.attention, None);
+        assert_eq!(serde_json::to_value(&seat).unwrap(), value);
+        seat.attention =
+            Some(serde_json::json!({"policy":{"rules":[]},"defaults":{"event":"inbox"}}));
+        let wire = serde_json::to_value(&seat).unwrap();
+        assert_eq!(wire["attention"], seat.attention.clone().unwrap());
+        assert_eq!(serde_json::from_value::<GuiSeat>(wire).unwrap(), seat);
     }
     // keeps: spec ctl-cli §1
     #[test]

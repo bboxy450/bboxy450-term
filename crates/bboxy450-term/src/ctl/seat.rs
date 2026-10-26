@@ -4,6 +4,7 @@ use super::*;
 /// This noun's rows of [`super::VERBS`], in parse order.
 pub(super) const VERBS: &[super::Verb] = &[
     ("seat", "ls", "ListSeats"),
+    ("seat", "attention", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
     ("seat", "type", "Input"),
@@ -37,6 +38,10 @@ macro_rules! seat_commands {
             /// An explicit placement is captured by the attached GUI, never guessed here.
             SpawnAt(Box<bbt_proto::gui::UiSpawn>),
             Seats,
+            /// Read the receiver-owned policy; mutation remains the seat's own MCP tool.
+            Attention {
+                seat: String,
+            },
             Capture {
                 path: PathBuf,
                 seat: Option<String>,
@@ -140,6 +145,12 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         },
     },
     ["seats"] => Command::Seats,
+    ["seat", "attention", seat] => {
+        if let Some(unknown) = flags.keys().find(|key| !["op", "as"].contains(&key.as_str())) {
+            return Err(format!("{USAGE_PREFIX}--{unknown} does not apply to seat attention"));
+        }
+        Command::Attention { seat: seat.into() }
+    },
     ["seat", "screen", seat] => Command::Screen {
         seat: seat.into(),
         human: human_flag,
@@ -477,6 +488,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 "frame_seq":layout.frame_seq,"layout":layout})
         }
         Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
+        Command::Attention { seat } => attention(&mut client, &seat)?,
         Command::Screen { .. }
         | Command::Resize { .. }
         | Command::Type { .. }
@@ -642,10 +654,18 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     super::print_reply(out, noun, verb, id, data, human)
 }
 
+fn attention(client: &mut Client, seat: &str) -> Result<Value, String> {
+    resolve(&client.seats()?, seat)?
+        .attention
+        .clone()
+        .ok_or_else(|| "attention_unavailable: this host did not supply the policy view".into())
+}
+
 /// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "seat ls",
+    "seat attention s",
     "seat spawn zsh",
     "seat screen s",
     "seat type s x",
@@ -661,3 +681,113 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "seat restart s",
     "seat resize s 80x24",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // keeps: spec messaging-attention §7 MA-6 — ctl returns the host's policy without mutation
+    #[test]
+    fn attention_reads_the_named_seat_and_labels_a_missing_host_view() {
+        let expected = json!({"policy":{"rules":[{"destination":"channels/status",
+            "class":"event","mode":"digest"}]},"defaults":{"event":"inbox"},
+            "always_wake":["operator_conversation","delegated_task","own_thread_reply"]});
+        let golden = include_str!("../../../bbt-proto/tests/golden/gui_wire.tsv");
+        let mut seats = golden
+            .lines()
+            .filter_map(|line| line.strip_prefix("reply\t"))
+            .filter_map(|line| serde_json::from_str::<GuiReply>(line).ok())
+            .find_map(|reply| match reply {
+                GuiReply::Seats(seats) => Some(seats),
+                _ => None,
+            })
+            .unwrap();
+        let mut target = seats[0].clone();
+        seats[0].record.name = "Other".into();
+        seats[0].attention = Some(json!({"policy":"wrong seat"}));
+        target.record.id = Ulid::from(99u128);
+        target.record.name = "Receiver".into();
+        target.attention = Some(expected.clone());
+        seats.push(target);
+        let (stream, mut server) = UnixStream::pair().unwrap();
+        server
+            .set_read_timeout(Some(Duration::from_secs(30)))
+            .unwrap();
+        let mut client = Client {
+            reader: BufReader::new(stream.try_clone().unwrap()),
+            writer: stream,
+            capability: [0; 32],
+            op: None,
+            identity: None,
+        };
+        let peer = std::thread::spawn(move || {
+            let mut reader = BufReader::new(server.try_clone().unwrap());
+            for missing in [false, true] {
+                let mut line = String::new();
+                reader.read_line(&mut line).unwrap();
+                let request: GuiRequest = serde_json::from_str(&line).unwrap();
+                assert!(matches!(request.action, GuiAction::ListSeats));
+                let mut page = seats.clone();
+                if missing {
+                    page.last_mut().unwrap().attention = None;
+                }
+                serde_json::to_writer(&mut server, &GuiReply::Seats(page)).unwrap();
+                server.write_all(b"\n").unwrap();
+            }
+        });
+        assert_eq!(attention(&mut client, "Receiver").unwrap(), expected);
+        assert!(
+            attention(&mut client, "Receiver")
+                .unwrap_err()
+                .starts_with("attention_unavailable:")
+        );
+        peer.join().unwrap();
+    }
+
+    // keeps: spec messaging-attention §7 MA-6 — the operator reads a seat's policy
+    #[test]
+    fn attention_parses_only_the_read_verb() {
+        let parsed =
+            super::super::parse_full(&["seat".into(), "attention".into(), "Receiver".into()])
+                .unwrap();
+        assert_eq!(parsed.verb, Some(("seat", "attention")));
+        assert!(matches!(parsed.command, Command::Attention { seat } if seat == "Receiver"));
+        let with_issuer = super::super::parse_full(&[
+            "seat".into(),
+            "attention".into(),
+            "Receiver".into(),
+            "--as".into(),
+            "fixture".into(),
+            "--op".into(),
+            Ulid::from(8u128).to_string(),
+        ])
+        .unwrap();
+        assert_eq!(with_issuer.op, Some(Ulid::from(8u128)));
+    }
+
+    // keeps: spec messaging-attention §3 — mute is operator policy, never a wake mode
+    #[test]
+    fn attention_refuses_bad_shapes_and_unrelated_flags_before_connecting() {
+        for line in [
+            "seat attention",
+            "seat attention s #status",
+            "seat attention s #status event",
+            "seat attention s #status event wake extra",
+            "seat attention s #status notice wake",
+            "seat attention s #status event mute",
+            "seat attention s #status event wake",
+            "seat attention s channels/* event wake",
+            "seat attention s --timeout 1",
+        ] {
+            let error = super::super::parse_full(
+                &line
+                    .split_whitespace()
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>(),
+            )
+            .err()
+            .unwrap_or_else(|| panic!("accepted {line}"));
+            assert!(error.starts_with(USAGE_PREFIX), "{line}: {error}");
+        }
+    }
+}
