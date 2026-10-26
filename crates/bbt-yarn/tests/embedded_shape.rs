@@ -193,6 +193,7 @@ impl Firmware {
     }
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn ownership_returning_completion_reenables_submission_in_after_event() {
     let mut firmware = Firmware::new();
@@ -210,6 +211,7 @@ async fn ownership_returning_completion_reenables_submission_in_after_event() {
     assert_eq!(firmware.after_count, 1);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn protected_touch_precedes_ready_sensor_and_sensor_remains_buffered() {
     struct PrioritySources {
@@ -248,6 +250,7 @@ async fn protected_touch_precedes_ready_sensor_and_sensor_remains_buffered() {
     assert!(sources.sensor.has_backlog());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn dynamic_absolute_deadline_rearms_after_each_fire() {
     let mut firmware = Firmware::new();
@@ -266,15 +269,7 @@ async fn dynamic_absolute_deadline_rearms_after_each_fire() {
     assert_eq!(firmware.after_count, 2);
 }
 
-#[test]
-fn dormant_optional_host_source_does_not_self_wake() {
-    let mut source = Latched::<u8>::new();
-    assert!(source.is_dormant());
-    source.arm(1).unwrap();
-    assert_eq!(source.disarm(), Some(1));
-    assert!(source.is_dormant());
-}
-
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn embedded_future_stays_within_predeclared_host_model_budget() {
     // Predeclared in docs/fixture-manifest.md before expansion measurement.

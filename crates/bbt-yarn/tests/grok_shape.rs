@@ -535,6 +535,7 @@ async fn run_kittens_presenter(mut commands: FixedQueue<PresenterCommand, 16>) -
     presenter
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn twenty_three_arm_forms_compile_without_custom_type_or_recursion_limits() {
     let mut app = App::default();
@@ -584,6 +585,7 @@ fn twenty_three_arm_forms_compile_without_custom_type_or_recursion_limits() {
     );
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn raw_tokio_oracle_preserves_the_declared_twenty_three_source_order() {
     let mut sources = GrokSources::new();
@@ -606,6 +608,7 @@ async fn raw_tokio_oracle_preserves_the_declared_twenty_three_source_order() {
     );
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn grok_dynamic_voice_arm_and_reconnect_replacement_are_persistent() {
     let mut voice_app = App::default();
@@ -637,6 +640,7 @@ async fn grok_dynamic_voice_arm_and_reconnect_replacement_are_persistent() {
     assert_eq!(reconnect_app.handled, 1);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn grok_scripted_thirty_two_item_drain_does_not_reach_a_budget_boundary() {
     let mut app = App {
@@ -670,6 +674,7 @@ async fn grok_scripted_thirty_two_item_drain_does_not_reach_a_budget_boundary() 
     assert_eq!(control_app.saw_exhausted_budget, app.saw_exhausted_budget);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn raw_and_kittens_forms_preserve_application_owned_presenter_scenarios() {
     let raw = run_raw_presenter(presenter_commands()).await;

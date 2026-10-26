@@ -71,6 +71,7 @@ impl Drop for DropProbe {
     }
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn persistent_mpsc_normalizes_receivers_and_enforces_static_close_policies() {
     let waker = Waker::noop();
@@ -134,6 +135,7 @@ async fn persistent_mpsc_normalizes_receivers_and_enforces_static_close_policies
     assert!(unbounded_dormant.is_dormant());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn exhausted_budget_defers_mpsc_drain_without_consuming_the_item() {
     let (sender, receiver) = tokio::sync::mpsc::channel::<u8>(1);
@@ -149,6 +151,7 @@ async fn exhausted_budget_defers_mpsc_drain_without_consuming_the_item() {
     assert_eq!(source.try_next(), TryNext::Item(1));
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn mpsc_repoll_replaces_the_registered_waker_for_both_receiver_variants() {
     let first_wake_count = Arc::new(WakeCounter(AtomicUsize::new(0)));
@@ -183,6 +186,7 @@ fn mpsc_repoll_replaces_the_registered_waker_for_both_receiver_variants() {
     assert_eq!(unbounded.poll_next(&mut second_context), Poll::Ready(2));
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn dropping_persistent_mpsc_closes_the_receiver_and_drops_buffered_items() {
     let drops = Arc::new(AtomicUsize::new(0));
@@ -198,6 +202,7 @@ fn dropping_persistent_mpsc_closes_the_receiver_and_drops_buffered_items() {
     assert_eq!(drops.load(Ordering::SeqCst), 2);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn optional_mpsc_returns_rejected_and_replaced_generations_to_the_caller() {
     let waker = Waker::noop();
@@ -263,6 +268,7 @@ fn optional_mpsc_returns_rejected_and_replaced_generations_to_the_caller() {
     assert!(source.disarm().is_some());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn optional_mpsc_backlog_includes_one_emit_close_event() {
     let waker = Waker::noop();
@@ -292,6 +298,7 @@ fn optional_mpsc_backlog_includes_one_emit_close_event() {
     assert_eq!(source.poll_next(&mut context), Poll::Pending);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn retained_one_shot_preserves_pending_state_and_replaces_its_registered_waker() {
     let state = Arc::new(FutureState::default());
@@ -316,6 +323,7 @@ fn retained_one_shot_preserves_pending_state_and_replaces_its_registered_waker()
     assert_eq!(source.poll_next(&mut second_context), Poll::Pending);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn dropping_a_pending_one_shot_drops_the_retained_operation_once() {
     let state = Arc::new(FutureState::default());
@@ -330,6 +338,7 @@ fn dropping_a_pending_one_shot_drops_the_retained_operation_once() {
     assert_eq!(state.drops.load(Ordering::SeqCst), 1);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn optional_one_shot_makes_arming_replacement_and_cancellation_explicit() {
     let waker = Waker::noop();
@@ -373,6 +382,7 @@ fn optional_one_shot_makes_arming_replacement_and_cancellation_explicit() {
     assert!(!source.is_dormant());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn optional_one_shot_from_future_disarms_before_returning_ready() {
     let state = Arc::new(FutureState::default());
@@ -386,6 +396,7 @@ fn optional_one_shot_from_future_disarms_before_returning_ready() {
     assert_eq!(source.poll_next(&mut context), Poll::Pending);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn cancellation_replaces_registration_and_becomes_dormant_after_delivery() {
     let token = tokio_util::sync::CancellationToken::new();
@@ -406,6 +417,7 @@ fn cancellation_replaces_registration_and_becomes_dormant_after_delivery() {
     assert_eq!(source.poll_next(&mut second_context), Poll::Pending);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn dropping_a_cancellation_waiter_does_not_cancel_other_token_owners() {
     let token = tokio_util::sync::CancellationToken::new();
@@ -423,6 +435,7 @@ fn dropping_a_cancellation_waiter_does_not_cancel_other_token_owners() {
     assert_eq!(wake_count.0.load(Ordering::SeqCst), 0);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test(start_paused = true)]
 async fn optional_deadline_resets_disarms_and_reports_its_absolute_instant() {
     let mut source = source::OptionalDeadline::default();
@@ -456,6 +469,7 @@ async fn optional_deadline_resets_disarms_and_reports_its_absolute_instant() {
     assert_eq!(source.deadline(), None);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test(start_paused = true)]
 async fn dropping_an_armed_deadline_removes_its_timer_registration() {
     let wake_count = Arc::new(WakeCounter(AtomicUsize::new(0)));

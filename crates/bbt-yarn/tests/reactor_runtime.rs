@@ -90,6 +90,7 @@ impl Future for TraceFuture {
     }
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn closed_optional_mpsc_becomes_dormant_without_self_waking() {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<u8>();
@@ -107,6 +108,7 @@ fn closed_optional_mpsc_becomes_dormant_without_self_waking() {
     assert_eq!(wake_counter.0.load(Ordering::SeqCst), 0);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn emit_close_policy_yields_closed_exactly_once() {
     let (sender, receiver) = tokio::sync::mpsc::unbounded_channel::<u8>();
@@ -125,6 +127,7 @@ fn emit_close_policy_yields_closed_exactly_once() {
     assert!(!source.has_backlog());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test(start_paused = true)]
 async fn optional_deadline_disarms_before_delivering() {
     let mut source = source::OptionalDeadline::new();
@@ -140,6 +143,7 @@ async fn optional_deadline_disarms_before_delivering() {
     assert_eq!(source.poll_next(&mut context), Poll::Pending);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test(start_paused = true)]
 async fn absolute_deadline_survives_a_lost_race_without_relative_reconstruction() {
     struct Sources {
@@ -194,6 +198,7 @@ struct LostRaceSources<F: Future<Output = Result<u8, tokio::sync::oneshot::error
     earlier_winner: Latched<()>,
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn retained_one_shot_survives_being_polled_before_another_source_wins() {
     let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -232,6 +237,7 @@ async fn retained_one_shot_survives_being_polled_before_another_source_wins() {
     assert_eq!(selections, [1, 2]);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn latched_event_survives_when_an_earlier_source_wins_before_it_is_polled() {
     struct Sources {
@@ -271,6 +277,7 @@ async fn latched_event_survives_when_an_earlier_source_wins_before_it_is_polled(
     assert_eq!(selections, [1, 2]);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn before_poll_runs_once_across_pending_executor_repolls() {
     struct Sources<F: Future<Output = Result<u8, tokio::sync::oneshot::error::RecvError>>> {
@@ -327,6 +334,7 @@ async fn before_poll_runs_once_across_pending_executor_repolls() {
     assert_eq!(guard_count, 1);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn wake_only_guard_change_waits_for_the_next_arbitration() {
     struct Sources {
@@ -404,6 +412,7 @@ async fn wake_only_guard_change_waits_for_the_next_arbitration() {
     assert!(wake_state.polls.load(Ordering::SeqCst) >= 3);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn buffered_yield_selects_input_before_a_ready_firehose() {
     struct Sources {
@@ -445,6 +454,7 @@ async fn buffered_yield_selects_input_before_a_ready_firehose() {
     assert_eq!(order, [9, 1]);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn drain_bound_and_after_event_are_one_service_window() {
     struct Sources {
@@ -492,6 +502,88 @@ async fn drain_bound_and_after_event_are_one_service_window() {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct HandlerError;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FailedStep {
+    Initialize,
+    BeforePoll,
+    Handler,
+    AfterEvent,
+}
+
+// keeps: spec yarn §0 — failed phases return their error before later work runs.
+#[tokio::test]
+async fn phase_errors_return_before_later_phases_or_handlers_run() {
+    use FailedStep::{AfterEvent, BeforePoll, Handler, Initialize};
+    for (failure, expected) in [
+        (Initialize, &[Initialize][..]),
+        (BeforePoll, &[Initialize, BeforePoll][..]),
+        (
+            AfterEvent,
+            &[Initialize, BeforePoll, Handler, AfterEvent][..],
+        ),
+    ] {
+        let mut work = Latched::new();
+        work.arm(()).unwrap();
+        let mut trace = Vec::new();
+        let result: Result<(), FailedStep> = bbt_yarn::reactor! {
+            policy {
+                selection: biased;
+                required_phases: [initialize, before_poll, after_event];
+            }
+            initialize {
+                trace.push(Initialize);
+                if failure == Initialize { Err(failure) } else { Ok(()) }
+            }
+            before_poll {
+                trace.push(BeforePoll);
+                if failure == BeforePoll { Err(failure) } else { Ok(()) }
+            }
+            #[source(work)]
+            #[readiness(quiescent)]
+            _ = work => {
+                trace.push(Handler);
+                Ok(Control::Continue)
+            }
+            after_event {
+                trace.push(AfterEvent);
+                Err(AfterEvent)
+            }
+        };
+        assert_eq!(result, Err(failure));
+        assert_eq!(trace, expected);
+    }
+}
+
+// keeps: spec yarn §0 — a terminal handler error returns without after_event.
+#[tokio::test]
+async fn terminal_handler_error_returns_without_after_event() {
+    let mut stop = Latched::new();
+    stop.arm(7).unwrap();
+    let mut handled = Vec::new();
+    let mut after_event_ran = false;
+    let result: Result<(), HandlerError> = bbt_yarn::reactor! {
+        policy {
+            selection: biased;
+            required_phases: [after_event];
+        }
+        #[source(stop)]
+        #[readiness(quiescent)]
+        #[terminal]
+        item = stop => {
+            handled.push(item);
+            Err(HandlerError)
+        }
+        after_event {
+            after_event_ran = true;
+            Ok(())
+        }
+    };
+    assert_eq!(result, Err(HandlerError));
+    assert_eq!(handled, [7]);
+    assert!(!after_event_ran);
+}
+
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn handler_error_mid_drain_skips_after_event_after_prior_mutation() {
     struct Sources {
@@ -535,6 +627,7 @@ async fn handler_error_mid_drain_skips_after_event_after_prior_mutation() {
     assert_eq!(after, 0);
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn handler_panic_mid_drain_unwinds_without_compensation_or_after_event() {
     let handled = Arc::new(AtomicUsize::new(0));
@@ -640,6 +733,7 @@ macro_rules! define_budget_runner {
 define_budget_runner!(run_core_budget, reactor_event);
 define_budget_runner!(run_tokio_budget, reactor_tokio_event);
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn exhausted_tokio_budget_ends_both_mpsc_drain_windows_early() {
     let core = tokio::spawn(run_core_budget()).await.unwrap();
@@ -728,6 +822,7 @@ macro_rules! define_trace_runner {
 define_trace_runner!(run_core_trace, reactor_event);
 define_trace_runner!(run_tokio_trace, reactor_tokio_event);
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn core_and_tokio_control_match_poll_order_results_and_wake_registration() {
     let expected = (
@@ -803,21 +898,7 @@ define_equivalence_runner!(run_core_slots, reactor_slots);
 define_equivalence_runner!(run_tokio_event, reactor_tokio_event);
 define_equivalence_runner!(run_tokio_slots, reactor_tokio_slots);
 
-#[test]
-fn retained_expansion_future_sizes_are_recorded() {
-    let core_event = run_core_event();
-    let core_slots = run_core_slots();
-    let tokio_event = run_tokio_event();
-    let tokio_slots = run_tokio_slots();
-    eprintln!(
-        "equivalence future sizes: core-event={} core-slots={} tokio-event={} tokio-slots={}",
-        std::mem::size_of_val(&core_event),
-        std::mem::size_of_val(&core_slots),
-        std::mem::size_of_val(&tokio_event),
-        std::mem::size_of_val(&tokio_slots),
-    );
-}
-
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[tokio::test]
 async fn all_four_retained_expansions_match_on_the_scripted_oracle() {
     let expected = (vec![9, 1, 2, 3], 2);

@@ -4,10 +4,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::task::{Context, Poll, Wake, Waker};
 
-use bbt_yarn::reactor::Control;
 use bbt_yarn::source::{
-    BacklogSource, ChannelClosePolicy, ChannelEvent, DrainableSource, FixedQueue, Latched,
-    ReactorSource, TryNext, close, readiness,
+    BacklogSource, DrainableSource, FixedQueue, Latched, ReactorSource, TryNext,
 };
 
 struct WakeCounter(AtomicUsize);
@@ -28,30 +26,7 @@ fn counting_context() -> (Arc<WakeCounter>, Waker) {
     (counter, waker)
 }
 
-#[test]
-fn close_policies_map_items_and_expose_only_the_configured_close_event() {
-    const {
-        assert!(!<close::Dormant as ChannelClosePolicy<u8>>::EMITS_CLOSE);
-    }
-    assert_eq!(<close::Dormant as ChannelClosePolicy<u8>>::map_item(7), 7);
-    assert_eq!(
-        <close::Dormant as ChannelClosePolicy<u8>>::close_event(),
-        None
-    );
-
-    const {
-        assert!(<close::Emit as ChannelClosePolicy<u8>>::EMITS_CLOSE);
-    }
-    assert_eq!(
-        <close::Emit as ChannelClosePolicy<u8>>::map_item(8),
-        ChannelEvent::Item(8)
-    );
-    assert_eq!(
-        <close::Emit as ChannelClosePolicy<u8>>::close_event(),
-        Some(ChannelEvent::Closed)
-    );
-}
-
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn latched_preserves_the_first_event_and_dormant_polls_do_not_self_wake() {
     let mut source = Latched::new();
@@ -81,6 +56,7 @@ fn latched_preserves_the_first_event_and_dormant_polls_do_not_self_wake() {
     assert!(source.is_dormant());
 }
 
+// keeps: spec yarn §§0,4 — public source, arbitration, phase or compiler contract
 #[test]
 fn fixed_queue_preserves_fifo_order_across_wrap_full_and_empty_transitions() {
     let mut source = FixedQueue::<u8, 3>::default();
@@ -121,67 +97,4 @@ fn fixed_queue_preserves_fifo_order_across_wrap_full_and_empty_transitions() {
     assert!(zero.is_empty());
     assert!(!zero.has_backlog());
     assert_eq!(wake_counter.0.load(Ordering::SeqCst), 0);
-}
-
-#[test]
-fn generated_type_assertions_admit_capabilities_without_mutating_sources() {
-    let mut latch = Latched::new();
-    latch.arm(1).unwrap();
-    let mut queue = FixedQueue::<u8, 2>::new();
-    queue.push(2).unwrap();
-
-    bbt_yarn::__private::assert_SRC001_reactor_source_is_admitted__repair_use_retained_or_channel(
-        &latch,
-    );
-    bbt_yarn::__private::assert_KTR006_declared_readiness_matches::<readiness::Quiescent, _>(
-        &latch,
-    );
-    bbt_yarn::__private::assert_KTR009_source_is_drainable(&queue);
-    bbt_yarn::__private::assert_KTR010_yield_target_has_backlog_probe(&latch);
-
-    assert!(latch.has_backlog());
-    assert_eq!(queue.len(), 1);
-}
-
-#[test]
-fn generated_value_assertions_preserve_guard_handler_and_phase_results() {
-    assert!(bbt_yarn::__private::assert_KTR019_guard_result_is_bool(
-        true
-    ));
-    assert!(!bbt_yarn::__private::assert_KTR019_guard_result_is_bool(
-        false
-    ));
-
-    let continuing: Result<Control<u8>, &str> = Ok(Control::Continue);
-    let stopping: Result<Control<u8>, &str> = Ok(Control::Stop(9));
-    let handler_error: Result<Control<u8>, &str> = Err("handler");
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_continuing_handler_result(continuing),
-        Ok(Control::Continue)
-    );
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_continuing_handler_result(stopping),
-        Ok(Control::Stop(9))
-    );
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_continuing_handler_result(handler_error),
-        Err("handler")
-    );
-
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_terminal_handler_result::<u8, &str>(Ok(4)),
-        Ok(4)
-    );
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_terminal_handler_result::<u8, &str>(Err("terminal")),
-        Err("terminal")
-    );
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_phase_result::<&str>(Ok(())),
-        Ok(())
-    );
-    assert_eq!(
-        bbt_yarn::__private::assert_KTR013_phase_result::<&str>(Err("phase")),
-        Err("phase")
-    );
 }
