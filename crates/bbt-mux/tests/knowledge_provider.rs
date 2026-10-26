@@ -229,11 +229,10 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     let mut seat = SeatRecord::new(seat_id, swarm, "private provider reader", "zsh");
     seat.role.class = Class::Oracle;
     seat.role.name = "oracle".into();
-    logic
-        .client
-        .spawn(seat, LaunchSpec::new("/bin/cat", temp.path()))
-        .await
-        .unwrap();
+    let mut launch = LaunchSpec::new("/bin/cat", temp.path());
+    launch.seat = seat.id;
+    launch.generation = seat.generation;
+    logic.client.spawn(seat, launch).await.unwrap();
     let call = Call {
         op_id: Ulid::new(),
         tool: "knowledge_fetch".into(),

@@ -104,7 +104,8 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
 
 // keeps: spec ux-prototype §5.6
 #[test]
-fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count() {
+fn settings_fixtures_stay_labelled_and_live_knowledge_requires_observed_root_state() {
+    use bbt_proto::gui::{KnowledgeProvider, KnowledgeRoot, KnowledgeStatus};
     let model = Model::default();
     let records = settings::records(Some(&model), &Default::default());
     let examples = settings::records(None, &Default::default());
@@ -130,45 +131,82 @@ fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provide
     }));
     assert!(records.plugins.is_empty());
     assert!(!records.plugin_controls);
-    assert!(records.plugin_notice.as_deref().unwrap().contains("snapshot pending"));
-    assert_eq!(
-        records.knowledge.offered,
-        ["bboxy450-term-data_source-bboxy"]
-    );
-    let root = &records.knowledge.roots[0];
-    assert_eq!(root.provider, records.knowledge.offered[0]);
-    assert_eq!(root.records, None);
-    assert_eq!(root.digests, None);
     assert!(
-        root.refused
+        records
+            .plugin_notice
             .as_deref()
             .unwrap()
-            .contains("switching is unavailable")
+            .contains("snapshot pending")
     );
-    assert!(root.answering.contains("pending"));
+    assert!(records.knowledge.offered.is_empty());
+    assert!(records.knowledge.roots.is_empty());
+    assert!(!records.knowledge_controls);
     let mut ready = model;
     ready.e2e = Some(Arc::new(Default::default()));
-    assert_eq!(
+    assert!(
         settings::records(Some(&ready), &Default::default())
             .knowledge
-            .roots[0]
-            .answering,
-        "logic · in process"
+            .roots
+            .is_empty(),
+        "an acceptance-record snapshot is not root/provider authority"
     );
     Arc::make_mut(ready.e2e.as_mut().unwrap())
         .faults
         .push("provider refused the retained read".into());
-    let refused = settings::records(Some(&ready), &Default::default());
-    assert_eq!(
-        refused.knowledge.roots[0].answering,
-        "bundled read unavailable"
-    );
     assert!(
-        refused.knowledge.roots[0]
-            .refused
-            .as_deref()
-            .unwrap()
-            .contains("provider refused the retained read")
+        settings::records(Some(&ready), &Default::default())
+            .knowledge
+            .roots
+            .is_empty()
+    );
+    let bundled = KnowledgeProvider {
+        id: "bboxy450-term-data_source-bboxy".into(),
+        name: "bboxy450-term-data_source-bboxy".into(),
+        sha256: None,
+    };
+    ready.knowledge_roots = Some(Arc::new(KnowledgeStatus {
+        roots: vec![KnowledgeRoot {
+            id: "host-root".into(),
+            path: "/private/root".into(),
+            provider: bundled.clone(),
+            revision: 3,
+            records: Some(418),
+            process: None,
+            refusal: None,
+        }],
+        offered: vec![bundled],
+    }));
+    let observed = settings::records(Some(&ready), &Default::default());
+    assert!(observed.knowledge_controls);
+    let root = &observed.knowledge.roots[0];
+    assert_eq!(root.provider, observed.knowledge.offered[0]);
+    assert_eq!(root.records, Some(418));
+    assert_eq!(root.answering, "logic · in process");
+    assert_eq!(root.digests, None);
+    assert_eq!(root.refused, None);
+    let external = KnowledgeProvider {
+        id: "checked-pin".into(),
+        name: "bboxy450-term-data_source-root-fixture".into(),
+        sha256: Some("a".repeat(64)),
+    };
+    let status = Arc::make_mut(ready.knowledge_roots.as_mut().unwrap());
+    status.offered.push(external.clone());
+    status.roots[0].provider = external.clone();
+    status.roots[0].records = None;
+    status.roots[0].process = Some(77);
+    status.roots[0].refusal = Some("provider_busy: root connection occupied".into());
+    let refused = settings::records(Some(&ready), &Default::default());
+    let root = &refused.knowledge.roots[0];
+    assert_eq!(
+        root.provider, external.name,
+        "never invent a bundled fallback"
+    );
+    assert_eq!(root.records, None);
+    assert_eq!(root.digests, None);
+    assert_eq!(root.answering, "provider read unavailable");
+    assert_eq!(
+        root.refused.as_deref(),
+        Some("provider_busy: root connection occupied")
     );
 }
 
