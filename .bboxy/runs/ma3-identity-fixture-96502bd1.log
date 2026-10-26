@@ -1,0 +1,6 @@
+MA-3 presubmit follow-up: signed source 96502bd1fb52133d508cd4813e8f2089b5f28678 (G).
+Oracle presubmit23038c59 EXIT77 at the only identity failure, prepare None under default Digest.
+This test-only seven-line patch selects receiver Conversation/Wake. Native chain/thread/retry/receipt/ACK assertions remain unchanged; defaults remain tested independently.
+Whole identity suite EXIT0:15passed,0failed,0ignored; test time0.63s/build6.11s.
+Strict clippy -p bbt-mux --test identity -- -D warnings EXIT0;25.88s.
+Full commands and hashes are in the JSON. No product change, no login Keychain use, no independent publish or additional full gate.

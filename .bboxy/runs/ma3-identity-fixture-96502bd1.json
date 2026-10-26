@@ -1,0 +1,55 @@
+{
+  "source": "96502bd1fb52133d508cd4813e8f2089b5f28678",
+  "base": "5da083527dbaadd6a7430f3f08c57576df7338a7",
+  "files": [
+    "crates/bbt-mux/tests/identity.rs"
+  ],
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--test",
+        "identity"
+      ],
+      "exit": 0,
+      "log": "target/ma3-native-proof/identity-wake-fixture.log",
+      "sha256": "7a11c83e9bd9408b1095ec0ac4eeea283ec40a7cbf54ab889ece7a79f2ecb129"
+    },
+    {
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "identity",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "log": "target/ma3-native-proof/identity-wake-clippy.log",
+      "sha256": "c0881e7c0ab02689d8139667858e3cfaa06b74e07ee9e65bffd5f08953a3f0ae"
+    }
+  ],
+  "prior_failure": {
+    "source": "23038c592a422b71158296051b9ed29e62f20b22",
+    "exit": 77,
+    "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/23038c592a422b71158296051b9ed29e62f20b22-db018dc8/commands.log",
+    "assertion": "identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ack_contracts prepare returned None at identity.rs:1170; 14 other identity tests passed"
+  },
+  "mechanism": "Only this identity native-boundary fixture explicitly sets Conversation/Wake on its peer before send. All chain, idempotent retry, thread, receipt, native and ACK assertions are unchanged. No production policy or shared fixture/provider edit.",
+  "limits": [
+    "Prior31-test/strict evidence remains tied to5e5be7cf; the new whole identity suite is15/0 on this test-only successor.",
+    "No independent publication, gate or night; source handed to Oracle for the current landing."
+  ]
+}
