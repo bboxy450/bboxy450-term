@@ -1,0 +1,193 @@
+{
+  "source": "65267badb72e233205f894a931d2efc6bad7a1c7",
+  "branch": "velvet-m2-compose-final",
+  "base": "34ba72bf3e49384157ef655d5523e28055c21869",
+  "contract_first": "8051e22c701764324b6d54cc2d3c90fd7d40153e",
+  "briefs": [
+    "b921f8af-454c-46ae-8931-f0b3b769e7f9",
+    "b58ea50a-952c-4b8d-9940-440d1c3163f8"
+  ],
+  "checks": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/contract-tests-corrected.log",
+      "sha256": "b186c602d46b2157292d71e2fa36bd5d1a691202bd8d2a88da071a23b750cfa9",
+      "exit": 0,
+      "passed": 5
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/final-composer-tests.log",
+      "sha256": "ba8a1d1779bef8423914ab73f1b0e40a4c8fd0adf76d35a1523ce621625122f4",
+      "exit": 0,
+      "passed": 19
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/rebased-cli-test.log",
+      "sha256": "4e7aa87e5602acf04b8de693533a9d4ee0fe597d52bddd6d6de02b460ddbb362",
+      "exit": 0,
+      "passed": 1
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/typed-refusal-test.log",
+      "sha256": "f7913a2bffdaea26653026b40d5939b75f4048ae9fae540694a598cae2beba21",
+      "exit": 0,
+      "passed": 1
+    }
+  ],
+  "m2": {
+    "source": "65267badb72e233205f894a931d2efc6bad7a1c7",
+    "checks": {
+      "m2_script_exit_zero_full": true,
+      "exactly_two_sent_message_ids": true,
+      "real_cap_members_33": true,
+      "typed_cap_refusal": true,
+      "no_refused_message_effect": true,
+      "scope_other_promises_untested": true,
+      "records_written": true,
+      "private_accounts": true,
+      "all_recorded_pids_gone": true,
+      "private_runtime_retired": true
+    },
+    "m2": {
+      "coverage": "full",
+      "evidence": "M2: two exact role recipients, one rendered composer group with message IDs, one receipt each, nonmember excluded, 33 refused before message effects",
+      "exit": 0,
+      "function": "M2",
+      "group": "messaging and tasks",
+      "kind": "e2e",
+      "missing": [],
+      "verdict": "pass"
+    },
+    "summary": {
+      "group": "messaging and tasks",
+      "kept": null,
+      "kind": "summary",
+      "partial": [],
+      "passed": 1,
+      "red": [
+        "M1",
+        "M3",
+        "M4",
+        "M5",
+        "M6"
+      ],
+      "state": "red",
+      "total": 6,
+      "tracked": [],
+      "unwritten": []
+    },
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M2",
+        "issued_by": "test-account:01M5TT70W4N1JDAEXCH3BZ9VK2",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 63097,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en5MfAsF/M2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5TT8R1G6J9ABYWJYPAQRY14",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 69048,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en5MfAsF/records-app/run",
+        "windows": 0
+      }
+    ],
+    "ps_exit": 1,
+    "root": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en5MfAsF",
+    "root_retired": true,
+    "observer_failure": "original observer exited 1 after canonical runner completion: select.kqueue is not a context manager; no M2 rerun",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/bboxy450-term-65267bad",
+    "binary_sha256": "dcfe13aa4812b30a759c5dea12edaf5b777b4c78e45b9d774eac8d05dc967ff9",
+    "files": {
+      "M2/m2-result.json": "763b0410dd77b57e61730ef31196a3e39351e037a74d383d36695cb21652093d",
+      "M2/m2-sent.png": "8254d68c64c44bba93b8a144b1851c8ee3e89b1062da8c17aaa717271a594440",
+      "M2/message-calls.jsonl": "be3ee78671d9de0b2d17b233756ae994b3c8ecd0b46e8e99d5abd3a1ccecff39",
+      "night.log": "4282e606ea85a790be553e98272619fd4f33c182b5787796c78d9a78403d43c2",
+      "records/.bboxy/artifacts/01M5TT8SMCJ0WSC2AZ6RRBCFWX.md": "d0f56d42abbcaa05fbfcf51c141bff57c343c3f91a63843135a8af842fc1368c",
+      "records/.bboxy/artifacts/01M5TT8T0A8SKAJ9H9HZ3C5TRB.md": "8d112f758ee043b838e2ffc3cd66a06f8f1b1f74e1885b89fc3985a802060d68",
+      "records/.bboxy/artifacts/01M5TT8TMYSV31166B6YE3BPS6.md": "117fe9fd0e45cb5872046a1d10ef89e38a959d327c0c62bf0694aa19c60e54b0",
+      "records/.bboxy/e2e/M1.md": "05591515e12fa5f3852bf3d784bfbb6016ae519f237ebc14bf307eae4b58d2a4",
+      "records/.bboxy/e2e/M2.md": "47eb5d3160fbaf7947a4b0c890bc4423b8e2499d553144c3c6efae5365f4c63d",
+      "records/.bboxy/e2e/M3.md": "08cc22beb7e2bda0fdffb0f4dfe15e153f785c22beb58d14fb3a14de125ca86c",
+      "records/.bboxy/e2e/M4.md": "6f76c40a863db0445686c66d9d4a4db5baa4b10081e21158ed24d7434c28afa0",
+      "records/.bboxy/e2e/M5.md": "8273df3e94192581e842eee7e36c30de51f1d7ba14bedd7285440abc0ff7d658",
+      "records/.bboxy/e2e/M6.md": "fd4992be2fced9ce559842836451d5020372cce89053abf1d3484dde417ef5ae",
+      "records/.bboxy/log/2026-10-26.jsonl": "72b0f60e31eadb41b0e832554ef08dfde3afd679f781b11012719c0fc97f04ef",
+      "scripts/M2.sh": "0a37ed795ab65f4b0f57e3186337e25de5700ce2a7a8a5e9daea8e9292be3859",
+      "scripts/lib.sh": "4ca356f86c0a78927ec6b96f3b49ce91a555a5e3679504859f3bf24a8854b2a5",
+      "scripts/message_agent.py": "a588c6efa2505a42d92799b44ef3272a4d666528e2cd57f37f1033fd84f872dc",
+      "scripts/messaging.py": "6df3118c80245e20536436055d2b6f0fe05dabba702b33b539a8a0aa1a8bff94"
+    }
+  },
+  "source_inputs": {
+    "crates/bboxy450-term/src/ctl.rs": "167279f01b866091d63b30985ae0ad78d84b47d292698615f3ba0a1da1f8220a",
+    "crates/bboxy450-term/src/ctl/ui.rs": "af8bfc7a79a63f8993822f1209f39c2d38cc6d2697fb49ffba09d8550057772c",
+    "crates/bboxy450-term/src/main.rs": "15d6443c4bd4d206745f737b75a96d50bdaee6bbb6fb4ec67051ee37969d7103",
+    "crates/bboxy450-term/src/messaging.rs": "3ab228b0b40c2c095579f2a89c99cbe8ebb7205293b28159ed761bc8ce44e1a8",
+    "crates/bboxy450-term/tests/ctl.rs": "6b6bd520a9606307b782edd1ea76dbb5ba8aec8fe2c09b07901f6b94cd18479d",
+    "crates/bboxy450-term/tests/messaging_ui.rs": "90b13cab135055baa6a1a78c1cd4f1f9e8f34f8e5abaaa6ad924c08696233cab",
+    "crates/bbt-mux/src/gui_capture.rs": "11c9010de3f8aaf1ba1b7c71d89174de1daf0e2d18baf4f4a0c8432aca44b8af",
+    "crates/bbt-proto/src/gui/ui.rs": "cb11af863e66f3d5f4d6bb6588881d6d753a7f1c08b8e2836042be4c2db01396",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "d925310c330a3eb3ae67096f26b7e09dab6402d9851cee4d8797f7f12dc31bc9",
+    "crates/bbt-proto/tests/ui_compose.rs": "38836de14a4a569f065dedfb08209e170ef8f61468fdb6d419687abe8a22ca69",
+    "crates/bbt-ui/src/modules/stream_dock.rs": "7661014b0f5414a3bf63e0ffb65e2f1f0018516ef12a9c31c109f8a510180ed6",
+    "scripts/e2e/M2.sh": "0a37ed795ab65f4b0f57e3186337e25de5700ce2a7a8a5e9daea8e9292be3859",
+    "scripts/e2e/messaging.py": "6df3118c80245e20536436055d2b6f0fe05dabba702b33b539a8a0aa1a8bff94"
+  },
+  "logs": {
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/cli-compose-flag-fixed.log": "1fb5f2b01a8ec8ca38cb8d4c874bf7a58242366b7801696f0a8b78c18d7615ca",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/cli-compose-lib-test.log": "de2b8c2c4169564bbbc464e9209c29a6842e3459de1fc680d2611ec24ae64923",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/cli-compose-test.log": "e7e23e9dac4d346b0bee659ce6a5090a02c08c16031f3bc20936974042892b7e",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/composer-binary.log": "7fae5c41c90435183e2d5b1eb2e67b49fd95a648bc54713fe499c20dcc9fe59b",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/composer-tests.log": "6ed88601a6e83573169e4ec59cce387df1018e268bdb846cfc1fd84c09b572d6",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/contract-tests-corrected.log": "b186c602d46b2157292d71e2fa36bd5d1a691202bd8d2a88da071a23b750cfa9",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/contract-tests.log": "615ff21a003318ae1b70d59bfdc1f81c17ac20e9f4a46ced4176fe3d3bd9092d",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/final-binary.log": "7d112031c6314dec4515a4c2c0cb2d9de8ed534faec9c9382c0287bbdc54f81b",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/final-composer-tests.log": "ba8a1d1779bef8423914ab73f1b0e40a4c8fd0adf76d35a1523ce621625122f4",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/messaging-night-canonical.log": "ea9fd62f9341ed4df5ffd23d411355c1c9eb871f79bdd02ac4ed02da73570b0f",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/messaging-night.log": "104cf45fa57aac2578c766a352fd8e2c957584502e781a44b1ad52731568eea4",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/presubmit-5b030939.log": "342abe102fa839bf5e8e8567a3cbb0a2aad55191a8d9e1f506c195e69826397f",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/rebased-binary.log": "5a253b435a32b268c42bcbd98db73b8384e6282ca2671bc4b476628fd9d80297",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/rebased-cli-test.log": "4e7aa87e5602acf04b8de693533a9d4ee0fe597d52bddd6d6de02b460ddbb362",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-current-integration.log": "519905175668a7fd3e294bba8c323ba99be420715b5dded4a8523a5596a85c8b",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-current-main.log": "3ab970016296fcc8449db90513a8cda5db69b9935e77e87f0b1d34cb2a9521c4",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-integration.log": "2c16f176da497029edf9d83ed462f9de1009ae00943506a3c5aa96005d4a34ec",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-tests.log": "813d1b1a32818fb5844b047efa6c810d20a6320e26a077b10ef8e84f92b1f651",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/typed-refusal-binary.log": "00285c953ecafd68b7d18105c8b7ee42b259bda96e7d4b846549c6bf5d794264",
+    "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/typed-refusal-test.log": "f7913a2bffdaea26653026b40d5939b75f4048ae9fae540694a598cae2beba21"
+  },
+  "failures_retained": [
+    "Initial protocol test import used bbt_proto::Ulid; corrected to ulid::Ulid before contract commit.",
+    "The bin-filter CLI command selected zero tests; not counted as validation.",
+    "CLI fixture caught unknown --to; fixed and the actual lib test passes.",
+    "Wrong night group messaging selected zero promises and exited 2; canonical group is messaging and tasks.",
+    "First full night: M2 failed only at Path JSON logging after proving real grouped send/inboxes; corrected to str(path).",
+    "Second full night: M2 exposed generic cap refusal; fixed classifier; M6 separately timed out on unmute frame and was reported to Aster/Oracle.",
+    "Focused M2 script passed full/0; observer then exited 1 on select.kqueue context-manager TypeError. Independent saved-result audit exited 0 with all predicates true; no M2 rerun.",
+    "Presubmit entry exited 2 on three generated own pyc files; those were removed before any validation ran."
+  ],
+  "limits": [
+    "No author presubmit, strict-clippy or parity claim; Oracle runs the mandatory landing pipeline once per standing publication fence.",
+    "Focused runner summary is red for five intentionally untested other promises; only M2 is claimed FULL PASS.",
+    "No mute-routing or M6 script change; its retained failure remains a separate named gap."
+  ],
+  "cleanup": {
+    "failed_private_roots_retired": [
+      "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enTl3iCW",
+      "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enJ3f4Bo"
+    ],
+    "owned_process_scan_matches": [],
+    "dev_target": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-dev",
+    "lsof_exit": 1,
+    "allocated_bytes_removed": 4501463040,
+    "retained_binary": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/bboxy450-term-65267bad",
+    "m6_public_logs": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/m6-timeout"
+  }
+}

@@ -1,0 +1,16 @@
+M2 source 65267badb72e233205f894a931d2efc6bad7a1c7 (G), velvet-m2-compose-final on 34ba72bf.
+Contract-only first commit 8051e22c (G); source/evidence are ready for Oracle landing, not a publication claim.
+
+crates/bbt-proto/src/gui/ui.rs:42 — bounded Compose request and optional produced-frame UiComposed receipt; old layouts omit it and old golden bytes are unchanged.
+crates/bboxy450-term/src/ctl/ui.rs:27 — compose verb/variant/parser and handler stay with the ui noun; seat names resolve through the existing client, roles/channels retain typed targets.
+crates/bboxy450-term/src/messaging.rs:523 — resolves seat/role chips from the native selected-swarm catalog; uses the existing prepare_for cap and native admitted composer batch.
+crates/bboxy450-term/src/main.rs:2774 — preflights before draft/queue/group mutation, submits through the retained composer; actual projected message IDs bind its group to the acquired-frame receipt.
+crates/bboxy450-term/src/main.rs:4812 — the prepared frame freezes the visible group and its clipped rectangle; the completion refuses another group's frame.
+crates/bboxy450-term/src/ctl.rs:1246 — named role_recipient_limit_32 survives the UI refusal wrapper as a typed kind with a bounded-recipient hint.
+scripts/e2e/messaging.py:217 — two actual matching seats plus a nonmember, exact receipt/inbox membership, grouped frame and PNG; 33 real members refuse with no retained message effect.
+
+Protocol golden/bounds: 5/0. Composer tests: 19/0. CLI parse lib test: 1/0. Typed failure regression: 1/0. All commands/actual raw hashes and earlier failures are in m2-compose-65267bad.json.
+M2 canonical-script verdict: FULL PASS / EXIT 0 on the exact retained 65267bad binary. Produced frame 49; two message IDs; cap 33; structured role_recipient_limit_32; refused message absent. Two fresh file-account headless apps, windows 0, six test records written. Independent process check: both recorded PIDs gone (ps EXIT 1), private runtime retired. The M2 PNG was image-read: one operator group, two recipients, actual text, native role chip count 2 retained.
+The scoped runner remains RED for the other five deliberately unrun promises. Its observer failed only after the script/record run at the kqueue audit; saved-result audit then EXIT 0, every predicate true. No full-night green claim.
+
+The earlier whole-group run retains the unrelated M6 unmute timeout: target=None, last=175, pending=0, Mute false=Ok(false). Reported to Aster/Oracle; not fixed or labelled pass here. No renderer/style change. No author presubmit/strict/parity claim: publishing stays with the Oracle per this pane's standing fence; land.sh supplies that check once.
