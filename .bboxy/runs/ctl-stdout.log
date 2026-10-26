@@ -12,5 +12,7 @@ Final T6-only night command: bin/bboxy450-term e2e night --group terminal --scri
 T6 raw t6-final.stdout.jsonl SHA256 f5bfa388e899e2104b191c676a6266835137f91186f188b03a3d33077413d02f; stderr empty; two file-custody headless apps independently gone and endpoints absent.
 Broader initial stdout-boundary binary terminal night: EXIT0, GREEN9/9 FULL, 9 records written; terminal.stdout.jsonl SHA256 7d8e7ff37917f295ad2ed68aa92f11d371893d87a487e99eac38247a3076216b; 11 original/relaunched app PIDs independently absent.
 Fixture corrections: readonly /dev/null is ignored by this runtime (use actual EIO); copied helper paths then symlink-home subsets failed setup before harness work; canonical paths/copy seed fixed the private test setup only.
-Author land.sh presubmit pending; no main-watch/postsubmit, release bundle installation or remote provider-model judgement claim.
+Author sh scripts/land.sh: EXIT0, signed 77b190beaa40474f37d434bee46bc971267008d2 LANDED; Rust343/0/47 ignored, ctl20/0, strict all-target Clippy0, fast invariants14/0, GUI wire goldens2/0; 357.365s (build227.193/run130.172).
+Author raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/77b190beaa40474f37d434bee46bc971267008d2-f94a4eaa/commands.log SHA256 ca3b3ae730ae3717dd4fae0872ec2ea2b0af978b55eb4372af8401f6ee176822
+No postsubmit/main-watch, release bundle installation, physical keyboard or remote provider-model judgement claim. GitHub issue remains for Oracle disposition.
 Raw private evidence: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-stdout-nvogi4lw
