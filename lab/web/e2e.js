@@ -8,7 +8,7 @@ window.E2E_PROMISES = [
  {
   "id": "T2",
   "group": "terminal",
-  "text": "typing in a focused pane reaches the program; the echo appears within one frame; a 100 kB paste arrives intact"
+  "text": "typing in a focused pane reaches the program; the echo appears within one frame; a 100 kB paste arrives intact; \"within one frame\" counts from the frame after the echo's bytes are ingested, since the program's own echo time is not the app's: each produced frame records the screen sequence it drew for every pane, and the first frame produced after the echo's sequence is ingested draws that sequence or a later one"
  },
  {
   "id": "T3",
