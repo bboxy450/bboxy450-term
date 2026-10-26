@@ -8,7 +8,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-26T11:37:23Z"
+updated: "2026-10-26T17:47:10Z"
 ---
 # e2e script map
 
@@ -47,7 +47,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | R5 | `scripts/e2e/R5.sh` | full | | |
 | R6 | `scripts/e2e/R6.sh` | partial | a waiting seat posts one desktop notification; clicking it raises the window, switches space | |
 | M1 | `scripts/e2e/M1.sh` | partial | from the composer | |
-| M2 | `scripts/e2e/M2.sh` | partial | the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason | |
+| M2 | `scripts/e2e/M2.sh` | full | — | |
 | M3 | `scripts/e2e/M3.sh` | partial | harness: stand-in; real-harness receipt; the seat row shows the task (assigned-task readback and a window capture alone do not prove that row) | |
 | M4 | `scripts/e2e/M4.sh` | full | — | |
 | M5 | `scripts/e2e/M5.sh` | partial | harness: stand-in; a real Worker and real Oracle harness ask for the unassigned inventory (the admitted seat MCP bridge is exercised by deterministic fixtures) | |
@@ -416,6 +416,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** ctl.rs:1736; proto/messaging.rs:399; mcp/journal.rs:120.
 
 ### M2
+
+**Current script:** `ctl ui compose --to role:executor` drives the native composer once. Two matching seats receive one message each, a nonmember receives none, and the produced frame contains one send group bound to both message IDs. A second fixture has 33 real matching seats and requires `role_recipient_limit_32` before any retained message effect. The exact M2 script passed with full coverage in `m2-compose-65267bad.log`; the later whole messaging night passed 7/7 as recorded in `ma9-attention-night.log`. Composer support landed in `0eca5002`; the historical gap below is the baseline, not current coverage.
 
 **Promise:** the role chip fans out to the exact seats holding the role, one receipt each, shown as one send; above 32 seats it refuses with a named reason.
 

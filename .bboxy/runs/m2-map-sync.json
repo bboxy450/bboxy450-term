@@ -1,0 +1,86 @@
+{
+  "brief": "b45f8c30-bfa7-4778-8502-707d668a84c2 (redelivery; scripts already merged in 64ab59be)",
+  "scope": "records-only: synchronize the stale M2 map row with its existing full script and retained execution proof",
+  "base": "b61ea30b766a3ec62f1a070610c13e81847c7f7b",
+  "change": ".bboxy/specs/e2e-script-map.md:50 \u2014 M2 coverage now matches scripts/e2e/M2.sh:1; current-script paragraph links composer and retained proof while leaving dated baseline gaps intact",
+  "proof": [
+    "scripts/e2e/messaging.py:225 \u2014 one native role composer call and produced send-group receipt",
+    "scripts/e2e/messaging.py:257 \u2014 33 real matching seats and named refusal before retained effects",
+    ".bboxy/runs/m2-compose-65267bad.log:13 \u2014 canonical M2 FULL PASS / EXIT0, frame49, two messages, cap33",
+    ".bboxy/runs/ma9-attention-night.log:19 \u2014 later canonical messaging group EXIT0, 7/7, partial only M1/M3/M5/M6"
+  ],
+  "checks": {
+    "header_map_pairs": [
+      {
+        "id": "M1",
+        "header": "# coverage: partial; missing: from the composer",
+        "map_row": "| M1 | `scripts/e2e/M1.sh` | partial | from the composer | |"
+      },
+      {
+        "id": "M2",
+        "header": "# coverage: full",
+        "map_row": "| M2 | `scripts/e2e/M2.sh` | full | \u2014 | |"
+      },
+      {
+        "id": "M6",
+        "header": "# coverage: partial; missing: priority delays, never deletes",
+        "map_row": "| M6 | `scripts/e2e/M6.sh` | partial | priority delays, never deletes | |"
+      },
+      {
+        "id": "R2",
+        "header": "# coverage: full",
+        "map_row": "| R2 | `scripts/e2e/R2.sh` | full | \u2014 | |"
+      },
+      {
+        "id": "R4",
+        "header": "# coverage: partial; missing: cards carry the rim and the swell out of the box",
+        "map_row": "| R4 | `scripts/e2e/R4.sh` | partial | cards carry the rim and the swell out of the box | |"
+      }
+    ],
+    "ancestry": [
+      {
+        "argv": [
+          "git",
+          "merge-base",
+          "--is-ancestor",
+          "aster-messaging-night",
+          "origin/main"
+        ],
+        "exit": 0
+      },
+      {
+        "argv": [
+          "git",
+          "merge-base",
+          "--is-ancestor",
+          "64ab59be",
+          "origin/main"
+        ],
+        "exit": 0
+      },
+      {
+        "argv": [
+          "git",
+          "merge-base",
+          "--is-ancestor",
+          "0eca5002",
+          "origin/main"
+        ],
+        "exit": 0
+      }
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/m2-map-sync-20261026/check.json",
+    "sha256": "ac6b7e5637628e402071d60a9dc2f10b7a2c855e59dad32b72b3538b5c87ace1",
+    "argv": [
+      "python3",
+      "-IB",
+      "-"
+    ],
+    "exit": 0
+  },
+  "limits": [
+    "No script, product, renderer, or API changes.",
+    "Existing runtime proofs referenced; no native test or full gate rerun for this records-only correction.",
+    "M1/M6/R4 retain their declared gaps; R2 remains full."
+  ]
+}
