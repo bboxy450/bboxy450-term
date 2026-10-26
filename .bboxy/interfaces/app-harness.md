@@ -21,6 +21,7 @@ updated: "2026-10-26T16:18:20Z"
 | Timing | a launched seat is a starting pane in the next frame; the harness comes up asynchronously |
 | States and lifecycle | each Codex seat gets its own app-server and socket, never the operator's daemon, and shares the user's harness home and login; a restart is generation plus one, resumed by session id |
 | Failure | the wake-up kit says whether a harness can be woken and names the fallback; native outcomes are never retried blindly |
+| Hook diagnostics (#56, Oracle cf405d78) | isolate inherited parent session IDs at Codex TUI/service exec; observe only its verified owner-PID, uniquely loaded thread via `thread/resume` with `excludeTurns:true` and no overrides, cancelled on binding/generation change; forward bounded `hook/completed` failures to the best-effort run journal, never hook input/context; unavailable stderr/exit/duration and async-hook coverage remain unknown, never inferred |
 | Versioning | the app never writes the user's `~/.claude` or `~/.codex`; writes the client makes there are listed with cause; the hook-trust record is the one accepted app-caused write |
 | Verified by | promises L3, L4, T6, T9; the native integration proof on installed clients |
 | Open | a real model's choice to orient is advisory only, never a verdict |

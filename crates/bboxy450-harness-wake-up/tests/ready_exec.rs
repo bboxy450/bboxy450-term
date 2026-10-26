@@ -52,7 +52,7 @@ fn ready_exec_child() {
         root.join("s").to_string_lossy().into(),
         "/bin/sh".into(),
         "-c".into(),
-        "printf '%s' \"$$\" > \"$1\"".into(),
+        "printf '%s' \"$$\" > \"$1\"; /usr/bin/env > \"$1.env\"".into(),
         "ready-exec".into(),
         root.join("exec-pid").to_string_lossy().into(),
     ])
@@ -65,6 +65,21 @@ fn child(root: &Path) -> Owned {
     Owned(
         Command::new(std::env::current_exe().unwrap())
             .args(["--ignored", "--exact", "ready_exec_child", "--nocapture"])
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", "fixture-home")
+            .env("CODEX_HOME", "fixture-codex")
+            .env("OPENAI_API_KEY", "fixture-auth")
+            .env("BBOXY_CAPABILITY", "fixture-admission")
+            .envs([
+                ("CODEX_THREAD_ID", "parent-thread"),
+                ("ICQ_CODEX_SOCKET", "parent-socket"),
+                ("CLAUDE_CODE_SESSION_ID", "parent-claude"),
+                ("CLAUDE_CODE_MESSAGING_SOCKET", "parent-claude-socket"),
+                ("PI_SESSION_ID", "parent-pi"),
+                ("PI_SESSION_FILE", "parent-pi-file"),
+                ("ICQ_HARNESS_DESCRIPTOR", "parent-descriptor"),
+            ])
             .env("BBT_READY_ROOT", root)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -116,6 +131,26 @@ fn a_ready_runtime_execs_the_client_in_the_same_pty_process() {
         .parse()
         .unwrap();
     assert_eq!(pid, child.0.id(), "exec introduced a second client process");
+    let env = std::fs::read_to_string(root.path().join("exec-pid.env")).unwrap();
+    for key in [
+        "CODEX_THREAD_ID",
+        "ICQ_CODEX_SOCKET",
+        "CLAUDE_CODE_SESSION_ID",
+        "CLAUDE_CODE_MESSAGING_SOCKET",
+        "PI_SESSION_ID",
+        "PI_SESSION_FILE",
+        "ICQ_HARNESS_DESCRIPTOR",
+    ] {
+        assert!(!env.lines().any(|line| line.starts_with(&format!("{key}="))));
+    }
+    for value in [
+        "HOME=fixture-home",
+        "CODEX_HOME=fixture-codex",
+        "OPENAI_API_KEY=fixture-auth",
+        "BBOXY_CAPABILITY=fixture-admission",
+    ] {
+        assert!(env.lines().any(|line| line == value), "lost {value}");
+    }
     assert!(!root.path().join("error").exists());
 }
 

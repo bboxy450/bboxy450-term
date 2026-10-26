@@ -5,6 +5,30 @@ use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
+// Session discovery belongs to the launched client, never its parent harness.
+// Preserve HOME, auth, model settings and the caller's BBOXY admission variables.
+const PARENT_SESSION_ENV: [&str; 7] = [
+    "CODEX_THREAD_ID",
+    "ICQ_CODEX_SOCKET",
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_MESSAGING_SOCKET",
+    "PI_SESSION_ID",
+    "PI_SESSION_FILE",
+    "ICQ_HARNESS_DESCRIPTOR",
+];
+
+fn isolated_runtime(program: &str, args: Vec<String>) -> (String, Vec<String>) {
+    // env replaces itself with the native service (same PID). This also works
+    // when an older, already-running supervisor inherited the parent's IDs.
+    let mut isolated = Vec::with_capacity(PARENT_SESSION_ENV.len() * 2 + args.len() + 2);
+    for key in PARENT_SESSION_ENV {
+        isolated.extend(["-u".into(), key.into()]);
+    }
+    isolated.extend(["--".into(), program.into()]);
+    isolated.extend(args);
+    ("/usr/bin/env".into(), isolated)
+}
+
 /// Caller-owned launch identity, paths, prompt/skill data and admitted control endpoint.
 pub struct LaunchContext<'a> {
     /// Caller-owned seat identity used to isolate launch configuration.
@@ -436,8 +460,9 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             // The caller may give this service a private controlling tty solely
             // for lifetime hangup. Its hooks must use the authenticated sink.
             runtime_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
+            let (program, args) = isolated_runtime(&spec.program, args);
             spec.runtime = Some(RuntimePlan {
-                program: spec.program.clone(),
+                program,
                 args,
                 env: runtime_env,
                 endpoint,
@@ -528,7 +553,12 @@ pub fn exec_when_ready(args: &[String]) -> Result<()> {
         || started.elapsed(),
         std::thread::sleep,
     )?;
-    Err(std::process::Command::new(program).args(rest).exec().into())
+    let mut command = std::process::Command::new(program);
+    command.args(rest);
+    for key in PARENT_SESSION_ENV {
+        command.env_remove(key);
+    }
+    Err(command.exec().into())
 }
 
 const ZSH_RC: &str = r#"ZDOTDIR=$_bbt_user_zdotdir
@@ -551,6 +581,39 @@ add-zsh-hook precmd _bbt_precmd
 #[cfg(test)]
 mod runtime_tests {
     use super::*;
+
+    #[test]
+    fn native_runtime_drops_only_parent_session_metadata_without_an_extra_process() {
+        let script = r#"for key in CODEX_THREAD_ID ICQ_CODEX_SOCKET CLAUDE_CODE_SESSION_ID CLAUDE_CODE_MESSAGING_SOCKET PI_SESSION_ID PI_SESSION_FILE ICQ_HARNESS_DESCRIPTOR; do
+            if /usr/bin/printenv "$key" >/dev/null; then exit 91; fi
+        done
+        test "$HOME" = fixture-home && test "$CODEX_HOME" = fixture-codex &&
+        test "$OPENAI_API_KEY" = fixture-auth && test "$BBOXY_CAPABILITY" = fixture-admission || exit 92
+        printf '%s' "$$""#;
+        let (program, args) = isolated_runtime("/bin/sh", vec!["-c".into(), script.into()]);
+        let mut command = std::process::Command::new(program);
+        command
+            .args(args)
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("HOME", "fixture-home")
+            .env("CODEX_HOME", "fixture-codex")
+            .env("OPENAI_API_KEY", "fixture-auth")
+            .env("BBOXY_CAPABILITY", "fixture-admission")
+            .stdout(std::process::Stdio::piped());
+        for key in PARENT_SESSION_ENV {
+            command.env(key, "parent-fixture");
+        }
+        let child = command.spawn().unwrap();
+        let pid = child.id();
+        let output = child.wait_with_output().unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8(output.stdout).unwrap(), pid.to_string());
+    }
 
     // keeps: decision #279
     #[test]

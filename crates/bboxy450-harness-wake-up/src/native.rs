@@ -1,5 +1,6 @@
-//! Installed native protocol contracts; no thread creation/resume, user config
-//! changes, model calls or automatic resubmission on an ambiguous mutation.
+//! Installed native protocol contracts; no thread creation, user config changes
+//! or model calls. Diagnostics may rejoin only a verified loaded private thread
+//! without overrides; ambiguous control mutations are never automatically retried.
 use super::{
     Binding, Endpoint, Evidence, Grade, Observation, Priority, Session, State, WaitingKind,
     WakeOutcome,
@@ -702,6 +703,168 @@ pub async fn wake(
         )),
         Err(_) => unavailable("native preflight timed out; no mutation attempted"),
     }
+}
+
+/// A bounded, native hook failure; context/model output is never retained here.
+pub struct HookFailure {
+    /// Native run identity, used only for bounded duplicate suppression.
+    pub id: String,
+    /// Hook event name supplied by the native client.
+    pub event: String,
+    /// Native hook configuration source classification.
+    pub source: String,
+    /// Configuration path, metadata only: never opened by this projection.
+    pub source_path: String,
+    /// Native terminal status message; redact at the application journal boundary.
+    pub message: String,
+    /// Measured native duration, absent if unavailable/invalid.
+    pub duration_ms: Option<u64>,
+    /// Explicitly reported exit code, otherwise unknown (never guessed from status).
+    pub exit_code: Option<i32>,
+    /// Only error-kind entries, retaining the last four KiB.
+    pub stderr: String,
+}
+fn hook_exit_code(text: &str) -> Option<i32> {
+    let lower = text.to_ascii_lowercase();
+    for marker in ["exited with code ", "exit code "] {
+        if let Some((_, rest)) = lower.split_once(marker) {
+            let number: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_digit() || *c == '-')
+                .collect();
+            if let Ok(code) = number.parse() {
+                return Some(code);
+            }
+        }
+    }
+    None
+}
+/// Select a failure from the exact observed thread, without copying hook input/context.
+pub fn codex_hook_failure(event: &Value, thread: &str) -> Option<HookFailure> {
+    if event["method"] != "hook/completed" || event["params"]["threadId"] != thread {
+        return None;
+    }
+    let run = &event["params"]["run"];
+    let id = run["id"]
+        .as_str()
+        .filter(|s| !s.is_empty() && s.len() <= 256)?;
+    let message = run["statusMessage"].as_str().unwrap_or("");
+    let exit_code = hook_exit_code(message);
+    if !matches!(run["status"].as_str(), Some("failed" | "blocked"))
+        && !exit_code.is_some_and(|n| n != 0)
+    {
+        return None;
+    }
+    let mut stderr = String::new();
+    for entry in run["entries"].as_array()? {
+        if entry["kind"] != "error" {
+            continue;
+        }
+        if let Some(text) = entry["text"].as_str() {
+            if !stderr.is_empty() {
+                stderr.push('\n');
+            }
+            stderr.push_str(text);
+            let drop = stderr.ceil_char_boundary(stderr.len().saturating_sub(4096));
+            if drop > 0 {
+                stderr.drain(..drop);
+            }
+        }
+    }
+    Some(HookFailure {
+        id: id.into(),
+        event: super::observe::short(run["eventName"].as_str()?, 128),
+        source: super::observe::short(run["source"].as_str().unwrap_or("unknown"), 64),
+        source_path: super::observe::short(run["sourcePath"].as_str().unwrap_or("unknown"), 512),
+        message: super::observe::short(message, 1024),
+        duration_ms: run["durationMs"].as_u64(),
+        exit_code,
+        stderr,
+    })
+}
+/// Private-runtime observation channel, with no method that sends native control.
+pub struct CodexHookObserver {
+    socket: Socket,
+    pending: std::collections::VecDeque<HookFailure>,
+    thread: String,
+}
+impl CodexHookObserver {
+    /// Await one bounded hook failure; unrelated model/tool events are discarded.
+    /// The IO owner cancels the future when the seat/session/generation ends.
+    /// # Errors
+    /// Returns a closed socket or invalid native frame. No native request is retried.
+    pub async fn next_failure(&mut self) -> Result<HookFailure> {
+        if let Some(next) = self.pending.pop_front() {
+            return Ok(next);
+        }
+        loop {
+            let frame = self
+                .socket
+                .next()
+                .await
+                .ok_or_else(|| invalid("native observer closed"))??;
+            if let Message::Text(text) = frame {
+                let event: Value = serde_json::from_str(&text)?;
+                if let Some(failure) = codex_hook_failure(&event, &self.thread) {
+                    return Ok(failure);
+                }
+            } else {
+                self.socket.flush().await?;
+            }
+        }
+    }
+}
+/// Join only an already-loaded thread in its verified launch-selected runtime.
+/// Sends no model/config/permission overrides and never creates or starts a turn.
+/// # Errors
+/// Rejects stale process/runtime identities, absent/ambiguous/unloaded threads,
+/// unknown handshake results and bounded-frame/prefetch failures. No retry is attempted.
+pub async fn codex_hook_observer(binding: &Binding) -> Result<CodexHookObserver> {
+    verify_process(binding)?;
+    let runtime = binding
+        .runtime
+        .as_ref()
+        .ok_or_else(|| invalid("native runtime is not bound"))?;
+    verify_codex_runtime(binding, &runtime.endpoint)?;
+    tokio::time::timeout(DEADLINE, async {
+        let mut socket = open_codex(&runtime.endpoint, Some(runtime.pid)).await?;
+        send(&mut socket, json!({"id":2,"method":"thread/loaded/list","params":{}})).await?;
+        let loaded = reply(&mut socket, 2).await?;
+        if loaded["data"] != json!([binding.session]) || !loaded["nextCursor"].is_null() {
+            return Err(invalid("observer thread is not the unique loaded private thread"));
+        }
+        read_codex_thread(&mut socket, &runtime.endpoint, &binding.session, 3).await?;
+        send(&mut socket, json!({"id":4,"method":"thread/resume","params":{"threadId":binding.session,"excludeTurns":true}})).await?;
+        let mut pending = std::collections::VecDeque::new();
+        for _ in 0..128 {
+            let frame = socket.next().await
+                .ok_or_else(|| invalid("native observer closed during join"))??;
+            let value: Value = match frame {
+                Message::Text(text) => serde_json::from_str(&text)?,
+                Message::Ping(_) | Message::Pong(_) => { socket.flush().await?; continue; }
+                _ => return Err(invalid("native observer closed during join")),
+            };
+            if value.get("method").is_some() {
+                if value.get("id").is_some() {
+                    return Err(invalid("native observer cannot answer server control requests"));
+                }
+                if let Some(failure) = codex_hook_failure(&value, &binding.session) {
+                    if pending.len() == 8 {
+                        return Err(invalid("native hook observer startup failures clipped"));
+                    }
+                    pending.push_back(failure);
+                }
+                continue;
+            }
+            if value["id"] != 4 || value.get("error").is_some()
+                || value["result"]["thread"]["id"] != binding.session
+                || !matches!(value["result"]["thread"]["status"]["type"].as_str(), Some("idle" | "active")) {
+                return Err(invalid("native observer join unconfirmed; no retry"));
+            }
+            return Ok(CodexHookObserver { socket, pending, thread: binding.session.clone() });
+        }
+        Err(invalid("native observer join notification bound"))
+    }).await?
 }
 
 #[cfg(test)]

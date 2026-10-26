@@ -312,6 +312,12 @@ enum Command {
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
     CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
+    NativeHookFailure(
+        Box<(
+            crate::adapters::Binding,
+            crate::adapters::native::HookFailure,
+        )>,
+    ),
     Native(
         Ulid,
         u64,
@@ -365,6 +371,7 @@ impl Command {
                 | Self::Record(..)
                 | Self::Endpoint(..)
                 | Self::Status(..)
+                | Self::NativeHookFailure(..)
                 | Self::GuiWatchInterest { .. }
                 | Self::GuiDebug(..)
                 | Self::GuiPlugin(..)
@@ -1203,6 +1210,15 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
+    fn native_hook_failure(
+        &self,
+        binding: crate::adapters::Binding,
+        failure: crate::adapters::native::HookFailure,
+    ) -> bool {
+        self.tx
+            .try_send(Command::NativeHookFailure(Box::new((binding, failure))))
+            .is_ok()
+    }
     pub async fn native_event(
         &self,
         seat: Ulid,
@@ -1988,8 +2004,33 @@ impl PendingSeats {
         self.enqueue(key);
     }
 }
+fn native_hook_row(
+    current: Option<&crate::adapters::Binding>,
+    binding: &crate::adapters::Binding,
+    failure: crate::adapters::native::HookFailure,
+) -> Option<bbt_rt::error_journal::Failure> {
+    if current != Some(binding) {
+        return None;
+    }
+    let message = format!(
+        "generation {} · {} · {} · {}",
+        binding.generation,
+        failure.source,
+        crate::adapters::observe::short(&failure.source_path, 256),
+        crate::adapters::observe::short(&failure.message, 512)
+    );
+    let mut row = bbt_rt::error_journal::Failure::new("hook", &failure.event, message)
+        .seat(binding.seat)
+        .harness("codex")
+        .exit(failure.exit_code)
+        .stderr(failure.stderr.as_bytes());
+    if let Some(ms) = failure.duration_ms {
+        row = row.duration(Duration::from_millis(ms));
+    }
+    Some(row)
+}
 struct NativeReader {
-    session: String,
+    binding: crate::adapters::Binding,
     task: tokio::task::JoinHandle<()>,
 }
 impl Drop for NativeReader {
@@ -6099,7 +6140,7 @@ impl Worker {
                     && view.adapter.binding.runtime.is_some()
                 {
                     let binding = view.adapter.binding.clone();
-                    let session = binding.session.clone();
+                    let reader_binding = binding.clone();
                     let client = self.client.clone();
                     let task = self.handle.spawn(async move {
                         loop {
@@ -6117,13 +6158,17 @@ impl Worker {
                             }
                         }
                     });
-                    view.native_reader = Some(NativeReader { session, task });
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
                 }
                 if view.adapter.record.kind == "codex"
                     && !view.adapter.binding.session.starts_with("process-")
-                    && view.native_reader.as_ref().is_none_or(|r| {
-                        r.session != view.adapter.binding.session || r.task.is_finished()
-                    })
+                    && view
+                        .native_reader
+                        .as_ref()
+                        .is_none_or(|r| r.binding != view.adapter.binding || r.task.is_finished())
                     && let Some(runtime) = &view.adapter.binding.runtime
                 {
                     let path = runtime.endpoint.clone();
@@ -6137,19 +6182,52 @@ impl Worker {
                     let generation = view.generation;
                     let client = self.client.clone();
                     let binding = view.adapter.binding.clone();
+                    let reader_binding = binding.clone();
+                    let diagnostics_root = self.config.run_dir.clone();
                     let task = self.handle.spawn(async move {
-                        if crate::adapters::native::verify_codex_runtime(&binding, &path).is_err() {
-                            return;
-                        }
+                        let mut observer = match crate::adapters::native::codex_hook_observer(&binding).await {
+                            Ok(observer) => Some(observer),
+                            Err(error) => {
+                                bbt_rt::error_journal::report_to(&diagnostics_root, bbt_rt::error_journal::Failure::new("native", "hook_observer", error).seat(id).harness("codex"));
+                                None
+                            }
+                        };
+                        let mut recent = VecDeque::<String>::new();
+                        let mut tick = tokio::time::interval(Duration::from_millis(200));
+                        tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                         loop {
+                            if let Some(reader) = &mut observer {
+                                tokio::select! {
+                                    failure = reader.next_failure() => {
+                                        match failure {
+                                            Ok(failure) => {
+                                                let run = failure.id.clone();
+                                                if !recent.contains(&run) && client.native_hook_failure(binding.clone(), failure) {
+                                                    if recent.len() == 64 { recent.pop_front(); }
+                                                    recent.push_back(run);
+                                                }
+                                            }
+                                            Err(error) => {
+                                                bbt_rt::error_journal::report_to(&diagnostics_root, bbt_rt::error_journal::Failure::new("native", "hook_observer_closed", error).seat(id).harness("codex"));
+                                                observer = None;
+                                            }
+                                        }
+                                        continue;
+                                    }
+                                    _ = tick.tick() => {}
+                                }
+                            } else { tick.tick().await; }
+                            // No blind rejoin retries: existing status observations remain live.
                             if let Ok(status) = crate::adapters::native::codex_owned_status(&binding).await {
                                 let event = serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
                                 if client.native_event(id, generation, event).await.is_err() { break; }
                             }
-                            tokio::time::sleep(Duration::from_millis(200)).await;
                         }
                     });
-                    view.native_reader = Some(NativeReader { session, task });
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
                 }
                 view.adapter.tick(view.state.sequence, now);
             }
@@ -7902,6 +7980,20 @@ impl Worker {
                         }
                         let _ = reply.send(result);
                     }
+                    Command::NativeHookFailure(payload) => {
+                        let (binding, failure) = *payload;
+                        let current = self
+                            .views
+                            .get(&binding.seat)
+                            .filter(|view| {
+                                view.info.exited.is_none()
+                                    && view.info.generation == binding.generation
+                            })
+                            .map(|view| &view.adapter.binding);
+                        if let Some(row) = native_hook_row(current, &binding, failure) {
+                            bbt_rt::error_journal::report_to(&self.config.run_dir, row);
+                        }
+                    }
                     Command::Native(id, generation, event, reply) => {
                         let before = self.views.get(&id).map(|v| v.adapter.status.clone());
                         let result = self
@@ -9101,5 +9193,87 @@ mod identity_retry_clock_tests {
         );
         drop(worker);
         runtime.block_on(bus.shutdown()).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod native_hook_tests {
+    use super::*;
+    fn binding() -> crate::adapters::Binding {
+        crate::adapters::Binding {
+            seat: Ulid::new(),
+            session: "private-thread".into(),
+            pid: 42,
+            process_start: "fixture-start".into(),
+            generation: 1,
+            attachment_generation: 1,
+            runtime: None,
+        }
+    }
+    fn failure() -> crate::adapters::native::HookFailure {
+        crate::adapters::native::HookFailure {
+            id: "run".into(),
+            event: "sessionStart".into(),
+            source: "user".into(),
+            source_path: "/fixture/hooks.json".into(),
+            message: "Hook exited with code 1".into(),
+            duration_ms: Some(7),
+            exit_code: Some(1),
+            stderr: "ambiguous inherited hook session".into(),
+        }
+    }
+    #[test]
+    fn a_hook_failure_is_journaled_only_for_its_exact_live_attachment() {
+        let bound = binding();
+        let row = native_hook_row(Some(&bound), &bound, failure()).unwrap();
+        assert_eq!(row.seat, Some(bound.seat.to_string()));
+        assert_eq!(row.harness.as_deref(), Some("codex"));
+        assert_eq!(row.exit_code, Some(1));
+        assert_eq!(row.duration_ms, Some(7));
+        assert_eq!(row.stderr, "ambiguous inherited hook session");
+        assert!(native_hook_row(None, &bound, failure()).is_none());
+        for field in 0..5 {
+            let mut newer = bound.clone();
+            match field {
+                0 => newer.generation += 1,
+                1 => newer.attachment_generation += 1,
+                2 => newer.session = "replacement-thread".into(),
+                3 => newer.pid += 1,
+                _ => newer.process_start = "reused-pid".into(),
+            }
+            assert!(native_hook_row(Some(&newer), &bound, failure()).is_none());
+        }
+    }
+    #[test]
+    fn retiring_a_native_reader_cancels_its_observer_task() {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async {
+                struct Done(Option<oneshot::Sender<()>>);
+                impl Drop for Done {
+                    fn drop(&mut self) {
+                        let _ = self.0.take().unwrap().send(());
+                    }
+                }
+                let (started, ready) = oneshot::channel();
+                let (ended, done) = oneshot::channel();
+                let task = tokio::spawn(async move {
+                    let _done = Done(Some(ended));
+                    let _ = started.send(());
+                    std::future::pending::<()>().await;
+                });
+                let reader = NativeReader {
+                    binding: binding(),
+                    task,
+                };
+                ready.await.unwrap();
+                drop(reader);
+                tokio::time::timeout(Duration::from_secs(30), done)
+                    .await
+                    .unwrap()
+                    .unwrap();
+            });
     }
 }

@@ -596,3 +596,142 @@ fn literal_preparation_consumes_readiness_and_unknown_never_retries() {
         }
     }
 }
+
+#[test]
+fn codex_hook_observer_joins_only_the_loaded_private_thread_without_overrides() {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("hooks.sock");
+    let mut bound = binding();
+    bound.runtime = Some(bboxy450_harness_wake_up::RuntimeBinding {
+        endpoint: path.clone(),
+        pid: bound.pid,
+        process_start: bound.process_start.clone(),
+    });
+    let thread = bound.session.clone();
+    runtime().block_on(async {
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+            let mut methods = Vec::new();
+            for method in ["initialize", "initialized", "thread/loaded/list", "thread/read", "thread/resume"] {
+                let frame = ws.next().await.unwrap().unwrap();
+                let v: serde_json::Value = serde_json::from_str(frame.to_text().unwrap()).unwrap();
+                assert_eq!(v["method"], method); methods.push(method);
+                if method == "initialized" { continue; }
+                let result = match method {
+                    "thread/loaded/list" => json!({"data":[thread],"nextCursor":null}),
+                    "thread/read" => json!({"thread":{"id":thread,"status":{"type":"idle"}}}),
+                    "thread/resume" => {
+                        assert_eq!(v["params"], json!({"threadId":thread,"excludeTurns":true}));
+                        let event = json!({"method":"hook/completed","params":{"threadId":thread,"run":{
+                            "id":"run-1","eventName":"sessionStart","source":"user","sourcePath":"/fixture/.codex/hooks.json",
+                            "status":"failed","statusMessage":"Hook exited with code 1","durationMs":7,
+                            "entries":[{"kind":"context","text":"model context must not be retained"},{"kind":"error","text":"actual hook stderr"}]}}});
+                        ws.send(Message::Text(event.to_string().into())).await.unwrap();
+                        json!({"thread":{"id":thread,"status":{"type":"idle"}}})
+                    },
+                    _ => json!({}),
+                };
+                ws.send(Message::Text(json!({"id":v["id"],"result":result}).to_string().into())).await.unwrap();
+            }
+            let next = tokio::time::timeout(std::time::Duration::from_secs(60), ws.next()).await.unwrap();
+            assert!(!matches!(next, Some(Ok(Message::Text(_)))), "observer sent a control request after joining");
+            methods
+        });
+        let mut observer = native::codex_hook_observer(&bound).await.unwrap();
+        let failure = observer.next_failure().await.unwrap();
+        assert_eq!(failure.id, "run-1"); assert_eq!(failure.event, "sessionStart");
+        assert_eq!(failure.exit_code, Some(1)); assert_eq!(failure.duration_ms, Some(7));
+        assert_eq!(failure.source, "user"); assert_eq!(failure.source_path, "/fixture/.codex/hooks.json");
+        assert_eq!(failure.stderr, "actual hook stderr");
+        drop(observer);
+        assert_eq!(server.await.unwrap(), ["initialize", "initialized", "thread/loaded/list", "thread/read", "thread/resume"]);
+    });
+}
+
+#[test]
+fn hook_failure_projection_rejects_other_threads_and_keeps_only_a_bounded_error_tail() {
+    let mut event = json!({"method":"hook/completed","params":{"threadId":"owned","run":{
+        "id":"one","eventName":"sessionStart","source":"user","sourcePath":"/fixture/hooks.json",
+        "status":"failed","statusMessage":"failure; exit unavailable","durationMs":null,
+        "entries":[{"kind":"context","text":"private prompt"},{"kind":"feedback","text":"model input"},
+            {"kind":"error","text":"界".repeat(2000)}]}}});
+    assert!(native::codex_hook_failure(&event, "another").is_none());
+    let failure = native::codex_hook_failure(&event, "owned").unwrap();
+    assert_eq!(failure.exit_code, None);
+    assert_eq!(failure.duration_ms, None);
+    assert_eq!(failure.stderr, "界".repeat(1365));
+    event["params"]["run"]["status"] = json!("completed");
+    assert!(native::codex_hook_failure(&event, "owned").is_none());
+    event["params"]["run"]["statusMessage"] = json!("hook exit code -2");
+    assert_eq!(
+        native::codex_hook_failure(&event, "owned")
+            .unwrap()
+            .exit_code,
+        Some(-2)
+    );
+    event["params"]["run"]["id"] = json!("x".repeat(257));
+    assert!(native::codex_hook_failure(&event, "owned").is_none());
+}
+
+#[test]
+fn hook_observer_never_resumes_an_unloaded_ambiguous_or_stale_thread() {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    for (loaded, cursor, status) in [
+        (json!([]), json!(null), "idle"),
+        (json!(["fixture-session", "other"]), json!(null), "idle"),
+        (json!(["fixture-session"]), json!("more"), "idle"),
+        (json!(["fixture-session"]), json!(null), "notLoaded"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("s");
+        let mut bound = binding();
+        bound.runtime = Some(bboxy450_harness_wake_up::RuntimeBinding {
+            endpoint: path.clone(),
+            pid: bound.pid,
+            process_start: bound.process_start.clone(),
+        });
+        runtime().block_on(async {
+            let listener = tokio::net::UnixListener::bind(&path).unwrap();
+            let server = tokio::spawn(async move {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                while let Some(Ok(Message::Text(frame))) = ws.next().await {
+                    let request: serde_json::Value = serde_json::from_str(&frame).unwrap();
+                    let result = match request["method"].as_str().unwrap() {
+                        "initialize" => json!({}),
+                        "initialized" => continue,
+                        "thread/loaded/list" => json!({"data":loaded,"nextCursor":cursor}),
+                        "thread/read" => {
+                            json!({"thread":{"id":"fixture-session","status":{"type":status}}})
+                        }
+                        method => panic!("unverified observer sent {method}"),
+                    };
+                    ws.send(Message::Text(
+                        json!({"id":request["id"],"result":result})
+                            .to_string()
+                            .into(),
+                    ))
+                    .await
+                    .unwrap();
+                }
+            });
+            assert!(native::codex_hook_observer(&bound).await.is_err());
+            tokio::time::timeout(std::time::Duration::from_secs(60), server)
+                .await
+                .unwrap()
+                .unwrap();
+        });
+    }
+    let mut stale = binding();
+    stale.process_start = "different-start".into();
+    assert!(
+        runtime()
+            .block_on(native::codex_hook_observer(&stale))
+            .is_err()
+    );
+}

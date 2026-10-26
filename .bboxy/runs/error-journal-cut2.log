@@ -1,0 +1,15 @@
+#56 cut2 — private Codex hook observations, Rook <EXECUTOR>
+Brief aec5dcde, split ruling cf405d78; cut1 LANDED4d0e66e4 / full normal author EXIT0.
+kit/native.rs — verify live attachment/start stamp, runtime owner PID, unique loaded thread; resume excludeTurns:true, no config/permission/model fields; bounded failed-hook projection only.
+mux/logic.rs — one owned observer per exact binding; Drop aborts; stale results rejected; bounded recent IDs; try_send/report_to never wait; existing status polling retained without join retries.
+kit/launch.rs — Codex TUI and service exec drop7 inherited parent session identifiers; HOME/auth/BBOXY kept; env wrapper preserves PID and works through older surviving supervisors.
+app-harness.md — one diagnostics seam line; no wire, workload, model, user-config or operator-seat mutation.
+Kit lib/adapters/ready-exec EXIT0:24 passed,0 failed; raw SHA256 a0c51e5ce8127dce3d165565d784958fdc02ccd8e0760c1172b6877e1f7d424c
+Mux check --tests EXIT0; raw SHA256 03c51287e49c10e99c36a877bfe3455d9385472512afcf688aa964d7c371556c
+Mux exact live-attachment/drop-cancel tests EXIT0:2/0; raw SHA256 246cbe4de79315798909c78c34a957c8469f0163512daddf3cb71fc7b36e3709
+Kit real launch/resume wiring EXIT0:2/0; raw SHA256 e4bb31e18b8d60d0b6242ef923b811f837de9125a58d3f1ef45f040097ca6ce6
+Kit+mux all-target strict Clippy EXIT0; raw SHA256 1d277e1d3b3553c36a0a3899134c9a31c3170e404e5a280bdac5982ceb45786e
+Installed ICQ0.21.0 fake-env preflight EXIT1 in8ms: ambiguous inherited hook session; no home, daemon or registration created; stderr SHA256 b4955e08ef2e5166193c48b755335b067d2a452b3f7cf150d0c761103a4da167
+Retained strict red: items_after_test_module; moved production code before test module, no allowance added.
+Original operator stderr/root cause remains unproven. Historical hooks and async-hook notifications unavailable; no success claim for that gap.
+Raw paths under /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-error-journal-9sb463or; own target-cut2, cache-env/jobs2, O1/debug0/assertions; author land.sh is the final gate.
