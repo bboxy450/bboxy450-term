@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T01:09:42Z"
+updated: "2026-10-26T02:28:43Z"
 ---
 # Messaging attention
 
@@ -69,7 +69,7 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 
 **Always wake, whatever the policy**, for **conversation** only: a message from the operator principal, a task delegated to that seat, and a reply in a thread that seat started. A seat cannot set itself to miss its own work. An **event** never wakes by default, whoever authored it, the operator included: an operator's mute notice is status, not a question (Velvet's question, 2026-10-25).
 
-**Digest bounds**: a window of at most 10 minutes and a cap of 50 messages, whichever comes first, read from the injected App clock so tests do not sleep ([[test-policy]] B1); a digest never waits longer than its window, so `digest` delays a wake and never holds a message.
+**Digest bounds**: a window of at most 10 minutes and a cap of 50 messages, whichever comes first, read from the **messaging service's own injected time port** (`ready(now)` and `prepare(…, now)` in the service, supplied by logic), so unit tests drive it frozen and never sleep ([[test-policy]] B1); this is not the UI animation clock of `ctl ui clock`, which stays a frontend concern and does not advance backend digests (corrected at Velvet's question, 2026-10-25; an earlier wording said "App clock"); a digest never waits longer than its window, so `digest` delays a wake and never holds a message.
 
 The policy is set through MCP tools for the seat itself (`attention_get`, `attention_set`), `ctl seat attention <seat> [<destination> <class> <mode>]` for the operator and scripts, and Settings › Messaging per seat. Orient tells a seat its policy on its first turn and how to read its inbox (the field policy of [[mcp-control-plane]]).
 
@@ -99,7 +99,7 @@ One Executor per row, landed through `land.sh`, each small enough to land the da
 | MA-6 | Orient reports the policy; `ctl seat attention` | `bbt-mux`, `bboxy450-term` | ctl tests; an Orient fixture |
 | MA-7 | `wake` ledger lines and the nightly token fill | `bbt-mux`, `scripts/` | a ledger fixture |
 | MA-8 | Settings › Messaging per seat; the sidebar row shows deferred count and the next digest time | `bbt-ui`, lab | parity cases for the new states |
-| MA-9 | e2e promise and night script together: an event never wakes an idle seat under defaults, a DM does, a digest arrives once after its window | `e2e-acceptance` §1, `scripts/e2e/` | the night script, coverage full; added with its script so the night never shows an untested promise |
+| MA-9 | e2e promise and night script together: an event never wakes an idle seat under defaults, a DM does, a digest arrives once **at its cap of 50** (the deterministic path; the window path is proven at unit level on the injected time port) | `e2e-acceptance` §1, `scripts/e2e/` | the night script, coverage full; added with its script so the night never shows an untested promise |
 
 MA-1 lands first, alone, as the contract; MA-2 to MA-7 follow in any order behind it; MA-8 and MA-9 last.
 
