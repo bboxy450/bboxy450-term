@@ -636,6 +636,7 @@ async fn supervisor_main() -> Result<()> {
         .await?
         .ok_or_else(|| invalid("missing supervisor bootstrap"))?;
     let config: Config = serde_json::from_slice(&line)?;
+    bbt_rt::error_journal::configure(&config.run_dir);
     let supervisor = bbt_mux::Supervisor::start(bbt_mux::Config {
         socket_path: Some(config.socket.clone()),
         input_probes: vec![b"\x1b]7501;?\x07".to_vec(), b"\x1b]7501;?\x1b\\".to_vec()],
@@ -680,6 +681,7 @@ async fn logic_main() -> Result<()> {
         .ok_or_else(|| invalid("missing logic bootstrap"))?;
     let bootstrap: LogicBootstrap = serde_json::from_slice(&line)?;
     let config = bootstrap.config.clone();
+    bbt_rt::error_journal::configure(&config.run_dir);
     let connection = SocketSupervisor::connect(
         &bootstrap.supervisor.socket,
         bootstrap.supervisor.capability,
@@ -1317,6 +1319,8 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .custom_flags(libc::O_NOFOLLOW)
         .open(config.run_dir.join(format!("{entry}.log")))?;
     let mut command = Command::new(&config.executable);
+    isolate_harness_session(&mut command);
+    command.env("BBOXY_RUN_DIR", &config.run_dir);
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
     }
@@ -1327,6 +1331,13 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .stderr(Stdio::from(stderr))
         .kill_on_drop(true)
         .spawn()?)
+}
+/// These identifiers belong to the harness that launched the app, never a seat.
+/// Preserve the user's HOME, PATH and authentication configuration.
+fn isolate_harness_session(command: &mut Command) {
+    for name in ["CODEX_THREAD_ID", "ICQ_CODEX_SOCKET", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_MESSAGING_SOCKET", "PI_SESSION_ID", "PI_SESSION_FILE", "ICQ_HARNESS_DESCRIPTOR"] {
+        command.env_remove(name);
+    }
 }
 async fn stop_child(
     child: &mut Process,
@@ -1548,5 +1559,22 @@ mod gui_io_tests {
             let request: GuiRequest = serde_json::from_slice(&line).unwrap();
             assert!(matches!(request.action, GuiAction::ListSeats));
         }
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    // keeps: interface app-harness — a child never adopts the launching agent.
+    #[test]
+    fn backend_child_removes_parent_harness_identity_without_clearing_user_environment() {
+        let mut command = Command::new("/bin/sh");
+        for name in ["CODEX_THREAD_ID", "ICQ_CODEX_SOCKET", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_MESSAGING_SOCKET", "PI_SESSION_ID", "PI_SESSION_FILE", "ICQ_HARNESS_DESCRIPTOR"] { command.env(name, "fixture-parent"); }
+        command.env("HOME", "/fixture-home").env("PATH", "/usr/bin:/bin");
+        isolate_harness_session(&mut command);
+        command.args(["-c", "test -z \"${CODEX_THREAD_ID+x}${ICQ_CODEX_SOCKET+x}${CLAUDE_CODE_SESSION_ID+x}${CLAUDE_CODE_MESSAGING_SOCKET+x}${PI_SESSION_ID+x}${PI_SESSION_FILE+x}${ICQ_HARNESS_DESCRIPTOR+x}\" && test \"$HOME\" = /fixture-home && test \"$PATH\" = /usr/bin:/bin"]);
+        let result = command.as_std_mut().output().unwrap();
+        assert!(result.status.success(), "private environment assertion failed");
+        assert!(result.stdout.is_empty() && result.stderr.is_empty());
     }
 }

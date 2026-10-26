@@ -11,11 +11,12 @@ description = "Shared IO runtime and bounded, non-blocking UI handoff"
 
 [features]
 default = ["runtime"]
-runtime = ["dep:crossbeam-queue", "dep:libc", "dep:tokio"]
+runtime = ["dep:crossbeam-queue", "dep:tokio"]
 
 [dependencies]
 crossbeam-queue = { version = "0.3", optional = true }
-libc = { version = "0.2", optional = true }
+libc = "0.2"
+serde_json = "1"
 tokio = { version = "1.54.1", optional = true, features = ["rt-multi-thread", "process", "io-util", "sync", "time", "macros"] }
 
 [[test]]

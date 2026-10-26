@@ -141,7 +141,7 @@ impl Connections {
                 if host.provider != id || links.contains_key(&host.id) {
                     return Err(invalid("duplicate host or wrong provider owner"));
                 }
-                let link = provider.link(host.id.clone())?;
+                let link = provider.link(host.id.clone()).inspect_err(|e| { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("provider", "connect", e)); })?;
                 links.insert(host.id, Arc::new(Mutex::new(link)));
             }
         }
@@ -154,7 +154,7 @@ impl Connections {
         self.link(host)?
             .lock()
             .map_err(|_| invalid("supervisor link owner stopped"))?
-            .request(action)
+            .request(action).inspect_err(|e| { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("provider", "request", e)); })
     }
     pub(crate) fn link(&self, host: &HostId) -> Result<SharedLink> {
         self.links
@@ -211,11 +211,12 @@ impl Connections {
     }
     fn receive_link(&self, host: &HostId, timeout: Duration) -> Result<Option<Event>> {
         let link = self.link(host)?;
-        match link.try_lock() {
+        let result = match link.try_lock() {
             Ok(mut connection) => connection.receive(timeout),
             Err(TryLockError::WouldBlock) => Ok(None),
             Err(TryLockError::Poisoned(_)) => Err(invalid("supervisor link owner stopped")),
-        }
+        };
+        result.inspect_err(|e| { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("provider", "receive", e)); })
     }
     pub fn poll(&mut self) -> Vec<ProviderEvent> {
         self.providers

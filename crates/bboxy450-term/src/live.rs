@@ -1481,6 +1481,7 @@ async fn run_with_control(
                     },
                     cockpit::Event::Exited {process,status}=> {
                         let reason=format!("{process} exited: {status}");
+                        bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(process, "process_exit", &reason));
                         logger.write(&reason);
                          if !lost { operations_disconnected(&mut model,&updates,&reason); backend_lost(Some(reason.clone())); }
                         lost=true;

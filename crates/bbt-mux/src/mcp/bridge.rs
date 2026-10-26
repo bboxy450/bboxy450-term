@@ -132,6 +132,18 @@ impl Bridge {
     }
 
     pub fn handle(&mut self, bytes: &[u8]) -> Option<Value> {
+        let reply = self.handle_inner(bytes);
+        if let Some(response) = &reply {
+            let request = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
+            if response.get("error").is_some() || response["result"]["isError"] == true || response["result"]["kind"] == "Refused" || response["result"]["kind"] == "Rejected" {
+                let operation = if request["method"] == "tools/call" { request["params"]["name"].as_str().unwrap_or("invalid_tool") } else { request["method"].as_str().unwrap_or("invalid_request") };
+                let reason = response["error"]["message"].as_str().or(response["result"]["reason"].as_str()).unwrap_or("tool returned an error or refusal");
+                bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("mcp", operation, reason).seat(self.config.seat));
+            }
+        }
+        reply
+    }
+    fn handle_inner(&mut self, bytes: &[u8]) -> Option<Value> {
         let value: Value = match serde_json::from_slice(bytes) {
             Ok(v) => v,
             Err(_) => return Some(rpc_error(Value::Null, -32700, "Parse error")),

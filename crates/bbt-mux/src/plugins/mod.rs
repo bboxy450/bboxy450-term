@@ -24,5 +24,7 @@ pub struct HostConfig {
 }
 
 fn failure(code: &str, error: impl std::fmt::Display) -> Refusal {
-    Refusal::new(code, error.to_string())
+    let message = error.to_string();
+    bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("plugin", code, &message));
+    Refusal::new(code, message)
 }

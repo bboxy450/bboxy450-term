@@ -1671,6 +1671,17 @@ impl Scene {
             Err(_) => vec![],
         }
     }
+    /// Run errors stay visible even when the performance HUD is closed.
+    pub fn error_overlay(&self, size: [f32; 2], unread: u64) -> Vec<c::Paint> {
+        if unread == 0 { return Vec::new(); }
+        let ctx = self.ui_context();
+        let text = c::Element::Text(c::Text::new(format!("{unread} unread errors · ctl debug errors"), ui::Text {
+            step: ui::TypeStep::Micro, paint: ui::Paint::solid(ui::Color::Foreground), ..Default::default()
+        }));
+        let card = c::Element::Box(c::Box::new(ui::Style::new(ui::Preset::Hud), vec![text.into()]));
+        let rect = Rect::new((size[0] - 330.).max(0.), (size[1] - 42.).max(0.), 316., 0.);
+        card.layout(rect, ctx, &self.metrics).map(|layout| c::paint(&layout, ctx)).unwrap_or_default()
+    }
 }
 
 fn history_row_rect(

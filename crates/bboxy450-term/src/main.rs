@@ -103,6 +103,7 @@ pub enum UiEvent {
     Notification(bboxy450_desktop_notifications::Response),
     NotificationReady,
     NotificationError(String),
+    ErrorCount(u64),
 }
 const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
 
@@ -1751,6 +1752,7 @@ struct App {
     inbox: UiInbox,
     wake_counters: std::cell::RefCell<stall::WakeCounters>,
     logger: log::Logger,
+    unread_errors: u64,
     prepared: Arc<Latest<Prepared>>,
     updates: Arc<Latest<usize>>,
     live_updates: Arc<Latest<Arc<bboxy450_term::model::Model>>>,
@@ -2026,6 +2028,7 @@ impl App {
             redraw_queued: std::cell::Cell::new(false),
             last_update: 0,
             error: None,
+            unread_errors: 0,
             capture,
             capture_pending: true,
             ctl_captures: Vec::new(),
@@ -5725,7 +5728,7 @@ impl App {
                 self.document_layout.as_ref(),
             ));
         }
-        let pane_overlay = if let Some(model) = &self.live_state {
+        let mut pane_overlay = if let Some(model) = &self.live_state {
             let mut ops = self
                 .scene
                 .history_foreground(model, &self.pane_bounds, scale)?;
@@ -5740,6 +5743,7 @@ impl App {
         } else {
             vec![]
         };
+        if live { pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors)); } else { ops.extend(self.scene.error_overlay(logical, self.unread_errors)); }
         phases.draw = start.elapsed();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
@@ -5953,6 +5957,9 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::ErrorCount(count) => {
+                if self.unread_errors != count { self.unread_errors = count; self.request_redraw(); }
+            }
             UiEvent::CommandsReady(ready) => self.commands_ready(ready),
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
                 self.notification_clicked(id)
@@ -7636,8 +7643,18 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
     format!("{hash:016x}")
 }
 
+fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
+    if let Some(path) = args.windows(2).find(|p| p[0] == "--run-dir").map(|p| &p[1]) {
+        return Ok(path.into());
+    }
+    if let Some(path) = std::env::var_os("BBOXY_RUN_DIR") { return Ok(path.into()); }
+    if let Some(account) = bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())? { return Ok(account.join("run")); }
+    bbt_mux::transport::default_socket_path().map_err(|e| e.to_string())?.parent().map(std::path::Path::to_path_buf).ok_or("default diagnostics directory unavailable".into())
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    let diagnostics_root = diagnostic_root(&hook_args)?;
+    bbt_rt::error_journal::configure(&diagnostics_root);
     if let Some(result) = stall::private_entry(&hook_args) {
         return result.map_err(Into::into);
     }
@@ -7682,7 +7699,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     if hook_args.first().is_some_and(|arg| arg == "mcp") {
-        bbt_mux::mcp::run_cli()?;
+        bbt_mux::mcp::run_cli().inspect_err(|e| { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("mcp", "bridge_exit", e)); })?;
         return Ok(());
     }
     if hook_args.first().is_some_and(|arg| arg == "e2e") {
@@ -7735,6 +7752,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
+    let diagnostics_proxy = proxy.clone();
+    let _diagnostics = bbt_rt::error_journal::Server::start(diagnostics_root, move |n| { let _ = diagnostics_proxy.send_event(UiEvent::ErrorCount(n)); }).ok();
     let inbox = bbt_rt::init_ui(Wake::new(
         UiProxy::Native(proxy.clone()),
         bbt_rt::handle().clone(),

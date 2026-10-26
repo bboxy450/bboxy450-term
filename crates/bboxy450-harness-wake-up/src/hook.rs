@@ -358,11 +358,14 @@ pub fn run_cli(args: &[String], sink: &impl HookSink) {
         }
         return;
     }
-    let _ = run(args, sink);
+    let started = Instant::now();
+    if let Err(error) = run(args, sink) { sink.failed(args, &error.to_string(), started.elapsed()); }
 }
 /// The caller authenticates and encodes its own fallback wire. The shared 50 ms
 /// deadline includes input, OSC and fallback delivery.
 pub trait HookSink {
+    /// A host can report a shim failure without delaying or failing the hook.
+    fn failed(&self, _args: &[String], _reason: &str, _duration: Duration) {}
     /// Deliver a hook over the caller's authenticated fallback before its shared deadline.
     ///
     /// # Errors

@@ -63,6 +63,7 @@ pub(super) fn read(
 /// This noun's rows of [`super::VERBS`], in parse order.
 pub(super) const VERBS: &[super::Verb] = &[
     ("debug", "logs", "Debug"),
+    ("debug", "errors", "Debug"),
     ("debug", "journal", "Debug"),
     ("debug", "metrics", "Debug"),
     ("debug", "fault", "Debug"),
@@ -98,6 +99,13 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     let flag = |name: &str| flags.get(name).cloned();
     Ok(Some(match *words {
         ["debug", "notifications"] => Command::DebugNotifications,
+        ["debug", "errors"] => Command::Debug {
+            request: bbt_proto::gui::DebugRequest::Errors {
+                since: flag("since").map(|s| s.parse().map_err(|_| format!("{USAGE_PREFIX}debug errors --since: Unix milliseconds"))).transpose()?,
+                seat: flag("seat").map(|s| s.parse().map_err(|_| format!("{USAGE_PREFIX}debug errors --seat: seat ID"))).transpose()?,
+            },
+            snapshot: None,
+        },
         ["debug", "logs", process] => Command::Debug {
             request: bbt_proto::gui::DebugRequest::Logs {
                 process: match process {
