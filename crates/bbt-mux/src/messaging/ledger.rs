@@ -919,7 +919,7 @@ impl Ledger {
                 class: message.view().kind.class(),
                 mode: receipt.wake.as_ref().map(|mode| match mode {
                     ReceiptWake::Now => WakeMode::Wake,
-                    ReceiptWake::None => WakeMode::Inbox,
+                    ReceiptWake::None { .. } => WakeMode::Inbox,
                     ReceiptWake::Deferred { .. } => WakeMode::Digest,
                 }),
             })

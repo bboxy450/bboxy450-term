@@ -245,11 +245,16 @@ fn cancelled_digest_members_never_reappear_at_the_original_deadline() {
         SendRequest::text(format!("seats/{}/inbox", f.b.id), "old digest member"),
         1,
     );
+    assert_eq!(
+        f.messaging.deferred_view(&f.b).unwrap(),
+        Some(serde_json::json!({"deferred":{"count":1,"next_at_ms":600_001}}))
+    );
     let mut withdrawal = SendRequest::text("", "");
     withdrawal.kind = MessageKind::Withdrawn;
     withdrawal.supersedes = Some(original.view().id);
     f.send(f.a.id, withdrawal, 2);
     f.none(original.view().id, WakeReason::Superseded);
+    assert_eq!(f.messaging.deferred_view(&f.b).unwrap(), None);
     assert!(
         f.messaging
             .prepare(f.a.swarm, f.b.id, 600_001)
@@ -263,6 +268,7 @@ fn cancelled_digest_members_never_reappear_at_the_original_deadline() {
             .unwrap()
             .is_none()
     );
+    assert_eq!(f.messaging.deferred_view(&f.b).unwrap(), None);
 }
 
 // keeps: an immutable id delivered once is not re-woken by replay or a later replacement.
