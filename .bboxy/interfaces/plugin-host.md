@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-10-26T17:11:05Z"
 ---
 # ICD: plugin ↔ host
 
@@ -17,8 +17,8 @@ updated: "2026-10-26T16:18:20Z"
 | Side B | plugin providers, bundled and external |
 | The agreement | [[plugins]]; [[knowledge-base]] |
 | Amended by | #249 a plugin is an MCP server; #255 visualization is ours; #278 P-0 rulings |
-| What crosses | JSON Schema contracts with wire names; data only, never pixels |
-| Timing | hook ceilings as data per contract |
+| What crosses | JSON Schema contracts with wire names; data only, never pixels. At start the host sends `initialize.params.root`, one UTF-8 absolute path, and nothing else of identity: no root, author, signer, device or account field ever appears on a `data_source` method's arguments (Kestrel, 2026-10-26; both sides of the conformance fixture assert it) |
+| Timing | hook ceilings as data per contract; the handshake and each call are capped at 2 s by default |
 | States and lifecycle | trust is a content-addressed copy; nothing executes before trust; plugins start disabled; one provider instance per root, the root bound at start |
 | Failure | a refusal names its reason in the app; external writes reply `signed_writer_unavailable` until the signed-writer bridge; authorship is always the host's |
 | Versioning | contracts are versioned in `bbt-plugin`; a provider declares the version it implements |
