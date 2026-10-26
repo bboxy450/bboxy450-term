@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T04:08:14Z"
+updated: "2026-10-26T05:26:00Z"
 ---
 # Messaging attention
 
@@ -80,7 +80,9 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 
 ## 4a. Superseded and done messages never wake
 
-A message stops being eligible for native delivery, before it wakes anyone, when it is **superseded** (a later message names it in `supersedes`, set by its own sender, or the sender withdraws it) or **done** (it delegates a task whose record is `accepted`, `rejected` or closed, or it is a question whose thread already has an answer from the recipient). It stays stored and visible; its receipt reads `wake: none` with the reason `superseded` or `done`; only a pending wake is cancelled, never an already-written native delivery, which cannot be recalled. A redelivery of an already-delivered message id to the same seat is suppressed by id, never woken twice.
+A message stops being eligible for native delivery, before it wakes anyone, when it is **superseded** (a later message names it in `supersedes`, set by its own sender, or the sender withdraws it) or **done** (it delegates a task whose record is `accepted` or `rejected`, or it is a question whose thread already has an answer from the recipient). It stays stored and visible; its receipt reads `wake: none` with the reason `superseded` or `done`; only a pending wake is cancelled, never an already-written native delivery, which cannot be recalled. A redelivery of an already-delivered message id to the same seat is suppressed by id, never woken twice.
+
+**The contract, pinned** (Velvet, 2026-10-25): `supersedes` is one optional message id, and it chains: if C supersedes B and B superseded A, A is superseded too. A **withdrawal** is not a new route: it is a message from the same sender of kind `Withdrawn`, class event, carrying `supersedes: <id>` and no body; only the original sender's key may withdraw. The receipt's reason is one optional field beside `wake`: `"wake": "none", "reason": "superseded" | "done" | "policy"`. A task's terminal statuses are exactly `accepted` and `rejected` (the earlier word "closed" here meant those two); a message delegating a task in either status is done. A question is answered when **its recipient** has sent a message whose `reply_to` chain reaches the question; a reply from anyone else does not make it done.
 
 ## 5. Threads
 
