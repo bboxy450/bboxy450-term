@@ -8,9 +8,8 @@ use tokio::sync::Semaphore;
 
 use super::Registry;
 use crate::{
-    Result,
     mcp::{self, Actor, Call, journal::Journal},
-    store::invalid,
+    store::{Result, invalid},
 };
 
 #[derive(Clone)]
