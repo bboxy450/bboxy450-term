@@ -270,7 +270,25 @@
         760,
         0,
         82
-      ]
+      ],
+      "invariants": [
+        "invariants: 19 checks, 0 failures, 11 slow checks skipped"
+      ],
+      "strict_clippy_exit": 0
     }
-  ]
+  ],
+  "file_line_refs": {
+    "crates/bboxy450-term/src/cockpit.rs:627": "pub async fn start(config:",
+    "crates/bboxy450-term/src/cockpit.rs:948": "async fn attach_gui",
+    "crates/bboxy450-term/src/cockpit.rs:446": "async fn supervisor_main",
+    "crates/bboxy450-term/src/cockpit/owners.rs:158": "pub(super) fn claim(config:",
+    "crates/bboxy450-term/src/cockpit/owners.rs:280": "pub(super) fn frontend_running",
+    "crates/bboxy450-term/src/cockpit/owners.rs:236": "pub fn try_wait",
+    "crates/bbt-mux/src/logic.rs:1013": "pub(crate) fn claim_gui",
+    "crates/bbt-mux/src/logic.rs:1005": "pub(crate) async fn gui_hello",
+    "crates/bbt-mux/src/seat_socket.rs:852": "GuiAction::GuiHello {id,claim}",
+    "crates/bboxy450-term/src/main.rs:5806": "request==bbt_proto::gui::AppRequest::Activate",
+    "crates/bboxy450-term/tests/headless.rs:2093": "fn app_relaunch_attaches_to_surviving",
+    "crates/bboxy450-term/tests/headless.rs:2100": "fn app_relaunch_replaces_dead_logic"
+  }
 }
