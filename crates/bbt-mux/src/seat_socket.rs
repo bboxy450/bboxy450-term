@@ -766,6 +766,7 @@ async fn gui_session(
     let mut issued_by: Option<String> = None;
     // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.
     // Dropping the session aborts these waiters, not a running provider's permit.
+    let mut window_jobs: tokio::task::JoinSet<(Ulid,crate::store::Result<()>)> = tokio::task::JoinSet::new();
     let mut knowledge_reads = tokio::task::JoinSet::new();
     let mut debug_reads = tokio::task::JoinSet::new();
     let mut plugin_jobs = tokio::task::JoinSet::new();
@@ -774,6 +775,10 @@ async fn gui_session(
         loop {
             tokio::select! {
                 biased;
+                Some(done)=window_jobs.join_next(),if !window_jobs.is_empty()=> {
+                    let (op,result)=done.map_err(|e|invalid(format!("window state task stopped: {e}")))?;
+                    send(&mut write,&GuiReply::WindowSaved {op,error:result.err().map(|e:crate::store::Error|e.to_string())}).await?;
+                }
                 line=incoming.recv(),if actions<ACTION_BURST&&(actions==0||checks.is_empty())=> {
                     actions+=1;
                     let Some(Ok(Some(line)))=line else {break;};
@@ -840,22 +845,39 @@ async fn gui_session(
                         }
                         continue;
                     }
+                    if let GuiAction::WindowSave {id,epoch,state}=request.action {
+                        if capture_asks.is_none() || !window_jobs.is_empty() {
+                            send(&mut write,&GuiReply::WindowSaved {op:id,error:Some("window_state_busy_or_not_gui".into())}).await?;
+                        } else {
+                            let journal=client.window_journal.clone();
+                            window_jobs.spawn(async move {
+                                let result=match journal {Some(j)=>j.save(epoch,state).await,None=>Err(invalid("window journal unavailable"))};
+                                (id,result)
+                            });
+                        }
+                        continue;
+                    }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+                        GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
+                            GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
                             GuiAction::GuiHello {id,claim}=> {
                                 if claim {
                                     client.claim_gui(peer_pid.ok_or_else(||invalid("native GUI peer PID unavailable"))?)?;
                                     door=crate::mcp::Door::Gui;
                                     if capture_asks.is_none() {capture_asks=Some(client.captures.subscribe());}
                                 }
-                                Ok(GuiReply::GuiHello {op:id,hello:client.gui_hello().await?})
+                                let mut hello=client.gui_hello().await?;
+                                if claim {
+                                    hello.window=Some(client.window_journal.as_ref().ok_or_else(||invalid("window journal unavailable"))?.claim().await?);
+                                }
+                                Ok(GuiReply::GuiHello {op:id,hello})
                             }
                             GuiAction::Ui {id,request}=> {
                                 if door!=crate::mcp::Door::Ctl {return Err(invalid("UI requests use the ctl operator door"));}

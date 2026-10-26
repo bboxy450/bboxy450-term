@@ -40,6 +40,8 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    /// Latest durable layout intent from a produced GUI frame.
+    WindowState(bbt_proto::gui::WindowState),
     UiReply {
         id: bbt_mux::Ulid,
         result: Box<std::result::Result<bbt_proto::gui::UiLayout, String>>,
@@ -291,6 +293,8 @@ pub struct LogicReady {
     pub custody_backend: String,
     #[serde(default)]
     pub account_root: Option<String>,
+    #[serde(skip)]
+    pub window: Option<bbt_proto::gui::WindowSnapshot>,
 }
 fn unknown_custody() -> String {
     "unknown".into()
@@ -551,6 +555,7 @@ async fn logic_main() -> Result<()> {
         generation: endpoint.generation,
         custody_backend: serde_json::to_value(status.custody)?.as_str().unwrap_or("unknown").into(),
         account_root: status.root_fingerprint,
+        window: None,
     };
     owners::write(&config, "logic", &ready)?;
     write_json(&mut tokio::io::stdout(), &ready).await?;
@@ -898,7 +903,8 @@ impl Session {
                 }
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
-                GuiReply::GuiHello {..}
+                GuiReply::WindowSaved {..}
+                | GuiReply::GuiHello {..}
                 | GuiReply::Seat(_)
                 | GuiReply::Spawned { .. }
                 | GuiReply::Update { .. }
@@ -964,6 +970,7 @@ async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> 
                         {
                             return Err(invalid("GUI hello account/run mismatch"));
                         }
+                        endpoint.window = hello.window;
                         return Ok(());
                     }
                     GuiReply::Identity(identity) => endpoint.identity = identity,
@@ -1021,9 +1028,8 @@ async fn start_logic(
         .await
         .map_err(|_| invalid("logic startup timed out waiting for its readiness line"))??
         .ok_or_else(|| invalid("logic exited during startup"))?;
-    let endpoint: LogicReady = serde_json::from_slice(&line)?;
-    let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
-    let io = GuiIo::new(stream, endpoint.capability);
+    let mut endpoint: LogicReady = serde_json::from_slice(&line)?;
+    let io = attach_gui(config, &mut endpoint, true).await?;
     let control = child.stdin.take();
     Ok(StartedLogic {
         child,

@@ -24,7 +24,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T2 | `scripts/e2e/T2.sh` | full | — | |
 | T3 | `scripts/e2e/T3.sh` | full | — | |
 | T4 | `scripts/e2e/T4.sh` | full | — | |
-| T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
+| T5 | `scripts/e2e/T5.sh` | full | — | Real app-only SIGKILL; three unchanged PTY/program PIDs; exact geometry, focus, and historical/live anchors |
 | T6 | `scripts/e2e/T6.sh` | full | | |
 | T7 | `scripts/e2e/T7.sh` | full | | |
 | T8 | `scripts/e2e/T8.sh` | full | — | Real-PTY OSC fixture; silent inferred idle, reported state, malformed reports rejected and produced-frame grade ink |
@@ -134,6 +134,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** ctl.rs:1172; gui.rs:270,303; scripts/e2e/T4.sh:7; T2 terminal proof fixtures.
 
 ### T5
+
+**Current script:** Three real zsh PTYs exec private Python programs which keep variables in memory and emit numbered output after the split layout is placed. Two panes scroll to distinct historical anchors and the third keeps live focus. Produced-frame control replies fence the coalesced account-journal save. The script records exact window size, rectangles, grid sizes, tab/swarm/focus and each `top_row`/`live`, kills only its recorded app PID after checking its birth/argv, then relaunches the same file account/run. Readiness must name frame 1; an immediate offscreen capture and the next produced layout must retain the saved geometry and anchors. Supervisor, logic, PTY PIDs and generations remain equal, and every program answers again with its retained variable. No OS presentation, native-model or timing-SLO claim.
 
 **Promise:** the app is killed and relaunched: every seat is attached to the same PTY, layout, focus and scroll positions are identical, the programs never noticed.
 

@@ -1,0 +1,400 @@
+{
+  "decision": 344,
+  "cut": "2: journal window state and restore before first produced frame",
+  "status": "T5 canonical script full; author landing pending",
+  "base": "d8a89a5cf17c9c1f560f39d8bb46092afa4e8c24",
+  "mechanisms": [
+    "crates/bbt-proto/src/gui/app.rs:104 \u2014 versioned layout/focus/sidebar/scroll state only; optional hello snapshot preserves prior None bytes",
+    "crates/bbt-mux/src/window_journal.rs:23 \u2014 account journal claim transaction restores state and rotates GUI epoch",
+    "crates/bbt-mux/src/window_journal.rs:43 \u2014 bounded off-worker transaction rejects stale GUI epoch before replacing state",
+    "crates/bbt-mux/src/seat_socket.rs:848 \u2014 native GUI saves complete outside the ordinary request worker and FIFO",
+    "crates/bboxy450-term/src/window_state.rs:34 \u2014 captures actual UI topology and scroll; unknown/offscreen historical anchors retained",
+    "crates/bboxy450-term/src/window_state.rs:112 \u2014 restores layout/focus while retaining current registry metadata and authority",
+    "crates/bboxy450-term/src/window_writes.rs:56 \u2014 one save in flight with latest-state coalescing; frame replies wait for their save, input remains independent",
+    "crates/bboxy450-term/src/live.rs:397 \u2014 operation-correlated saves never occupy ordinary reply slots or block History",
+    "crates/bboxy450-term/src/live.rs:285 \u2014 restores topology before initial model preparation/publication",
+    "crates/bboxy450-term/src/main.rs:5307 \u2014 deferred first frame rearms model wakes without claiming a completed frame",
+    "crates/bboxy450-term/src/main.rs:5311 \u2014 visible history and prepared grids must exist before first restored draw",
+    "crates/bboxy450-term/src/headless.rs:393 \u2014 first submit requires actual backend metadata; no demo frame can announce readiness",
+    "scripts/e2e/t5_relaunch.py:32 \u2014 faults only birth/argv-checked owned app, reattaches same account/run and checks exact layout/process/cookies"
+  ],
+  "checks": [
+    {
+      "name": "state-journal-unit-fixed",
+      "exit": 0,
+      "seconds": 30.907691955566406,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-mux",
+        "--lib",
+        "window_journal::tests"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-journal-unit-fixed.log",
+      "log_sha256": "21d1515b4a392cf4c8ee7b405fccbc422b98038374a4ad233a84a13197374f67"
+    },
+    {
+      "name": "state-wire",
+      "exit": 0,
+      "seconds": 25.038511037826538,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-wire.log",
+      "log_sha256": "61e531c6d671ca433dc32753531f697189a83a91dac42ec2e33b480104b88b24"
+    },
+    {
+      "name": "state-pure",
+      "exit": 0,
+      "seconds": 12.89625072479248,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "window_"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-pure.log",
+      "log_sha256": "44ca88abc90efc163892be00cd3b7dd02d28dc9d1ad348e6865a786ddc82b229"
+    },
+    {
+      "name": "state-wake-unit",
+      "exit": 0,
+      "seconds": 19.441956043243408,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "a_restore_wait_rearms_model_wakes_without_claiming_a_frame"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-wake-unit.log",
+      "log_sha256": "90718aaaa77cb95e336d6bdc5190c54d39347a19d2f28ba7da8f1deee926af08"
+    },
+    {
+      "name": "state-reply-unit-typed",
+      "exit": 0,
+      "seconds": 12.754732131958008,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "window_save_never_occupies_an_ordinary_reply_slot"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-reply-unit-typed.log",
+      "log_sha256": "681a8e23d4be6d36eb4be42275185e0412fdbcf3da58f88d2244d3634341820c"
+    },
+    {
+      "name": "state-coverage",
+      "exit": 0,
+      "seconds": 0.07412981986999512,
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_ui.py"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-coverage.log",
+      "log_sha256": "4c979c0d06f0e9e2109df48cae7f69ac5d403754045b4cfe404fe744e7390b47"
+    },
+    {
+      "name": "state-clippy",
+      "exit": 101,
+      "seconds": 15.554358959197998,
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-clippy.log",
+      "log_sha256": "9cafcc523f9d6e87dd2d26190ac2c5e5b2302869b2e18d1ed9c0c3d1e65e4da2"
+    },
+    {
+      "name": "state-clippy-clean",
+      "exit": 0,
+      "seconds": 6.340698719024658,
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-clippy-clean.log",
+      "log_sha256": "cf90a4993c43bed566dd587b86dacdaf8aa4ecb1cf6a840dfa40eb179c3c16a4"
+    },
+    {
+      "name": "state-native-wake",
+      "exit": 0,
+      "seconds": 4.696089267730713,
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t5-20261026/state/run_t5.py"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-native-wake.log",
+      "log_sha256": "cba4d38eb14e2cf730b97e2efad086049aa22f3022f0bf424983cdde5c087b7a"
+    },
+    {
+      "name": "state-canonical",
+      "exit": 0,
+      "seconds": 4.4175238609313965,
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t5-20261026/state/run_t5.py"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-canonical.log",
+      "log_sha256": "9c1914d0235ef760cbd9c8e1fd4017f7acb205ef0ad2256aab4aa1d9f7a06bbb"
+    }
+  ],
+  "native": {
+    "root": "/private/tmp/at5-state-g0nbx6ut",
+    "script": "scripts/e2e/T5.sh",
+    "wrapper_exit": 0,
+    "script_exit": 0,
+    "script_seconds": 3.6991958618164062,
+    "custody": "per-run file-account; private HOME/config/repository; no operator identity or window",
+    "restoration": {
+      "before": {
+        "size": [
+          1280.0,
+          750.0
+        ],
+        "swarm": "01M5WGQP7D1KTBZ507DM0NBK6S",
+        "tab": "01M5WGQP7DT735K0F0NQYK52G3",
+        "focused": "01M5WGQPW8PQQGVKN5AGEKS9DZ",
+        "panes": [
+          {
+            "seat": "01M5WGQP7WV640S5CV93F912G1",
+            "rect": [
+              311.0,
+              71.0,
+              468.0,
+              668.0
+            ],
+            "cols": 58,
+            "rows": 44,
+            "focused": false,
+            "scroll": {
+              "live": false,
+              "top_row": 23
+            }
+          },
+          {
+            "seat": "01M5WGQPN37G9SFMZEES1676RV",
+            "rect": [
+              801.0,
+              71.0,
+              468.0,
+              312.0
+            ],
+            "cols": 58,
+            "rows": 20,
+            "focused": false,
+            "scroll": {
+              "live": false,
+              "top_row": 61
+            }
+          },
+          {
+            "seat": "01M5WGQPW8PQQGVKN5AGEKS9DZ",
+            "rect": [
+              801.0,
+              427.0,
+              468.0,
+              312.0
+            ],
+            "cols": 58,
+            "rows": 20,
+            "focused": true,
+            "scroll": {
+              "live": true,
+              "top_row": null
+            }
+          }
+        ]
+      },
+      "after": {
+        "size": [
+          1280.0,
+          750.0
+        ],
+        "swarm": "01M5WGQP7D1KTBZ507DM0NBK6S",
+        "tab": "01M5WGQP7DT735K0F0NQYK52G3",
+        "focused": "01M5WGQPW8PQQGVKN5AGEKS9DZ",
+        "panes": [
+          {
+            "seat": "01M5WGQP7WV640S5CV93F912G1",
+            "rect": [
+              311.0,
+              71.0,
+              468.0,
+              668.0
+            ],
+            "cols": 58,
+            "rows": 44,
+            "focused": false,
+            "scroll": {
+              "live": false,
+              "top_row": 23
+            }
+          },
+          {
+            "seat": "01M5WGQPN37G9SFMZEES1676RV",
+            "rect": [
+              801.0,
+              71.0,
+              468.0,
+              312.0
+            ],
+            "cols": 58,
+            "rows": 20,
+            "focused": false,
+            "scroll": {
+              "live": false,
+              "top_row": 61
+            }
+          },
+          {
+            "seat": "01M5WGQPW8PQQGVKN5AGEKS9DZ",
+            "rect": [
+              801.0,
+              427.0,
+              468.0,
+              312.0
+            ],
+            "cols": 58,
+            "rows": 20,
+            "focused": true,
+            "scroll": {
+              "live": true,
+              "top_row": null
+            }
+          }
+        ]
+      },
+      "owners": {
+        "logic": 79798,
+        "supervisor": 79797
+      },
+      "old_app": 79796,
+      "new_app": 79875,
+      "ready_frame": 1,
+      "first_capture": "/private/tmp/at5-state-g0nbx6ut/work/t5-first-after.png",
+      "pty_pids": {
+        "01M5WGQP7WV640S5CV93F912G1": 79807,
+        "01M5WGQPN37G9SFMZEES1676RV": 79820,
+        "01M5WGQPW8PQQGVKN5AGEKS9DZ": 79831
+      },
+      "verdict": "app-only crash keeps real programs, layout, focus and pane scroll"
+    },
+    "artifacts": {
+      "result.json": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/result.json",
+        "bytes": 1455,
+        "sha256": "8be18cb147b311bb10775dd3797d3ceccec07c85a499ac90ae8a2ec0bcb478f3"
+      },
+      "calls.jsonl": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/calls.jsonl",
+        "bytes": 51955,
+        "sha256": "1da29eb8c85483134a9dd7f7b17be1f1f470e173552844dfec14559773b78aa3"
+      },
+      "work/output.log": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/output.log",
+        "bytes": 1682,
+        "sha256": "0ad3aa138c2504ddd4dd1be30d89fdf5afd4abf8c9168c4ec4c37cdc87e6f0ae"
+      },
+      "work/t5-restoration.json": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-restoration.json",
+        "bytes": 2678,
+        "sha256": "ff547ef07804c881531a8c4b81ee7bb81f1e74179a7d2dab0c421c6d24ed62db"
+      },
+      "work/t5-before-layout.jsonl": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-before-layout.jsonl",
+        "bytes": 30148,
+        "sha256": "e8eaf9c04e07ad0bac35cfce47194919b65037245bf7a1b70fc0ac58a542c79f"
+      },
+      "work/t5-after-layout.jsonl": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-after-layout.jsonl",
+        "bytes": 30142,
+        "sha256": "8db89f608650220a91e9ce56c01e9cd4741a827b9abaacbc34e861e227774ed8"
+      },
+      "work/t5-before.png": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-before.png",
+        "bytes": 191455,
+        "sha256": "1f5a9537d6927046b581c996066475041b9472c2fc672d5b82102bf802718eec"
+      },
+      "work/t5-first-after.png": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-first-after.png",
+        "bytes": 180649,
+        "sha256": "4fe17a9216f76fd64213971898e9a03aa6a5e65fed02624cf0fe7a52c958e343"
+      },
+      "work/t5-first-after.jsonl": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-first-after.jsonl",
+        "bytes": 282,
+        "sha256": "47a278eaa2e4b169c452d1abde97335c32bf333a62918b0092f3be134446c322"
+      }
+    }
+  },
+  "failures_disposition": [
+    "Initial pre-fault scrolling stalled because asynchronous WindowSave consumed an ordinary ActionReplies slot; exempted and regression passes.",
+    "Initial relaunch announced readiness before backend metadata/history; first submit now requires metadata.",
+    "First-frame history wait suppressed later model wakes; complete_drain rearms sources without claiming a frame, regression passes.",
+    "Strict Clippy rejected default-field assignment in a test; initializer corrected, strict rerun exit0."
+  ],
+  "limits": [
+    "Headless/offscreen produced-frame evidence; no OS presentation, photon, hardware timing or native-model claim.",
+    "Readiness is frame1; immediate capture is frame2, not a frame1 PNG.",
+    "Exact state and visible numbered rows checked; PNG byte equality not claimed because focus animation differs.",
+    "Full nightly/postsubmit and Oracle review remain unverified until separately reported."
+  ]
+}

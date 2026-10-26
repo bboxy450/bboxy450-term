@@ -172,6 +172,9 @@ reply	{"kind":"Ui","body":{"op":"00000000000000000000000004","layout":{"frame_se
 action	{"kind":"GuiHello","body":{"id":"00000000000000000000000001","claim":true}}
 reply	{"kind":"GuiHello","body":{"op":"00000000000000000000000001","hello":{"run_dir":"/private/test-run","account_root":"test-root"}}}
 action	{"kind":"App","body":{"id":"00000000000000000000000001","request":"activate"}}
+# T5 window state: additive native journal completion; prior bytes unchanged.
+action	{"kind":"WindowSave","body":{"id":"00000000000000000000000001","epoch":"00000000000000000000000001","state":{"version":1,"size":[1280.0,720.0],"sidebar_width":300.0,"sidebar_scroll":0.0,"sidebar_shown":true,"open_swarms":[],"swarms":[],"stage":{"swarm":null,"tab":null,"focused":null},"scroll":[]}}}
+reply	{"kind":"WindowSaved","body":{"op":"00000000000000000000000001","error":null}}
 # T1 decision #340: GUI-owned listing, operation-only starting pane, real-seat first-frame receipt.
 action	{"kind":"Ui","body":{"id":"00000000000000000000000001","request":{"kind":"seats"}}}
 reply	{"kind":"Ui","body":{"op":"00000000000000000000000001","layout":{"frame_seq":9,"layout_revision":4,"size":[1600.0,900.0],"swarm":"00000000000000000000000002","tab":"00000000000000000000000003","focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[],"starting":[{"op":"00000000000000000000000001","name":"Vesper Greywind","harness_kind":"claude","swarm":"00000000000000000000000002","placement":{"kind":"new_tab","tab":"00000000000000000000000003"},"state":{"kind":"starting"},"rect":[300.0,40.0,900.0,600.0],"focused":true,"admitted_frame_seq":8,"first_frame_seq":9}],"seats":[]}}}

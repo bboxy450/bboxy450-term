@@ -1824,6 +1824,10 @@ struct App {
     ui_collect: Option<Vec<UiEffect>>,
     /// `ctl app resize` for the offscreen owner: the logical size its next frame takes.
     requested_size: Option<[f32; 2]>,
+    window_restored: bool,
+    window_first_frame: bool,
+    window_last: Option<bbt_proto::gui::WindowState>,
+    restored_size: Option<[f32;2]>,
     /// The logical size the last solved layout used.
     solved_size: [f32; 2],
     /// When the last frame was presented; a capture of it names this time.
@@ -1994,6 +1998,10 @@ impl App {
             ui_focus: None,
             ui_collect: None,
             requested_size: None,
+            window_restored: false,
+            window_first_frame: false,
+            window_last: None,
+            restored_size: None,
             solved_size: [0.; 2],
             last_presented: None,
             pending_resize: None,
@@ -4076,6 +4084,16 @@ impl App {
         drop(latest_measurement);
         let received_at = bbt_rt::diagnostics::now();
         if let Some(state) = state {
+            if !self.window_restored && state.metadata_initialized && let Some(saved)=&state.window_restore {
+                self.window_restored=true;
+                self.window_first_frame=true;
+                self.window_last=Some((**saved).clone());
+                if let Some(window)=&self.window {
+                    self.restored_size=Some(saved.size);
+                    let _=window.request_inner_size(LogicalSize::new(f64::from(saved.size[0]),f64::from(saved.size[1])));
+                } else {self.requested_size=Some(saved.size);}
+            }
+
             if self.ui_observe {
                 self.frame_observations.ingest(&state);
             }
@@ -5311,6 +5329,14 @@ impl App {
         } else {
             self.document_layout = None;
         }
+        if let Some(model)=&self.live_state && model.metadata_initialized {
+            let stage=self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+            let state=bboxy450_term::window_state::capture(model,stage,logical,self.window_last.as_ref());
+            if self.window_last.as_ref()!=Some(&state) {
+                self.window_last=Some(state.clone());
+                self.queue(live::UiMsg::WindowState(state));
+            }
+        }
         Ok(layouts)
     }
     /// Data and focus may change between ticks; only a usable frame projects
@@ -5342,7 +5368,17 @@ impl App {
             self.refresh_conversation();
         }
     }
-    fn complete_paint_sources(&self) {
+    // Layout/watch work drained the current model; a later IO publication must wake us.
+    // This retires no produced frame and keeps the bootstrap gate intact.
+    fn window_data_wait(&self) {
+        self.updates.complete_drain();
+        self.live_updates.complete_drain();
+    }
+    fn window_restore_waits(&self)->bool {
+        self.live_state.as_ref().is_some_and(|model|self.pane_bounds.iter().any(|(id,_)|model.window_waiting.contains(id) || (self.window_first_frame && !model.frames.contains_key(id))))
+    }
+    fn complete_paint_sources(&mut self) {
+        self.window_first_frame=false;
         self.updates.complete_drain();
         self.live_updates.complete_drain();
     }
@@ -5462,6 +5498,11 @@ impl App {
         self.focus_layout_ready();
         self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
+        if self.window_restore_waits() {self.window_data_wait(); return Ok(());}
+        if let Some(target)=self.restored_size {
+            if (logical[0]-target[0]).abs()>1. || (logical[1]-target[1]).abs()>1. {return Ok(());}
+            self.restored_size=None;
+        }
         if let Some(launcher) = &self.launcher_layout {
             let caret = launcher.candidate_area();
             self.window.as_ref().unwrap().set_ime_cursor_area(
@@ -7790,6 +7831,17 @@ mod lazy_projection_tests {
         );
         (app, latest)
     }
+    // keeps: decision #344; a deferred first frame cannot suppress history-ready wakes
+    #[test]
+    fn a_restore_wait_rearms_model_wakes_without_claiming_a_frame() {
+        if isolated_ui_case("lazy_projection_tests::a_restore_wait_rearms_model_wakes_without_claiming_a_frame") {return;}
+        let (mut app,latest)=fixture();app.window_first_frame=true;
+        latest.publish(published_model(1));assert!(app.drain().contains(&5));
+        app.window_data_wait();latest.publish(published_model(2));
+        assert!(app.drain().contains(&5),"history-ready data lost its wake");
+        assert!(app.window_first_frame,"a wait must not retire the first-frame gate");
+        assert_eq!(app.meter.total_frames(),0);assert_eq!(app.scene.projections(),0);
+    }
     #[test]
     fn model_publishes_between_frames_do_not_project_during_drain() {
         if isolated_ui_case(
@@ -8479,6 +8531,7 @@ mod input_tests {
                 | live::UiMsg::MarkEventsRead { .. }
                 | live::UiMsg::Focused { .. }
                 | live::UiMsg::UiReply { .. }
+                | live::UiMsg::WindowState(..)
                 | live::UiMsg::AppReply { .. }
                 | live::UiMsg::HistoryMetrics { .. }
                 | live::UiMsg::Captured { .. } => {

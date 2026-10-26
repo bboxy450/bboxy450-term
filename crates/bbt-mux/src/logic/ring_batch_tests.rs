@@ -185,6 +185,7 @@ fn worker(
         gui_peers: Arc::default(),
         captures: Arc::default(),
         gui_watch_epoch: Arc::default(),
+        window_journal: None,
     };
     Worker::open(
         vec![

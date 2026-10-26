@@ -390,7 +390,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     gpu.resize([size[0] as u32, size[1] as u32]);
                     dirty = true;
                 }
-                if dirty && submitted == rendered {
+                if dirty && submitted == rendered && backend && app.live_state.as_ref().is_some_and(|m|m.metadata_initialized) {
                     app.project_scene(true);
                     let layouts = app.solve_ui(size)?;
                     app.focus_layout_ready();
@@ -423,6 +423,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         )
                         .map_err(|_| "headless resize admission full")?;
                     }
+                    if app.window_restore_waits() { app.window_data_wait(); dirty=false; } else {
                     submitted += 1;
                     let wake = thread.clone();
                     let callbacks = callbacks.clone();
@@ -461,6 +462,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     app.complete_paint_sources();
                     ui_frame = layout.map(|layout| (submitted, layout));
                     dirty = false;
+                    }
                 }
                 if let Some(send) = &app.live_commands {
                     while let Some(message) = app.pending_commands.pop_front() {

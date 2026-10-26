@@ -282,6 +282,9 @@ fn publish(
     let mut next = model::build(&records, grids, previous);
     next.apply_seat_states(&seats);
     next.identity = Some(identity.clone());
+    if !previous.metadata_initialized && let Some(saved)=previous.window_restore.as_deref() {
+        bboxy450_term::window_state::restore(&mut next,saved).map_err(invalid)?;
+    }
     preparer.prepare(&mut next)?;
     let next = Arc::new(next);
     {
@@ -391,6 +394,8 @@ impl ActionReplies {
         self.0.len() >= 128
     }
     fn sent(&mut self, action: &GuiAction) {
+        // Journal completions are operation-correlated by WindowWrites, outside this FIFO.
+        if matches!(action, GuiAction::WindowSave { .. }) { return; }
         debug_assert!(!self.full());
         self.0.push_back(match action {
             GuiAction::ListSeats => ActionReply::Seats,
@@ -884,6 +889,11 @@ async fn run_with_control(
     let mut grids = Grids::new();
     let mut initial = Model::default();
     initial.ui.window.theme = rendering.theme;
+    initial.window_restore=session.endpoint.window.as_ref().and_then(|s|s.state.clone()).map(Arc::new);
+    initial.window_waiting=initial.window_restore.as_ref().into_iter().flat_map(|s|s.scroll.iter())
+        .filter(|s|!s.live && s.top_row.is_some()).map(|s|SeatId::from_u128(s.seat.0)).collect();
+    let mut window_writes=bboxy450_term::window_writes::Writes::new(session.endpoint.window.as_ref());
+    let mut window_requested=std::collections::BTreeSet::new();
     let mut model = Arc::new(initial);
     publish(
         &seats,
@@ -912,6 +922,20 @@ async fn run_with_control(
     attach_events(&mut model, &mut outgoing);
     updates.publish(model.clone());
     while !closing {
+        if let Some(action)=window_writes.next(session.endpoint.window.as_ref()) {queue_action(&mut outgoing,action);}
+        let mut ready=Vec::new();
+        for seat in &model.window_waiting {
+            let Some(anchor)=model.window_restore.as_ref().and_then(|s|s.scroll.iter().find(|s|s.seat.0==seat.0.0)).and_then(|s|s.top_row) else {continue;};
+            if model.history.get(seat).is_some_and(|screen|screen.top_row==anchor) {ready.push(*seat);continue;}
+            if !window_requested.contains(seat) && let (Some((view,sequence)),Some(screen))=(grids.baseline(*seat),grids.screen(*seat)) {
+                history.request(*seat,view,sequence,screen,bboxy450_term::scrollback::Request::row(anchor)).map_err(invalid)?;
+                window_requested.insert(*seat);
+            }
+        }
+        if !ready.is_empty() {
+            let next=Arc::make_mut(&mut model);for seat in ready {next.window_waiting.remove(&seat);}
+            updates.publish(model.clone());
+        }
         knowledge_watch.connection(!lost);
         if let Some(action) = knowledge_watch.next_action() {
             queue_action(&mut outgoing, action);
@@ -1072,8 +1096,9 @@ async fn run_with_control(
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
-                    UiMsg::Focused {id,result}=>queue_action(&mut outgoing,GuiAction::Focused {id:*id,result:result.clone()}),
-                    UiMsg::UiReply {id,result}=>queue_action(&mut outgoing,GuiAction::UiReply {id:*id,result:result.clone()}),
+                    UiMsg::WindowState(state)=>window_writes.observe(state.clone()),
+                    UiMsg::Focused {id,result}=>if let Some(action)=window_writes.fence(GuiAction::Focused {id:*id,result:result.clone()}) {queue_action(&mut outgoing,action);},
+                    UiMsg::UiReply {id,result}=>if let Some(action)=window_writes.fence(GuiAction::UiReply {id:*id,result:result.clone()}) {queue_action(&mut outgoing,action);},
                     UiMsg::HistoryMetrics {id,status}=> {
                         let mut status=status.clone();
                         status.generation=session.endpoint.generation;
@@ -1155,6 +1180,8 @@ async fn run_with_control(
                 },
                 event=session.event()=>match event.unwrap_or_else(|error| cockpit::Event::Disconnected(error.to_string())) {
                     cockpit::Event::Reply(reply)=> {
+                        if let Some(ready)=window_writes.completion(&reply) {for action in ready {queue_action(&mut outgoing,action);}return Ok(());}
+
                     let _apply = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::GuiApply).work(1, 0);
                     // Classify the raw reply before an async Seat event becomes a state update.
                     let terminal_reply = action_replies.take(&reply);
@@ -1364,7 +1391,7 @@ async fn run_with_control(
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);
@@ -3953,6 +3980,17 @@ mod tests {
             "PASS orderly shutdown at full retained/channel capacity after backend loss, supervisor {supervisor_pid} reaped"
         );
     }
+    // keeps: decision #344; asynchronous frame persistence cannot block ordinary/history replies
+    #[test]
+    fn window_save_never_occupies_an_ordinary_reply_slot() {
+        let state: bbt_proto::gui::WindowState=serde_json::from_value(serde_json::json!({"version":1,"size":[1280,720],"sidebar_width":300,"sidebar_scroll":0,"sidebar_shown":true,"open_swarms":[],"swarms":[],"stage":{"swarm":null,"tab":null,"focused":null},"scroll":[]})).unwrap();
+        let mut replies=ActionReplies::default();
+        for _ in 0..256 {replies.sent(&GuiAction::WindowSave {id:Ulid::new(),epoch:Ulid::new(),state:state.clone()});}
+        assert!(replies.0.is_empty());
+        replies.sent(&GuiAction::ListSeats);
+        assert_eq!(replies.take(&GuiReply::Seats(vec![])),Some(ActionReply::Seats));
+    }
+
 }
 
 #[cfg(test)]

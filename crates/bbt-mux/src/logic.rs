@@ -525,6 +525,7 @@ pub struct LogicClient {
     /// Captures asked of the window on the operator's behalf.
     pub(crate) captures: Arc<crate::gui_capture::Captures>,
     gui_watch_epoch: Arc<AtomicU64>,
+    pub(crate) window_journal: Option<Arc<crate::window_journal::Journal>>,
 }
 impl LogicClient {
     pub(crate) fn gui_watch_session(&self) -> GuiWatchSession {
@@ -1445,6 +1446,7 @@ impl Logic {
             gui_peers: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
+            window_journal: Some(Arc::new(crate::window_journal::Journal::open(&config.run_dir)?)),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -7403,7 +7405,7 @@ impl Worker {
                     }
                     Command::GuiHello(reply) => {
                         let result=self.identity.status().map(|status|bbt_proto::gui::GuiHello {
-                            run_dir:self.config.run_dir.clone(),account_root:status.root_fingerprint,
+                            run_dir:self.config.run_dir.clone(),account_root:status.root_fingerprint, window:None,
                         });
                         let _=reply.send(result);
                     }
@@ -8570,6 +8572,7 @@ mod identity_retry_clock_tests {
             gui_peers: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
+            window_journal: None,
         };
         let mut worker = Worker::open(
             vec![Box::new(LocalProvider::new(Link))],
