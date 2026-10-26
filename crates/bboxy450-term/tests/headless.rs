@@ -16,6 +16,7 @@ struct Fixture {
     root: tempfile::TempDir,
     run: PathBuf,
     pid: Option<u32>,
+    scripted_hosts: bool,
 }
 impl Fixture {
     fn new() -> Self {
@@ -26,10 +27,15 @@ impl Fixture {
             root,
             run,
             pid: None,
+            scripted_hosts: true,
         }
     }
     fn ctl(&self, args: &[&str]) -> (i32, Vec<Value>) {
-        let out = Command::new(BIN)
+        let mut command = Command::new(BIN);
+        if !self.scripted_hosts {
+            command.env("BBOXY_TEST_SCRIPTED_HOSTS", "off");
+        }
+        let out = command
             .arg("ctl")
             .args(args)
             .arg("--run-dir")
@@ -1043,8 +1049,70 @@ fn ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer() {
 }
 
 #[test]
+fn scripted_host_opt_out_is_debug_only_and_requires_a_test_account() {
+    let root = tempfile::tempdir().unwrap();
+    let source = root.path().join("selector.rs");
+    let module =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/cockpit/fixture_hosts.rs");
+    std::fs::write(
+        &source,
+        format!(
+            r#"#[path = {module:?}] mod fixture_hosts;
+fn main() {{ println!("{{}} {{}} {{}}",
+    fixture_hosts::enabled(true, true),
+    fixture_hosts::enabled(false, false),
+    fixture_hosts::enabled(false, true)); }}
+"#
+        ),
+    )
+    .unwrap();
+    for (profile, debug, opted_out) in [
+        ("debug", "yes", "false true false\n"),
+        ("release", "no", "false true true\n"),
+    ] {
+        let bin = root.path().join(profile);
+        let compile = Command::new("rustc")
+            .arg("--edition=2024")
+            .args(["-C", &format!("debug-assertions={debug}")])
+            .arg(&source)
+            .arg("-o")
+            .arg(&bin)
+            .output()
+            .unwrap();
+        assert!(compile.status.success(), "{compile:?}");
+        for selector in [None, Some("off"), Some("unrecognized")] {
+            let mut command = Command::new(&bin);
+            command.env_remove("BBOXY_TEST_SCRIPTED_HOSTS");
+            if let Some(value) = selector {
+                command.env("BBOXY_TEST_SCRIPTED_HOSTS", value);
+            }
+            let out = command.output().unwrap();
+            assert!(out.status.success(), "{out:?}");
+            let expected = if selector == Some("off") {
+                opted_out
+            } else {
+                "false true true\n"
+            };
+            assert_eq!(String::from_utf8(out.stdout).unwrap(), expected);
+        }
+        if profile == "release" {
+            assert!(
+                !std::fs::read(&bin)
+                    .unwrap()
+                    .windows(b"BBOXY_TEST_SCRIPTED_HOSTS".len())
+                    .any(|bytes| bytes == b"BBOXY_TEST_SCRIPTED_HOSTS"),
+                "release must not contain the test selector"
+            );
+        }
+    }
+}
+
+#[test]
 fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
     let mut f = Fixture::new();
+    // Only this fixture needs a quiescent backend: the provider script has an
+    // independent real-clock link drop, unrelated to frozen animation time.
+    f.scripted_hosts = false;
     let account = f.root.path().join("c");
     f.run = account.join("run");
     let started = f.ok(&[

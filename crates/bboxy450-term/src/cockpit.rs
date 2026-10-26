@@ -24,6 +24,8 @@ use tokio::{
     sync::mpsc,
 };
 
+mod fixture_hosts;
+
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const GUI_WRITE_CAPACITY: usize = 64;
 
@@ -882,7 +884,10 @@ async fn start_logic(
     recover_seats: bool,
 ) -> Result<StartedLogic> {
     let mut child = child(config, "logic")?;
-    let fixture_hosts = !std::env::args().any(|arg| arg == "--smoke");
+    let fixture_hosts = fixture_hosts::enabled(
+        std::env::args().any(|arg| arg == "--smoke"),
+        config.test_account.is_some(),
+    );
     write_json(
         child.stdin.as_mut().unwrap(),
         &LogicBootstrap {
