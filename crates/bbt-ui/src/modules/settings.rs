@@ -121,6 +121,9 @@ pub struct Records {
     pub harness: Vec<(String, Harness)>,
     pub plugins: Vec<plugins::Plugin>,
     pub plugin_notice: Option<String>,
+    /// The host has a live registry; gallery/reference records never authorize effects.
+    #[serde(skip)]
+    pub plugin_controls: bool,
     pub knowledge: knowledge::Knowledge,
     pub messaging: messaging::Messaging,
     pub appearance: Appearance,

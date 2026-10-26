@@ -92,6 +92,7 @@ async fn operator_controls_inspect_once_replay_and_refuse_a_changed_source() {
     );
     let trust = PluginRequest::Trust {
         path: f.path.to_str().unwrap().into(),
+        sha256: None,
     };
     let op = Ulid::new();
     let trusted = f.ask(op, trust.clone()).await.unwrap();
@@ -153,7 +154,8 @@ async fn arbitrary_path_and_symlink_never_authorize_a_run() {
         f.ask(
             Ulid::new(),
             PluginRequest::Trust {
-                path: outside.to_string_lossy().into_owned()
+                path: outside.to_string_lossy().into_owned(),
+                sha256: None
             }
         )
         .await
@@ -167,13 +169,43 @@ async fn arbitrary_path_and_symlink_never_authorize_a_run() {
         f.ask(
             Ulid::new(),
             PluginRequest::Trust {
-                path: linked.to_string_lossy().into_owned()
+                path: linked.to_string_lossy().into_owned(),
+                sha256: None
             }
         )
         .await
         .is_err()
     );
     assert!(!f.marker.exists());
+}
+
+// keeps: a Settings trust act approves the digest it displayed, never a replacement binary.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn observed_digest_change_is_refused_before_trust_or_inspection() {
+    let f = Fixture::new();
+    let entry = f
+        .ask(Ulid::new(), PluginRequest::List)
+        .await
+        .unwrap()
+        .remove(0);
+    let source = fs::read_to_string(&f.path).unwrap();
+    fs::write(&f.path, format!("{source}\n# replacement\n")).unwrap();
+    let error = f
+        .ask(
+            Ulid::new(),
+            PluginRequest::Trust {
+                path: f.path.to_string_lossy().into_owned(),
+                sha256: entry.candidate.sha256,
+            },
+        )
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("plugin_changed_since_observed"));
+    assert!(!f.marker.exists());
+    assert_eq!(
+        f.ask(Ulid::new(), PluginRequest::List).await.unwrap()[0].state(),
+        State::Untrusted
+    );
 }
 
 // keeps: a blocked plugin descriptor never serializes inventory or another plugin's trust.
@@ -194,6 +226,7 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
                 Ulid::new(),
                 PluginRequest::Trust {
                     path: f.path.to_string_lossy().into_owned(),
+                    sha256: None,
                 },
             )
             .await
@@ -211,6 +244,7 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
             Ulid::new(),
             PluginRequest::Trust {
                 path: other.to_string_lossy().into_owned(),
+                sha256: None,
             },
         )
         .await

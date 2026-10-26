@@ -515,6 +515,7 @@ pub struct Model {
     /// Signing holds affect messaging, never whether terminal panes stay live.
     pub identity: Option<bbt_proto::GuiIdentity>,
     pub custody_reply: Option<Arc<crate::settings::IdentityReply>>,
+    pub plugin_registry: Option<Arc<Vec<bbt_proto::gui::PluginEntry>>>,
     /// Latest explicitly selected policy, bounded to one seat; ordinary rows keep small observations.
     pub attention_read: Option<Arc<GuiSeat>>,
     /// Correlation survives Latest replacing an intermediate publication.

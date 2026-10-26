@@ -36,6 +36,10 @@ pub struct Call {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Plugin {
+    #[serde(skip)]
+    pub candidate: String,
+    #[serde(skip)]
+    pub actionable: bool,
     pub name: String,
     pub bundled: bool,
     pub contract: Contract,
@@ -63,6 +67,13 @@ fn duration(ms: f64) -> String {
     }
 }
 impl Plugin {
+    pub fn control_key(&self) -> &str {
+        if self.candidate.is_empty() {
+            &self.name
+        } else {
+            &self.candidate
+        }
+    }
     fn recent(&self) -> impl Iterator<Item = &Call> {
         self.calls.iter().filter(|call| {
             call.t.is_finite()
@@ -354,7 +365,7 @@ impl Settings {
             } else {
                 b.toggle(&format!("{key}/control"), plugin.enabled)
             };
-            let control = if self.values.plugin_notice.is_some() {
+            let control = if self.values.plugin_notice.is_some() && !self.values.plugin_controls {
                 faded(control, 0.4)
             } else {
                 control

@@ -96,6 +96,11 @@ pub enum Action {
     EndDrag,
     Blur,
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PluginIntent {
+    Trust(String),
+    Enabled { candidate: String, enabled: bool },
+}
 #[derive(Debug, Clone)]
 pub struct Controller {
     pub section: String,
@@ -107,6 +112,7 @@ pub struct Controller {
     dragging: bool,
     identity_unlock: bool,
     attention: Option<super::messaging::Rule>,
+    plugin: Option<PluginIntent>,
 }
 impl Default for Controller {
     fn default() -> Self {
@@ -120,6 +126,7 @@ impl Default for Controller {
             dragging: false,
             identity_unlock: false,
             attention: None,
+            plugin: None,
         }
     }
 }
@@ -180,6 +187,9 @@ impl Controller {
     pub fn take_attention(&mut self) -> Option<super::messaging::Rule> {
         self.attention.take()
     }
+    pub fn take_plugin(&mut self) -> Option<PluginIntent> {
+        self.plugin.take()
+    }
     fn attention_change(
         &mut self,
         destination: String,
@@ -212,10 +222,14 @@ impl Controller {
     }
     fn editable(&self, field: &Field, values: &Records) -> bool {
         match field {
-            Field::PluginEnable(_)
-            | Field::PluginTrust(_)
-            | Field::PluginSetup(_)
-            | Field::KnowledgeProvider(_) => false,
+            Field::PluginEnable(id) | Field::PluginTrust(id) => {
+                (self.section == "Plugins" || !self.query.trim().is_empty())
+                    && values.plugin_controls
+                    && values.plugins.iter().any(|plugin| {
+                        plugin.control_key() == id && plugin.actionable && plugin.root.is_none()
+                    })
+            }
+            Field::PluginSetup(_) | Field::KnowledgeProvider(_) => false,
             Field::Attention { destination, class } => {
                 (self.section == "Messaging" || !self.query.trim().is_empty())
                     && !values.messaging.seat.id.is_empty()
@@ -276,17 +290,34 @@ impl Controller {
                 }
                 fields
             }
+            "Plugins" => values
+                .plugins
+                .iter()
+                .map(|plugin| {
+                    if plugin.trust == "trusted" {
+                        Field::PluginEnable(plugin.control_key().into())
+                    } else {
+                        Field::PluginTrust(plugin.control_key().into())
+                    }
+                })
+                .filter(|field| self.editable(field, values))
+                .collect(),
             _ => vec![],
         }
     }
     /// G3/G4's current host is a read-only reference. Never optimistically change
     /// a fixture's enable bit or a root's provider when no runtime can do the act.
     fn unavailable(&mut self, field: &Field, values: &Records) -> bool {
+        if matches!(field, Field::PluginEnable(_) | Field::PluginTrust(_))
+            && self.editable(field, values)
+        {
+            return false;
+        }
         let reason = match field {
             Field::PluginEnable(name) => values
                 .plugins
                 .iter()
-                .find(|p| p.name == *name)
+                .find(|p| p.control_key() == name)
                 .and_then(|p| p.root.as_ref())
                 .map_or_else(
                     || "Plugin enable/disable is unavailable in this build".into(),
@@ -381,6 +412,22 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::PluginTrust(candidate) => {
+                        self.plugin = Some(PluginIntent::Trust(candidate));
+                        self.error = None;
+                        return None;
+                    }
+                    Field::PluginEnable(candidate) => {
+                        let enabled = !values
+                            .plugins
+                            .iter()
+                            .find(|p| p.control_key() == candidate)
+                            .unwrap()
+                            .enabled;
+                        self.plugin = Some(PluginIntent::Enabled { candidate, enabled });
+                        self.error = None;
+                        return None;
+                    }
                     Field::Attention { destination, class } => {
                         let mode = cycle(
                             &["wake", "inbox", "digest"],
@@ -549,6 +596,74 @@ impl Controller {
         }
     }
 }
+
+#[cfg(test)]
+mod production_plugin_tests {
+    use super::*;
+    #[test]
+    fn live_controls_emit_intents_without_optimistically_changing_registry_facts() {
+        let mut records = Records {
+            plugin_controls: true,
+            plugins: vec![super::super::plugins::Plugin {
+                candidate: "candidate".into(),
+                name: "stub".into(),
+                trust: "untrusted".into(),
+                actionable: true,
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let mut control = Controller::new("Plugins");
+        assert!(
+            control
+                .handle(
+                    Action::Toggle(Field::PluginTrust("candidate".into())),
+                    &mut records,
+                    &Default::default()
+                )
+                .is_none()
+        );
+        assert_eq!(
+            control.take_plugin(),
+            Some(PluginIntent::Trust("candidate".into()))
+        );
+        assert_eq!(records.plugins[0].trust, "untrusted");
+        records.plugins[0].trust = "trusted".into();
+        control.handle(
+            Action::Toggle(Field::PluginEnable("candidate".into())),
+            &mut records,
+            &Default::default(),
+        );
+        assert_eq!(
+            control.take_plugin(),
+            Some(PluginIntent::Enabled {
+                candidate: "candidate".into(),
+                enabled: true
+            })
+        );
+        assert!(!records.plugins[0].enabled);
+        control.handle(
+            Action::Toggle(Field::PluginSetup("candidate".into())),
+            &mut records,
+            &Default::default(),
+        );
+        assert!(control.take_plugin().is_none());
+        assert!(
+            control
+                .error
+                .as_ref()
+                .unwrap()
+                .contains("setup is unavailable")
+        );
+        records.plugin_controls = false;
+        control.handle(
+            Action::Toggle(Field::PluginEnable("candidate".into())),
+            &mut records,
+            &Default::default(),
+        );
+        assert!(control.take_plugin().is_none());
+    }
+}
 fn cycle(items: &[&str], current: &str, delta: i32) -> String {
     let at = items.iter().position(|s| *s == current).unwrap_or(0) as i32;
     items[(at + delta).rem_euclid(items.len() as i32) as usize].into()
@@ -639,11 +754,12 @@ impl Regions {
                     && let Some(node) = find(layout, &format!("card0/plugin{i}/control"))
                 {
                     let field = if plugin.trust == "trusted" {
-                        Field::PluginEnable(plugin.name.clone())
+                        Field::PluginEnable(plugin.control_key().into())
                     } else {
-                        Field::PluginTrust(plugin.name.clone())
+                        Field::PluginTrust(plugin.control_key().into())
                     };
-                    self.hits.push((node.rect, Hit::Toggle(field), true));
+                    let disabled = !view.values.plugin_controls || !plugin.actionable;
+                    self.hits.push((node.rect, Hit::Toggle(field), disabled));
                 }
                 if let Some(node) = find(layout, &format!("card0/plugin{i}/setup")) {
                     self.hits.push((

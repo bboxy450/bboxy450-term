@@ -340,6 +340,7 @@ pub enum Reply {
     Messaging(Response),
     Task(TaskResponse),
     Attention,
+    Plugins,
     Refused(String),
     Unknown(String),
 }

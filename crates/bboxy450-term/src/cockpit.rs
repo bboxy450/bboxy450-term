@@ -54,6 +54,10 @@ pub enum UiMsg {
         seat: bbt_mux::Ulid,
         edit: bbt_proto::gui::AttentionEdit,
     },
+    PluginControl {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::PluginRequest,
+    },
     IdentityControl {
         id: bbt_mux::Ulid,
         request: bbt_proto::identity::IdentityRequest,

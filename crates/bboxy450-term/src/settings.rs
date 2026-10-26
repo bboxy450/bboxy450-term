@@ -5,7 +5,7 @@
 )]
 use bbt_ui::modules::settings::{Appearance, Notifications, controller::Patch};
 pub mod messaging;
-mod registry;
+pub mod registry;
 use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},

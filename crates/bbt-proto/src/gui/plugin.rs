@@ -1,5 +1,6 @@
 //! Operator controls for the account-owned production plugin registry.
 use super::*;
+pub use bbt_plugin::registry::{Entry as PluginEntry, State as PluginState};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -8,6 +9,8 @@ pub enum PluginRequest {
     /// Only a discovered path is eligible; this never imports an arbitrary executable.
     Trust {
         path: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        sha256: Option<String>,
     },
     Enable {
         candidate: String,

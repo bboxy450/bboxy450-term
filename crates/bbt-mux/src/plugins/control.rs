@@ -172,7 +172,7 @@ fn prepare(
         return Ok((entries, None));
     }
     let selector = match request {
-        PluginRequest::Trust { path } => normalized_source(path)?,
+        PluginRequest::Trust { path, .. } => normalized_source(path)?,
         PluginRequest::Enable { candidate } | PluginRequest::Disable { candidate } => {
             candidate.clone()
         }
@@ -195,6 +195,16 @@ fn prepare(
                 .sha256
                 .as_deref()
                 .ok_or_else(|| invalid("plugin_refused: candidate has no verified digest"))?;
+            if let PluginRequest::Trust {
+                sha256: Some(expected),
+                ..
+            } = request
+                && expected != digest
+            {
+                return Err(invalid(
+                    "plugin_changed_since_observed: refresh the registry and explicitly trust the current digest",
+                ));
+            }
             registry.trust(actor, id, digest, None).map_err(refusal)?
         }
         PluginRequest::Enable { .. } => registry.set_enabled(actor, id, true).map_err(refusal)?,

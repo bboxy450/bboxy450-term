@@ -376,6 +376,7 @@ enum ActionReply {
     Identity(Ulid),
     Attention(Ulid),
     Knowledge(Ulid),
+    Plugin(Ulid, bool),
     Events { stream: String },
     EventCursor,
 }
@@ -402,6 +403,7 @@ impl ActionReplies {
             }
             GuiAction::Identity(call) => ActionReply::Identity(call.id),
             GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
+            GuiAction::Plugin { id, request } => ActionReply::Plugin(*id, !request.mutation()),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
                 stream: stream.clone(),
             },
@@ -412,20 +414,27 @@ impl ActionReplies {
         });
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
-        let knowledge = match reply {
-            GuiReply::Knowledge { op, .. } | GuiReply::Error { op, .. } => self
+        let independent = match reply {
+            GuiReply::Knowledge { op, .. } => self
                 .0
                 .iter()
                 .position(|r| *r == ActionReply::Knowledge(*op)),
+            GuiReply::Plugin { op, .. } => self
+                .0
+                .iter()
+                .position(|r| matches!(r,ActionReply::Plugin(id,_) if id==op)),
+            GuiReply::Error { op, .. } => self.0.iter().position(
+                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_) if id==op),
+            ),
             _ => None,
         };
-        if let Some(at) = knowledge {
+        if let Some(at) = independent {
             return self.0.remove(at);
         }
         let at = self
             .0
             .iter()
-            .position(|r| !matches!(r, ActionReply::Knowledge(_)))?;
+            .position(|r| !matches!(r, ActionReply::Knowledge(_) | ActionReply::Plugin(..)))?;
         let expected = &self.0[at];
         let matches = match reply {
             // Close/undo return Seat as their terminal result. Mute sends its
@@ -766,6 +775,23 @@ fn operations_disconnected(model: &mut Arc<Model>, updates: &Latest<Arc<Model>>,
     }
 }
 
+fn publish_plugins(
+    model: &mut Arc<Model>,
+    updates: &Latest<Arc<Model>>,
+    op: Ulid,
+    entries: Vec<bbt_proto::gui::PluginEntry>,
+    all: bool,
+) {
+    let target = &mut Arc::make_mut(model).plugin_registry;
+    let previous = target
+        .as_ref()
+        .map_or(&[][..], |entries| entries.as_slice());
+    *target = Some(Arc::new(bboxy450_term::settings::registry::merge(
+        previous, entries, all,
+    )));
+    operation_reply(model, updates, op, bboxy450_term::messaging::Reply::Plugins);
+}
+
 fn publish_identity_control(
     model: &mut Arc<Model>,
     updates: &Latest<Arc<Model>>,
@@ -1035,6 +1061,7 @@ async fn run_with_control(
                             queue_action(&mut outgoing,GuiAction::SetAttention {id:*id,seat:*seat,edit:edit.clone()});
                         }
                     },
+                    UiMsg::PluginControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Plugin {id:*id,request:request.clone()}); } },
                     UiMsg::IdentityControl {id,request}=>queue_action(&mut outgoing,GuiAction::Identity(bbt_proto::identity::IdentityCall {id:*id,request:*request})),
                     UiMsg::Input {seat,generation,id,bytes}=> {
                         if return_live(&mut history,&mut model,*seat) {
@@ -1178,6 +1205,12 @@ async fn run_with_control(
                             }
                             None
                         }
+                        GuiReply::Plugin {op,entries}=> {
+                            if let Some(ActionReply::Plugin(expected,all)) = terminal_reply && expected==op {
+                                publish_plugins(&mut model, &updates, op, entries, all);
+                            }
+                            None
+                        },
                         GuiReply::Attention {op,mut seat}=> {
                             if terminal_reply == Some(ActionReply::Attention(op)) {
                                 Arc::make_mut(&mut model).attention_read=Some(Arc::new(seat.clone()));
@@ -1281,7 +1314,10 @@ async fn run_with_control(
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else { knowledge_watch.response(op,result); }
                             }
-                            operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Refused(reason.clone()));
+                            let result = if matches!(terminal_reply,Some(ActionReply::Plugin(..))) && reason.starts_with("unknown:") {
+                                bboxy450_term::messaging::Reply::Unknown(reason.clone())
+                            } else { bboxy450_term::messaging::Reply::Refused(reason.clone()) };
+                            operation_reply(&mut model,&updates,op,result);
                             publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
                             if matches!(&terminal_reply,Some(ActionReply::History(_)))
                                 && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now(),&reason)
@@ -3915,6 +3951,32 @@ mod tests {
             .unwrap();
         eprintln!(
             "PASS orderly shutdown at full retained/channel capacity after backend loss, supervisor {supervisor_pid} reaped"
+        );
+    }
+}
+
+#[cfg(test)]
+mod plugin_reply_tests {
+    use super::*;
+    #[test]
+    fn plugin_completion_does_not_consume_an_ordinary_control_slot() {
+        let mut replies = ActionReplies::default();
+        let op = Ulid::new();
+        replies.push(&GuiAction::ListSeats);
+        replies.push(&GuiAction::Plugin {
+            id: op,
+            request: bbt_proto::gui::PluginRequest::List,
+        });
+        assert_eq!(
+            replies.take(&GuiReply::Plugin {
+                op,
+                entries: vec![]
+            }),
+            Some(ActionReply::Plugin(op, true))
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Seats(vec![])),
+            Some(ActionReply::Seats)
         );
     }
 }

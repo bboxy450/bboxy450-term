@@ -655,6 +655,10 @@ enum UiEffect {
     Compose(bbt_proto::gui::UiComposed),
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
+    Plugin {
+        op: bbt_mux::Ulid,
+        before: u64,
+    },
     Mute(SeatId, bool),
     Scroll(bbt_mux::Ulid, SeatId),
     Lifecycle(bboxy450_term::close_frame::Target),
@@ -687,7 +691,14 @@ impl UiEffect {
             } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
             live::UiMsg::Messaging { id, .. }
             | live::UiMsg::Task { id, .. }
-            | live::UiMsg::SetAttention { id, .. } | live::UiMsg::GetAttention { id, .. } => Some(Self::Operation(*id)),
+            | live::UiMsg::SetAttention { id, .. }
+            | live::UiMsg::GetAttention { id, .. } => Some(Self::Operation(*id)),
+            live::UiMsg::PluginControl { id, .. } => Some(Self::Plugin {
+                op: *id,
+                before: model
+                    .and_then(|m| m.operation_results.rows().find(|row| row.op == *id))
+                    .map_or(0, |row| row.serial),
+            }),
             live::UiMsg::Scroll { seat, request, .. } => {
                 request.op.map(|id| Self::Scroll(id, *seat))
             }
@@ -1734,6 +1745,7 @@ struct App {
     mute: preferences::Mute,
     custody: preferences::CustodyControl,
     settings_attention: Option<(bbt_mux::Ulid, bbt_mux::Ulid, bool)>,
+    settings_plugins: preferences::registry::Requests,
     settings_attention_target: Option<(bbt_mux::Ulid, u64, bbt_proto::registry::Role)>,
     system_theme: Theme,
     local_tab: Option<LocalTab>,
@@ -1887,6 +1899,7 @@ impl App {
             mute: preferences::Mute::default(),
             custody: preferences::CustodyControl::default(),
             settings_attention: None,
+            settings_plugins: Default::default(),
             settings_attention_target: None,
             system_theme: Theme::Dark,
             local_tab: None,
@@ -2123,7 +2136,23 @@ impl App {
             self.queue(live::UiMsg::GetAttention { id, seat, generation });
         }
     }
+    fn plugin_request(&mut self, request: bbt_proto::gui::PluginRequest) -> Result<(), String> {
+        if self.backend_lost || self.live_commands.is_none() || self.closing {
+            return Err("Plugin registry connection is unavailable".into());
+        }
+        let model = self
+            .live_state
+            .as_deref()
+            .ok_or("Plugin registry snapshot is unavailable")?;
+        if let Some(message) = self.settings_plugins.issue(model, request)? {
+            self.queue(message);
+        }
+        Ok(())
+    }
     fn open_settings(&mut self, section: &str) {
+        if let Err(reason) = self.plugin_request(bbt_proto::gui::PluginRequest::List) {
+            self.logger.write(reason);
+        }
         if self.live_commands.is_some()
             && !self.backend_lost
             && let Some(message) = self.custody.request(false, Instant::now())
@@ -2174,6 +2203,9 @@ impl App {
             ),
             ..Default::default()
         };
+        if let Some(model) = self.live_state.as_deref() {
+            self.settings_plugins.decorate(&mut view.values, model);
+        }
         view.values.account.custody = Some(self.custody.view());
         view.values.messaging = preferences::messaging::view(
             self.live_state.as_deref(),
@@ -2199,6 +2231,8 @@ impl App {
         }
         if self.backend_lost || self.live_commands.is_none() {
             view.values.account.custody.as_mut().unwrap().enabled = false;
+            view.values.plugin_controls = false;
+            view.values.plugin_notice = Some("Plugin registry connection unavailable; retained observations cannot authorize a control.".into());
             for root in &mut view.values.knowledge.roots {
                 root.answering = "read connection unavailable".into();
                 root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads. Provider switching is unavailable in this build.".into());
@@ -2221,6 +2255,7 @@ impl App {
         }
     }
     fn settings_action(&mut self, action: settings_controller::Action) {
+        let read_plugins = matches!(&action, settings_controller::Action::Section(_));
         let pointer_drag = matches!(action, settings_controller::Action::Drag(_));
         let commit_drag = matches!(action, settings_controller::Action::EndDrag)
             .then(|| self.rim_preview.take())
@@ -2240,6 +2275,13 @@ impl App {
                 controller.section == "Knowledge" || !controller.query.trim().is_empty(),
             );
         }
+        let plugin = controller.take_plugin();
+        let plugin_request = plugin.map(|intent| {
+            self.live_state
+                .as_deref()
+                .ok_or_else(|| "Plugin registry snapshot unavailable".to_owned())
+                .and_then(|model| preferences::registry::request(model, intent))
+        });
         let unlock = controller.take_identity_unlock();
         let attention = controller.take_attention();
         let attention_message = attention.and_then(|rule| {
@@ -2264,6 +2306,15 @@ impl App {
                 self.settings_attention = Some((*id, *seat, true));
             }
             self.queue(message);
+        }
+        if let Some(request) = plugin_request {
+            if let Err(reason) = request.and_then(|request| self.plugin_request(request)) {
+                if let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+                    controller.error = Some(reason);
+                }
+            }
+        } else if read_plugins {
+            let _ = self.plugin_request(bbt_proto::gui::PluginRequest::List);
         }
         if pointer_drag {
             if let Some(settings_controller::Patch::Rim(rim)) = patch {
@@ -2596,15 +2647,19 @@ impl App {
                         None
                     }
                 }));
-            self.conversation.entries.extend(self.scene.restart_lines(swarm.id).map(|text| {
-                bbt_ui::modules::stream_dock::Entry::Message {
-                    data: Box::new(bbt_ui::modules::stream_dock::Message {
-                        text: text.into(), presence: true, kind: Some("presence".into()),
-                        ..Default::default()
-                    }),
-                    show_channel: None,
-                }
-            }));
+            self.conversation
+                .entries
+                .extend(self.scene.restart_lines(swarm.id).map(|text| {
+                    bbt_ui::modules::stream_dock::Entry::Message {
+                        data: Box::new(bbt_ui::modules::stream_dock::Message {
+                            text: text.into(),
+                            presence: true,
+                            kind: Some("presence".into()),
+                            ..Default::default()
+                        }),
+                        show_channel: None,
+                    }
+                }));
         }
         self.conversation.entries.extend(
             self.task_records
@@ -3576,7 +3631,8 @@ impl App {
                         let index = pending
                             .iter()
                             .position(|message| match message {
-                                live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => *id == op,
+                                live::UiMsg::Spawn { id, .. }
+                                | live::UiMsg::SpawnSpec { id, .. } => *id == op,
                                 _ => false,
                             })
                             .expect("newly admitted spawn is still queued");
@@ -4453,6 +4509,10 @@ impl App {
                     Some(outcome) => Err(format!("ui_frame_refused: spawn {id}: {outcome:?}")),
                 }
             }
+            UiEffect::Plugin { op, before } => Ok(model
+                .operation_results
+                .rows()
+                .any(|row| row.op == *op && row.serial > *before)),
             UiEffect::Operation(id) => {
                 Ok(model.operation_results.rows().any(|reply| reply.op == *id))
             }
@@ -4681,7 +4741,8 @@ impl App {
                             .map_err(str::to_owned)?;
                     }
                     bbt_proto::gui::UiSpawnGateCommand::Release { op } => {
-                        let message = self.spawn_gate
+                        let message = self
+                            .spawn_gate
                             .release(self.test_account, op)
                             .map_err(str::to_owned)?;
                         // Move the existing bounded reservation; never prepare
@@ -4739,7 +4800,9 @@ impl App {
             .filter_map(|message| match message {
                 live::UiMsg::Messaging { id, .. }
                 | live::UiMsg::Task { id, .. }
-                | live::UiMsg::SetAttention { id, .. } | live::UiMsg::GetAttention { id, .. } => Some(*id),
+                | live::UiMsg::SetAttention { id, .. }
+                | live::UiMsg::GetAttention { id, .. }
+                | live::UiMsg::PluginControl { id, .. } => Some(*id),
                 _ => None,
             })
             .collect();
@@ -4755,6 +4818,7 @@ impl App {
                     | live::UiMsg::Task { id, .. }
                     | live::UiMsg::SetAttention { id, .. }
                     | live::UiMsg::GetAttention { id, .. }
+                    | live::UiMsg::PluginControl { id, .. }
                         if !previous_ops.contains(id) =>
                     {
                         Some(UiEffect::Operation(*id))
@@ -5039,10 +5103,13 @@ impl App {
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
                     rendered: model.prepared_screens.get(seat).and_then(|source| {
-                        self.frame_observations.read(*seat, source, &mut terminal_text).map(|mut rendered| {
-                            rendered.pixel_size = model.frames.get(seat).map(|grid| [grid.width, grid.height]);
-                            rendered
-                        })
+                        self.frame_observations
+                            .read(*seat, source, &mut terminal_text)
+                            .map(|mut rendered| {
+                                rendered.pixel_size =
+                                    model.frames.get(seat).map(|grid| [grid.width, grid.height]);
+                                rendered
+                            })
                     }),
                 })
             })
@@ -5578,7 +5645,8 @@ impl App {
             if self.ui_observe {
                 if let Some(model) = &self.live_state {
                     self.frame_observations.produced(
-                        self.meter.total_frames(), model,
+                        self.meter.total_frames(),
+                        model,
                         self.pane_bounds.iter().map(|(seat, _)| *seat),
                     );
                 }
@@ -6739,6 +6807,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
             | live::UiMsg::SetAttention { .. }
             | live::UiMsg::Close(_)
             | live::UiMsg::UndoClose { .. }
+            | live::UiMsg::PluginControl { .. }
             | live::UiMsg::IdentityControl { .. }
     )
 }
@@ -8401,7 +8470,8 @@ mod input_tests {
                 | live::UiMsg::UndoClose { .. }
                 | live::UiMsg::Messaging { .. }
                 | live::UiMsg::GetAttention { .. }
-            | live::UiMsg::SetAttention { .. }
+                | live::UiMsg::SetAttention { .. }
+                | live::UiMsg::PluginControl { .. }
                 | live::UiMsg::IdentityControl { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }

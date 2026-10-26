@@ -25,6 +25,7 @@ pub(super) fn parse(words: &[&str], _cx: &ParseCx) -> Result<Option<Command>, St
             let path = std::path::absolute(path).map_err(|error| error.to_string())?;
             PluginRequest::Trust {
                 path: path.to_str().ok_or("plugin path must be UTF-8")?.into(),
+                sha256: None,
             }
         }
         ["plugin", "enable", candidate] => PluginRequest::Enable {
