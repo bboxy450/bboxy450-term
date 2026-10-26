@@ -1,0 +1,3 @@
+#!/bin/sh
+# The script first checks the overlay, then enables the installed native client.
+exec python3 -I -B "$(dirname "$0")/../native_launch.py" codex "$@"

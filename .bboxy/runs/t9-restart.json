@@ -1,0 +1,164 @@
+{
+  "promise": "T9 explicit seat restart",
+  "status": "full native proof exit0; author pending",
+  "source_refs": {
+    "scripts/e2e/t9_restart.py": "normal ctl seat restart, actual session IDs and resumed native requests, old-PID absence and retained pre-restart capture range",
+    "scripts/e2e/T9.sh": "coverage full, explicit installed-client/local-model label"
+  },
+  "root": "/private/tmp/at9-_zl5s_yu",
+  "native_exit": 0,
+  "native_seconds": 7.66910719871521,
+  "verdict": "full: explicit ctl restarts preserve 3 seat IDs and native sessions/transcripts, advance generations once, reap old PIDs and retain the shell screen or gap",
+  "before": {
+    "01M5WAM7HBYN2ZZYS4VVEZGG7C": {
+      "seat": "01M5WAM7HBYN2ZZYS4VVEZGG7C",
+      "generation": 1,
+      "session": "01a178aa-1e3d-46e2-8ef3-c40c9774d1e9",
+      "process": {
+        "kind": "running",
+        "pid": 26564
+      }
+    },
+    "01M5WAM8NQZQQMWCTF93TB1C2H": {
+      "seat": "01M5WAM8NQZQQMWCTF93TB1C2H",
+      "generation": 1,
+      "session": "01a178aa-26eb-7c90-a8af-188697d8e682",
+      "process": {
+        "kind": "running",
+        "pid": 26712
+      }
+    },
+    "01M5WAMA5WVJFTQ159Y1485BRG": {
+      "seat": "01M5WAMA5WVJFTQ159Y1485BRG",
+      "generation": 1,
+      "session": null,
+      "process": {
+        "kind": "running",
+        "pid": 26844
+      }
+    }
+  },
+  "after": {
+    "01M5WAM7HBYN2ZZYS4VVEZGG7C": {
+      "seat": "01M5WAM7HBYN2ZZYS4VVEZGG7C",
+      "generation": 2,
+      "session": "01a178aa-1e3d-46e2-8ef3-c40c9774d1e9",
+      "process": {
+        "kind": "running",
+        "pid": 27008
+      }
+    },
+    "01M5WAM8NQZQQMWCTF93TB1C2H": {
+      "seat": "01M5WAM8NQZQQMWCTF93TB1C2H",
+      "generation": 2,
+      "session": "01a178aa-26eb-7c90-a8af-188697d8e682",
+      "process": {
+        "kind": "running",
+        "pid": 26975
+      }
+    },
+    "01M5WAMA5WVJFTQ159Y1485BRG": {
+      "seat": "01M5WAMA5WVJFTQ159Y1485BRG",
+      "generation": 2,
+      "session": null,
+      "process": {
+        "kind": "running",
+        "pid": 26985
+      }
+    }
+  },
+  "restarts": {
+    "01M5WAM7HBYN2ZZYS4VVEZGG7C": {
+      "from_generation": 1,
+      "seat": "01M5WAM7HBYN2ZZYS4VVEZGG7C"
+    },
+    "01M5WAM8NQZQQMWCTF93TB1C2H": {
+      "from_generation": 1,
+      "seat": "01M5WAM8NQZQQMWCTF93TB1C2H"
+    },
+    "01M5WAMA5WVJFTQ159Y1485BRG": {
+      "from_generation": 1,
+      "seat": "01M5WAMA5WVJFTQ159Y1485BRG"
+    }
+  },
+  "capture_through": {
+    "01M5WAM7HBYN2ZZYS4VVEZGG7C": 29,
+    "01M5WAM8NQZQQMWCTF93TB1C2H": 28,
+    "01M5WAMA5WVJFTQ159Y1485BRG": 5
+  },
+  "native_requests": [
+    {
+      "kind": "claude",
+      "phase": "before",
+      "path": "/v1/messages?beta=true",
+      "assistant_before": false,
+      "request_sha256": "6f3a5da37c0cc0a9174829005c50f1fa1e9934cfa46275161d09b12a1787f4eb"
+    },
+    {
+      "kind": "codex",
+      "phase": "before",
+      "path": "/v1/responses",
+      "assistant_before": false,
+      "request_sha256": "cdd2cde7a1e32f2194d6672ba56b3ef34d7e23069a8deed0040ebe668125211c"
+    },
+    {
+      "kind": "codex",
+      "phase": "after",
+      "path": "/v1/responses",
+      "assistant_before": true,
+      "request_sha256": "cba15f7a8b2bf59771d9b4d9fc96252ee52b29a45b02f92473d84c6aaa96f964"
+    },
+    {
+      "kind": "claude",
+      "phase": "after",
+      "path": "/v1/messages?beta=true",
+      "assistant_before": true,
+      "request_sha256": "99d645f6293768faa745fc1e3e51c897685fceb4a392d35dbf4635cce4029f67"
+    }
+  ],
+  "history_rows": {
+    "01M5WAM7HBYN2ZZYS4VVEZGG7C": 54,
+    "01M5WAM8NQZQQMWCTF93TB1C2H": 55,
+    "01M5WAMA5WVJFTQ159Y1485BRG": 54
+  },
+  "runtime_sha256": "7e18fe21664712f0c461998aa8b44562aa7e17ad1f70d3f5648104d27ca11f11",
+  "native_wrapper": {
+    "exit": 0,
+    "seconds": 8.414780139923096
+  },
+  "raw_log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t9-20261026/native-final.log",
+  "raw_log_sha256": "b39122403a87ae1194bd6363a2f0ab2cf938e8ea884ece543fce272546c3f531",
+  "source_hashes": {
+    "scripts/e2e/T9.sh": "aa3f7688b2ae5ea07b7a65502449a7ea8f5f3bc1d4dfec7b7b1579d12e877266",
+    "scripts/e2e/t9_restart.py": "859b25aa48c29ba255161666edda1e477d44d0626589129b440918415fb1107c"
+  },
+  "artifacts": {
+    "work/t9-before-01M5WAM8NQZQQMWCTF93TB1C2H.jsonl": "9ad1b66b0b3560afdbd230b0aba17603d854fde4c0dc5c104e488d1a94a02880",
+    "work/t9-after-01M5WAM8NQZQQMWCTF93TB1C2H.jsonl": "26e8a01d3bd94104e6900b058f2032722cf39ab4c401e4ba9b2baabbeab4955d",
+    "work/t9-before-01M5WAM7HBYN2ZZYS4VVEZGG7C.jsonl": "7a67adef5ac71be46896b2dd794710072a20a2e9b19ce1c998d00929e1cd948c",
+    "work/t9-codex-expected-hooks.jsonl": "d75b44bf51daaf37ceb182feeb770fca44e581e8c07956ae59e2d092af8574fa",
+    "work/t9-codex-hook-review.txt": "1f4fc42b5e1efff0596e91431feafa615edb64b469004d1ee783ee28947de756",
+    "work/t9-after-01M5WAM7HBYN2ZZYS4VVEZGG7C.jsonl": "b9b0bf2c7ea4f881e375374d5283262d6be06069bdff799e0d26f37ad504255d",
+    "work/baseline.png": "2c13c25ae5186041101fdcc820f0dca1d8561d860533879ced15826d1885cfb7",
+    "work/01M5WAM7HBYN2ZZYS4VVEZGG7C-screen.json": "016c85347042cff0a9a6f299527dc29e788dbeee748a2f0a2ada1e6307bcf805",
+    "work/t9-recovery.json": "aaf8b09d15da0d520e5b2186c63b8878017015e15dbf46a40ce1f1ee9df33b3a",
+    "work/01M5WAM8NQZQQMWCTF93TB1C2H-screen.json": "8e0a02e034e9bdb7cc288a33b027913c6586aaba50471b769b8b24eca4b01a4f",
+    "work/output.log": "bee3331b30e2892e7a11fe32a01399ca5879b5b11be93f25bcc9a4e0f3b836b3",
+    "work/t9-after-01M5WAMA5WVJFTQ159Y1485BRG.png": "50951d391497db223376f8d4c794940a5ba9e4ba83a55ac2ef87f76bcc8d314b",
+    "work/t9-after-01M5WAM8NQZQQMWCTF93TB1C2H.png": "453b068fea824db4560e6b715687dc2f43d002f586d06fcfdc0520e7b21cb0f1",
+    "work/task-calls.jsonl": "03cef5a12884f2b182805302c902d240f5ba75986c62fb1745f4b16fb064e110",
+    "work/t9-after-01M5WAM7HBYN2ZZYS4VVEZGG7C.png": "6beeeb22205c75ffa6778389dda4a699e000327f42d32b6e7191e5fd5df40b75",
+    "work/t9-before-01M5WAM8NQZQQMWCTF93TB1C2H.png": "6e56a69622e8c951baae5ca00d886c31f046e7516b8157b10425534f732591d9",
+    "work/t9-after-01M5WAMA5WVJFTQ159Y1485BRG.jsonl": "5810b1799c373ba819229e156362851a6ab11ce248af64345ddabece280e1371",
+    "work/t9-before-01M5WAMA5WVJFTQ159Y1485BRG.png": "8e5c108c6525bdd6fb10988881ccaef2bee53a0fe97b4acb300c9fbd1fa2ebc5",
+    "work/t9-before-01M5WAM7HBYN2ZZYS4VVEZGG7C.png": "127d6f4a293351b0c925c063c4310c8c3f7f891f0bff1a7fefd388ab99538257",
+    "work/t9-before-01M5WAMA5WVJFTQ159Y1485BRG.jsonl": "edb1cd82abbcfe54fbeb55990e57442f28b99417ba3bfb6aae2684c4a12338ff",
+    "work/layout.json": "5dacf2004adc11ef3e5a5ef16dd629cf0f1d89cc7361ef762c0ecab766aa7a48",
+    "work/01M5WAMA5WVJFTQ159Y1485BRG-screen.json": "f861df4ab28c75ed2676e85a4e469570f9631c06e8b79885d0dac8c23f98de48"
+  },
+  "limits": [
+    "Installed interactive native clients, scripted localhost model; no remote-model claim",
+    "No OS presentation or timing SLO",
+    "postsubmit and Oracle review unverified"
+  ]
+}

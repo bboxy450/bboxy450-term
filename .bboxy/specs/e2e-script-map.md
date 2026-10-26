@@ -28,7 +28,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T6 | `scripts/e2e/T6.sh` | full | | |
 | T7 | `scripts/e2e/T7.sh` | full | | |
 | T8 | `scripts/e2e/T8.sh` | full | — | Real-PTY OSC fixture; silent inferred idle, reported state, malformed reports rejected and produced-frame grade ink |
-| T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
+| T9 | `scripts/e2e/T9.sh` | full | — | Installed interactive Claude/Codex, scripted localhost model, plus real zsh |
 | L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
 | L2 | `scripts/e2e/L2.sh` | full | — | Captured right/down/tab/space slots survive later keyboard focus before backend dispatch; exact starting/final rectangles, siblings, wrong/duplicate release refusals and original same-op replay |
 | L3 | `scripts/e2e/L3.sh` | full | harness: installed clients, scripted local model | App startup/launch preserves user config bytes; native MCP/plugin/skill consumption and exact hook recipe; each native write listed by path/cause; real zsh shell hooks and unchanged user zshrc |
@@ -172,6 +172,10 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Gaps at baseline afff4758:** seat close/undo-close and UI Cmd-Z relay, controllable grace clock, layout/scroll/stream reads. T7 is Velvet's in-flight work; do not substitute a process exit or app stop.
 
 **Baseline pointers:** ctl.rs:251 (verbs absent); ctl-cli.md:60; e2e-acceptance.md:T7.
+
+### T9
+
+**Current script:** Explicit `ctl seat restart` runs once for each installed interactive Claude and Codex client and a real zsh seat. Every result names the prior generation; exactly the same seat IDs reach generation +1 with new running PIDs and their old PIDs absent. Both native clients retain the actual harness session IDs, and their resumed model requests must contain the prior assistant turn. Capture sequences through the pre-restart watermark must still expose known output or an explicit gap. Zsh answers again from its replacement process. All input, state and captures use ctl and private file-account custody; the scripted loopback provider supplies model text only.
 
 ### T8
 
