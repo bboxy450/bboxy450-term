@@ -1241,6 +1241,16 @@ pub fn classify(reason: &str) -> Fail {
     if reason.starts_with("not_on_screen:") {
         return fail("not_on_screen", "ctl seat focus <seat>", 1);
     }
+    if matches!(
+        reason,
+        "role_recipient_limit_32" | "ui_refused: role_recipient_limit_32"
+    ) {
+        return fail(
+            "role_recipient_limit_32",
+            "choose a role with at most 32 open seats in the current swarm",
+            1,
+        );
+    }
     if reason.starts_with("focus_timeout:") {
         return fail(
             "focus_timeout",
@@ -2072,6 +2082,14 @@ mod tests {
     }
     #[test]
     fn errors_name_a_kind_a_hint_and_an_exit() {
+        for reason in [
+            "role_recipient_limit_32",
+            "ui_refused: role_recipient_limit_32",
+        ] {
+            let refusal = classify(reason);
+            assert_eq!((refusal.kind, refusal.exit), ("role_recipient_limit_32", 1));
+            assert!(refusal.hint.contains("32"));
+        }
         let hidden = classify("not_on_screen: seat fixture has no pane on screen");
         assert_eq!(hidden.kind, "not_on_screen");
         assert_eq!(hidden.hint, "ctl seat focus <seat>");
