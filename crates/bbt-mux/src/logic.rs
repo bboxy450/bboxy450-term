@@ -204,6 +204,14 @@ enum Command {
         bool,
         oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>,
     ),
+    GuiAttention(Ulid, Option<u64>, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    CtlAttention(
+        Ulid,
+        bbt_proto::gui::AttentionEdit,
+        Ulid,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     CtlRename(
         Ulid,
         String,
@@ -331,6 +339,7 @@ impl Command {
                 | Self::GuiEndpoint(_)
                 | Self::GuiSeats(_)
                 | Self::GuiSeat(..)
+                | Self::GuiAttention(..)
                 | Self::GuiIdentity(_)
                 | Self::OperatorIdentity(..)
                 | Self::IdentityStatus(_)
@@ -816,6 +825,28 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
+    }
+    pub async fn gui_attention(&self, seat: Ulid, generation: Option<u64>) -> Result<crate::seat_socket::GuiSeat> {
+        let (tx, rx) = oneshot::channel();
+        self.tx.send(Command::GuiAttention(seat, generation, tx)).await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("attention read unavailable"))?
+    }
+    /// Operator-authority policy setter; never impersonates the target seat.
+    pub async fn ctl_attention(
+        &self,
+        seat: Ulid,
+        edit: bbt_proto::gui::AttentionEdit,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::CtlAttention(seat, edit, op, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("attention outcome unknown; retain the operation id"))?
     }
     /// Rename a seat through the ctl door: a journaled registry write and a state event.
     pub async fn ctl_rename(
@@ -4730,6 +4761,32 @@ impl Worker {
             this.seat_input(id, generation, input_id, bytes).map(drop)
         })
     }
+    fn ctl_attention(
+        &mut self,
+        id: Ulid,
+        mut edit: bbt_proto::gui::AttentionEdit,
+        op: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        edit.destination = if edit.destination == "direct" {
+            format!("seats/{id}/inbox")
+        } else {
+            crate::messaging::attention::destination(&edit.destination)?
+        };
+        let args = serde_json::json!({"seat": id, "edit": edit});
+        self.ctl_journaled(op, "seat_attention", args, origin, |this| {
+            this.check_gui_generation(id, edit.generation)?;
+            this.registry.change_attention(id, &edit)?;
+            this.publish(
+                &format!("seat-{id}"),
+                Draft::new(
+                    format!("seat/{id}/state"),
+                    "attention",
+                    serde_json::json!({"seat":id}),
+                ),
+            )
+        })
+    }
     /// Rename through `ctl`: the registry name, then a state event so the window refreshes
     /// the seat (ctl-cli §1a). A name is 1 to 64 printable characters.
     fn ctl_rename(
@@ -6108,6 +6165,12 @@ impl Worker {
         self.messaging
             .operator_reference(self.identity.observed_operator_device()?)
     }
+    fn gui_attention(&mut self, id: Ulid, generation: Option<u64>) -> Result<crate::seat_socket::GuiSeat> {
+        if let Some(generation) = generation { self.check_gui_generation(id, generation)?; }
+        let mut seat = self.gui_seat(id)?;
+        seat.attention = Some(self.messaging.attention_view(&seat.record)?);
+        Ok(seat)
+    }
     fn gui_seat(&self, id: Ulid) -> Result<crate::seat_socket::GuiSeat> {
         let view = self
             .views
@@ -6160,7 +6223,8 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
-            attention: None,
+            attention: self.messaging.deferred_view(&record).unwrap_or_else(|error|
+                Some(serde_json::json!({"deferred_error":error.to_string()}))),
             record,
             state: SeatState {
                 generation: view.info.generation,
@@ -7162,6 +7226,12 @@ impl Worker {
                     Command::GuiScreen(id, cells, reply) => {
                         let result = self.seat_screen(id, cells);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiAttention(id, generation, reply) => {
+                        let _ = reply.send(self.gui_attention(id, generation));
+                    }
+                    Command::CtlAttention(id, edit, op, origin, reply) => {
+                        let _ = reply.send(self.ctl_attention(id, edit, op, origin));
                     }
                     Command::CtlRename(id, name, op, origin, reply) => {
                         let result = self.ctl_rename(id, name, op, origin);

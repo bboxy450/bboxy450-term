@@ -38,9 +38,14 @@ macro_rules! seat_commands {
             /// An explicit placement is captured by the attached GUI, never guessed here.
             SpawnAt(Box<bbt_proto::gui::UiSpawn>),
             Seats,
-            /// Read the receiver-owned policy; mutation remains the seat's own MCP tool.
-            Attention {
+            /// Read a receiver policy without changing it.
+            Attention { seat: String },
+            /// Operator-authority edit of one policy cell; default removes that override.
+            AttentionSet {
                 seat: String,
+                destination: String,
+                class: bbt_proto::messaging::MessageClass,
+                mode: Option<bbt_proto::messaging::WakeMode>,
             },
             Capture {
                 path: PathBuf,
@@ -145,6 +150,28 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         },
     },
     ["seats"] => Command::Seats,
+    ["seat", "attention", seat, destination, class, mode] => {
+        if let Some(unknown) = flags.keys().find(|key| !["op", "as"].contains(&key.as_str())) {
+            return Err(format!("{USAGE_PREFIX}--{unknown} does not apply to seat attention"));
+        }
+        let class = match class {
+            "conversation" => bbt_proto::messaging::MessageClass::Conversation,
+            "event" => bbt_proto::messaging::MessageClass::Event,
+            _ => return Err(format!("{USAGE_PREFIX}attention class is conversation or event")),
+        };
+        let mode = match mode {
+            "wake" => Some(bbt_proto::messaging::WakeMode::Wake),
+            "inbox" => Some(bbt_proto::messaging::WakeMode::Inbox),
+            "digest" => Some(bbt_proto::messaging::WakeMode::Digest),
+            "default" => None,
+            _ => return Err(format!("{USAGE_PREFIX}attention mode is wake, inbox, digest or default")),
+        };
+        if destination != "direct" {
+            bbt_mux::messaging::attention::destination(destination)
+                .map_err(|error| format!("{USAGE_PREFIX}{error}"))?;
+        }
+        Command::AttentionSet { seat: seat.into(), destination: destination.into(), class, mode }
+    },
     ["seat", "attention", seat] => {
         if let Some(unknown) = flags.keys().find(|key| !["op", "as"].contains(&key.as_str())) {
             return Err(format!("{USAGE_PREFIX}--{unknown} does not apply to seat attention"));
@@ -489,6 +516,35 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
         }
         Command::Seats => client.listed_seats()?,
         Command::Attention { seat } => attention(&mut client, &seat)?,
+        Command::AttentionSet {
+            seat,
+            destination,
+            class,
+            mode,
+        } => {
+            let current = resolve(&client.seats()?, &seat)?.clone();
+            let seat = current.record.id;
+            let op = client.mint();
+            let reply = client.call(
+                Some(op),
+                GuiAction::SetAttention {
+                    id: op,
+                    seat,
+                    edit: bbt_proto::gui::AttentionEdit {
+                        generation: current.record.generation,
+                        destination,
+                        class,
+                        mode,
+                    },
+                },
+                |reply| matches!(reply, GuiReply::Attention { op: actual, .. } if *actual == op),
+            )?;
+            let GuiReply::Attention { seat, .. } = reply else {
+                unreachable!()
+            };
+            seat.attention
+                .ok_or("attention_unavailable: host omitted the confirmed policy")?
+        }
         Command::Screen { .. }
         | Command::Resize { .. }
         | Command::Type { .. }
@@ -782,7 +838,7 @@ mod tests {
 
     // keeps: spec messaging-attention §7 MA-6 — the operator reads a seat's policy
     #[test]
-    fn attention_parses_only_the_read_verb() {
+    fn attention_parses_the_read_and_operator_set_forms() {
         let parsed =
             super::super::parse_full(&["seat".into(), "attention".into(), "Receiver".into()])
                 .unwrap();
@@ -799,6 +855,13 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(with_issuer.op, Some(Ulid::from(8u128)));
+        for (mode, expected) in [("wake", Some(bbt_proto::messaging::WakeMode::Wake)),
+            ("inbox", Some(bbt_proto::messaging::WakeMode::Inbox)),
+            ("digest", Some(bbt_proto::messaging::WakeMode::Digest)), ("default", None)] {
+            let args = ["seat", "attention", "Receiver", "#room", "event", mode].map(str::to_owned);
+            let parsed = super::super::parse_full(&args).unwrap();
+            assert!(matches!(parsed.command, Command::AttentionSet { mode, .. } if mode == expected));
+        }
     }
 
     // keeps: spec messaging-attention §3 — mute is operator policy, never a wake mode
@@ -811,7 +874,6 @@ mod tests {
             "seat attention s #status event wake extra",
             "seat attention s #status notice wake",
             "seat attention s #status event mute",
-            "seat attention s #status event wake",
             "seat attention s channels/* event wake",
             "seat attention s --timeout 1",
         ] {

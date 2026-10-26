@@ -4,8 +4,16 @@ use serde_json::json;
 #[test]
 fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme() {
     let cases = settings::cases();
-    assert_eq!(cases.len(), 168);
+    assert_eq!(cases.len(), 200);
     assert_eq!(settings::legacy_cases().len(), 72);
+    for state in [
+        "Messaging",
+        "messaging · oracle",
+        "messaging · overridden",
+        "messaging · muted",
+    ] {
+        assert_eq!(cases.iter().filter(|case| case.state == state).count(), 8);
+    }
     assert!(cases.iter().all(|c| {
         let p = CasePolicy::for_case(c).unwrap();
         p.text && !p.historical && p.geometry_tolerance_px == Some(0.5)

@@ -45,6 +45,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui clock freeze|advance <ms>|resume     test-account animation time, acknowledged by its frame
   ui compose --to <seat|role:r|channel:c> --text <text>   send through the window composer
   seat ls
+  seat attention <seat>                  read policy, defaults and pending digest summary
+  seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>
   seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
   seat screen <seat> [--human]            the visible screen, cursor and title

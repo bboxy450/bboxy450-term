@@ -2,6 +2,7 @@
 //! this view never reads config files, unlocks keys, or issues grants.
 pub mod controller;
 pub mod knowledge;
+pub mod messaging;
 pub mod plugins;
 use super::link::{Cloud, MachineState};
 use super::{
@@ -121,6 +122,7 @@ pub struct Records {
     pub plugins: Vec<plugins::Plugin>,
     pub plugin_notice: Option<String>,
     pub knowledge: knowledge::Knowledge,
+    pub messaging: messaging::Messaging,
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub shortcuts: Vec<(String, String)>,
@@ -155,7 +157,7 @@ pub struct Settings {
     pub draft_harness: Option<DraftHarness>,
     pub launch: Vec<Launch>,
 }
-pub const SECTIONS: [(&str, &str); 10] = [
+pub const SECTIONS: [(&str, &str); 11] = [
     ("Account", "key"),
     ("Cloud", "cloud"),
     ("Machines", "ssh"),
@@ -165,6 +167,7 @@ pub const SECTIONS: [(&str, &str); 10] = [
     ("Knowledge", "book"),
     ("Appearance", "sun"),
     ("Notifications", "bell"),
+    ("Messaging", "tray"),
     ("Shortcuts", "keys"),
 ];
 fn paint(color: ui::Color, alpha: f32) -> ui::Paint {
@@ -1360,7 +1363,7 @@ impl Settings {
         if !state.read_only
             || matches!(
                 self.section.as_str(),
-                "Appearance" | "Notifications" | "Plugins" | "Knowledge"
+                "Appearance" | "Notifications" | "Plugins" | "Knowledge" | "Messaging"
             )
         {
             return self.section_elements_state(b, width, state.window_controls_available);
@@ -1578,6 +1581,7 @@ impl Settings {
             "Shortcuts" => vec![self.shortcuts(b, width).into()],
             "Appearance" => vec![self.appearance(b, window_controls_available).into()],
             "Notifications" => vec![self.notifications(b).into()],
+            "Messaging" => vec![self.messaging(b).into()],
             "Plugins" => vec![self.plugins(b).into()],
             "Knowledge" => vec![self.knowledge(b).into()],
             _ => self.account(b, width),

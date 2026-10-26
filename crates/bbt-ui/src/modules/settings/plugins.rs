@@ -91,7 +91,7 @@ impl Plugin {
     }
 }
 
-fn chip(b: &Build, key: &str, text: &str, foreground: Option<ui::Color>) -> c::Element {
+pub(super) fn chip(b: &Build, key: &str, text: &str, foreground: Option<ui::Color>) -> c::Element {
     row(
         key,
         surface(

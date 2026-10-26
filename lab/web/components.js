@@ -1562,9 +1562,7 @@
   function settingsPage(opts) {
     opts = opts || {};
     const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
-    // Messaging joins the nav with MA-8's native cut; until then only the Messaging states show it, so the catalogued settings cases stay
-    // as native ships them (the native cut drops this condition and lands with its parity cases)
-    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', ...(opts.messaging ? ['Messaging'] : []), 'Shortcuts'];
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Messaging', 'Shortcuts'];
     const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Messaging: 'tray', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
     const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];

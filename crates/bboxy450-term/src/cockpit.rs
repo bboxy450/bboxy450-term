@@ -36,6 +36,12 @@ pub enum UiMsg {
         id: bbt_mux::Ulid,
         result: Box<std::result::Result<bbt_proto::gui::UiLayout, String>>,
     },
+    GetAttention { id: bbt_mux::Ulid, seat: bbt_mux::Ulid, generation: u64 },
+    SetAttention {
+        id: bbt_mux::Ulid,
+        seat: bbt_mux::Ulid,
+        edit: bbt_proto::gui::AttentionEdit,
+    },
     IdentityControl {
         id: bbt_mux::Ulid,
         request: bbt_proto::identity::IdentityRequest,

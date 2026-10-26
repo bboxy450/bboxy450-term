@@ -67,6 +67,7 @@ pub enum Field {
     Background,
     Harness(String),
     IdentityUnlock,
+    Attention { destination: String, class: String },
     PluginEnable(String),
     PluginTrust(String),
     PluginSetup(String),
@@ -87,6 +88,7 @@ pub enum Action {
     Focus(Focus),
     NextFocus(bool),
     Set(Patch),
+    Attention(super::messaging::Rule),
     Toggle(Field),
     Reset(Field),
     Nudge(i32),
@@ -104,6 +106,7 @@ pub struct Controller {
     editor: Editor,
     dragging: bool,
     identity_unlock: bool,
+    attention: Option<super::messaging::Rule>,
 }
 impl Default for Controller {
     fn default() -> Self {
@@ -116,6 +119,7 @@ impl Default for Controller {
             editor: Editor::default(),
             dragging: false,
             identity_unlock: false,
+            attention: None,
         }
     }
 }
@@ -173,12 +177,52 @@ impl Controller {
         self.scroll = next;
         changed
     }
+    pub fn take_attention(&mut self) -> Option<super::messaging::Rule> {
+        self.attention.take()
+    }
+    fn attention_change(
+        &mut self,
+        destination: String,
+        class: String,
+        mode: String,
+        values: &Records,
+    ) {
+        let field = Field::Attention {
+            destination: destination.clone(),
+            class: class.clone(),
+        };
+        if !self.editable(&field, values)
+            || !["wake", "inbox", "digest", "default"].contains(&mode.as_str())
+        {
+            self.error = Some("Messaging policy is unavailable or the mode is invalid".into());
+            return;
+        }
+        self.focus = Focus::Control(field);
+        let mode = if mode == values.messaging.default_mode(&destination, &class) {
+            "default".into()
+        } else {
+            mode
+        };
+        self.attention = Some(super::messaging::Rule {
+            destination,
+            class,
+            mode,
+        });
+        self.error = None;
+    }
     fn editable(&self, field: &Field, values: &Records) -> bool {
         match field {
             Field::PluginEnable(_)
             | Field::PluginTrust(_)
             | Field::PluginSetup(_)
             | Field::KnowledgeProvider(_) => false,
+            Field::Attention { destination, class } => {
+                (self.section == "Messaging" || !self.query.trim().is_empty())
+                    && !values.messaging.seat.id.is_empty()
+                    && values.messaging.seat.generation != 0
+                    && ["conversation", "event"].contains(&class.as_str())
+                    && (destination == "direct" || values.messaging.channels.contains(destination))
+            }
             Field::IdentityUnlock => {
                 (self.section == "Account" || !self.query.trim().is_empty())
                     && values
@@ -209,6 +253,16 @@ impl Controller {
                 Field::Glow,
                 Field::Subtitle,
             ],
+            "Messaging" => std::iter::once("direct")
+                .chain(values.messaging.channels.iter().map(String::as_str))
+                .flat_map(|destination| {
+                    ["conversation", "event"].map(|class| Field::Attention {
+                        destination: destination.into(),
+                        class: class.into(),
+                    })
+                })
+                .filter(|field| self.editable(field, values))
+                .collect(),
             "Notifications" => {
                 let mut fields = vec![Field::Enabled];
                 if values.notifications.enabled {
@@ -257,6 +311,10 @@ impl Controller {
     ) -> Option<Patch> {
         let reset = matches!(action, Action::Reset(_));
         let patch = match action {
+            Action::Attention(rule) => {
+                self.attention_change(rule.destination, rule.class, rule.mode, values);
+                return None;
+            }
             Action::Section(section) => {
                 if SECTIONS.iter().any(|(name, _)| *name == section) {
                     self.section = section;
@@ -323,6 +381,15 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::Attention { destination, class } => {
+                        let mode = cycle(
+                            &["wake", "inbox", "digest"],
+                            values.messaging.mode(&destination, &class),
+                            1,
+                        );
+                        self.attention_change(destination, class, mode, values);
+                        return None;
+                    }
                     Field::Glow => Patch::Glow(!values.appearance.glow),
                     Field::Subtitle => Patch::Subtitle(!values.appearance.subtitle),
                     Field::Enabled => Patch::NotificationsEnabled(!values.notifications.enabled),
@@ -349,6 +416,10 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::Attention { destination, class } => {
+                        self.attention_change(destination, class, "default".into(), values);
+                        return None;
+                    }
                     Field::Theme => Patch::Theme(defaults.appearance.theme.clone()),
                     Field::IdentityUnlock => return None,
                     Field::PluginEnable(_)
@@ -375,6 +446,15 @@ impl Controller {
                 }
             }
             Action::Nudge(delta) => match &self.focus {
+                Focus::Control(Field::Attention { destination, class }) => {
+                    let mode = cycle(
+                        &["wake", "inbox", "digest"],
+                        values.messaging.mode(destination, class),
+                        delta,
+                    );
+                    self.attention_change(destination.clone(), class.clone(), mode, values);
+                    return None;
+                }
                 Focus::Control(
                     field @ (Field::PluginEnable(_)
                     | Field::PluginTrust(_)
@@ -479,6 +559,7 @@ pub enum Hit {
     Search,
     Section(String),
     Set(Patch),
+    Attention(super::messaging::Rule),
     Toggle(Field),
     Reset(Field),
     Rim,
@@ -642,6 +723,41 @@ impl Regions {
                     self.hits.push((n.rect, Hit::Reset(field), true));
                 }
             }
+        } else if section == "Messaging" {
+            for (i, destination) in std::iter::once("direct")
+                .chain(view.values.messaging.channels.iter().map(String::as_str))
+                .enumerate()
+            {
+                for (index, class) in ["conversation", "event"].into_iter().enumerate() {
+                    let key = format!("card0/r{}", i * 2 + index);
+                    if let Some(node) = find(layout, &format!("{key}/ctl")) {
+                        let segment = contents(node);
+                        for (index, mode) in ["wake", "inbox", "digest"].into_iter().enumerate() {
+                            if let Some(node) = segment.children.get(index) {
+                                self.hits.push((
+                                    node.rect,
+                                    Hit::Attention(super::messaging::Rule {
+                                        destination: destination.into(),
+                                        class: class.into(),
+                                        mode: mode.into(),
+                                    }),
+                                    true,
+                                ));
+                            }
+                        }
+                    }
+                    if let Some(node) = find(layout, &format!("{key}/diff")) {
+                        self.hits.push((
+                            node.rect,
+                            Hit::Reset(Field::Attention {
+                                destination: destination.into(),
+                                class: class.into(),
+                            }),
+                            true,
+                        ));
+                    }
+                }
+            }
         } else if section == "Notifications" {
             let mut control = |key: &str, hit: Hit, reset: Field| {
                 if (view.values.notifications.enabled || reset == Field::Enabled)
@@ -683,6 +799,10 @@ impl Regions {
     }
     fn field(hit: &Hit) -> Option<Field> {
         Some(match hit {
+            Hit::Attention(rule) => Field::Attention {
+                destination: rule.destination.clone(),
+                class: rule.class.clone(),
+            },
             Hit::Set(Patch::Theme(_)) => Field::Theme,
             Hit::Set(Patch::Density(_)) => Field::Density,
             Hit::Rim => Field::Rim,

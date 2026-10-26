@@ -498,6 +498,7 @@ fn cursor_consistent(cursor: &GuiEventCursor) -> bool {
 pub struct Model {
     /// Exact public rows retained for GUI-owned listings, without a logic round trip.
     pub gui_seats: Arc<[GuiSeat]>,
+    pub messaging_deferred: BTreeMap<SeatId, bbt_ui::modules::seat_row::Deferred>,
     pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
@@ -511,6 +512,8 @@ pub struct Model {
     /// Signing holds affect messaging, never whether terminal panes stay live.
     pub identity: Option<bbt_proto::GuiIdentity>,
     pub custody_reply: Option<Arc<crate::settings::IdentityReply>>,
+    /// Latest explicitly selected policy, bounded to one seat; ordinary rows keep small observations.
+    pub attention_read: Option<Arc<GuiSeat>>,
     /// Correlation survives Latest replacing an intermediate publication.
     pub spawns: BTreeMap<Ulid, SpawnRequest>,
     pub operation_results: Arc<crate::messaging::Results>,
@@ -531,6 +534,7 @@ impl Default for Model {
     fn default() -> Self {
         Self {
             gui_seats: Arc::default(),
+            messaging_deferred: BTreeMap::new(),
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
             subtitles: BTreeMap::new(),
@@ -540,6 +544,7 @@ impl Default for Model {
             states: BTreeMap::new(),
             identity: None,
             custody_reply: None,
+            attention_read: None,
             hosts: vec![],
             spawns: BTreeMap::new(),
             operation_results: Arc::default(),
@@ -841,6 +846,13 @@ impl Model {
         if self.gui_seats.as_ref() != seats {
             self.gui_seats = Arc::from(seats);
         }
+        self.messaging_deferred = seats
+            .iter()
+            .filter_map(|seat| {
+                crate::settings::messaging::deferred(seat.attention.as_ref())
+                    .map(|deferred| (SeatId::from_u128(seat.record.id.0), deferred))
+            })
+            .collect();
         self.states.retain(|id, _| self.ui.seats.contains_key(id));
         for seat in seats {
             self.observe_attention(seat, Instant::now());
@@ -1135,6 +1147,7 @@ fn build_with_clock(
         .collect();
     let mut next = Model {
         gui_seats: previous.gui_seats.clone(),
+        messaging_deferred: previous.messaging_deferred.clone(),
         hosts: previous.hosts.clone(),
         ui: model,
         screens,
@@ -1145,6 +1158,7 @@ fn build_with_clock(
         states,
         identity: previous.identity.clone(),
         custody_reply: previous.custody_reply.clone(),
+        attention_read: previous.attention_read.clone(),
         spawns: previous.spawns.clone(),
         operation_results: previous.operation_results.clone(),
         metadata_initialized: true,

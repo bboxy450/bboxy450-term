@@ -170,6 +170,15 @@ impl Tree {
     pub fn contains(&self, path: &str) -> bool {
         self.nodes.contains_key(path)
     }
+    /// Bounded operator settings read over only the channel prefix, never the seat tree.
+    pub(crate) fn attention_channels(&self, limit: usize) -> (Vec<String>, bool) {
+        let mut paths: Vec<_> = self.nodes.range("channels/".to_owned()..)
+            .map(|(path, _)| path).take_while(|path| path.starts_with("channels/"))
+            .take(limit.saturating_add(1)).cloned().collect();
+        let complete = paths.len() <= limit;
+        paths.truncate(limit);
+        (paths, complete)
+    }
     /// The paths `actor` may write, in order, at most `limit` (decision #264: a refusal
     /// lists them).
     pub fn writable(&self, actor: Actor, limit: usize) -> Vec<String> {

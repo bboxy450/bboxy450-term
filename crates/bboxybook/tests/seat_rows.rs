@@ -4,23 +4,24 @@ use std::collections::BTreeSet;
 #[test]
 fn seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures() {
     let cases = seat_rows::cases();
-    // 28 seat-row states, swell.html's rows and two nested fixtures, x 8.
-    assert_eq!(cases.len(), 248);
+    // 29 seat-row states, swell.html's rows and two nested fixtures, x 8.
+    assert_eq!(cases.len(), 256);
     assert_eq!(
         cases
             .iter()
             .map(|c| c.relative())
             .collect::<BTreeSet<_>>()
             .len(),
-        248
+        256
     );
-    assert_eq!(seat_rows::STATES.len(), 28);
+    assert_eq!(seat_rows::STATES.len(), 29);
     assert!(
         cases
             .iter()
             .any(|c| c.relative() == "swell/rows-cozy-dark.png")
     );
     for state in [
+        "digest-pending",
         "remote-links",
         "unread-more",
         "subagents-12",

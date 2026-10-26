@@ -5,7 +5,8 @@ use ulid::Ulid;
 use crate::store::{Result, Store, invalid, sqlite::SqliteStore};
 
 pub use bbt_proto::registry::{
-    AttentionPolicy, AttentionRule, Class, CloseRecord, Lifecycle, Location, Position, Role, SeatRecord,
+    AttentionPolicy, AttentionRule, Class, CloseRecord, Lifecycle, Location, Position, Role,
+    SeatRecord,
 };
 
 #[derive(Clone)]
@@ -71,6 +72,41 @@ impl Registry {
             let policy = crate::messaging::attention::updated(record.attention.as_ref(), rule)?;
             record.attention = Some(policy.clone());
             Ok(policy)
+        })
+    }
+    /// Trusted operator path, distinct from a seat's own MCP mutation.
+    /// Only a confirmed publication advances the public registry view.
+    pub fn change_attention(&self, id: Ulid, edit: &bbt_proto::gui::AttentionEdit) -> Result<()> {
+        self.update(id, |record| {
+            if record.generation != edit.generation {
+                return Err(invalid("stale attention process generation"));
+            }
+            let destination = crate::messaging::attention::destination(&edit.destination)?;
+            let defaults = crate::messaging::attention::defaults(&record.role);
+            let default = if edit.class == bbt_proto::messaging::MessageClass::Event {
+                defaults.event
+            } else if destination == format!("seats/{id}/inbox") {
+                defaults.direct_conversation
+            } else {
+                defaults.conversation
+            };
+            let mut policy = record.attention.clone().unwrap_or_default();
+            crate::messaging::attention::validate(&policy)?;
+            policy
+                .rules
+                .retain(|rule| rule.destination != destination || rule.class != edit.class);
+            if let Some(mode) = edit.mode.filter(|mode| *mode != default) {
+                policy = crate::messaging::attention::updated(
+                    Some(&policy),
+                    AttentionRule {
+                        destination,
+                        class: edit.class,
+                        mode,
+                    },
+                )?;
+            }
+            record.attention = (!policy.rules.is_empty()).then_some(policy);
+            Ok(())
         })
     }
     pub fn close(

@@ -1,0 +1,401 @@
+{
+  "task": "MA-8 / messaging-attention sections 3 and 7",
+  "summary": [
+    "Operator CLI and Settings change another seat policy through the same generation-fenced, journaled operator path; a seat MCP caller retains its own authority.",
+    "Setter grammar: ctl seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>; the existing read grammar remains.",
+    "A default choice removes exactly its destination/class override, preserves unrelated rules and stores None when no overrides remain.",
+    "Retries keep their operation id; different arguments with that id are refused by the existing operator journal.",
+    "Settings reads one selected policy, caches one immutable seat view, and refreshes once when its seat/generation/role changes; no frame polling.",
+    "Channel names use a bounded BTreeMap prefix range, not an all-seat tree traversal or a copy on every ordinary row.",
+    "Ordinary observations carry only pending digest count/deadline or a labelled observation error; indexed counts use active members, not historical window totals.",
+    "Receipt changes travel through the existing GUI events lane; no new socket, consumer, delivery scheduler or tracing is introduced.",
+    "The real private-account headless test proves CLI set/reset/replay/refusal plus a Settings key edit, with an actually produced frame; no operator identity or window.",
+    "All 200 moved/new Settings cases and eight digest-row cases pass: 208 measured, zero unproven, zero geometry mismatch, zero pixel reviews.",
+    "The first five-case comparison exposed card/header spacing, title weight and mute-margin errors; corrected to the measured lab reference, then five and 208 cases passed.",
+    "The first native test expected an unpromised op_id_reused spelling; it now asserts the existing refusal. Its next run found the missing live Settings whitelist; that product path is fixed.",
+    "Strict Clippy findings were fixed by boxing the Settings controller and using a direct record initializer; no lint suppression or threshold change.",
+    "Role defaults(), own-seat MCP policy semantics and pinned delivery decisions remain with the existing owners; Velvet owns the separate 817e4b43 defaults correction.",
+    "No 967-seat timing, native notification presentation or photon/scanout claim. Author presubmit and postsubmit acceptance are separate."
+  ],
+  "mechanisms": {
+    "crates/bbt-mux/src/registry.rs:79": "atomic scoped reset and generation fence",
+    "crates/bbt-mux/src/logic.rs:4764": "operator journal and state publication for a policy edit",
+    "crates/bbt-mux/src/messaging/ledger.rs:621": "recipient-indexed active digest member count and next eligibility",
+    "crates/bbt-mux/src/messaging/tree.rs:174": "bounded channel-prefix read excludes seat subtrees",
+    "crates/bbt-mux/src/gui_events.rs:27": "existing receipt lane refreshes affected seat observations",
+    "crates/bboxy450-term/src/main.rs:2104": "one contextual nonblocking read per selected seat/generation/role",
+    "crates/bboxy450-term/src/settings/messaging.rs:38": "confirmed policy, mute, defaults and pending-count projection",
+    "crates/bbt-ui/src/modules/settings/messaging.rs:68": "native Messaging section and live operator intents"
+  },
+  "checks": [
+    {
+      "name": "ui-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-ui",
+        "--lib",
+        "messaging::tests"
+      ],
+      "exit": 0,
+      "seconds": 10.017704010009766,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/ui-tests.log",
+      "sha256": "d3b0ed9d563abb73ba163a967ff10786b32e2ea2c732c5876e2a1891383214c2"
+    },
+    {
+      "name": "registry-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "attention_policy",
+        "operator_attention"
+      ],
+      "exit": 0,
+      "seconds": 107.18603301048279,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/registry-tests.log",
+      "sha256": "3eac254b5e4efecc0c70881c067a0787ac8bc464ca2e2dd499e23f01627a1835"
+    },
+    {
+      "name": "digest-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "messaging_flow",
+        "digest_readback"
+      ],
+      "exit": 0,
+      "seconds": 15.196125030517578,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/digest-tests.log",
+      "sha256": "f033fda9698d9235aa884a8f348a02a41f7229c4718147e9b5a54e9d87037122"
+    },
+    {
+      "name": "cli-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "ctl::seat::tests::attention_"
+      ],
+      "exit": 0,
+      "seconds": 104.89724493026733,
+      "passed": 3,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/cli-tests.log",
+      "sha256": "bc2be9695c67deb8bfd653cae42720a88cb59d9d0cc422947b60334db554ec86"
+    },
+    {
+      "name": "book-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bboxybook",
+        "--test",
+        "settings",
+        "--test",
+        "seat_rows"
+      ],
+      "exit": 0,
+      "seconds": 37.44648504257202,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/book-tests.log",
+      "sha256": "a10dffd7f00602d723c4daa5790cc22084a48de0d33e983515371a069767d75a"
+    },
+    {
+      "name": "settings-tests",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-ui",
+        "--test",
+        "settings"
+      ],
+      "exit": 0,
+      "seconds": 8.44367003440857,
+      "passed": 10,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/settings-tests.log",
+      "sha256": "77103612ed148bc81336d8be9bc5c54eaa3db824a2536aebc5c8103f529d8617"
+    },
+    {
+      "name": "bounded-check",
+      "argv": [
+        "cargo",
+        "check",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "--all-targets",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-mux"
+      ],
+      "exit": 0,
+      "seconds": 15.773512840270996,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/bounded-check.log",
+      "sha256": "69163410a31bd74d843f4d487313013ae9479d1c41d60ba0c7a4f3db880dec48"
+    },
+    {
+      "name": "bounded-flow",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "messaging_flow",
+        "read"
+      ],
+      "exit": 0,
+      "seconds": 40.47967314720154,
+      "passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/bounded-flow.log",
+      "sha256": "3568e3497dd995867a0f4d7da8afc6eb40e9b4f8774afaa01b961cc3c3527db5"
+    },
+    {
+      "name": "bounded-wire",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 17.72732710838318,
+      "passed": 2,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/bounded-wire.log",
+      "sha256": "5c79bf3cb66599df695c93b07259a81f6d042c06e9559cb5f1be501c0dab4dfe"
+    },
+    {
+      "name": "bounded-night",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "headless_operator_attention_set_reset_and_replay_use_a_private_account",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 57.310126066207886,
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/bounded-night.log",
+      "sha256": "11517e21af91821ce6f28a1c53be76fc244e31388796aee6eacc2278333fa53c"
+    },
+    {
+      "name": "bounded-strict",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+        "--locked",
+        "--all-targets",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bboxybook",
+        "-p",
+        "bbt-ui",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bbt-proto",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 21.85582399368286,
+      "passed": 0,
+      "failed": 0,
+      "ignored": 0,
+      "raw": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/bounded-strict.log",
+      "sha256": "38a290c742acb8c6b0b944b51d8ba0ef61b13bcff771b68a9d3ec127d4c867ea"
+    }
+  ],
+  "visual": {
+    "source": "5be2a981",
+    "rendering_source_unchanged_since": true,
+    "commands": [
+      {
+        "argv": [
+          "node",
+          "crates/bboxybook/capture.mjs",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all/requested.json"
+        ],
+        "exit": 0,
+        "seconds": 56.4436309337616
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target/debug/bboxybook",
+          "render",
+          "--all",
+          "--out",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all/native",
+          "--manifest",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all/cases.json"
+        ],
+        "exit": 0,
+        "seconds": 139.75591683387756
+      },
+      {
+        "argv": [
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target/debug/bboxybook",
+          "compare",
+          "--strict-geometry",
+          "--out",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all",
+          "--manifest",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all/cases.json"
+        ],
+        "exit": 0,
+        "seconds": 8.362317085266113
+      }
+    ],
+    "cases": 208,
+    "geometry_measured": 208,
+    "unproven": 0,
+    "mismatches": 0,
+    "reviews": 0,
+    "report": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/parity-all/report.json",
+    "report_sha256": "66ea2c3e03a82a73fab386898e522ffd8b99a5276520c498d27a19d4f911a6ad",
+    "status_counts": {
+      "within policy": 208
+    }
+  },
+  "code_sha256": {
+    "crates/bboxy450-term/src/cockpit.rs": "a266d3b0ea5f414a92b104bf6d436b18d54e17d0bdb9273b3208b4f3f5fa25a4",
+    "crates/bboxy450-term/src/ctl.rs": "b9dfab0f14eca23e7baf647764bd2e1630b579b723ebff893909688705cd4518",
+    "crates/bboxy450-term/src/ctl/seat.rs": "67c5f52b24bfdeb0d2430aaf19d74da434bd8bbb2eb3ae820c1eef06486ac05c",
+    "crates/bboxy450-term/src/e2e_checklist.rs": "be87262360af8da722933a801220b726e24297c63e66a041b6996f6464e6e0af",
+    "crates/bboxy450-term/src/live.rs": "a63e62393a19a24a98bb6d3865f77df1afca81014e193a1734c7d68c2a742ca2",
+    "crates/bboxy450-term/src/main.rs": "bae806fab18fc263ac8ca94d1d748c1a0a24949a950322e03fca143a32537ec9",
+    "crates/bboxy450-term/src/messaging.rs": "3bbec04446e25941c5c5c50a73b4923cdf5fc0a5c3aa7ed9d7a3d8696dcd9123",
+    "crates/bboxy450-term/src/model.rs": "478e6bba6b148e69fd15f73ac87cb50e5b89e6071831761a225d240486562f44",
+    "crates/bboxy450-term/src/scene.rs": "ddf4c48412736023d89ed13201ac78ca990d61f5493360f301b209ee922f4bad",
+    "crates/bboxy450-term/src/settings.rs": "cc9cc6b2d87c512f351ab6f04880f984120707836efda996f9545471b61bb351",
+    "crates/bboxy450-term/src/settings/messaging.rs": "9bfcb45a9057eee69b901f8d32474828b81ddfe7c6d1a7515c6befc01ba04764",
+    "crates/bboxy450-term/tests/headless.rs": "632c56446aefaf402c9a6a6ad7fedc05b344cbb90f779933e2d9f8e7a5836245",
+    "crates/bboxybook/capture-inputs.js": "f605c0102ca4f2e76ac8f99cda4eedbe0ef4c288a41a71dc348112f2234a3486",
+    "crates/bboxybook/src/seat_rows.rs": "2386015255885469e73bbbc147798cab5ff9b042124e1f7e2f3b1808a85eb12d",
+    "crates/bboxybook/src/settings.rs": "26784109e6c16fb2b61726ea1017197895616703ca882041bc54cd2a527da189",
+    "crates/bboxybook/tests/seat_rows.rs": "d006833571afc308cc9156d02751bec35552729b5cd15c50ba4875106f64ac75",
+    "crates/bboxybook/tests/settings.rs": "70d4e509e6a0eeb2f2336acfab506e4b30898d4c40c309a994185645c56a2a1c",
+    "crates/bbt-mux/src/gui_events.rs": "bbbb1aabf5681c29b8c7d9575f0e1d7eee8baa3f878c9a0fcfc0887acef6af2a",
+    "crates/bbt-mux/src/logic.rs": "1f6d1a7be1e536862bc6b918afb8b517d2a99f133344b0b13bf4f25a1ab2e980",
+    "crates/bbt-mux/src/messaging/ledger.rs": "015ad1f1f64b22e5035da0c0a224ba2b723a1e678fa3344d66d69cfb5320203b",
+    "crates/bbt-mux/src/messaging/service.rs": "53c96d3ba81ab8290e37aa26e93b6c01f186baadfcdde54192b70dac2f21e2a6",
+    "crates/bbt-mux/src/messaging/tree.rs": "fb980dd60d40138e1b21336ef91654fd49f5c55f08586c901a9fdf0d4d4f4c66",
+    "crates/bbt-mux/src/registry.rs": "b83e3575143d89fb370f21d04333db6af89fbb310e1ac081416faa1e0f6d8f89",
+    "crates/bbt-mux/src/seat_socket.rs": "0741f1d0acac637076b04c0ee3ccc4a352d25d4ddf6a011bd55c7288f54b98ba",
+    "crates/bbt-mux/tests/attention_policy.rs": "ceb053d66f9bd52d3f75aad3f1714d8403fd43bf241ab662c7ce59692c8f6a89",
+    "crates/bbt-mux/tests/messaging_flow.rs": "062ce684532e1707f737e5e6137ec094a5794eb6284958d26e15a2644f1e6363",
+    "crates/bbt-proto/src/gui/seat.rs": "2ce7ba7d623c6ed7bb96cce3b1112eea549427249ef488f24948559b2f35eef0",
+    "crates/bbt-proto/src/seat_state.rs": "12bb90297410f4693022fd41c443b75af829d97245134f10635e76ed2e9b29e4",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "e545a38a240cc4de4f742e8316b42d784cf2990e05342c92ad4e90d7ca181afa",
+    "crates/bbt-ui/src/modules/seat_row.rs": "6a07d6aafeb78af39d83a2ea37d3a42d9d7189691a74d5967620ca3222dcb052",
+    "crates/bbt-ui/src/modules/settings.rs": "e8ae818b277a1d7e782fa638a6f413289b5a64319b46cdf6938fbe80d061f547",
+    "crates/bbt-ui/src/modules/settings/controller.rs": "8c1f6e91d403e2698302e36047dfa3149a64f5f242dbf4cc96f94ed6867e6e2d",
+    "crates/bbt-ui/src/modules/settings/messaging.rs": "c123a94da73295981bd899bb3ec6ec441993b8d52547409200a23f4858d3b588",
+    "crates/bbt-ui/src/modules/settings/plugins.rs": "7c79d7ebcb391b5d05279e4186f0a274d27820502058e9275340ea80309a0f7f",
+    "lab/web/components.js": "5d499c6f5d8725d9335b2c73fcb78447f5a636895c946619887415d0af01e7a6"
+  },
+  "code_manifest_sha256": "4bf05136cc7fbb422b3ba7497651f5e6c102ea2c2e4ed6fddb1d9685ea5998c2",
+  "cleanup": {
+    "inactive_dev_allocated_bytes_retired": 796659712,
+    "inactive_gallery_allocated_bytes_retired": 2236416,
+    "gallery_manifest": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/gallery-cleanup.json",
+    "gallery_manifest_sha256": "393ff0e779421f20183839e2cb95655fe69c5adbcc4304f1dc230cb4eaf9eff7",
+    "dev_target_after_checks": {
+      "time_epoch": 1793005064.867539,
+      "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/target",
+      "lsof_exit": 1,
+      "unique_allocated_bytes_in_target": 2434490368,
+      "exclusive_allocated_bytes_retired": 2358624256,
+      "retained": [
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/ma8-runtime-bboxy450-term",
+          "sha256": "cfdddf86efe195c6d336d6ec436334490c1bacd4144adf2ca01c7b41daa92e0f",
+          "allocated_bytes": 57221120
+        },
+        {
+          "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/ma8-20261025/ma8-visual-bboxybook",
+          "sha256": "463680930b0a4068f0117641a8e7be5fc744c85472401e95f61a21416002b61c",
+          "allocated_bytes": 18644992
+        }
+      ],
+      "preserved": "all parity reports, manifests, hashes, raw logs, and active evidence galleries"
+    }
+  },
+  "state": "author pending"
+}

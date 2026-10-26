@@ -1954,3 +1954,109 @@ fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() 
     f.ok(&["app", "stop"]);
     f.wait_stopped();
 }
+
+// keeps: spec messaging-attention §3 MA-8 — actual ctl uses operator authority and one replayable cell edit.
+#[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
+fn headless_operator_attention_set_reset_and_replay_use_a_private_account() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("attention-account");
+    f.run = account.join("run");
+    let start = f.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = start["data"]["pid"].as_u64().map(|pid| pid as u32);
+    let spawned = f.ok(&[
+        "seat",
+        "spawn",
+        "zsh",
+        "--name",
+        "policy receiver",
+        "--cwd",
+        f.root.path().to_str().unwrap(),
+    ]);
+    let seat = spawned["data"]["seat"].as_str().unwrap();
+    let op = bbt_mux::Ulid::new().to_string();
+    let args = [
+        "seat",
+        "attention",
+        seat,
+        "#room",
+        "event",
+        "wake",
+        "--op",
+        &op,
+    ];
+    let set = f.ok(&args);
+    assert_eq!(set["data"]["seat_id"], seat);
+    assert_eq!(
+        set["data"]["policy"]["rules"][0]["destination"],
+        "channels/room"
+    );
+    assert_eq!(f.ok(&args)["data"]["policy"], set["data"]["policy"]);
+    let (code, reused) = f.ctl(&[
+        "seat",
+        "attention",
+        seat,
+        "#room",
+        "event",
+        "digest",
+        "--op",
+        &op,
+    ]);
+    assert_ne!(code, 0, "{reused:?}");
+    assert!(format!("{reused:?}").contains("operation ID belongs to different arguments or authority"), "{reused:?}");
+    f.ok(&[
+        "seat",
+        "attention",
+        seat,
+        "#hidden",
+        "conversation",
+        "inbox",
+    ]);
+    let reset = f.ok(&["seat", "attention", seat, "#room", "event", "default"]);
+    let rules = reset["data"]["policy"]["rules"].as_array().unwrap();
+    assert_eq!(rules.len(), 1);
+    assert_eq!(rules[0]["destination"], "channels/hidden");
+    assert_eq!(
+        f.ok(&["seat", "attention", seat])["data"]["policy"],
+        reset["data"]["policy"]
+    );
+    f.ok(&["seat", "attention", seat, "direct", "event", "digest"]);
+    let final_policy = f.ok(&["seat", "attention", seat]);
+    assert!(
+        final_policy["data"]["policy"]["rules"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|rule| rule["destination"] == format!("seats/{seat}/inbox"))
+    );
+    let direct = final_policy["data"]["defaults"]["direct_conversation"].as_str().unwrap();
+    let expected = match direct { "wake" => "inbox", "inbox" => "digest", "digest" => "wake", _ => panic!("invalid default") };
+    f.ok(&["ui", "open", "settings"]);
+    f.ok(&["ui", "key", "tab"]);
+    f.ok(&["ui", "key", "tab"]);
+    for _ in 0..9 { f.ok(&["ui", "key", "down"]); }
+    let layout = f.ok(&["ui", "layout"]);
+    fn find_name(value: &Value) -> bool {
+        if value["kind"] == "named:messaging/seat/name" {
+            return value.to_string().contains("policy receiver");
+        }
+        value["children"].as_array().into_iter().flatten().any(find_name)
+    }
+    assert!(layout["data"]["tree"].as_array().unwrap().iter().any(find_name), "Settings did not show its focused seat: {layout}");
+    f.ok(&["ui", "key", "tab"]); // first policy cell, after the navigation
+    let applied = f.ok(&["ui", "key", "right"]);
+    let readback = f.ok(&["seat", "attention", seat]);
+    assert!(readback["data"]["policy"]["rules"].as_array().unwrap().iter().any(|rule|
+        rule["destination"] == format!("seats/{seat}/inbox") && rule["class"] == "conversation" && rule["mode"] == expected),
+        "Settings intent did not reach its operator setter: {readback}");
+    println!("MA8 real operator setter/reset/replay and Settings key effect passed; frame={}", applied["data"]["frame_seq"]);
+    f.ok(&["app", "stop"]);
+    f.wait_stopped();
+}

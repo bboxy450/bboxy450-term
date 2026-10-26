@@ -1135,3 +1135,60 @@ fn legacy_deferred_rows_keep_their_own_deadlines_and_summarize_once() {
     f.finish(&work, 602_001);
     assert!(f.messaging.ready(602_002).unwrap().is_empty());
 }
+
+// keeps: spec messaging-attention §3 MA-8 — readback counts pending members, never historical windows.
+#[test]
+fn digest_readback_is_receiver_local_pinned_and_counts_the_remaining_members() {
+    use bbt_proto::messaging::WakeMode;
+    let mut f = AttentionFixture::new();
+    f.mode(WakeMode::Digest);
+    let first = f.send(1_000);
+    let second = f.send(2_000);
+    let original = f.receipt(second).wake;
+    let view = f.messaging.attention_view(&f.receiver).unwrap();
+    assert_eq!(view["deferred"]["count"], 2);
+    assert_eq!(view["deferred"]["next_at_ms"], 601_000);
+    let observed = f.messaging.deferred_view(&f.receiver).unwrap().unwrap();
+    assert_eq!(observed.as_object().unwrap().len(), 1);
+    assert_eq!(observed["deferred"], view["deferred"]);
+    f.mode(WakeMode::Inbox);
+    f.send(3_000);
+    assert_eq!(
+        f.messaging.attention_view(&f.receiver).unwrap()["deferred"],
+        view["deferred"]
+    );
+    f.messaging
+        .acknowledge(f.receiver.id, first, None, 4_000)
+        .unwrap();
+    let one = f.messaging.attention_view(&f.receiver).unwrap();
+    assert_eq!(one["deferred"]["count"], 1);
+    assert_eq!(one["deferred"]["next_at_ms"], 601_000);
+    assert_eq!(f.receipt(second).wake, original);
+    let mut other = f.receiver.clone();
+    other.id = Ulid::new();
+    assert!(f.messaging.attention_view(&other).unwrap()["deferred"].is_null());
+    f.messaging
+        .acknowledge(f.receiver.id, second, None, 5_000)
+        .unwrap();
+    assert!(f.messaging.attention_view(&f.receiver).unwrap()["deferred"].is_null());
+    assert!(f.messaging.deferred_view(&f.receiver).unwrap().is_none());
+}
+
+// keeps: spec messaging-attention §7 MA-8 — channel projection is bounded and excludes seat paths.
+#[test]
+fn attention_read_lists_only_a_bounded_channel_prefix() {
+    use bbt_mux::messaging::tree::Actor;
+    use bbt_proto::messaging::Node;
+    let mut f = AttentionFixture::new();
+    let tree=f.messaging.tree(f.receiver.swarm).unwrap();
+    for n in 0..130 {
+        tree.put(Actor::Operator,Node::folder(format!("channels/room{n:03}"))).unwrap();
+        tree.put(Actor::Operator,Node::folder(format!("seats/unrelated{n:03}"))).unwrap();
+    }
+    let view=f.messaging.attention_view(&f.receiver).unwrap();
+    assert_eq!(view["channels"].as_array().unwrap().len(),128);
+    assert_eq!(view["channels_complete"],false);
+    assert!(view["channels"].as_array().unwrap().iter()
+        .all(|path|path.as_str().unwrap().starts_with("channels/")));
+    assert!(f.messaging.deferred_view(&f.receiver).unwrap().is_none());
+}

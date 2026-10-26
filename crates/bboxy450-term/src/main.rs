@@ -685,9 +685,9 @@ impl UiEffect {
                 request: bbt_proto::messaging::Request::Mute { seat, muted },
                 ..
             } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
-            live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => {
-                Some(Self::Operation(*id))
-            }
+            live::UiMsg::Messaging { id, .. }
+            | live::UiMsg::Task { id, .. }
+            | live::UiMsg::SetAttention { id, .. } | live::UiMsg::GetAttention { id, .. } => Some(Self::Operation(*id)),
             live::UiMsg::Scroll { seat, request, .. } => {
                 request.op.map(|id| Self::Scroll(id, *seat))
             }
@@ -1733,6 +1733,8 @@ struct App {
     rim_preview: Option<f32>,
     mute: preferences::Mute,
     custody: preferences::CustodyControl,
+    settings_attention: Option<(bbt_mux::Ulid, bbt_mux::Ulid, bool)>,
+    settings_attention_target: Option<(bbt_mux::Ulid, u64, bbt_proto::registry::Role)>,
     system_theme: Theme,
     local_tab: Option<LocalTab>,
     local_page_layout: Option<scene::LocalPageLayout>,
@@ -1883,6 +1885,8 @@ impl App {
             rim_preview: None,
             mute: preferences::Mute::default(),
             custody: preferences::CustodyControl::default(),
+            settings_attention: None,
+            settings_attention_target: None,
             system_theme: Theme::Dark,
             local_tab: None,
             local_page_layout: None,
@@ -2100,6 +2104,23 @@ impl App {
             self.request_redraw();
         }
     }
+    fn request_attention_read(&mut self, force: bool) {
+        if self.live_commands.is_none() || self.backend_lost {
+            self.settings_attention_target = None;
+            return;
+        }
+        let target = self.focus.stage.as_ref().and_then(|stage| stage.focused)
+            .and_then(|focused| self.live_state.as_ref()?.gui_seats.iter()
+                .find(|seat| SeatId::from_u128(seat.record.id.0) == focused)
+                .map(|seat| (seat.record.id, seat.record.generation, seat.record.role.clone())));
+        if !force && self.settings_attention_target == target { return; }
+        self.settings_attention_target = target.clone();
+        if let Some((seat, generation, _)) = target {
+            let id = bbt_mux::Ulid::new();
+            self.settings_attention = Some((id, seat, false));
+            self.queue(live::UiMsg::GetAttention { id, seat, generation });
+        }
+    }
     fn open_settings(&mut self, section: &str) {
         if self.live_commands.is_some()
             && !self.backend_lost
@@ -2107,6 +2128,7 @@ impl App {
         {
             self.queue(message);
         }
+        self.request_attention_read(true);
         let section = bbt_ui::modules::settings::SECTIONS
             .iter()
             .find(|(name, _)| name.eq_ignore_ascii_case(section))
@@ -2130,7 +2152,7 @@ impl App {
         let swarm = self.focus.stage.as_ref().and_then(|s| s.swarm);
         self.open_local_tab(LocalTab::Settings {
             swarm,
-            controller: settings_controller::Controller::new(section),
+            controller: Box::new(settings_controller::Controller::new(section)),
         });
     }
     fn effective_preferences(&self) -> preferences::Preferences {
@@ -2151,6 +2173,28 @@ impl App {
             ..Default::default()
         };
         view.values.account.custody = Some(self.custody.view());
+        view.values.messaging = preferences::messaging::view(
+            self.live_state.as_deref(),
+            self.focus.stage.as_ref().and_then(|stage| stage.focused),
+        );
+        if let Some((op, seat, writing)) = self.settings_attention
+            && view.values.messaging.seat.id == seat.to_string()
+        {
+            let observation_error = view.values.messaging.error.take();
+            view.values.messaging.error = self
+                .live_state
+                .as_ref()
+                .and_then(|model| model.operation_results.rows().find(|row| row.op == op))
+                .map_or_else(
+                    || Some(if writing {"Updating messaging policy…"} else {"Reading messaging policy…"}.into()),
+                    |row| match &row.reply {
+                        bboxy450_term::messaging::Reply::Attention => observation_error,
+                        bboxy450_term::messaging::Reply::Refused(reason)
+                        | bboxy450_term::messaging::Reply::Unknown(reason) => Some(reason.clone()),
+                        _ => Some("Unexpected messaging policy response".into()),
+                    },
+                );
+        }
         if self.backend_lost || self.live_commands.is_none() {
             view.values.account.custody.as_mut().unwrap().enabled = false;
             for root in &mut view.values.knowledge.roots {
@@ -2194,9 +2238,29 @@ impl App {
                 controller.section == "Knowledge" || !controller.query.trim().is_empty(),
             );
         }
-        if controller.take_identity_unlock()
-            && let Some(message) = self.custody.request(true, Instant::now())
-        {
+        let unlock = controller.take_identity_unlock();
+        let attention = controller.take_attention();
+        let attention_message = attention.and_then(|rule| {
+            if self.backend_lost || self.live_commands.is_none() {
+                controller.error = Some("Messaging connection is unavailable".into());
+                None
+            } else {
+                match preferences::messaging::command(&view.values.messaging, rule) {
+                    Ok(message) => Some(message),
+                    Err(reason) => {
+                        controller.error = Some(reason);
+                        None
+                    }
+                }
+            }
+        });
+        if unlock && let Some(message) = self.custody.request(true, Instant::now()) {
+            self.queue(message);
+        }
+        if let Some(message) = attention_message {
+            if let live::UiMsg::SetAttention { id, seat, .. } = &message {
+                self.settings_attention = Some((*id, *seat, true));
+            }
             self.queue(message);
         }
         if pointer_drag {
@@ -4050,6 +4114,9 @@ impl App {
                 let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
                 self.live_state = Some(state);
             }
+            if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                self.request_attention_read(false);
+            }
             if let Some(seat) = restored {
                 self.focus_action(FocusAction::Activate(seat, FocusOrigin::Keyboard));
             }
@@ -4656,7 +4723,9 @@ impl App {
             .operation_backlog
             .iter()
             .filter_map(|message| match message {
-                live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. } => Some(*id),
+                live::UiMsg::Messaging { id, .. }
+                | live::UiMsg::Task { id, .. }
+                | live::UiMsg::SetAttention { id, .. } | live::UiMsg::GetAttention { id, .. } => Some(*id),
                 _ => None,
             })
             .collect();
@@ -4668,7 +4737,10 @@ impl App {
             self.operation_backlog
                 .iter()
                 .filter_map(|message| match message {
-                    live::UiMsg::Messaging { id, .. } | live::UiMsg::Task { id, .. }
+                    live::UiMsg::Messaging { id, .. }
+                    | live::UiMsg::Task { id, .. }
+                    | live::UiMsg::SetAttention { id, .. }
+                    | live::UiMsg::GetAttention { id, .. }
                         if !previous_ops.contains(id) =>
                     {
                         Some(UiEffect::Operation(*id))
@@ -6352,6 +6424,7 @@ impl ApplicationHandler<UiEvent> for App {
                         Hit::Search => Action::Focus(Focus::Search),
                         Hit::Section(name) => Action::Section(name),
                         Hit::Set(patch) => Action::Set(patch),
+                        Hit::Attention(rule) => Action::Attention(rule),
                         Hit::Toggle(field) => Action::Toggle(field),
                         Hit::Reset(field) => Action::Reset(field),
                         Hit::Rim => {
@@ -6626,6 +6699,8 @@ fn is_operation(message: &live::UiMsg) -> bool {
         message,
         live::UiMsg::Messaging { .. }
             | live::UiMsg::Task { .. }
+            | live::UiMsg::GetAttention { .. }
+            | live::UiMsg::SetAttention { .. }
             | live::UiMsg::Close(_)
             | live::UiMsg::UndoClose { .. }
             | live::UiMsg::IdentityControl { .. }
@@ -8289,6 +8364,8 @@ mod input_tests {
                 live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
                 | live::UiMsg::Messaging { .. }
+                | live::UiMsg::GetAttention { .. }
+            | live::UiMsg::SetAttention { .. }
                 | live::UiMsg::IdentityControl { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }

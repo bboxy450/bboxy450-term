@@ -62,11 +62,26 @@ pub struct StyledRun {
     pub flags: u16,
 }
 
+/// Operator-only change to one destination/class cell. `None` restores its role default.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AttentionEdit {
+    pub generation: u64,
+    pub destination: String,
+    pub class: crate::messaging::MessageClass,
+    pub mode: Option<crate::messaging::WakeMode>,
+}
+
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.
 macro_rules! seat_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
             ListSeats,
+            GetAttention { id: Ulid, seat: Ulid, generation: u64 },
+            SetAttention {
+                id: Ulid,
+                seat: Ulid,
+                edit: AttentionEdit,
+            },
             Watch {
                 #[serde(with = "text_id")]
                 seat: SeatId,
@@ -190,6 +205,10 @@ pub(super) use seat_actions;
 macro_rules! seat_replies {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
+            Attention {
+                op: Ulid,
+                seat: GuiSeat,
+            },
             Seats(Vec<GuiSeat>),
             Update {
                 #[serde(with = "text_id")]

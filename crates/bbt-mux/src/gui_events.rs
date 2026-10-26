@@ -25,6 +25,7 @@ pub(crate) fn filters(mut messaging: Vec<String>) -> Vec<String> {
     messaging.extend(
         [
             "seat/*/state",
+            "seat/*/receipt",
             "account/identity/state",
             "account/providers/transition",
             "doc/>",
@@ -255,7 +256,9 @@ pub(crate) async fn project(
                 summary: summary(&envelope)?,
             },
         }
-    } else if subject.starts_with("seat/") && subject.ends_with("/state") {
+    } else if subject.starts_with("seat/")
+        && (subject.ends_with("/state") || subject.ends_with("/receipt"))
+    {
         let seat = subject
             .split('/')
             .nth(1)

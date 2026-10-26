@@ -7,7 +7,7 @@ pub enum LocalTab {
     Graph(Graph),
     Settings {
         swarm: Option<bbt_ui_model::SwarmId>,
-        controller: bbt_ui::modules::settings::controller::Controller,
+        controller: Box<bbt_ui::modules::settings::controller::Controller>,
     },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

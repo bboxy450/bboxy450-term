@@ -374,6 +374,7 @@ enum ActionReply {
     Messaging(Ulid),
     Task(Ulid),
     Identity(Ulid),
+    Attention(Ulid),
     Knowledge(Ulid),
     Events { stream: String },
     EventCursor,
@@ -396,6 +397,7 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
+            GuiAction::GetAttention { id, .. } | GuiAction::SetAttention { id, .. } => ActionReply::Attention(*id),
             GuiAction::Identity(call) => ActionReply::Identity(call.id),
             GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
@@ -434,11 +436,13 @@ impl ActionReplies {
                 ActionReply::Messaging(id)
                 | ActionReply::Task(id)
                 | ActionReply::Knowledge(id)
-                | ActionReply::Identity(id) => op == id,
+                | ActionReply::Identity(id)
+                | ActionReply::Attention(id) => op == id,
                 _ => *op != Ulid::nil(),
             },
             GuiReply::Messaging { op, .. } => *expected == ActionReply::Messaging(*op),
             GuiReply::Task { op, .. } => *expected == ActionReply::Task(*op),
+            GuiReply::Attention { op, .. } => *expected == ActionReply::Attention(*op),
             GuiReply::IdentityControl { op, .. } => *expected == ActionReply::Identity(*op),
             GuiReply::Knowledge { op, .. } => *expected == ActionReply::Knowledge(*op),
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
@@ -554,6 +558,8 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
                 | GuiAction::Messaging { .. }
                 | GuiAction::Task { .. }
                 | GuiAction::Identity(_)
+                | GuiAction::GetAttention { .. }
+                | GuiAction::SetAttention { .. }
                 | GuiAction::Knowledge { .. }
         )
     });
@@ -1017,6 +1023,16 @@ async fn run_with_control(
                     },
                     UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
                     UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}); } },
+                    UiMsg::GetAttention {id,seat,generation}=> {
+                        if operation_admit(&mut model,&updates,*id) {
+                            queue_action(&mut outgoing,GuiAction::GetAttention {id:*id,seat:*seat,generation:*generation});
+                        }
+                    },
+                    UiMsg::SetAttention {id,seat,edit}=> {
+                        if operation_admit(&mut model,&updates,*id) {
+                            queue_action(&mut outgoing,GuiAction::SetAttention {id:*id,seat:*seat,edit:edit.clone()});
+                        }
+                    },
                     UiMsg::IdentityControl {id,request}=>queue_action(&mut outgoing,GuiAction::Identity(bbt_proto::identity::IdentityCall {id:*id,request:*request})),
                     UiMsg::Input {seat,generation,id,bytes}=> {
                         if return_live(&mut history,&mut model,*seat) {
@@ -1160,6 +1176,14 @@ async fn run_with_control(
                             }
                             None
                         }
+                        GuiReply::Attention {op,mut seat}=> {
+                            if terminal_reply == Some(ActionReply::Attention(op)) {
+                                Arc::make_mut(&mut model).attention_read=Some(Arc::new(seat.clone()));
+                                seat.attention=bboxy450_term::settings::messaging::observation(seat.attention.as_ref());
+                                operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Attention);
+                                Some(GuiReply::Seat(seat))
+                            } else { None }
+                        },
                         reply=>Some(reply),
                       };
                       if let Some(reply)=reply {match reply {
@@ -1316,7 +1340,7 @@ async fn run_with_control(
                                 Err(reason)=>logger.write(format!("operator spawn {op} not placed: {reason}")),
                             }
                         }
-                        GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
+                        GuiReply::Attention {..}|GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
                       }}
                       // Every accepted projection is in the published Model
                       // before its transport ACK can enter the writer queue.

@@ -97,6 +97,13 @@ const MAX_BATCH: u64 = 64;
 const DIGEST_MS: u64 = 600_000;
 const DIGEST_CAP: usize = 50;
 
+/// Active deferred members, including a muted remainder, from pending indexes only.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DigestSummary {
+    pub count: u64,
+    pub next_at_ms: u64,
+}
+
 pub(crate) struct InboxSummary {
     pub received: u64,
     pub pending_ack: u64,
@@ -135,6 +142,7 @@ impl Ledger {
             CREATE UNIQUE INDEX IF NOT EXISTS msg_digest_open ON msg_digest_windows(recipient,agent,destination,class) WHERE sealed=0;
             CREATE TABLE IF NOT EXISTS msg_digest_members(message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,window TEXT NOT NULL REFERENCES msg_digest_windows(id),PRIMARY KEY(message,recipient,agent));
             CREATE INDEX IF NOT EXISTS msg_digest_member_window ON msg_digest_members(window,message);
+            CREATE INDEX IF NOT EXISTS msg_digest_recipient ON msg_digest_windows(recipient,id);
             CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL,actual_device TEXT);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
         let ledger = Self {
@@ -608,6 +616,25 @@ impl Ledger {
             .query_map([message.to_string()], |r| r.get::<_, Vec<u8>>(0))?
             .map(|r| Ok(serde_json::from_slice(&r?)?))
             .collect()
+    }
+    /// Read only active members for this receiver. Historical window counters are not a count.
+    pub fn digest_summary(&self, recipient: Ulid) -> Result<Option<DigestSummary>> {
+        let db = self.store.connection()?;
+        let (count, next): (i64, Option<i64>) = db.query_row(
+            "SELECT COUNT(*),MIN(d.eligible_ms) FROM msg_digest_windows w INDEXED BY msg_digest_recipient \
+             JOIN msg_digest_members m INDEXED BY msg_digest_member_window ON m.window=w.id \
+             JOIN msg_deliveries d ON d.message=m.message AND d.recipient=m.recipient AND d.agent=m.agent \
+             WHERE w.recipient=?1 AND d.evidence='recipient-stored' \
+             AND json_extract(CAST(d.data AS TEXT),'$.wake')='deferred'",
+            [recipient.to_string()], |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        next.map(|next_at_ms| {
+            Ok(DigestSummary {
+                count: u64::try_from(count)?,
+                next_at_ms: u64::try_from(next_at_ms)?,
+            })
+        })
+        .transpose()
     }
     pub fn receipt_events(
         &self,

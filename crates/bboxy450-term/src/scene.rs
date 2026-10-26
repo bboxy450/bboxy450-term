@@ -565,6 +565,7 @@ impl Scene {
                 row.activity = seat.activity;
                 row.grade = seat.grade;
                 row.muted = seat.muted;
+                row.deferred = model.messaging_deferred.get(id).cloned();
                 row.focused = Some(*id) == self.focused;
                 if self.backend_lost {
                     row.activity = Activity::Errored;

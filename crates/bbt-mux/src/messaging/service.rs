@@ -2503,6 +2503,29 @@ impl Messaging {
         memo.insert(recipient, (muted.clone(), same));
         (muted, same)
     }
+    /// Small ordinary observation: no channel list, role or policy duplication per seat.
+    pub fn deferred_view(&self, record: &SeatRecord) -> Result<Option<serde_json::Value>> {
+        let Some(swarm) = self.swarms.get(&record.swarm) else {
+            return Ok(Some(serde_json::json!({"deferred_error":"messaging observation unavailable"})));
+        };
+        Ok(swarm.ledger.digest_summary(record.id)?.map(|summary|
+            serde_json::json!({"deferred":summary})))
+    }
+    /// One explicitly selected seat, read without another consumer or scheduler mutation.
+    pub fn attention_view(&self, record: &SeatRecord) -> Result<serde_json::Value> {
+        let mut value = crate::mcp::attention::view(record).map_err(invalid)?;
+        let summary = self.deferred_view(record)?;
+        value["deferred"] = summary.as_ref().and_then(|v| v.get("deferred")).cloned()
+            .unwrap_or(serde_json::Value::Null);
+        if let Some(reason) = summary.as_ref().and_then(|v| v.get("deferred_error")) {
+            value["deferred_error"] = reason.clone();
+        }
+        let (channels, complete) = self.swarms.get(&record.swarm)
+            .map(|swarm| swarm.tree.attention_channels(128)).unwrap_or_default();
+        value["channels"] = serde_json::json!(channels);
+        value["channels_complete"] = complete.into();
+        Ok(value)
+    }
     pub fn ready(&mut self, now: u64) -> Result<Vec<(Ulid, Ulid)>> {
         self.recover_notices()?;
         self.reconcile(now)?;

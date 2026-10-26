@@ -331,3 +331,74 @@ fn policy_survives_reopen_unrelated_record_updates_and_process_restart() {
         .unwrap();
     assert!(registry.get(receiver.id).unwrap().muted);
 }
+
+// keeps: spec messaging-attention §3 MA-8 — operator reset is sparse and generation fenced.
+#[test]
+fn operator_attention_changes_one_cell_preserves_hidden_rules_and_refuses_a_stale_generation() {
+    let root = tempfile::tempdir().unwrap();
+    let registry = Registry::new(SqliteStore::open(root.path()).unwrap());
+    let receiver = seat("executor", Class::Worker);
+    registry.insert(&receiver).unwrap();
+    registry
+        .set_attention(
+            receiver.id,
+            receiver.generation,
+            rule(
+                "channels/hidden",
+                MessageClass::Conversation,
+                WakeMode::Inbox,
+            ),
+        )
+        .unwrap();
+    let mut edit = bbt_proto::gui::AttentionEdit {
+        generation: receiver.generation,
+        destination: "channels/status".into(),
+        class: MessageClass::Event,
+        mode: Some(WakeMode::Wake),
+    };
+    registry.change_attention(receiver.id, &edit).unwrap();
+    assert_eq!(
+        registry
+            .get(receiver.id)
+            .unwrap()
+            .attention
+            .as_ref()
+            .unwrap()
+            .rules
+            .len(),
+        2
+    );
+    let accepted = registry.get(receiver.id).unwrap();
+    edit.generation += 1;
+    assert!(
+        registry
+            .change_attention(receiver.id, &edit)
+            .unwrap_err()
+            .to_string()
+            .contains("stale")
+    );
+    assert_eq!(registry.get(receiver.id).unwrap(), accepted);
+    edit.generation = receiver.generation;
+    edit.mode = Some(WakeMode::Inbox); // Selecting the role default is an exact reset.
+    registry.change_attention(receiver.id, &edit).unwrap();
+    assert_eq!(
+        registry
+            .get(receiver.id)
+            .unwrap()
+            .attention
+            .as_ref()
+            .unwrap()
+            .rules,
+        [rule(
+            "channels/hidden",
+            MessageClass::Conversation,
+            WakeMode::Inbox
+        )]
+    );
+    edit.destination = "channels/hidden".into();
+    edit.class = MessageClass::Conversation;
+    edit.mode = None;
+    registry.change_attention(receiver.id, &edit).unwrap();
+    let reopened = Registry::new(SqliteStore::open(root.path()).unwrap());
+    assert_eq!(reopened.get(receiver.id).unwrap().attention, None);
+}

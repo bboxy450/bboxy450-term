@@ -166,6 +166,13 @@ pub struct Held {
     pub id: String,
     pub blocked: Option<String>,
 }
+/// Pending digest presentation supplied by the host, separate from held traffic.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Deferred {
+    pub n: u64,
+    pub at: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct SeatRow {
     pub key: String,
@@ -182,6 +189,7 @@ pub struct SeatRow {
     pub muted: bool,
     pub authority: Option<String>,
     pub held: Vec<Held>,
+    pub deferred: Option<Deferred>,
     pub listeners: u32,
     pub touched: u32,
     pub unread: Option<(String, String)>,
@@ -218,6 +226,7 @@ impl SeatRow {
             muted: false,
             authority: None,
             held: vec![],
+            deferred: None,
             listeners: 0,
             touched: 0,
             unread: None,
@@ -487,6 +496,21 @@ impl SeatRow {
                 )
                 .into(),
             );
+        }
+        if let Some(deferred) = &self.deferred
+            && deferred.n > 0
+        {
+            let mut view = chip(
+                &format!("{} at {}", deferred.n, deferred.at),
+                ui::Color::Muted,
+                0.,
+                true,
+                true,
+            );
+            if let c::Element::Box(view) = &mut view {
+                view.style.overrides.dashed = Some(false);
+            }
+            right.push(named("deferred", view).into());
         }
         if let Some(noise) = self.noise {
             right.push(

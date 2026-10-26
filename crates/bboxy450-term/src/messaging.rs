@@ -339,6 +339,7 @@ pub fn task_report(
 pub enum Reply {
     Messaging(Response),
     Task(TaskResponse),
+    Attention,
     Refused(String),
     Unknown(String),
 }

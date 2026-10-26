@@ -831,7 +831,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
-                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -866,7 +866,10 @@ async fn gui_session(
                                 let mut seats=client.gui_seats().await?;
                                 if door==crate::mcp::Door::Ctl {
                                     for seat in &mut seats {
-                                        seat.attention=Some(crate::mcp::attention::view(&seat.record).map_err(invalid)?);
+                                        let observed=seat.attention.take();
+                                        let mut view=crate::mcp::attention::view(&seat.record).map_err(invalid)?;
+                                        if let Some(observed)=observed { for (key,value) in observed.as_object().into_iter().flatten() { view[key]=value.clone(); } }
+                                        seat.attention=Some(view);
                                     }
                                 }
                                 Ok(GuiReply::Seats(seats))
@@ -972,6 +975,14 @@ async fn gui_session(
                                 let receipt=client.gui_input(Ulid::from(seat.0.0),generation,id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
                                 Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::GetAttention {id,seat,generation}=> {
+                                Ok(GuiReply::Attention {op:id,seat:client.gui_attention(seat,Some(generation)).await?})
+                            }
+                            GuiAction::SetAttention {id,seat,edit}=> {
+                                client.ctl_attention(seat,edit,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                let seat=client.gui_attention(seat,None).await?;
+                                Ok(GuiReply::Attention {op:id,seat})
                             }
                             GuiAction::RenameSeat {id,seat,name}=> {
                                 client.ctl_rename(seat,name,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
