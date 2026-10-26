@@ -40,6 +40,7 @@ fn named<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
     }
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {
     let doc = parse(
@@ -68,6 +69,7 @@ fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {
     }
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit() {
     let doc = parse(
@@ -113,6 +115,7 @@ fn table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit() {
     }
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact() {
     for dash in ["-", "‒", "–", "—", "―"] {
@@ -170,6 +173,7 @@ fn matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_in
     assert_eq!(doc.source, source);
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling() {
     let src = format!(
@@ -190,6 +194,7 @@ fn real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling() {
     assert!(scroll(&layout));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify() {
     let doc = parse(
@@ -212,6 +217,7 @@ fn modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_ve
     assert!(named(&layout, "footer").is_some() || value.contains("Feed into"));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping() {
     let doc = parse(
@@ -231,6 +237,7 @@ fn structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping()
     ));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source() {
     let token = format!("/{}", "👩‍💻/folder-name/".repeat(20));

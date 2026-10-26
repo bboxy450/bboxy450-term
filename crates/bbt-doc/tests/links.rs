@@ -3,6 +3,7 @@ use bbt_doc::{
     links::{Record, ResolveError, resolve},
 };
 
+// keeps: decision #48 — numeric handles coexist with legacy links, ambiguity is refused
 #[test]
 fn numeric_wikilinks_keep_their_target_and_resolve_like_slugs_ids_and_paths() {
     let source = "---\nid: 01J00000000000000000000047\ntype: decision\nnumber: 47\n---\n# Decision\nRead [[#47|the decision]].\n";
@@ -39,6 +40,7 @@ fn numeric_wikilinks_keep_their_target_and_resolve_like_slugs_ids_and_paths() {
     }
 }
 
+// keeps: decision #48 — numeric handles coexist with legacy links, ambiguity is refused
 #[test]
 fn escaped_table_aliases_parse_to_the_same_target_and_display() {
     let markdown = bbt_doc::parse("| Reference |\n|---|\n| [[d47-decision-nodes\\|#47]] |\n");
@@ -48,6 +50,7 @@ fn escaped_table_aliases_parse_to_the_same_target_and_display() {
     assert!(rows[0][0].iter().any(|value|matches!(value,Inline::WikiLink {target,display,..} if target=="d47-decision-nodes" && display=="#47")),"{:?}",rows[0][0]);
 }
 
+// keeps: decision #48 — numeric handles coexist with legacy links, ambiguity is refused
 #[test]
 fn duplicate_number_id_or_slug_never_selects_the_first_record() {
     let one = bbt_doc::parse("---\nid: same\nnumber: 47\n---\nOne\n");
@@ -75,6 +78,7 @@ fn duplicate_number_id_or_slug_never_selects_the_first_record() {
     );
 }
 
+// keeps: decision #48 — numeric handles coexist with legacy links, ambiguity is refused
 #[test]
 fn numbered_record_handles_do_not_consume_legacy_heading_anchors() {
     let markdown = bbt_doc::parse("---\nid: ledger\nnumber: 99\n---\n## 47\n47. [[#47]]\n");
@@ -88,6 +92,7 @@ fn numbered_record_handles_do_not_consume_legacy_heading_anchors() {
     assert_eq!(resolve([record], "#99").unwrap().anchor, None);
 }
 
+// keeps: decision #48 — numeric handles coexist with legacy links, ambiguity is refused
 #[test]
 fn qualified_root_paths_disambiguate_duplicate_readme_slugs() {
     let markdown = bbt_doc::parse("Readme\n");
@@ -113,24 +118,4 @@ fn qualified_root_paths_disambiguate_duplicate_readme_slugs() {
         resolve(records, "specs/README").unwrap().record.path,
         ".bboxy/specs/README.md"
     );
-}
-
-#[test]
-fn record_number_is_a_positive_integer_metadata_value() {
-    for value in ["0", "-1", "1.5", "'47'", "null", "[]", "true"] {
-        assert_eq!(
-            bbt_doc::parse(&format!("---\nnumber: {value}\n---\n"))
-                .frontmatter
-                .number(),
-            None,
-            "{value}"
-        );
-    }
-    assert_eq!(
-        bbt_doc::parse("---\nnumber: 47\n---\n")
-            .frontmatter
-            .number(),
-        Some(47)
-    );
-    assert_eq!(bbt_doc::parse("Plain source\n").frontmatter.number(), None);
 }

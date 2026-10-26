@@ -66,6 +66,7 @@ fn paths(l: &c::Layout) -> Vec<Prim> {
     out
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets() {
     let g = mermaid::geometry(
@@ -104,6 +105,7 @@ fn geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets() {
     assert!(t.contains("worker") && t.contains("ready?") && t.contains("events"));
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers() {
     let source = "sequenceDiagram\n participant O as Oracle\n actor N as Nyx\n O->>+N: implement\n alt ready\n N-->>O: report\n else retry\n O-)N: again\n end\n Note right of N: input guarded\n deactivate N";
@@ -130,6 +132,7 @@ fn sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers() 
     assert!(!paths(&l).is_empty());
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn circle_markers_are_hollow_at_both_ends() {
     let g = mermaid::geometry("flowchart LR\n A o--o B", ctx(), &Fonts).unwrap();
@@ -141,6 +144,7 @@ fn circle_markers_are_hollow_at_both_ends() {
     assert_eq!(paths(&l).iter().filter(|p| matches!(p, Prim::Path { points, fill: None, .. } if points.iter().filter(|p| matches!(p, c::PathCommand::Cubic(_))).count() == 4)).count(), 2);
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn figure_source_state_and_unsupported_syntax_keep_the_original_source_readable() {
     let src = "flowchart LR\n A[alpha] --> B[beta]";
@@ -167,6 +171,7 @@ fn figure_source_state_and_unsupported_syntax_keep_the_original_source_readable(
     assert!(texts(&bad).contains("title source retained"));
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract() {
     fn walk_blocks(blocks: &[bbt_doc::Block], out: &mut Vec<String>) {
@@ -190,21 +195,25 @@ fn every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract() {
         }
     }
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let output = std::process::Command::new("git")
-        .arg("-C")
-        .arg(&root)
-        .args(["ls-files", "-z", "--", ".bboxy"])
-        .output()
-        .unwrap();
-    assert!(output.status.success());
+    fn markdown_paths(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let entry = entry.unwrap();
+            let kind = entry.file_type().unwrap();
+            let path = entry.path();
+            if kind.is_dir() {
+                markdown_paths(&path, out);
+            } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "md") {
+                out.push(path);
+            }
+        }
+    }
+    let mut files = vec![];
+    markdown_paths(&root.join(".bboxy"), &mut files);
+    files.sort();
     let mut count = 0;
-    for path in output
-        .stdout
-        .split(|b| *b == 0)
-        .filter(|v| v.ends_with(b".md"))
-    {
-        let path = std::str::from_utf8(path).unwrap();
-        let doc = bbt_doc::parse(&std::fs::read_to_string(root.join(path)).unwrap());
+    for file in files {
+        let path = file.strip_prefix(&root).unwrap().display().to_string();
+        let doc = bbt_doc::parse(&std::fs::read_to_string(root.join(&path)).unwrap());
         let mut source = vec![];
         walk_blocks(&doc.blocks, &mut source);
         for (i, source) in source.iter().enumerate() {
@@ -229,6 +238,7 @@ fn every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract() {
     println!("Mermaid: {count} real .bboxy blocks, native geometry and retained layout pass");
 }
 
+// keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine() {
     let reference = std::fs::read_to_string(

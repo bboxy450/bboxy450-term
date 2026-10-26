@@ -90,6 +90,7 @@ fn corpus_root() -> std::path::PathBuf {
         .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
 }
 
+// keeps: invariant frontmatter-parses
 #[test]
 fn real_bboxy_frontmatter_parses() {
     // A subprocess fixture can check actual mux-authored files without writing
@@ -101,6 +102,7 @@ fn real_bboxy_frontmatter_parses() {
     println!("frontmatter: {count} Markdown records, positive unique numbers, 0 errors");
 }
 
+// keeps: invariant frontmatter-parses
 #[test]
 fn corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line() {
     struct Temporary(std::path::PathBuf);
@@ -192,6 +194,7 @@ impl Drop for Scratch {
     }
 }
 
+// keeps: decision #48 — unique positive record handles and allocation
 #[test]
 fn corpus_gate_rejects_missing_duplicate_and_non_integer_numbers() {
     let root = Scratch::new();
@@ -298,6 +301,7 @@ fn link_targets(doc: &bbt_doc::Markdown) -> Vec<String> {
     out
 }
 
+// keeps: decision #48 — unique positive record handles and allocation
 #[test]
 fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
     use bbt_doc::{
@@ -351,6 +355,7 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
     println!("record links: {count} resolved; #47 opens d47; legacy ledger anchors held");
 }
 
+// keeps: decision #48 — unique positive record handles and allocation
 #[test]
 fn next_number_reads_only_frontmatter_across_nested_and_spaced_paths() {
     use std::process::Command;
@@ -391,6 +396,7 @@ fn next_number_reads_only_frontmatter_across_nested_and_spaced_paths() {
     assert_eq!(run(), "209\n");
 }
 
+// keeps: invariant licenses-present
 #[test]
 fn licence_map_fixtures_keep_escaped_aliases_and_spdx_refusals() {
     let output = std::process::Command::new("python3")

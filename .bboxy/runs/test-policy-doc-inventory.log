@@ -1,0 +1,81 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling pulldown-cmark v0.13.4
+   Compiling memchr v2.8.3
+   Compiling hashbrown v0.17.1
+   Compiling equivalent v1.0.3
+   Compiling indexmap v2.14.2
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling unicase v2.10.0
+   Compiling unsafe-libyaml v0.2.11
+   Compiling ryu v1.0.23
+   Compiling bitflags v2.13.2
+   Compiling bbt-ui v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui)
+   Compiling serde_yaml v0.9.34+deprecated
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+   Compiling unicode-segmentation v1.13.3
+   Compiling serde_json v1.0.154
+   Compiling bbt-doc v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-doc)
+    Finished `test` profile [optimized] target(s) in 1m 46s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_doc-bd4a18cff0799cbd)
+0 tests, 0 benchmarks
+     Running tests/corpus.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/corpus-79736735b68121f5)
+corpus_gate_rejects_missing_duplicate_and_non_integer_numbers: test
+corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line: test
+licence_map_fixtures_keep_escaped_aliases_and_spdx_refusals: test
+next_number_reads_only_frontmatter_across_nested_and_spaced_paths: test
+real_bboxy_frontmatter_parses: test
+real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve: test
+
+6 tests, 0 benchmarks
+     Running tests/layout.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/layout-59684bf712680ef1)
+document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables: test
+long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source: test
+matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact: test
+modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify: test
+real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling: test
+structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping: test
+table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit: test
+
+7 tests, 0 benchmarks
+     Running tests/links.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/links-8e3f555230ca837d)
+duplicate_number_id_or_slug_never_selects_the_first_record: test
+escaped_table_aliases_parse_to_the_same_target_and_display: test
+numbered_record_handles_do_not_consume_legacy_heading_anchors: test
+numeric_wikilinks_keep_their_target_and_resolve_like_slugs_ids_and_paths: test
+qualified_root_paths_disambiguate_duplicate_readme_slugs: test
+record_number_is_a_positive_integer_metadata_value: test
+
+6 tests, 0 benchmarks
+     Running tests/markdown.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/markdown-7530f8ef950881ab)
+commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets: test
+gfm_tables_footnotes_links_and_mermaid_are_semantic_records: test
+invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic: test
+malformed_metadata_and_html_remain_visible_source: test
+metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf: test
+wikilinks_retain_labels_weights_and_do_not_activate_inside_code: test
+
+6 tests, 0 benchmarks
+     Running tests/mermaid.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/mermaid-f00461dfd02d98f7)
+circle_markers_are_hollow_at_both_ends: test
+every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract: test
+figure_source_state_and_unsupported_syntax_keep_the_original_source_readable: test
+geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets: test
+lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine: test
+sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers: test
+
+6 tests, 0 benchmarks
+     Running tests/record_host.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/record_host-26e807def9328add)
+native_body_keeps_semantic_targets_and_marks_missing_records_inert: test
+provider_metadata_has_no_fabricated_yaml_and_uses_the_shared_number_resolver: test
+wide_mermaid_code_and_tables_pan_in_their_own_retained_viewports: test
+
+3 tests, 0 benchmarks
+   Doc-tests bbt_doc
+0 tests, 0 benchmarks

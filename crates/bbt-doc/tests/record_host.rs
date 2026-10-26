@@ -14,6 +14,7 @@ impl c::Measure for Metrics {
         [f.size * 0.8, f.size * 0.2]
     }
 }
+// keeps: spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports
 #[test]
 fn native_body_keeps_semantic_targets_and_marks_missing_records_inert() {
     let markdown = bbt_doc::parse(
@@ -51,6 +52,7 @@ fn native_body_keeps_semantic_targets_and_marks_missing_records_inert() {
     assert!(saw);
     assert!(!c::paint(&layout, ctx).is_empty());
 }
+// keeps: spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports
 #[test]
 fn provider_metadata_has_no_fabricated_yaml_and_uses_the_shared_number_resolver() {
     let mut markdown = bbt_doc::parse("# Real body\n");
@@ -74,6 +76,7 @@ fn provider_metadata_has_no_fabricated_yaml_and_uses_the_shared_number_resolver(
     );
 }
 
+// keeps: spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports
 #[test]
 fn wide_mermaid_code_and_tables_pan_in_their_own_retained_viewports() {
     use bbt_ui::modules::document_modal::{DocumentModal, controller::Controller};

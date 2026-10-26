@@ -1,0 +1,55 @@
+# #327 bbt-doc test sweep
+
+Oracle brief 46f7fa1e-e63e-40dd-9c26-aa83e9285536; fresh base 6cd081e6e7154f5cda02af4400515bec09912acf.
+Scope: tests only; no product behavior, corpus acceptance, lab include_str! input or diagram equality removed. No peer in-flight overlap (read-only worktree scan empty; Aster confirmed clear).
+
+D1 = invariant; D2 = spec; D3 = decision; A1 = duplicate; B2 = unnecessary process where local IO suffices.
+Before: 34 passed / 0 failed / 0 ignored. After: 33 passed / 0 failed / 0 ignored. Reported test-binary times total 2.63 s before / 2.70 s after (corpus 2.50/2.61; Mermaid 0.12/0.08; record host 0.01/0.01). No total speedup or halving claim. The required real corpus checks remain. Removed 0 sleeps (none existed), removed 1 Git subprocess, deleted 1 duplicate case. Strict Clippy and affected invariants run once in the combined author presubmit.
+
+| Test | Class | Disposition / coverage |
+|---|---|---|
+| `tests/corpus.rs::real_bboxy_frontmatter_parses` | D1 | keep; tag protected contract; invariant frontmatter-parses |
+| `tests/corpus.rs::corpus_gate_rejects_nested_malformed_frontmatter_with_path_and_source_line` | D1 | keep; tag protected contract; invariant frontmatter-parses |
+| `tests/corpus.rs::corpus_gate_rejects_missing_duplicate_and_non_integer_numbers` | D3 | keep; tag protected contract; decision #48 — unique positive record handles and allocation |
+| `tests/corpus.rs::real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve` | D3 | keep; tag protected contract; decision #48 — unique positive record handles and allocation |
+| `tests/corpus.rs::next_number_reads_only_frontmatter_across_nested_and_spaced_paths` | D3 | keep; tag protected contract; decision #48 — unique positive record handles and allocation |
+| `tests/corpus.rs::licence_map_fixtures_keep_escaped_aliases_and_spdx_refusals` | D1 | keep; tag protected contract; invariant licenses-present |
+| `tests/layout.rs::document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::matching_leading_h1_is_hidden_only_with_a_header_and_original_source_stays_intact` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::real_mermaid_is_a_drawing_card_and_wide_code_scrolls_without_scaling` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::modal_body_override_preserves_the_shell_and_does_not_claim_yaml_signatures_verify` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::structured_frontmatter_links_project_to_chips_and_keep_the_original_mapping` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/layout.rs::long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/links.rs::numeric_wikilinks_keep_their_target_and_resolve_like_slugs_ids_and_paths` | D3 | keep; tag protected contract; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/links.rs::escaped_table_aliases_parse_to_the_same_target_and_display` | D3 | keep; tag protected contract; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/links.rs::duplicate_number_id_or_slug_never_selects_the_first_record` | D3 | keep; tag protected contract; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/links.rs::numbered_record_handles_do_not_consume_legacy_heading_anchors` | D3 | keep; tag protected contract; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/links.rs::qualified_root_paths_disambiguate_duplicate_readme_slugs` | D3 | keep; tag protected contract; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/links.rs::record_number_is_a_positive_integer_metadata_value` | A1 | delete; markdown::invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic covers every same number input plus error location/source preservation; decision #48 — numeric handles coexist with legacy links, ambiguity is refused |
+| `tests/markdown.rs::commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/markdown.rs::wikilinks_retain_labels_weights_and_do_not_activate_inside_code` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/markdown.rs::gfm_tables_footnotes_links_and_mermaid_are_semantic_records` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/markdown.rs::malformed_metadata_and_html_remain_visible_source` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/markdown.rs::metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/markdown.rs::invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic` | D2 | keep; tag protected contract; spec document-viewer §Markdown — parser and native layout preserve source semantics |
+| `tests/mermaid.rs::geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets` | D2 | keep; tag protected contract; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/mermaid.rs::sequence_keeps_duplicate_participants_notes_activations_and_frame_dividers` | D2 | keep; tag protected contract; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/mermaid.rs::circle_markers_are_hollow_at_both_ends` | D2 | keep; tag protected contract; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/mermaid.rs::figure_source_state_and_unsupported_syntax_keep_the_original_source_readable` | D2 | keep; tag protected contract; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/mermaid.rs::every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract` | B2 | replace git listing subprocess with sorted filesystem enumeration of actual corpus, including untracked records; retain geometry assertions; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/mermaid.rs::lab_diagram_inputs_stay_aligned_and_supported_cases_use_the_native_engine` | D2 | keep; tag protected contract; spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures |
+| `tests/record_host.rs::native_body_keeps_semantic_targets_and_marks_missing_records_inert` | D2 | keep; tag protected contract; spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports |
+| `tests/record_host.rs::provider_metadata_has_no_fabricated_yaml_and_uses_the_shared_number_resolver` | D2 | keep; tag protected contract; spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports |
+| `tests/record_host.rs::wide_mermaid_code_and_tables_pan_in_their_own_retained_viewports` | D2 | keep; tag protected contract; spec document-viewer §What it is and §Mermaid — shared native modal links and independent wide viewports |
+
+Coverage map: frontmatter-parses -> real_bboxy_frontmatter_parses and malformed nested-source negative fixture; #48 -> complete positive/invalid diagnostic matrix, duplicate/missing corpus numbers, numeric/slug/id/path and legacy heading resolution, and the actual next-number script. licenses-present -> real license fixture script. document-viewer Markdown/Build order -> semantic AST, UTF-8 offsets, source-preserving diagnostics, wrapping, rich tables, header projection and retained links. Mermaid -> real corpus/native drawing and unchanged fixtures/lab include_str! comparisons. No invariant check or spec acceptance line loses a test.
+
+Deleted record_number_is_a_positive_integer_metadata_value is covered input-for-input by invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic: the same seven invalid values, valid 47 and absent number, plus typed metadata value/source retention and diagnostic location. This is the sole deletion.
+
+The corpus Mermaid check enumerates sorted real Markdown paths directly without following symlink directories; unlike git ls-files, it also checks new local records. The external next-number and licensing processes remain because they exercise those public scripts, with no in-memory equivalent. User-visible source-fallback notes remain specified output, not a low-level error-prose test.
+
+Evidence (copies normalize trailing blank lines; private originals retained):
+- .bboxy/runs/test-policy-doc-inventory.log SHA256 c189ce36eefce7c20e990c101ec41d56996b86cc88a69a7b3099d0da3de22969 — EXIT 0.
+- .bboxy/runs/test-policy-doc-before.log SHA256 2a1fd96647db5f3f4e455e6acf78f13d4733c673eba7fdf8d64f2357904e96d1 — EXIT 0.
+- .bboxy/runs/test-policy-doc-after.log SHA256 33b1d4b6cd3b45828f1ebebcb069a5a1afbfe953ab602bdbab759faf0dadedab — EXIT 0.

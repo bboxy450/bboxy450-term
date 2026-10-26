@@ -1,5 +1,6 @@
 use bbt_doc::{BlockKind, Inline, TableAlign, parse};
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets() {
     let source = "---\ntitle: Fox\nunknown: [one, two]\n---\n# Café\n\nA **bold** and *slanted* ~~old~~ line\ncontinues.\n\n> 3. first\n> 4. second\n\n- [x] done\n- [ ] todo\n";
@@ -38,6 +39,7 @@ fn commonmark_builds_nested_blocks_and_keeps_original_utf8_offsets() {
     );
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn wikilinks_retain_labels_weights_and_do_not_activate_inside_code() {
     let doc = parse("[[events|Bus]]{derived_from:0.7} then [[vision]] and `[[not-a-link]]`.");
@@ -60,6 +62,7 @@ fn wikilinks_retain_labels_weights_and_do_not_activate_inside_code() {
     assert!(Inline::plain_text(p).contains("{derives:NaN}"));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn gfm_tables_footnotes_links_and_mermaid_are_semantic_records() {
     let doc = parse(
@@ -92,6 +95,7 @@ fn gfm_tables_footnotes_links_and_mermaid_are_semantic_records() {
     assert!(doc.blocks.iter().any(|b| matches!(&b.kind, BlockKind::Code { info, text } if info=="mermaid" && text.contains("A --> B"))));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn malformed_metadata_and_html_remain_visible_source() {
     let empty = parse("---\n---\nBody");
@@ -109,6 +113,7 @@ fn malformed_metadata_and_html_remain_visible_source() {
     assert!(matches!(&html.blocks[0].kind, BlockKind::Html(s) if s.contains("do_not_run()")));
 }
 
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf() {
     for (bom, newline) in [("", "\n"), ("\u{feff}", "\r\n")] {
@@ -145,6 +150,7 @@ fn metadata_errors_use_markdown_lines_including_delimiter_bom_and_crlf() {
         None
     );
 }
+// keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn invalid_explicit_record_numbers_keep_their_source_and_show_a_diagnostic() {
     for value in ["0", "-1", "1.5", "'47'", "null", "true", "[]"] {
