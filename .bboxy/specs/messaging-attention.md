@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T10:16:16Z"
+updated: "2026-10-26T18:06:54Z"
 ---
 # Messaging attention
 
@@ -33,7 +33,7 @@ The operator's words are quoted above, twice. This spec builds into bboxy450-ter
 5. **Batching beats waking.** Many notices in a quiet stretch are one wake, not many.
 6. **Threads need ids that are checked.** A reply to a reminder's id instead of the message's orphaned a thread.
 7. **Measure the cost of a message**: wakes and tokens re-read, per agent and per room, into the ledger.
-8. **Done work came back.** At least six of the Oracle's briefs reached Executors again hours after their work had landed (2026-10-25); each cost a full context re-read and an ancestry check before the agent could answer "already landed". **Gap: whether ICQ replayed them on a session restart, retried a native delivery, or the agents re-read their inboxes; no data.**
+8. **Done work came back.** At least six of the Oracle's briefs reached Executors again hours after their work had landed (2026-10-25); each cost a full context re-read and an ancestry check before the agent could answer "already landed". **Narrowed 2026-10-26** (Sable's arrival metadata): no session restart since 2026-10-22, and four of the briefs (1972b22d, c040ab7d, b7376468, 8dde0864) arrived as **native deliveries into the session's turns** between 17:24 and 17:41 UTC, none from the agent's own inbox read; so neither an inbox replay nor re-reading. **Gap: whether each was the same message id delivered a second time, or a first delivery delayed by hours; the sender's outbox times decide it.**
 
 ## 2. Two classes of message
 
