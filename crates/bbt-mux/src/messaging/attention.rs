@@ -35,7 +35,7 @@ pub fn defaults(role: &Role) -> Defaults {
     } else if role.class == Class::Oracle {
         (WakeMode::Wake, WakeMode::Wake, WakeMode::Wake)
     } else {
-        (WakeMode::Digest, WakeMode::Wake, WakeMode::Digest)
+        (WakeMode::Digest, WakeMode::Wake, WakeMode::Wake)
     };
     Defaults {
         conversation,

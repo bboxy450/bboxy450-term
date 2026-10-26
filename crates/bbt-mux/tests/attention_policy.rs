@@ -60,6 +60,15 @@ fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
             WakeMode::Wake,
             "{name:?}/{class:?} direct conversation"
         );
+        let named = Facts {
+            addressed_by_name: true,
+            ..Facts::default()
+        };
+        assert_eq!(
+            decide(&receiver, "channels/room", MessageKind::Text, named),
+            WakeMode::Wake,
+            "{name:?}/{class:?} named channel conversation"
+        );
         for kind in [
             MessageKind::Presence,
             MessageKind::SlotClaimed,
@@ -72,6 +81,10 @@ fn role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults() {
             );
             assert_eq!(
                 decide(&receiver, &dm, kind, Facts::default()),
+                WakeMode::Inbox
+            );
+            assert_eq!(
+                decide(&receiver, "channels/room", kind, named),
                 WakeMode::Inbox
             );
         }

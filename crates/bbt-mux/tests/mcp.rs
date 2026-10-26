@@ -5475,6 +5475,7 @@ fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
         assert_eq!(attention["policy"], json!({"rules":[]}));
         assert_eq!(attention["defaults"]["event"], "inbox");
         assert_eq!(attention["defaults"]["direct_conversation"], "wake");
+        assert_eq!(attention["defaults"]["named_conversation"], "wake");
         assert_eq!(
             attention["defaults"]["conversation"],
             if record.role.class == Class::Oracle {
