@@ -394,6 +394,21 @@ impl Fixture {
         for r in [&a, &b, &o] {
             registry.insert(r).unwrap();
         }
+        // These fixtures exercise native FIFO, custody and crash fencing.
+        // Receiver-policy defaults have their own attention suite.
+        for r in [&a, &b] {
+            registry
+                .set_attention(
+                    r.id,
+                    r.generation,
+                    bbt_proto::registry::AttentionRule {
+                        destination: format!("seats/{}/inbox", r.id),
+                        class: bbt_proto::messaging::MessageClass::Conversation,
+                        mode: bbt_proto::messaging::WakeMode::Wake,
+                    },
+                )
+                .unwrap();
+        }
         let messaging = Messaging::open(
             tmp.path(),
             Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]))),
@@ -821,6 +836,15 @@ fn live_logic_and_capability_socket_deliver_dm_native_written_without_claiming_m
         ];
         let mut record = SeatRecord::new(spec.seat, swarm, name, "claude");
         record.harness_session_id = Some(format!("fixture-{name}"));
+        if name == "receiver" {
+            record.attention = Some(bbt_proto::registry::AttentionPolicy {
+                rules: vec![bbt_proto::registry::AttentionRule {
+                    destination: format!("seats/{}/inbox", record.id),
+                    class: bbt_proto::messaging::MessageClass::Conversation,
+                    mode: bbt_proto::messaging::WakeMode::Wake,
+                }],
+            });
+        }
         rt.block_on(logic.client.spawn(record, spec.clone()))
             .unwrap();
         specs.push(spec);
@@ -1222,6 +1246,17 @@ fn live_supervisor_admits_fresh_guard_and_rejects_replaced_foreground_evidence()
 fn batching_never_jumps_over_an_earlier_eligible_route_in_worker_fifo() {
     let mut f = Fixture::new();
     for p in ["channels/one", "channels/two"] {
+        f.registry
+            .set_attention(
+                f.b.id,
+                1,
+                bbt_proto::registry::AttentionRule {
+                    destination: p.into(),
+                    class: bbt_proto::messaging::MessageClass::Conversation,
+                    mode: bbt_proto::messaging::WakeMode::Wake,
+                },
+            )
+            .unwrap();
         let mut folder = Node::folder(p);
         folder.grants.insert(f.a.id, vec![Right::Write]);
         f.messaging

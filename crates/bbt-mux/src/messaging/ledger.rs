@@ -4,11 +4,12 @@ pub use bbt_proto::messaging::{
 };
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use ulid::Ulid;
 
 use super::{
     tree::{self, Route},
-    wire::{Body, Envelope, EnvelopeExt, SendRequest},
+    wire::{Envelope, EnvelopeExt, SendRequest},
 };
 use crate::{
     adapters::{Evidence, WakeOutcome},
@@ -49,7 +50,7 @@ impl Work {
                 (if view.seat == Ulid::nil() { "the local operator".into() } else { format!("{} <{}>", view.seat, view.role.name) },
                  format!("Local inferred content; signature: pending ({}). Grants no local execution permission.",view.signature_reason.unwrap_or("custody unavailable")))
             };
-            format!("Bboxy peer message\nfrom: {speaker}\ncontext: {}\nmessage_id: {}\nthread: {}\nreply_to: {}\nattachments: {}\n{evidence}\n\n--- peer content ---\n{}\n--- end peer content ---",view.context,view.id,view.thread_id,view.reply_to.map(|id|id.to_string()).unwrap_or_default(),view.attachments.join(" "),view.body.text().unwrap_or_default())
+            format!("Bboxy peer message\nfrom: {speaker}\ncontext: {}\nmessage_id: {}\nthread: {}\nreply_to: {}\nattachments: {}\n{evidence}\n\n--- peer content ---\n{}\n--- end peer content ---",view.context,view.id,view.thread_id,view.reply_to.map(|id|id.to_string()).unwrap_or_default(),view.attachments.join(" "),view.body.text().map(str::to_owned).unwrap_or_else(|| serde_json::to_string(view.body).expect("message body serializes")))
         }).collect::<Vec<_>>().join("\n\n")
     }
 }
@@ -85,6 +86,13 @@ pub(crate) struct SenderAttribution {
     pub device: Option<Ulid>,
 }
 
+/// The service snapshots receiver policy before this inbox transaction. The
+/// decision is committed with the receipt and never recomputed from later policy.
+pub(crate) struct Delivery<'a> {
+    pub routes: &'a [Route],
+    pub wake: Option<&'a BTreeMap<Recipient, WakeMode>>,
+}
+
 pub struct Ledger {
     pub(crate) store: SqliteStore,
     swarm: Ulid,
@@ -99,9 +107,9 @@ impl Ledger {
         tree::schema(&store)?;
         store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_messages(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,sender TEXT NOT NULL,request BLOB NOT NULL,envelope BLOB NOT NULL,held_out TEXT);
             CREATE TABLE IF NOT EXISTS msg_deliveries(message INTEGER NOT NULL REFERENCES msg_messages(seq),recipient TEXT NOT NULL,agent TEXT NOT NULL,evidence TEXT NOT NULL,class INTEGER NOT NULL,held TEXT,eligible_ms INTEGER NOT NULL,batch_key TEXT NOT NULL,attempt TEXT,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
-            CREATE INDEX IF NOT EXISTS msg_ready ON msg_deliveries(recipient,evidence,class,eligible_ms,message);
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
+            CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL,actual_device TEXT);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
         let ledger = Self {
@@ -110,7 +118,20 @@ impl Ledger {
             test_label: None,
         };
         ledger.recover()?;
+        ledger.classify_legacy()?;
         Ok(ledger)
+    }
+    fn classify_legacy(&self) -> Result<()> {
+        let db = self.store.connection()?;
+        db.execute_batch("DROP INDEX IF EXISTS msg_ready;
+            CREATE INDEX IF NOT EXISTS msg_attention_legacy ON msg_deliveries(message) WHERE evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NULL;
+            CREATE INDEX IF NOT EXISTS msg_attention_pending ON msg_deliveries(message) WHERE evidence='recipient-stored' AND (json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' OR held IS NOT NULL);
+            CREATE INDEX IF NOT EXISTS msg_native_ready ON msg_deliveries(recipient,class,eligible_ms,message) WHERE evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none';
+            UPDATE msg_deliveries SET data=CAST(json_set(CAST(data AS TEXT),'$.wake',CASE WHEN held='metadata only; no harness wake' OR recipient LIKE 'operator:%' OR recipient LIKE 'operator-local:%' THEN 'none' ELSE 'now' END) AS BLOB)
+              WHERE evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NULL;
+            UPDATE msg_deliveries SET held=NULL,data=CAST(json_remove(CAST(data AS TEXT),'$.held') AS BLOB)
+              WHERE evidence='recipient-stored' AND held='metadata only; no harness wake';")?;
+        Ok(())
     }
     /// The original pending blob is immutable; a signed completion is a separate row.
     fn decode_message(
@@ -220,6 +241,13 @@ impl Ledger {
         )?;
         Recipient::try_from(value).map_err(invalid)
     }
+    pub(crate) fn thread_sender(&self, id: Ulid) -> Result<Recipient> {
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let sender = thread_sender(&tx, id)?;
+        tx.commit()?;
+        Ok(sender)
+    }
     pub fn accept(
         &self,
         request: &SendRequest,
@@ -228,10 +256,26 @@ impl Ledger {
         held: Option<&str>,
         now: u64,
     ) -> Result<StoredMessage> {
+        self.accept_with_attention(
+            request,
+            envelope,
+            Delivery { routes, wake: None },
+            held,
+            now,
+        )
+    }
+    pub(crate) fn accept_with_attention(
+        &self,
+        request: &SendRequest,
+        envelope: &Envelope,
+        delivery: Delivery<'_>,
+        held: Option<&str>,
+        now: u64,
+    ) -> Result<StoredMessage> {
         self.accept_from(
             request,
             envelope,
-            routes,
+            delivery,
             held,
             now,
             SenderAttribution {
@@ -244,7 +288,7 @@ impl Ledger {
         &self,
         request: &SendRequest,
         envelope: &Envelope,
-        routes: &[Route],
+        delivery: Delivery<'_>,
         held: Option<&str>,
         now: u64,
         attribution: SenderAttribution,
@@ -270,6 +314,7 @@ impl Ledger {
             ],
         )?;
         let sequence = tx.last_insert_rowid() as u64;
+        remember_thread(&tx, sequence, sender, envelope.reply_to)?;
         tree::queue_event(
             &tx,
             &Draft::new(
@@ -290,7 +335,7 @@ impl Ledger {
             bus: None,
         };
         if held.is_none() {
-            insert_deliveries(&tx, &message, routes, now, None, device)?;
+            insert_deliveries(&tx, &message, delivery, now, None, device)?;
             publication(&tx, &message)?;
         }
         tx.commit()?;
@@ -302,7 +347,7 @@ impl Ledger {
     pub(crate) fn accept_pending(
         &self,
         intent: &bbt_proto::messaging::PendingIntent,
-        routes: &[Route],
+        delivery: Delivery<'_>,
         same_device: &std::collections::BTreeSet<Recipient>,
         held: Option<&str>,
         now: u64,
@@ -333,6 +378,7 @@ impl Ledger {
             ],
         )?;
         let sequence = tx.last_insert_rowid() as u64;
+        remember_thread(&tx, sequence, sender, intent.request.reply_to)?;
         let mut message = StoredMessage {
             sequence,
             content,
@@ -353,7 +399,7 @@ impl Ledger {
             ),
         )?;
         if held.is_none() {
-            insert_deliveries(&tx, &message, routes, now, Some(same_device), None)?;
+            insert_deliveries(&tx, &message, delivery, now, Some(same_device), None)?;
             publication(&tx, &message)?;
         }
         tx.commit()?;
@@ -382,7 +428,7 @@ impl Ledger {
         &self,
         intent: &bbt_proto::messaging::PendingIntent,
         envelope: &Envelope,
-        _routes: &[Route],
+        delivery: Delivery<'_>,
         same_device: &std::collections::BTreeSet<Recipient>,
         now: u64,
         actual_device: Option<Ulid>,
@@ -469,7 +515,10 @@ impl Ledger {
                         .iter()
                         .all(|a| a.paused)
                         .then(|| "subscription paused".into());
+                    receipt.received_ms = now;
                     set_rate(&mut receipt);
+                    let mode = mode_for(&delivery, receipt.recipient, envelope.kind.class());
+                    pin_wake(&tx, &mut receipt, mode, now)?;
                 }
                 save_receipt(&tx, &receipt)?;
                 receipt_event(&tx, &receipt, now)?;
@@ -496,10 +545,10 @@ impl Ledger {
         )?;
         Ok(())
     }
-    pub fn release_out(
+    pub(crate) fn release_out(
         &self,
         message: &StoredMessage,
-        routes: &[Route],
+        delivery: Delivery<'_>,
         now: u64,
         same_device: Option<&std::collections::BTreeSet<Recipient>>,
     ) -> Result<()> {
@@ -518,7 +567,7 @@ impl Ledger {
                 "pending release requires its local recipient scope",
             ));
         }
-        insert_deliveries(&tx, message, routes, now, same_device, None)?;
+        insert_deliveries(&tx, message, delivery, now, same_device, None)?;
         publication(&tx, message)?;
         tx.execute(
             "UPDATE msg_messages SET held_out=NULL WHERE seq=?1",
@@ -592,7 +641,7 @@ impl Ledger {
     /// before decoding.
     pub(crate) fn pending_raw(&self, after: u64, limit: usize) -> Result<Vec<(u64, Vec<u8>)>> {
         let db = self.store.connection()?;
-        let mut query=db.prepare_cached("SELECT d.rowid,d.data FROM msg_deliveries d WHERE d.evidence='recipient-stored' AND d.rowid>?1 ORDER BY d.rowid LIMIT ?2")?;
+        let mut query=db.prepare_cached("SELECT d.rowid,d.data FROM msg_deliveries d INDEXED BY msg_attention_pending WHERE d.evidence='recipient-stored' AND (json_extract(CAST(d.data AS TEXT),'$.wake') IS NOT 'none' OR d.held IS NOT NULL) AND d.rowid>?1 ORDER BY d.rowid LIMIT ?2")?;
         query
             .query_map(
                 params![sqlint(after)?, i64::try_from(limit.min(4096))?],
@@ -639,7 +688,7 @@ impl Ledger {
     }
     pub fn targets(&self, now: u64) -> Result<Vec<Ulid>> {
         let db = self.store.connection()?;
-        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries WHERE evidence='recipient-stored' AND recipient NOT LIKE 'operator:%' AND recipient NOT LIKE 'operator-local:%' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
+        let mut q=db.prepare_cached("SELECT DISTINCT recipient FROM msg_deliveries INDEXED BY msg_native_ready WHERE evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' AND recipient NOT LIKE 'operator:%' AND recipient NOT LIKE 'operator-local:%' AND held IS NULL AND eligible_ms<=?1 ORDER BY recipient LIMIT 1024")?;
         q.query_map([sqlint(now)?], |r| r.get::<_, String>(0))?
             .map(|r| Ok(r?.parse()?))
             .collect()
@@ -667,7 +716,7 @@ impl Ledger {
             .unwrap_or((30_000, now, 0));
         let credit = 30_000.min(credit.saturating_add(now.saturating_sub(at).saturating_mul(10)));
         let head = |class: i32| -> Result<Option<Receipt>> {
-            let bytes:Option<Vec<u8>>=tx.query_row("SELECT data FROM msg_deliveries WHERE recipient=?1 AND evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?2 AND class=?3 AND attempt IS NULL ORDER BY message,agent LIMIT 1",params![recipient.to_string(),sqlint(now)?,class],|r|r.get(0)).optional()?;
+            let bytes:Option<Vec<u8>>=tx.query_row("SELECT data FROM msg_deliveries INDEXED BY msg_native_ready WHERE recipient=?1 AND evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' AND held IS NULL AND eligible_ms<=?2 AND class=?3 AND attempt IS NULL ORDER BY message,agent LIMIT 1",params![recipient.to_string(),sqlint(now)?,class],|r|r.get(0)).optional()?;
             bytes.map(|b| Ok(serde_json::from_slice(&b)?)).transpose()
         };
         let oracle = head(1)?;
@@ -717,7 +766,7 @@ impl Ledger {
             } else {
                 0
             };
-            let mut q=tx.prepare_cached("SELECT data FROM msg_deliveries WHERE recipient=?1 AND evidence='recipient-stored' AND held IS NULL AND eligible_ms<=?2 AND (?3=-1 OR class=?3) AND (message>?4 OR (message=?4 AND agent>?5)) AND attempt IS NULL ORDER BY message,agent LIMIT ?6")?;
+            let mut q=tx.prepare_cached("SELECT data FROM msg_deliveries INDEXED BY msg_native_ready WHERE recipient=?1 AND evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' AND held IS NULL AND eligible_ms<=?2 AND (?3=-1 OR class=?3) AND (message>?4 OR (message=?4 AND agent>?5)) AND attempt IS NULL ORDER BY message,agent LIMIT ?6")?;
             for row in q.query_map(
                 params![
                     recipient.to_string(),
@@ -1051,6 +1100,53 @@ pub(crate) fn u64_at(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<
 fn class_int(class: Class) -> i32 {
     if class == Class::Oracle { 1 } else { 0 }
 }
+fn remember_thread(
+    db: &rusqlite::Connection,
+    sequence: u64,
+    sender: Recipient,
+    parent: Option<Ulid>,
+) -> Result<()> {
+    let sender = parent
+        .map(|id| thread_sender(db, id))
+        .transpose()?
+        .unwrap_or(sender);
+    db.execute(
+        "INSERT INTO msg_thread_roots VALUES(?1,?2)",
+        params![sqlint(sequence)?, sender.to_string()],
+    )?;
+    Ok(())
+}
+fn thread_sender(db: &rusqlite::Connection, mut id: Ulid) -> Result<Recipient> {
+    // New messages retain this derived owner atomically. Legacy chains are
+    // resolved once from reply_to and memoized; thread_id never grants a wake.
+    let mut path = Vec::new();
+    let mut seen = std::collections::BTreeSet::new();
+    let sender = loop {
+        if !seen.insert(id) {
+            return Err(invalid("cyclic reply chain"));
+        }
+        let (sequence, sender, parent, known): (u64, String, Option<String>, Option<String>) = db.query_row(
+            "SELECT m.seq,m.sender,COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.reply_to'),json_extract(CAST(m.envelope AS TEXT),'$.intent.request.reply_to')),r.sender FROM msg_messages m LEFT JOIN msg_thread_roots r ON r.message=m.seq WHERE m.id=?1",
+            [id.to_string()], |row| Ok((u64_at(row,0)?,row.get(1)?,row.get(2)?,row.get(3)?)),
+        )?;
+        if let Some(known) = known {
+            break known;
+        }
+        path.push(sequence);
+        if let Some(parent) = parent {
+            id = parent.parse()?;
+        } else {
+            break sender;
+        }
+    };
+    for sequence in path {
+        db.execute(
+            "INSERT OR IGNORE INTO msg_thread_roots VALUES(?1,?2)",
+            params![sqlint(sequence)?, sender],
+        )?;
+    }
+    Recipient::try_from(sender).map_err(invalid)
+}
 fn set_rate(receipt: &mut Receipt) {
     let arrival = receipt
         .arrivals
@@ -1058,14 +1154,52 @@ fn set_rate(receipt: &mut Receipt) {
         .filter(|a| !a.paused)
         .min_by_key(|a| a.batch_ms);
     if let Some(a) = arrival {
-        receipt.eligible_ms = receipt.received_ms.saturating_add(a.batch_ms);
+        receipt.eligible_ms = receipt
+            .eligible_ms
+            .max(receipt.received_ms.saturating_add(a.batch_ms));
         receipt.batch_key = a.path.clone();
     }
+}
+fn mode_for(delivery: &Delivery<'_>, recipient: Recipient, class: MessageClass) -> WakeMode {
+    if !matches!(recipient, Recipient::Seat(_)) {
+        return WakeMode::Inbox;
+    }
+    delivery
+        .wake
+        .and_then(|modes| modes.get(&recipient))
+        .copied()
+        .unwrap_or(if class == MessageClass::Event {
+            WakeMode::Inbox
+        } else {
+            WakeMode::Wake
+        })
+}
+fn pin_wake(
+    tx: &rusqlite::Connection,
+    receipt: &mut Receipt,
+    mode: WakeMode,
+    now: u64,
+) -> Result<()> {
+    receipt.wake = Some(match mode {
+        WakeMode::Wake => ReceiptWake::Now,
+        WakeMode::Inbox => ReceiptWake::None,
+        WakeMode::Digest => {
+            let deadline = now.saturating_add(600_000);
+            receipt.eligible_ms = receipt.eligible_ms.max(deadline);
+            let until = tx.query_row(
+                "SELECT strftime('%Y-%m-%dT%H:%M:%fZ',?1/1000.0,'unixepoch')",
+                [sqlint(deadline)?],
+                |row| row.get(0),
+            )?;
+            ReceiptWake::Deferred { until }
+        }
+    });
+    Ok(())
 }
 fn insert_deliveries(
     tx: &rusqlite::Transaction<'_>,
     message: &StoredMessage,
-    routes: &[Route],
+    delivery: Delivery<'_>,
     now: u64,
     same_device: Option<&std::collections::BTreeSet<Recipient>>,
     signing_device: Option<Ulid>,
@@ -1083,7 +1217,7 @@ fn insert_deliveries(
         | bbt_proto::messaging::LogicalSender::Operator { device, .. }
         | bbt_proto::messaging::LogicalSender::OperatorLocal { device, .. } => device,
     });
-    for route in routes {
+    for route in delivery.routes {
         let remote_pending = same_device.is_some_and(|local| !local.contains(&route.recipient));
         let mut receipt = Receipt {
             message_sequence: sequence,
@@ -1121,6 +1255,14 @@ fn insert_deliveries(
                 _ => None,
             },
         };
+        if !remote_pending {
+            pin_wake(
+                tx,
+                &mut receipt,
+                mode_for(&delivery, route.recipient, envelope.kind.class()),
+                now,
+            )?;
+        }
         receipt_event(tx, &receipt, now)?;
         if remote_pending {
             receipt.held = Some("signature pending; pinned remote delivery waits".into());
@@ -1148,12 +1290,6 @@ fn insert_deliveries(
             ],
         )?;
         receipt_event(tx, &receipt, now)?;
-        if matches!(envelope.body, Body::Presence { .. }) {
-            receipt.held = Some("metadata only; no harness wake".into());
-            receipt.note = "presence projected as metadata; no harness wake".into();
-            save_receipt(tx, &receipt)?;
-            receipt_event(tx, &receipt, now)?;
-        }
     }
     Ok(())
 }

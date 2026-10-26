@@ -1,5 +1,5 @@
 //! The logic owner mediates keys, current grants, inboxes and the local bus.
-use bbt_proto::messaging::{OperatorReference, OperatorReferenceKind};
+use bbt_proto::messaging::{OperatorReference, OperatorReferenceKind, WakeMode};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -9,7 +9,7 @@ use ulid::Ulid;
 
 use super::{
     keys::SeatKeys,
-    ledger::{Ledger, Page, Receipt, StoredMessage, Work, u64_at},
+    ledger::{Delivery, Ledger, Page, Receipt, StoredMessage, Work, u64_at},
     tree::{Actor, Node, Recipient, Right, Route, Tree},
     wire::{Body, Envelope, EnvelopeExt, MessageKind, SendRequest, SendRequestExt, public},
 };
@@ -32,6 +32,46 @@ struct Grant {
     #[serde(default)]
     operator_direct: bool,
     author: String,
+}
+struct Attention<'a> {
+    swarm: Ulid,
+    destination: &'a str,
+    kind: MessageKind,
+    reply_to: Option<Ulid>,
+    operator: bool,
+    delegated: bool,
+}
+impl<'a> Attention<'a> {
+    fn signed(envelope: &'a Envelope) -> Self {
+        Self {
+            swarm: envelope.swarm_id,
+            destination: &envelope.context,
+            kind: envelope.kind,
+            reply_to: envelope.reply_to,
+            operator: envelope.seat == Ulid::nil(),
+            delegated: matches!(&envelope.body, Body::Task { event, .. } if event == "delegate"),
+        }
+    }
+    fn pending(intent: &'a bbt_proto::messaging::PendingIntent) -> Self {
+        Self {
+            swarm: intent.swarm_id,
+            destination: &intent.request.destination,
+            kind: intent.request.kind,
+            reply_to: intent.request.reply_to,
+            operator: !matches!(
+                intent.sender,
+                bbt_proto::messaging::LogicalSender::Seat { .. }
+            ),
+            delegated: matches!(&intent.body, Body::Task { event, .. } if event == "delegate"),
+        }
+    }
+    fn message(message: &'a StoredMessage) -> Self {
+        if let Some(envelope) = message.envelope() {
+            Self::signed(envelope)
+        } else {
+            Self::pending(message.intent().expect("pending message has its intent"))
+        }
+    }
 }
 fn task_event_name<'a>(request: &SendRequest, body: &'a Body) -> Result<&'a str> {
     request.validate()?;
@@ -193,6 +233,50 @@ pub struct Messaging {
     operator_device_attribution: Option<Ulid>,
 }
 impl Messaging {
+    fn attention_modes(
+        &mut self,
+        input: Attention<'_>,
+        routes: &[Route],
+    ) -> Result<BTreeMap<Recipient, WakeMode>> {
+        // The ledger derives this owner from the actual reply_to chain, never
+        // a caller-supplied thread_id or the sender's priority class.
+        let root_sender = if let Some(parent) = input.reply_to {
+            Some(self.swarm(input.swarm)?.ledger.thread_sender(parent)?)
+        } else {
+            None
+        };
+        let delegated_to = input
+            .delegated
+            .then(|| super::tree::sink(input.destination).ok())
+            .flatten()
+            .map(|(seat, _)| seat);
+        let mut modes = BTreeMap::new();
+        for route in routes {
+            if modes.contains_key(&route.recipient) {
+                continue;
+            }
+            let mode = if let Recipient::Seat(seat) = route.recipient {
+                super::attention::decide(
+                    &self.registry.get(seat)?,
+                    input
+                        .destination
+                        .trim_end_matches("/**")
+                        .trim_end_matches("/*"),
+                    input.kind,
+                    super::attention::Facts {
+                        operator: input.operator,
+                        delegated: delegated_to == Some(seat),
+                        own_thread_reply: root_sender == Some(route.recipient),
+                        addressed_by_name: false,
+                    },
+                )?
+            } else {
+                WakeMode::Inbox
+            };
+            modes.insert(route.recipient, mode);
+        }
+        Ok(modes)
+    }
     pub fn request(
         &mut self,
         seat: Ulid,
@@ -871,10 +955,17 @@ impl Messaging {
         )?;
         tx.commit()?;
         let held = record.muted.then_some("sender muted");
-        let message = self
-            .swarm(record.swarm)?
-            .ledger
-            .accept(&request, &envelope, &routes, held, now)?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
+        let message = self.swarm(record.swarm)?.ledger.accept_with_attention(
+            &request,
+            &envelope,
+            Delivery {
+                routes: &routes,
+                wake: Some(&wake),
+            },
+            held,
+            now,
+        )?;
         self.reconcile(now)?;
         Ok(message)
     }
@@ -985,13 +1076,17 @@ impl Messaging {
         )?;
         self.validate(&envelope)?;
         tx.commit()?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
         let message = self
             .swarm(swarm)?
             .ledger
             .accept_from(
                 &request,
                 &envelope,
-                &routes,
+                Delivery {
+                    routes: &routes,
+                    wake: Some(&wake),
+                },
                 None,
                 now,
                 super::ledger::SenderAttribution {
@@ -1413,10 +1508,17 @@ impl Messaging {
         )?;
         tx.commit()?;
         let held = (record.muted && !operator_direct).then_some("sender muted");
-        let message = self
-            .swarm(record.swarm)?
-            .ledger
-            .accept(&request, &envelope, &routes, held, now)?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
+        let message = self.swarm(record.swarm)?.ledger.accept_with_attention(
+            &request,
+            &envelope,
+            Delivery {
+                routes: &routes,
+                wake: Some(&wake),
+            },
+            held,
+            now,
+        )?;
         // Recipient mutes and paused subscriptions apply at once (held before the next pump).
         self.reconcile(now)?;
         Ok(super::api::Response::Stored {
@@ -1498,9 +1600,13 @@ impl Messaging {
                 (record.muted && !held.operator).then_some("sender muted"),
             )
         };
+        let wake = self.attention_modes(Attention::pending(intent), &held.routes)?;
         let message = self.swarm(held.swarm)?.ledger.accept_pending(
             intent,
-            &held.routes,
+            Delivery {
+                routes: &held.routes,
+                wake: Some(&wake),
+            },
             &local,
             sender_muted,
             now,
@@ -1600,10 +1706,14 @@ impl Messaging {
         }
         self.store_pending(&held, now)?;
         let local = self.local_recipients(&routes)?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
         let message = self.swarm(held.swarm)?.ledger.upgrade_pending(
             &intent,
             &envelope,
-            &routes,
+            Delivery {
+                routes: &routes,
+                wake: Some(&wake),
+            },
             &local,
             now,
             Some(authority.device_id),
@@ -1702,10 +1812,18 @@ impl Messaging {
         self.store_pending(&held, now)?;
         let local = self.local_recipients(&routes)?;
         let device = self.operator_device_attribution;
-        let message = self
-            .swarm(held.swarm)?
-            .ledger
-            .upgrade_pending(&intent, &envelope, &routes, &local, now, device)?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
+        let message = self.swarm(held.swarm)?.ledger.upgrade_pending(
+            &intent,
+            &envelope,
+            Delivery {
+                routes: &routes,
+                wake: Some(&wake),
+            },
+            &local,
+            now,
+            device,
+        )?;
         if let Some(swarm) = self.swarms.get_mut(&held.swarm) {
             swarm.seen.clear();
             swarm.resolved.clear();
@@ -2118,13 +2236,19 @@ impl Messaging {
                 envelope.priority_class,
                 0,
             )?;
-            self.swarm(envelope.swarm_id)?.ledger.accept(
-                &request,
-                &envelope,
-                &routes,
-                None,
-                envelope.timestamp * 1000,
-            )?;
+            let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
+            self.swarm(envelope.swarm_id)?
+                .ledger
+                .accept_with_attention(
+                    &request,
+                    &envelope,
+                    Delivery {
+                        routes: &routes,
+                        wake: Some(&wake),
+                    },
+                    None,
+                    envelope.timestamp * 1000,
+                )?;
             self.account.connection()?.execute(
                 "UPDATE msg_notices SET sent=1 WHERE id=?1",
                 [envelope.id.to_string()],
@@ -2169,9 +2293,14 @@ impl Messaging {
                                 .intent()
                                 .map(|_| self.local_recipients(&routes))
                                 .transpose()?;
+                            let wake =
+                                self.attention_modes(Attention::message(message), &routes)?;
                             self.swarm(swarm_id)?.ledger.release_out(
                                 message,
-                                &routes,
+                                Delivery {
+                                    routes: &routes,
+                                    wake: Some(&wake),
+                                },
                                 now,
                                 local.as_ref(),
                             )?;
@@ -2288,41 +2417,55 @@ impl Messaging {
             return Ok(hit.1);
         }
         let message = self.swarm(swarm_id)?.ledger.message(sequence)?;
-        let entry = if matches!(message.view().body, Body::Presence { .. }) {
-            None
-        } else {
-            Some(
-                (|| -> Result<_> {
-                    let (sender, class, direct) = self.validate_message(&message)?;
-                    if sender.as_ref().is_some_and(|sender| sender.muted) && !direct {
-                        return Err(invalid("sender muted"));
-                    }
-                    let routes = self.swarm(swarm_id)?.tree.resolve(
-                        if direct {
-                            Actor::Operator
-                        } else {
-                            sender
-                                .as_ref()
-                                .map_or(Actor::Operator, |sender| Actor::Seat {
-                                    seat: sender.id,
-                                    class: sender.role.class,
-                                })
-                        },
-                        message.view().context,
-                        message.view().kind,
-                        class,
-                        message.view().priority,
-                    )?;
-                    // First route per (seat, agent), as a linear `find` picks.
-                    let mut by = HashMap::new();
-                    for r in routes {
-                        by.entry((r.recipient, r.agent.clone())).or_insert(r);
-                    }
-                    Ok((class, direct, by))
-                })()
-                .map_err(|e| e.to_string()),
-            )
-        };
+        let entry = Some(
+            (|| -> Result<_> {
+                let (sender, class, direct) = self.validate_message(&message)?;
+                // A local mute notice is signed as its subject, but its routing
+                // authority came from the retained operator transaction. Match
+                // the exact journaled bytes; a seat cannot forge this exception.
+                let notice = if let Some(envelope) = message.envelope()
+                    && matches!(envelope.body, Body::Presence { .. })
+                {
+                    let bytes: Option<Vec<u8>> = self
+                        .account
+                        .connection()?
+                        .query_row(
+                            "SELECT envelope FROM msg_notices WHERE id=?1",
+                            [envelope.id.to_string()],
+                            |row| row.get(0),
+                        )
+                        .optional()?;
+                    bytes.as_deref() == Some(serde_json::to_vec(envelope)?.as_slice())
+                } else {
+                    false
+                };
+                if sender.as_ref().is_some_and(|sender| sender.muted) && !direct && !notice {
+                    return Err(invalid("sender muted"));
+                }
+                let routes = self.swarm(swarm_id)?.tree.resolve(
+                    if direct || notice {
+                        Actor::Operator
+                    } else {
+                        sender
+                            .as_ref()
+                            .map_or(Actor::Operator, |sender| Actor::Seat {
+                                seat: sender.id,
+                                class: sender.role.class,
+                            })
+                    },
+                    message.view().context,
+                    message.view().kind,
+                    class,
+                    message.view().priority,
+                )?;
+                let mut by = HashMap::new();
+                for r in routes {
+                    by.entry((r.recipient, r.agent.clone())).or_insert(r);
+                }
+                Ok((class, direct, by))
+            })()
+            .map_err(|e| e.to_string()),
+        );
         let same = self.swarm(swarm_id)?.resolved.get(&sequence) == Some(&entry);
         memo.insert(sequence, (entry, same));
         Ok(same)
@@ -2677,6 +2820,18 @@ mod reference_tests {
         let swarm = Ulid::new();
         let recipient = SeatRecord::new(Ulid::new(), swarm, "recipient", "zsh");
         registry.insert(&recipient).unwrap();
+        registry
+            .set_attention(
+                recipient.id,
+                1,
+                bbt_proto::registry::AttentionRule {
+                    destination: format!("seats/{}/inbox", recipient.id),
+                    class: bbt_proto::messaging::MessageClass::Conversation,
+                    mode: WakeMode::Inbox,
+                },
+            )
+            .unwrap();
+
         let mut messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
         let request =
             SendRequest::text(format!("seats/{}/inbox", recipient.id), "first operator DM");
@@ -2713,6 +2868,7 @@ mod reference_tests {
         assert_eq!(inbox.items.len(), 1);
         assert_eq!(inbox.items[0].view().id, id);
         let receipt = messaging.receipts(recipient.id, id).unwrap().remove(0);
+        assert_eq!(receipt.wake, Some(bbt_proto::messaging::ReceiptWake::Now));
         assert_eq!(receipt.signature, SignatureState::Pending);
         assert_eq!(receipt.sender_operator, Some(*reference));
         assert_eq!(receipt.sender_device, None);
@@ -2923,5 +3079,90 @@ mod reference_tests {
         );
         assert!(messaging.operator_reference(Some(Ulid::nil())).is_err());
         assert_eq!(messaging.operator_reference(None).unwrap(), reference);
+    }
+}
+
+#[cfg(test)]
+mod native_attention_tests {
+    use super::super::keys::LocalSeatKeys;
+    use super::*;
+    use bbt_proto::{
+        messaging::{MessageClass, ReceiptWake},
+        registry::AttentionRule,
+    };
+    use ed25519_dalek::SigningKey;
+
+    // keeps: conversation-only task exception; Oracle priority is not operator authority.
+    #[test]
+    fn task_delegation_forces_wake_but_oracle_seat_prose_does_not() {
+        let root = tempfile::tempdir().unwrap();
+        let registry =
+            Registry::new(SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap());
+        let swarm = Ulid::new();
+        let mut sender = SeatRecord::new(Ulid::new(), swarm, "oracle", "zsh");
+        sender.role.class = Class::Oracle;
+        let receiver = SeatRecord::new(Ulid::new(), swarm, "executor", "zsh");
+        registry.insert(&sender).unwrap();
+        registry.insert(&receiver).unwrap();
+        let destination = format!("seats/{}/inbox", receiver.id);
+        registry
+            .set_attention(
+                receiver.id,
+                1,
+                AttentionRule {
+                    destination: destination.clone(),
+                    class: MessageClass::Conversation,
+                    mode: WakeMode::Inbox,
+                },
+            )
+            .unwrap();
+        let mut messaging = Messaging::open(
+            root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[67; 32]))),
+        )
+        .unwrap();
+        let prose = messaging
+            .send(
+                sender.id,
+                1,
+                SendRequest::text(&destination, "Oracle class is not the operator"),
+                1_000,
+            )
+            .unwrap();
+        assert_eq!(
+            messaging.receipts(sender.id, prose.view().id).unwrap()[0].wake,
+            Some(ReceiptWake::None)
+        );
+        let mut request = SendRequest::text(&destination, "your task brief");
+        request.kind = MessageKind::Task;
+        let delegated = messaging
+            .task_event(
+                sender.id,
+                1,
+                request,
+                Body::Task {
+                    task_id: Ulid::new(),
+                    event: "delegate".into(),
+                    path: "tasks/fixture".into(),
+                    summary: "your task brief".into(),
+                },
+                2_000,
+            )
+            .unwrap();
+        assert_eq!(
+            messaging.receipts(sender.id, delegated.view().id).unwrap()[0].wake,
+            Some(ReceiptWake::Now)
+        );
+        let work = messaging
+            .prepare(swarm, receiver.id, 2_001)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            work.messages
+                .iter()
+                .map(|m| m.view().id)
+                .collect::<Vec<_>>(),
+            [delegated.view().id]
+        );
     }
 }

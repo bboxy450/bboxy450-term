@@ -53,6 +53,15 @@ fn custody_hold_never_holds_local_delivery() {
     let recipient = SeatRecord::new(Ulid::new(), swarm, "recipient", "zsh");
     registry.insert(&sender).unwrap();
     registry.insert(&recipient).unwrap();
+    // This boundary proves native delivery during custody hold; receiver defaults
+    // are exercised separately by the attention tests below.
+    set_attention(
+        &registry,
+        &recipient,
+        bbt_proto::messaging::MessageClass::Conversation,
+        format!("seats/{}/inbox", recipient.id),
+        bbt_proto::messaging::WakeMode::Wake,
+    );
     let mut messaging = Messaging::open(root.path(), Arc::new(FirstHeld)).unwrap();
     let request = SendRequest::text(
         format!("seats/{}/inbox", recipient.id),
@@ -224,6 +233,10 @@ fn remote_pending_fixture() {
             .unwrap()
             .remove(0);
         assert_eq!(receipt.evidence, Evidence::SenderStored);
+        assert_eq!(
+            receipt.wake, None,
+            "no recipient admission while signature is pending remotely"
+        );
         assert_eq!(receipt.signature, SignatureState::Pending);
         assert_eq!(
             receipt.held.as_deref(),
@@ -245,6 +258,13 @@ fn remote_pending_fixture() {
             .is_empty(),
         "unsigned intents must not enter a pinned remote inbox"
     );
+    set_attention(
+        &registry,
+        &remote,
+        bbt_proto::messaging::MessageClass::Conversation,
+        format!("seats/{}/inbox", remote.id),
+        bbt_proto::messaging::WakeMode::Wake,
+    );
     assert_eq!(
         messaging
             .resume_signing(
@@ -264,6 +284,8 @@ fn remote_pending_fixture() {
         assert_eq!(envelope.timestamp, 1);
         let receipt = messaging.receipts(sender.id, ids[index]).unwrap().remove(0);
         assert_eq!(receipt.evidence, Evidence::RecipientStored);
+        assert_eq!(receipt.wake, Some(bbt_proto::messaging::ReceiptWake::Now));
+        assert_eq!(receipt.received_ms, 20_000);
         assert_eq!(receipt.signature, SignatureState::Signed);
     }
 }
@@ -384,4 +406,360 @@ fn events_are_stored_and_never_wake_by_default() {
     assert_eq!(work.messages[0].view().id, id);
     messaging.finish(swarm, &work, &WakeOutcome { evidence: Evidence::NativeWritten, native_id: Some("one-attention-wake".into()), note: "fixture native delivery".into() }, 2_002, false).unwrap();
     assert!(messaging.prepare(swarm, oracle.id, 2_003).unwrap().is_none());
+}
+
+fn set_attention(
+    registry: &Registry,
+    receiver: &SeatRecord,
+    class: bbt_proto::messaging::MessageClass,
+    destination: String,
+    mode: bbt_proto::messaging::WakeMode,
+) {
+    registry
+        .set_attention(
+            receiver.id,
+            receiver.generation,
+            bbt_proto::registry::AttentionRule {
+                destination,
+                class,
+                mode,
+            },
+        )
+        .unwrap();
+}
+
+struct AttentionFixture {
+    root: tempfile::TempDir,
+    registry: Registry,
+    messaging: Messaging,
+    sender: SeatRecord,
+    receiver: SeatRecord,
+}
+impl AttentionFixture {
+    fn new() -> Self {
+        let root = tempfile::tempdir().unwrap();
+        let registry =
+            Registry::new(SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap());
+        let swarm = Ulid::new();
+        let sender = SeatRecord::new(Ulid::new(), swarm, "sender", "zsh");
+        let receiver = SeatRecord::new(Ulid::new(), swarm, "receiver", "zsh");
+        registry.insert(&sender).unwrap();
+        registry.insert(&receiver).unwrap();
+        let messaging = Messaging::open(
+            root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[66; 32]))),
+        )
+        .unwrap();
+        Self {
+            root,
+            registry,
+            messaging,
+            sender,
+            receiver,
+        }
+    }
+    fn mode(&self, mode: bbt_proto::messaging::WakeMode) {
+        set_attention(
+            &self.registry,
+            &self.receiver,
+            bbt_proto::messaging::MessageClass::Conversation,
+            format!("seats/{}/inbox", self.receiver.id),
+            mode,
+        );
+    }
+    fn send(&mut self, now: u64) -> Ulid {
+        self.messaging
+            .send(
+                self.sender.id,
+                1,
+                SendRequest::text(
+                    format!("seats/{}/inbox", self.receiver.id),
+                    "attention fixture",
+                ),
+                now,
+            )
+            .unwrap()
+            .view()
+            .id
+    }
+    fn receipt(&mut self, id: Ulid) -> bbt_proto::messaging::Receipt {
+        self.messaging
+            .receipts(self.sender.id, id)
+            .unwrap()
+            .into_iter()
+            .find(|r| r.recipient == self.receiver.id)
+            .unwrap()
+    }
+    fn reopen(&mut self) {
+        self.messaging = Messaging::open(
+            self.root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[66; 32]))),
+        )
+        .unwrap();
+    }
+    fn ledger_store(&self) -> SqliteStore {
+        SqliteStore::open(
+            &object_dir(self.root.path(), &format!("swarm-{}", self.sender.swarm)).unwrap(),
+        )
+        .unwrap()
+    }
+    fn finish(&mut self, work: &bbt_mux::messaging::ledger::Work, now: u64) {
+        self.messaging
+            .finish(
+                self.receiver.swarm,
+                work,
+                &WakeOutcome {
+                    evidence: Evidence::NativeWritten,
+                    native_id: Some("attention-fixture".into()),
+                    note: "written once".into(),
+                },
+                now,
+                false,
+            )
+            .unwrap();
+    }
+}
+
+// keeps: messaging-attention §3 admission pinning, all three modes and restart.
+#[test]
+fn admission_pins_wake_and_digest_while_inbox_history_leaves_the_native_scan() {
+    use bbt_proto::messaging::{ReceiptWake, WakeMode};
+    let mut f = AttentionFixture::new();
+    f.mode(WakeMode::Inbox);
+    let archived: Vec<_> = (0..32).map(|n| f.send(1_000 + n)).collect();
+    f.mode(WakeMode::Wake);
+    let immediate = f.send(2_000);
+    f.mode(WakeMode::Digest);
+    let deferred = f.send(3_000);
+    let decision = f.receipt(deferred);
+    assert_eq!(
+        decision.wake,
+        Some(ReceiptWake::Deferred {
+            until: "1970-01-01T00:10:03.000Z".into()
+        })
+    );
+    assert_eq!(decision.held, None);
+    f.mode(WakeMode::Wake);
+    f.reopen();
+    for id in archived {
+        assert_eq!(f.receipt(id).wake, Some(ReceiptWake::None));
+    }
+    assert_eq!(f.receipt(deferred).wake, decision.wake);
+    let db = f.ledger_store().connection().unwrap();
+    let active: i64 = db.query_row("SELECT count(*) FROM msg_deliveries INDEXED BY msg_attention_pending WHERE evidence='recipient-stored' AND (json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' OR held IS NOT NULL)", [], |row| row.get(0)).unwrap();
+    assert_eq!(active, 2, "inbox history must not enter the native scan");
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 4_000)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        work.messages
+            .iter()
+            .map(|m| m.view().id)
+            .collect::<Vec<_>>(),
+        [immediate]
+    );
+    f.finish(&work, 4_001);
+    assert!(
+        f.messaging
+            .prepare(f.receiver.swarm, f.receiver.id, 602_999)
+            .unwrap()
+            .is_none()
+    );
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 603_000)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        work.messages
+            .iter()
+            .map(|m| m.view().id)
+            .collect::<Vec<_>>(),
+        [deferred]
+    );
+    f.finish(&work, 603_001);
+    assert!(f.messaging.ready(603_002).unwrap().is_empty());
+}
+
+// keeps: messaging-attention §3 actual thread-root author exception.
+#[test]
+fn own_thread_reply_wakes_its_root_author_despite_inbox_policy() {
+    use bbt_proto::messaging::{ReceiptWake, WakeMode};
+    let mut f = AttentionFixture::new();
+    f.mode(WakeMode::Inbox);
+    let root = f
+        .messaging
+        .send(
+            f.receiver.id,
+            1,
+            SendRequest::text(
+                format!("seats/{}/inbox", f.sender.id),
+                "the receiver started this thread",
+            ),
+            1_000,
+        )
+        .unwrap();
+    let mut reply = SendRequest::text("", "answer to your thread");
+    reply.reply_to = Some(root.view().id);
+    let reply = f.messaging.send(f.sender.id, 1, reply, 1_001).unwrap();
+    assert_eq!(f.receipt(reply.view().id).wake, Some(ReceiptWake::Now));
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 1_002)
+        .unwrap()
+        .unwrap();
+    assert_eq!(work.messages[0].view().id, reply.view().id);
+}
+
+// keeps: a sender-supplied thread_id cannot manufacture an always-wake exception.
+#[test]
+fn thread_id_alias_cannot_claim_another_seats_root_exception() {
+    use bbt_proto::messaging::{ReceiptWake, WakeMode};
+    let mut f = AttentionFixture::new();
+    f.mode(WakeMode::Inbox);
+    let root = f
+        .messaging
+        .send(
+            f.receiver.id,
+            1,
+            SendRequest::text(
+                format!("seats/{}/inbox", f.sender.id),
+                "a real receiver-owned thread",
+            ),
+            1_000,
+        )
+        .unwrap();
+    let destination = format!("seats/{}/inbox", f.receiver.id);
+    let mut alias = SendRequest::text(&destination, "a different root by the sender");
+    alias.thread_id = Some(root.view().id);
+    let alias = f.messaging.send(f.sender.id, 1, alias, 2_000).unwrap();
+    let mut reply = SendRequest::text(&destination, "still the sender's thread");
+    reply.reply_to = Some(alias.view().id);
+    let reply = f.messaging.send(f.sender.id, 1, reply, 2_001).unwrap();
+    assert_eq!(f.receipt(reply.view().id).wake, Some(ReceiptWake::None));
+    f.ledger_store()
+        .connection()
+        .unwrap()
+        .execute("DELETE FROM msg_thread_roots", [])
+        .unwrap();
+    f.reopen();
+    let mut another = SendRequest::text(&destination, "legacy chain still belongs to the sender");
+    another.reply_to = Some(reply.view().id);
+    let another = f.messaging.send(f.sender.id, 1, another, 2_002).unwrap();
+    assert_eq!(f.receipt(another.view().id).wake, Some(ReceiptWake::None));
+    assert!(
+        f.messaging
+            .prepare(f.receiver.swarm, f.receiver.id, 2_002)
+            .unwrap()
+            .is_none()
+    );
+}
+
+// keeps: event opt-in is receiver-owned; operator mute remains live.
+#[test]
+fn opted_in_event_wake_obeys_live_mute_and_carries_structured_content() {
+    use bbt_mux::{adapters::State, messaging::tree::Actor};
+    use bbt_proto::messaging::{MessageClass, ReceiptWake, WakeMode};
+    let mut f = AttentionFixture::new();
+    set_attention(
+        &f.registry,
+        &f.receiver,
+        MessageClass::Event,
+        format!("swarms/{}", f.receiver.swarm),
+        WakeMode::Wake,
+    );
+    f.messaging
+        .set_mute(Actor::Operator, f.receiver.id, true, State::Idle, 1_000)
+        .unwrap();
+    let notice = f
+        .messaging
+        .set_mute(Actor::Operator, f.sender.id, true, State::Idle, 2_000)
+        .unwrap()
+        .unwrap();
+    let receipt = f.receipt(notice);
+    assert_eq!(receipt.wake, Some(ReceiptWake::Now));
+    assert_eq!(receipt.held.as_deref(), Some("recipient muted"));
+    assert!(
+        f.messaging
+            .prepare(f.receiver.swarm, f.receiver.id, 2_001)
+            .unwrap()
+            .is_none()
+    );
+    f.messaging
+        .set_mute(Actor::Operator, f.receiver.id, false, State::Idle, 3_000)
+        .unwrap();
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 3_001)
+        .unwrap()
+        .unwrap();
+    assert!(work.messages.iter().any(|m| m.view().id == notice));
+    assert!(
+        work.text().contains("\"event\":\"mute\""),
+        "structured status must have content when explicitly requested"
+    );
+    f.finish(&work, 3_002);
+    assert!(
+        f.messaging
+            .prepare(f.receiver.swarm, f.receiver.id, 3_003)
+            .unwrap()
+            .is_none()
+    );
+}
+
+// keeps: additive receipt migration never replays a completed native attempt.
+#[test]
+fn legacy_pending_receipts_migrate_without_replaying_completed_work() {
+    use bbt_mux::{adapters::State, messaging::tree::Actor};
+    use bbt_proto::messaging::{ReceiptWake, WakeMode};
+    let mut f = AttentionFixture::new();
+    f.mode(WakeMode::Wake);
+    let completed = f.send(1_000);
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 1_001)
+        .unwrap()
+        .unwrap();
+    f.finish(&work, 1_002);
+    let pending = f.send(2_000);
+    let notice = f
+        .messaging
+        .set_mute(Actor::Operator, f.sender.id, true, State::Idle, 3_000)
+        .unwrap()
+        .unwrap();
+    let db = f.ledger_store().connection().unwrap();
+    // Recreate the rows written before receipt wake existed, including the old
+    // metadata-only pseudo-hold. Signed messages and native journal are intact.
+    db.execute("UPDATE msg_deliveries SET data=CAST(json_remove(CAST(data AS TEXT),'$.wake','$.until') AS BLOB)", []).unwrap();
+    db.execute("UPDATE msg_deliveries SET held='metadata only; no harness wake',data=CAST(json_set(CAST(data AS TEXT),'$.held','metadata only; no harness wake') AS BLOB) WHERE message=(SELECT seq FROM msg_messages WHERE id=?1)", [notice.to_string()]).unwrap();
+    f.reopen();
+    assert_eq!(f.receipt(completed).evidence, Evidence::NativeWritten);
+    assert_eq!(
+        f.receipt(completed).wake,
+        None,
+        "completed legacy evidence is historical"
+    );
+    assert_eq!(f.receipt(pending).wake, Some(ReceiptWake::Now));
+    assert_eq!(f.receipt(notice).wake, Some(ReceiptWake::None));
+    assert_eq!(f.receipt(notice).held, None);
+    f.messaging
+        .set_mute(Actor::Operator, f.sender.id, false, State::Idle, 4_000)
+        .unwrap();
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 4_001)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        work.messages
+            .iter()
+            .map(|m| m.view().id)
+            .collect::<Vec<_>>(),
+        [pending]
+    );
+    f.finish(&work, 4_002);
+    f.reopen();
+    assert!(f.messaging.ready(4_003).unwrap().is_empty());
 }
