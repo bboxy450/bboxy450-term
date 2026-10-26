@@ -2542,7 +2542,10 @@ impl Worker {
             Ok(tool::Request::Get) => journal.checked(actor, call, read()),
             Ok(tool::Request::Set(rule)) => journal.effect(actor, call, || {
                 match self.registry.set_attention(actor.seat_id, actor.process_generation, rule) {
-                    Ok(_) => read(),
+                    Ok(policy) => mcp::success(
+                        call.op_id,
+                        serde_json::json!({"seat_id":actor.seat_id,"policy":policy}),
+                    ),
                     Err(error) if error.downcast_ref::<std::io::Error>()
                         .is_some_and(|e| e.kind() == std::io::ErrorKind::InvalidData) => {
                         mcp::error(call.op_id, "rejected", &error.to_string())
