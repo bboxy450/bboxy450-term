@@ -1,0 +1,19 @@
+MA-3 native receiver attention — signed source 5e5be7cfb75daf17c28979c4ea8d337ae9b8eeae (G).
+Base: MA-2 boxed union 78c010f9. Source range: c911a05d regression, a634f43a implementation, 5e5be7cf import correction. Task339 is already on main as0009d0b6; do not duplicate fffac5f6.
+
+ledger.rs:92/268/1200 — the receiver policy snapshot enters the recipient inbox transaction; wake now/none/deferred is persisted with the receipt. Remote pending signatures have no recipient decision until signed inbox admission. set_rate never shortens a pinned deadline.
+ledger.rs:125/643/690 — partial native/policy indexes exclude healthy wake:none history; legacy pending conversations retain old Wake behavior, metadata pseudo-holds become wake:none, completed native evidence stays historical. The obsolete full-history ready index is retired.
+ledger.rs:245/1120 — actual reply_to root ownership is retained with new messages; legacy chains backfill lazily and memoize, never trusting caller thread_id for an exception.
+service.rs:236 — receiver defaults/overrides with trusted operator, typed delegation and own-thread facts. Broadcast /* and /** suffixes are routing, so policy names the canonical room. Every signed, local-pending, remote-upgrade, notice and held-out release path uses the snapshot.
+service.rs:2410 — explicit Event wake revalidates live mute/grants; a local operator notice must match the exact durable notice journal before privileged routing. Structured event fields are rendered only when the receiver requested native work.
+
+Exact-source checks, all EXIT0:
+- messaging plus messaging_flow:18/0 +9/0,1 existing night-only boundary ignored;79.340s including build.
+- service unit tests:4/0, including operator-under-custody and real Task delegate exception versus Oracle-class prose;58.547s including build.
+- strict bbt-mux all-target Clippy:-D warnings,0;47.787s.
+
+Acceptance: default events for Executor/Architect/Creativity/Oracle store recipient-stored wake:none without fake holds; Wake conversation prepares once. All three modes remain pinned across policy edits/restart; live mute still fences explicit event wake. Root-alias attack and legacy root backfill cannot forge the own-thread exception.32 archived inbox rows leave exactly2 native candidates. Legacy completed delivery never replays. Protected messaging-never-held test passes, including immutable pending intent, ordered signing upgrade and no duplicate native delivery. Remote decision uses actual recipient admission time.
+
+The initial335 regression failed as intended. Intermediate path-normalization and explicit-Wake fixture misses, plus the formatting/import compile miss, are retained with exit codes and raw hashes in the JSON; they are not relabelled as clean runs.
+
+MA-4 digest aggregation/cap/summary and MA-5 typed thread hints remain queued. This cut only pins the Digest deadline at600000ms through the already injected service time port. No proto, renderer, app clock or second transport edit. No whole gate/night or independent publication here. One own inactive O1 target is retained for immediate MA-4 work; no CI target exists. Oracle runs mandatory landing verification as agreed.

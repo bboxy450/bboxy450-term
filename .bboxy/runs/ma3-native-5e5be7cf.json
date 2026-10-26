@@ -1,0 +1,158 @@
+{
+  "source": "5e5be7cfb75daf17c28979c4ea8d337ae9b8eeae",
+  "checks": [
+    {
+      "name": "verified-flow",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--test",
+        "messaging_flow",
+        "--test",
+        "messaging"
+      ],
+      "exit": 0,
+      "seconds": 79.34,
+      "log": "target/ma3-native-proof/verified-flow.log",
+      "sha256": "485a0eefcc746248b9d143a727237a33497888797626e252789094d63a50c319",
+      "test_results": [
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 1
+        }
+      ]
+    },
+    {
+      "name": "verified-service",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--lib",
+        "messaging::service::"
+      ],
+      "exit": 0,
+      "seconds": 58.547,
+      "log": "target/ma3-native-proof/verified-service.log",
+      "sha256": "0388afd767f07f0b595c52becb91e1956b67ea7969882805984ac9c2b455e8b4",
+      "test_results": [
+        {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "verified-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-mux",
+        "--all-targets",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 47.787,
+      "log": "target/ma3-native-proof/verified-clippy.log",
+      "sha256": "088cfda8f42bfa5844f9b679339d1c784c1fb2b6368100dae74d4b22793d7d3d",
+      "test_results": []
+    }
+  ],
+  "branch": "velvet-ma3-native-policy",
+  "base": "78c010f9a765027605a02461fdaa73e36040213a",
+  "task": 339,
+  "task_record_on_main": "0009d0b6",
+  "scope": [
+    "crates/bbt-mux/src/messaging/ledger.rs",
+    "crates/bbt-mux/src/messaging/service.rs",
+    "crates/bbt-mux/tests/messaging.rs",
+    "crates/bbt-mux/tests/messaging_flow.rs"
+  ],
+  "profile": {
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+    "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+    "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+    "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true",
+    "BBOXY_TEST_CUSTODY": "memory"
+  },
+  "failed_or_intermediate_checks": [
+    {
+      "name": "notices-before",
+      "exit": 101,
+      "source": "c911a05d",
+      "reason": "expected regression: receipt wake absent",
+      "log": "target/ma3-native-proof/notices-before.log",
+      "sha256": "4dbc33b8257aa086ef94b03bfc00a4af33850642e216ab0eeb0d477860078ebc"
+    },
+    {
+      "name": "notices-after",
+      "exit": 101,
+      "source": "dirty after c911a05d",
+      "reason": "broadcast routing suffix rejected by room-policy normalization; fixed in service",
+      "log": "target/ma3-native-proof/notices-after.log",
+      "sha256": "fdd0360a00212eb269eb0df734f15ff313d916016105b625e68cd27e2f3cc146"
+    },
+    {
+      "name": "messaging-first",
+      "exit": 101,
+      "source": "dirty after c911a05d",
+      "reason": "16/18; two native fixtures still used new Executor digest defaults; explicit Wake policy added",
+      "log": "target/ma3-native-proof/messaging-first.log",
+      "sha256": "cc7479a15de3e183bb21fd2da57eb45128872b1ff541131a8b38d7e762f63a8f"
+    },
+    {
+      "name": "messaging-second",
+      "exit": 0,
+      "source": "dirty after c911a05d",
+      "reason": "18/18 plus 9/9 flow; 1 existing night-only boundary ignored",
+      "log": "target/ma3-native-proof/messaging-second.log",
+      "sha256": "2e3819423afdd84fffd22e56d8bbd45aaea35c6dd14ef1ef3d6aba6b8e89672f"
+    },
+    {
+      "name": "final-flow",
+      "exit": 101,
+      "source": "a634f43a",
+      "reason": "scoped formatting dropped a new import; restored in signed 5e5be7cf",
+      "log": "target/ma3-native-proof/final-flow.log",
+      "sha256": "3bd334592dcc810ea9e7635f39d9b45119adaa0076d68664453a9106d70a4e29"
+    }
+  ],
+  "limits": [
+    "MA-4 window/cap grouping and digest summary are not implemented by this cut; Digest receipts currently defer for 600000 ms.",
+    "No full gate, night or independent publication; mandatory landing verification is with the Oracle as agreed.",
+    "One pre-existing GUI/custody boundary remains ignored in the day suite and named for scripts/night-test-boundaries.sh.",
+    "Historical completed receipts are not reclassified or replayed."
+  ],
+  "source_sha256": {
+    "crates/bbt-mux/src/messaging/ledger.rs": "a19bd00f1ac037b8aa7e46ab270ab802e673aaf6684f8301fbf82a6ea0f8513b",
+    "crates/bbt-mux/src/messaging/service.rs": "254ae7b299756a3af2fabda291c47f13045ec35b283ec87ff9ea265c0f0ab7a3",
+    "crates/bbt-mux/tests/messaging.rs": "c955bffbc415bfc19491548d2f102511fdf36aca6c1fcba43556c403a7bef7c0",
+    "crates/bbt-mux/tests/messaging_flow.rs": "deb155c6b0d3104d39d914fea78748c5223af47969823ee26068e5d72ac3cfdc"
+  }
+}
