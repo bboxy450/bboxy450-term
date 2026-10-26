@@ -107,26 +107,30 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
 fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count() {
     let model = Model::default();
     let records = settings::records(Some(&model), &Default::default());
+    let examples = settings::records(None, &Default::default());
     assert!(
-        records
+        examples
             .plugin_notice
             .as_deref()
             .unwrap()
             .contains("Reference fixtures")
     );
-    assert_eq!(records.plugins.len(), 6);
-    assert!(records.plugins.iter().all(|p| {
+    assert_eq!(examples.plugins.len(), 6);
+    assert!(examples.plugins.iter().all(|p| {
         p.health
             .say
             .as_deref()
             .unwrap()
             .starts_with("reference fixture")
     }));
-    assert!(records.plugins.iter().any(|p| {
+    assert!(examples.plugins.iter().any(|p| {
         p.alerts
             .iter()
             .any(|a| a == "this plugin takes 10 s on every hook")
     }));
+    assert!(records.plugins.is_empty());
+    assert!(!records.plugin_controls);
+    assert!(records.plugin_notice.as_deref().unwrap().contains("snapshot pending"));
     assert_eq!(
         records.knowledge.offered,
         ["bboxy450-term-data_source-bboxy"]
