@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T02:28:43Z"
+updated: "2026-10-26T02:55:06Z"
 ---
 # Messaging attention
 
@@ -71,7 +71,7 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 
 **Digest bounds**: a window of at most 10 minutes and a cap of 50 messages, whichever comes first, read from the **messaging service's own injected time port** (`ready(now)` and `prepare(…, now)` in the service, supplied by logic), so unit tests drive it frozen and never sleep ([[test-policy]] B1); this is not the UI animation clock of `ctl ui clock`, which stays a frontend concern and does not advance backend digests (corrected at Velvet's question, 2026-10-25; an earlier wording said "App clock"); a digest never waits longer than its window, so `digest` delays a wake and never holds a message.
 
-The policy is set through MCP tools for the seat itself (`attention_get`, `attention_set`), `ctl seat attention <seat> [<destination> <class> <mode>]` for the operator and scripts, and Settings › Messaging per seat. Orient tells a seat its policy on its first turn and how to read its inbox (the field policy of [[mcp-control-plane]]).
+**The wake decision is pinned at admission** (Velvet's question, 2026-10-25): it is made once, when the message is stored for the recipient, and recorded in the receipt (`now`, `none`, or `deferred` with its deadline); a later policy change governs only messages admitted after it. Rows admitted as `inbox` never wake retroactively, and a digest already pending flushes by its own deadline under the policy it was admitted with, at most one window later. Only rows awaiting native delivery are indexed for it; `wake: none` rows are never scanned again, so the delivery scan grows with pending wakes, not with the size of the inbox ([[no-chokepoints]]). The operator's mute stays live as before and is not pinned. The policy is set through MCP tools for the seat itself (`attention_get`, `attention_set`), `ctl seat attention <seat> [<destination> <class> <mode>]` for the operator and scripts, and Settings › Messaging per seat. Orient tells a seat its policy on its first turn and how to read its inbox (the field policy of [[mcp-control-plane]]).
 
 ## 4. What never changes
 
