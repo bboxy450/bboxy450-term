@@ -1,0 +1,15 @@
+P-1 provider prerequisite — explicit operator check, knowledge-base §3 and ICD plugin-host #350.
+LANDED a1b0c0e8d7f7447c89a8d710a624b5c11d79e9ca via sh scripts/land.sh EXIT 0; four source commits G.
+crates/bbt-proto/src/gui/plugin.rs — additive Check request; existing golden file is an unchanged byte prefix plus one case.
+crates/bbt-plugin/src/registry.rs:70 — digest-bound isolated Conformance observation, omitted on legacy entries; never a trust/enable grant.
+crates/bbt-mux/src/plugins/conformance.rs:46 — operator-only, freshly trusted pinned copy; cached success reuses its digest result; source/generation/account changes reject a completion.
+crates/bbt-mux/src/plugins/trust.rs:95 — internal verified-pin bridge to a disposable account/data directory/root; the public checker still refuses production paths; cached shape is reused.
+crates/bbt-mux/src/plugins/client.rs:285 — initialize.params.root once, UTF-8 absolute path, private cwd; no root/author/signer/device/account on method arguments. Production handshake/call defaults remain 2 s; fixture guards 30 s.
+crates/bbt-mux/src/plugins/control.rs:93 — bounded independent conformance job, durable admission/result replay; a failed check is named and persisted; no setup or production business call.
+crates/bboxy450-term/src/ctl/plugin.rs:38 — ctl plugin check <candidate>, table/sample included, actual conformance in list output; no implicit enable.
+Checks: affected app/mux/plugin/proto 792 passed/0 failed/82 ignored, strict Clippy 0, 19 selected invariants/0, wire goldens 2/0; BUILD 233.261s/RUN 215.849s.
+Raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/a1b0c0e8d7f7447c89a8d710a624b5c11d79e9ca-3f53ca95/commands.log sha256 72a737574a03384ed1531f8ee2e848c2d432339a328351f44c0c528ba1b74276.
+Regressions passed: untrusted non-execution, isolated initialized root/cwd and rootless calls, one shape inspection, replay/cached success no execution, direct-child reaping, named refusal, changed digest invalidation, independent controls during held check, stale completion refusal.
+Earlier EXIT77s retained: identical-byte/different-name fixture conflict, two full data-source descriptors exceeded the existing inventory cap, final lookup used raw instead of canonical path. Predicates and caps unchanged; fixture now uses an independent small repo-graph control and candidate ID.
+A prior identical-source green check (raw sha256 9be41e87fcf7b968526b3bd4afa575a3c80b4a40841daee5e9fda0b547c4e5cd) stopped on my untracked next-cut draft; moving that owned draft to private scratch removed the guard failure; no tracked source change.
+Gaps: live root routing/swap follows; existing 256 KiB full-inventory limit is named, not enlarged. Existing P-0 additive write probe repeats a create path; owner Kestrel, correction with stateful root fixture next. No external writer, auth/setup, health or postsubmit acceptance claimed.
