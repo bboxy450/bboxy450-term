@@ -80,9 +80,18 @@ class Assertions(unittest.TestCase):
         mapping = (ROOT.parent.parent / ".bboxy/specs/e2e-script-map.md").read_text()
         for name in ["S1", "S2", "S3", "S4", "K2", "L1"]:
             header = (ROOT / f"{name}.sh").read_text().splitlines()[0]
-            self.assertTrue(header.startswith("# coverage: partial; missing: "))
-            missing = header.split("missing: ", 1)[1]
-            self.assertIn(f"| {name} | `scripts/e2e/{name}.sh` | partial | {missing} |", mapping)
+            row_prefix = f"| {name} | `scripts/e2e/{name}.sh` | "
+            rows = [line for line in mapping.splitlines() if line.startswith(row_prefix)]
+            self.assertEqual(len(rows), 1, f"{name} needs exactly one coverage map row")
+            coverage = rows[0][len(row_prefix):].split(" | ", 1)[0]
+            self.assertIn(coverage, ("full", "partial"), name)
+            if coverage == "full":
+                self.assertEqual(header, "# coverage: full", name)
+            else:
+                self.assertTrue(header.startswith("# coverage: partial; missing: "), name)
+                missing = header.split("missing: ", 1)[1]
+                self.assertTrue(missing, name)
+                self.assertIn(row_prefix + f"partial | {missing} |", mapping)
 
 
 if __name__ == "__main__":
