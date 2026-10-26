@@ -1,0 +1,15 @@
+P-1 cut 2 — operator ctl binding; brief 6754aa32 and approved slice order 9ecc5bc4.
+LANDED 8d4ddb927ae09e99f2b054ce4d2d181116ffe46e via sh scripts/land.sh — EXIT 0; all five source commits G.
+crates/bbt-proto/src/gui/plugin.rs — additive list/trust/enable/disable request and correlated registry reply; old wire golden rows unchanged, five rows appended.
+crates/bbt-mux/src/logic.rs — registry uses the selected account clone; signing hold admission unchanged; descriptor jobs owned and aborted with the worker.
+crates/bbt-mux/src/plugins/control.rs — bounded independent IO, durable admit-before-effect, retained operation replay, digest-pinned trust stays disabled/empty grants/minimum tier.
+crates/bbt-mux/src/seat_socket.rs — correlated side jobs on admitted operator connections, ordinary control FIFO preserved.
+crates/bboxy450-term/src/ctl/plugin.rs — four verbs, candidate/state/trust observations, setup explicitly unavailable.
+crates/bbt-mux/src/plugins/control_tests.rs — inspect once/replay, changed-source re-trust, arbitrary path/symlink refusal, held descriptor plus independent inventory/second plugin all passed.
+crates/bbt-mux/tests/plugin_control.rs — actual admitted socket + private file account; untrusted executable never runs; passed.
+Initial green 4d365723e802ba20cc0535fc3237094e6a47adfa: affected proto/mux/app tests 757/0/80 ignored; strict clippy 0; BUILD 339.416s/RUN 227.622s.
+Moved-main app recheck 8d4ddb927ae09e99f2b054ce4d2d181116ffe46e: 307/0/45 ignored; strict clippy 0; 14 invariants/0; BUILD 165.144s/RUN 132.193s.
+Initial raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/4d365723e802ba20cc0535fc3237094e6a47adfa-3137f5af/commands.log sha256 9bd083a19f5feb31f9cc45e91f3081a7a70c74d1788a3f174830a495d032d1f5.
+Recheck raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/8d4ddb927ae09e99f2b054ce4d2d181116ffe46e-6aa4ae54/commands.log sha256 e8184212be3e8a5f96fb78dba24b75e6a573d2a1836dec2bc7c12391f1c73754.
+Earlier author EXIT77s retained: E0433 production dependency; E0432 Result import; one ctl verb-gate sample omission. Corrected source, no predicate/deadline relaxation.
+Gaps: Settings binding/provider swap are next cuts; setup, business calls, auth/health execution and postsubmit acceptance are not claimed here.
