@@ -1,7 +1,7 @@
 {
   "decision": 344,
   "cut": "1: find and attach, native GUI hello and single frontend",
-  "status": "focused checks green; author pending; T5 canonical coverage remains partial",
+  "status": "LANDED first cut; author green; T5 still partial pending window state cut",
   "mechanisms": {
     "crates/bboxy450-term/src/cockpit/owners.rs": "same-run/account mode0600 owner records, mode0700 directory, O_NOFOLLOW/CLOEXEC frontend lock and birth-checked owner process observations",
     "crates/bboxy450-term/src/cockpit.rs": "find live supervisor before start, connect surviving logic by native GUI capability/hello without supervisor lease; replace dead logic, preserve existing independent recovery and orderly app close",
@@ -256,5 +256,21 @@
     "Adopted processes have no OS child wait status: exit reporting explicitly labels status unavailable and whether the private owner record retired",
     "No OS window-presentation or timing SLO claim",
     "postsubmit and Oracle review unverified"
+  ],
+  "landing": [
+    {
+      "sha": "f782ff2ea344143d278eabb851fc26eb8705bc7e",
+      "exit": 0,
+      "verdict": "green",
+      "compile_seconds": 432.5108178750379,
+      "run_seconds": 213.12005841598148,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/f782ff2ea344143d278eabb851fc26eb8705bc7e-c258535e/commands.log",
+      "raw_log_sha256": "e2a8c2942e63e31a326c946eaac9f4390d4c18afc62245e3ba94bbf547ebc383",
+      "rust_counts": [
+        760,
+        0,
+        82
+      ]
+    }
   ]
 }
