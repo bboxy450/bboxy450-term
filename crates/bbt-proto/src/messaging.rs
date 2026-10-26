@@ -861,6 +861,15 @@ pub enum Request {
     },
 }
 
+/// A typed messaging refusal, shared by MCP and the existing GUI/ctl transport.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MessageRefusal {
+    pub kind: String,
+    pub message: String,
+    pub hint: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Response {
@@ -883,6 +892,9 @@ pub enum Response {
     },
     Muted {
         notice: Option<Ulid>,
+    },
+    Refused {
+        error: MessageRefusal,
     },
     Applied,
 }
