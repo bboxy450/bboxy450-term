@@ -61,6 +61,7 @@ impl Harness {
             Self::roots(root.path()),
             RegistryConfig {
                 descriptor_timeout: std::time::Duration::from_secs(30),
+                conformance_timeout: std::time::Duration::from_secs(30),
             },
         )
         .unwrap();
@@ -756,6 +757,7 @@ async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() 
         Harness::roots(h.root.path()),
         RegistryConfig {
             descriptor_timeout: std::time::Duration::from_millis(25),
+            ..Default::default()
         },
     )
     .unwrap();

@@ -76,16 +76,34 @@ impl Control {
                 } = *work;
                 // A separate job per plugin: one slow descriptor cannot serialize the host.
                 let result = match result {
-                    Ok((_entries, Some(job))) => {
-                        let result = job.run().await;
-                        blocking(move || {
-                            registry
-                                .finish_inspection(result)
-                                .map(|entry| vec![entry])
-                                .map_err(refusal)
-                        })
-                        .await
-                    }
+                    Ok((_entries, Some(job))) => match job {
+                        Job::Descriptor(job) => {
+                            let result = (*job).run().await;
+                            blocking(move || {
+                                registry
+                                    .finish_inspection(result)
+                                    .map(|entry| vec![entry])
+                                    .map_err(refusal)
+                            })
+                            .await
+                        }
+                        Job::Conformance(job) => {
+                            let result = (*job).run().await;
+                            blocking(move || {
+                                let entry = registry.finish_conformance(result).map_err(refusal)?;
+                                if let Some(result) = &entry.conformance
+                                    && !result.ok
+                                {
+                                    return Err(invalid(result.refusal.as_ref().map_or_else(
+                                        || "contract_failed: conformance refused".into(),
+                                        |r| format!("contract_failed: {}: {}", r.code, r.message),
+                                    )));
+                                }
+                                Ok(vec![entry])
+                            })
+                            .await
+                        }
+                    },
                     Ok((entries, None)) => Ok(entries),
                     Err(error) => Err(error),
                 };
@@ -149,7 +167,12 @@ struct Work {
     journal: Journal,
     call: Call,
     mutation: bool,
-    result: Result<(Vec<Entry>, Option<super::InspectionJob>)>,
+    result: Result<(Vec<Entry>, Option<Job>)>,
+}
+
+enum Job {
+    Descriptor(Box<super::InspectionJob>),
+    Conformance(Box<super::ConformanceJob>),
 }
 
 fn refusal(error: bbt_plugin::Refusal) -> crate::store::Error {
@@ -166,16 +189,16 @@ fn prepare(
     registry: &Registry,
     actor: &Actor,
     request: &PluginRequest,
-) -> Result<(Vec<Entry>, Option<super::InspectionJob>)> {
+) -> Result<(Vec<Entry>, Option<Job>)> {
     let entries = registry.refresh().map_err(refusal)?;
     if matches!(request, PluginRequest::List) {
         return Ok((entries, None));
     }
     let selector = match request {
         PluginRequest::Trust { path, .. } => normalized_source(path)?,
-        PluginRequest::Enable { candidate } | PluginRequest::Disable { candidate } => {
-            candidate.clone()
-        }
+        PluginRequest::Enable { candidate }
+        | PluginRequest::Disable { candidate }
+        | PluginRequest::Check { candidate } => candidate.clone(),
         PluginRequest::List => unreachable!(),
     };
     let matches: Vec<_> = entries
@@ -209,12 +232,21 @@ fn prepare(
         }
         PluginRequest::Enable { .. } => registry.set_enabled(actor, id, true).map_err(refusal)?,
         PluginRequest::Disable { .. } => registry.set_enabled(actor, id, false).map_err(refusal)?,
+        PluginRequest::Check { .. } => (**entry).clone(),
         PluginRequest::List => unreachable!(),
     };
-    let job = if matches!(request, PluginRequest::Trust { .. }) {
-        registry.inspection(id).map_err(refusal)?
-    } else {
-        None
+    let job = match request {
+        PluginRequest::Trust { .. } => registry
+            .inspection(id)
+            .map_err(refusal)?
+            .map(Box::new)
+            .map(Job::Descriptor),
+        PluginRequest::Check { .. } => registry
+            .conformance(actor, id)
+            .map_err(refusal)?
+            .map(Box::new)
+            .map(Job::Conformance),
+        _ => None,
     };
     Ok((vec![entry], job))
 }

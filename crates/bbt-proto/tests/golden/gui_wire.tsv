@@ -190,3 +190,4 @@ action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"ki
 action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"disable","candidate":"candidate"}}}
 reply	{"kind":"Plugin","body":{"op":"00000000000000000000000001","entries":[]}}
 action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"trust","path":"/private/plugins/bboxy450-term-data_source-stub","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}
+action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"check","candidate":"candidate"}}}

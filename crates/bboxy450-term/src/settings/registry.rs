@@ -273,9 +273,9 @@ impl Requests {
                             })
                         })
                     }
-                    PluginRequest::Enable { candidate } | PluginRequest::Disable { candidate } => {
-                        *candidate == plugin.candidate
-                    }
+                    PluginRequest::Enable { candidate }
+                    | PluginRequest::Disable { candidate }
+                    | PluginRequest::Check { candidate } => *candidate == plugin.candidate,
                     PluginRequest::List => false,
                 };
                 if !selected {
@@ -289,6 +289,7 @@ impl Requests {
                     PluginRequest::Trust { .. } => "trust",
                     PluginRequest::Enable { .. } => "enable",
                     PluginRequest::Disable { .. } => "disable",
+                    PluginRequest::Check { .. } => "check",
                     PluginRequest::List => unreachable!(),
                 };
                 match row.map(|row| &row.reply) {

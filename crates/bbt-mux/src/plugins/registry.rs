@@ -16,7 +16,7 @@ use std::{
 use bbt_plugin::{
     Refusal,
     contracts::Contract,
-    registry::{Activation, Approval, Candidate, Entry, Inspection, State},
+    registry::{Activation, Approval, Candidate, Conformance, Entry, Inspection, State},
     trust::TrustRecord,
 };
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -34,16 +34,22 @@ use crate::{mcp::Actor, store::sqlite::SqliteStore};
 
 const ACTIVATIONS: &str = "plugins/activation/";
 
+#[path = "conformance.rs"]
+mod conformance;
+pub use conformance::{ConformanceJob, ConformanceResult};
+
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]
 pub struct RegistryConfig {
     pub descriptor_timeout: Duration,
+    pub conformance_timeout: Duration,
 }
 
 impl Default for RegistryConfig {
     fn default() -> Self {
         Self {
             descriptor_timeout: Duration::from_secs(2),
+            conformance_timeout: Duration::from_secs(2),
         }
     }
 }
@@ -255,10 +261,19 @@ impl Registry {
             } else {
                 None
             };
+            let conformance = if let Some(activation) = activation.as_ref().filter(|a| {
+                !a.needs_retrust && candidate.sha256.as_ref() == Some(&a.sha256) && trust.is_some()
+            }) {
+                load::<Conformance>(&tx, &conformance::key(&candidate.id))?
+                    .filter(|result| result.sha256 == activation.sha256)
+            } else {
+                None
+            };
             entries.push(Entry {
                 candidate,
                 activation,
                 trust,
+                conformance,
             });
         }
         // Descriptors may add contracts beyond the filename's primary one.

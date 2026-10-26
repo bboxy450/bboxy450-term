@@ -65,6 +65,16 @@ pub struct Inspection {
     pub stderr_truncated: bool,
 }
 
+/// Isolated contract checks are observations, never production trust or enable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Conformance {
+    pub sha256: String,
+    pub ok: bool,
+    pub checked_at: u64,
+    pub checks: Vec<String>,
+    pub refusal: Option<Refusal>,
+}
+
 /// Persisted in the operator account. A digest alone is never an activation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Activation {
@@ -88,6 +98,8 @@ pub struct Entry {
     pub candidate: Candidate,
     pub activation: Option<Activation>,
     pub trust: Option<TrustRecord>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conformance: Option<Conformance>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -112,7 +112,7 @@ async fn tools(client: &mut Client) -> Result<BTreeMap<String, Value>, Refusal> 
                 cursor
                     .as_ref()
                     .map_or_else(|| json!({}), |c| json!({"cursor":c})),
-                CALL,
+                client.call_limit(),
             )
             .await?;
         let tools = page["tools"]
@@ -204,7 +204,7 @@ async fn data_call(
         &args,
         "argument_schema_mismatch",
     )?;
-    let budget = Duration::from_millis(command.timeout_ms).min(CALL);
+    let budget = Duration::from_millis(command.timeout_ms).min(client.call_limit());
     let original_args = args.clone();
     let result = client.call(&wire, args.clone(), budget).await?;
     let mut extended = args;
@@ -314,7 +314,7 @@ async fn contract_call(
             .call(
                 &wire,
                 arguments,
-                Duration::from_millis(command.timeout_ms).min(CALL),
+                Duration::from_millis(command.timeout_ms).min(client.call_limit()),
             )
             .await
             .map_err(|e| {
@@ -454,7 +454,9 @@ async fn exercise(
             }
         }
     }
-    client.call(&shape.health_command, json!({}), CALL).await?;
+    client
+        .call(&shape.health_command, json!({}), client.call_limit())
+        .await?;
     report
         .checks
         .push("MCP negotiation, bounded catalogue and health".into());
@@ -623,6 +625,13 @@ async fn exercise(
 }
 
 async fn prepared(account: &mut FixtureAccount) -> CheckReport {
+    prepared_with_deadline(account, CALL).await
+}
+
+pub(super) async fn prepared_with_deadline(
+    account: &mut FixtureAccount,
+    deadline: Duration,
+) -> CheckReport {
     let mut report = CheckReport {
         sha256: Some(account.record.sha256.clone()),
         ..Default::default()
@@ -630,6 +639,7 @@ async fn prepared(account: &mut FixtureAccount) -> CheckReport {
     let result = async {
         descriptor(account, &mut report).await?;
         let mut process = Client::spawn(account, false)?;
+        process.configure_deadlines(deadline);
         report.owned_pids.push(process.pid);
         let result = exercise(&mut process, account, &mut report).await;
         let captured = process.shutdown().await;

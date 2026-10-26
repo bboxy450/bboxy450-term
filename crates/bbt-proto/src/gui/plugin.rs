@@ -18,6 +18,10 @@ pub enum PluginRequest {
     Disable {
         candidate: String,
     },
+    /// Check a trusted pin in a disposable fixture; never grants trust or enable.
+    Check {
+        candidate: String,
+    },
 }
 
 impl PluginRequest {

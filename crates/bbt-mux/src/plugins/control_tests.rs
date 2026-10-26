@@ -36,6 +36,7 @@ impl Fixture {
             super::super::DiscoveryRoots::new(&root.path().join("app"), &root.path().join("repo")),
             super::super::RegistryConfig {
                 descriptor_timeout: std::time::Duration::from_secs(30),
+                conformance_timeout: std::time::Duration::from_secs(30),
             },
         )
         .unwrap();
@@ -47,6 +48,62 @@ impl Fixture {
             _root: root,
         }
     }
+    fn reference(fault: Option<&str>, gate: Option<&std::path::Path>) -> Self {
+        let mut f = Self::new();
+        let path = f.path.with_file_name("bboxy450-term-data_source-reference");
+        fs::rename(&f.path, &path).unwrap();
+        f.path = path;
+        let mut source =
+            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference")
+                .to_owned();
+        if let Some(fault) = fault {
+            source = source.replace(
+                "FAULT = None",
+                &format!("FAULT = {}", serde_json::to_string(fault).unwrap()),
+            );
+        }
+        source = source.replace("else 2000,", "else 30000,");
+        let marker = serde_json::to_string(&f.marker.to_string_lossy()).unwrap();
+        source = source.replace("if sys.argv[1:]==[\"--shape\"]:\n", &format!("if sys.argv[1:]==[\"--shape\"]:\n    with open({marker},'a') as f: f.write(json.dumps({{'kind':'shape'}})+'\\n')\n"));
+        let barrier = gate.map_or_else(String::new, |path| format!("        import socket\n        with socket.socket(socket.AF_UNIX) as gate:\n            gate.connect({})\n            gate.recv(1)\n", serde_json::to_string(&path.to_string_lossy()).unwrap()));
+        let instrumentation = format!(
+            r#"    method=req.get("method")
+    if method == 'initialize':
+        root = req['params']['root']
+        assert os.path.isfile(os.path.join(root,'p0-fixture.md'))
+        assert os.path.realpath(root) != os.path.realpath(os.getcwd())
+        assert not any(key in req['params'] for key in ['author','signer','device','account'])
+        with open({marker},'a') as f: f.write(json.dumps({{'kind':'initialize','pid':os.getpid(),'root':root,'cwd':os.getcwd()}})+'\n')
+{barrier}    elif method == 'tools/call':
+        assert not any(key in req['params'].get('arguments',{{}}) for key in ['root','author','signer','device','account'])
+        with open({marker},'a') as f: f.write(json.dumps({{'kind':'call','name':req['params']['name']}})+'\n')"#
+        );
+        source = source.replace("    method=req.get(\"method\")", &instrumentation);
+        fs::write(&f.path, source).unwrap();
+        f
+    }
+
+    fn observations(&self) -> Vec<serde_json::Value> {
+        fs::read_to_string(&self.marker)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect()
+    }
+
+    async fn trust_reference(&self) -> Entry {
+        self.ask(
+            Ulid::new(),
+            PluginRequest::Trust {
+                path: self.path.to_string_lossy().into_owned(),
+                sha256: None,
+            },
+        )
+        .await
+        .unwrap()
+        .remove(0)
+    }
+
     async fn ask(&self, id: Ulid, request: PluginRequest) -> Result<Vec<Entry>> {
         self.control
             .request(
@@ -253,4 +310,189 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
     use tokio::io::AsyncWriteExt;
     gate.write_all(b"x").await.unwrap();
     assert_eq!(task.await.unwrap().unwrap()[0].state(), State::Disabled);
+}
+
+// keeps: plugin-host — checks use trusted bytes, isolated state and root-at-initialize; no implicit enable.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn conformance_is_explicit_isolated_digest_bound_and_replayed_without_execution() {
+    let f = Fixture::reference(None, None);
+    let entry = f
+        .ask(Ulid::new(), PluginRequest::List)
+        .await
+        .unwrap()
+        .remove(0);
+    let request = PluginRequest::Check {
+        candidate: entry.candidate.id.clone(),
+    };
+    assert!(
+        f.ask(Ulid::new(), request.clone())
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("untrusted_plugin")
+    );
+    let standalone = crate::plugins::check(&f.path).await;
+    assert_eq!(
+        standalone.refusal.unwrap().code,
+        "untrusted_production_file"
+    );
+    assert!(!f.marker.exists());
+    let before = f.trust_reference().await;
+    let op = Ulid::new();
+    let checked = f.ask(op, request.clone()).await.unwrap().remove(0);
+    assert_eq!(checked.state(), State::Disabled);
+    assert_eq!(checked.activation, before.activation);
+    assert_eq!(checked.trust, before.trust);
+    let result = checked.conformance.as_ref().unwrap();
+    assert!(result.ok, "{result:?}");
+    assert_eq!(result.sha256, before.activation.as_ref().unwrap().sha256);
+    assert!(
+        result
+            .checks
+            .iter()
+            .any(|check| check.contains("eight data_source methods"))
+    );
+    let observations = f.observations();
+    assert_eq!(
+        observations
+            .iter()
+            .filter(|row| row["kind"] == "shape")
+            .count(),
+        1
+    );
+    let init = observations
+        .iter()
+        .find(|row| row["kind"] == "initialize")
+        .unwrap();
+    for field in ["root", "cwd"] {
+        assert!(!std::path::Path::new(init[field].as_str().unwrap()).starts_with(f._root.path()));
+    }
+    let pid = init["pid"].as_u64().unwrap() as libc::pid_t;
+    assert_eq!(
+        unsafe { libc::kill(pid, 0) },
+        -1,
+        "checker child still exists"
+    );
+    assert_eq!(
+        f.ask(op, request.clone()).await.unwrap(),
+        vec![checked.clone()]
+    );
+    assert_eq!(f.ask(Ulid::new(), request).await.unwrap(), vec![checked]);
+    assert_eq!(
+        f.observations(),
+        observations,
+        "replay or cached success executed a child"
+    );
+}
+
+// keeps: plugin-host — a conformance refusal is durable and cannot survive a binary replacement as a current result.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn conformance_refusal_is_named_and_a_changed_digest_requires_explicit_trust() {
+    let f = Fixture::reference(Some("bad_result"), None);
+    let trusted = f.trust_reference().await;
+    let request = PluginRequest::Check {
+        candidate: trusted.candidate.id.clone(),
+    };
+    let op = Ulid::new();
+    let error = f.ask(op, request.clone()).await.unwrap_err().to_string();
+    assert!(
+        error.contains("contract_failed") && error.contains("result_schema_mismatch"),
+        "{error}"
+    );
+    let entry = f
+        .ask(Ulid::new(), PluginRequest::List)
+        .await
+        .unwrap()
+        .remove(0);
+    let result = entry.conformance.as_ref().unwrap();
+    assert!(!result.ok);
+    assert_eq!(
+        result.refusal.as_ref().unwrap().code,
+        "result_schema_mismatch"
+    );
+    assert_eq!(entry.state(), State::Disabled);
+    let observations = f.observations();
+    assert_eq!(
+        f.ask(op, request.clone()).await.unwrap_err().to_string(),
+        error
+    );
+    assert_eq!(f.observations(), observations);
+    let mut source = fs::read_to_string(&f.path).unwrap();
+    source.push_str("\n# replaced bytes\n");
+    fs::write(&f.path, source).unwrap();
+    let entry = f
+        .ask(Ulid::new(), PluginRequest::List)
+        .await
+        .unwrap()
+        .remove(0);
+    assert_eq!(entry.state(), State::NeedsRetrust);
+    assert!(entry.conformance.is_none());
+    assert!(
+        f.ask(Ulid::new(), request)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("plugin_reapproval_required")
+    );
+    assert_eq!(f.observations(), observations);
+}
+
+// keeps: plugin-host — a held check never gates other plugins, and a changed binding rejects its completion.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn held_conformance_keeps_other_controls_independent_and_fences_stale_completion() {
+    let root = tempfile::tempdir().unwrap();
+    let socket = root.path().join("gate.sock");
+    let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+    let f = std::sync::Arc::new(Fixture::reference(None, Some(&socket)));
+    let trusted = f.trust_reference().await;
+    let other = f.path.with_file_name("bboxy450-term-data_source-other");
+    fs::copy(&f.path, &other).unwrap();
+    let task = tokio::spawn({
+        let f = f.clone();
+        let candidate = trusted.candidate.id;
+        async move { f.ask(Ulid::new(), PluginRequest::Check { candidate }).await }
+    });
+    let (mut gate, _) = tokio::time::timeout(std::time::Duration::from_secs(30), listener.accept())
+        .await
+        .unwrap()
+        .unwrap();
+    let inventory = f.ask(Ulid::new(), PluginRequest::List).await.unwrap();
+    assert_eq!(inventory.len(), 2);
+    let other = f
+        .ask(
+            Ulid::new(),
+            PluginRequest::Trust {
+                path: other.to_string_lossy().into_owned(),
+                sha256: None,
+            },
+        )
+        .await
+        .unwrap()
+        .remove(0);
+    assert_eq!(
+        f.ask(
+            Ulid::new(),
+            PluginRequest::Enable {
+                candidate: other.candidate.id
+            }
+        )
+        .await
+        .unwrap()[0]
+            .state(),
+        State::Enabled
+    );
+    let mut source = fs::read_to_string(&f.path).unwrap();
+    source.push_str("\n# changed while checking\n");
+    fs::write(&f.path, source).unwrap();
+    use tokio::io::AsyncWriteExt;
+    gate.write_all(b"x").await.unwrap();
+    let error = task.await.unwrap().unwrap_err().to_string();
+    assert!(error.contains("plugin_reapproval_required"), "{error}");
+    let entries = f.ask(Ulid::new(), PluginRequest::List).await.unwrap();
+    let changed = entries
+        .iter()
+        .find(|entry| entry.candidate.source == f.path.to_string_lossy())
+        .unwrap();
+    assert_eq!(changed.state(), State::NeedsRetrust);
+    assert!(changed.conformance.is_none());
 }

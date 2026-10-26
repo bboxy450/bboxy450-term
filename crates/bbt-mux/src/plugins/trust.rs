@@ -90,6 +90,67 @@ fn production_plugin_path(source: &Path) -> bool {
 }
 
 impl FixtureAccount {
+    /// Internal bridge from fresh production authority to an isolated checker.
+    /// The public checker still refuses production paths and cannot grant trust.
+    pub(super) fn prepare_verified(record: &TrustRecord, copy: &Path) -> Result<Self, Refusal> {
+        let shape = record.shape.as_ref().ok_or_else(|| {
+            failure(
+                "shape_not_cached",
+                "trust and inspect the descriptor before checking",
+            )
+        })?;
+        if hash_file(copy)? != record.sha256 {
+            return Err(failure(
+                "plugin_digest_changed",
+                "trusted copy changed before fixture preparation",
+            ));
+        }
+        let stage = tempfile::Builder::new()
+            .prefix("bboxy-plugin-verified-")
+            .tempdir()
+            .map_err(|e| failure("fixture_store_unavailable", e))?;
+        let named = stage.path().join(format!(
+            "bboxy450-term-{}-{}",
+            record.name.system.name(),
+            record.name.provider
+        ));
+        fs::copy(copy, &named).map_err(|e| failure("fixture_store_unavailable", e))?;
+        let mut fixture = Self::prepare(&named)?;
+        if fixture.record.sha256 != record.sha256 || fixture.record.name != record.name {
+            return Err(failure(
+                "plugin_digest_changed",
+                "trusted bytes changed during fixture preparation",
+            ));
+        }
+        fixture.cache_shape(shape.clone())?;
+        Ok(fixture)
+    }
+
+    /// Every data-source fixture has a disposable root, distinct from its private cwd.
+    pub(super) fn knowledge_root(&self) -> Result<Option<PathBuf>, Refusal> {
+        if !self.record.shape.as_ref().is_some_and(|shape| {
+            shape
+                .systems
+                .iter()
+                .any(|system| system.contract == "data_source")
+        }) {
+            return Ok(None);
+        }
+        let root = self._root.path().join("checker-knowledge/.bboxy");
+        if !root.exists() {
+            fs::create_dir_all(&root).map_err(|e| failure("fixture_store_unavailable", e))?;
+            fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
+                .map_err(|e| failure("fixture_store_unavailable", e))?;
+            let text = format!(
+                "---\nid: {}\ntype: note\nnumber: 7\ntitle: Plugin conformance\n---\nPlugin conformance fixture.\n",
+                crate::Ulid::from(7_u128)
+            );
+            fs::write(root.join("p0-fixture.md"), text)
+                .map_err(|e| failure("fixture_store_unavailable", e))?;
+        }
+        Ok(Some(root))
+    }
+
     pub fn signed_task_fixture(&self) -> Result<String, Refusal> {
         // Existing DSSE writer, an explicitly public fixture key, and a root we
         // own. This is a test vector, never a production task transition/key.

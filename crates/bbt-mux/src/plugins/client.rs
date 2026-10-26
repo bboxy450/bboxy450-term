@@ -30,6 +30,8 @@ pub(super) struct Client {
     next: u64,
     pub pid: u32,
     shape_timeout: Duration,
+    call_limit: Duration,
+    handshake_timeout: Duration,
     #[cfg(test)]
     spawned_environment_names: Vec<String>,
 }
@@ -101,6 +103,8 @@ impl Client {
             next: 0,
             pid,
             shape_timeout,
+            call_limit: HANDSHAKE,
+            handshake_timeout: HANDSHAKE,
             #[cfg(test)]
             spawned_environment_names,
         })
@@ -272,12 +276,33 @@ impl Client {
                 "trust must cache a validated shape first",
             )
         })?;
+        let root = fixture.knowledge_root()?;
+        self.initialize_root(shape, root.as_deref(), "bboxy450-plugin-check")
+            .await
+    }
+
+    /// A connection is bound to one host-selected root once, never by method arguments.
+    pub(super) async fn initialize_root(
+        &mut self,
+        shape: &bbt_plugin::shape::Shape,
+        root: Option<&std::path::Path>,
+        client_name: &str,
+    ) -> Result<(), Refusal> {
         let contracts: serde_json::Map<String, Value> = shape
             .systems
             .iter()
             .map(|s| (s.contract.clone(), json!(s.contract_version)))
             .collect();
-        let result=self.request("initialize",json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":false,"trace":false}}},"clientInfo":{"name":"bboxy450-plugin-check","version":env!("CARGO_PKG_VERSION")}}),HANDSHAKE).await?;
+        let mut params = json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":false,"trace":false}}},"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")}});
+        if let Some(root) = root {
+            params["root"] = json!(
+                root.to_str()
+                    .ok_or_else(|| failure("invalid_knowledge_root", "root path must be UTF-8"))?
+            );
+        }
+        let result = self
+            .request("initialize", params, self.handshake_timeout)
+            .await?;
         if !result["protocolVersion"]
             .as_str()
             .is_some_and(|v| VERSIONS.contains(&v))
@@ -302,12 +327,22 @@ impl Client {
             bbt_plugin::shape::Version::compatible(version, &system.contract_version)?;
         }
         timeout(
-            HANDSHAKE,
+            self.handshake_timeout,
             self.send(&json!({"jsonrpc":"2.0","method":"notifications/initialized"})),
         )
         .await
         .map_err(|_| failure("deadline_exceeded", "initialized notification blocked"))??;
         Ok(())
+    }
+
+    pub(super) fn call_limit(&self) -> Duration {
+        self.call_limit
+    }
+
+    /// Host configuration only; tests can use a hang guard without changing production defaults.
+    pub(super) fn configure_deadlines(&mut self, deadline: Duration) {
+        self.call_limit = deadline;
+        self.handshake_timeout = deadline;
     }
 
     pub async fn call(

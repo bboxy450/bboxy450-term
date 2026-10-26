@@ -9,7 +9,9 @@ mod trust;
 
 pub use check::{CheckReport, Measurement, check, measure, run_cli};
 pub use discovery::DiscoveryRoots;
-pub use registry::{InspectionJob, InspectionResult, Registry, RegistryConfig};
+pub use registry::{
+    ConformanceJob, ConformanceResult, InspectionJob, InspectionResult, Registry, RegistryConfig,
+};
 
 use bbt_plugin::Refusal;
 

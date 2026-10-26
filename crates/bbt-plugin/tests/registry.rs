@@ -47,6 +47,7 @@ fn discovery_and_a_desired_enable_flag_do_not_imply_account_trust() {
         candidate: candidate.clone(),
         activation: None,
         trust: None,
+        conformance: None,
     };
     assert_eq!(entry.state(), State::Untrusted);
     entry.activation = Some(Activation {
@@ -65,5 +66,6 @@ fn discovery_and_a_desired_enable_flag_do_not_imply_account_trust() {
     entry.activation.as_mut().unwrap().needs_retrust = true;
     assert_eq!(entry.state(), State::NeedsRetrust);
     let serialized = serde_json::to_vec(&entry).unwrap();
+    assert!(!String::from_utf8_lossy(&serialized).contains("conformance"));
     assert_eq!(serde_json::from_slice::<Entry>(&serialized).unwrap(), entry);
 }

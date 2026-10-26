@@ -7,6 +7,7 @@ pub(super) const VERBS: &[Verb] = &[
     ("plugin", "trust", "Plugin"),
     ("plugin", "enable", "Plugin"),
     ("plugin", "disable", "Plugin"),
+    ("plugin", "check", "Plugin"),
 ];
 
 macro_rules! plugin_commands {
@@ -32,6 +33,9 @@ pub(super) fn parse(words: &[&str], _cx: &ParseCx) -> Result<Option<Command>, St
             candidate: candidate.into(),
         },
         ["plugin", "disable", candidate] => PluginRequest::Disable {
+            candidate: candidate.into(),
+        },
+        ["plugin", "check", candidate] => PluginRequest::Check {
             candidate: candidate.into(),
         },
         _ => return Ok(None),
@@ -61,7 +65,7 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         _ => unreachable!(),
     };
     let entries: Vec<_> = entries.into_iter().map(|entry| {
-        json!({"state":entry.state(),"candidate":entry.candidate,"activation":entry.activation,"trust":entry.trust})
+        json!({"state":entry.state(),"candidate":entry.candidate,"activation":entry.activation,"trust":entry.trust,"conformance":entry.conformance})
     }).collect();
     print_reply(
         out,
@@ -79,4 +83,5 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "plugin trust /private/plugins/bboxy450-term-data_source-stub",
     "plugin enable candidate",
     "plugin disable candidate",
+    "plugin check candidate",
 ];
