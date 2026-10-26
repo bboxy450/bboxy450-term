@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-25T22:47:12Z"
+updated: "2026-10-26T01:07:01Z"
 ---
 # Messaging attention
 
@@ -65,9 +65,9 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 | `digest` | stored, then delivered natively **once** per window as one summary listing every message by id, when the window closes or the batch reaches its cap |
 | *mute* | the operator's swarm mute of [[messaging]], unchanged: holds the seat's traffic both ways and is set by the operator, never by the seat |
 
-**No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Defaults by role class**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `inbox` (the Oracle verifies from the landing log, not from posts; it may set events to `digest` for itself, and that is then its choice, not the default; corrected the same day at Velvet's question, since a digest default contradicted [[notices-never-wake]]). Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
+**No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Defaults are keyed by role name** (`oracle`, `architect`, `creativity`, executor roles), not by priority class, since the class distinguishes only oracle from worker; **defaults by role**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `inbox` (the Oracle verifies from the landing log, not from posts; it may set events to `digest` for itself, and that is then its choice, not the default; corrected the same day at Velvet's question, since a digest default contradicted [[notices-never-wake]]). Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
 
-**Always wake, whatever the policy**: a message from the operator principal, a task delegated to that seat, and a reply in a thread that seat started. A seat cannot set itself to miss its own work.
+**Always wake, whatever the policy**, for **conversation** only: a message from the operator principal, a task delegated to that seat, and a reply in a thread that seat started. A seat cannot set itself to miss its own work. An **event** never wakes by default, whoever authored it, the operator included: an operator's mute notice is status, not a question (Velvet's question, 2026-10-25).
 
 **Digest bounds**: a window of at most 10 minutes and a cap of 50 messages, whichever comes first, read from the injected App clock so tests do not sleep ([[test-policy]] B1); a digest never waits longer than its window, so `digest` delays a wake and never holds a message.
 
@@ -92,7 +92,7 @@ One Executor per row, landed through `land.sh`, each small enough to land the da
 | # | Task | Crates | Verify |
 |---|---|---|---|
 | MA-1 | `MessageClass` derived from `MessageKind`, the event kinds enumerated with structured fields; `WakeMode` and the receipt's `wake` field; additive wire with defaults | `bbt-proto`, the messaging types | the wire golden gains its cases, every existing case byte-identical |
-| MA-2 | Policy store on the seat record, role-class defaults, `attention_get` and `attention_set` MCP tools, the always-wake exceptions | `bbt-mux` | unit tests per mode and exception |
+| MA-2 | Policy store on the seat record (an additive optional typed field on `SeatRecord` in `bbt-proto/src/registry.rs`, which drops unknown fields, with its golden case), role-name defaults, `attention_get` and `attention_set` MCP tools, the conversation-only always-wake exceptions | `bbt-proto`, `bbt-mux` | unit tests per mode and exception; the registry golden gains its case |
 | MA-3 | Native delivery consults the policy; inbox always written; the receipt carries `wake` | `bbt-mux` | the [[notices-never-wake]] test; [[messaging-never-held]] still held |
 | MA-4 | Digests on the App clock, window and cap, one delivery listing ids in order | `bbt-mux` | frozen-clock tests at the window and the cap |
 | MA-5 | `reply_to` validation and `unknown_thread` with the hint | `bbt-mux`, `bbt-proto` | refusal and hint tests |
