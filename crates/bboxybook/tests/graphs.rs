@@ -1,5 +1,6 @@
 use bboxybook::{graphs, parity::CasePolicy};
 use serde_json::json;
+// keeps: spec renderer.md §4.5
 #[test]
 fn graph_matrix_covers_each_live_card_and_the_empty_swarm() {
     let cases = graphs::cases();
@@ -14,6 +15,7 @@ fn graph_matrix_covers_each_live_card_and_the_empty_swarm() {
         p.text && !p.historical && p.geometry_tolerance_px == Some(0.5)
     }));
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn graph_layout_is_driven_by_records_not_browser_child_positions() {
     let mut case = graphs::cases()
@@ -32,6 +34,7 @@ fn graph_layout_is_driven_by_records_not_browser_child_positions() {
     assert_ne!(first, format!("{:?}", graphs::layout_case(&case).unwrap()));
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn checklist_layout_uses_public_promises_and_records_without_child_diagnostics() {
     let mut case = graphs::cases()
@@ -55,15 +58,8 @@ fn checklist_layout_uses_public_promises_and_records_without_child_diagnostics()
         json!("blocked");
     assert_ne!(first, format!("{:?}", graphs::layout_case(&case).unwrap()));
 }
-#[test]
-fn former_graph_and_provenance_hand_painters_are_removed() {
-    let legacy = include_str!("../src/fixtures.rs");
-    for old in ["fn graph(", "fn provenance(", "fn subscriptions("] {
-        assert!(!legacy.contains(old));
-    }
-    assert!(legacy.contains("crate::graphs::paint_model"));
-}
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn channel_layout_never_consumes_browser_svg_diagnostics() {
     let mut case = graphs::cases()

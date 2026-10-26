@@ -695,6 +695,7 @@ fn compare_report(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: invariant parity-geometry
     #[test]
     fn legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate() -> Result<()> {
         let temp = std::env::temp_dir().join(format!(
@@ -726,6 +727,7 @@ mod tests {
         Ok(())
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn first_report_resolves_relative_reference_directories() -> Result<()> {
         let suffix = std::time::SystemTime::now()
@@ -749,6 +751,7 @@ mod tests {
         Ok(())
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn historical_diffs_stay_visible_without_gating_the_current_design() -> Result<()> {
         let temp = std::env::temp_dir().join(format!(
@@ -792,6 +795,7 @@ mod tests {
         Ok(())
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn text_policy_requires_rects_and_baselines_even_when_pixels_pass() {
         let p = CasePolicy {
@@ -821,6 +825,7 @@ mod tests {
         );
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets() -> Result<()> {
         let p=CasePolicy::for_case(&crate::paths::cases()[0])?;
@@ -835,6 +840,7 @@ mod tests {
         Ok(())
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline() -> Result<()> {
         let mut case = crate::atoms::cases().into_iter().find(|c| c.component == "glyph").unwrap();
@@ -864,6 +870,7 @@ mod tests {
         Ok(())
     }
 
+    // keeps: invariant parity-geometry
     #[test]
     fn one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry() -> Result<()> {
         let temp = std::env::temp_dir().join(format!(

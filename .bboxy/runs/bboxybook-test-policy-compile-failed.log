@@ -1,0 +1,18 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling bboxybook v0.0.1 (/Users/feral/mydev/bboxy450-term-exec4/crates/bboxybook)
+error[E0277]: the trait bound `&CachedMetrics: Measure` is not satisfied
+  --> crates/bboxybook/src/documents/repository.rs:81:65
+   |
+81 |             let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+   |                                                                 ^^^^^^^^ the trait `Measure` is not implemented for `&CachedMetrics`
+   |
+   = note: required for the cast from `&&CachedMetrics` to `&dyn Measure`
+help: consider removing the leading `&`-reference
+   |
+81 -             let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+81 +             let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, metrics)?;
+   |
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `bboxybook` (lib test) due to 1 previous error

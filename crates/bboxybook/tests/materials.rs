@@ -42,6 +42,7 @@ fn contrast(data: &[u8]) -> u64 {
         })
         .sum()
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -169,6 +170,7 @@ fn material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed() {
     use bbt_ui_model::{draw::DrawList, layout::Rect};
@@ -211,6 +213,7 @@ fn backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn source_over_glow_keeps_destination_alpha() {
     use bbt_ui_model::layout::Rect;

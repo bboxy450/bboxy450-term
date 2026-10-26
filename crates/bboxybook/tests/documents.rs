@@ -4,7 +4,9 @@
 )]
 use bboxybook::{documents, parity::CasePolicy};
 use serde_json::json;
+// keeps: spec document-viewer.md §Build order 1
 #[test]
+#[ignore = "night: real Git/filesystem document corpus; default coverage uses in-memory sources"]
 fn every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let files = documents::repository::inputs(&root).unwrap();
@@ -20,6 +22,7 @@ fn every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overfl
                 .is_some_and(|h| h.is_finite() && h >= 0.)
     }));
 }
+// keeps: spec document-viewer.md §Markdown
 #[test]
 fn document_matrix_covers_all_types_and_both_modal_presentations_and_source() {
     let cases = documents::cases();
@@ -39,6 +42,7 @@ fn document_matrix_covers_all_types_and_both_modal_presentations_and_source() {
             && p.geometry_tolerance_px == Some(0.5)
     }));
 }
+// keeps: spec document-viewer.md §Markdown
 #[test]
 fn native_document_layout_consumes_public_records_not_css_or_child_geometry() {
     let mut case = documents::cases().remove(0);
@@ -60,6 +64,7 @@ fn native_document_layout_consumes_public_records_not_css_or_child_geometry() {
     );
 }
 
+// keeps: spec document-viewer.md §Mermaid, built ourselves
 #[test]
 fn document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records() {
     let source = "flowchart LR\n A[alpha] --> B[beta]";

@@ -7,6 +7,7 @@ use bbt_ui_model::{
 };
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn retained_image_preserves_asset_colour_rounding_and_group_filtering() {
     let mut renderer = ChromeRenderer::new(vec![bbt_render::chrome::icons::Image {
@@ -57,6 +58,7 @@ fn retained_image_preserves_asset_colour_rounding_and_group_filtering() {
     );
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -105,6 +107,7 @@ fn a_retained_group_keeps_material_coverage_and_filters_the_completed_layer() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn retained_scroll_content_moves_but_never_paints_outside_the_viewport() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -147,6 +150,7 @@ fn retained_scroll_content_moves_but_never_paints_outside_the_viewport() {
     );
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn component_cases_are_canonical_and_box_gallery_covers_materials_and_radii() {
     let cases = components::cases();

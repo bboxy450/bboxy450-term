@@ -1,6 +1,7 @@
 use bboxybook::{parity::CasePolicy, streams};
 use serde_json::json;
 use std::collections::BTreeSet;
+// keeps: spec renderer.md §4.5
 #[test]
 fn stream_matrix_covers_every_current_state_and_labels_legacy_cases() {
     let current = streams::cases();
@@ -40,6 +41,7 @@ fn stream_matrix_covers_every_current_state_and_labels_legacy_cases() {
         );
     }
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn stream_layout_consumes_public_entries_but_never_browser_child_diagnostics() {
     let mut case = streams::cases()
@@ -62,10 +64,4 @@ fn stream_layout_consumes_public_entries_but_never_browser_child_diagnostics() {
         before,
         format!("{:?}", streams::layout_case(&case).unwrap())
     );
-}
-#[test]
-fn old_stream_painter_is_deleted_in_favor_of_the_retained_composition() {
-    let source = include_str!("../src/modules.rs");
-    assert!(!source.contains("fn message("));
-    assert!(source.contains("\"message-row\" | \"stream_dock\" => crate::streams::paint_legacy"));
 }

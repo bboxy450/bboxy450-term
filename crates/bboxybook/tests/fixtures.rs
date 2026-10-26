@@ -1,6 +1,7 @@
 use bboxybook::{fixtures, gallery::Case};
 use bbt_ui_model::{Theme, draw::Prim};
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web() {
     let snapshot: serde_json::Value =

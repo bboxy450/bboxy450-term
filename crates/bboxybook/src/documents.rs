@@ -393,6 +393,7 @@ pub fn render(out: &Path) -> Result<()> {
 mod diagram_policy_tests {
     use super::*;
 
+    // keeps: spec document-viewer.md §Markdown
     #[test]
     fn engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated() {
         let regions = [DiagramRegion {

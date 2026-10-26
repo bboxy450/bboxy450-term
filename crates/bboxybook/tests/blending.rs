@@ -4,6 +4,7 @@ use bbt_ui_model::{
     layout::Rect,
 };
 
+// keeps: spec renderer.md §1a
 #[test]
 fn chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();

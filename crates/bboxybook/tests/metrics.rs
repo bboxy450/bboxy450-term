@@ -29,6 +29,7 @@ impl Measure for Probe {
     }
 }
 
+// keeps: spec renderer.md §4.4a
 #[test]
 fn cache_hits_preserve_native_float_bits_and_instance_lifetime() {
     let raw = Probe::default();
@@ -74,6 +75,7 @@ fn cache_hits_preserve_native_float_bits_and_instance_lifetime() {
     );
 }
 
+// keeps: spec renderer.md §4.4a
 #[test]
 fn every_app_font_key_field_including_float_bits_is_distinct() {
     let raw = Probe::default();
@@ -111,6 +113,7 @@ fn every_app_font_key_field_including_float_bits_is_distinct() {
 }
 
 #[cfg(target_os = "macos")]
+// keeps: spec renderer.md §4.4a
 #[test]
 fn cached_coretext_values_match_the_raw_host_bit_for_bit() {
     let cached = CachedMetrics::default();

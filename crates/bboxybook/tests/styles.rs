@@ -3,6 +3,7 @@ use bbt_render::chrome::ChromeRenderer;
 use bbt_ui::{Color, Context, Density, Overrides, Paint, Preset, Style, Theme};
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
     use bbt_ui::{GlowActivity, Material, Rim};
@@ -56,6 +57,7 @@ fn per_node_glow_drives_state_grade_and_seed_without_changing_the_box() {
     assert_ne!(styles::preview(&mut renderer, &style, ctx).unwrap(), first);
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn style_matrix_is_canonical_and_every_preset_renders_on_the_native_device() {
     let cases = styles::cases();

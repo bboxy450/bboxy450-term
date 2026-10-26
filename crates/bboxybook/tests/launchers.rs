@@ -2,6 +2,7 @@ use bboxybook::launchers;
 use bbt_ui::components as c;
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn matrix_has_every_current_lab_state_and_separate_historical_keys() {
     let mut all = launchers::cases();
@@ -48,6 +49,7 @@ fn matrix_has_every_current_lab_state_and_separate_historical_keys() {
     );
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn geometry_uses_constructor_values_instead_of_child_dom_diagnostics() {
     let mut case = launchers::cases()
@@ -73,6 +75,7 @@ fn geometry_uses_constructor_values_instead_of_child_dom_diagnostics() {
         format!("{:?}", launchers::layout_case(&case).unwrap())
     );
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn a_machine_subtitle_with_room_stays_on_one_line() {
     let mut case = launchers::cases()

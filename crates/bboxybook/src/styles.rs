@@ -396,6 +396,7 @@ pub fn preview(renderer: &mut ChromeRenderer, style: &Style, ctx: Context) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod geometry_tests {
     use super::*;
+    // keeps: spec renderer.md §4.4a
     #[test]
     fn snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds() -> Result<()> {
         let mut case = cases()

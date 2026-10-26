@@ -52,10 +52,23 @@ fn escape(value: &str) -> String {
 }
 
 pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
-    let mut results = vec![];
     let metrics = Metrics::default();
-    for path in inputs(root)? {
-        let source = fs::read_to_string(root.join(&path))?;
+    check_sources(
+        inputs(root)?.into_iter().map(|path| {
+            let source = fs::read_to_string(root.join(&path))?;
+            Ok((path, source))
+        }),
+        &metrics,
+    )
+}
+
+fn check_sources(
+    sources: impl IntoIterator<Item = Result<(PathBuf, String)>>,
+    metrics: &Metrics,
+) -> Result<Vec<serde_json::Value>> {
+    let mut results = vec![];
+    for source in sources {
+        let (path, source) = source?;
         let doc = bbt_doc::parse(&source);
         if let Some(error) = &doc.frontmatter.error {
             return Err(format!(
@@ -67,8 +80,8 @@ pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
         }
         for theme in [ui::Theme::Dark, ui::Theme::Light] {
             let ctx = ui::Context::new(theme, ui::Density::Cozy);
-            let e = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, &metrics);
-            let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, &metrics)?;
+            let e = doc.modal_element(&path.to_string_lossy(), false, [1246., 900.], ctx, metrics);
+            let l = e.layout(Rect::new(0., 0., 1246., 0.), ctx, metrics)?;
             let failures = body_overflows(&l);
             if !failures.is_empty() {
                 return Err(format!("{}: {}", path.display(), failures.join("; ")).into());
@@ -404,6 +417,47 @@ fn render_mode(root: &Path, out: &Path, single: bool) -> Result<()> {
 mod tests {
     use super::*;
 
+    // keeps: spec document-viewer.md §Build order 1
+    #[test]
+    fn representative_sources_lay_out_in_both_themes_without_unclipped_overflow() {
+        let sources = [
+            (
+                ".bboxy/vision.md",
+                "# Vision\n\nA paragraph with **bold**, *emphasis*, `code`, and [[events]].\n\n- a list item\n- a second item\n",
+            ),
+            (
+                ".bboxy/tasks/task.md",
+                "---\ntype: task\ntitle: Fixture task\nstatus: running\n---\n## Contract\n\n| Key | Value |\n| --- | --- |\n| alpha | wrapped table content |\n\n> A quoted paragraph.\n",
+            ),
+            (
+                ".bboxy/specs/diagram.md",
+                "# Diagram\n\n```mermaid\nflowchart LR\n A[alpha] --> B[beta]\n```\n\n```rust\nlet value = 1;\n```\n",
+            ),
+        ];
+        let reports = check_sources(
+            sources
+                .into_iter()
+                .map(|(path, source)| Ok((PathBuf::from(path), source.to_owned()))),
+            &Metrics::default(),
+        )
+        .unwrap();
+        assert_eq!(reports.len(), sources.len() * 2);
+        for (path, _) in sources {
+            let rows: Vec<_> = reports.iter().filter(|row| row["path"] == path).collect();
+            assert_eq!(rows.len(), 2);
+            assert_eq!(rows[0]["theme"], "dark");
+            assert_eq!(rows[1]["theme"], "light");
+            assert!(rows.iter().all(|row| {
+                row["blocks"].as_u64().unwrap() > 0
+                    && row["overflows"] == 0
+                    && row["height"]
+                        .as_f64()
+                        .is_some_and(|height| height.is_finite() && height > 0.)
+            }));
+        }
+    }
+
+    // keeps: spec document-viewer.md §Markdown
     #[test]
     fn flat_document_composition_preserves_pixels_including_clips_and_alpha() {
         let markdown = bbt_doc::parse(

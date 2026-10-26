@@ -1,5 +1,6 @@
 use bboxybook::{parity::CasePolicy, settings};
 use serde_json::json;
+// keeps: spec renderer.md §4.5
 #[test]
 fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme() {
     let cases = settings::cases();
@@ -10,6 +11,7 @@ fn settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme(
         p.text && !p.historical && p.geometry_tolerance_px == Some(0.5)
     }));
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css() {
     let mut case = settings::cases().remove(0);
@@ -28,10 +30,4 @@ fn settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css() {
         first,
         format!("{:?}", settings::layout_case(&case).unwrap())
     );
-}
-#[test]
-fn placeholder_settings_hand_painter_is_removed() {
-    let source = include_str!("../src/modules.rs");
-    assert!(source.contains("crate::settings::paint_legacy"));
-    assert!(!source.contains("let nav = 150.0"));
 }

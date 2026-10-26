@@ -7,6 +7,7 @@ use bbt_ui_model::{
 };
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn layer_matrix_distinguishes_full_primitives_from_module_surfaces() {
     let primitives = overlays::cases();
@@ -30,6 +31,7 @@ fn layer_matrix_distinguishes_full_primitives_from_module_surfaces() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels() {
     let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);

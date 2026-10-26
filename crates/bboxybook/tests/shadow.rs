@@ -4,6 +4,7 @@ use bbt_ui_model::{
     layout::Rect,
 };
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass() {
     use bbt_ui::{self as ui, components as c};
@@ -43,6 +44,7 @@ fn positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass() {
     assert_eq!(pixel(30, 13), [255, 255, 255, 255]);
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();

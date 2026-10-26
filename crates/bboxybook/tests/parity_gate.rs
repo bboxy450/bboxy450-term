@@ -113,6 +113,7 @@ impl Drop for Fixture {
     }
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn strict_geometry_review_exits_one_after_writing_the_report() -> Result {
     let fixture = Fixture::new(false, false)?;
@@ -125,6 +126,7 @@ fn strict_geometry_review_exits_one_after_writing_the_report() -> Result {
     )
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn pixel_only_review_exits_zero_and_is_counted_as_advisory() -> Result {
     let fixture = Fixture::new(false, true)?;
@@ -137,6 +139,7 @@ fn pixel_only_review_exits_zero_and_is_counted_as_advisory() -> Result {
     )
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn historical_geometry_review_exits_zero() -> Result {
     let fixture = Fixture::new(true, false)?;
@@ -149,6 +152,7 @@ fn historical_geometry_review_exits_zero() -> Result {
     )
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn missing_or_incomplete_geometry_exits_one() -> Result {
     for missing in [true, false] {
@@ -166,6 +170,7 @@ fn missing_or_incomplete_geometry_exits_one() -> Result {
     Ok(())
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn missing_reference_does_not_hide_missing_geometry() -> Result {
     let fixture = Fixture::new(false, false)?;
@@ -178,6 +183,7 @@ fn missing_reference_does_not_hide_missing_geometry() -> Result {
     )
 }
 
+// keeps: invariant parity-geometry
 #[test]
 fn geometry_review_without_strict_flag_remains_advisory() -> Result {
     let fixture = Fixture::new(false, false)?;

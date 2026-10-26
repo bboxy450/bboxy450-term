@@ -93,3 +93,4 @@ cargo test -p bboxy450-term --locked --test recovery recovered_generation_admiss
 cargo test -p bboxy450-term --locked --test recovery shutdown_during_pending_recovery_reaps_children_without_restarting -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test recovery supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test test_account logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority -- --ignored --exact --nocapture
+cargo test -p bboxybook --locked --test documents every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow -- --ignored --exact --nocapture

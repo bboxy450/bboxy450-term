@@ -1,6 +1,6 @@
-#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
 use bboxybook::{Result, gallery};
 use bbt_render::chrome::ChromeRenderer;
+// keeps: spec renderer.md §4.5
 #[test]
 fn every_registered_component_renders_on_metal() -> Result<()> {
     let mut renderer = ChromeRenderer::new(bboxybook::images()?)?;
@@ -22,10 +22,6 @@ fn every_registered_component_renders_on_metal() -> Result<()> {
             "{} rendered only ground",
             entry.id
         );
-        let path =
-            std::path::Path::new("../../target/bboxybook/tests").join(format!("{}.png", entry.id));
-        std::fs::create_dir_all(path.parent().unwrap())?;
-        bbt_render::write_png(path, &rgba, case.width, case.height)?;
         rendered += 1;
     }
     eprintln!(

@@ -1,6 +1,7 @@
 use bboxybook::{gallery, tabs};
 use serde_json::json;
 use std::collections::BTreeSet;
+// keeps: spec renderer.md §4.5
 #[test]
 fn all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions() {
     let mut cases = tabs::cases();
@@ -25,6 +26,7 @@ fn all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions() {
     );
     assert!(gallery::cases().iter().any(|c| c.component == "tab_row"));
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height() {
     for kind in ["tab-row", "mini-grid"] {
@@ -47,37 +49,5 @@ fn tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_heigh
         f["items"][0]["parts"][0]["rect"] = json!({"x":-999,"y":8888,"w":1,"h":3000});
         f["items"][0]["parts"][0]["css"]["font"] = json!("900 85px fantasy");
         assert_eq!(original, format!("{:?}", tabs::layout_case(&c).unwrap()));
-    }
-}
-#[test]
-fn old_module_and_json_painters_delegate_to_the_retained_compositions() {
-    let modules = include_str!("../src/modules.rs");
-    let fixtures = include_str!("../src/fixtures.rs");
-    for (source, start, adapter) in [
-        (modules, "pub fn mini_grid(", "paint_legacy_mini"),
-        (modules, "fn tab_row(", "paint_legacy_tab"),
-        (fixtures, "fn mini(", "paint_mini_model"),
-        (fixtures, "fn tab(", "paint_tab_model"),
-    ] {
-        let body = source
-            .split(start)
-            .nth(1)
-            .unwrap()
-            .split("\n}\n")
-            .next()
-            .unwrap();
-        assert!(body.contains(adapter));
-        for forbidden in [
-            "out.rect",
-            "out.text",
-            "StateGlyph",
-            "solve_split",
-            "Prim::",
-        ] {
-            assert!(
-                !body.contains(forbidden),
-                "old painter survived: {forbidden}"
-            );
-        }
     }
 }

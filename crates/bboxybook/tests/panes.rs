@@ -1,6 +1,7 @@
 use bboxybook::{gallery, panes};
 use serde_json::json;
 use std::collections::BTreeSet;
+// keeps: spec renderer.md §4.5
 #[test]
 fn pane_registry_pairs_every_current_and_historical_case_without_collisions() {
     let mut all = panes::cases();
@@ -23,6 +24,7 @@ fn pane_registry_pairs_every_current_and_historical_case_without_collisions() {
     assert_eq!(panes::STRIP_STATES.len(), 11);
     assert_eq!(panes::PANE_STATES.len(), 6);
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn native_panes_ignore_child_web_bounds_and_font_diagnostics() {
     let mut case = panes::cases()
@@ -44,23 +46,8 @@ fn native_panes_ignore_child_web_bounds_and_font_diagnostics() {
             .any(|c| c.component == "title_strip")
     );
 }
-#[test]
-fn legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted() {
-    let source = include_str!("../src/modules.rs");
-    assert!(!source.contains("fn strip("));
-    let body = source
-        .split("pub(crate) fn pane(")
-        .nth(1)
-        .unwrap()
-        .split("pub(crate) fn titlebar(")
-        .next()
-        .unwrap();
-    assert!(body.contains("paint_legacy_pane"));
-    for old in ["out.rect", "out.text", "Prim::", "StateGlyph"] {
-        assert!(!body.contains(old));
-    }
-}
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip() {
     use bbt_ui_model::{

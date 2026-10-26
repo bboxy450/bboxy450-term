@@ -7,11 +7,8 @@ use bbt_ui_model::{
     layout::Rect,
 };
 
+// keeps: spec renderer.md §1
 #[test]
-#[allow(
-    clippy::disallowed_methods,
-    reason = "headless mark-centering proof writes local verification images"
-)]
 fn seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters() {
     // All semantic cases, including the check/cross that a circle-only probe misses.
     let cases = [
@@ -46,12 +43,6 @@ fn seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters() {
     ];
     let ctx = Context::new(Theme::Dark, Density::Cozy);
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
-    let out = std::env::var_os("CARGO_TARGET_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target"))
-        .join("mk1-proof");
-    std::fs::create_dir_all(&out).unwrap();
-    let mut records = vec![];
     for retained in [false, true] {
         let mut list = DrawList::default();
         list.rect(Rect::new(0., 0., 512., 384.), 0., Color::BLACK);
@@ -117,34 +108,12 @@ fn seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters() {
                         .map(|(x, y)| ink(x * scale, y * scale));
                     assert_eq!(actual, *expected, "{name} fill orientation");
                 }
-                records.push(
-                    serde_json::json!({"mark":name,"retained":retained,"scale":scale,
-                    "ink_bounds":[x0,y0,x1,y1],"offset_px":[0,0]}),
-                );
             }
-            bbt_render::write_png(
-                out.join(format!(
-                    "native-{}-{scale}x.png",
-                    if retained { "retained" } else { "atom" }
-                )),
-                &pixels,
-                width,
-                height,
-            )
-            .unwrap();
         }
     }
-    std::fs::write(
-        out.join("centering.json"),
-        serde_json::to_vec_pretty(&records).unwrap(),
-    )
-    .unwrap();
-    println!(
-        "12 semantic marks x 2 painters x 2 scales: centred; {}",
-        out.display()
-    );
 }
 
+// keeps: spec renderer.md §1
 #[test]
 #[allow(
     clippy::disallowed_methods,

@@ -1,0 +1,98 @@
+bboxybook #327 test sweep
+
+Baseline 9152b46a6903b23f5a0fe20e86c3892197354f7f:87 passed/0 failed/0 ignored; current default80 passed/0 failed/1 named night skip.
+7 deleted (6 source-spelling assertions,1 diagnostic-only phase gallery);1 in-memory source fixture added;1 whole-repository boundary retained at night.
+No sleep calls before/after. Four pixel assertion sets are unchanged; their unasserted fixed-path exports are removed.
+Reported binary seconds30.91 ->5.89; shared loads differ, so this is an observation rather than a controlled timing verdict.
+The standalone exact night corpus selector passed1/0; landing_recovery.py invokes night-test-boundaries.sh.
+
+| Test | Class | Disposition | Coverage / kept law |
+| --- | --- | --- | --- |
+| crates/bboxybook/src/atoms.rs::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/documents.rs::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated | D | keep | spec document-viewer.md §Markdown |
+| crates/bboxybook/src/documents/repository.rs::flat_document_composition_preserves_pixels_including_clips_and_alpha | D | keep | spec document-viewer.md §Markdown |
+| crates/bboxybook/src/fixtures.rs::web_model_uses_real_keys_trees_ownership_and_observation_axes | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/gallery.rs::current_parity_matrix_has_unique_paths_and_geometry_routing | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/gallery.rs::registry_covers_exactly_the_built_design_entries | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/gallery.rs::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/parity.rs::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::first_report_resolves_relative_reference_directories | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::historical_diffs_stay_visible_without_gating_the_current_design | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::text_policy_requires_rects_and_baselines_even_when_pixels_pass | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/parity.rs::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry | D | keep | invariant parity-geometry |
+| crates/bboxybook/src/styles.rs::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds | D | keep | spec renderer.md §4.4a |
+| crates/bboxybook/src/swarms.rs::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/atoms.rs::icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage | A4 | delete | tests/atoms.rs::icon_size_gallery_renders_at_one_and_two_device_pixels_per_point; tests/icon_filter.rs (pixel sampling contract); tests/atoms.rs::every_atom_renders_across_density_and_theme_and_references_have_canonical_keys |
+| crates/bboxybook/tests/atoms.rs::icon_size_gallery_renders_at_one_and_two_device_pixels_per_point | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/atoms.rs::every_atom_renders_across_density_and_theme_and_references_have_canonical_keys | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/blending.rs::chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage | D | keep | spec renderer.md §1a |
+| crates/bboxybook/tests/clipping.rs::every_material_obeys_each_rounded_ancestor_at_one_and_two_x | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/clipping.rs::different_surfaces_use_their_own_clip_ranges | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/clipping.rs::retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/components.rs::retained_image_preserves_asset_colour_rounding_and_group_filtering | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/components.rs::a_retained_group_keeps_material_coverage_and_filters_the_completed_layer | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/components.rs::retained_scroll_content_moves_but_never_paints_outside_the_viewport | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/components.rs::component_cases_are_canonical_and_box_gallery_covers_materials_and_radii | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/documents.rs::every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow | B2 | night | spec document-viewer.md §Build order 1 |
+| crates/bboxybook/tests/documents.rs::document_matrix_covers_all_types_and_both_modal_presentations_and_source | D | keep | spec document-viewer.md §Markdown |
+| crates/bboxybook/tests/documents.rs::native_document_layout_consumes_public_records_not_css_or_child_geometry | D | keep | spec document-viewer.md §Markdown |
+| crates/bboxybook/tests/documents.rs::document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records | D | keep | spec document-viewer.md §Mermaid, built ourselves |
+| crates/bboxybook/tests/fixtures.rs::sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/graphs.rs::graph_matrix_covers_each_live_card_and_the_empty_swarm | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/graphs.rs::graph_layout_is_driven_by_records_not_browser_child_positions | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/graphs.rs::checklist_layout_uses_public_promises_and_records_without_child_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/graphs.rs::former_graph_and_provenance_hand_painters_are_removed | A3 | delete | tests/graphs.rs::graph_layout_is_driven_by_records_not_browser_child_positions; tests/graphs.rs::graph_matrix_covers_each_live_card_and_the_empty_swarm |
+| crates/bboxybook/tests/graphs.rs::channel_layout_never_consumes_browser_svg_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/icon_filter.rs::icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed | D | keep | spec renderer.md §4.4b |
+| crates/bboxybook/tests/launchers.rs::matrix_has_every_current_lab_state_and_separate_historical_keys | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/launchers.rs::geometry_uses_constructor_values_instead_of_child_dom_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/launchers.rs::a_machine_subtitle_with_room_stays_on_one_line | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/marks.rs::seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters | D | keep | spec renderer.md §1 |
+| crates/bboxybook/tests/marks.rs::vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur | D | keep | spec renderer.md §1 |
+| crates/bboxybook/tests/materials.rs::material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/materials.rs::backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/materials.rs::source_over_glow_keeps_destination_alpha | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/metrics.rs::cache_hits_preserve_native_float_bits_and_instance_lifetime | D | keep | spec renderer.md §4.4a |
+| crates/bboxybook/tests/metrics.rs::every_app_font_key_field_including_float_bits_is_distinct | D | keep | spec renderer.md §4.4a |
+| crates/bboxybook/tests/metrics.rs::cached_coretext_values_match_the_raw_host_bit_for_bit | D | keep | spec renderer.md §4.4a |
+| crates/bboxybook/tests/overlays.rs::layer_matrix_distinguishes_full_primitives_from_module_surfaces | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/overlays.rs::overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/panes.rs::pane_registry_pairs_every_current_and_historical_case_without_collisions | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/panes.rs::native_panes_ignore_child_web_bounds_and_font_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/panes.rs::legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted | A3 | delete | tests/panes.rs::native_panes_ignore_child_web_bounds_and_font_diagnostics; tests/panes.rs::legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip |
+| crates/bboxybook/tests/panes.rs::legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/parity_gate.rs::strict_geometry_review_exits_one_after_writing_the_report | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/parity_gate.rs::pixel_only_review_exits_zero_and_is_counted_as_advisory | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/parity_gate.rs::historical_geometry_review_exits_zero | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/parity_gate.rs::missing_or_incomplete_geometry_exits_one | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/parity_gate.rs::missing_reference_does_not_hide_missing_geometry | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/parity_gate.rs::geometry_review_without_strict_flag_remains_advisory | D | keep | invariant parity-geometry |
+| crates/bboxybook/tests/perf.rs::perf_cases_cover_six_states_with_ascii_slugs | D | keep | spec renderer.md §4.6 |
+| crates/bboxybook/tests/perf.rs::hud_width_is_the_spark_and_every_part_is_named | D | keep | spec renderer.md §4.6 |
+| crates/bboxybook/tests/render.rs::every_registered_component_renders_on_metal | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/seat_rows.rs::seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/seat_rows.rs::child_dom_rectangles_and_css_metrics_are_diagnostics_only | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/settings.rs::settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/settings.rs::settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/settings.rs::placeholder_settings_hand_painter_is_removed | A3 | delete | tests/settings.rs::settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css |
+| crates/bboxybook/tests/shadow.rs::positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/shadow.rs::css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/streams.rs::stream_matrix_covers_every_current_state_and_labels_legacy_cases | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/streams.rs::stream_layout_consumes_public_entries_but_never_browser_child_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/streams.rs::old_stream_painter_is_deleted_in_favor_of_the_retained_composition | A3 | delete | tests/streams.rs::stream_layout_consumes_public_entries_but_never_browser_child_diagnostics |
+| crates/bboxybook/tests/styles.rs::per_node_glow_drives_state_grade_and_seed_without_changing_the_box | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/styles.rs::style_matrix_is_canonical_and_every_preset_renders_on_the_native_device | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/swarms.rs::swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/swarms.rs::captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/swarms.rs::old_swarm_card_and_sidebar_hand_painters_are_gone | A3 | delete | tests/swarms.rs::captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout |
+| crates/bboxybook/tests/tabs.rs::all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/tabs.rs::tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/tabs.rs::old_module_and_json_painters_delegate_to_the_retained_compositions | A3 | delete | tests/tabs.rs::tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height |
+| crates/bboxybook/tests/title_bars.rs::titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/title_bars.rs::native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/widgets.rs::control_matrix_has_canonical_keys_and_all_constructor_families | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/widgets.rs::transparent_layout_border_does_not_cut_the_background_fill | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/tests/widgets.rs::thousand_row_views_clip_output_and_the_table_header_stays_fixed | D | keep | spec renderer.md §4.5 |
+| crates/bboxybook/src/documents/repository.rs::representative_sources_lay_out_in_both_themes_without_unclipped_overflow | D | add | spec document-viewer.md §Build order 1 |

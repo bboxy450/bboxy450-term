@@ -4,6 +4,7 @@ use bbt_ui_model::{
     layout::Rect,
 };
 
+// keeps: spec renderer.md §4.4b
 #[test]
 fn icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed() {
     // Transparent red beside opaque blue: halfway must be half-blue, never purple.

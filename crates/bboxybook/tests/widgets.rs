@@ -7,6 +7,7 @@ use bbt_ui_model::{
 };
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn control_matrix_has_canonical_keys_and_all_constructor_families() {
     let cases = widgets::cases();
@@ -36,6 +37,7 @@ fn control_matrix_has_canonical_keys_and_all_constructor_families() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn transparent_layout_border_does_not_cut_the_background_fill() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -74,6 +76,7 @@ fn transparent_layout_border_does_not_cut_the_background_fill() {
     }
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn thousand_row_views_clip_output_and_the_table_header_stays_fixed() {
     let mut renderer = ChromeRenderer::new(bboxybook::images().unwrap()).unwrap();

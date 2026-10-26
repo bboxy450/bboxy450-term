@@ -1,0 +1,1936 @@
+{
+  "base": "9152b46a6903b23f5a0fe20e86c3892197354f7f",
+  "before_tests": 87,
+  "after_tests": 81,
+  "after_default": 80,
+  "after_ignored_night": 1,
+  "deleted": 7,
+  "added": 1,
+  "moved": 1,
+  "wall_clock_sleep_calls_removed": 0,
+  "private_seam": "documents/repository.rs check_sources (lazy input iterator); public check(root) preserves read/layout/error order",
+  "night_is_append_only": true,
+  "night_is_called_by": "scripts/landing_recovery.py:557",
+  "pixel_assertions_unchanged": [
+    {
+      "test": "icon_size_gallery_renders_at_one_and_two_device_pixels_per_point",
+      "assertion_expressions_equal": true,
+      "count": 2,
+      "hash": "6819631765a2f53a11a6c4834a98ea8192afd6b6b80dc5440ce2fc3a9b599e8c"
+    },
+    {
+      "test": "every_registered_component_renders_on_metal",
+      "assertion_expressions_equal": true,
+      "count": 2,
+      "hash": "acd038dedc671b37b5a60fa33b5424333d684e7f6f10f6c662b3b9396bb81862"
+    },
+    {
+      "test": "every_material_obeys_each_rounded_ancestor_at_one_and_two_x",
+      "assertion_expressions_equal": true,
+      "count": 4,
+      "hash": "18dcd5da6fe244cf475b04543c74a004ff9c73727fc02e25c9ba63dd77f38639"
+    },
+    {
+      "test": "seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters",
+      "assertion_expressions_equal": true,
+      "count": 4,
+      "hash": "bbbf23ba2a97e17c5dc338bee906c385cdc4b88b24bc605ec04400db1c70cd6d"
+    }
+  ],
+  "rows": [
+    {
+      "path": "crates/bboxybook/src/atoms.rs",
+      "line": 407,
+      "name": "glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/src/atoms.rs::glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 408
+    },
+    {
+      "path": "crates/bboxybook/src/documents.rs",
+      "line": 396,
+      "name": "engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec document-viewer.md \u00a7Markdown",
+      "coverage": [
+        "crates/bboxybook/src/documents.rs::engine_body_height_is_excluded_but_chrome_padding_and_following_gaps_stay_gated"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 397
+    },
+    {
+      "path": "crates/bboxybook/src/documents/repository.rs",
+      "line": 407,
+      "name": "flat_document_composition_preserves_pixels_including_clips_and_alpha",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec document-viewer.md \u00a7Markdown",
+      "coverage": [
+        "crates/bboxybook/src/documents/repository.rs::flat_document_composition_preserves_pixels_including_clips_and_alpha"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 461
+    },
+    {
+      "path": "crates/bboxybook/src/fixtures.rs",
+      "line": 356,
+      "name": "web_model_uses_real_keys_trees_ownership_and_observation_axes",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/src/fixtures.rs::web_model_uses_real_keys_trees_ownership_and_observation_axes"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 357
+    },
+    {
+      "path": "crates/bboxybook/src/gallery.rs",
+      "line": 454,
+      "name": "current_parity_matrix_has_unique_paths_and_geometry_routing",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/src/gallery.rs::current_parity_matrix_has_unique_paths_and_geometry_routing"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 455
+    },
+    {
+      "path": "crates/bboxybook/src/gallery.rs",
+      "line": 480,
+      "name": "registry_covers_exactly_the_built_design_entries",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/src/gallery.rs::registry_covers_exactly_the_built_design_entries"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "change": "Remove isolated A3 DESIGN.version==22 pin; keep actual built-entry coverage.",
+      "current_line": 482
+    },
+    {
+      "path": "crates/bboxybook/src/gallery.rs",
+      "line": 505,
+      "name": "matrix_paths_are_unique_and_every_entry_builds_a_balanced_list",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/src/gallery.rs::matrix_paths_are_unique_and_every_entry_builds_a_balanced_list"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 504
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 698,
+      "name": "legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 699
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 729,
+      "name": "first_report_resolves_relative_reference_directories",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::first_report_resolves_relative_reference_directories"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 731
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 752,
+      "name": "historical_diffs_stay_visible_without_gating_the_current_design",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::historical_diffs_stay_visible_without_gating_the_current_design"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 755
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 795,
+      "name": "text_policy_requires_rects_and_baselines_even_when_pixels_pass",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::text_policy_requires_rects_and_baselines_even_when_pixels_pass"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 799
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 824,
+      "name": "vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 829
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 838,
+      "name": "glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 844
+    },
+    {
+      "path": "crates/bboxybook/src/parity.rs",
+      "line": 867,
+      "name": "one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/parity.rs::one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 874
+    },
+    {
+      "path": "crates/bboxybook/src/styles.rs",
+      "line": 399,
+      "name": "snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.4a",
+      "coverage": [
+        "crates/bboxybook/src/styles.rs::snapshot_geometry_uses_the_paint_frame_and_fonts_not_child_dom_bounds"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 400
+    },
+    {
+      "path": "crates/bboxybook/src/swarms.rs",
+      "line": 381,
+      "name": "diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/src/swarms.rs::diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 382
+    },
+    {
+      "path": "crates/bboxybook/tests/atoms.rs",
+      "line": 5,
+      "name": "icon_phase_probe_compares_snapped_origins_and_baked_fractional_coverage",
+      "classification": "A4",
+      "disposition": "delete",
+      "coverage": [
+        "tests/atoms.rs::icon_size_gallery_renders_at_one_and_two_device_pixels_per_point",
+        "tests/icon_filter.rs (pixel sampling contract)",
+        "tests/atoms.rs::every_atom_renders_across_density_and_theme_and_references_have_canonical_keys"
+      ],
+      "reason": "Exploratory image export has no assertion of its phase-comparison hypothesis; stronger pixel tests retain the renderer/atlas success and opacity contracts.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/atoms.rs",
+      "line": 90,
+      "name": "icon_size_gallery_renders_at_one_and_two_device_pixels_per_point",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/atoms.rs::icon_size_gallery_renders_at_one_and_two_device_pixels_per_point"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 6
+    },
+    {
+      "path": "crates/bboxybook/tests/atoms.rs",
+      "line": 140,
+      "name": "every_atom_renders_across_density_and_theme_and_references_have_canonical_keys",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/atoms.rs::every_atom_renders_across_density_and_theme_and_references_have_canonical_keys"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 44
+    },
+    {
+      "path": "crates/bboxybook/tests/blending.rs",
+      "line": 7,
+      "name": "chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a71a",
+      "coverage": [
+        "crates/bboxybook/tests/blending.rs::chrome_blends_in_gamma_while_text_keeps_corrected_linear_coverage"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 8
+    },
+    {
+      "path": "crates/bboxybook/tests/clipping.rs",
+      "line": 45,
+      "name": "every_material_obeys_each_rounded_ancestor_at_one_and_two_x",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/clipping.rs::every_material_obeys_each_rounded_ancestor_at_one_and_two_x"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 49
+    },
+    {
+      "path": "crates/bboxybook/tests/clipping.rs",
+      "line": 129,
+      "name": "different_surfaces_use_their_own_clip_ranges",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/clipping.rs::different_surfaces_use_their_own_clip_ranges"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 122
+    },
+    {
+      "path": "crates/bboxybook/tests/clipping.rs",
+      "line": 157,
+      "name": "retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/clipping.rs::retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 151
+    },
+    {
+      "path": "crates/bboxybook/tests/components.rs",
+      "line": 10,
+      "name": "retained_image_preserves_asset_colour_rounding_and_group_filtering",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/components.rs::retained_image_preserves_asset_colour_rounding_and_group_filtering"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 11
+    },
+    {
+      "path": "crates/bboxybook/tests/components.rs",
+      "line": 60,
+      "name": "a_retained_group_keeps_material_coverage_and_filters_the_completed_layer",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/components.rs::a_retained_group_keeps_material_coverage_and_filters_the_completed_layer"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 62
+    },
+    {
+      "path": "crates/bboxybook/tests/components.rs",
+      "line": 108,
+      "name": "retained_scroll_content_moves_but_never_paints_outside_the_viewport",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/components.rs::retained_scroll_content_moves_but_never_paints_outside_the_viewport"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 111
+    },
+    {
+      "path": "crates/bboxybook/tests/components.rs",
+      "line": 150,
+      "name": "component_cases_are_canonical_and_box_gallery_covers_materials_and_radii",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/components.rs::component_cases_are_canonical_and_box_gallery_covers_materials_and_radii"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 154
+    },
+    {
+      "path": "crates/bboxybook/tests/documents.rs",
+      "line": 7,
+      "name": "every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow",
+      "classification": "B2",
+      "disposition": "night",
+      "keeps": "spec document-viewer.md \u00a7Build order 1",
+      "coverage": [
+        "src/documents/repository.rs::tests::representative_sources_lay_out_in_both_themes_without_unclipped_overflow",
+        "scripts/night-test-boundaries.sh: exact documents corpus selector"
+      ],
+      "reason": "Full real Git/filesystem corpus retained unchanged at night; default fixture uses the identical lazy per-source layout/report path.",
+      "current_line": 8
+    },
+    {
+      "path": "crates/bboxybook/tests/documents.rs",
+      "line": 23,
+      "name": "document_matrix_covers_all_types_and_both_modal_presentations_and_source",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec document-viewer.md \u00a7Markdown",
+      "coverage": [
+        "crates/bboxybook/tests/documents.rs::document_matrix_covers_all_types_and_both_modal_presentations_and_source"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 26
+    },
+    {
+      "path": "crates/bboxybook/tests/documents.rs",
+      "line": 42,
+      "name": "native_document_layout_consumes_public_records_not_css_or_child_geometry",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec document-viewer.md \u00a7Markdown",
+      "coverage": [
+        "crates/bboxybook/tests/documents.rs::native_document_layout_consumes_public_records_not_css_or_child_geometry"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 46
+    },
+    {
+      "path": "crates/bboxybook/tests/documents.rs",
+      "line": 63,
+      "name": "document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec document-viewer.md \u00a7Mermaid, built ourselves",
+      "coverage": [
+        "crates/bboxybook/tests/documents.rs::document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_records"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 68
+    },
+    {
+      "path": "crates/bboxybook/tests/fixtures.rs",
+      "line": 4,
+      "name": "sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/fixtures.rs::sidebar_scene_uses_the_same_ten_seats_and_stage_as_the_web"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 5
+    },
+    {
+      "path": "crates/bboxybook/tests/graphs.rs",
+      "line": 3,
+      "name": "graph_matrix_covers_each_live_card_and_the_empty_swarm",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/graphs.rs::graph_matrix_covers_each_live_card_and_the_empty_swarm"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 4
+    },
+    {
+      "path": "crates/bboxybook/tests/graphs.rs",
+      "line": 17,
+      "name": "graph_layout_is_driven_by_records_not_browser_child_positions",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/graphs.rs::graph_layout_is_driven_by_records_not_browser_child_positions"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 19
+    },
+    {
+      "path": "crates/bboxybook/tests/graphs.rs",
+      "line": 35,
+      "name": "checklist_layout_uses_public_promises_and_records_without_child_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/graphs.rs::checklist_layout_uses_public_promises_and_records_without_child_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 38
+    },
+    {
+      "path": "crates/bboxybook/tests/graphs.rs",
+      "line": 58,
+      "name": "former_graph_and_provenance_hand_painters_are_removed",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/graphs.rs::graph_layout_is_driven_by_records_not_browser_child_positions",
+        "tests/graphs.rs::graph_matrix_covers_each_live_card_and_the_empty_swarm"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/graphs.rs",
+      "line": 67,
+      "name": "channel_layout_never_consumes_browser_svg_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/graphs.rs::channel_layout_never_consumes_browser_svg_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 63
+    },
+    {
+      "path": "crates/bboxybook/tests/icon_filter.rs",
+      "line": 7,
+      "name": "icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.4b",
+      "coverage": [
+        "crates/bboxybook/tests/icon_filter.rs::icon_filter_interpolates_coverage_without_hidden_colour_or_atlas_neighbour_bleed"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 8
+    },
+    {
+      "path": "crates/bboxybook/tests/launchers.rs",
+      "line": 5,
+      "name": "matrix_has_every_current_lab_state_and_separate_historical_keys",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/launchers.rs::matrix_has_every_current_lab_state_and_separate_historical_keys"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 6
+    },
+    {
+      "path": "crates/bboxybook/tests/launchers.rs",
+      "line": 51,
+      "name": "geometry_uses_constructor_values_instead_of_child_dom_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/launchers.rs::geometry_uses_constructor_values_instead_of_child_dom_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 53
+    },
+    {
+      "path": "crates/bboxybook/tests/launchers.rs",
+      "line": 76,
+      "name": "a_machine_subtitle_with_room_stays_on_one_line",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/launchers.rs::a_machine_subtitle_with_room_stays_on_one_line"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 79
+    },
+    {
+      "path": "crates/bboxybook/tests/marks.rs",
+      "line": 10,
+      "name": "seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a71",
+      "coverage": [
+        "crates/bboxybook/tests/marks.rs::seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 11
+    },
+    {
+      "path": "crates/bboxybook/tests/marks.rs",
+      "line": 148,
+      "name": "vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a71",
+      "coverage": [
+        "crates/bboxybook/tests/marks.rs::vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 117
+    },
+    {
+      "path": "crates/bboxybook/tests/materials.rs",
+      "line": 45,
+      "name": "material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/materials.rs::material_flat_gloss_blur_and_glow_are_proven_by_gpu_pixels"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 46
+    },
+    {
+      "path": "crates/bboxybook/tests/materials.rs",
+      "line": 172,
+      "name": "backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/materials.rs::backdrop_blur_mirrors_at_its_border_box_without_outside_colour_bleed"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 174
+    },
+    {
+      "path": "crates/bboxybook/tests/materials.rs",
+      "line": 214,
+      "name": "source_over_glow_keeps_destination_alpha",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/materials.rs::source_over_glow_keeps_destination_alpha"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 217
+    },
+    {
+      "path": "crates/bboxybook/tests/metrics.rs",
+      "line": 32,
+      "name": "cache_hits_preserve_native_float_bits_and_instance_lifetime",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.4a",
+      "coverage": [
+        "crates/bboxybook/tests/metrics.rs::cache_hits_preserve_native_float_bits_and_instance_lifetime"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 33
+    },
+    {
+      "path": "crates/bboxybook/tests/metrics.rs",
+      "line": 77,
+      "name": "every_app_font_key_field_including_float_bits_is_distinct",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.4a",
+      "coverage": [
+        "crates/bboxybook/tests/metrics.rs::every_app_font_key_field_including_float_bits_is_distinct"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 79
+    },
+    {
+      "path": "crates/bboxybook/tests/metrics.rs",
+      "line": 114,
+      "name": "cached_coretext_values_match_the_raw_host_bit_for_bit",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.4a",
+      "coverage": [
+        "crates/bboxybook/tests/metrics.rs::cached_coretext_values_match_the_raw_host_bit_for_bit"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 117
+    },
+    {
+      "path": "crates/bboxybook/tests/overlays.rs",
+      "line": 10,
+      "name": "layer_matrix_distinguishes_full_primitives_from_module_surfaces",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/overlays.rs::layer_matrix_distinguishes_full_primitives_from_module_surfaces"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 11
+    },
+    {
+      "path": "crates/bboxybook/tests/overlays.rs",
+      "line": 33,
+      "name": "overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/overlays.rs::overlay_blurs_only_the_backdrop_and_preserves_foreground_and_outside_pixels"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 35
+    },
+    {
+      "path": "crates/bboxybook/tests/panes.rs",
+      "line": 4,
+      "name": "pane_registry_pairs_every_current_and_historical_case_without_collisions",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/panes.rs::pane_registry_pairs_every_current_and_historical_case_without_collisions"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 5
+    },
+    {
+      "path": "crates/bboxybook/tests/panes.rs",
+      "line": 26,
+      "name": "native_panes_ignore_child_web_bounds_and_font_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/panes.rs::native_panes_ignore_child_web_bounds_and_font_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 28
+    },
+    {
+      "path": "crates/bboxybook/tests/panes.rs",
+      "line": 47,
+      "name": "legacy_pane_calls_the_retained_composition_and_the_old_strip_painter_is_deleted",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/panes.rs::native_panes_ignore_child_web_bounds_and_font_diagnostics",
+        "tests/panes.rs::legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/panes.rs",
+      "line": 64,
+      "name": "legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/panes.rs::legacy_pane_accepts_a_valid_hex_colour_after_its_hsl_round_trip"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 51
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 116,
+      "name": "strict_geometry_review_exits_one_after_writing_the_report",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::strict_geometry_review_exits_one_after_writing_the_report"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 117
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 128,
+      "name": "pixel_only_review_exits_zero_and_is_counted_as_advisory",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::pixel_only_review_exits_zero_and_is_counted_as_advisory"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 130
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 140,
+      "name": "historical_geometry_review_exits_zero",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::historical_geometry_review_exits_zero"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 143
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 152,
+      "name": "missing_or_incomplete_geometry_exits_one",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::missing_or_incomplete_geometry_exits_one"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 156
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 169,
+      "name": "missing_reference_does_not_hide_missing_geometry",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::missing_reference_does_not_hide_missing_geometry"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 174
+    },
+    {
+      "path": "crates/bboxybook/tests/parity_gate.rs",
+      "line": 181,
+      "name": "geometry_review_without_strict_flag_remains_advisory",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "invariant parity-geometry",
+      "coverage": [
+        "crates/bboxybook/tests/parity_gate.rs::geometry_review_without_strict_flag_remains_advisory"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 187
+    },
+    {
+      "path": "crates/bboxybook/tests/perf.rs",
+      "line": 19,
+      "name": "perf_cases_cover_six_states_with_ascii_slugs",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.6",
+      "coverage": [
+        "crates/bboxybook/tests/perf.rs::perf_cases_cover_six_states_with_ascii_slugs"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 20
+    },
+    {
+      "path": "crates/bboxybook/tests/perf.rs",
+      "line": 29,
+      "name": "hud_width_is_the_spark_and_every_part_is_named",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.6",
+      "coverage": [
+        "crates/bboxybook/tests/perf.rs::hud_width_is_the_spark_and_every_part_is_named"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 31
+    },
+    {
+      "path": "crates/bboxybook/tests/render.rs",
+      "line": 4,
+      "name": "every_registered_component_renders_on_metal",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/render.rs::every_registered_component_renders_on_metal"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 4
+    },
+    {
+      "path": "crates/bboxybook/tests/seat_rows.rs",
+      "line": 3,
+      "name": "seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/seat_rows.rs::seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 4
+    },
+    {
+      "path": "crates/bboxybook/tests/seat_rows.rs",
+      "line": 48,
+      "name": "child_dom_rectangles_and_css_metrics_are_diagnostics_only",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/seat_rows.rs::child_dom_rectangles_and_css_metrics_are_diagnostics_only"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 50
+    },
+    {
+      "path": "crates/bboxybook/tests/settings.rs",
+      "line": 3,
+      "name": "settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/settings.rs::settings_matrix_covers_all_sections_draft_and_tab_in_every_density_and_theme"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 4
+    },
+    {
+      "path": "crates/bboxybook/tests/settings.rs",
+      "line": 13,
+      "name": "settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/settings.rs::settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 15
+    },
+    {
+      "path": "crates/bboxybook/tests/settings.rs",
+      "line": 32,
+      "name": "placeholder_settings_hand_painter_is_removed",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/settings.rs::settings_uses_public_records_and_viewport_not_diagnostic_geometry_or_css"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/shadow.rs",
+      "line": 7,
+      "name": "positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/shadow.rs::positioned_style_moves_only_its_shadow_in_the_existing_chrome_pass"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 8
+    },
+    {
+      "path": "crates/bboxybook/tests/shadow.rs",
+      "line": 46,
+      "name": "css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/shadow.rs::css_shadow_uses_gaussian_mask_sigma_half_blur_and_knocks_out_the_box"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 48
+    },
+    {
+      "path": "crates/bboxybook/tests/streams.rs",
+      "line": 4,
+      "name": "stream_matrix_covers_every_current_state_and_labels_legacy_cases",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/streams.rs::stream_matrix_covers_every_current_state_and_labels_legacy_cases"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 5
+    },
+    {
+      "path": "crates/bboxybook/tests/streams.rs",
+      "line": 43,
+      "name": "stream_layout_consumes_public_entries_but_never_browser_child_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/streams.rs::stream_layout_consumes_public_entries_but_never_browser_child_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 45
+    },
+    {
+      "path": "crates/bboxybook/tests/streams.rs",
+      "line": 66,
+      "name": "old_stream_painter_is_deleted_in_favor_of_the_retained_composition",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/streams.rs::stream_layout_consumes_public_entries_but_never_browser_child_diagnostics"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/styles.rs",
+      "line": 6,
+      "name": "per_node_glow_drives_state_grade_and_seed_without_changing_the_box",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/styles.rs::per_node_glow_drives_state_grade_and_seed_without_changing_the_box"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 7
+    },
+    {
+      "path": "crates/bboxybook/tests/styles.rs",
+      "line": 59,
+      "name": "style_matrix_is_canonical_and_every_preset_renders_on_the_native_device",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/styles.rs::style_matrix_is_canonical_and_every_preset_renders_on_the_native_device"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 61
+    },
+    {
+      "path": "crates/bboxybook/tests/swarms.rs",
+      "line": 4,
+      "name": "swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/swarms.rs::swarm_matrix_covers_every_current_and_legacy_state_with_distinct_keys"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 5
+    },
+    {
+      "path": "crates/bboxybook/tests/swarms.rs",
+      "line": 25,
+      "name": "captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/swarms.rs::captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 27
+    },
+    {
+      "path": "crates/bboxybook/tests/swarms.rs",
+      "line": 52,
+      "name": "old_swarm_card_and_sidebar_hand_painters_are_gone",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/swarms.rs::captured_child_geometry_and_fonts_do_not_enter_card_or_sidebar_layout"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/tabs.rs",
+      "line": 4,
+      "name": "all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/tabs.rs::all_current_and_legacy_tab_grid_cases_are_paired_without_key_collisions"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 5
+    },
+    {
+      "path": "crates/bboxybook/tests/tabs.rs",
+      "line": 28,
+      "name": "tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/tabs.rs::tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 30
+    },
+    {
+      "path": "crates/bboxybook/tests/tabs.rs",
+      "line": 52,
+      "name": "old_module_and_json_painters_delegate_to_the_retained_compositions",
+      "classification": "A3",
+      "disposition": "delete",
+      "coverage": [
+        "tests/tabs.rs::tab_grid_layout_does_not_consume_child_dom_rectangles_fonts_or_backdrop_height"
+      ],
+      "reason": "Assertions inspect private source spelling and routing tokens; this spelling promise is intentionally removed, while the listed tests retain output/layout coverage.",
+      "current_line": null
+    },
+    {
+      "path": "crates/bboxybook/tests/title_bars.rs",
+      "line": 5,
+      "name": "titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/title_bars.rs::titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 6
+    },
+    {
+      "path": "crates/bboxybook/tests/title_bars.rs",
+      "line": 28,
+      "name": "native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/title_bars.rs::native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 30
+    },
+    {
+      "path": "crates/bboxybook/tests/widgets.rs",
+      "line": 10,
+      "name": "control_matrix_has_canonical_keys_and_all_constructor_families",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/widgets.rs::control_matrix_has_canonical_keys_and_all_constructor_families"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 11
+    },
+    {
+      "path": "crates/bboxybook/tests/widgets.rs",
+      "line": 39,
+      "name": "transparent_layout_border_does_not_cut_the_background_fill",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/widgets.rs::transparent_layout_border_does_not_cut_the_background_fill"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 41
+    },
+    {
+      "path": "crates/bboxybook/tests/widgets.rs",
+      "line": 77,
+      "name": "thousand_row_views_clip_output_and_the_table_header_stays_fixed",
+      "classification": "D",
+      "disposition": "keep",
+      "keeps": "spec renderer.md \u00a74.5",
+      "coverage": [
+        "crates/bboxybook/tests/widgets.rs::thousand_row_views_clip_output_and_the_table_header_stays_fixed"
+      ],
+      "reason": "Retain the named public pixel/layout/catalogue/report contract; no assertion is disabled.",
+      "current_line": 80
+    },
+    {
+      "path": "crates/bboxybook/src/documents/repository.rs",
+      "line": 421,
+      "name": "representative_sources_lay_out_in_both_themes_without_unclipped_overflow",
+      "keeps": "spec document-viewer.md \u00a7Build order 1",
+      "classification": "D",
+      "disposition": "add",
+      "coverage": [
+        "same check_sources function used by production check(root)"
+      ],
+      "reason": "Representative Markdown/table/code/Mermaid inputs produce positive finite, unclipped report rows in both themes without Git or fixture disk IO."
+    }
+  ],
+  "protected_default_contracts": [
+    "current_parity_matrix_has_unique_paths_and_geometry_routing",
+    "legacy_pixels_do_not_claim_geometry_or_weaken_the_current_gate",
+    "first_report_resolves_relative_reference_directories",
+    "historical_diffs_stay_visible_without_gating_the_current_design",
+    "text_policy_requires_rects_and_baselines_even_when_pixels_pass",
+    "vector_policy_requires_exact_geometry_and_keeps_other_pixel_budgets",
+    "glyph_only_vectors_require_exact_geometry_and_waiting_kind_keeps_its_baseline",
+    "one_percent_pixel_error_passes_only_the_text_case_with_measured_geometry",
+    "strict_geometry_review_exits_one_after_writing_the_report",
+    "pixel_only_review_exits_zero_and_is_counted_as_advisory",
+    "historical_geometry_review_exits_zero",
+    "missing_or_incomplete_geometry_exits_one",
+    "missing_reference_does_not_hide_missing_geometry",
+    "geometry_review_without_strict_flag_remains_advisory"
+  ],
+  "removed_unused_exports": {
+    "files": [
+      "tests/atoms.rs",
+      "tests/render.rs",
+      "tests/clipping.rs",
+      "tests/marks.rs"
+    ],
+    "assertion_hashes": [
+      {
+        "test": "icon_size_gallery_renders_at_one_and_two_device_pixels_per_point",
+        "assertion_expressions_equal": true,
+        "count": 2,
+        "hash": "6819631765a2f53a11a6c4834a98ea8192afd6b6b80dc5440ce2fc3a9b599e8c"
+      },
+      {
+        "test": "every_registered_component_renders_on_metal",
+        "assertion_expressions_equal": true,
+        "count": 2,
+        "hash": "acd038dedc671b37b5a60fa33b5424333d684e7f6f10f6c662b3b9396bb81862"
+      },
+      {
+        "test": "every_material_obeys_each_rounded_ancestor_at_one_and_two_x",
+        "assertion_expressions_equal": true,
+        "count": 4,
+        "hash": "18dcd5da6fe244cf475b04543c74a004ff9c73727fc02e25c9ba63dd77f38639"
+      },
+      {
+        "test": "seat_and_task_marks_are_pixel_centred_at_96px_in_both_painters",
+        "assertion_expressions_equal": true,
+        "count": 4,
+        "hash": "bbbf23ba2a97e17c5dc338bee906c385cdc4b88b24bc605ec04400db1c70cd6d"
+      }
+    ],
+    "reason": "Remove unasserted fixed-path PNG/HTML/JSON exports; keep every pixel assertion."
+  },
+  "timing": {
+    "before": {
+      "totals": {
+        "passed": 87,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 30.91
+      },
+      "rows": [
+        {
+          "binary": "unittests src/lib.rs",
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 4.35
+        },
+        {
+          "binary": "unittests src/main.rs",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/atoms.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.6
+        },
+        {
+          "binary": "tests/blending.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.07
+        },
+        {
+          "binary": "tests/clipping.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.22
+        },
+        {
+          "binary": "tests/components.rs",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.28
+        },
+        {
+          "binary": "tests/documents.rs",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 19.02
+        },
+        {
+          "binary": "tests/fixtures.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/graphs.rs",
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.05
+        },
+        {
+          "binary": "tests/icon_filter.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.06
+        },
+        {
+          "binary": "tests/launchers.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03
+        },
+        {
+          "binary": "tests/marks.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.42
+        },
+        {
+          "binary": "tests/materials.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.14
+        },
+        {
+          "binary": "tests/metrics.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/overlays.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.09
+        },
+        {
+          "binary": "tests/panes.rs",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/parity_gate.rs",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.35
+        },
+        {
+          "binary": "tests/perf.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/render.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 3.61
+        },
+        {
+          "binary": "tests/seat_rows.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/settings.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/shadow.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.06
+        },
+        {
+          "binary": "tests/streams.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/styles.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.31
+        },
+        {
+          "binary": "tests/swarms.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/tabs.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/title_bars.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/widgets.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.05
+        },
+        {
+          "binary": "tests/widgets.rs",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        }
+      ],
+      "command_result": {
+        "pid": 91272,
+        "pgid": 91272,
+        "command": [
+          "cargo",
+          "test",
+          "--target-dir",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/target",
+          "-p",
+          "bboxybook",
+          "--locked"
+        ],
+        "source_sha": "9152b46a6903b23f5a0fe20e86c3892197354f7f",
+        "target": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/target",
+        "started_epoch": 1792979729.211156,
+        "load_before": [
+          45.724609375,
+          39.88916015625,
+          34.92041015625
+        ],
+        "profiles": {
+          "CARGO_PROFILE_DEV_DEBUG": "0",
+          "CARGO_PROFILE_TEST_DEBUG": "0",
+          "CARGO_PROFILE_DEV_OPT_LEVEL": "1",
+          "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
+          "CARGO_PROFILE_DEV_DEBUG_ASSERTIONS": "true",
+          "CARGO_PROFILE_TEST_DEBUG_ASSERTIONS": "true"
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/baseline.log",
+        "exit": 0,
+        "seconds": 32.59034705162048,
+        "load_after": [
+          40.40625,
+          39.20556640625,
+          34.8701171875
+        ]
+      }
+    },
+    "after": {
+      "totals": {
+        "passed": 80,
+        "failed": 0,
+        "ignored": 1,
+        "seconds": 5.890000000000001
+      },
+      "rows": [
+        {
+          "binary": "unittests src/lib.rs",
+          "passed": 17,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.72
+        },
+        {
+          "binary": "unittests src/main.rs",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        },
+        {
+          "binary": "tests/atoms.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.51
+        },
+        {
+          "binary": "tests/blending.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.06
+        },
+        {
+          "binary": "tests/clipping.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.15
+        },
+        {
+          "binary": "tests/components.rs",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.24
+        },
+        {
+          "binary": "tests/documents.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 1,
+          "seconds": 0.04
+        },
+        {
+          "binary": "tests/fixtures.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/graphs.rs",
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.03
+        },
+        {
+          "binary": "tests/icon_filter.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.05
+        },
+        {
+          "binary": "tests/launchers.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/marks.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.09
+        },
+        {
+          "binary": "tests/materials.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.13
+        },
+        {
+          "binary": "tests/metrics.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/overlays.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.07
+        },
+        {
+          "binary": "tests/panes.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/parity_gate.rs",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.41
+        },
+        {
+          "binary": "tests/perf.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.01
+        },
+        {
+          "binary": "tests/render.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.12
+        },
+        {
+          "binary": "tests/seat_rows.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/settings.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/shadow.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.07
+        },
+        {
+          "binary": "tests/streams.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/styles.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 1.31
+        },
+        {
+          "binary": "tests/swarms.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/tabs.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/title_bars.rs",
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.02
+        },
+        {
+          "binary": "tests/widgets.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.68
+        },
+        {
+          "binary": "tests/widgets.rs",
+          "passed": 0,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 0.0
+        }
+      ],
+      "command_result": {
+        "exit": 0,
+        "seconds": 15.004172086715698,
+        "load_before": [
+          22.81884765625,
+          36.7041015625,
+          36.083984375
+        ],
+        "load_after": [
+          25.9169921875,
+          36.703125,
+          36.09375
+        ],
+        "command": [
+          "cargo",
+          "test",
+          "--target-dir",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/target",
+          "--locked",
+          "-p",
+          "bboxybook"
+        ],
+        "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/final.log"
+      }
+    },
+    "night_corpus": {
+      "totals": {
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "seconds": 12.6
+      },
+      "rows": [
+        {
+          "binary": "tests/documents.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0,
+          "seconds": 12.6
+        }
+      ],
+      "command_result": {
+        "exit": 0,
+        "seconds": 13.359355926513672,
+        "load_before": [
+          66.7880859375,
+          54.30078125,
+          39.0673828125
+        ],
+        "load_after": [
+          61.80029296875,
+          53.81103515625,
+          39.15869140625
+        ],
+        "command": [
+          "cargo",
+          "test",
+          "--target-dir",
+          "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/target",
+          "-p",
+          "bboxybook",
+          "--locked",
+          "--test",
+          "documents",
+          "every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow",
+          "--",
+          "--ignored",
+          "--exact",
+          "--nocapture"
+        ],
+        "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/night-corpus.log"
+      }
+    },
+    "run_seconds_reduction_percent": 80.944678097703,
+    "interpretation": "Observed under different recorded shared loads, not a controlled performance/SLO verdict; no test asserts a wall-clock bound."
+  },
+  "logs": [
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-list.log",
+      "sha256": "f823f9a1d187ea946a076c2460fcd73f02b51c8ee0f582afad2685c887fd930b"
+    },
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-before.log",
+      "sha256": "91c80f01e7417233c3f91c1ef85b4c252de120c9e1295dcf0651afc9d3fd2a46"
+    },
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-compile-failed.log",
+      "sha256": "3e8310c69b80ae0cef089dccd5ca5f2b43a6b57efdd4749c20cb50d56e429a05"
+    },
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-intermediate.log",
+      "sha256": "29a28a94465a8b71d4696059866a99171ae2320cab17d1aac00c28998c01c9c6"
+    },
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-after.log",
+      "sha256": "701fae0bd61b747509d2db913a049c36687169e8654cace99b19c2c971011621"
+    },
+    {
+      "path": ".bboxy/runs/bboxybook-test-policy-night.log",
+      "sha256": "6288b6e250662c835aa95b2c8e0620ed4b561451a66948081c6598b396e99d01"
+    }
+  ],
+  "compile_failure": {
+    "exit": 101,
+    "mechanism": "extraction left &&CachedMetrics in layout call; changed to the intended borrowed metrics parameter",
+    "fixed_default_exit": 0,
+    "fixed_night_exit": 0
+  },
+  "author_check": "not yet run",
+  "night_command_verified": {
+    "exit": 0,
+    "seconds": 13.359355926513672,
+    "load_before": [
+      66.7880859375,
+      54.30078125,
+      39.0673828125
+    ],
+    "load_after": [
+      61.80029296875,
+      53.81103515625,
+      39.15869140625
+    ],
+    "command": [
+      "cargo",
+      "test",
+      "--target-dir",
+      "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/target",
+      "-p",
+      "bboxybook",
+      "--locked",
+      "--test",
+      "documents",
+      "every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow",
+      "--",
+      "--ignored",
+      "--exact",
+      "--nocapture"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/night-corpus.log"
+  },
+  "development_source_hashes": {
+    "crates/bboxybook/tests/launchers.rs": "3d9af30e123818514c20b4f0f2f532d146fa428c03e74cd8ada3ef26b3c52c88",
+    "crates/bboxybook/tests/materials.rs": "58664fbde4fda40a686a08646a422d0bf0cb3d2f63e8135d493a93b512d44b29",
+    "crates/bboxybook/tests/icon_filter.rs": "2fb0447ea51e3307b6ce7fad4aa05256af929dda936786f6ae23900df95dc564",
+    "crates/bboxybook/tests/documents.rs": "ddaff284af39274f71c1ebeda8b670280be9dd807ecf22087fa3f615416e4869",
+    "crates/bboxybook/tests/panes.rs": "4ca7021ed709223493a8071104dd3baf9908a38637289fe8e8d49374c01fff39",
+    "crates/bboxybook/tests/streams.rs": "a62872dae870c794461bdad8e189d10047ceb82b5cb5aaa3643f513028b32a82",
+    "crates/bboxybook/tests/render.rs": "87fe86d7e6ce5eefc4418f1be67b548e13f665d3c98deee4619ff87ba8d9f45f",
+    "crates/bboxybook/tests/tabs.rs": "80d555f848c8361f28ee99c0c7289f6704f63200aaafefd7320086385c156c9e",
+    "crates/bboxybook/tests/perf.rs": "110cd813ef8d42050003d4fa295671664a458bb367d2d68799cdac3b56d15948",
+    "crates/bboxybook/tests/title_bars.rs": "ee4b1f4f3cf1f991fb276609100b672fa774d3b71a9c9b158083d5a0d3662a43",
+    "crates/bboxybook/tests/metrics.rs": "dc5d4b5b19e8d500a877793e952deda786b34665a7006adb5df4df5dd3f00cf8",
+    "crates/bboxybook/tests/swarms.rs": "9d0349ad9b3eed1050336f536f735c35d0c701caf72e8cac3f97051fe1341344",
+    "crates/bboxybook/tests/fixtures.rs": "8ea5e3ea6d32f63fc17f0cd9d51d36744c314675dcaefb88d22664c7afc955c5",
+    "crates/bboxybook/tests/components.rs": "ae762933352be636f74192f2571ded0204bc977582a4b723ad93eda9a3a6a0d0",
+    "crates/bboxybook/tests/atoms.rs": "080133315ab1ad18562f3d8ba71365e48a4c0e8acea51ad1d89a75ac00aeae98",
+    "crates/bboxybook/tests/blending.rs": "26b33dcb603951358c0596f4c37df953a4266622797aa58ecaf503876477b8e3",
+    "crates/bboxybook/tests/seat_rows.rs": "c7fac404102c205d599edaf0034c4b99b001efdca8700017d6940911173cbc30",
+    "crates/bboxybook/tests/graphs.rs": "c227fcec36fc8c03f22f1568bffbf2326db4e4ff374b4ab1b5e957d4ef7847a0",
+    "crates/bboxybook/tests/shadow.rs": "3322582698b2517e2f042189e2eac47ac46631b6f9cb12cbd93a675077ef0231",
+    "crates/bboxybook/tests/settings.rs": "b74a4b6060c45307ac420ec0556ab53e197292f3d6022f4f2589d3bcc079df0d",
+    "crates/bboxybook/tests/parity_gate.rs": "a950df1525b7c106a527cc4b9e723d20e23a990d94d4d049fb008ea5ceebb7df",
+    "crates/bboxybook/tests/styles.rs": "77c9a1ddc2a403535602a96cf323e617a62628a7757699a4b0cfa5f67d4bb9d2",
+    "crates/bboxybook/tests/marks.rs": "80a30daf83e32c2ae2284d26431849091d4fb659e0456e7cb066c3b6af931a62",
+    "crates/bboxybook/tests/clipping.rs": "751df37345f1820788bc4e55f12d91580bcb1e0c4cb75a3d519a34030309e4c6",
+    "crates/bboxybook/tests/widgets.rs": "2ea1a4411ef9520472214c5728fae843910d1837ac66bfa2233190d66ae53df9",
+    "crates/bboxybook/tests/overlays.rs": "2bb011f84e0886a68a9befb180899e9b7ea5496b4d9761c8d997b1900f0d4435",
+    "crates/bboxybook/src/documents.rs": "f031093e58a605211e8e290a3574c3043927c8b303d7116bab45fa056f0dcc44",
+    "crates/bboxybook/src/parity.rs": "4fdf5bc07420f761226a1c5f5388358d664d75233d95f4f3548bb7f7bfb925c3",
+    "crates/bboxybook/src/swarms.rs": "aae7390bf8a28c1a5033838456ea0816e864febb0f163641eff121f31e063bc3",
+    "crates/bboxybook/src/fixtures.rs": "2a0736ee1cb981293de25039e76cc5760273a13a4e14f8b8e52beacb639af59b",
+    "crates/bboxybook/src/atoms.rs": "96113dc5d55d563e9dc614b29b8aa432f373995f741fe3577ebd9f68e3cc0e38",
+    "crates/bboxybook/src/gallery.rs": "03f1faa9cf82479b65be3a8da24b62b675c4bf8f72b1529a56cbbaae3d7fad58",
+    "crates/bboxybook/src/styles.rs": "f44803838ef4f27402fde2141668f59f54e5818d17f1496cf0f92eb131ff3690",
+    "crates/bboxybook/src/documents/repository.rs": "8dabaf9bc7ea8ef319cdd8cff625186d95024f92ba76fe94186ff043a3e5f6c2",
+    "scripts/night-test-boundaries.sh": "b53a1981d07e8b2d5dcc5c5e94b1e6b8803de710af1a4e4c27c75e76b1e6556c"
+  },
+  "rebased_source_hashes": {
+    "crates/bboxybook/tests/launchers.rs": "3d9af30e123818514c20b4f0f2f532d146fa428c03e74cd8ada3ef26b3c52c88",
+    "crates/bboxybook/tests/materials.rs": "58664fbde4fda40a686a08646a422d0bf0cb3d2f63e8135d493a93b512d44b29",
+    "crates/bboxybook/tests/icon_filter.rs": "2fb0447ea51e3307b6ce7fad4aa05256af929dda936786f6ae23900df95dc564",
+    "crates/bboxybook/tests/documents.rs": "ddaff284af39274f71c1ebeda8b670280be9dd807ecf22087fa3f615416e4869",
+    "crates/bboxybook/tests/panes.rs": "4ca7021ed709223493a8071104dd3baf9908a38637289fe8e8d49374c01fff39",
+    "crates/bboxybook/tests/streams.rs": "a62872dae870c794461bdad8e189d10047ceb82b5cb5aaa3643f513028b32a82",
+    "crates/bboxybook/tests/render.rs": "87fe86d7e6ce5eefc4418f1be67b548e13f665d3c98deee4619ff87ba8d9f45f",
+    "crates/bboxybook/tests/tabs.rs": "80d555f848c8361f28ee99c0c7289f6704f63200aaafefd7320086385c156c9e",
+    "crates/bboxybook/tests/perf.rs": "110cd813ef8d42050003d4fa295671664a458bb367d2d68799cdac3b56d15948",
+    "crates/bboxybook/tests/title_bars.rs": "ee4b1f4f3cf1f991fb276609100b672fa774d3b71a9c9b158083d5a0d3662a43",
+    "crates/bboxybook/tests/metrics.rs": "dc5d4b5b19e8d500a877793e952deda786b34665a7006adb5df4df5dd3f00cf8",
+    "crates/bboxybook/tests/swarms.rs": "9d0349ad9b3eed1050336f536f735c35d0c701caf72e8cac3f97051fe1341344",
+    "crates/bboxybook/tests/fixtures.rs": "8ea5e3ea6d32f63fc17f0cd9d51d36744c314675dcaefb88d22664c7afc955c5",
+    "crates/bboxybook/tests/components.rs": "ae762933352be636f74192f2571ded0204bc977582a4b723ad93eda9a3a6a0d0",
+    "crates/bboxybook/tests/atoms.rs": "080133315ab1ad18562f3d8ba71365e48a4c0e8acea51ad1d89a75ac00aeae98",
+    "crates/bboxybook/tests/blending.rs": "26b33dcb603951358c0596f4c37df953a4266622797aa58ecaf503876477b8e3",
+    "crates/bboxybook/tests/seat_rows.rs": "c7fac404102c205d599edaf0034c4b99b001efdca8700017d6940911173cbc30",
+    "crates/bboxybook/tests/graphs.rs": "c227fcec36fc8c03f22f1568bffbf2326db4e4ff374b4ab1b5e957d4ef7847a0",
+    "crates/bboxybook/tests/shadow.rs": "3322582698b2517e2f042189e2eac47ac46631b6f9cb12cbd93a675077ef0231",
+    "crates/bboxybook/tests/settings.rs": "b74a4b6060c45307ac420ec0556ab53e197292f3d6022f4f2589d3bcc079df0d",
+    "crates/bboxybook/tests/parity_gate.rs": "a950df1525b7c106a527cc4b9e723d20e23a990d94d4d049fb008ea5ceebb7df",
+    "crates/bboxybook/tests/styles.rs": "77c9a1ddc2a403535602a96cf323e617a62628a7757699a4b0cfa5f67d4bb9d2",
+    "crates/bboxybook/tests/marks.rs": "80a30daf83e32c2ae2284d26431849091d4fb659e0456e7cb066c3b6af931a62",
+    "crates/bboxybook/tests/clipping.rs": "751df37345f1820788bc4e55f12d91580bcb1e0c4cb75a3d519a34030309e4c6",
+    "crates/bboxybook/tests/widgets.rs": "2ea1a4411ef9520472214c5728fae843910d1837ac66bfa2233190d66ae53df9",
+    "crates/bboxybook/tests/overlays.rs": "2bb011f84e0886a68a9befb180899e9b7ea5496b4d9761c8d997b1900f0d4435",
+    "crates/bboxybook/src/documents.rs": "f031093e58a605211e8e290a3574c3043927c8b303d7116bab45fa056f0dcc44",
+    "crates/bboxybook/src/parity.rs": "4fdf5bc07420f761226a1c5f5388358d664d75233d95f4f3548bb7f7bfb925c3",
+    "crates/bboxybook/src/swarms.rs": "aae7390bf8a28c1a5033838456ea0816e864febb0f163641eff121f31e063bc3",
+    "crates/bboxybook/src/fixtures.rs": "2a0736ee1cb981293de25039e76cc5760273a13a4e14f8b8e52beacb639af59b",
+    "crates/bboxybook/src/atoms.rs": "96113dc5d55d563e9dc614b29b8aa432f373995f741fe3577ebd9f68e3cc0e38",
+    "crates/bboxybook/src/gallery.rs": "03f1faa9cf82479b65be3a8da24b62b675c4bf8f72b1529a56cbbaae3d7fad58",
+    "crates/bboxybook/src/styles.rs": "f44803838ef4f27402fde2141668f59f54e5818d17f1496cf0f92eb131ff3690",
+    "crates/bboxybook/src/documents/repository.rs": "8dabaf9bc7ea8ef319cdd8cff625186d95024f92ba76fe94186ff043a3e5f6c2",
+    "scripts/night-test-boundaries.sh": "70f1b5b48c09d3824cad0ec46fd396de9bd792da5cadda4eb658b712fad56366"
+  },
+  "night_rebase_union": {
+    "conflict": "scripts/night-test-boundaries.sh",
+    "upstream_lines": 95,
+    "ours_added": [
+      "cargo test -p bboxybook --locked --test documents every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overflow -- --ignored --exact --nocapture"
+    ],
+    "result_lines": 96,
+    "upstream_preserved_byte_prefix": true
+  },
+  "source_citation_audit": {
+    "command": [
+      "rg",
+      "-n",
+      "-F",
+      "-f",
+      "scratchpad/landing-wave1-20261025T165653Z/bboxybook-sweep/source-spelling-commits.txt",
+      ".bboxy/specs",
+      ".bboxy/decisions"
+    ],
+    "exit": 1,
+    "matches": "",
+    "finding": "No introducing commit is cited in current specs/decisions; exact source names are not mandated."
+  },
+  "raw_log_whitespace": "Cargo transcripts are byte-exact and retain their terminal blank lines; code-only diff whitespace check is clean."
+}

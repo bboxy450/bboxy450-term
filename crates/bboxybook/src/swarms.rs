@@ -378,6 +378,7 @@ fn omit_part(
                 || web[1] >= clip.bottom() - offset[1])
     })
 }
+// keeps: invariant parity-geometry
 #[test]
 fn diagnostic_filter_keeps_every_partly_visible_part_and_every_non_descendant() {
     let windowed = (

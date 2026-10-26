@@ -16,6 +16,7 @@ fn named<'a>(node: &'a c::Layout, out: &mut BTreeMap<&'a str, &'a c::Layout>) {
     }
 }
 
+// keeps: spec renderer.md §4.6
 #[test]
 fn perf_cases_cover_six_states_with_ascii_slugs() {
     let cases = perf::cases();
@@ -26,6 +27,7 @@ fn perf_cases_cover_six_states_with_ascii_slugs() {
     assert!(keys.contains("perf/steady-120-hz-cozy-dark.png"));
 }
 
+// keeps: spec renderer.md §4.6
 #[test]
 fn hud_width_is_the_spark_and_every_part_is_named() {
     let ctx = Context::new(Theme::Dark, Density::Cozy);

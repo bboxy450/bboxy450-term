@@ -2,6 +2,7 @@ use bboxybook::{parity::CasePolicy, title_bars};
 use serde_json::json;
 use std::collections::BTreeSet;
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only() {
     let mut all = title_bars::cases();
@@ -25,6 +26,7 @@ fn titlebar_matrix_covers_current_states_and_keeps_legacy_diagnostic_only() {
         64
     );
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn native_titlebar_reads_public_strings_and_parent_width_not_child_diagnostics() {
     let mut case = title_bars::cases()

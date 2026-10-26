@@ -1,4 +1,7 @@
-#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 use bbt_render::chrome::{ChromeRenderer, materials::*};
 use bbt_ui_model::{
     Theme,
@@ -42,15 +45,10 @@ fn pixel(data: &[u8], scale: u32, x: u32, y: u32) -> [u8; 4] {
     let i = (((y * scale) * (96 * scale) + x * scale) * 4) as usize;
     data[i..i + 4].try_into().unwrap()
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn every_material_obeys_each_rounded_ancestor_at_one_and_two_x() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
-    let dir =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/bboxybook/clipping");
-    std::fs::create_dir_all(&dir).unwrap();
-    let mut gallery = String::from(
-        "<!doctype html><meta charset=utf-8><title>Rounded material ancestors</title><style>body{background:#151724;color:#eee;font:14px system-ui}figure{display:inline-block}img{width:384px;image-rendering:pixelated}</style><h1>Rounded material ancestors</h1><p>Two independently rounded clips intersect; the material extends beyond both. GPU tests check each excluded corner and the surviving interior at 1x and 2x.</p>",
-    );
     for theme in [Theme::Dark, Theme::Light] {
         for scale in [1, 2] {
             let base = render(&mut renderer, theme, scale, &[]);
@@ -107,11 +105,6 @@ fn every_material_obeys_each_rounded_ancestor_at_one_and_two_x() {
                     pixel(&base, scale, 50, 25),
                     "interior incorrectly clipped: {kind:?}"
                 );
-                let name = format!("{kind:?}-{theme:?}-{scale}x.png").to_lowercase();
-                bbt_render::write_png(dir.join(&name), &masked, 96 * scale, 80 * scale).unwrap();
-                gallery.push_str(&format!(
-                    "<figure><img src='{name}'><figcaption>{name}</figcaption></figure>"
-                ));
                 clipped.clips.push(Clip {
                     rect: Rect::new(1., 1., 0., 20.),
                     radii: [0.; 4],
@@ -124,8 +117,8 @@ fn every_material_obeys_each_rounded_ancestor_at_one_and_two_x() {
             }
         }
     }
-    std::fs::write(dir.join("index.html"), gallery).unwrap();
 }
+// keeps: spec renderer.md §4.5
 #[test]
 fn different_surfaces_use_their_own_clip_ranges() {
     let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -154,6 +147,7 @@ fn different_surfaces_use_their_own_clip_ranges() {
     assert_eq!(pixel(&p, 1, 75, 40), [0, 255, 0, 255]);
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn retained_material_keeps_the_outer_rounding_when_an_inner_clip_is_square() {
     use bbt_ui::{self as ui, components as c};

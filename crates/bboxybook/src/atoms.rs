@@ -404,6 +404,7 @@ pub(crate) fn snapshots(cases: &[Case]) -> Result<Vec<serde_json::Value>> {
 mod geometry_tests {
     use super::*;
     use serde_json::json;
+    // keeps: spec renderer.md §4.5
     #[test]
     fn glyph_geometry_uses_native_primitives_and_fonts_not_child_diagnostics() -> Result<()> {
         let mut case = cases()

@@ -1,0 +1,132 @@
+cache: on (port 4985; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+presubmit: python3 -I scripts/test-landing.py --all
+fixture duration: LandTests.test_five_incremental_rechecks_are_79_with_no_candidate_push 35.331s
+fixture duration: LandTests.test_a_disjoint_move_after_five_rechecks_still_reuses_the_green 34.985s
+fixture duration: LandTests.test_a_file_changed_on_both_sides_requires_a_full_recheck 13.197s
+fixture duration: LandTests.test_a_record_only_move_reuses_a_script_cuts_fixture_result 7.984s
+fixture duration: LandTests.test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust 13.128s
+fixture duration: LandTests.test_a_selected_invariant_tool_replays_its_named_check_without_crate_tests 11.670s
+fixture duration: LandTests.test_a_test_wrapper_move_replays_only_its_crate_tests 12.681s
+fixture duration: LandTests.test_all_revert_cut_can_land_while_main_is_red 9.065s
+fixture duration: LandTests.test_an_unexecuted_script_move_keeps_the_green_code_check 10.079s
+fixture duration: LandTests.test_conflict_is_78_and_left_for_the_author_to_resolve 5.375s
+fixture duration: LandTests.test_disjoint_main_movement_rebases_but_does_not_repeat_checks 11.852s
+fixture duration: LandTests.test_disjoint_pages_reuse_the_green 8.261s
+fixture duration: LandTests.test_intersecting_move_checks_only_the_crate_intersection 12.253s
+fixture duration: LandTests.test_intersecting_pages_get_only_a_page_recheck 8.914s
+fixture duration: LandTests.test_moved_driver_does_not_invalidate_a_green_code_cut 12.315s
+fixture duration: LandTests.test_moved_scope_uses_the_rebased_dependency_graph 15.591s
+fixture duration: LandTests.test_narrow_cold_log_is_no_longer_accepted 6.149s
+fixture duration: LandTests.test_notification_failure_can_resume_without_rechecking_or_repush 11.464s
+fixture duration: LandTests.test_one_non_revert_commit_prevents_the_red_exception 5.308s
+fixture duration: LandTests.test_presubmit_failure_is_77_and_does_not_push 8.778s
+fixture duration: LandTests.test_recovery_scripts_and_record_moves_reuse_a_green_rust_cut 11.964s
+fixture duration: LandTests.test_reverse_dependency_overlap_rechecks 16.463s
+fixture duration: LandTests.test_run_timeout_does_not_push_or_accept_a_provided_gate 14.867s
+fixture duration: LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release 11.069s
+fixture duration: LandTests.test_wide_exact_green_log_is_reused_and_hashed_without_another_gate 7.858s
+fixture duration: LandTests.test_wide_extended_or_concatenated_log_is_not_a_normal_gate_proof 7.964s
+fixture duration: LandTests.test_wide_failed_full_gate_never_pushes 6.504s
+fixture duration: LandTests.test_wide_failed_or_incomplete_log_is_refused 11.873s
+fixture duration: LandTests.test_wide_moved_main_reuses_the_full_green_for_disjoint_changes 12.034s
+fixture duration: LandTests.test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate 7.847s
+fixture duration: LandTests.test_wide_runs_full_normal_gate_and_records_tier 8.802s
+fixture duration: LandTests.test_wide_wrong_sha_log_is_refused_without_push_or_fallback 6.764s
+fixture duration: GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure 11.467s
+fixture duration: PresubmitTests.test_absent_cache_adapter_uses_empty_wrapper_fallback 6.220s
+fixture duration: PresubmitTests.test_build_cap_retries_once_warm_with_the_same_target_and_then_passes 13.771s
+fixture duration: PresubmitTests.test_code_cut_passes_the_affected_crates_to_invariants 6.558s
+fixture duration: PresubmitTests.test_code_targets_the_affected_leaf_and_records_one_verdict 6.144s
+fixture duration: PresubmitTests.test_deadline_is_enforced_and_does_not_kill_an_unrelated_process 6.201s
+fixture duration: PresubmitTests.test_dispatch_cut_selects_real_gui_wire_target_without_a_name_filter 6.606s
+fixture duration: PresubmitTests.test_dispatch_cut_still_refuses_a_zero_test_gui_wire_target 6.540s
+fixture duration: PresubmitTests.test_failure_never_records_green 5.534s
+fixture duration: PresubmitTests.test_run_timeout_during_a_test_does_not_retry 9.224s
+fixture duration: PresubmitTests.test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants 5.511s
+fixture duration: PresubmitTests.test_wide_uses_full_normal_ci_without_the_bounded_deadline 5.466s
+fixture duration: SlotTests.test_live_owner_and_held_transition_are_skipped_without_deletion 5.944s
+fixture duration: SlotTests.test_two_commits_reuse_slot_paths_with_empty_targets_and_keep_the_caller 6.098s
+fixture duration: WatchTests.test_a_later_ci_failure_cannot_publish_green_after_an_earlier_flake 8.309s
+fixture duration: WatchTests.test_a_second_failing_test_is_diagnosed_before_resuming_ci 7.903s
+fixture duration: WatchTests.test_first_red_runs_flake_diagnosis_before_publishing_red 5.335s
+fixture duration: WatchTests.test_first_red_without_a_baseline_cannot_revert_a_claimed_culprit 5.641s
+fixture duration: WatchTests.test_flake_runs_remaining_checks_before_storing_the_new_native_set 7.765s
+fixture duration: WatchTests.test_full_carried_and_manual_verdicts_each_record_the_watch_check 8.690s
+fixture duration: WatchTests.test_geometry_failure_selects_only_failing_current_cases 7.412s
+fixture duration: WatchTests.test_green_keeps_native_set_and_same_main_runs_once 5.109s
+fixture duration: WatchTests.test_green_without_native_store_cannot_be_published 5.413s
+fixture duration: WatchTests.test_invariant_failure_selects_the_named_gate 6.891s
+fixture duration: WatchTests.test_manual_green_is_logged_then_the_watcher_still_runs_full_ci 6.217s
+fixture duration: WatchTests.test_manual_revert_records_the_landed_corrective_commit 5.572s
+fixture duration: WatchTests.test_missing_store_after_green_still_invokes_diagnosis_without_a_test_selector 7.601s
+fixture duration: WatchTests.test_quarantine_admission_runs_ci_instead_of_carrying_a_previous_verdict 7.564s
+fixture duration: WatchTests.test_records_only_carries_verdict_but_lab_changes_run_full_postsubmit 9.117s
+fixture duration: WatchTests.test_red_closes_main_and_invokes_culprit_then_revert 7.569s
+fixture duration: WatchTests.test_repeated_tail_flakes_stay_green_without_claiming_native_truth 8.186s
+fixture duration: WatchTests.test_three_pass_flake_verdict_reopens_without_revert 7.226s
+fixture duration: WatchTests.test_unresolved_failure_reverts_only_the_exact_failed_batch 7.328s
+fixture duration: WatchTests.test_watch_finding_is_separate_from_green_ci_and_never_reverted 5.559s
+Ran 127 fixture tests in 95.744s; failures=0
+..............................................
+----------------------------------------------------------------------
+Ran 46 tests in 265.688s
+
+OK
+presubmit: python3 -I scripts/test-resource-ledger.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.990s
+
+OK
+presubmit: sh scripts/invariants.sh --affected ''
+cache: on (port 4985; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+brand: held
+invariant bboxy450-prefix: pass
+invariant checkpoint-bounded: skipped (unaffected crates)
+invariant clippy-clean: skipped (slow)
+cross-os: held
+invariant cross-os-facade: pass
+invariant ctl-never-prints-secrets: skipped (unaffected crates)
+invariant ctl-opt-in: skipped (unaffected crates)
+invariant e2e-runs-unattended: skipped (slow)
+invariant frontmatter-parses: skipped (unaffected crates)
+invariant glow-never-moves-layout: skipped (unaffected crates)
+invariant idle-swarms-cost-nothing: skipped (slow)
+images: held
+invariant images-resolve: pass
+kill-own-pids: held
+invariant kill-only-own-pids: pass
+invariant kitty-keyboard: skipped (unaffected crates)
+layering: held
+invariant layering: pass
+licenses: 24 workspace crates, SPDX map and required root/crate files present
+invariant licenses-present: pass
+local-first: held
+invariant local-first: pass
+invariant main-red-bounded: skipped (slow)
+invariant mermaid-fixtures: skipped (unaffected crates)
+invariant messaging-never-held: skipped (unaffected crates)
+invariant modules-through-components: skipped (unaffected crates)
+never-block: held
+invariant never-block-swarm: pass
+never-block: held
+cross-os: held
+invariant no-chokepoints: pass
+deps-licences: held
+invariant no-copyleft-deps: pass
+invariant no-seat-starves: skipped (unaffected crates)
+invariant notices-never-wake: skipped (slow)
+invariant parity-geometry: skipped (slow)
+invariant presubmit-tests-fast: skipped (slow)
+invariant restart-keeps-state: skipped (slow)
+invariant rim-never-covers-text: skipped (unaffected crates)
+invariant rim-size-is-layout: skipped (unaffected crates)
+invariant ring-reads-batched: skipped (unaffected crates)
+invariant seats-1000-bus: skipped (slow)
+invariant seats-400-memory-idle: skipped (slow)
+invariant seats-967-frame: skipped (slow)
+invariant signed-main: pass
+invariant ui-never-waits: skipped (unaffected crates)
+invariant watched-replay-priority: skipped (unaffected crates)
+invariants: 11 checks, 0 failures, 11 slow checks skipped
+invariants: 15 unaffected-crate checks skipped

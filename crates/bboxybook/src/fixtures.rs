@@ -353,6 +353,7 @@ pub fn draw(case: &Case, ctx: &DrawCtx, out: &mut DrawList) -> Result<bool> {
 mod tests {
     use super::*;
     use std::collections::BTreeSet;
+    // keeps: spec renderer.md §4.5
     #[test]
     fn web_model_uses_real_keys_trees_ownership_and_observation_axes() {
         let data = serde_json::json!({"spaces":[{"key":"space0","name":"term","tabs":[{"name":"gpu","tree":{"dir":"v","a":{"key":"a"},"b":{"key":"b"}},"seats":[{"key":"a","name":"Nyx","harness":"codex","state":"waiting","grade":"shim","waitKind":"auth","where":"ssh","host":"rig"},{"key":"b","name":"Rook","harness":"codex","state":"active"}]}]}]});

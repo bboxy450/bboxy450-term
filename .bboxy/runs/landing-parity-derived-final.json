@@ -1,0 +1,239 @@
+{
+  "landing": {
+    "affected": [],
+    "author": "bboxy450@gmail.com",
+    "author_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "base": "d8b2ca60021cac1bd9b2f7a66e5eb744cc06a63d",
+    "branch": "aster-derived-parity-recheck",
+    "build_attempts": 1,
+    "check_timings": [
+      {
+        "affected": [],
+        "compile_seconds": 2.6695751670049503,
+        "gate_log": null,
+        "gate_log_sha256": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/8c49104b7be6fe7aa7e8840a3ce63625b4066849-d5a4b877/commands.log",
+        "recheck": null,
+        "run_seconds": 419.8533073749859,
+        "sha": "8c49104b7be6fe7aa7e8840a3ce63625b4066849",
+        "test_seconds": 364.40562887495616,
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 55.447678500029724
+      }
+    ],
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-landing.py",
+          "--all"
+        ],
+        "fixtures": true,
+        "tools": []
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-resource-ledger.py"
+        ],
+        "fixtures": true,
+        "tools": [
+          "scripts/test-resource-ledger.py"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          ""
+        ],
+        "tools": [
+          "scripts/invariants.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "bboxy450-prefix"
+        ],
+        "tools": [
+          "scripts/brand.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "cross-os-facade"
+        ],
+        "tools": [
+          "scripts/cross-os.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "images-resolve"
+        ],
+        "tools": [
+          "scripts/images.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "kill-only-own-pids"
+        ],
+        "tools": [
+          "scripts/kill-own-pids.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "layering"
+        ],
+        "tools": [
+          "scripts/layering.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "licenses-present"
+        ],
+        "tools": [
+          "scripts/licenses.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "local-first"
+        ],
+        "tools": [
+          "scripts/local-first.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "never-block-swarm"
+        ],
+        "tools": [
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-chokepoints"
+        ],
+        "tools": [
+          "scripts/cross-os.sh",
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-copyleft-deps"
+        ],
+        "tools": [
+          "scripts/deps-licences.sh"
+        ]
+      }
+    ],
+    "compile_seconds": 2.6695751670049503,
+    "incremental_rechecks": 0,
+    "paths": [
+      ".bboxy/runs/landing-incremental-author-green.log",
+      ".bboxy/runs/landing-incremental-checks-green.log",
+      ".bboxy/runs/landing-incremental-final.json",
+      ".bboxy/runs/landing-parity-derived-development.json",
+      ".bboxy/runs/landing-parity-derived-directory-red.log",
+      ".bboxy/runs/landing-parity-derived-focused.log",
+      ".bboxy/runs/landing-parity-derived-landing-green.log",
+      ".bboxy/runs/landing-parity-derived-landing-red.log",
+      ".bboxy/runs/landing-parity-derived-narrow-red.log",
+      ".bboxy/runs/landing-parity-derived-pages.log",
+      ".bboxy/runs/landing-parity-derived-validation-red.log",
+      ".bboxy/runs/landing-parity-derived-validation.log",
+      "scripts/landing.py",
+      "scripts/test-landing.py"
+    ],
+    "presubmit_seconds": 429.01119387499057,
+    "retries": 1,
+    "run_seconds": 419.8533073749859,
+    "sha": "9152b46a6903b23f5a0fe20e86c3892197354f7f",
+    "test_seconds": 364.40562887495616,
+    "tested_sha": "8c49104b7be6fe7aa7e8840a3ce63625b4066849",
+    "tests_started": true,
+    "tier": "code",
+    "timestamp": "2026-10-26T01:44:20.189064+00:00",
+    "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+    "unclassified_seconds": 55.447678500029724
+  },
+  "author": {
+    "exit": 0,
+    "seconds": 446.83933186531067,
+    "capacity_wait_seconds": 178.7377781867981,
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/parity-refresh-land-1.log"
+  },
+  "checks": {
+    "controller": {
+      "passed": 127,
+      "failed": 0
+    },
+    "recovery": {
+      "passed": 46,
+      "failed": 0
+    },
+    "observer": {
+      "passed": 11,
+      "failed": 0
+    },
+    "invariants": {
+      "passed": 11,
+      "failed": 0,
+      "slow_skipped": 11,
+      "unaffected_skipped": 15
+    }
+  },
+  "source_diff_after_disjoint_rebase_exit": 0,
+  "canonical_log_sha256": "d3fc0c8e42fc61414e8f59649e62f3a8e686acd574c7924492ba3f0b74ed07ce",
+  "author_log_sha256": "9769f4c11ccbb29c2a6f1124c4b7014b0800e07c5b6eb545239e844c76919876",
+  "postsubmit_acceptance": "not yet established; current green predates these landings"
+}

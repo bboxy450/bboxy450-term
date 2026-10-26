@@ -1,5 +1,6 @@
 use bboxybook::{gallery, seat_rows};
 use std::collections::BTreeSet;
+// keeps: spec renderer.md §4.5
 #[test]
 fn seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures() {
     let cases = seat_rows::cases();
@@ -45,6 +46,7 @@ fn seat_row_matrix_covers_lab_states_and_explicit_nested_row_fixtures() {
     assert!(gallery::cases().iter().any(|c| c.component == "seat_row"));
 }
 
+// keeps: spec renderer.md §4.5
 #[test]
 fn child_dom_rectangles_and_css_metrics_are_diagnostics_only() {
     use serde_json::json;
