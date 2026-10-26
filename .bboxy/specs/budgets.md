@@ -9,7 +9,7 @@ links:
   - { to: "[[resource-ledger]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:00:55Z"
+updated: "2026-10-26T18:13:24Z"
 ---
 # Budgets
 
@@ -17,15 +17,15 @@ updated: "2026-10-26T18:00:55Z"
 
 ## Frame time at 120 Hz, 8.33 ms, under 967 seats with 50 watched
 
-Two clocks run in parallel and are never added together: the **CPU path** of the window, capped by the frame invariant at **4 ms p99**, and the **GPU's own execution**, which overlaps the next frame's CPU work and must also fit the 8.33 ms frame. Corrected 2026-10-26 at Rook's question: a first version summed CPU stages to 6 ms against the invariant's 4, gave GPU a CPU-style row, and named no endpoints.
+Two clocks run in parallel and are never added together: the **CPU path** of the window, capped by the frame invariant at **4 ms p99**, and the **GPU's own execution**, which overlaps the next frame's CPU work and must also fit the 8.33 ms frame. Corrected 2026-10-26 at Rook's questions (twice: the endpoints, then draw versus encode, checked against the meter's own total): a first version summed CPU stages to 6 ms against the invariant's 4, gave GPU a CPU-style row, and named no endpoints.
 
 | Stage | Endpoints in the code (`bboxy450-term`, source 2dc967db) | Allocation p99 | Measured |
 |---|---|---|---|
 | Drain | frame start to the call of `project_scene` (`main.rs:5482`), the event drain and model update only; the current `phases.drain` (`main.rs:5492`) includes `project_scene` and is split by timing it separately | 1.5 ms | not yet split |
-| Projection | `project_scene` plus `phases.layout` | 1.0 ms | 4 321 projections for 42 frames before Rook's fix |
-| Encode and submit | `phases.draw`: CPU command encoding and submission | 1.0 ms | encode 4.9 ms after the atlas fix |
+| Projection | `project_scene` plus `phases.layout` plus `phases.draw` (scene paint and foreground construction, `main.rs:5550-5583`) | 1.0 ms | 4 321 projections for 42 frames before Rook's fix |
+| Encode and submit | `phases.encode`: the actual command encoding and `queue.submit` (`gpu.rs:413-511`, returned at `main.rs:5596`) | 1.0 ms | encode 4.9 ms after the atlas fix |
 | CPU margin | | 0.5 ms | |
-| **CPU path total** | the three above | **under 4 ms** (the invariant) | 292 ms on 0e97dc32 |
+| **CPU path total** | the three above, which sum exactly to the meter's CPU total (`bbt-rt/src/meter.rs:16`, drain plus layout plus draw plus encode) | **under 4 ms** (the invariant) | 292 ms on 0e97dc32 |
 | GPU execution | Metal's own GPU execution duration for the frame's command buffer (`gpu.rs:495-498`) | 6.0 ms | 8.9 ms before the blur fix, at 75 Hz |
 | GPU margin | | 2.33 ms | |
 | Present wait | `phases.present_wait`, the host's wait; reported, not allocated, expected near zero, since the UI thread never waits | report only | |
