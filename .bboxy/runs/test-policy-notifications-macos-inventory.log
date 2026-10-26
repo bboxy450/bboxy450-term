@@ -1,0 +1,10 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+    Finished `test` profile [optimized] target(s) in 0.46s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bboxy450_desktop_notifications_macos-30ba17dec6be5562)
+tests::a_panicking_callback_does_not_skip_native_completion: test
+tests::delegate_forwards_the_posted_id_before_completing: test
+
+2 tests, 0 benchmarks
+   Doc-tests bboxy450_desktop_notifications_macos
+0 tests, 0 benchmarks

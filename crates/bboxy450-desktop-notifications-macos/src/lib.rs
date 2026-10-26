@@ -253,6 +253,7 @@ mod tests {
     use super::*;
     use std::cell::RefCell;
 
+    // keeps: spec desktop-notifications §3/§5.2 — response carries the posted id, native completion follows callback
     #[test]
     fn delegate_forwards_the_posted_id_before_completing() {
         let calls = RefCell::new(vec![]);
@@ -267,6 +268,7 @@ mod tests {
         assert_eq!(*calls.borrow(), ["response", "completion"]);
     }
 
+    // keeps: spec desktop-notifications §3 — native completion still runs when the callback panics
     #[test]
     fn a_panicking_callback_does_not_skip_native_completion() {
         let completed = std::cell::Cell::new(false);

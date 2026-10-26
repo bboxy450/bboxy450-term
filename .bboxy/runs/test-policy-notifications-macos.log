@@ -1,0 +1,20 @@
+#327 bboxy450-desktop-notifications-macos test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own exec5 branch exec5-tests-327-notifications-macos, fresh base 7830930da1df8a16d2391761bbe46f8d07c57fd0.
+Only keeps: tags in existing tests/cfg(test) modules. Production prefixes, public API and test assertions remain byte-identical.
+Before: 2 passed / 0 failed / 0 ignored; summed per-binary test execution 0.000 s. After: 2 passed / 0 failed / 0 ignored; summed per-binary execution 0.000 s. Both are under 30 s, so test-policy §3 applies on coverage alone. Timing improvement is unproven. Outer Cargo wall time (including compilation) is reported separately below.
+Sleep calls removed: 0. No clocks, waits, process probes, native vault calls, Notification Center, authorization or desktop operations introduced. Strict Clippy and selected invariants will run in the combined author presubmit and are not claimed here.
+Overlap scan: no peer in-flight file overlaps; no skipped file.
+
+| Test | Class | Disposition / protected contract |
+|---|---|---|
+| `src/lib.rs::delegate_forwards_the_posted_id_before_completing` | D2 | retain unchanged assertions and tag protected contract; spec desktop-notifications §3/§5.2 — response carries the posted id, native completion follows callback |
+| `src/lib.rs::a_panicking_callback_does_not_skip_native_completion` | D2 | retain unchanged assertions and tag protected contract; spec desktop-notifications §3 — native completion still runs when the callback panics |
+
+Coverage map: desktop-notifications §3/§5.2 delegate contract -> pure deliver helper forwards Clicked(id), observes callback before completion, and completes after a contained callback panic. The observable native completion boundary is the subject; ordering is explicitly required by the spec, so this is not a disposable mock-interaction check. Assertions unchanged.
+
+Limits: Only the pure callback delivery helper is exercised. No UNUserNotificationCenter open, authorize, post, delivered-id query, removal, delegate installation or operator desktop access. Native system integration is not claimed.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-notifications-macos-inventory.log SHA256 243f3cc9dbbf42f17c098848aedc8c5b0bc1e2a769133a1f8731a504d29db896 — EXIT0; outer Cargo seconds 0.743.
+- .bboxy/runs/test-policy-notifications-macos-before.log SHA256 a4939e3edcbf182b67a07b39e171a07a01f265d3e5885de435e51076ed67469f — EXIT0; outer Cargo seconds 0.315.
+- .bboxy/runs/test-policy-notifications-macos-after.log SHA256 0551b20d541acaa0f8378441d8a876dc29bcacc418014bf8422b1f541142ff97 — EXIT0; outer Cargo seconds 0.900.
