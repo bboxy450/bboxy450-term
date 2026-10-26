@@ -698,7 +698,7 @@ mod tests {
             .filter_map(|line| line.strip_prefix("reply\t"))
             .filter_map(|line| serde_json::from_str::<GuiReply>(line).ok())
             .find_map(|reply| match reply {
-                GuiReply::Seats(seats) => Some(seats),
+                GuiReply::Seats(seats) if !seats.is_empty() => Some(seats),
                 _ => None,
             })
             .unwrap();
