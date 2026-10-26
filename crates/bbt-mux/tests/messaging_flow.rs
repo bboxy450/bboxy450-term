@@ -763,3 +763,77 @@ fn legacy_pending_receipts_migrate_without_replaying_completed_work() {
     f.reopen();
     assert!(f.messaging.ready(4_003).unwrap().is_empty());
 }
+
+// keeps: messaging-attention §3 window boundary on the injected service clock.
+#[test]
+fn digest_window_delivers_one_summary_at_its_first_deadline() {
+    let mut f = AttentionFixture::new();
+    let first = f.send(1_000);
+    let second = f.send(2_000);
+    assert_eq!(f.receipt(first).wake, f.receipt(second).wake, "one window has one deadline");
+    f.reopen();
+    assert!(f.messaging.ready(600_999).unwrap().is_empty());
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 600_999).unwrap().is_none());
+    let next_window = f.send(601_000);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [first, second]);
+    let text = work.text();
+    assert_eq!(text.matches("Bboxy message digest").count(), 1);
+    assert_eq!(text.matches(&first.to_string()).count(), 1);
+    assert_eq!(text.matches(&second.to_string()).count(), 1);
+    assert!(text.find(&first.to_string()).unwrap() < text.find(&second.to_string()).unwrap());
+    f.finish(&work, 601_001);
+    f.reopen();
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 1_200_999).unwrap().is_none());
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 1_201_000).unwrap().unwrap();
+    assert_eq!(work.messages[0].view().id, next_window);
+    f.finish(&work, 1_201_001);
+    assert!(f.messaging.ready(1_201_002).unwrap().is_empty());
+}
+
+// keeps: messaging-attention §3 fifty-message cap without advancing wall time.
+#[test]
+fn digest_cap_flushes_fifty_once_while_the_clock_is_frozen() {
+    let mut f = AttentionFixture::new();
+    let mut ids: Vec<_> = (0..49).map(|_| f.send(1_000)).collect();
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 1_000).unwrap().is_none());
+    ids.push(f.send(1_000));
+    f.reopen();
+    let next_window = f.send(1_000);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 1_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), ids);
+    let text = work.text();
+    assert_eq!(text.matches("Bboxy message digest").count(), 1);
+    assert!(!text.contains("attention fixture"), "digest lists stored ids instead of repasting fifty bodies");
+    for id in &ids { assert_eq!(text.matches(&id.to_string()).count(), 1); }
+    f.finish(&work, 1_001);
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_000 - 1).unwrap().is_none());
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [next_window]);
+    f.finish(&work, 601_001);
+    f.reopen();
+    assert!(f.messaging.ready(601_002).unwrap().is_empty());
+}
+
+// keeps: receiver digests preserve per-destination order and independent windows.
+#[test]
+fn digest_summaries_do_not_merge_destinations() {
+    use bbt_mux::messaging::tree::{Actor, Node, Right};
+    let mut f = AttentionFixture::new();
+    let mut folder = Node::folder("channels/updates");
+    folder.grants.insert(f.sender.id, vec![Right::Write]);
+    f.messaging.tree(f.sender.swarm).unwrap().put(Actor::Operator, folder).unwrap();
+    let link = Node::link("channels/updates/receiver", format!("seats/{}/inbox", f.receiver.id));
+    f.messaging.tree(f.sender.swarm).unwrap().put(Actor::Operator, link).unwrap();
+    let first = f.send(1_000);
+    let channel_first = f.messaging.send(f.sender.id, 1, SendRequest::text("#updates/*", "channel one"), 1_000).unwrap().view().id;
+    let second = f.send(2_000);
+    let channel_second = f.messaging.send(f.sender.id, 1, SendRequest::text("#updates/*", "channel two"), 2_000).unwrap().view().id;
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 602_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [first, second]);
+    f.finish(&work, 602_001);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 602_002).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [channel_first, channel_second]);
+    f.finish(&work, 602_003);
+    assert!(f.messaging.ready(602_004).unwrap().is_empty());
+}
