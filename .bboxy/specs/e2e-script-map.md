@@ -23,7 +23,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T1 | `scripts/e2e/T1.sh` | full | — | |
 | T2 | `scripts/e2e/T2.sh` | full | — | |
 | T3 | `scripts/e2e/T3.sh` | full | — | |
-| T4 | `scripts/e2e/T4.sh` | partial | wide glyphs and emoji align to the grid (cell widths and continuations are not read); colours other than red | |
+| T4 | `scripts/e2e/T4.sh` | full | — | |
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
 | T6 | `scripts/e2e/T6.sh` | partial | the app says so; resumes by session id (only the zsh respawn is proven) | |
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |

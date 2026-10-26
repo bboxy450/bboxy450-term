@@ -1,0 +1,289 @@
+{
+  "promise": "T4 real cells, colours, styles, wide grid alignment and program cursor shapes",
+  "runtime_app_base": "a4ad6dc9c40746e32b43e006c6394e2c34f81c6f",
+  "status": "current-main headless GPU/PTY script held; author landing and postsubmit acceptance pending",
+  "source_refs": [
+    {
+      "source": "scripts/e2e/t4_cells.py:29",
+      "mechanism": "real own-PTY program emits styles/colours/Unicode and steady cursor-shape changes, with no expected output files"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:62",
+      "mechanism": "parsed cursor visibility/shape and current produced grid sequence fence every capture"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:97",
+      "mechanism": "compact style runs are expanded only for controlled single-width rows; wide flags are checked separately"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:118",
+      "mechanism": "bold gains real captured ink; italic differs; underline adds a lower horizontal rule"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:125",
+      "mechanism": "named, indexed and RGB foreground/background are checked in real captured pixels"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:132",
+      "mechanism": "automatic Han/emoji placement is byte-identical to explicitly addressed grid columns"
+    },
+    {
+      "source": "scripts/e2e/t4_cells.py:139",
+      "mechanism": "hidden/visible image differences assert solid block, lower underline and left beam geometry"
+    }
+  ],
+  "baseline": {
+    "result": {
+      "root": "/private/tmp/at4-u2bbcbek",
+      "script": "scripts/e2e/T4.sh",
+      "startup": {
+        "backend_ready": true,
+        "close": null,
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 1,
+        "generation": 1,
+        "gui_ready": true,
+        "mode": "headless",
+        "pid": 34127,
+        "run_dir": "/private/tmp/at4-u2bbcbek/run",
+        "running": true,
+        "unattended": true,
+        "windows": 0
+      },
+      "exit": 0,
+      "seconds": 0.8157362937927246,
+      "stopped": {
+        "backend_ready": false,
+        "close": {
+          "complete": true,
+          "grace": [],
+          "notices": [],
+          "omitted": {
+            "grace": 0,
+            "notices": 0,
+            "slots": 0,
+            "truncated_notices": 0
+          },
+          "slots": [
+            {
+              "seat": "01M5VY7RBZE6AHYJ53DZFHQEN1",
+              "swarm": "01M5VY7RBMYPX5KQDJJ163KQZG",
+              "tab": "01M5VY7RBMV6SX8VABDTP509RG"
+            }
+          ]
+        },
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 47,
+        "generation": 1,
+        "gui_ready": false,
+        "mode": "headless",
+        "running": false,
+        "unattended": true,
+        "windows": 0
+      }
+    },
+    "coverage": "partial; only logical style bits, non-default red and cursor-shape text, with no rendered placement proof"
+  },
+  "observed": {
+    "styles": {
+      "normal_mass": 20585,
+      "bold_mass": 27132,
+      "italic_different_pixels": 62,
+      "underline_pixels": 8,
+      "underline_rows": [
+        13
+      ]
+    },
+    "colours": [
+      {
+        "wire": {
+          "Named": "Red"
+        },
+        "rgb": [
+          204,
+          0,
+          0
+        ],
+        "foreground_pixels": 120,
+        "background_pixels": 120
+      },
+      {
+        "wire": {
+          "Named": "Green"
+        },
+        "rgb": [
+          78,
+          154,
+          6
+        ],
+        "foreground_pixels": 120,
+        "background_pixels": 120
+      },
+      {
+        "wire": {
+          "Named": "Blue"
+        },
+        "rgb": [
+          52,
+          101,
+          164
+        ],
+        "foreground_pixels": 120,
+        "background_pixels": 120
+      },
+      {
+        "wire": {
+          "Indexed": 196
+        },
+        "rgb": [
+          255,
+          0,
+          0
+        ],
+        "foreground_pixels": 120,
+        "background_pixels": 120
+      },
+      {
+        "wire": {
+          "Spec": {
+            "r": 17,
+            "g": 203,
+            "b": 145
+          }
+        },
+        "rgb": [
+          17,
+          203,
+          145
+        ],
+        "foreground_pixels": 120,
+        "background_pixels": 120
+      }
+    ],
+    "wide": {
+      "automatic_equals_explicit": true,
+      "han_cells": 2,
+      "emoji_cells": 2,
+      "both_halves_have_ink": true
+    },
+    "cursor": [
+      {
+        "kind": "b",
+        "pixels": 120,
+        "width": 8,
+        "height": 15
+      },
+      {
+        "kind": "u",
+        "pixels": 8,
+        "width": 8,
+        "height": 1
+      },
+      {
+        "kind": "s",
+        "pixels": 15,
+        "width": 1,
+        "height": 15
+      }
+    ],
+    "cell": [
+      8,
+      15
+    ]
+  },
+  "checks": [
+    {
+      "name": "build-current",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 184.1646728515625,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/build-current.log",
+      "log_sha256": "eebf0bebfc9e2dd8a5b9527bc3bd264946d480e9f6bf42e52ea128d24a9b06e5"
+    },
+    {
+      "name": "native-current",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t4-20261026/run_t4.py"
+      ],
+      "exit": 0,
+      "seconds": 9.812318086624146,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/native-current.log",
+      "log_sha256": "61da2c1caa0b870772edea7bb9619721168b27928abdeebd918d56e77cca71e2"
+    },
+    {
+      "name": "coverage-metadata",
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_ui.py"
+      ],
+      "exit": 0,
+      "seconds": 0.07344484329223633,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/coverage-metadata.log",
+      "log_sha256": "4c979c0d06f0e9e2109df48cae7f69ac5d403754045b4cfe404fe744e7390b47"
+    }
+  ],
+  "retained_proof": {
+    "root": "/private/tmp/at4-oh4rma_q",
+    "custody_backend": "file",
+    "windows": 0,
+    "script_seconds": 8.45058274269104,
+    "artifacts_sha256": {
+      "01M5W0F2C90Q51E5JKDG441JCJ-screen.json": "e6bd2fc2c0f392d228140944c64c75c14bd501612aa3978e28f600b724f8bb61",
+      "baseline.png": "056200781468ad0eace5050f07f7d59aedcf2d73e45c01d3df65dac6896cd218",
+      "layout.json": "528576b42c5d08ada98659bfb9721402eb05c90cde266a4523f1b845e57e29fd",
+      "t4-cells-source.json": "6e9b9a5feb70d98fa197c96cb7daa3b8b3f808d24500e967bdc9c81a16bfd6e6",
+      "t4-cells.jsonl": "34661d50f11d88d2a3847b0d59e11b84c2fee520e05b904d0439538ef49b8458",
+      "t4-cells.png": "056200781468ad0eace5050f07f7d59aedcf2d73e45c01d3df65dac6896cd218",
+      "t4-cursor-b-source.json": "ef74968e2b01a9c8b01185564db349d792a5e727693df02f7eb1ed9954c0ea79",
+      "t4-cursor-b.jsonl": "196d0f776c2fe5c6f92f9c5bccc87fe8f871aa6d14c187a3cc3cd844b997940f",
+      "t4-cursor-b.png": "7549591693a6e593d12a65c0f89f55995813cbaaa34be0e19456593240b6ea64",
+      "t4-cursor-s-source.json": "eec61f62767baa92bbf24ab280edd06e1476010e4a4958f950a85185e6c092af",
+      "t4-cursor-s.jsonl": "e1d0693387d762bd2043978a868ce71cd93eb88962ce0a15ba332fced3bcfcde",
+      "t4-cursor-s.png": "ceac816b0e44002a16d9a9bd652d139ba7c03a6aa85973d559f8870e6d7b29e3",
+      "t4-cursor-u-source.json": "5594f5bd334f9375b27f169c5184f59d24a97a5cd6ebff1ad72c5476e91194e4",
+      "t4-cursor-u.jsonl": "b24450e56d9f5e5bb979602f2c4fbbe25035952248fbc9a4eaeded86f9c7d659",
+      "t4-cursor-u.png": "e0e7cbd2bc074947445f5d76a01373bffdc77e49e3a02e8962a4f5c619f2e2d6",
+      "t4-hidden-b-source.json": "42ded0a6940107959fa6ef5ea1c4c55daa13be776b2e4a81772fb6b1149d460e",
+      "t4-hidden-b.jsonl": "badbd0b31230531ccb5989a5e2bec30ac91bff7e29dbcb33bf97167a17b9cb5e",
+      "t4-hidden-b.png": "056200781468ad0eace5050f07f7d59aedcf2d73e45c01d3df65dac6896cd218",
+      "t4-hidden-s-source.json": "39605c5120cf1e35cce0f7092be0d68891784c1bcd4e460e7f5262d0e92295b1",
+      "t4-hidden-s.jsonl": "99bcb1fb8c40056c8eec60b0ca705df45dc34ec45c9663ca0672e298cad1173f",
+      "t4-hidden-s.png": "056200781468ad0eace5050f07f7d59aedcf2d73e45c01d3df65dac6896cd218",
+      "t4-hidden-u-source.json": "004bb2462e762013d5a5760ab14bf9da40b136feb9b6ba10e7da3f3abee4343a",
+      "t4-hidden-u.jsonl": "e9cb2d0ad8152e2c39099f769ea17a766bb7867d21ab4b65b6acf2e315465439",
+      "t4-hidden-u.png": "056200781468ad0eace5050f07f7d59aedcf2d73e45c01d3df65dac6896cd218",
+      "t4-observations.json": "2a68f1ff52aa37f04eb968769fde37a03a90b142ab81cdb6996001fd88bf72d4",
+      "t4-state.json": "8690cc3a74c5704181426eb39647745b6ca32b72f34e1378711102ea29d26c46"
+    },
+    "calls_sha256": "d4540801c7c9ddecce34c7b9fe0458961672af57fc86418aa1046f640c3d5827",
+    "visual_inspection": "read final t4-cells.png: four style controls, five colour pairs and identical automatic/explicit Han+emoji rows"
+  },
+  "wire_method": "The cells wire remains compact style runs. Wide placement is proved in captured GPU pixels against explicit grid columns, with actual ink in both cells; no per-cell continuation metadata API is added or claimed.",
+  "binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/t4-runtime-bboxy450-term",
+    "sha256": "2aa01785a24480aa0f8d8fdb3ed092e9d64521d7f4bbf0f102f4f07cc52ba91a"
+  },
+  "code_manifest": {
+    "scripts/e2e/T4.sh": "c0833a2d16a9ebab5b25e571e9bb06aa0cf595ccabac8a03735e6bc5bd71108e",
+    "scripts/e2e/t4_cells.py": "977b2da46de0820e296bbf7eb092c2b537acc0a6b8bbf81e0f32a16500e7af8f"
+  },
+  "gaps": [
+    "Headless macOS GPU/PTY proof only; no OS presentation or cross-platform runtime claim.",
+    "Postsubmit and Oracle review remain unverified."
+  ]
+}
