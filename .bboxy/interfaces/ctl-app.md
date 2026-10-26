@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:25:02Z"
+updated: "2026-10-26T19:28:57Z"
 ---
 # ICD: ctl ↔ app
 
@@ -23,7 +23,7 @@ updated: "2026-10-26T18:25:02Z"
 | Failure | exit codes 0 to 4; a peer descended from the app's supervisor is refused and always told why; no PID-kill fallback |
 | Versioning | a verb edits only its noun's file; each verb listed once in its noun's table |
 | Verified by | invariants ctl-opt-in, ctl-never-prints-secrets; the ctl library tests; every night script drives the app through it |
-| Open | the operator's attention setter arrives with MA-8 |
+| Open | the operator's attention setter arrives with MA-8; the structured test-account keyboard and pointer seam is agreed but **deferred** by the Oracle (existing controls first), so K1 and K3 stay partial until it lands; the visible-tree layout read landed at a45bfd18 |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
