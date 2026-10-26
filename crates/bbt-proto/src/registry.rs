@@ -2,6 +2,8 @@
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
+use crate::messaging::{MessageClass, WakeMode};
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Role {
     pub name: String,
@@ -46,6 +48,22 @@ pub enum Lifecycle {
     ClosedRetained,
 }
 
+/// Receiver overrides; omission on a seat selects its role defaults (#334).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AttentionPolicy {
+    pub rules: Vec<AttentionRule>,
+}
+
+/// One exact destination and signed message class, validated by the host.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AttentionRule {
+    pub destination: String,
+    pub class: MessageClass,
+    pub mode: WakeMode,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SeatRecord {
     pub id: Ulid,
@@ -62,6 +80,8 @@ pub struct SeatRecord {
     pub lifecycle_revision: u64,
     pub close: Option<CloseRecord>,
     pub tasks: Vec<Ulid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attention: Option<AttentionPolicy>,
 }
 
 impl SeatRecord {
@@ -88,6 +108,7 @@ impl SeatRecord {
             lifecycle_revision: 0,
             close: None,
             tasks: Vec::new(),
+            attention: None,
         }
     }
 }
