@@ -338,3 +338,50 @@ fn local_delivery_outlives_the_old_signing_queue_cap_and_resume_is_bounded() {
 fn custody_hold_gui_boundary() {
     gui::exercise_held_startup();
 }
+
+// keeps: invariant notices-never-wake; spec messaging-attention §3
+#[test]
+fn events_are_stored_and_never_wake_by_default() {
+    use bbt_mux::{adapters::State, messaging::tree::Actor, registry::Class};
+    use bbt_proto::messaging::{MessageClass, ReceiptWake};
+    let root = tempfile::tempdir().unwrap();
+    let registry = Registry::new(SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap());
+    let swarm = Ulid::new();
+    let mut subject = SeatRecord::new(Ulid::new(), swarm, "subject", "zsh");
+    subject.muted = true;
+    registry.insert(&subject).unwrap();
+    let mut receivers = Vec::new();
+    for role in ["executor", "architect", "creativity", "oracle"] {
+        let mut record = SeatRecord::new(Ulid::new(), swarm, role, "zsh");
+        record.role.name = role.into();
+        if role == "oracle" { record.role.class = Class::Oracle; }
+        registry.insert(&record).unwrap();
+        receivers.push(record);
+    }
+    let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[65; 32])));
+    let mut messaging = Messaging::open(root.path(), keys).unwrap();
+    let notice = messaging.set_mute(Actor::Operator, subject.id, false, State::Idle, 1_000).unwrap().unwrap();
+    for receiver in &receivers {
+        let inbox = messaging.list(receiver.id, None, None, 0, 16).unwrap();
+        let message = inbox.items.iter().find(|message| message.view().id == notice).unwrap();
+        assert_eq!(message.view().kind.class(), MessageClass::Event);
+        message.envelope().unwrap().verify_signature().unwrap();
+        let receipt = messaging.receipts(receiver.id, notice).unwrap().into_iter().find(|r| r.recipient == receiver.id).unwrap();
+        assert_eq!(receipt.evidence, Evidence::RecipientStored);
+        assert_eq!(receipt.wake, Some(ReceiptWake::None), "{} default must not wake on operator status", receiver.role.name);
+        assert_eq!(receipt.held, None, "metadata is not a delivery hold");
+        assert!(messaging.prepare(swarm, receiver.id, 1_001).unwrap().is_none());
+    }
+    assert!(messaging.ready(1_002).unwrap().is_empty());
+    let oracle = receivers.last().unwrap();
+    let request = SendRequest::text(format!("seats/{}/inbox", oracle.id), "conversation to a wake-default receiver");
+    let id = request.id;
+    messaging.request(subject.id, 1, Request::Send { message: request }, false, None, 2_000).unwrap();
+    let receipt = messaging.receipts(subject.id, id).unwrap().remove(0);
+    assert_eq!(receipt.wake, Some(ReceiptWake::Now));
+    let work = messaging.prepare(swarm, oracle.id, 2_001).unwrap().unwrap();
+    assert_eq!(work.messages.len(), 1);
+    assert_eq!(work.messages[0].view().id, id);
+    messaging.finish(swarm, &work, &WakeOutcome { evidence: Evidence::NativeWritten, native_id: Some("one-attention-wake".into()), note: "fixture native delivery".into() }, 2_002, false).unwrap();
+    assert!(messaging.prepare(swarm, oracle.id, 2_003).unwrap().is_none());
+}
