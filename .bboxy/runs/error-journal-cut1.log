@@ -13,3 +13,4 @@ Retained red1: fixture root permissions; red2: actual shared flag validator reje
 Missing/full sink, rotation, redaction, byte-page bound, symlink refusal and unread ack asserted; actual child ctl/MCP/shim fixture has no app/account.
 Native global hook observer and parent-session isolation deliberately deferred to cut2; original operator stderr/cause unproven.
 Author presubmit/strict and HUD regression pending at this commit; no live operator mutation or scale run.
+Author attempt1 EXIT77 during build: new release missing_docs enforcement found undocumented journal API; docs corrected, bboxy450-rt all-target strict Clippy EXIT0 (core-clippy-2.log).

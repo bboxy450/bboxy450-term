@@ -15,7 +15,9 @@ pub enum DebugProcess {
 pub enum DebugRequest {
     /// Unix milliseconds; an unfiltered read acknowledges retained error rows.
     Errors {
+        /// Inclusive Unix-millisecond lower bound, or all retained times.
         since: Option<u64>,
+        /// Exact seat filter, or all seats and process-level failures.
         seat: Option<Ulid>,
     },
     Logs {

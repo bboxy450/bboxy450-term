@@ -10,11 +10,17 @@ use std::sync::{
 };
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+/// Maximum retained stderr tail in bytes, before and after redaction.
 pub const MAX_STDERR: usize = 4096;
+/// Maximum encoded datagram/record size, including its terminating newline.
 pub const MAX_RECORD: usize = 16 * 1024;
+/// Rotation size of the active diagnostics file in bytes.
 pub const MAX_FILE: u64 = 1024 * 1024;
+/// Number of bounded older files retained beside the active file.
 pub const ARCHIVES: usize = 2;
+/// Maximum number of rows returned by one filtered read.
 pub const MAX_ROWS: usize = 256;
+/// Encoded read-page byte bound, including room for response metadata.
 pub const MAX_PAGE: usize = 128 * 1024;
 const SOCKET: &str = "diagnostics.sock";
 const ACTIVE: &str = "diagnostics.jsonl";
@@ -27,6 +33,7 @@ pub fn configure(root: &Path) {
     let _ = DIRECTORY.set(root.to_path_buf());
 }
 
+/// Current Unix milliseconds, or zero if the process clock precedes the epoch.
 pub fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -36,17 +43,27 @@ pub fn now_ms() -> u64 {
 }
 
 #[derive(Clone, Debug)]
+/// One failure observation. Strings are bounded and redacted before transmission.
 pub struct Failure {
+    /// Component reporting the failure, such as hook, MCP, ctl or supervisor.
     pub source: String,
+    /// Named operation or hook; never its raw command line or arguments.
     pub operation: String,
+    /// Diagnostic reason; request bodies and environment maps must not be supplied.
     pub message: String,
+    /// Exact seat identity when known.
     pub seat: Option<String>,
+    /// Native harness kind when known.
     pub harness: Option<String>,
+    /// Actual child exit code; absent when not observed, including signal-only exits.
     pub exit_code: Option<i32>,
+    /// Measured duration of the failed operation in milliseconds when available.
     pub duration_ms: Option<u64>,
+    /// Stderr tail, scrubbed again before transmission and before persistence.
     pub stderr: String,
 }
 impl Failure {
+    /// Build a component/operation observation without guessing seat or exit metadata.
     pub fn new(source: &str, operation: &str, message: impl ToString) -> Self {
         Self {
             source: source.into(),
@@ -59,22 +76,27 @@ impl Failure {
             stderr: String::new(),
         }
     }
+    /// Associate an observed seat identity.
     pub fn seat(mut self, seat: impl ToString) -> Self {
         self.seat = Some(seat.to_string());
         self
     }
+    /// Associate the native harness kind.
     pub fn harness(mut self, harness: impl ToString) -> Self {
         self.harness = Some(harness.to_string());
         self
     }
+    /// Record only an actually observed exit code, retaining unknown as absent.
     pub fn exit(mut self, exit: Option<i32>) -> Self {
         self.exit_code = exit;
         self
     }
+    /// Associate a measured duration, saturating at the numeric schema bound.
     pub fn duration(mut self, elapsed: Duration) -> Self {
         self.duration_ms = Some(elapsed.as_millis().min(u64::MAX as u128) as u64);
         self
     }
+    /// Retain only the last four KiB; invalid UTF-8 is replaced and secrets scrubbed on send.
     pub fn stderr(mut self, bytes: &[u8]) -> Self {
         self.stderr =
             String::from_utf8_lossy(&bytes[bytes.len().saturating_sub(MAX_STDERR)..]).into();
@@ -163,6 +185,8 @@ pub fn scrub(text: &str, limit: usize) -> String {
 pub fn report(failure: Failure) -> bool {
     DIRECTORY.get().is_some_and(|root| report_to(root, failure))
 }
+/// Send to an explicit run without filesystem writes, waiting, retry or sink startup.
+/// Returns false when the receiver is absent/full or the platform has no transport.
 pub fn report_to(root: &Path, failure: Failure) -> bool {
     let Ok(bytes) = serde_json::to_vec(&failure.value()) else {
         return false;
@@ -184,6 +208,10 @@ pub fn report_to(root: &Path, failure: Failure) -> bool {
     }
 }
 
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private file helper called only by the sink or off-UI reader"
+)]
 fn private(root: &Path, name: &str, create: bool, append: bool) -> io::Result<File> {
     #[cfg(unix)]
     use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
@@ -219,6 +247,10 @@ fn lock(root: &Path) -> io::Result<Lock> {
     file.try_lock().map_err(io::Error::other)?;
     Ok(Lock(file))
 }
+#[allow(
+    clippy::disallowed_methods,
+    reason = "rotation belongs exclusively to the owned sink thread"
+)]
 fn append(root: &Path, bytes: &[u8], max: u64) -> io::Result<()> {
     if bytes.len() + 1 > MAX_RECORD || bytes.len() as u64 + 1 > max {
         return Err(io::Error::other("diagnostic record exceeds bound"));
@@ -285,6 +317,13 @@ fn normalized(row: Value) -> Option<Value> {
 /// Bounded local file view, also usable when a backend has already stopped.
 /// An unfiltered read acknowledges through the last returned row. Filtered
 /// reads leave the global unread cursor unchanged.
+///
+/// # Errors
+/// Returns file ownership/type/permission, cursor-write or underlying IO failures.
+#[allow(
+    clippy::disallowed_methods,
+    reason = "bounded diagnostic IO reader asserts it is not the UI thread"
+)]
 pub fn read(
     root: &Path,
     since: Option<u64>,
@@ -364,21 +403,23 @@ pub fn read(
     }
     let selected: Vec<_> = page.into();
     let omitted = total.saturating_sub(selected.len());
-    if acknowledge && since.is_none() && seat.is_none() {
-        if let Some(id) = selected.last().and_then(|r| r["id"].as_str()) {
-            let temp = format!(
-                ".diagnostics-read-{}-{}-{}",
-                std::process::id(),
-                now_ms(),
-                SERIAL.fetch_add(1, Ordering::Relaxed)
-            );
-            let mut f = private(root, &temp, true, false)?;
-            f.set_len(0)?;
-            f.write_all(id.as_bytes())?;
-            if let Err(error) = std::fs::rename(root.join(&temp), root.join(READ)) {
-                let _ = std::fs::remove_file(root.join(temp));
-                return Err(error);
-            }
+    if acknowledge
+        && since.is_none()
+        && seat.is_none()
+        && let Some(id) = selected.last().and_then(|r| r["id"].as_str())
+    {
+        let temp = format!(
+            ".diagnostics-read-{}-{}-{}",
+            std::process::id(),
+            now_ms(),
+            SERIAL.fetch_add(1, Ordering::Relaxed)
+        );
+        let mut f = private(root, &temp, true, false)?;
+        f.set_len(0)?;
+        f.write_all(id.as_bytes())?;
+        if let Err(error) = std::fs::rename(root.join(&temp), root.join(READ)) {
+            let _ = std::fs::remove_file(root.join(temp));
+            return Err(error);
         }
     }
     Ok(
@@ -388,6 +429,7 @@ pub fn read(
     )
 }
 
+/// Owns the run's background diagnostics sink; dropping requests stop without joining it.
 pub struct Server {
     stop: Arc<AtomicBool>,
     #[cfg(unix)]
@@ -397,6 +439,9 @@ pub struct Server {
 impl Server {
     /// Spawning is memory-only for the caller. Socket/filesystem startup is
     /// entirely on this owned thread; failure never prevents app startup.
+    ///
+    /// # Errors
+    /// Returns an OS thread-spawn failure. Asynchronous setup errors arrive on `ready`.
     pub fn start(root: PathBuf, notify: impl Fn(u64) + Send + 'static) -> io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -428,6 +473,7 @@ impl Server {
             ready,
         })
     }
+    /// Setup observation for IO/tests. UI callers must never wait on this receiver.
     pub fn ready(&self) -> &std::sync::mpsc::Receiver<io::Result<()>> {
         &self.ready
     }
@@ -443,6 +489,10 @@ impl Drop for Server {
     }
 }
 #[cfg(unix)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "owned diagnostics sink performs its filesystem work on its background thread"
+)]
 fn serve(
     root: &Path,
     stop: &AtomicBool,
@@ -486,10 +536,9 @@ fn serve(
                 if let Some(row) = serde_json::from_slice::<Value>(&bytes[..n])
                     .ok()
                     .and_then(normalized)
+                    && let Ok(data) = serde_json::to_vec(&row)
                 {
-                    if let Ok(data) = serde_json::to_vec(&row) {
-                        let _ = append(root, &data, MAX_FILE);
-                    }
+                    let _ = append(root, &data, MAX_FILE);
                 }
             }
             Ok(_) => {}
@@ -521,6 +570,10 @@ fn serve(
 }
 
 #[cfg(all(test, unix))]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private IO fixtures and bounded synchronization, never UI code"
+)]
 mod tests {
     use super::*;
     use std::os::unix::fs::{DirBuilderExt, PermissionsExt};

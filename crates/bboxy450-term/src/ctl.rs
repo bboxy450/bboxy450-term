@@ -1477,13 +1477,13 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
             eprintln!("bboxy450-term ctl {word}: deprecated, use: ctl {new}");
         }
         let result = run_main(args, default_endpoint);
-        if let Err(reason) = &result {
-            if let Some(root) = &failure_root {
-                bbt_rt::error_journal::report_to(
-                    root,
-                    bbt_rt::error_journal::Failure::new("ctl", &failure_operation, reason),
-                );
-            }
+        if let Err(reason) = &result
+            && let Some(root) = &failure_root
+        {
+            bbt_rt::error_journal::report_to(
+                root,
+                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, reason),
+            );
         }
         return match result {
             Err(reason) if reason.starts_with(TIMEOUT_PREFIX) => {
