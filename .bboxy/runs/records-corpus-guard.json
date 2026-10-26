@@ -1,6 +1,6 @@
 {
   "brief": "Oracle f63dd09f: records corpus gate for mixed code/script cuts",
-  "status": "regression red before guard, green after; author landing pending",
+  "status": "LANDED; author checks green; postsubmit and Oracle acceptance unverified",
   "base": "bdb1a783f55e1ef5f66eef31e08abe4912a62b6d",
   "mechanisms": [
     "scripts/landing.py:798 \u2014 every non-lab cut touching .bboxy/*.md runs the existing bbt-doc corpus target before crate/script checks; lab cuts retain their existing records checks",
@@ -66,5 +66,398 @@
     "The real bbt-doc parser remains unchanged; its malformed-frontmatter tests and actual corpus gate are the parser authority.",
     "No full postsubmit or Oracle acceptance claimed."
   ],
-  "failure_disposition": "First two fixture-authoring runs had nested Python string-escaping errors. They are retained separately; only records-corpus-before-valid is the actual before-fix counterexample."
+  "failure_disposition": "First two fixture-authoring runs had nested Python string-escaping errors. They are retained separately; only records-corpus-before-valid is the actual before-fix counterexample.",
+  "landing": {
+    "affected": [],
+    "author": "bboxy450@gmail.com",
+    "author_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "base": "fd7212f725f743ac53621f1a2ff3b1b668bcc53e",
+    "branch": "aster-records-corpus",
+    "build_attempts": 1,
+    "check_timings": [
+      {
+        "affected": [],
+        "compile_seconds": 1.498160083021503,
+        "gate_log": null,
+        "gate_log_sha256": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/c7a88253a74a3deec32b2015ed3d004ac449f317-3e5742e9/commands.log",
+        "recheck": null,
+        "run_seconds": 268.6687249999959,
+        "sha": "c7a88253a74a3deec32b2015ed3d004ac449f317",
+        "test_seconds": 262.7088350840495,
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 5.959889915946405
+      }
+    ],
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-landing.py",
+          "--all"
+        ],
+        "fixtures": true,
+        "tools": []
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-resource-ledger.py"
+        ],
+        "fixtures": true,
+        "tools": [
+          "scripts/test-resource-ledger.py"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          ""
+        ],
+        "tools": [
+          "scripts/invariants.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "bboxy450-prefix"
+        ],
+        "tools": [
+          "scripts/brand.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "cross-os-facade"
+        ],
+        "tools": [
+          "scripts/cross-os.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "images-resolve"
+        ],
+        "tools": [
+          "scripts/images.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "kill-only-own-pids"
+        ],
+        "tools": [
+          "scripts/kill-own-pids.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "layering"
+        ],
+        "tools": [
+          "scripts/layering.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "licenses-present"
+        ],
+        "tools": [
+          "scripts/licenses.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "local-first"
+        ],
+        "tools": [
+          "scripts/local-first.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "never-block-swarm"
+        ],
+        "tools": [
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-chokepoints"
+        ],
+        "tools": [
+          "scripts/cross-os.sh",
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-copyleft-deps"
+        ],
+        "tools": [
+          "scripts/deps-licences.sh"
+        ]
+      }
+    ],
+    "compile_seconds": 1.498160083021503,
+    "incremental_rechecks": 0,
+    "paths": [
+      ".bboxy/runs/records-corpus-guard.json",
+      "scripts/landing.py",
+      "scripts/test-landing.py"
+    ],
+    "presubmit_seconds": 273.93042745796265,
+    "retries": 1,
+    "run_seconds": 268.6687249999959,
+    "sha": "0e19c69a5273060a5f772bbe9d6f6576644dd744",
+    "test_seconds": 262.7088350840495,
+    "tested_sha": "c7a88253a74a3deec32b2015ed3d004ac449f317",
+    "tests_started": true,
+    "tier": "code",
+    "timestamp": "2026-10-26T19:33:50.094671+00:00",
+    "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+    "unclassified_seconds": 5.959889915946405
+  },
+  "author": {
+    "exit": 0,
+    "seconds": 288.5357301235199,
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/records-corpus-author.log",
+    "log_sha256": "596598ab09a3ca768ae152ad30c7e9685e2cc2bd5c4be8aac1995b3da943c7ef",
+    "presubmits": [
+      {
+        "affected": [],
+        "attempt": 0,
+        "binary_durations": [],
+        "build_cap_seconds": 1800.0,
+        "commands": [
+          {
+            "argv": [
+              "python3",
+              "-I",
+              "scripts/test-landing.py",
+              "--all"
+            ],
+            "fixtures": true,
+            "tools": []
+          },
+          {
+            "argv": [
+              "python3",
+              "-I",
+              "scripts/test-resource-ledger.py"
+            ],
+            "fixtures": true,
+            "tools": [
+              "scripts/test-resource-ledger.py"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              ""
+            ],
+            "tools": [
+              "scripts/invariants.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "bboxy450-prefix"
+            ],
+            "tools": [
+              "scripts/brand.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "cross-os-facade"
+            ],
+            "tools": [
+              "scripts/cross-os.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "images-resolve"
+            ],
+            "tools": [
+              "scripts/images.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "kill-only-own-pids"
+            ],
+            "tools": [
+              "scripts/kill-own-pids.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "layering"
+            ],
+            "tools": [
+              "scripts/layering.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "licenses-present"
+            ],
+            "tools": [
+              "scripts/licenses.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "local-first"
+            ],
+            "tools": [
+              "scripts/local-first.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "never-block-swarm"
+            ],
+            "tools": [
+              "scripts/never-block.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "no-chokepoints"
+            ],
+            "tools": [
+              "scripts/cross-os.sh",
+              "scripts/never-block.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "",
+              "no-copyleft-deps"
+            ],
+            "tools": [
+              "scripts/deps-licences.sh"
+            ]
+          }
+        ],
+        "compile_seconds": 1.498160083021503,
+        "error": null,
+        "exit": 0,
+        "finding": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/c7a88253a74a3deec32b2015ed3d004ac449f317-3e5742e9/commands.log",
+        "operation": "6c48638a338a419e851881a3bddb7e8a",
+        "run_bound_seconds": 900.0,
+        "run_seconds": 268.6687249999959,
+        "seconds": 270.1674306250061,
+        "sha": "c7a88253a74a3deec32b2015ed3d004ac449f317",
+        "test_seconds": 262.7088350840495,
+        "tests_started": true,
+        "tier": "code",
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 5.959889915946405,
+        "verdict": "green",
+        "log_sha256": "31add4a45e439ed533962ec151735a794ae1e413cfc7f0b45a08ae5a91054f0e",
+        "rust_summaries": [],
+        "fixture_summaries": [
+          "Ran 130 fixture tests in 64.022s; failures=0",
+          "Ran 46 tests in 197.325s",
+          "Ran 31 tests in 0.624s",
+          "invariants: 11 checks, 0 failures, 11 slow checks skipped"
+        ]
+      }
+    ]
+  }
 }
