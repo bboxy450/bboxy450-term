@@ -1,6 +1,6 @@
 {
   "promise": "T9 explicit seat restart",
-  "status": "full native proof exit0; author pending",
+  "status": "LANDED; author green; postsubmit/review unverified",
   "source_refs": {
     "scripts/e2e/t9_restart.py": "normal ctl seat restart, actual session IDs and resumed native requests, old-PID absence and retained pre-restart capture range",
     "scripts/e2e/T9.sh": "coverage full, explicit installed-client/local-model label"
@@ -160,5 +160,36 @@
     "Installed interactive native clients, scripted localhost model; no remote-model claim",
     "No OS presentation or timing SLO",
     "postsubmit and Oracle review unverified"
-  ]
+  ],
+  "landing": [
+    {
+      "sha": "a72353c44e52c98029443052ea3d7b63b5e1b251",
+      "exit": 0,
+      "verdict": "green",
+      "compile_seconds": 137.20346845907625,
+      "run_seconds": 352.0846437489381,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/a72353c44e52c98029443052ea3d7b63b5e1b251-8b44c467/commands.log",
+      "raw_log_sha256": "0149f150ed80d29bcd98b7b6601f100c4c17947ffc53a0c8219be5b8dbf76c01",
+      "rust_counts": [
+        307,
+        0,
+        45
+      ]
+    },
+    {
+      "sha": "cdba62c0a4652053ee6640384f34d7a4673a93b0",
+      "exit": 0,
+      "verdict": "green",
+      "compile_seconds": 167.84603595908266,
+      "run_seconds": 127.78396108292509,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/cdba62c0a4652053ee6640384f34d7a4673a93b0-de6d5d31/commands.log",
+      "raw_log_sha256": "2041021a26a6acd5e547774ae9a1db7ce8faf3a404ed59855a690a561709fdcf",
+      "rust_counts": [
+        307,
+        0,
+        45
+      ]
+    }
+  ],
+  "landing_summary": "Both original and moving-main check green; final code cdba62c0; strict0, fast invariants14/0; 129 runner fixture checks0fail; no product/render code change"
 }
