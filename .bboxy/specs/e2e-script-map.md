@@ -8,13 +8,13 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-26T06:07:31Z"
+updated: "2026-10-26T11:37:23Z"
 ---
 # e2e script map
 
 **Lens.** Each promise of [[e2e-acceptance]] §1 has one night script, `scripts/e2e/<ID>.sh`. Decision [[d316-pass-means-the-whole-promise]]: its prefix-matched `# coverage:` header is the source of current coverage; only `full` is green. Whoever changes a header updates its row in the same commit.
 
-The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts the test-account retained-read gap boundary; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 names the live-viewport fixture limit when it cannot reach history admission. There are 55 current promises, including T9. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
+The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts the test-account retained-read gap boundary; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 names the live-viewport fixture limit when it cannot reach history admission. There are 56 current promises, including T9 and M7. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
 
 The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their code baseline is `afff4758`, their spec baseline is `e48d6f8f`; their steps, assertions, missing hooks and source lines are a dated plan, not a claim about current implementation. Some hooks have since landed. Current coverage comes from the index, not from that historical gap list. T9 was added later and is indexed from its script; it is outside the archived 54-row plan.
 
@@ -52,6 +52,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | M4 | `scripts/e2e/M4.sh` | full | — | |
 | M5 | `scripts/e2e/M5.sh` | partial | harness: stand-in; a real Worker and real Oracle harness ask for the unassigned inventory (the admitted seat MCP bridge is exercised by deterministic fixtures) | |
 | M6 | `scripts/e2e/M6.sh` | partial | priority delays, never deletes | |
+| M7 | `scripts/e2e/M7.sh` | full | — | |
 | F1 | `scripts/e2e/F1.sh` | partial | script not implemented: the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls | |
 | F2 | `scripts/e2e/F2.sh` | partial | script not implemented: unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read | |
 | F3 | `scripts/e2e/F3.sh` | partial | script not implemented: killing logic and restarting resumes the events lane at its cursors: no duplicate row, no lost event | |
@@ -755,3 +756,12 @@ No script starts an app outside the runner, reads credentials or attaches a seco
 R2 changes Rim size through the actual Settings keyboard controls and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, all four edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. It captures the actual window after each setting. The private test-account config path is used; the script never edits the operator's config or bypasses Settings with a direct file write.
 
 R4 uses the shared UI-clock driver for rendered row/tab rim and focus-swell samples, including a resting idle row. Samples must exclude the other surface's 40px reach and the pane's halo before they can prove independent row/tab behaviour. Card focus has no exposed app control path; that clause remains partial (Wren's lab reference09660b51). The row/tab fixture uses actual split tabs, asserts the intended focused seat, and samples the tab gutter outside the active row’s rim. The clock-enabled R2/R4 development run passed full/partial respectively; all raw failures and captures remain in the run evidence.
+
+
+### M7 — receiver attention (MA-9)
+
+`M7.sh` uses the runner-owned headless app and per-run file account, with a private harness HOME and the installed Codex client pointed at a loopback scripted model. It does not copy or read provider credentials. A separate zsh seat calls its inherited admitted MCP bridge to create a channel and send the digest members.
+
+The script first waits for the real model seat's idle observation on its unmodified Executor defaults. Muting and unmuting a different seat emits two typed Presence events: both must exist in the addressed inbox, carry `wake: none`, have no native attempt, and stay absent from native model inputs. A DM then must carry `wake: now`, one native attempt and exactly one model request containing its ID. The first 49 channel messages must be durably deferred with a common deadline and no native attempt; message 50 must produce one native attempt and one model request, containing every member ID exactly once in arrival order and no repasted bodies. The earlier events must still have no native attempt after both positive deliveries.
+
+Coverage is full for M7's event/DM/cap promise. The ten-minute window remains the MA-4 injected-clock unit contract; M7 never advances the UI clock or waits ten minutes. Model prose is not a verdict: receipt fields, exact native inputs, ID sets/order and script exit are the assertions. The loopback model supplies no tool judgement or external provider dependency.

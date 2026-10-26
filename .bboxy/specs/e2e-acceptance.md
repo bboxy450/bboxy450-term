@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-26T09:29:50Z"
+updated: "2026-10-26T11:37:23Z"
 ---
 # E2E acceptance
 
@@ -35,7 +35,7 @@ flowchart LR
 
 ## 1. The acceptance checklist
 
-Every promised user-facing function, one line of expectation each, from [[vision]], the specs and the decisions as of today. **"All promised functionality is there, is intuitive, works" is the acceptance criterion**, and each line below is one promise. 55 promises. A promise with no e2e record is a gap the checklist shows; a promise whose record fails is red until it passes.
+Every promised user-facing function, one line of expectation each, from [[vision]], the specs and the decisions as of today. **"All promised functionality is there, is intuitive, works" is the acceptance criterion**, and each line below is one promise. 56 promises. A promise with no e2e record is a gap the checklist shows; a promise whose record fails is red until it passes.
 
 **This section is generated from, and checked against (rule, 2026-10-24).** `lab/web/e2e.js` is generated from this section by `lab/web/gen-e2e.py`, and `crates/bbt-ui/tests/e2e_checklist.rs` asserts that the generated file and this section agree. **Any edit to §1 regenerates `e2e.js` in the same commit**, and `scripts/records-push.sh` runs that test whenever this file or `e2e.js` is in the push, fail closed; a records-only edit that forgets the regeneration cannot land (it did once, at c13b0ba5, and main was red until Wren regenerated).
 
@@ -88,6 +88,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 - **M4** a report with verify_result whose command differs from verify, or whose exit code is non-zero, is refused on accept with the reason named
 - **M5** the operator alone lists open unassigned tasks account-wide; a seat asking gets the existing refusal
 - **M6** groups stay their own destination; a message to a muted seat waits; priority delays, never deletes
+- **M7** an event is stored and receipted without waking an idle seat under its role defaults; a DM wakes it once; fifty deferred channel messages arrive as one native digest listing their ids in order
 
 ### live feed
 

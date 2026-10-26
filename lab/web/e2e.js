@@ -161,6 +161,11 @@ window.E2E_PROMISES = [
   "text": "groups stay their own destination; a message to a muted seat waits; priority delays, never deletes"
  },
  {
+  "id": "M7",
+  "group": "messaging and tasks",
+  "text": "an event is stored and receipted without waking an idle seat under its role defaults; a DM wakes it once; fifty deferred channel messages arrive as one native digest listing their ids in order"
+ },
+ {
   "id": "F1",
   "group": "live feed",
   "text": "the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls"
