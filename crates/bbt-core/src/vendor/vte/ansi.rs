@@ -47,6 +47,7 @@ const BSU_CSI: [u8; SYNC_ESCAPE_LEN] = *b"\x1b[?2026h";
 /// ESU CSI sequence for terminating synchronized updates.
 const ESU_CSI: [u8; SYNC_ESCAPE_LEN] = *b"\x1b[?2026l";
 
+/// Parsed OSC hyperlink parameters; the host owns URI handling.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Hyperlink {
     /// Identifier for the given hyperlink.
@@ -55,10 +56,14 @@ pub struct Hyperlink {
     pub uri: String,
 }
 
+/// Eight-bit red, green and blue color components.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Default, Serialize, Deserialize)]
 pub struct Rgb {
+    /// Red component in 0..=255.
     pub r: u8,
+    /// Green component in 0..=255.
     pub g: u8,
+    /// Blue component in 0..=255.
     pub b: u8,
 }
 
@@ -300,6 +305,7 @@ impl<T: Timeout> Processor<T> {
     }
 
     #[inline]
+    /// Construct a processor with its default parser and synchronization state.
     pub fn new() -> Self {
         Self::default()
     }
@@ -462,6 +468,7 @@ impl<'a, H: Handler + 'a, T: Timeout> Performer<'a, H, T> {
     }
 }
 
+/// Standard synchronized-output deadline state without an owned timer or IO loop.
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct StdSyncHandler {
     #[serde(with = "relative_timeout")]
@@ -752,7 +759,7 @@ pub trait Handler {
     /// The output is of form `CSI > 4 ; mode m`.
     fn report_modify_other_keys(&mut self) {}
 
-    // Set SCP control.
+    /// Set the character path and update mode requested by an SCP control sequence.
     fn set_scp(&mut self, _char_path: ScpCharPath, _update_mode: ScpUpdateMode) {}
 }
 
@@ -845,7 +852,9 @@ pub enum KeyboardModesApplyBehavior {
 /// Terminal cursor configuration.
 #[derive(Default, Debug, Eq, PartialEq, Copy, Clone, Hash, Serialize, Deserialize)]
 pub struct CursorStyle {
+    /// Requested terminal cursor shape.
     pub shape: CursorShape,
+    /// Whether cursor blinking is requested.
     pub blinking: bool,
 }
 
@@ -908,6 +917,7 @@ impl From<NamedMode> for Mode {
 pub enum NamedMode {
     /// IRM Insert Mode.
     Insert = 4,
+    /// Treat line feed as a carriage return followed by a line feed.
     LineFeedNewLine = 20,
 }
 
@@ -962,6 +972,7 @@ impl From<NamedPrivateMode> for PrivateMode {
 /// Private DEC modes.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum NamedPrivateMode {
+    /// Use application cursor-key sequences.
     CursorKeys = 1,
     /// Select 80 or 132 columns per page (DECCOLM).
     ///
@@ -975,19 +986,33 @@ pub enum NamedPrivateMode {
     /// * resets DECLRMM to unavailable
     /// * clears data from the status line (if set to host-writable)
     ColumnMode = 3,
+    /// Address the cursor relative to the scrolling region.
     Origin = 6,
+    /// Automatically wrap at the right margin.
     LineWrap = 7,
+    /// Request cursor blinking.
     BlinkingCursor = 12,
+    /// Make the terminal cursor visible.
     ShowCursor = 25,
+    /// Report mouse-button transitions.
     ReportMouseClicks = 1000,
+    /// Report mouse motion while a button is held.
     ReportCellMouseMotion = 1002,
+    /// Report all mouse motion.
     ReportAllMouseMotion = 1003,
+    /// Report frontend focus transitions.
     ReportFocusInOut = 1004,
+    /// Encode mouse coordinates using the UTF-8 mouse extension.
     Utf8Mouse = 1005,
+    /// Encode mouse reports in SGR format.
     SgrMouse = 1006,
+    /// Translate scrolling to cursor motion on the alternate screen.
     AlternateScroll = 1007,
+    /// Request urgency hints for terminal attention events.
     UrgencyHints = 1042,
+    /// Switch to the alternate screen while saving or restoring the cursor.
     SwapScreenAndSetRestoreCursor = 1049,
+    /// Delimit pasted input using bracketed-paste markers.
     BracketedPaste = 2004,
     /// The mode is handled automatically by [`Processor`].
     SyncUpdate = 2026,
@@ -1098,6 +1123,7 @@ pub enum NamedColor {
 
 impl NamedColor {
     #[must_use]
+    /// Map base colors and foreground to their bright counterparts; leave other colors unchanged.
     pub fn to_bright(self) -> Self {
         match self {
             NamedColor::Foreground => NamedColor::BrightForeground,
@@ -1123,6 +1149,7 @@ impl NamedColor {
     }
 
     #[must_use]
+    /// Map base colors and foreground to their dim counterparts; leave other colors unchanged.
     pub fn to_dim(self) -> Self {
         match self {
             NamedColor::Black => NamedColor::DimBlack,
@@ -1148,10 +1175,14 @@ impl NamedColor {
     }
 }
 
+/// A named, RGB or indexed terminal color selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Color {
+    /// A symbolic terminal color, including foreground/background defaults.
     Named(NamedColor),
+    /// An explicit eight-bit RGB color.
     Spec(Rgb),
+    /// An entry in the 256-color indexed palette.
     Indexed(u8),
 }
 
@@ -1216,8 +1247,11 @@ pub enum CharsetIndex {
     /// Default set, is designated as ASCII at startup.
     #[default]
     G0,
+    /// The second designated character-set slot.
     G1,
+    /// The third designated character-set slot.
     G2,
+    /// The fourth designated character-set slot.
     G3,
 }
 
@@ -1225,7 +1259,9 @@ pub enum CharsetIndex {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum StandardCharset {
     #[default]
+    /// ASCII character mapping.
     Ascii,
+    /// VT100 special-character and line-drawing mapping.
     SpecialCharacterAndLineDrawing,
 }
 

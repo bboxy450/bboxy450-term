@@ -5,7 +5,7 @@ include!(concat!(env!("OUT_DIR"), "/icons.rs"));
 
 pub fn images() -> Result<Assets, String> {
     let mut images = Vec::new();
-    let bytes = include_bytes!("../../../lab/web/bboxy.png");
+    let bytes = include_bytes!(concat!(env!("BBOXY_INPUT_ROOT"), "/lab/web/bboxy.png"));
     let mut decoder = png::Decoder::new(Cursor::new(bytes));
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
     let mut reader = decoder.read_info().map_err(|e| e.to_string())?;

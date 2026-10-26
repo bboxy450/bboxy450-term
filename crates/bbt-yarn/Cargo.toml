@@ -1,5 +1,5 @@
 [package]
-name = "bbt-yarn"
+name = "bboxy450-yarn"
 description = "A no_std reactor kernel for explicit, compile-checked async orchestration"
 version.workspace = true
 edition.workspace = true
@@ -19,7 +19,7 @@ macros = ["dep:bbt-yarn-macros"]
 tokio = ["dep:tokio", "dep:tokio-util"]
 
 [dependencies]
-bbt-yarn-macros = { path = "../bbt-yarn-macros", version = "=0.0.1", optional = true }
+bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.0", path = "../bbt-yarn-macros", optional = true }
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
 tokio = { version = "=1.54.1", default-features = false, features = ["macros", "rt", "rt-multi-thread", "sync", "time"], optional = true }
@@ -33,3 +33,6 @@ trybuild = "=1.0.120"
 [[example]]
 name = "minimal"
 required-features = ["macros", "tokio"]
+
+[lib]
+name = "bbt_yarn"

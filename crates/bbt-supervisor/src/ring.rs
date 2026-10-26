@@ -35,45 +35,68 @@ const PAGE_BYTES: usize = 64 * 1024;
 /// Cumulative capture timings; durations use monotonic nanoseconds.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CaptureStats {
+    /// Captured record count, or ordered events in a history page according to the containing type.
     pub records: u64,
+    /// Cumulative capture-record encoding time in monotonic nanoseconds.
     pub encode_ns: u64,
+    /// Cumulative hot-segment write time in nanoseconds.
     pub hot_write_ns: u64,
+    /// Cumulative synchronization time in nanoseconds.
     pub sync_ns: u64,
+    /// Cumulative committed-boundary publication time in nanoseconds.
     pub marker_ns: u64,
+    /// Cumulative cold-segment work time in nanoseconds.
     pub cold_ns: u64,
+    /// Number of hot segments sealed into cold storage.
     pub seals: u64,
+    /// Largest observed hot-segment seal time in nanoseconds.
     pub max_seal_ns: u64,
+    /// Current capture-writer queued bytes.
     pub queued_bytes: usize,
+    /// Peak observed capture-writer queued bytes.
     pub peak_queue_bytes: usize,
+    /// Number of capture admissions refused by a full queue.
     pub queue_full_count: u64,
     #[serde(default)]
+    /// Number of commits completing the ordered tier.
     pub ordered_commits: u64,
     #[serde(default)]
+    /// Number of commits completing the durable tier.
     pub durable_commits: u64,
     /// Shared writer counters, repeated on each seat: do not sum across seats.
     #[serde(default)]
     pub writer_busy_ns: u64,
     #[serde(default)]
+    /// Number of shared writer commit rounds.
     pub commit_rounds: u64,
     /// Cumulative round p99, rounded up to 1 ms (overflow uses the exact max).
     #[serde(default)]
     pub commit_p99_ns: u64,
     #[serde(default)]
+    /// Largest observed shared commit-round duration in nanoseconds.
     pub commit_max_ns: u64,
     #[serde(default)]
+    /// Bytes admitted but not yet covered by the durable tier.
     pub undurable_bytes: usize,
     #[serde(default)]
+    /// Peak observed bytes awaiting the durable tier.
     pub peak_undurable_bytes: usize,
     #[serde(default)]
+    /// Number of durability-credit pauses.
     pub durable_pauses: u64,
     #[serde(default)]
+    /// Number of completed shared durability rounds.
     pub durable_rounds: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Hot capture, checkpoint and idle-flush budgets.
 pub struct Settings {
+    /// Maximum hot capture-segment byte budget before sealing.
     pub capacity_bytes: u64,
+    /// Byte budget used to schedule checkpoint work.
     pub checkpoint_bytes: u64,
+    /// Configured idle checkpoint interval in milliseconds.
     pub idle_ms: u64,
 }
 impl Default for Settings {
@@ -86,6 +109,10 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    /// Validate the hot-segment, checkpoint and idle interval budgets.
+    ///
+    /// # Errors
+    /// Refuses capacity outside 4 KiB..=64 MiB, invalid checkpoint fractions or idle intervals outside 1..=60000 ms.
     pub fn validate(&self) -> Result<()> {
         if self.capacity_bytes < 4096
             || self.capacity_bytes > 64 * 1024 * 1024
@@ -101,10 +128,15 @@ impl Settings {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Capture-sequence mapping to an absolute logical hard-line interval and layout epoch.
 pub struct RowPoint {
+    /// Generation-scoped capture sequence associated with this checkpoint or row entry.
     pub sequence: u64,
+    /// First absolute logical hard-line coordinate covered by this entry.
     pub first_row: u64,
+    /// Last absolute logical hard-line coordinate covered by this entry.
     pub last_row: u64,
+    /// Layout-reference epoch, advanced by observed layout-reset controls.
     pub epoch: u64,
 }
 
@@ -112,7 +144,9 @@ pub struct RowPoint {
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub struct RowTracker {
     parser: vte::Parser,
+    /// Logical hard-line coordinate, or an optional indexed interval for an event.
     pub row: u64,
+    /// Layout-reference epoch, advanced by observed layout-reset controls.
     pub epoch: u64,
 }
 struct RowEvents<'a>(&'a mut u64, &'a mut u64);
@@ -171,21 +205,38 @@ impl RowTracker {
 /// Versioned state produced on logic's IO worker and stored by the supervisor.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Saved {
+    /// Serialized saved-state format version.
     pub version: u16,
+    /// Opaque process identity associated with this retained state.
     pub seat: Ulid,
+    /// Nonzero process-generation fence.
     pub generation: u64,
+    /// Generation-scoped capture sequence associated with this checkpoint or row entry.
     pub sequence: u64,
+    /// Cumulative original PTY-output byte cursor at the captured sequence.
     pub byte_end: u64,
+    /// Checkpoint terminal column count.
     pub cols: usize,
+    /// Checkpoint terminal visible-row count.
     pub rows: usize,
+    /// Resumable terminal model and parser state, without live embedding callbacks.
     pub checkpoint: Checkpoint,
+    /// Latest title observed during isolated replay.
     pub title: String,
+    /// Latest observed working-directory report, if present.
     pub cwd: Option<String>,
+    /// Named unavailable continuity, or explicit requested-range gap according to the containing type.
     pub gap: Option<String>,
+    /// Logical hard-line and layout-epoch parser state.
     pub tracker: RowTracker,
+    /// Retained sequence-to-logical-line index entries.
     pub index: Vec<RowPoint>,
 }
 impl Saved {
+    /// Serialize and compress saved state within the decoded and compressed checkpoint budgets.
+    ///
+    /// # Errors
+    /// Returns serialization/compression errors or refusal above 16 MiB decoded or 128 KiB compressed.
     pub fn encode(&self) -> Result<Vec<u8>> {
         let bytes = serde_json::to_vec(self)?;
         if bytes.len() as u64 > MAX_DECODED {
@@ -197,6 +248,10 @@ impl Saved {
         }
         Ok(compressed)
     }
+    /// Boundedly decompress and validate checkpoint identity, geometry, version and index order.
+    ///
+    /// # Errors
+    /// Refuses oversized, corrupt, malformed or inconsistent saved state.
     pub fn decode(bytes: &[u8]) -> Result<Self> {
         if bytes.len() > MAX_CHECKPOINT {
             return Err(invalid("oversized checkpoint"));
@@ -237,18 +292,32 @@ impl Saved {
 
 /// Isolated replay drains generated effects instead of sending them to a PTY.
 pub struct Playback {
+    /// Isolated terminal model whose generated effects are drained rather than transmitted.
     pub term: Term,
+    /// Opaque process identity associated with this retained state.
     pub seat: Ulid,
+    /// Nonzero process-generation fence.
     pub generation: u64,
+    /// Generation-scoped capture sequence associated with this checkpoint or row entry.
     pub sequence: u64,
+    /// Cumulative original PTY-output byte cursor at the captured sequence.
     pub byte_end: u64,
+    /// Latest title observed during isolated replay.
     pub title: String,
+    /// Latest observed working-directory report, if present.
     pub cwd: Option<String>,
+    /// Named unavailable continuity, or explicit requested-range gap according to the containing type.
     pub gap: Option<String>,
+    /// Logical hard-line and layout-epoch parser state.
     pub tracker: RowTracker,
+    /// Retained sequence-to-logical-line index entries.
     pub index: VecDeque<RowPoint>,
 }
 impl Playback {
+    /// Construct isolated replay state for an explicit process generation and terminal size.
+    ///
+    /// # Panics
+    /// Panics when dimensions are below the terminal model minimum.
     pub fn new(seat: Ulid, generation: u64, size: SeatSize) -> Self {
         Self {
             term: Term::new(size.cols as usize, size.rows as usize, 0),
@@ -263,6 +332,10 @@ impl Playback {
             index: VecDeque::new(),
         }
     }
+    /// Restore isolated replay from saved state without executing prior terminal effects.
+    ///
+    /// # Panics
+    /// Panics if directly constructed saved state contains invalid terminal dimensions.
     pub fn restore(saved: Saved) -> Self {
         let mut term = Term::new(saved.cols, saved.rows, 0);
         term.restore(saved.checkpoint);
@@ -279,6 +352,7 @@ impl Playback {
             index: saved.index.into(),
         }
     }
+    /// Clone replay state into a versioned checkpoint with bounded index entries.
     pub fn saved(&self) -> Saved {
         use bbt_core::Dimensions;
         Saved {
@@ -297,6 +371,10 @@ impl Playback {
             index: self.index.iter().cloned().collect(),
         }
     }
+    /// Apply one matching, sequential capture event and retain its logical-row observations.
+    ///
+    /// # Errors
+    /// Refuses another process identity or generation, or an event-sequence discontinuity.
     pub fn apply(&mut self, event: &Event) -> Result<()> {
         if event.seat() != self.seat
             || event_generation(event) != self.generation
@@ -339,22 +417,36 @@ impl Playback {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Observed ordered and committed capture heads, byte bounds and numeric counters.
 pub struct Status {
+    /// Nonzero process-generation fence.
     pub generation: u64,
+    /// Earliest retained capture sequence available in this observation.
     pub first_sequence: u64,
+    /// Capture sequence covered by the published committed boundary.
     pub committed_sequence: u64,
+    /// Latest ordered capture sequence, which may lead the committed boundary.
     pub captured_sequence: u64,
+    /// Earliest original-output byte cursor retained in this observation.
     pub byte_start: u64,
+    /// Cumulative original PTY-output byte cursor at the captured sequence.
     pub byte_end: u64,
+    /// Framed bytes currently present in the hot capture segment.
     pub hot_bytes: u64,
+    /// Whether the publishing capture owner reports a paused state.
     pub paused: bool,
+    /// Named recovery or continuity diagnostic, if one was observed.
     pub recovery_notice: Option<String>,
     #[serde(default)]
+    /// Cumulative numeric capture counters.
     pub capture: CaptureStats,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// One original capture event with an optional logical-row index entry.
 pub struct IndexedEvent {
+    /// Original observed process event.
     pub event: Event,
+    /// Logical hard-line coordinate, or an optional indexed interval for an event.
     pub row: Option<RowPoint>,
 }
 
@@ -388,10 +480,15 @@ fn page_weight(record: &IndexedEvent) -> Result<usize> {
         .ok_or_else(|| invalid("history page weight overflow"))
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Bounded inclusive capture-sequence page with explicit gaps and a continuation cursor.
 pub struct History {
+    /// Capture-head observation accompanying this history page.
     pub status: Status,
+    /// Captured record count, or ordered events in a history page according to the containing type.
     pub records: Vec<IndexedEvent>,
+    /// Named unavailable continuity, or explicit requested-range gap according to the containing type.
     pub gap: Option<HistoryGap>,
+    /// First capture sequence omitted by page bounds, if a continuation is needed.
     pub next: Option<u64>,
 }
 
@@ -451,6 +548,7 @@ struct Entry {
     byte_start: u64,
 }
 
+/// Owned retained capture, atomic boundaries, hot segments and cold content-addressed blobs.
 pub struct Ring {
     root: PathBuf,
     boundary: Boundary,
@@ -468,6 +566,14 @@ pub struct Ring {
     strong_dirty: bool,
 }
 impl Ring {
+    /// Create or recover an explicitly selected generation capture directory on IO.
+    /// The directory must be owned by this user; owner-only permissions are applied.
+    ///
+    /// # Errors
+    /// Returns invalid identity/budget, unsafe path/ownership, corruption or storage IO failures.
+    ///
+    /// # Panics
+    /// In debug builds, panics on the registered UI thread.
     pub fn open(
         root: &Path,
         seat: Ulid,
@@ -620,12 +726,15 @@ impl Ring {
         }
         Ok(())
     }
+    /// Borrow this capture directory path.
     pub fn directory(&self) -> &Path {
         &self.root
     }
+    /// Borrow the budgets stored in the current capture boundary.
     pub fn settings(&self) -> &Settings {
         &self.boundary.settings
     }
+    /// Copy current capture heads and counters without issuing a separate host query.
     pub fn status(&self) -> Status {
         Status {
             generation: self.boundary.generation,
@@ -646,15 +755,22 @@ impl Ring {
     fn first_base(&self) -> u64 {
         self.boundary.origin_base.unwrap_or(self.boundary.base)
     }
+    /// Report direct-ring capture availability; asynchronous writer admission is a separate bound.
     pub fn can_capture(&self) -> bool {
         true
     }
+    /// Return one accepted original-output chunk budget within the current hot-segment capacity.
     pub fn capture_capacity(&self) -> usize {
         OUTPUT_CHUNK_BYTES.min(self.boundary.settings.capacity_bytes as usize - HEADER)
     }
+    /// Report direct-ring control availability; this does not grant a protocol lease.
     pub fn can_control(&self) -> bool {
         true
     }
+    /// Seal a full hot segment before admitting the next capture chunk.
+    ///
+    /// # Errors
+    /// Returns sealing, compression, persistence or storage IO failures.
     pub fn prepare_capture(&mut self) -> Result<()> {
         if self.boundary.length + (HEADER + self.capture_capacity()) as u64
             > self.boundary.settings.capacity_bytes
@@ -678,6 +794,10 @@ impl Ring {
         }
         Ok(refs)
     }
+    /// Read the newest retained checkpoint, or return `None` before one exists.
+    ///
+    /// # Errors
+    /// Returns corrupt or missing retained-state and storage IO failures.
     pub fn latest_checkpoint(&self) -> Result<Option<Vec<u8>>> {
         if let Some(entry) = self.entries.iter().rev().find(|e| e.kind == 4)
             && self
@@ -846,6 +966,10 @@ impl Ring {
         });
         Ok(())
     }
+    /// Validate and append a checkpoint covering an actually captured cursor.
+    ///
+    /// # Errors
+    /// Refuses mismatched identity, stale/conflicting cursor state, invalid encoded state or storage failure.
     pub fn checkpoint(&mut self, bytes: Vec<u8>) -> Result<()> {
         let saved = Saved::decode(&bytes)?;
         if saved.seat != self.boundary.seat
@@ -874,6 +998,10 @@ impl Ring {
         }
         Ok(())
     }
+    /// Append the next observed event for this exact process generation.
+    ///
+    /// # Errors
+    /// Refuses identity or sequence discontinuity, encoding or storage failures.
     pub fn append_event(&mut self, event: &Event) -> Result<()> {
         if event.seat() != self.boundary.seat
             || event_generation(event) != self.boundary.generation
@@ -951,6 +1079,12 @@ impl Ring {
         Ok(())
     }
     /// Direct callers and segment seals require a durable derived boundary.
+    ///
+    /// # Errors
+    /// Returns torn/untracked capture suffixes, persistence or storage IO failures.
+    ///
+    /// # Panics
+    /// In debug builds, panics on the registered UI thread.
     pub fn flush(&mut self) -> Result<()> {
         if self.grouped {
             self.commit(false)?;
@@ -988,6 +1122,10 @@ impl Ring {
         self.stats.marker_ns += marker_started.elapsed().as_nanos() as u64;
         Ok(())
     }
+    /// Flush when at least 20 ms have elapsed since the last commit.
+    ///
+    /// # Errors
+    /// Returns the same storage and consistency failures as `flush`.
     pub fn flush_due(&mut self) -> Result<()> {
         if self.last_commit.elapsed() >= std::time::Duration::from_millis(20) {
             self.flush()?;
@@ -1138,6 +1276,10 @@ impl Ring {
         }
         Ok(())
     }
+    /// Read a bounded inclusive capture-sequence interval with named retention gaps and continuation.
+    ///
+    /// # Errors
+    /// Refuses reversed ranges, corrupt retained records, decompression or storage IO failures.
     pub fn history(&self, from: u64, to: u64) -> Result<History> {
         if from > to {
             return Err(invalid("invalid history range"));
@@ -1234,6 +1376,10 @@ impl Ring {
             next,
         })
     }
+    /// Reconstruct isolated state from retained capture and checkpoints without transmitting effects.
+    ///
+    /// # Errors
+    /// Returns corrupt/discontinuous retained state, decode or storage failures.
     pub fn replay(&self) -> Result<Playback> {
         let bytes = self
             .latest_checkpoint()?
@@ -1452,15 +1598,22 @@ const CRC32C: [u32; 256] = {
     }
     table
 };
+/// Compute the CRC32C checksum used by capture records and boundaries.
 pub fn crc32c(bytes: &[u8]) -> u32 {
     crc32c_parts(bytes, &[])
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Named requested capture interval that is not fully present in retained history.
 pub struct HistoryGap {
+    /// Inclusive first capture sequence requested by the caller.
     pub requested_from: u64,
+    /// Inclusive last capture sequence requested by the caller.
     pub requested_to: u64,
+    /// Earliest retained capture sequence, absent when none is available.
     pub retained_from: Option<u64>,
+    /// Latest retained capture sequence, absent when none is available.
     pub retained_to: Option<u64>,
+    /// Named explanation of unavailable capture continuity.
     pub reason: String,
 }

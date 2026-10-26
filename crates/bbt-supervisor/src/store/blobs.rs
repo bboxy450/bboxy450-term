@@ -3,14 +3,23 @@ use std::path::{Path, PathBuf};
 
 use super::{Blobs, Result, digest, invalid};
 
+/// Largest decoded blob accepted by this backend, in bytes.
 pub const MAX_BLOB: usize = 64 * 1024 * 1024;
 
+/// Local compressed blobs named by SHA-256 digest under the selected object directory.
 #[derive(Debug, Clone)]
 pub struct LocalBlobs {
     root: PathBuf,
 }
 
 impl LocalBlobs {
+    /// Create or reopen the selected object directory's `blobs` child.
+    ///
+    /// # Errors
+    /// Returns directory creation or filesystem IO failures.
+    ///
+    /// # Panics
+    /// In debug builds, panics when called on the registered UI thread.
     pub fn open(object: &Path) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let root = object.join("blobs");

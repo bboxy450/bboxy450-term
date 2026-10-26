@@ -1,7 +1,7 @@
-//! Explicit file custody. The file is the secret; there is no wrapping key.
-//!
-//! Each immutable slot is published atomically in a caller-owned private
-//! directory. Opening this store never selects a native credential service.
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
+
 use std::{fmt, path::Path};
 
 use zeroize::Zeroize;
@@ -21,12 +21,19 @@ pub const MAX_SECRET_BYTES: usize = 64 * 1024;
 /// Safe diagnostics never contain a secret or a credential-service response.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
+    /// The label is empty, too long or contains a disallowed character.
     InvalidLabel,
+    /// The directory or slot is not a safe regular filesystem object.
     UnsafePath,
+    /// Storage permissions are not restricted to the owner.
     Permissions,
+    /// The immutable slot already exists.
     Conflict,
+    /// An empty value cannot be stored.
     EmptySecret,
+    /// The value exceeds the secret-size bound.
     TooLarge,
+    /// A filesystem failure, retaining only its safe error kind.
     Io(std::io::ErrorKind),
 }
 impl fmt::Display for Error {
@@ -52,6 +59,7 @@ impl From<std::io::Error> for Error {
 /// An owned secret whose buffer is erased on drop and hidden from Debug.
 pub struct Secret(Vec<u8>);
 impl Secret {
+    /// Borrow bytes from the buffer that is erased when this value is dropped.
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
@@ -70,6 +78,7 @@ impl Drop for Secret {
 /// Portable statement of the store's owner-only access policy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Acl {
+    /// Only the current owner is granted access.
     OwnerOnly,
 }
 
@@ -77,15 +86,24 @@ pub enum Acl {
 pub struct Store(platform::Store);
 impl Store {
     /// Create or reopen an absolute private directory; never repair broad modes.
+    ///
+    /// # Errors
+    /// Refuses relative paths, symlinks, non-directories, broad permissions or IO failure.
     pub fn open(directory: &Path) -> Result<Self, Error> {
         Ok(Self(platform::Store::open(directory)?))
     }
     /// Read an immutable slot, refusing symlinks, broad modes and oversized data.
+    ///
+    /// # Errors
+    /// Refuses invalid labels, unsafe slots, broad permissions, oversized values or IO failure.
     pub fn get(&self, label: &str) -> Result<Option<Secret>, Error> {
         label_ok(label)?;
         self.0.get(label).map(|value| value.map(Secret))
     }
     /// Atomically create a slot. An existing label is a conflict, never replaced.
+    ///
+    /// # Errors
+    /// Refuses invalid labels, empty or oversized secrets, unsafe paths, existing slots or IO failure.
     pub fn put(&self, label: &str, secret: &[u8], acl: Acl) -> Result<(), Error> {
         label_ok(label)?;
         if secret.is_empty() {
@@ -98,11 +116,17 @@ impl Store {
         self.0.put(label, secret)
     }
     /// Explicitly remove a slot; absence is harmless and unsafe files are refused.
+    ///
+    /// # Errors
+    /// Refuses invalid labels, unsafe slots, broad permissions or IO failure.
     pub fn remove(&self, label: &str) -> Result<(), Error> {
         label_ok(label)?;
         self.0.remove(label)
     }
     /// Inspect access metadata without reading the secret bytes.
+    ///
+    /// # Errors
+    /// Refuses invalid labels, unsafe slots, broad permissions or IO failure.
     pub fn acl(&self, label: &str) -> Result<Option<Acl>, Error> {
         label_ok(label)?;
         self.0.acl(label)

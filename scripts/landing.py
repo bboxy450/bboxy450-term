@@ -335,7 +335,7 @@ def affected(range_spec, *, root=None):
         result |= more
     if len(result) * 2 > len(packages):
         tier = "wide"
-    ui = {"bbt-ui", "bbt-ui-model", "bbt-render", "bboxybook"}
+    ui = {"bboxy450-ui", "bboxy450-ui-core", "bboxy450-render", "bboxy450-book"}
     parity = any(p.startswith(("lab/", "design/")) for p in paths) or bool(touched & ui)
     lab_pages = affected_lab_pages(root, paths)
     parity |= bool(lab_pages)
@@ -544,10 +544,10 @@ class TwoClocks:
 
 
 def records_checks(root, paths):
-    checked(["cargo", "test", "-p", "bbt-doc", "--locked", "--test", "corpus", "-q"], root)
-    checked(["cargo", "test", "-p", "bbt-mermaid", "--locked", "-q"], root)
+    checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root)
+    checked(["cargo", "test", "-p", "bboxy450-mermaid", "--locked", "-q"], root)
     if set(paths) & {".bboxy/specs/e2e-acceptance.md", "lab/web/e2e.js"}:
-        checked(["cargo", "test", "-p", "bbt-ui", "--locked", "--test", "e2e_checklist", "-q"], root)
+        checked(["cargo", "test", "-p", "bboxy450-ui", "--locked", "--test", "e2e_checklist", "-q"], root)
     for script in ("layering", "pending-flags", "kill-own-pids", "licenses", "brand",
                    "images", "cross-os", "never-block"):
         checked(["sh", f"scripts/{script}.sh"], root)
@@ -715,7 +715,7 @@ def scoped_parity(root, data, output):
             raise Refusal("parity_store_incomplete")
         cases = json.loads((stored / "cases.json").read_text())
     else:
-        checked(["cargo", "build", "-p", "bboxybook", "--locked"], root)
+        checked(["cargo", "build", "-p", "bboxy450-book", "--locked"], root)
         target = Path(os.environ.get("BBOXY_CARGO_TARGET_DIR") or os.environ.get("CARGO_TARGET_DIR") or root / "target")
         binary = target.resolve() / "debug/bboxybook"
         cases = json.loads(command([str(binary), "manifest"], cwd=root).stdout)
@@ -747,7 +747,7 @@ def parity_recheck_pages(data, moved):
         return []
     cut, incoming = set(data.get("lab_pages", [])), set(moved.get("lab_pages", []))
     pages = cut & incoming
-    ui = {"bbt-ui", "bbt-ui-model", "bbt-render", "bboxybook"}
+    ui = {"bboxy450-ui", "bboxy450-ui-core", "bboxy450-render", "bboxy450-book"}
     if set(data["affected"]) & set(moved["affected"]) & ui:
         return []  # The Rust intersection needs the cut's original parity scope.
     if set(moved["affected"]) & ui:
@@ -774,7 +774,7 @@ def recheck_data(data, path):
                    for page in pages)):
         raise Refusal("invalid_recheck_scope", 2)
     parity = data["parity"] == "yes" and (bool(pages) or bool(set(selected) &
-                        {"bbt-ui", "bbt-ui-model", "bbt-render", "bboxybook"}))
+                        {"bboxy450-ui", "bboxy450-ui-core", "bboxy450-render", "bboxy450-book"}))
     scope = {"affected": sorted(set(selected)), "commands": commands}
     if pages:
         scope["parity_pages"] = sorted(set(pages))
@@ -796,7 +796,7 @@ def presubmit_worker(base, result_path, recheck=None):
             checked(["sh", "scripts/invariants.sh", "--no-cargo"], root)
     else:
         if any(p.startswith(".bboxy/") and p.endswith(".md") for p in data["paths"]):
-            checked(["cargo", "test", "-p", "bbt-doc", "--locked", "--test", "corpus", "-q"], root)
+            checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root)
         packages = [arg for name in data["affected"] for arg in ("-p", name)]
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
@@ -809,11 +809,11 @@ def presubmit_worker(base, result_path, recheck=None):
             checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
-        if dispatch and packages and (recheck is None or "bbt-proto" in data["affected"]):
+        if dispatch and packages and (recheck is None or "bboxy450-proto" in data["affected"]):
             # The wire golden is a target in the protocol crate; its test names
             # deliberately contain no "golden" name filter.
             output = io.StringIO()
-            code = measured_command(["cargo", "test", "--locked", "-p", "bbt-proto",
+            code = measured_command(["cargo", "test", "--locked", "-p", "bboxy450-proto",
                                      "--test", "gui_wire_golden"],
                                     root, _timing_path, stream=output)
             print(output.getvalue(), end="", flush=True)

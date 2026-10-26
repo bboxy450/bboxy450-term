@@ -42,4 +42,4 @@ case "${1:-}" in
   *) echo "usage: sh scripts/gates.sh memory|bus|poller|frame" >&2; exit 2 ;;
 esac
 cargo build --release --locked -q -p bboxy-firehose
-cargo test --release --locked -q -p bbt-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1
+cargo test --release --locked -q -p bboxy450-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1

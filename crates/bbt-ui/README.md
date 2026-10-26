@@ -1,4 +1,4 @@
-# bbt-ui
+# bboxy450-ui
 
 L3 owns serialisable `Style { tokens: Preset, overrides: Overrides }`.
 Token references stay symbolic in JSON and resolve against the compile-time
@@ -14,9 +14,9 @@ Style/Overrides fields fail rather than silently falling back. L2 Glow is effect
 the `pane-glow` Style owns its surface fill and seat border. Modal likewise
 owns its tint and ring separately from L2 Frosted.
 
-`cargo test -p bbt-ui -p bboxybook --locked` checks round trips, late resolution
+`cargo test -p bboxy450-ui -p bboxy450-book --locked` checks round trips, late resolution
 across densities/themes, override validation and native Style preview pixels.
-`cargo run -p bboxybook --locked -- styles` writes the isolated L3 review at
+`cargo run -p bboxy450-book --locked -- styles` writes the isolated L3 review at
 `target/bboxybook/style/index.html` and the actual symbolic/resolved records in
 `styles.json`. Canonical keys are `style/<state>-<density>-<theme>`.
 
@@ -44,7 +44,7 @@ kind geometry follows `.glyph .kind` in lab.css. Icons carry a logical asset
 name and current colour; the renderer reports missing assets. Hairlines stay
 one physical pixel across scales. Pill shadow resolves through L3 Style.
 
-`cargo run -p bboxybook --locked -- atoms` writes nine painters across four
+`cargo run -p bboxy450-book --locked -- atoms` writes nine painters across four
 densities and two themes, plus a separate glyph/harness-icon parity matrix.
 These are isolated painters. Module rebases, focus, input and animated state
 controllers remain later layers.
@@ -73,7 +73,7 @@ shadow underlays and named material surfaces. The host executes it on the L1/L2
 renderer; it keeps a frosted material's own shadow out of the sampled backdrop.
 Fill/border/radii stay Style-owned; no module is rebased in this layer.
 
-`cargo run -p bboxybook --locked -- components` writes 24 paired box/text/stack
+`cargo run -p bboxy450-book --locked -- components` writes 24 paired box/text/stack
 cases at `target/bboxybook/components/index.html`, diagnostic child rectangles
 in `layouts.json`, and 64 native previews under `gallery/`: four Box materials
 with radii 0/6/12/20, three ScrollView offsets and mixed/wrapped/ellipsized text,
@@ -112,7 +112,7 @@ Style `border_sides` selects top/right/bottom/left layout borders; ordered
 reserve their inset while allowing the background to fill through the edge.
 Inline header labels share the inherited line-height strut and baseline.
 
-`cargo run -p bboxybook --locked -- widgets` writes 32 primitive comparisons
+`cargo run -p bboxy450-book --locked -- widgets` writes 32 primitive comparisons
 against `components.html` (four controls × four densities × two themes),
 rect/baseline snapshots, and 48 native 1000-row previews at top/middle/end.
 The paired reference's list is a four-row sample; the large-data previews and
@@ -137,7 +137,7 @@ the backdrop tokens. Blur samples previously painted content; Modal children
 paint afterward, so foreground stays sharp. A shadow remains an underlay,
 outside the material's sampled backdrop.
 
-`cargo run -p bboxybook --locked -- overlays` produces 16 complete primitive
+`cargo run -p bboxy450-book --locked -- overlays` produces 16 complete primitive
 comparisons plus 16 explicitly marked surface-only comparisons from the
 launcher and document-modal pages. Full module content is retained as context
 only; those rebases follow in L7. The native gallery and GPU check use a sharp
@@ -294,3 +294,11 @@ Paths and ordinary Text. Link targets remain in those records. Drawing/Source
 and scroll offsets are supplied state. Unsupported diagrams retain their source.
 Full Markdown/Mermaid parsing, file/index access and document interaction belong
 to the later `bbt-doc` and input work.
+
+## Dependency name
+
+The Rust library name remains `bbt_ui`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-ui = { package = "bboxy450-ui", version = "0.1.0" }
+```

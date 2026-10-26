@@ -5,30 +5,54 @@ use std::io::Write;
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
+/// Caller-owned launch identity, paths, prompt/skill data and admitted control endpoint.
 pub struct LaunchContext<'a> {
+    /// Caller-owned seat identity used to isolate launch configuration.
     pub id: crate::Ulid,
+    /// Nonzero host process-generation fence.
     pub generation: u64,
+    /// Caller-facing name associated with this launch or harness record.
     pub name: &'a str,
+    /// Caller-selected declarative role name passed into this launch.
     pub role_name: &'a str,
+    /// Native session to resume, or the generated session identity in a launch plan.
     pub harness_session_id: Option<&'a str>,
+    /// Caller-owned skill text used to prepare the isolated launch overlay.
     pub skill: &'a str,
+    /// Explicit process working directory.
     pub cwd: &'a Path,
+    /// Caller-owned role prompt text.
     pub role_prompt: &'a str,
+    /// Absolute host binary path used for its hook/MCP entry points.
     pub executable: &'a Path,
+    /// Absolute caller-owned parent for a new isolated launch overlay.
     pub overlay_parent: &'a Path,
+    /// Caller-selected home used to resolve existing harness configuration.
     pub user_home: &'a Path,
+    /// Original shell configuration directory, when explicitly supplied.
     pub user_zdotdir: Option<&'a Path>,
+    /// Caller control endpoint passed to the launched process.
     pub socket: &'a Path,
+    /// Owner admission capability; it must not be logged.
     pub capability: [u8; 32],
+    /// Whether this plan resumes the supplied native session.
     pub resume: bool,
 }
+/// Explicit executable, isolated overlay and optional owned runtime plan returned to the process host.
 pub struct LaunchPlan {
+    /// Explicit executable selected by the launch planner.
     pub program: String,
+    /// Ordered argument strings passed without shell interpolation.
     pub args: Vec<String>,
+    /// Explicit process working directory.
     pub cwd: PathBuf,
+    /// Explicit environment overrides for this planned process.
     pub env: BTreeMap<String, String>,
+    /// Private launch-overlay directory owned by the caller until process exit.
     pub overlay: PathBuf,
+    /// Native session to resume, or the generated session identity in a launch plan.
     pub harness_session_id: Option<String>,
+    /// Named planner limitations or caller-visible launch notes.
     pub notes: Vec<&'static str>,
     /// A seat-owned service the caller starts before the PTY command.
     pub runtime: Option<RuntimePlan>,
@@ -37,13 +61,20 @@ pub struct LaunchPlan {
 /// Neutral process/socket plan; the caller owns the service for the seat lifetime.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RuntimePlan {
+    /// Explicit executable selected by the launch planner.
     pub program: String,
+    /// Ordered argument strings passed without shell interpolation.
     pub args: Vec<String>,
+    /// Explicit environment overrides for this planned process.
     pub env: BTreeMap<String, String>,
+    /// Explicit endpoint of the caller-owned native runtime.
     pub endpoint: PathBuf,
 }
 
 /// Release a launch overlay and its optional owned short socket alias.
+///
+/// # Errors
+/// Refuses an unowned alias or returns filesystem cleanup failures.
 pub fn cleanup_overlay(overlay: &Path, endpoint: Option<&Path>) -> Result<()> {
     if let Some(parent) = endpoint.and_then(Path::parent)
         && parent != overlay
@@ -65,6 +96,9 @@ pub fn cleanup_overlay(overlay: &Path, endpoint: Option<&Path>) -> Result<()> {
 
 /// Retire only a recorded short alias whose socket is absent. The caller binds
 /// `overlay` to the seat's retained launch; the overlay itself is preserved.
+///
+/// # Errors
+/// Refuses changed/unowned aliases, unsafe ownership/modes or filesystem failures.
 pub fn cleanup_stale_runtime_alias(overlay: &Path, endpoint: Option<&Path>) -> Result<bool> {
     use std::os::unix::fs::MetadataExt;
     let Some(endpoint) = endpoint else {
@@ -127,6 +161,9 @@ fn runtime_endpoint(overlay: &Path) -> Result<PathBuf> {
 }
 impl LaunchPlan {
     /// The owner calls this only after process exit, never at close-grace start.
+    ///
+    /// # Errors
+    /// Returns unowned-alias or filesystem cleanup failures.
     pub fn cleanup(self) -> Result<()> {
         cleanup_overlay(
             &self.overlay,
@@ -200,6 +237,13 @@ fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf>
     )?;
     Ok(plugin)
 }
+/// Build a private launch overlay for the selected validated harness record on IO.
+///
+/// # Errors
+/// Refuses invalid records or relative required paths; returns overlay, serialization or filesystem failures.
+///
+/// # Panics
+/// With runtime assertions enabled, panics on the registered UI thread.
 pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<LaunchPlan> {
     crate::assert_not_ui_thread();
     record.validate()?;
@@ -462,6 +506,12 @@ fn wait_for_runtime(
 /// Private CLI entry for an already supervisor-owned PTY. Wait only on the
 /// explicitly selected seat socket, then replace this process with its TUI.
 /// Normal CODEX_HOME and authentication stay with Codex; no credential is copied.
+///
+/// # Errors
+/// Refuses missing/relative endpoint arguments, a five-second readiness expiry or exec failure.
+///
+/// # Panics
+/// With runtime assertions enabled, panics on the registered UI thread.
 pub fn exec_when_ready(args: &[String]) -> Result<()> {
     crate::assert_not_ui_thread();
     use std::os::unix::process::CommandExt;

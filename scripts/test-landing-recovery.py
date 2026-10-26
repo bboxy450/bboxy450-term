@@ -659,7 +659,7 @@ raise SystemExit(code)
             cargo = self.repo.bin / "cargo"
             cargo.write_text('''#!/usr/bin/env python3
 import os,pathlib,shutil,sys
-assert sys.argv[1:]==['build','-p','bboxybook','--locked'], sys.argv
+assert sys.argv[1:]==['build','-p','bboxy450-book','--locked'], sys.argv
 out=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
 shutil.copy2(BOOK,out/'bboxybook')
 '''.replace("BOOK", repr(str(book))))

@@ -9,24 +9,71 @@ use std::sync::{
 use std::time::{Duration, Instant};
 
 macro_rules! phases {
-    ($($name:ident),+ $(,)?) => {
+    ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {
         #[derive(Clone, Copy, Debug)]
         #[repr(usize)]
-        pub enum Phase { $($name),+ }
+        /// Fixed measurement phase; its discriminant indexes the bounded counters.
+        pub enum Phase { $($(#[$doc])* $name),+ }
         const PHASES: &[Phase] = &[$(Phase::$name),+];
         impl Phase {
+            /// Return the stable case-sensitive label exported in diagnostic snapshots.
             pub fn name(self) -> &'static str { match self { $(Self::$name => stringify!($name)),+ } }
         }
     };
 }
 phases! {
-    AboutToWait, Resumed, UserWake, UserStallPoll, UserOther,
-    WindowRedraw, WindowPointer, WindowOther,
-    UiDrain, UiLatestTake, UiProjection, UiSeatRows, UiOldModelDrop,
-    TicklessRedraw, ModelBuild, PanePrepare, GuiReceive, GuiApply,
-    ModelPublish, LatestPublish, IoOldModelDrop,
-    ReadRingRequest, ReadRingTerminalDecode, LogicViewPublish,
-    HistoryPage, HistoryStep,
+    /// Frontend about-to-wait callback.
+    AboutToWait,
+    /// Frontend resume callback.
+    Resumed,
+    /// User-event callback carrying a wake notice.
+    UserWake,
+    /// User-event callback polling a diagnostic run.
+    UserStallPoll,
+    /// Other application user-event callbacks.
+    UserOther,
+    /// Window redraw callback, including early returns.
+    WindowRedraw,
+    /// Window pointer-input callback.
+    WindowPointer,
+    /// Other window-event callbacks.
+    WindowOther,
+    /// Draining incoming frontend publications.
+    UiDrain,
+    /// Taking a replaceable latest-value publication.
+    UiLatestTake,
+    /// Projecting the immutable model into frontend state.
+    UiProjection,
+    /// Projecting the frontend row list.
+    UiSeatRows,
+    /// Dropping a superseded model on the frontend owner.
+    UiOldModelDrop,
+    /// Redraw callback that returns without consuming a display tick.
+    TicklessRedraw,
+    /// Building an immutable model snapshot.
+    ModelBuild,
+    /// Preparing pane data for a frontend snapshot.
+    PanePrepare,
+    /// Receiving a host-to-frontend update.
+    GuiReceive,
+    /// Applying a received update to the frontend model.
+    GuiApply,
+    /// Publishing a prepared model snapshot.
+    ModelPublish,
+    /// Replacing the unread frontend model slot.
+    LatestPublish,
+    /// Dropping a superseded model on an IO owner.
+    IoOldModelDrop,
+    /// Requesting retained output from a host ring.
+    ReadRingRequest,
+    /// Decoding retained output into a terminal model.
+    ReadRingTerminalDecode,
+    /// Publishing a logical terminal view.
+    LogicViewPublish,
+    /// Fetching or preparing a retained-history page.
+    HistoryPage,
+    /// Advancing bounded history replay.
+    HistoryStep,
 }
 const PERIODS: usize = 6;
 
@@ -45,21 +92,63 @@ struct Counter {
 }
 
 macro_rules! stamps {
-    ($($name:ident),+ $(,)?) => {
+    ($($(#[$doc:meta])* $name:ident),+ $(,)?) => {
         #[derive(Clone, Copy, Debug)]
         #[repr(usize)]
-        pub enum ProbeStage { $($name),+ }
+        /// A first-observation point in the opt-in probe timeline.
+        pub enum ProbeStage { $($(#[$doc])* $name),+ }
         const STAMPS: &[ProbeStage] = &[$(ProbeStage::$name),+];
         impl ProbeStage {
+            /// Return the stable case-sensitive label exported in diagnostic snapshots.
             pub fn name(self) -> &'static str { match self { $(Self::$name => stringify!($name)),+ } }
         }
     };
 }
 stamps! {
-    Admitted, ControlReceived, GuiEnqueued, WireEnqueued, WriterDequeued, WriteStarted, Written,
-    LogicOutputRead, LogicRingRead, LogicLiveEvent, GuiReceived, GuiApplyStarted, GuiApplied,
-    ModelBuilt, ModelPrepared, ModelPublished, LatestTaken,
-    ProjectionStarted, ProjectionFinished, ModelApplied, Encoded, GpuComplete,
+    /// Input probe admitted by its caller.
+    Admitted,
+    /// Probe request received at the control surface.
+    ControlReceived,
+    /// Probe input enqueued for the frontend owner.
+    GuiEnqueued,
+    /// Probe input enqueued for the host transport.
+    WireEnqueued,
+    /// Probe input dequeued by its writer.
+    WriterDequeued,
+    /// Probe write began.
+    WriteStarted,
+    /// Probe write completed.
+    Written,
+    /// The matching probe marker first observed in logical output.
+    LogicOutputRead,
+    /// Probe marker observed in retained-ring output.
+    LogicRingRead,
+    /// Probe marker observed in a live output event.
+    LogicLiveEvent,
+    /// Frontend received the probe-bearing publication.
+    GuiReceived,
+    /// Frontend began applying the probe-bearing update.
+    GuiApplyStarted,
+    /// Frontend completed applying the update.
+    GuiApplied,
+    /// Probe-bearing immutable model built.
+    ModelBuilt,
+    /// Probe-bearing model prepared for the frontend.
+    ModelPrepared,
+    /// Probe-bearing model published to the frontend.
+    ModelPublished,
+    /// Probe-bearing publication taken from its latest-value slot.
+    LatestTaken,
+    /// Frontend projection of the probe-bearing model began.
+    ProjectionStarted,
+    /// Frontend projection completed.
+    ProjectionFinished,
+    /// Probe-bearing model installed in frontend state.
+    ModelApplied,
+    /// Probe-bearing frame encoded.
+    Encoded,
+    /// GPU completion for the probe-bearing frame observed.
+    GpuComplete,
 }
 #[derive(Default)]
 struct Probe {
@@ -78,37 +167,61 @@ struct State {
     counters: [[Counter; PHASES.len()]; PERIODS],
     probe: Probe,
 }
+/// Lazy diagnostics state; global convenience functions use the process-wide recorder.
 #[derive(Default)]
 pub struct Recorder(OnceLock<State>);
 static RECORDER: Recorder = Recorder(OnceLock::new());
 
+/// Inclusive counters for one phase and period; concurrent updates are not atomically snapshotted.
 #[derive(Debug)]
 pub struct Sample {
+    /// Zero-based measurement period, clamped to the six retained periods.
     pub period: u8,
+    /// Stable phase label for this row.
     pub phase: &'static str,
+    /// Number of completed spans.
     pub calls: u64,
+    /// Number of spans still in flight at the sampled instant.
     pub active: u64,
+    /// Sum of caller-defined work units supplied by completed spans.
     pub work: u64,
+    /// Sum of caller-defined byte counts supplied by completed spans.
     pub bytes: u64,
+    /// Sum of completed span wall durations in nanoseconds.
     pub wall_ns: u64,
+    /// Largest completed span wall duration in nanoseconds.
     pub wall_max_ns: u64,
+    /// Sum of available completed thread CPU measurements in nanoseconds.
     pub cpu_ns: u64,
+    /// Largest completed thread CPU measurement in nanoseconds.
     pub cpu_max_ns: u64,
+    /// Number of completed spans with successful CPU measurements.
     pub cpu_samples: u64,
+    /// Failed CPU measurements, including unavailable callback-entry readings.
     pub cpu_errors: u64,
 }
+/// On-demand diagnostic counters and probe timestamps, without scheduling authority.
 #[derive(Debug)]
 pub struct Snapshot {
+    /// Whether this recorder has been initialized explicitly.
     pub enabled: bool,
+    /// Positive elapsed nanoseconds from recorder enablement, or zero when disabled.
     pub sampled_ns: u64,
+    /// Rows in period-then-phase order; empty when diagnostics are disabled.
     pub samples: Vec<Sample>,
+    /// Caller-selected probe identifier; zero means no probe is armed.
     pub probe_id: u64,
+    /// Caller-supplied opaque source identifier bound to the probe.
     pub probe_seat: u128,
+    /// Caller-supplied source generation bound to the probe.
     pub probe_generation: u64,
+    /// Capture sequence where the probe marker completed; zero before a match.
     pub probe_sequence: u64,
+    /// Stage labels paired with positive recorder-relative nanoseconds, or `None` if unobserved.
     pub probe: Vec<(&'static str, Option<u64>)>,
 }
 impl Recorder {
+    /// Initialize counters and a monotonic origin once; later calls preserve prior observations.
     pub fn enable(&self) {
         self.0.get_or_init(|| State {
             origin: Instant::now(),
@@ -137,6 +250,7 @@ impl Recorder {
             bytes: 0,
         }))
     }
+    /// Read the current bounded counters; disabled state returns an empty snapshot without a clock read.
     pub fn snapshot(&self) -> Snapshot {
         let mut snapshot = Snapshot {
             enabled: false,
@@ -195,11 +309,14 @@ struct Measurement<'a> {
     work: u64,
     bytes: u64,
 }
+/// RAII wall/CPU measurement that records once on drop; disabled guards do no sampling.
 pub struct Span<'a>(Option<Measurement<'a>>);
 impl Span<'_> {
+    /// Return whether this guard captured an enabled recorder at its creation.
     pub fn enabled(&self) -> bool {
         self.0.is_some()
     }
+    /// Set the final work and byte counts, replacing any previous values on this guard.
     pub fn work(mut self, work: u64, bytes: u64) -> Self {
         if let Some(m) = &mut self.0 {
             m.work = work;
@@ -207,6 +324,7 @@ impl Span<'_> {
         }
         self
     }
+    /// Set final counts and consume the guard, recording completion through its drop.
     pub fn finish(mut self, work: u64, bytes: u64) {
         if let Some(m) = &mut self.0 {
             m.work = work;
@@ -251,12 +369,15 @@ fn elapsed_ns(state: &State) -> u64 {
     ns(state.origin.elapsed()).saturating_add(1)
 }
 
+/// Enable the process recorder once; there is no disable or reset operation.
 pub fn enable() {
     RECORDER.enable();
 }
+/// Begin an inclusive wall-time span; disabled diagnostics do not read a clock.
 pub fn span(phase: Phase) -> Span<'static> {
     RECORDER.span_with(phase, || None)
 }
+/// Begin callback wall and thread-CPU attribution; keep this guard on the creating thread.
 pub fn callback(phase: Phase) -> Span<'static> {
     let mut span = RECORDER.span_with(phase, || crate::fault::thread_cpu_time().ok());
     if let Some(measurement) = &mut span.0 {
@@ -280,15 +401,18 @@ pub fn callback_frame_cpu(cpu: Duration) -> Option<CallbackFrameCpu> {
         .get()
         .and_then(|state| callbacks::cut(elapsed_ns(state), ns(cpu)))
 }
+/// Read positive nanoseconds since enablement, or `None` without reading a clock when disabled.
 pub fn now() -> Option<u64> {
     RECORDER.0.get().map(elapsed_ns)
 }
+/// Express an instant in the recorder clock domain, saturating instants before its origin.
 pub fn at(instant: Instant) -> Option<u64> {
     RECORDER
         .0
         .get()
         .map(|state| ns(instant.saturating_duration_since(state.origin)).saturating_add(1))
 }
+/// Observe completed calls in the currently selected period, or `None` while disabled.
 pub fn calls(phase: Phase) -> Option<u64> {
     RECORDER.0.get().map(|state| {
         state.counters[usize::from(state.period.load(Relaxed))][phase as usize]
@@ -296,14 +420,17 @@ pub fn calls(phase: Phase) -> Option<u64> {
             .load(Relaxed)
     })
 }
+/// Select the period for newly started spans, clamping to 0..=5; disabled calls do nothing.
 pub fn set_period(period: u8) {
     if let Some(state) = RECORDER.0.get() {
         state.period.store(period.min(PERIODS as u8 - 1), Relaxed);
     }
 }
+/// Read the process recorder on demand; concurrent row values may reflect different instants.
 pub fn snapshot() -> Snapshot {
     RECORDER.snapshot()
 }
+/// Bind the enabled probe to a caller-owned source identifier and generation without clearing stamps.
 pub fn probe_target(seat: u128, generation: u64) {
     if let Some(state) = RECORDER.0.get() {
         state.probe.seat_hi.store((seat >> 64) as u64, Relaxed);
@@ -311,16 +438,19 @@ pub fn probe_target(seat: u128, generation: u64) {
         state.probe.generation.store(generation, Relaxed);
     }
 }
+/// Set the probe identifier; zero disarms it, and existing timestamps are retained.
 pub fn arm_probe(id: u64) {
     if let Some(state) = RECORDER.0.get() {
         state.probe.id.store(id, Relaxed);
     }
 }
+/// Record the first observation of an armed stage using the recorder clock.
 pub fn probe_mark(stage: ProbeStage) {
     if probe_pending(stage) {
         probe_mark_at(stage, now());
     }
 }
+/// Return the nonzero probe ID, opaque source ID and generation when enabled and armed.
 pub fn probe_info() -> Option<(u64, u128, u64)> {
     let state = RECORDER.0.get()?;
     let id = state.probe.id.load(Relaxed);
@@ -333,11 +463,13 @@ pub fn probe_info() -> Option<(u64, u128, u64)> {
         )
     })
 }
+/// Return whether an enabled, armed probe has not recorded this stage.
 pub fn probe_pending(stage: ProbeStage) -> bool {
     RECORDER.0.get().is_some_and(|state| {
         state.probe.id.load(Relaxed) != 0 && state.probe.stamps[stage as usize].load(Relaxed) == 0
     })
 }
+/// Record a stage only after its required predecessor has a stored observation.
 pub fn probe_after(required: ProbeStage, stage: ProbeStage) {
     if let Some(state) = RECORDER.0.get()
         && state.probe.stamps[required as usize].load(Relaxed) != 0
@@ -345,6 +477,7 @@ pub fn probe_after(required: ProbeStage, stage: ProbeStage) {
         probe_mark(stage);
     }
 }
+/// Store the first supplied stage timestamp for an armed probe; use positive `now`/`at` values.
 pub fn probe_mark_at(stage: ProbeStage, at: Option<u64>) {
     if let Some(state) = RECORDER.0.get()
         && state.probe.id.load(Relaxed) != 0
@@ -367,6 +500,7 @@ pub fn probe_ring_output(seat: u128, generation: u64, sequence: u64, bytes: &[u8
         ProbeStage::LogicRingRead,
     );
 }
+/// Scan live output for the armed marker, matching its bound source, generation and contiguous sequences.
 pub fn probe_live_output(seat: u128, generation: u64, sequence: u64, bytes: &[u8]) {
     let Some(state) = RECORDER.0.get() else {
         return;

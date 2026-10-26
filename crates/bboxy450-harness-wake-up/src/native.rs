@@ -20,12 +20,21 @@ use tokio_tungstenite::{
 };
 
 const LIMIT: usize = 64 * 1024;
+/// Default two-second deadline for bounded native preflight and mutation exchanges.
 pub const DEADLINE: Duration = Duration::from_secs(2);
+/// Check that a caller-selected Claude endpoint is an owned Unix socket and accepts a connection.
+///
+/// # Errors
+/// Returns endpoint ownership, connection or deadline failures without sending a message.
 pub async fn claude_preflight(path: &Path) -> Result<()> {
     own_socket(path)?;
     let _ = tokio::time::timeout(DEADLINE, UnixStream::connect(path)).await??;
     Ok(())
 }
+/// Read the live process start stamp using the platform process tool, on an IO thread.
+///
+/// # Errors
+/// Returns process lookup, decoding or unavailable-process failures.
 pub fn process_start(pid: u32) -> Result<String> {
     crate::assert_not_ui_thread();
     let output = std::process::Command::new("/bin/ps")
@@ -37,6 +46,10 @@ pub fn process_start(pid: u32) -> Result<String> {
     }
     Ok(stamp.into())
 }
+/// Validate a binding and reject a missing process or reused process identifier.
+///
+/// # Errors
+/// Returns binding validation, process lookup or start-stamp mismatch failures.
 pub fn verify_process(binding: &Binding) -> Result<()> {
     binding.validate()?;
     if process_start(binding.pid)? != binding.process_start {
@@ -82,10 +95,16 @@ fn own_socket(path: &Path) -> Result<()> {
 /// Non-secret hook discovery, retained only for this native process/session.
 #[derive(Serialize, Deserialize)]
 pub struct ClaudeRegistration {
+    /// Exact process, native-session and attachment identity being observed.
     pub binding: Binding,
+    /// Explicit native socket endpoint path.
     pub path: PathBuf,
 }
 impl ClaudeRegistration {
+    /// Match the retained native process and session, permitting a fresh logic attachment handle.
+    ///
+    /// Compares seat, process identifier, start stamp, generation and native session.
+    /// The in-memory attachment generation is deliberately excluded.
     pub fn matches(&self, binding: &Binding) -> bool {
         // A logic restart creates fresh in-memory attachment handles, while
         // the supervisor can keep the same native process and session alive.
@@ -95,6 +114,10 @@ impl ClaudeRegistration {
             && self.binding.generation == binding.generation
             && self.binding.session == binding.session
     }
+    /// Validate a matching registration and its absolute, caller-owned Unix socket.
+    ///
+    /// # Errors
+    /// Returns identity, path, ownership or endpoint-kind failures.
     pub fn validate(&self, binding: &Binding) -> Result<()> {
         if !self.matches(binding) {
             return Err(invalid("Claude socket registration identity mismatch"));
@@ -131,18 +154,29 @@ pub fn claude_registration(
     Ok(Some(registration))
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Bounded native session-file metadata, validated against the selected process and session.
 pub struct ClaudeSessionFile {
+    /// Bound operating-system process identifier.
     pub pid: u32,
     #[serde(rename = "sessionId")]
+    /// Native session identifier, serialized under the installed `sessionId` key.
     pub session_id: String,
     #[serde(rename = "procStart")]
+    /// Observed process start stamp used to reject PID reuse.
     pub process_start: String,
+    /// Native activity label, interpreted only after the session binding matches.
     pub status: String,
     #[serde(rename = "waitingFor", default)]
+    /// Optional native waiting reason, such as permission, authentication or a question.
     pub waiting_for: Option<String>,
     #[serde(rename = "messagingSocketPath", default)]
+    /// Optional native messaging endpoint reported by the session file; not authority by itself.
     pub messaging_socket_path: Option<std::path::PathBuf>,
 }
+/// Read an owned bounded Claude session file after revalidating the live process start stamp.
+///
+/// # Errors
+/// Returns process, file ownership, size, decoding or exact session-identity failures.
 pub fn read_claude_session(path: &Path, binding: &Binding) -> Result<ClaudeSessionFile> {
     crate::assert_not_ui_thread();
     verify_process(binding)?;
@@ -173,6 +207,10 @@ pub fn read_claude_bound(path: &Path, binding: &Binding) -> Result<ClaudeSession
     Ok(file)
 }
 impl Session {
+    /// Apply a matching Claude session-file observation at reported grade and refresh readiness.
+    ///
+    /// # Errors
+    /// Returns identity mismatches or unknown native status labels and invalidates readiness for unknown status.
     pub fn observe_claude_session(
         &mut self,
         file: &ClaudeSessionFile,
@@ -225,6 +263,10 @@ impl Session {
         Ok(vec![obs])
     }
 }
+/// Project a Codex event for the currently bound native thread into graded activity observations.
+///
+/// # Errors
+/// Returns a mismatched thread, missing method or unsupported native status shape.
 pub fn observe(
     session: &mut Session,
     event: &Value,
@@ -521,9 +563,20 @@ pub fn bind_discovered_codex(
     Ok(true)
 }
 
+/// Connect and perform a read-only handshake for one explicit Codex endpoint and thread.
+///
+/// Callers bound the lifetime of this connection; unlike status queries, this helper
+/// does not impose an outer timeout or validate a runtime process binding.
+///
+/// # Errors
+/// Returns socket ownership, connection, framing or native thread-identity failures.
 pub async fn codex_connect(path: &Path, thread: &str) -> Result<Socket> {
     Ok(codex_handshake(path, thread, None).await?.0)
 }
+/// Read one explicit Codex thread status with the default native deadline.
+///
+/// # Errors
+/// Returns endpoint, handshake, thread-identity or deadline failures.
 pub async fn codex_status(path: &Path, thread: &str) -> Result<Value> {
     let (_, identity) =
         tokio::time::timeout(DEADLINE, codex_handshake(path, thread, None)).await??;
@@ -543,6 +596,10 @@ pub async fn codex_owned_status(binding: &Binding) -> Result<Value> {
     .await??;
     Ok(identity["thread"]["status"].clone())
 }
+/// Read the next JSON text event, flushing non-text frames, within a caller-supplied deadline.
+///
+/// # Errors
+/// Returns transport closure, invalid JSON, WebSocket or deadline failures.
 pub async fn next_codex_event(socket: &mut Socket, deadline: Duration) -> Result<Value> {
     tokio::time::timeout(deadline, async {
         loop {
@@ -558,6 +615,12 @@ pub async fn next_codex_event(socket: &mut Socket, deadline: Duration) -> Result
     })
     .await?
 }
+/// Submit one stable-ID native message after live process validation.
+///
+/// Success is transport evidence, never proof of model consumption. An ambiguous
+/// write or reply returns [`Evidence::NativeUnknown`], forbidding automatic retry
+/// or terminal-input fallback. Preflight refusals preserve recipient-storage evidence.
+///
 /// `allow_interrupt` is caller authority, never the target seat's role. Queue
 /// and steer are distinct; Next/Later scheduling stays above the native queue.
 pub async fn wake(

@@ -54,27 +54,49 @@ pub mod capture_diagnostics {
     #[serde(rename_all = "snake_case")]
     #[repr(usize)]
     pub enum Phase {
+        /// Caller logical-owner turn.
         LogicTurn,
+        /// Caller command admission and dispatch.
         Commands,
+        /// Receiving host events.
         Receive,
+        /// Applying one observed host event.
         Event,
+        /// Replaying a bounded retained-capture page.
         ReplayPage,
+        /// Submitting a retained-capture request.
         CaptureRequest,
+        /// Waiting for a retained-ring read reply.
         ReadRingRpc,
+        /// Waiting for capture recovery state.
         RecoveryRpc,
+        /// Waiting for checkpoint publication.
         CheckpointRpc,
+        /// Parsing captured terminal bytes.
         Parse,
+        /// Preparing a terminal checkpoint.
         Checkpoint,
+        /// Caller-labelled maintenance work.
         Maintenance,
+        /// One supervisor actor turn.
         SupervisorTurn,
+        /// Supervisor control dispatch.
         SupervisorDispatch,
+        /// Supervisor capture-query service.
         SupervisorQuery,
+        /// Supervisor maintenance sweep.
         SupervisorSweep,
+        /// Caller-labelled provider maintenance.
         MaintenanceProviders,
+        /// Caller-labelled adapter maintenance.
         MaintenanceAdapters,
+        /// Caller-labelled identity maintenance.
         MaintenanceIdentity,
+        /// Caller-labelled message maintenance.
         MaintenanceMessages,
+        /// Caller-labelled provenance maintenance.
         MaintenanceProvenance,
+        /// Serving queued checkpoint work.
         CheckpointService,
     }
     const PHASES: [Phase; 22] = [
@@ -104,29 +126,46 @@ pub mod capture_diagnostics {
 
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
     #[serde(rename_all = "snake_case")]
+    /// Observed diagnostic span outcome, without scheduling or retry authority.
     pub enum Outcome {
+        /// The measured operation completed successfully.
         Ok,
+        /// The measured operation met a bounded admission refusal.
         Busy,
+        /// The measured dependency was unavailable.
         Unavailable,
         #[default]
+        /// The measured operation failed or the guard was dropped without a success outcome.
         Error,
     }
 
     #[derive(Clone, Copy, Debug, Serialize)]
+    /// One inclusive timing span with caller-supplied numeric capture context.
     pub struct Span {
+        /// Stable diagnostic phase assigned by the caller.
         pub phase: Phase,
+        /// Process-local owner-turn counter associated with this observation.
         pub turn: u64,
+        /// Start time in process-relative monotonic nanoseconds.
         pub start_ns: u64,
+        /// Completed inclusive wall duration in nanoseconds.
         pub elapsed_ns: u64,
+        /// Opaque process identity associated with this observation.
         pub seat: Ulid,
+        /// Process-generation fence associated with this observation.
         pub generation: u64,
+        /// First capture sequence associated with this measured operation.
         pub from: u64,
+        /// Last capture sequence associated with this measured operation.
         pub to: u64,
+        /// Correlated request identifier, or nil when none is attached.
         pub request_id: Ulid,
+        /// Explicit diagnostic completion outcome.
         pub outcome: Outcome,
         /// Pages for LogicTurn; events for ReplayPage/Parse; seats for Sweep;
         /// commands for Commands. Other phases leave this zero.
         pub work: u64,
+        /// Caller-supplied completed byte count.
         pub bytes: u64,
         /// Pending seat slots (logic) or pending capture requests (supervisor).
         pub pending: u64,
@@ -140,18 +179,28 @@ pub mod capture_diagnostics {
     /// `in_flight` as well when a phase has not returned at snapshot time.
     #[derive(Clone, Debug, Default, Serialize)]
     pub struct Totals {
+        /// Number of completed diagnostic spans.
         pub calls: u64,
+        /// Completed inclusive wall duration in nanoseconds.
         pub elapsed_ns: u64,
+        /// Largest completed inclusive duration in nanoseconds.
         pub max_ns: u64,
+        /// Caller-defined completed work units.
         pub work: u64,
+        /// Caller-supplied completed byte count.
         pub bytes: u64,
+        /// Completed non-success outcomes, including busy/unavailable observations.
         pub errors: u64,
+        /// Completed outcomes explicitly marked Busy.
         pub busy: u64,
+        /// Largest pending-work count observed at span completion.
         pub pending_peak: u64,
     }
 
     #[derive(Clone, Debug, Serialize)]
+    /// Sampled active-span count and the current overlapping group start.
     pub struct InFlight {
+        /// Number of currently active spans in this phase.
         pub count: u64,
         /// First start in the current overlapping group; it may precede the
         /// oldest still-active span. Counts/timestamps are sampled separately.
@@ -162,34 +211,59 @@ pub mod capture_diagnostics {
     /// same generation, using the timestamps to bound observation age.
     #[derive(Clone, Debug, Default, Serialize)]
     pub struct Seat {
+        /// Opaque process identity associated with this observation.
         pub seat: Ulid,
+        /// Process-generation fence associated with this observation.
         pub generation: u64,
+        /// Most recent row observation in process-relative monotonic nanoseconds.
         pub observed_ns: u64,
+        /// Latest capture sequence observed through a notification.
         pub notified_sequence: u64,
+        /// Latest sequence selected as a replay target.
         pub target_sequence: u64,
+        /// Time of the latest recorded ring-head observation.
         pub ring_observed_ns: u64,
+        /// Latest ordered capture head observed for this generation.
         pub captured_sequence: u64,
+        /// Latest committed capture head observed for this generation.
         pub committed_sequence: u64,
+        /// Time of the latest applied-sequence observation.
         pub applied_observed_ns: u64,
+        /// Latest capture sequence recorded as applied.
         pub applied_sequence: u64,
+        /// Time when the applied sequence last advanced.
         pub last_progress_ns: u64,
+        /// Number of replay pages recorded for this generation.
         pub pages: u64,
+        /// Number of events recorded as parsed.
         pub parsed_events: u64,
+        /// Original output bytes recorded as parsed.
         pub parsed_bytes: u64,
+        /// Latest checkpoint capture sequence observed.
         pub checkpoint_sequence: u64,
+        /// Original-output byte cursor associated with the observed checkpoint.
         pub checkpoint_byte_end: u64,
+        /// Original-output byte cursor recorded as parsed.
         pub parsed_byte_end: u64,
+        /// Number of observed checkpoint-credit pauses.
         pub checkpoint_pauses: u64,
+        /// Whether checkpoint admission was last observed paused.
         pub checkpoint_paused: bool,
+        /// Number of checkpoints attributed to idle maintenance.
         pub idle_checkpoints: u64,
+        /// Number of forced checkpoints recorded.
         pub forced_checkpoints: u64,
         /// Admission to the actor's notification queue, not receipt by logic.
         pub notification_attempts: u64,
+        /// Number of notifications admitted by the actor queue.
         pub notification_accepted: u64,
+        /// Capture sequence of the latest notification admission attempt.
         pub notification_last_attempt: u64,
+        /// Capture sequence of the latest accepted notification.
         pub notification_last_accepted: u64,
     }
     impl Seat {
+        /// Record an applied-sequence observation and update progress time only when it advances.
         pub fn progress(&mut self, sequence: u64, now: u64) {
             if sequence > self.applied_sequence {
                 self.last_progress_ns = now;
@@ -200,7 +274,9 @@ pub mod capture_diagnostics {
     }
 
     #[derive(Clone, Debug, Serialize)]
+    /// Bounded diagnostic copy; timestamps and rows are observations, not an atomic cut.
     pub struct Snapshot {
+        /// Whether the recorder buffers were explicitly enabled.
         pub enabled: bool,
         /// Opt-in recovery-fixture audit; live traces leave this false.
         pub fixture_lossless: bool,
@@ -210,16 +286,27 @@ pub mod capture_diagnostics {
         /// Completion of the copy. Rows are earlier observations, not a single
         /// atomic cut; none may appear to come from after this timestamp.
         pub sampled_ns: u64,
+        /// Recorder-buffer initialization time in process-relative nanoseconds.
         pub started_ns: u64,
+        /// Process-local owner-turn counter associated with this observation.
         pub turn: u64,
+        /// Maximum number of detailed retained span records.
         pub span_capacity: usize,
+        /// Maximum number of distinct retained process observation rows.
         pub seat_capacity: usize,
+        /// Detailed span records evicted by the fixed retention bound.
         pub overwritten_spans: u64,
+        /// Ordinary diagnostic updates dropped due to buffer contention.
         pub missed: u64,
+        /// Updates omitted because the process-row capacity was exhausted.
         pub untracked_seat_samples: u64,
+        /// Cumulative completed-span counters in fixed phase order.
         pub totals: Vec<(Phase, Totals)>,
+        /// Active-span observations in fixed phase order.
         pub in_flight: Vec<(Phase, InFlight)>,
+        /// Last-observed process rows sorted by opaque identity.
         pub seats: Vec<Seat>,
+        /// Retained completed spans in completion order.
         pub spans: Vec<Span>,
     }
 
@@ -233,6 +320,7 @@ pub mod capture_diagnostics {
     }
 
     #[derive(Default)]
+    /// Opt-in bounded capture recorder with non-waiting ordinary sample admission.
     pub struct Recorder {
         buffer: OnceLock<Mutex<Buffer>>,
         fixture_lossless: AtomicBool,
@@ -265,6 +353,7 @@ pub mod capture_diagnostics {
             self.enable();
         }
 
+        /// Begin a bounded diagnostic span; a disabled recorder returns an inactive guard.
         pub fn start(
             self: &Arc<Self>,
             phase: Phase,
@@ -330,6 +419,7 @@ pub mod capture_diagnostics {
             }
         }
 
+        /// Update one bounded process observation row; a new generation resets its prior counters.
         pub fn seat(&self, seat: Ulid, generation: u64, f: impl FnOnce(&mut Seat, u64)) {
             self.update(|buffer| {
                 if !buffer.seats.contains_key(&seat) && buffer.seats.len() == SEATS {
@@ -354,6 +444,10 @@ pub mod capture_diagnostics {
             clippy::disallowed_methods,
             reason = "bounded diagnostic snapshot on IO, never the UI"
         )]
+        /// Copy bounded recorder data on IO without draining or resetting it.
+        ///
+        /// # Panics
+        /// In debug builds, panics on the registered UI thread.
         pub fn snapshot(&self) -> Snapshot {
             bbt_rt::assert_not_ui_thread();
             let mut snapshot = Snapshot {
@@ -405,13 +499,16 @@ pub mod capture_diagnostics {
         }
     }
 
+    /// RAII diagnostic span; dropping it records completion once.
     pub struct Guard(Option<(Arc<Recorder>, Span)>);
     impl Guard {
+        /// Attach a request correlation identifier to this span.
         pub fn request(&mut self, request_id: Ulid) {
             if let Some((_, span)) = &mut self.0 {
                 span.request_id = request_id;
             }
         }
+        /// Attach pending-work, ready-queue and parked-host counts to this span.
         pub fn pending(&mut self, pending: usize, ready: usize, parked: usize) {
             if let Some((_, span)) = &mut self.0 {
                 span.pending = pending as u64;
@@ -419,6 +516,7 @@ pub mod capture_diagnostics {
                 span.parked = parked as u64;
             }
         }
+        /// Set the final outcome and work counts, then record completion by consuming the guard.
         pub fn finish(mut self, outcome: Outcome, work: u64, bytes: u64) {
             if let Some((_, span)) = &mut self.0 {
                 span.outcome = outcome;
@@ -678,11 +776,13 @@ impl CloseState {
     }
 }
 
+/// Explicit supervisor endpoints, process limits, input deadline and caller probes.
 pub struct Config {
     /// None is the v0.1 in-process transport; Some enables the same protocol on Unix IPC.
     pub socket_path: Option<PathBuf>,
     /// Required for AttachRing. Supervisor-wide, outside all seat storage units.
     pub journal_directory: Option<PathBuf>,
+    /// Maximum retained processes; admission accepts 1..=1024.
     pub max_seats: usize,
     /// A partially written input times out as unknown; it is never resubmitted.
     pub write_timeout: Duration,
@@ -713,6 +813,10 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+    /// Start the owning supervisor thread and optional explicit Unix endpoint.
+    ///
+    /// # Errors
+    /// Refuses invalid limits or returns poller, endpoint, entropy, capture-writer or thread-start failures.
     pub fn start(config: Config) -> io::Result<Self> {
         if config.max_seats == 0 || config.max_seats > 1024 || config.write_timeout.is_zero() {
             return Err(io::Error::new(
@@ -785,6 +889,10 @@ impl Supervisor {
         self.capability
     }
 
+    /// Register an in-process client and acquire its logic lease.
+    ///
+    /// # Errors
+    /// Returns registration, admission, wake or disconnected-supervisor failures.
     pub fn connect(&self) -> Result<Client, Failure> {
         let id = Ulid::new();
         let (events_tx, events_rx) = mpsc::sync_channel(CHANNEL_CAPACITY);
@@ -816,6 +924,10 @@ impl Supervisor {
         Ok(client)
     }
 
+    /// Request owner shutdown and join after owned children and capture work are stopped.
+    ///
+    /// # Errors
+    /// Returns supervisor thread, persistence or cleanup failure.
     pub fn shutdown(mut self) -> io::Result<()> {
         self.stop()
     }
@@ -838,6 +950,7 @@ impl Drop for Supervisor {
     }
 }
 
+/// Admitted in-process control client with a bounded event receiver.
 pub struct Client {
     id: Ulid,
     lease: Ulid,
@@ -847,14 +960,23 @@ pub struct Client {
 }
 
 impl Client {
+    /// Return this client's admitted logic-lease identity.
     pub fn logic_lease(&self) -> Ulid {
         self.lease
     }
 
+    /// Submit a correlated action under this client's current logic lease.
+    ///
+    /// # Errors
+    /// Returns named host refusals or IO/disconnection; an unavailable reply leaves outcome unknown.
     pub fn request(&self, action: Action) -> Result<Reply, Failure> {
         self.request_frame(Frame::new(Request::new(Some(self.lease), action)))
     }
 
+    /// Submit an explicit versioned request and wait for its correlated reply on IO.
+    ///
+    /// # Errors
+    /// Returns version, lease, host admission or transport failures; query uncertain outcomes before retry.
     pub fn request_frame(&self, frame: Frame<Request>) -> Result<Reply, Failure> {
         let (reply, rx) = mpsc::sync_channel(1);
         self.tx
@@ -873,6 +995,10 @@ impl Client {
         })?
     }
 
+    /// Start the explicit process generation and return its host metadata.
+    ///
+    /// # Errors
+    /// Returns launch validation, capacity, process-start, lease or request failures.
     pub fn spawn(&self, spec: LaunchSpec) -> Result<SeatInfo, Failure> {
         match self.request(Action::Spawn { spec })? {
             Reply::Spawned { info } => Ok(info),
@@ -880,6 +1006,10 @@ impl Client {
         }
     }
 
+    /// Acquire a writer attachment for an exact retained process generation.
+    ///
+    /// # Errors
+    /// Returns stale/missing identity, writer-lease or request failures.
     pub fn attach(&self, seat: Ulid, generation: u64) -> Result<Attachment, Failure> {
         match self.request(Action::Attach { seat, generation })? {
             Reply::Attached { attachment, .. } => Ok(attachment),
@@ -887,6 +1017,10 @@ impl Client {
         }
     }
 
+    /// Submit one idempotently identified byte sequence under the attachment.
+    ///
+    /// # Errors
+    /// Returns stale leases, invalid/oversized/conflicting input or request failures; inspect unknown writes.
     pub fn input(
         &self,
         attachment: &Attachment,
@@ -903,6 +1037,10 @@ impl Client {
         }
     }
 
+    /// Request an ordered resize under the attached generation.
+    ///
+    /// # Errors
+    /// Returns invalid dimensions, stale leases/generation or request failures.
     pub fn resize(&self, attachment: &Attachment, size: SeatSize) -> Result<Reply, Failure> {
         self.request(Action::Resize {
             attachment: attachment.clone(),
@@ -911,12 +1049,19 @@ impl Client {
     }
 
     /// Asynchronously requests SIGHUP, escalating to SIGKILL after 250 ms.
+    ///
+    /// # Errors
+    /// Returns stale attachment/generation or control-request failures.
     pub fn kill(&self, attachment: &Attachment) -> Result<Reply, Failure> {
         self.request(Action::Kill {
             attachment: attachment.clone(),
         })
     }
 
+    /// Block on IO for one observed event up to the supplied timeout.
+    ///
+    /// # Errors
+    /// Returns Timeout when no event arrives, or Disconnected after the event channel closes.
     pub fn recv_timeout(&self, timeout: Duration) -> Result<Event, mpsc::RecvTimeoutError> {
         self.events.recv_timeout(timeout)
     }

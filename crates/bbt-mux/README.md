@@ -1,4 +1,4 @@
-# bbt-mux — restartable logic
+# bboxy450-mux — restartable logic
 
 S1 moves the existing supervisor, its protocol and clients, ring/writer and
 shared blob primitives into the lower `bbt-supervisor` crate. This crate keeps
@@ -333,7 +333,7 @@ precmd/preexec hooks or `ZDOTDIR`, C1 OSC support in upstream term-core,
 Linux/macOS14, and 1000-seat adapter load remain unvalidated. None of these gaps
 authorizes a trust bypass or submission after an unknown outcome.
 
-`cargo test -p bbt-mux --locked` covers storage/signatures/corruption, consumer
+`cargo test -p bboxy450-mux --locked` covers storage/signatures/corruption, consumer
 replay/redelivery/gaps, registry undo, graph recovery, watcher-to-bus task events,
 provenance signatures, real seat sockets and W2.1 PTY/lease/backpressure tests.
 The subprocess fixture hard-kills logic, reattaches through the supervisor
@@ -355,13 +355,13 @@ both writer/durable throughput ≥30 MiB/s, and verifies tail recovery without
 a gap and the same child PID:
 
 ```sh
-cargo test -p bbt-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
+cargo test -p bboxy450-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1
 ```
 
 Run the two finite measurements explicitly:
 
 ```sh
-cargo test -p bbt-mux --locked --test measurements -- --ignored --nocapture --test-threads=1
+cargo test -p bboxy450-mux --locked --test measurements -- --ignored --nocapture --test-threads=1
 ```
 
 Measured locally on 2026-10-22 (no OS limit changes):
@@ -520,7 +520,7 @@ audit seat/generation, and compares the named user config files before/after:
 
 ```sh
 cargo build -p bboxy450-term --locked
-BBOXY_TEST_EXE="$CARGO_TARGET_DIR/debug/bboxy450-term" cargo test -p bbt-mux --locked --test mcp mcp_installed_claude_and_codex_call_orient -- --ignored --exact --nocapture
+BBOXY_TEST_EXE="$CARGO_TARGET_DIR/debug/bboxy450-term" cargo test -p bboxy450-mux --locked --test mcp mcp_installed_claude_and_codex_call_orient -- --ignored --exact --nocapture
 ```
 
 Installed Codex forwards the four `BBOXY_*` names through its per-launch
@@ -530,3 +530,11 @@ spawn tools remain later passes. Protocol references: [MCP lifecycle](https://mo
 [stdio transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports),
 [tool results](https://modelcontextprotocol.io/specification/2025-11-25/server/tools),
 and [Codex MCP configuration](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
+## Dependency name
+
+The Rust library name remains `bbt_mux`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-mux = { package = "bboxy450-mux", version = "0.1.0" }
+```

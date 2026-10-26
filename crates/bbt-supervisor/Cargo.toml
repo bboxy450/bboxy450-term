@@ -1,5 +1,6 @@
 [package]
-name = "bbt-supervisor"
+readme = "README.md"
+name = "bboxy450-harness-host"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,8 +10,8 @@ rust-version.workspace = true
 description = "Local PTY supervisor, fenced clients and capture rings without Tokio"
 
 [dependencies]
-bbt-core = { path = "../bbt-core" }
-bbt-rt = { path = "../bbt-rt", default-features = false }
+bbt-core = { package = "bboxy450-term-core", version = "0.1.0", path = "../bbt-core" }
+bbt-rt = { package = "bboxy450-rt", version = "0.1.0", path = "../bbt-rt", default-features = false }
 getrandom = "0.3"
 libc = "0.2"
 mio = { version = "1", features = ["os-poll", "os-ext", "net"] }
@@ -27,3 +28,6 @@ sha2 = { version = "0.10", features = ["asm-aarch64"] }
 [dev-dependencies]
 tempfile = "3"
 tokio = { version = "1", features = ["rt", "macros", "time", "test-util"] }
+
+[lib]
+name = "bbt_supervisor"

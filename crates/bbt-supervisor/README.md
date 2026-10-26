@@ -1,4 +1,4 @@
-# bbt-supervisor
+# bboxy450-harness-host
 
 The supervisor side of the existing process boundary, moved out of `bbt-mux`
 without changing its wire format or behavior. One mio actor owns PTY masters,
@@ -22,8 +22,8 @@ There is no Tokio dependency or runtime. `bbt-rt` is used with
 `default-features = false`, retaining the same UI-thread registry and debug
 guards. The full app enables its default `runtime` feature through mux.
 
-Verify the dependency boundary with `cargo tree -p bbt-supervisor -e normal`.
-Run `cargo test -p bbt-supervisor -p bbt-mux --locked` for the existing supervisor,
+Verify the dependency boundary with `cargo tree -p bboxy450-harness-host -e normal`.
+Run `cargo test -p bboxy450-harness-host -p bboxy450-mux --locked` for the existing supervisor,
 capture and logic coverage. Retained limits and mechanisms are described in
 `../bbt-mux/README.md`.
 
@@ -79,7 +79,7 @@ journals are conservatively retained if their projection proof is unavailable.
 
 The ignored real-process crash gate defaults to two seats. To exercise the
 measured maximum on this Mac, run
-`BBT_CRASH_SEATS=967 cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture --test-threads=1`.
+`BBT_CRASH_SEATS=967 cargo test -p bboxy450-harness-host --release --lib capture_sigkill -- --ignored --nocapture --test-threads=1`.
 It compiles a small native synthetic producer, stages each seat behind a start
 file, kills the owning supervisor, and reopens every ring through production
 recovery. Successful producer writes and the mmap admission ledger are separate
@@ -91,3 +91,11 @@ The 60-second firehose gate in `bbt-mux/tests/gates_seats.rs` retains the strict
 writer-busy `<50%` and zero-`Busy` assertions at up to 400 seats. At the measured
 maximum, those counters are reported along with liveness and commit latency,
 per the Oracle's gate interpretation; there is no maximum-seat busy threshold.
+
+## Dependency name
+
+The Rust library name remains `bbt_supervisor`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.0" }
+```

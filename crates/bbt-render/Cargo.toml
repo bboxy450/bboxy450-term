@@ -1,15 +1,16 @@
 [package]
-name = "bbt-render"
+readme = "README.md"
+name = "bboxy450-render"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-description = "bboxy450-term: bbt-render"
+description = "Retained GPU rendering, terminal text shaping and compositor primitives"
 
 [dependencies]
-bbt-ui-model = { path = "../bbt-ui-model" }
+bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.0", path = "../bbt-ui-model" }
 bytemuck = { version = "1.25", features = ["derive"] }
 lyon_tessellation = "=1.0.22"
 png = "0.18"
@@ -24,5 +25,8 @@ objc2-core-text = "0.3.2"
 
 [dev-dependencies]
 bbt-core.workspace = true
-bboxy-firehose = { path = "../bboxy-firehose" }
+bboxy-firehose = { package = "bboxy-firehose", version = "0.1.0", path = "../bboxy-firehose" }
 serde_json = "1"
+
+[lib]
+name = "bbt_render"

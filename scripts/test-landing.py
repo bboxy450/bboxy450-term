@@ -263,7 +263,7 @@ class AffectedTests(unittest.TestCase):
 
     def test_contract_names_do_not_override_the_measured_affected_set(self):
         manifest = self.repo.root / "crates/c/Cargo.toml"
-        for name in ("bbt-proto", "bbt-core"):
+        for name in ("bboxy450-proto", "bboxy450-term-core"):
             with self.subTest(name=name):
                 manifest.write_text('[package]\nname="' + name + '"\nversion="0.1.0"\nedition="2024"\n[dependencies]\nb={path="../b"}\n')
                 run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
@@ -517,7 +517,7 @@ class PresubmitTests(unittest.TestCase):
             if "--target-dir" in call:
                 index = call.index("--target-dir")
                 del call[index:index + 2]
-        self.assertIn(["test", "--locked", "-p", "bbt-proto", "--test", "gui_wire_golden"], calls)
+        self.assertIn(["test", "--locked", "-p", "bboxy450-proto", "--test", "gui_wire_golden"], calls)
         self.assertFalse(any("golden" in call for call in calls))
 
     def test_dispatch_cut_still_refuses_a_zero_test_gui_wire_target(self):
@@ -657,7 +657,7 @@ class PresubmitTests(unittest.TestCase):
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
     def test_no_cargo_classifier_handles_environment_prefix_and_ui_lint(self):
-        self.assertTrue(landing.cargo_backed("R5G_SEATS=4 cargo test -p bbt-mux"))
+        self.assertTrue(landing.cargo_backed("R5G_SEATS=4 cargo test -p bboxy450-mux"))
         self.assertTrue(landing.cargo_backed("sh scripts/ui-lint.sh"))
         self.assertFalse(landing.cargo_backed("sh scripts/brand.sh"))
 
@@ -1703,7 +1703,7 @@ class ParityTests(unittest.TestCase):
         output = self.root / "out"
         landing.scoped_parity(self.root, self.data(["lab/web/launcher.html"]), output)
         cargo = [c for c in self.calls if c[0] == "cargo"]
-        self.assertEqual(cargo, [["cargo", "build", "-p", "bboxybook", "--locked"]])
+        self.assertEqual(cargo, [["cargo", "build", "-p", "bboxy450-book", "--locked"]])
         self.assertEqual((output / "native/fixture.png").read_bytes(), b"rendered native")
 
     def test_native_input_uses_fresh_render_even_when_a_stored_set_exists(self):
@@ -1712,7 +1712,7 @@ class ParityTests(unittest.TestCase):
         data = self.data(["design/tokens.toml"])
         data["tier"] = "code"
         landing.scoped_parity(self.root, data, output)
-        self.assertIn(["cargo", "build", "-p", "bboxybook", "--locked"], self.calls)
+        self.assertIn(["cargo", "build", "-p", "bboxy450-book", "--locked"], self.calls)
         self.assertEqual((output / "native/fixture.png").read_bytes(), b"rendered native")
 
     def test_uncatalogued_page_needs_lab_check_but_no_capture(self):
@@ -1793,7 +1793,7 @@ class ParityTests(unittest.TestCase):
 
     def test_page_recheck_keeps_cross_native_lab_coverage(self):
         cut={"affected":[],"lab_pages":["lab/web/a.html","lab/web/b.html"]}
-        move={"affected":["bbt-ui"],"lab_pages":[]}
+        move={"affected":["bboxy450-ui"],"lab_pages":[]}
         self.assertEqual(landing.parity_recheck_pages(cut,move),cut["lab_pages"])
         self.assertEqual(landing.parity_recheck_pages(move,cut),cut["lab_pages"])
 
@@ -1837,8 +1837,8 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(landing.parity_cases(self.cases, data), self.cases[2:])
 
     def test_native_intersection_keeps_the_original_parity_coverage(self):
-        cut = {"affected": ["bbt-ui"], "lab_pages": ["lab/web/launcher.html"]}
-        moved = {"affected": ["bbt-ui"], "lab_pages": ["lab/web/settings.html"]}
+        cut = {"affected": ["bboxy450-ui"], "lab_pages": ["lab/web/launcher.html"]}
+        moved = {"affected": ["bboxy450-ui"], "lab_pages": ["lab/web/settings.html"]}
         self.assertEqual(landing.parity_recheck_pages(cut, moved), [])
 
     def test_native_shared_sample_uses_physical_catalogue_pages(self):

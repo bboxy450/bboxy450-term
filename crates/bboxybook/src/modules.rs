@@ -57,7 +57,7 @@ static NAMES: std::sync::LazyLock<[&'static str; 15]> = std::sync::LazyLock::new
         #[serde(borrow)]
         pool: Vec<&'a str>,
     }
-    let Names { pool } = serde_json::from_str(include_str!("../../bbt-proto/src/seat_names.json"))
+    let Names { pool } = serde_json::from_str(include_str!(concat!(env!("BBOXY_INPUT_ROOT"), "/crates/bbt-proto/src/seat_names.json")))
         .expect("canonical seat-name data");
     [
         pool[0], pool[1], pool[2], pool[3], pool[4], pool[5], pool[6], "zsh", pool[7], pool[8],
@@ -232,9 +232,7 @@ pub fn tree15() -> SplitNode {
             )
         }
     }
-    let fixture: serde_json::Value = serde_json::from_str(include_str!(
-        "../../bbt-ui-model/tests/fixtures/scene15.json"
-    ))
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(env!("BBOXY_INPUT_ROOT"), "/crates/bbt-ui-model/tests/fixtures/scene15.json")))
     .unwrap();
     parse(&fixture["tree"])
 }

@@ -7,64 +7,107 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Observation evidence precedence, ordered from inference through explicit reports.
 pub enum Grade {
+    /// Derived from timing or indirect terminal behavior.
     Inferred,
+    /// Reported through the bounded hook shim.
     Shim,
+    /// Explicit harness/native state report.
     Reported,
 }
 /// Harness activity, independent of any application wire.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
+    /// A turn or observed activity is in progress.
     Active,
+    /// No current active or waiting state is projected.
     Idle,
+    /// The harness is waiting for a named external decision or input.
     Waiting,
+    /// An error or nonzero process exit was observed.
     Errored,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Named waiting reason preserved independently of application UI.
 pub enum WaitingKind {
+    /// A permission decision is pending.
     Permission,
+    /// A question or input response is pending.
     Question,
+    /// Authentication action is pending.
     Auth,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// One graded, generation-scoped harness state observation.
 pub struct Observation {
+    /// Caller-observed event/capture sequence, not a wall clock.
     pub sequence: u64,
+    /// Nonzero host process-generation fence.
     pub generation: u64,
+    /// Observation time in the caller's consistent millisecond clock domain.
     pub observed_ms: u64,
+    /// Named observation channel or evidence source.
     pub source: String,
+    /// Evidence precedence of this observation or projected status.
     pub grade: Grade,
+    /// Observed harness activity state.
     pub state: State,
+    /// Named reason for a waiting state, when available.
     pub waiting_kind: Option<WaitingKind>,
+    /// Optional bounded subagent identity scoped to this session.
     pub agent_id: Option<String>,
+    /// Caller-visible title supplied by the observation.
     pub title: Option<String>,
+    /// Bounded diagnostic detail from the observation source.
     pub detail: Option<String>,
+    /// Whether the observation explicitly clears the matching activity/dialog state.
     pub clear: bool,
+    /// Whether the observation explicitly resolves prior waiting state.
     pub resolves: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Bounded subagent activity projected within one parent session.
 pub struct Subagent {
+    /// Native subagent identity scoped to the parent session.
     pub id: String,
+    /// Caller-visible title supplied by the observation.
     pub title: String,
+    /// Observed harness activity state.
     pub state: State,
+    /// Named reason for a waiting state, when available.
     pub waiting_kind: Option<WaitingKind>,
+    /// Evidence precedence of this observation or projected status.
     pub grade: Grade,
+    /// Sequence where this subagent was first observed.
     pub started_sequence: u64,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Current projected harness activity and active subagent observations.
 pub struct Status {
+    /// Observed harness activity state.
     pub state: State,
+    /// Evidence precedence of this observation or projected status.
     pub grade: Grade,
+    /// Named observation channel or evidence source.
     pub source: String,
+    /// Caller-observed event/capture sequence, not a wall clock.
     pub sequence: u64,
+    /// Observation time in the caller's consistent millisecond clock domain.
     pub observed_ms: u64,
+    /// Bounded diagnostic detail from the observation source.
     pub detail: Option<String>,
+    /// Named reason for a waiting state, when available.
     pub waiting_kind: Option<WaitingKind>,
+    /// Whether an active native turn remains open.
     pub turn_open: bool,
+    /// Bounded set of active subagent observations.
     pub subagents: Vec<Subagent>,
 }
 impl Status {
+    /// Compare projected semantic state while ignoring freshness sequence/timestamp changes.
     pub fn same_value(&self, other: &Self) -> bool {
         self.state == other.state
             && self.grade == other.grade
@@ -77,15 +120,23 @@ impl Status {
 }
 #[derive(Clone)]
 pub(crate) struct Proof {
+    /// Exact process, native-session and attachment identity being observed.
     pub binding: Binding,
+    /// Caller-observed event/capture sequence, not a wall clock.
     pub sequence: u64,
+    /// Observation time in the caller's consistent millisecond clock domain.
     pub observed_ms: u64,
     pub revision: u64,
 }
+/// Caller-owned harness binding, observation projection, readiness and ambiguous-delivery memory.
 pub struct Session {
+    /// Harness configuration selected for this session.
     pub record: HarnessRecord,
+    /// Exact process, native-session and attachment identity being observed.
     pub binding: Binding,
+    /// Current graded activity projection; freshness does not imply readiness.
     pub status: Status,
+    /// Latest working directory observed through the terminal protocol, when available.
     pub cwd: Option<String>,
     pub(crate) proof: Option<Proof>,
     pub(crate) revision: u64,
@@ -98,6 +149,10 @@ pub struct Session {
     history: VecDeque<Observation>,
 }
 impl Session {
+    /// Create an initially unobserved session after validating record and binding.
+    ///
+    /// # Errors
+    /// Refuses invalid harness records or process/session attachment identities.
     pub fn new(record: HarnessRecord, binding: Binding) -> Result<Self> {
         record.validate()?;
         binding.validate()?;
@@ -127,6 +182,10 @@ impl Session {
             uncertain: Default::default(),
         })
     }
+    /// Replace a validated binding and invalidate readiness, dialogs and pending subagent observations.
+    ///
+    /// # Errors
+    /// Refuses an invalid replacement identity.
     pub fn rebind(&mut self, binding: Binding) -> Result<()> {
         binding.validate()?;
         self.binding = binding;
@@ -138,19 +197,23 @@ impl Session {
         self.status.subagents.clear();
         Ok(())
     }
+    /// Drain generated terminal reply bytes; the caller owns any actual PTY write.
     pub fn take_replies(&mut self) -> Vec<Vec<u8>> {
         std::mem::take(&mut self.replies)
     }
+    /// Borrow bounded retained observations oldest first.
     pub fn history(&self) -> &VecDeque<Observation> {
         &self.history
     }
-    /// The time of the current positive readiness proof, if still valid.
+    /// Return the retained positive proof timestamp; the input guard checks its expiry.
     pub fn readiness_observed_ms(&self) -> Option<u64> {
         self.proof.as_ref().map(|proof| proof.observed_ms)
     }
+    /// Record the latest output time used by guarded input and cadence inference.
     pub fn output(&mut self, now_ms: u64) {
         self.last_output_ms = now_ms;
     }
+    /// Discard positive readiness and advance its revision fence.
     pub fn invalidate(&mut self) {
         self.proof = None;
         self.revision = self.revision.wrapping_add(1);
@@ -257,6 +320,7 @@ impl Session {
         }
         true
     }
+    /// Project a terminal exit observation, resolving prior activity and invalidating readiness.
     pub fn exit(&mut self, sequence: u64, now_ms: u64, code: u32) -> Observation {
         let mut obs = self.observation(
             sequence,
@@ -278,6 +342,7 @@ impl Session {
         self.invalidate();
         obs
     }
+    /// Refresh inferred activity only when the record explicitly selects cadence-based state.
     pub fn tick(&mut self, sequence: u64, now_ms: u64) {
         if self.record.state_source == super::StateSource::Cadence {
             let state = if now_ms.saturating_sub(self.last_output_ms) < 2000 {
@@ -289,6 +354,7 @@ impl Session {
             self.apply(obs);
         }
     }
+    /// Decode bounded supported OSC observations for this session without granting external authority.
     pub fn osc(&mut self, params: &[Vec<u8>], sequence: u64, now_ms: u64) -> Vec<Observation> {
         if params.iter().map(Vec::len).sum::<usize>() > 4096 {
             return Vec::new();
@@ -394,6 +460,7 @@ pub(crate) fn agent_id(value: &str) -> bool {
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b"_.+-".contains(&b))
 }
+/// Truncate to at most `max` UTF-8 bytes without splitting a character.
 pub fn short(value: &str, max: usize) -> String {
     let mut end = value.len().min(max);
     while !value.is_char_boundary(end) {
@@ -414,6 +481,7 @@ fn decode_text(value: &str, max: usize) -> Option<String> {
 
 type Frames = Vec<Vec<Vec<u8>>>;
 #[derive(Clone, Default)]
+/// Shared bounded collector of unknown terminal OSC parameter frames.
 pub struct OscTap(Arc<Mutex<(Frames, bool)>>);
 impl OscTap {
     /// Installed on the live Term; restoration preserves the callback. Draining
@@ -431,6 +499,10 @@ impl OscTap {
         });
         tap
     }
+    /// Drain captured parameter frames and clear the overflow latch.
+    ///
+    /// # Errors
+    /// Refuses a poisoned collector or an exceeded frame/byte bound, invalidating readiness.
     pub fn drain(&self) -> Result<Frames> {
         let mut queue = self
             .0

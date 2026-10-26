@@ -2,20 +2,29 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
+/// Maximum number of frame samples retained by the memory-only hitch meter.
 pub const FRAME_SAMPLES: usize = 1024;
 
+/// Caller-measured wall durations for the five frontend frame phases.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Phases {
+    /// Time draining incoming frontend work.
     pub drain: Duration,
+    /// Time solving layout.
     pub layout: Duration,
+    /// Time preparing draw commands.
     pub draw: Duration,
+    /// Time encoding the submitted frame.
     pub encode: Duration,
+    /// Time waiting for presentation, excluded from the CPU-side sum.
     pub present_wait: Duration,
 }
 impl Phases {
+    /// Sum CPU-side phase wall durations; this is not a thread CPU clock sample.
     pub fn cpu(self) -> Duration {
         self.drain + self.layout + self.draw + self.encode
     }
+    /// Return the longest of all five phase durations and its exported name.
     pub fn slowest(self) -> (&'static str, Duration) {
         [
             ("drain", self.drain),
@@ -30,12 +39,16 @@ impl Phases {
     }
 }
 
+/// One frame with its preceding interval and caller-measured phase durations.
 #[derive(Clone, Copy, Debug)]
 pub struct FrameSample {
+    /// Elapsed time since the previous frame, absent for the first sample.
     pub interval: Option<Duration>,
+    /// Measured phase durations for this frame.
     pub phases: Phases,
 }
 
+/// Owner-local bounded frame history with percentile and idle-gap projection.
 pub struct HitchMeter {
     samples: VecDeque<FrameSample>,
     previous: Option<Instant>,
@@ -51,23 +64,29 @@ pub const IDLE_INTERVALS: u32 = 4;
 /// One frame of the overlay's sparkline: its phases in ms, or an idle stub.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HudFrame {
+    /// A measured frame with all five phase durations in milliseconds.
     Busy {
+        /// Durations in the order defined by `PHASE_NAMES`.
         phases: [f64; 5],
         /// The phase that overran, when this frame was late.
         hitch: Option<&'static str>,
     },
+    /// An idle-gap marker between measured frames, excluded from hitch counts.
     Idle,
 }
 
 /// The perf overlay's record, in the lab's names (C.perfHud): ms values are f64.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PerfRecord {
+    /// Rounded observed busy-frame rate, using the configured interval before samples exist.
     pub hz: u32,
     /// Median frame interval over the window (idle gaps excluded).
     pub interval_ms: f64,
     /// The display interval: a frame is late past 1.5 x this.
     pub budget_ms: f64,
+    /// Median sum of CPU-side phase wall durations in milliseconds.
     pub cpu_p50: f64,
+    /// 99th percentile of the CPU-side phase wall-duration sum in milliseconds.
     pub cpu_p99: f64,
     /// Mean GPU active time per frame, supplied by the host.
     pub gpu_ms: f64,
@@ -83,6 +102,7 @@ pub struct PerfRecord {
     pub idle_ms: Option<f64>,
 }
 
+/// Export order for phase arrays in frame and overlay records.
 pub const PHASE_NAMES: [&str; 5] = ["drain", "layout", "draw", "encode", "present_wait"];
 
 fn ms(d: Duration) -> f64 {
@@ -108,6 +128,10 @@ fn percentile(values: &mut [f64], p: f64) -> f64 {
     values[index.min(values.len() - 1)]
 }
 impl HitchMeter {
+    /// Create an empty meter with the requested display frequency.
+    ///
+    /// # Panics
+    /// Panics unless `hz` is finite and positive and its reciprocal fits a `Duration`.
     pub fn new(hz: f64) -> Self {
         assert!(hz.is_finite() && hz > 0.);
         Self {
@@ -192,12 +216,15 @@ impl HitchMeter {
             idle_ms,
         }
     }
+    /// Return the lifetime number of recorded frames, including samples already evicted.
     pub fn total_frames(&self) -> u64 {
         self.total
     }
+    /// Borrow retained samples oldest first, bounded by `FRAME_SAMPLES`.
     pub fn samples(&self) -> &VecDeque<FrameSample> {
         &self.samples
     }
+    /// Return a percentile of retained CPU-side wall-duration sums; clamp the fraction to 0..=1.
     pub fn cpu_percentile(&self, percentile: f64) -> Duration {
         if self.samples.is_empty() {
             return Duration::ZERO;

@@ -1,4 +1,4 @@
-# bbt-render — W3.1
+# bboxy450-render — W3.1
 
 Headless wgpu **30.0.1 / Metal**, with no window or `Term` dependency. The GUI
 parity target remains `ux-prototype-v2`; chrome/showcase parity is later work.
@@ -10,7 +10,7 @@ target is RGBA8 sRGB; shader colour conversion and GPU blending operate in linea
 space. Text uses a grayscale R8 atlas, doubled as needed without moving old slots.
 
 ```sh
-cargo test -p bbt-render -- --nocapture
+cargo test -p bboxy450-render -- --nocapture
 ls target/render/smoke/*.png | wc -l
 ```
 
@@ -58,3 +58,11 @@ image is upright. The runner resolved SF Mono to Menlo, so its manifest records
 36 distinct image hashes versus 48 locally with SF Mono Terminal available.
 No environment-variable skip was added. CI excerpts/artifact metadata are in
 `.kb/runs/w3-1-ci.log`.
+
+## Dependency name
+
+The Rust library name remains `bbt_render`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-render = { package = "bboxy450-render", version = "0.1.0" }
+```

@@ -25,8 +25,11 @@ use std::borrow::Cow;
 /// Logical key independent of a window system. Character keys use Unicode text.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Key<S = String> {
+    /// Unicode text identifying the active-layout logical key.
     Character(S),
+    /// A toolkit-independent functional-key identity.
     Named(NamedKey),
+    /// No identity is available at this logical or physical layer.
     Unidentified,
 }
 impl<S: AsRef<str>> Key<S> {
@@ -41,175 +44,327 @@ impl<S: AsRef<str>> Key<S> {
 /// Functional key names used by DEC/xterm and the Kitty keyboard protocol.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NamedKey {
+    /// Alt modifier key.
     Alt,
+    /// Down-arrow navigation key.
     ArrowDown,
+    /// Left-arrow navigation key.
     ArrowLeft,
+    /// Right-arrow navigation key.
     ArrowRight,
+    /// Up-arrow navigation key.
     ArrowUp,
+    /// Decrease audio volume.
     AudioVolumeDown,
+    /// Toggle audio muting.
     AudioVolumeMute,
+    /// Increase audio volume.
     AudioVolumeUp,
+    /// Backward-delete key.
     Backspace,
+    /// Caps Lock key; the current toggle is supplied separately.
     CapsLock,
+    /// Clear key.
     Clear,
+    /// Context-menu key.
     ContextMenu,
+    /// Control modifier key.
     Control,
+    /// Forward-delete key.
     Delete,
+    /// End navigation key.
     End,
+    /// Enter or Return key.
     Enter,
+    /// Escape key.
     Escape,
+    /// Function key F1.
     F1,
+    /// Function key F10.
     F10,
+    /// Function key F11.
     F11,
+    /// Function key F12.
     F12,
+    /// Function key F13.
     F13,
+    /// Function key F14.
     F14,
+    /// Function key F15.
     F15,
+    /// Function key F16.
     F16,
+    /// Function key F17.
     F17,
+    /// Function key F18.
     F18,
+    /// Function key F19.
     F19,
+    /// Function key F2.
     F2,
+    /// Function key F20.
     F20,
+    /// Function key F21.
     F21,
+    /// Function key F22.
     F22,
+    /// Function key F23.
     F23,
+    /// Function key F24.
     F24,
+    /// Function key F25.
     F25,
+    /// Function key F26.
     F26,
+    /// Function key F27.
     F27,
+    /// Function key F28.
     F28,
+    /// Function key F29.
     F29,
+    /// Function key F3.
     F3,
+    /// Function key F30.
     F30,
+    /// Function key F31.
     F31,
+    /// Function key F32.
     F32,
+    /// Function key F33.
     F33,
+    /// Function key F34.
     F34,
+    /// Function key F35.
     F35,
+    /// Function key F4.
     F4,
+    /// Function key F5.
     F5,
+    /// Function key F6.
     F6,
+    /// Function key F7.
     F7,
+    /// Function key F8.
     F8,
+    /// Function key F9.
     F9,
+    /// Home navigation key.
     Home,
+    /// Hyper modifier key.
     Hyper,
+    /// Insert key.
     Insert,
+    /// Media fast-forward control.
     MediaFastForward,
+    /// Media pause control.
     MediaPause,
+    /// Media play control.
     MediaPlay,
+    /// Combined media play/pause control.
     MediaPlayPause,
+    /// Media recording control.
     MediaRecord,
+    /// Media rewind control.
     MediaRewind,
+    /// Media stop control.
     MediaStop,
+    /// Next media track control.
     MediaTrackNext,
+    /// Previous media track control.
     MediaTrackPrevious,
+    /// Meta modifier key.
     Meta,
+    /// Num Lock key; the current toggle is supplied separately.
     NumLock,
+    /// Page-down navigation key.
     PageDown,
+    /// Page-up navigation key.
     PageUp,
+    /// Pause key.
     Pause,
+    /// Print Screen key.
     PrintScreen,
+    /// Scroll Lock key.
     ScrollLock,
+    /// Shift modifier key.
     Shift,
+    /// Space key represented as a functional key.
     Space,
+    /// Super modifier key.
     Super,
+    /// Tab key.
     Tab,
 }
 /// Physical US key positions needed for base-layout and application keypad keys.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyCode {
+    /// US backquote/grave-accent position.
     Backquote,
+    /// US backslash position.
     Backslash,
+    /// US opening-bracket position.
     BracketLeft,
+    /// US closing-bracket position.
     BracketRight,
+    /// US comma position.
     Comma,
+    /// Left Control modifier position.
     ControlLeft,
+    /// US top-row digit 0 position.
     Digit0,
+    /// US top-row digit 1 position.
     Digit1,
+    /// US top-row digit 2 position.
     Digit2,
+    /// US top-row digit 3 position.
     Digit3,
+    /// US top-row digit 4 position.
     Digit4,
+    /// US top-row digit 5 position.
     Digit5,
+    /// US top-row digit 6 position.
     Digit6,
+    /// US top-row digit 7 position.
     Digit7,
+    /// US top-row digit 8 position.
     Digit8,
+    /// US top-row digit 9 position.
     Digit9,
+    /// US equals position.
     Equal,
+    /// Physical function-key position F5.
     F5,
+    /// US A letter-key position.
     KeyA,
+    /// US B letter-key position.
     KeyB,
+    /// US C letter-key position.
     KeyC,
+    /// US D letter-key position.
     KeyD,
+    /// US E letter-key position.
     KeyE,
+    /// US F letter-key position.
     KeyF,
+    /// US G letter-key position.
     KeyG,
+    /// US H letter-key position.
     KeyH,
+    /// US I letter-key position.
     KeyI,
+    /// US J letter-key position.
     KeyJ,
+    /// US K letter-key position.
     KeyK,
+    /// US L letter-key position.
     KeyL,
+    /// US M letter-key position.
     KeyM,
+    /// US N letter-key position.
     KeyN,
+    /// US O letter-key position.
     KeyO,
+    /// US P letter-key position.
     KeyP,
+    /// US Q letter-key position.
     KeyQ,
+    /// US R letter-key position.
     KeyR,
+    /// US S letter-key position.
     KeyS,
+    /// US T letter-key position.
     KeyT,
+    /// US U letter-key position.
     KeyU,
+    /// US V letter-key position.
     KeyV,
+    /// US W letter-key position.
     KeyW,
+    /// US X letter-key position.
     KeyX,
+    /// US Y letter-key position.
     KeyY,
+    /// US Z letter-key position.
     KeyZ,
+    /// US minus position.
     Minus,
+    /// Numeric-keypad digit 0 position.
     Numpad0,
+    /// Numeric-keypad digit 1 position.
     Numpad1,
+    /// Numeric-keypad digit 2 position.
     Numpad2,
+    /// Numeric-keypad digit 3 position.
     Numpad3,
+    /// Numeric-keypad digit 4 position.
     Numpad4,
+    /// Numeric-keypad digit 5 position.
     Numpad5,
+    /// Numeric-keypad digit 6 position.
     Numpad6,
+    /// Numeric-keypad digit 7 position.
     Numpad7,
+    /// Numeric-keypad digit 8 position.
     Numpad8,
+    /// Numeric-keypad digit 9 position.
     Numpad9,
+    /// Numeric-keypad addition position.
     NumpadAdd,
+    /// Numeric-keypad comma position.
     NumpadComma,
+    /// Numeric-keypad decimal-separator position.
     NumpadDecimal,
+    /// Numeric-keypad division position.
     NumpadDivide,
+    /// Numeric-keypad Enter position.
     NumpadEnter,
+    /// Numeric-keypad equals position.
     NumpadEqual,
+    /// Numeric-keypad multiplication position.
     NumpadMultiply,
+    /// Numeric-keypad subtraction position.
     NumpadSubtract,
+    /// US period position.
     Period,
+    /// US apostrophe/quote position.
     Quote,
+    /// US semicolon position.
     Semicolon,
+    /// US slash position.
     Slash,
+    /// Spacebar position.
     Space,
 }
 /// A physical position; unsupported positions can retain logical key/text data.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PhysicalKey {
+    /// A recognized physical US key position.
     Code(KeyCode),
+    /// No identity is available at this logical or physical layer.
     Unidentified,
 }
 /// Location distinguishes the keypad and the two sides of modifier keys.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyLocation {
+    /// A non-sided key outside the numeric keypad.
     Standard,
+    /// The left-hand member of a sided modifier pair.
     Left,
+    /// The right-hand member of a sided modifier pair.
     Right,
+    /// A key located on the numeric keypad.
     Numpad,
 }
 /// Key transition. Repeats are pressed transitions with Input::repeat set.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ElementState {
+    /// A press transition, including repeats identified separately.
     Pressed,
+    /// A release transition; terminal modes decide whether it is reported.
     Released,
 }
 impl ElementState {
+    /// Return whether this transition is a press.
     pub fn is_pressed(self) -> bool {
         self == Self::Pressed
     }
@@ -218,25 +373,42 @@ bitflags::bitflags! {
     /// Toolkit-neutral depressed modifiers. Caps/Num toggles are separate Locks.
     #[derive(Clone,Copy,Debug,Default,PartialEq,Eq)]
     pub struct ModifiersState: u16 {
-        const SHIFT=1; const ALT=2; const CONTROL=4; const SUPER=8; const HYPER=16; const META=32;
+        /// Shift is depressed.
+        const SHIFT=1;
+        /// Alt is depressed.
+        const ALT=2;
+        /// Control is depressed.
+        const CONTROL=4;
+        /// Super is depressed.
+        const SUPER=8;
+        /// Hyper is depressed.
+        const HYPER=16;
+        /// Meta is depressed.
+        const META=32;
     }
 }
 impl ModifiersState {
+    /// Return whether Shift is depressed.
     pub fn shift_key(self) -> bool {
         self.contains(Self::SHIFT)
     }
+    /// Return whether Alt is depressed.
     pub fn alt_key(self) -> bool {
         self.contains(Self::ALT)
     }
+    /// Return whether Control is depressed.
     pub fn control_key(self) -> bool {
         self.contains(Self::CONTROL)
     }
+    /// Return whether Super is depressed.
     pub fn super_key(self) -> bool {
         self.contains(Self::SUPER)
     }
+    /// Return whether Hyper is depressed.
     pub fn hyper_key(self) -> bool {
         self.contains(Self::HYPER)
     }
+    /// Return whether Meta is depressed.
     pub fn meta_key(self) -> bool {
         self.contains(Self::META)
     }
@@ -245,14 +417,18 @@ impl ModifiersState {
 /// Lock state supplied by the platform, independent of keypad key location.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Locks {
+    /// Whether Caps Lock is active for this event.
     pub caps: bool,
+    /// Whether Num Lock is active for this event.
     pub num: bool,
 }
 
 /// All modifiers consumed by the pure encoder. Command is reserved by the app.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Modifiers {
+    /// Depressed modifiers, separate from lock toggles.
     pub state: ModifiersState,
+    /// Caps and Num lock-toggle state supplied by the producer.
     pub locks: Locks,
 }
 
@@ -260,14 +436,23 @@ pub struct Modifiers {
 /// unmodified keys, physical position, modifier state and optional generated text.
 #[derive(Clone, Debug)]
 pub struct Input<'a> {
+    /// Logical key interpreted using the active keyboard layout.
     pub logical_key: Key,
+    /// Physical US position, independent of the active layout.
     pub physical_key: PhysicalKey,
+    /// Logical key with depressed modifiers removed by the producer.
     pub unmodified_key: Key,
+    /// Text generated by this event, when supplied by the producer.
     pub text: Option<&'a str>,
+    /// Text generated while accounting for all depressed modifiers.
     pub text_all_modifiers: Option<&'a str>,
+    /// Sided or numeric-keypad location of the event.
     pub location: KeyLocation,
+    /// Press or release transition.
     pub state: ElementState,
+    /// Whether a pressed transition is a repeated press.
     pub repeat: bool,
+    /// Depressed modifiers and lock toggles for this event.
     pub modifiers: Modifiers,
 }
 impl Input<'_> {

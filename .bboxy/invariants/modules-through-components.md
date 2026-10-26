@@ -4,7 +4,7 @@ number: 139
 type: invariant
 title: L7 modules draw only through components
 status: active
-check: cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows -- --exact
+check: cargo test -p bboxy450-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows -- --exact
 cost: a module that hand-draws escapes theming and parity, and the layer cake drifts
 links:
   - { to: "[[gui-components]]", rel: constrains }
@@ -18,7 +18,7 @@ updated: 2026-10-22T21:14:24Z
 `crates/bbt-ui/src/modules/`. A module composes L6 components; only components
 and atoms touch the draw list ([[gui-components]] §2c).
 
-**Check.** `cargo test -p bbt-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows`
+**Check.** `cargo test -p bboxy450-ui --locked --test seat_rows module_sources_and_legacy_adapter_cannot_hand_draw_rows`
 (`crates/bbt-ui/tests/seat_rows.rs:42-71`, a source scan) — exit 0 held. Part of
 `cargo test --workspace` in `sh scripts/ci-local.sh`.
 

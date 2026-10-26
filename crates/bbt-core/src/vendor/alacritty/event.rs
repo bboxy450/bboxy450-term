@@ -94,21 +94,28 @@ pub trait Notify {
     fn notify<B: Into<Cow<'static, [u8]>>>(&self, _: B);
 }
 
+/// Terminal dimensions reported to resize listeners, in cells and pixels per cell.
 #[derive(Copy, Clone, Debug)]
 pub struct WindowSize {
+    /// Visible terminal row count.
     pub num_lines: u16,
+    /// Visible terminal column count.
     pub num_cols: u16,
+    /// Width of one cell in pixels.
     pub cell_width: u16,
+    /// Height of one cell in pixels.
     pub cell_height: u16,
 }
 
 /// Types that are interested in when the display is resized.
 pub trait OnResize {
+    /// Observe the embedding host's new terminal dimensions.
     fn on_resize(&mut self, window_size: WindowSize);
 }
 
 /// Event Loop for notifying the renderer about terminal events.
 pub trait EventListener {
+    /// Receive one terminal-generated event; the default listener discards it.
     fn send_event(&self, _event: Event) {}
 }
 
