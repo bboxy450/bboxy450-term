@@ -397,5 +397,47 @@
       "preserved": "all parity reports, manifests, hashes, raw logs, and active evidence galleries"
     }
   },
-  "state": "author pending"
+  "state": "landed; acceptance pending postsubmit green and Oracle review",
+  "landing": {
+    "sha": "a6710ffa610e8eb92a38516561cd5a4e866ea83a",
+    "signature": "G",
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "exit": 0,
+    "author_seconds": 946.4706568717957,
+    "presubmit_seconds": 934.4192255000235,
+    "compile_seconds": 391.9462169999606,
+    "run_seconds": 542.4726786250249,
+    "test_seconds": 228.25473471404985,
+    "tests": {
+      "passed": 1031,
+      "failed": 0,
+      "ignored": 80
+    },
+    "strict_clippy_exit": 0,
+    "invariants": {
+      "passed": 24,
+      "failed": 0,
+      "slow_skipped": 11,
+      "unaffected_crate_skipped": 2
+    },
+    "parity": {
+      "cases": 472,
+      "required": 470,
+      "measured": 470,
+      "unproven": 0,
+      "mismatches": 0,
+      "advisory_reviews": 1,
+      "review_key": "harness-icon/claude-comfortable-dark.png"
+    },
+    "raw": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/a6710ffa610e8eb92a38516561cd5a4e866ea83a-5dff026a/commands.log",
+    "raw_sha256": "735e5bf8651c000ca492303936eba4b89b7b0b0c5f715dbb69df21ffba05cfee"
+  },
+  "lab_review": {
+    "peer": "Wren Thistledown",
+    "message": "7abdbffc-a24f-4f9c-a0d7-ef421a465c1b",
+    "scope": "native/web messaging \u00b7 overridden comfortable-dark pair; header, caption, groups, override/reset, defaults, note and selected nav confirmed"
+  }
 }
