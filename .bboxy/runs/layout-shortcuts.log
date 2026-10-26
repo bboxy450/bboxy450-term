@@ -1,0 +1,13 @@
+Sable Embertail <EXECUTOR> — critical layout-aware shortcut release blocker, 2026-10-26T21:03:55.757759+00:00.
+Oracle brief 47b33a60-6ce8-4a9b-aaa7-2b36c109df4e; source base b5990dde8f349dfe551ddf4d4d8b6c4b1be63a2b, branch sable-layout-shortcuts, own exec3.
+main.rs route_key/local_page/settings/composer/route_chrome/capture — every alphabetic/punctuation app binding uses keyboard::shortcut_key; physical identities remain for modifiers and consumed press/repeat/release ownership.
+keyboard.rs:39 — active-layout unmodified character, ASCII case normalized; on macOS a non-ASCII base uses native Command text (then native logical ASCII), never a US-position table. Winit0.30.13 exposes NSEvent.characters as text_with_all_modifiers.
+Text audit: terminal bbt-core input retains logical_key, unmodified_key and native text; launcher, Settings and composer retain logical text/IME paths; digit selection retains the typed logical digit.
+Five synthetic route regressions: Programmer Dvorak physicalK/t opens launcher, physicalT/y does not; character/global/chrome bindings; Russian Command translation; ordinary Unicode typing; original physical repeat/release suppression.
+cargo test --locked -p bboxy450-term --target-dir target/layout-shortcuts --bin bboxy450-term layout_shortcut_tests -- --nocapture: before production fix EXIT101,1 passed/4 failed; optimized build4m44s. Raw red SHA256 dbaef86c53c3afedfd2b958b7635af1ca7f3a08b26adfdfa9d5ac347177874dd.
+Same command after fix: EXIT0,5 passed/0 failed,0 ignored,137 filtered; build26.38s, tests0.00s. Raw green SHA256 7245d0d3cb2fad7303c412196ac79a5ccfcc0ea826b032423e1fe2c5b01ba483.
+Read-only native UCKeyTranslate probe EXIT0 on installed com.apple.keylayout.Russian: T е->t, A ф->a, K л->k for Command; no input source selection or event posting. Probe log SHA256 5e4ac7aa928060427c047b3a3574342a26d87c33f5ed228b8ac491fd1bbee7da.
+Primary boundary source: https://github.com/rust-windowing/winit/blob/v0.30.13/src/platform_impl/macos/event.rs#L100 and platform/modifier_supplement.rs; active layout ignores all modifiers, native text retains Command translation.
+git diff --check EXIT0. Production scan: no physical_key == / physical == character shortcut comparisons remain in app routing; named/modifier/protocol metadata and explicit ctl fixtures retained.
+Validation so far is synthetic input through actual routing plus read-only native translation; complete author presubmit/strict Clippy pending, no physical-keyboard or full-night verdict claimed.
+Private raw evidence: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-layout-358ov6hl; red.patch, red/green.log and .result.json, native-layout-probe.py/log. No raw transcript or credential included.

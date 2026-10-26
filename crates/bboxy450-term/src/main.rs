@@ -1026,12 +1026,12 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         };
     }
     let key = &input.logical_key;
-    let physical = input.physical_key;
+    let shortcut = keyboard::shortcut_key(input);
     let text = input.text;
     let mods = input.modifiers.state;
     let repeat = input.repeat;
     let command = mods.super_key();
-    if command && physical == PhysicalKey::Code(KeyCode::KeyQ) {
+    if command && shortcut == Some('q') {
         return if repeat {
             RoutedKey::Local
         } else {
@@ -1042,7 +1042,7 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         && !mods.alt_key()
         && !mods.shift_key()
         && !mods.control_key()
-        && physical == PhysicalKey::Code(KeyCode::KeyT)
+        && shortcut == Some('t')
     {
         return if repeat {
             RoutedKey::Local
@@ -1050,7 +1050,7 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             RoutedKey::OpenLauncher
         };
     }
-    if command && mods.alt_key() && physical == PhysicalKey::Code(KeyCode::KeyF) {
+    if command && mods.alt_key() && shortcut == Some('f') {
         return if repeat {
             RoutedKey::Local
         } else {
@@ -1061,7 +1061,7 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         && !mods.alt_key()
         && !mods.shift_key()
         && !mods.control_key()
-        && physical == PhysicalKey::Code(KeyCode::KeyG)
+        && shortcut == Some('g')
     {
         return if repeat {
             RoutedKey::Local
@@ -1070,21 +1070,21 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         };
     }
     if command && !mods.alt_key() && !mods.shift_key() && !mods.control_key() {
-        if physical == PhysicalKey::Code(KeyCode::Comma) {
+        if shortcut == Some(',') {
             return if repeat {
                 RoutedKey::Local
             } else {
                 RoutedKey::OpenSettings
             };
         }
-        if query.is_none() && physical == PhysicalKey::Code(KeyCode::KeyZ) {
+        if query.is_none() && shortcut == Some('z') {
             return if repeat {
                 RoutedKey::Local
             } else {
                 RoutedKey::UndoClose
             };
         }
-        if physical == PhysicalKey::Code(KeyCode::KeyM) {
+        if shortcut == Some('m') {
             return if repeat {
                 RoutedKey::Local
             } else {
@@ -1170,11 +1170,11 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         Key::Named(NamedKey::Escape) if !repeat => LauncherCommand::Escape,
         Key::Named(NamedKey::Backspace) => LauncherCommand::Backspace,
         Key::Named(NamedKey::Delete) => LauncherCommand::Delete,
-        Key::Character(value) if command && value.eq_ignore_ascii_case("a") => {
+        Key::Character(_) if command && shortcut == Some('a') => {
             LauncherCommand::SelectAll
         }
-        Key::Character(value)
-            if (command || mods.control_key()) && value.eq_ignore_ascii_case("r") && !repeat =>
+        Key::Character(_)
+            if (command || mods.control_key()) && shortcut == Some('r') && !repeat =>
         {
             LauncherCommand::Reroll
         }
@@ -1253,7 +1253,7 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
         && !mods.alt_key()
         && !mods.shift_key()
         && !mods.control_key()
-        && input.physical_key == PhysicalKey::Code(KeyCode::KeyW)
+        && keyboard::shortcut_key(input) == Some('w')
     {
         return if input.repeat {
             RoutedKey::Local
@@ -1297,7 +1297,7 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
         return RoutedKey::SettingsKey(SettingsKey::Next(input.modifiers.state.shift_key()));
     }
     if input.modifiers.state.super_key()
-        && input.physical_key == PhysicalKey::Code(KeyCode::KeyR)
+        && keyboard::shortcut_key(input) == Some('r')
         && !input.repeat
     {
         return RoutedKey::SettingsKey(SettingsKey::Reload);
@@ -1450,7 +1450,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
         },
         Key::Named(NamedKey::Backspace) => EditCommand::Delete { backwards: true },
         Key::Named(NamedKey::Delete) => EditCommand::Delete { backwards: false },
-        Key::Character(value) if command && value.eq_ignore_ascii_case("a") => {
+        Key::Character(_) if command && keyboard::shortcut_key(input) == Some('a') => {
             EditCommand::SelectAll
         }
         Key::Character(value) if !command && !mods.control_key() => {
@@ -4417,7 +4417,7 @@ impl App {
             && !input.repeat
             && (matches!(&input.logical_key, Key::Named(NamedKey::Escape))
                 || (input.modifiers.state.super_key()
-                    && input.physical_key == PhysicalKey::Code(KeyCode::KeyW)))
+                    && keyboard::shortcut_key(input) == Some('w')))
             && let Some(op) = self.starting.focused()
             && self
                 .starting
@@ -6873,7 +6873,7 @@ impl ApplicationHandler<UiEvent> for App {
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
-                    && event.physical_key == PhysicalKey::Code(KeyCode::KeyR)
+                    && keyboard::shortcut_key(&input) == Some('r')
                     && !event.repeat
                 {
                     if let Some(window) = &self.window {
@@ -6894,7 +6894,7 @@ impl ApplicationHandler<UiEvent> for App {
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
-                    && event.physical_key == PhysicalKey::Code(KeyCode::KeyS)
+                    && keyboard::shortcut_key(&input) == Some('s')
                     && !event.repeat
                 {
                     self.capture_pending = true;
@@ -8937,6 +8937,162 @@ mod scroll_input_tests {
         queue_pending(&mut pending, live::UiMsg::Watched(vec![])).unwrap();
         assert_eq!(pending.len(), 1);
         assert!(matches!(pending.front(), Some(live::UiMsg::Watched(_))));
+    }
+}
+
+#[cfg(test)]
+mod layout_shortcut_tests {
+    use super::*;
+
+    fn character(
+        logical: &'static str,
+        unmodified: &str,
+        physical: KeyCode,
+        native_text: Option<&'static str>,
+        modifiers: ModifiersState,
+    ) -> keyboard::Input<'static> {
+        let mut input = test_key(
+            &Key::Character(logical.into()),
+            PhysicalKey::Code(physical),
+            Some(logical),
+            modifiers,
+            false,
+        );
+        input.unmodified_key = Key::Character(unmodified.into());
+        input.text_all_modifiers = native_text;
+        input
+    }
+
+    #[test]
+    fn programmer_dvorak_command_t_uses_the_layout_not_the_us_position() {
+        let command_t = character("t", "t", KeyCode::KeyK, Some("t"), ModifiersState::SUPER);
+        assert_eq!(route_key(&command_t, 0, None), RoutedKey::OpenLauncher);
+        let physical_t = character("y", "y", KeyCode::KeyT, Some("y"), ModifiersState::SUPER);
+        assert_eq!(route_key(&physical_t, 0, None), RoutedKey::Local);
+    }
+
+    #[test]
+    fn character_shortcuts_and_chrome_edits_use_the_unmodified_layout() {
+        for (logical, base, expected) in [
+            ("Q", "q", RoutedKey::Quit),
+            ("g", "g", RoutedKey::OpenGraph),
+            (",", ",", RoutedKey::OpenSettings),
+            ("z", "z", RoutedKey::UndoClose),
+            ("m", "m", RoutedKey::MuteFocused),
+        ] {
+            let key = character(
+                logical,
+                base,
+                KeyCode::KeyJ,
+                Some(logical),
+                ModifiersState::SUPER,
+            );
+            assert_eq!(route_key(&key, 0, None), expected, "{base}");
+        }
+        let hud = character(
+            "ƒ",
+            "f",
+            KeyCode::KeyY,
+            Some("ƒ"),
+            ModifiersState::SUPER | ModifiersState::ALT,
+        );
+        assert_eq!(route_key(&hud, 0, None), RoutedKey::ToggleHud);
+        let close = character("w", "w", KeyCode::Comma, Some("w"), ModifiersState::SUPER);
+        assert_eq!(
+            route_local_page(&close, 0),
+            RoutedKey::LocalPage(PageCommand::Close)
+        );
+        let reload = character("r", "r", KeyCode::KeyO, Some("r"), ModifiersState::SUPER);
+        assert_eq!(
+            route_settings(&reload, 0, false),
+            RoutedKey::SettingsKey(SettingsKey::Reload)
+        );
+        let select = character(
+            "å",
+            "a",
+            KeyCode::KeyJ,
+            Some("å"),
+            ModifiersState::SUPER | ModifiersState::ALT,
+        );
+        assert_eq!(
+            route_key(&select, 0, Some("query")),
+            RoutedKey::Launcher(LauncherCommand::SelectAll)
+        );
+        assert_eq!(
+            route_composer(&select, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Edit(EditCommand::SelectAll))
+        );
+        assert_eq!(
+            route_key(&reload, 0, Some("query")),
+            RoutedKey::Launcher(LauncherCommand::Reroll)
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn russian_command_shortcuts_use_the_native_ascii_command_translation() {
+        // ЙЦУКЕН: physical T is е without modifiers; macOS Command translates it to t.
+        let command_t = character("е", "е", KeyCode::KeyT, Some("t"), ModifiersState::SUPER);
+        assert_eq!(route_key(&command_t, 0, None), RoutedKey::OpenLauncher);
+        // The same native fallback reaches editing commands, not just global chords.
+        let select = character("ф", "ф", KeyCode::KeyA, Some("a"), ModifiersState::SUPER);
+        assert_eq!(
+            route_composer(&select, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Edit(EditCommand::SelectAll))
+        );
+        let plain = character("е", "е", KeyCode::KeyT, Some("е"), ModifiersState::empty());
+        assert_eq!(
+            route_key(&plain, 0, None),
+            RoutedKey::Terminal("е".as_bytes().to_vec())
+        );
+    }
+
+    #[test]
+    fn typing_and_chrome_text_keep_layout_resolved_unicode() {
+        for (text, base, physical) in [
+            ("y", "y", KeyCode::KeyT),
+            ("Y", "y", KeyCode::KeyT),
+            ("ж", "ж", KeyCode::Semicolon),
+        ] {
+            let input = character(text, base, physical, Some(text), ModifiersState::empty());
+            assert_eq!(
+                route_key(&input, 0, None),
+                RoutedKey::Terminal(text.as_bytes().to_vec())
+            );
+            assert_eq!(
+                route_key(&input, 0, Some("query")),
+                RoutedKey::Launcher(LauncherCommand::Insert(text.into()))
+            );
+            assert_eq!(
+                route_composer(&input, 0, ComposeField::Body),
+                RoutedKey::Composer(ComposeCommand::Edit(EditCommand::Insert(text.into())))
+            );
+            assert_eq!(
+                route_settings(&input, 0, true),
+                RoutedKey::SettingsKey(SettingsKey::Edit(EditCommand::Insert(text.into())))
+            );
+        }
+    }
+
+    #[test]
+    fn layout_shortcut_suppresses_its_original_physical_repeat_and_release() {
+        let mut input = character("t", "t", KeyCode::KeyK, Some("t"), ModifiersState::SUPER);
+        let mut state = keyboard::State::default();
+        assert_eq!(
+            route_input(&mut state, &input, 0, None),
+            RoutedKey::OpenLauncher
+        );
+        input.modifiers.state = ModifiersState::empty();
+        input.repeat = true;
+        assert_eq!(route_input(&mut state, &input, 0, None), RoutedKey::Local);
+        input.repeat = false;
+        input.state = ElementState::Released;
+        assert_eq!(route_input(&mut state, &input, 0, None), RoutedKey::Local);
+        input.state = ElementState::Pressed;
+        assert_eq!(
+            route_input(&mut state, &input, 0, None),
+            RoutedKey::Terminal(b"t".to_vec())
+        );
     }
 }
 

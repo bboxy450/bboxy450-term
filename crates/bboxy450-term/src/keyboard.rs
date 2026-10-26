@@ -33,6 +33,39 @@ pub struct Input<'a> {
     pub repeat: bool,
     pub modifiers: Modifiers,
 }
+
+/// Character bindings follow the active layout, ignoring Shift/Option/Caps Lock.
+/// Physical keys are reserved for press/release ownership and protocol metadata.
+pub fn shortcut_key(input: &Input<'_>) -> Option<char> {
+    fn single(text: &str) -> Option<char> {
+        let mut chars = text.chars();
+        let character = chars.next()?;
+        chars.next().is_none().then_some(character)
+    }
+    let Key::Character(text) = &input.unmodified_key else {
+        return None;
+    };
+    let base = single(text)?;
+    #[cfg(target_os = "macos")]
+    if input.modifiers.state.super_key() && !base.is_ascii() {
+        // macOS non-Latin layouts have an ASCII Command layer (Russian е -> t).
+        // Winit's text_with_all_modifiers preserves NSEvent.characters; its
+        // modifierless key deliberately removes that Command translation.
+        let command = input
+            .text_all_modifiers
+            .and_then(single)
+            .filter(char::is_ascii_graphic)
+            .or_else(|| match &input.logical_key {
+                Key::Character(text) => single(text).filter(char::is_ascii_graphic),
+                _ => None,
+            });
+        if let Some(command) = command {
+            return Some(command.to_ascii_lowercase());
+        }
+    }
+    Some(base.to_ascii_lowercase())
+}
+
 /// UI-owned adaptation state, not terminal state. It keeps a locally consumed
 /// chord's repeat/release out of the PTY even if Command is released first.
 #[derive(Default)]
