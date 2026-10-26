@@ -559,7 +559,10 @@ async fn phase_errors_return_before_later_phases_or_handlers_run() {
 async fn terminal_handler_error_returns_without_after_event() {
     let mut stop = Latched::new();
     stop.arm(7).unwrap();
+    let mut work = Latched::new();
+    work.arm(()).unwrap();
     let mut handled = Vec::new();
+    let mut work_ran = false;
     let mut after_event_ran = false;
     let result: Result<(), HandlerError> = bbt_yarn::reactor! {
         policy {
@@ -573,6 +576,12 @@ async fn terminal_handler_error_returns_without_after_event() {
             handled.push(item);
             Err(HandlerError)
         }
+        #[source(work)]
+        #[readiness(quiescent)]
+        _ = work => {
+            work_ran = true;
+            Ok(Control::Continue)
+        }
         after_event {
             after_event_ran = true;
             Ok(())
@@ -580,6 +589,7 @@ async fn terminal_handler_error_returns_without_after_event() {
     };
     assert_eq!(result, Err(HandlerError));
     assert_eq!(handled, [7]);
+    assert!(!work_ran);
     assert!(!after_event_ran);
 }
 
