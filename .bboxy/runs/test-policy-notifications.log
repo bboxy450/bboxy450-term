@@ -1,0 +1,20 @@
+#327 bboxy450-desktop-notifications test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own exec5 branch exec5-tests-327-notifications, fresh base 7830930da1df8a16d2391761bbe46f8d07c57fd0.
+Only keeps: tags in existing tests/cfg(test) modules. Production prefixes, public API and test assertions remain byte-identical.
+Before: 1 passed / 0 failed / 0 ignored; summed per-binary test execution 0.000 s. After: 1 passed / 0 failed / 0 ignored; summed per-binary execution 0.000 s. Both are under 30 s, so test-policy §3 applies on coverage alone. Timing improvement is unproven. Outer Cargo wall time (including compilation) is reported separately below.
+Sleep calls removed: 0. No clocks, waits, process probes, native vault calls, Notification Center, authorization or desktop operations introduced. Strict Clippy and selected invariants will run in the combined author presubmit and are not claimed here.
+Overlap scan: no peer in-flight file overlaps; no skipped file.
+
+| Test | Class | Disposition / protected contract |
+|---|---|---|
+| `src/lib.rs::known_dummy_is_named_and_requires_research` | D2 | retain unchanged assertions and tag protected contract; spec desktop-notifications §4 — unsupported backends report the named research marker |
+| `src/lib.rs::notifier_port_is_send_and_sync` | D2 | retain unchanged assertions and tag protected contract; spec desktop-notifications §2 — dyn Notifier is a Send + Sync public port |
+
+Coverage map: desktop-notifications §2 explicitly writes Notifier: Send + Sync. The compile-time generic port check fails if that promise is removed, so it remains protected rather than being counted as a tautology. §4 exact dummy refusal also remains tagged under its non-macOS cfg; the public note is the contract until a typed cause exists (Oracle ruling 44845a1d). No acceptance line lost its test.
+
+Limits: On macOS only the Send/Sync compile contract runs. known_dummy is compiled/run only on non-macOS and is not claimed executed here. Facade open/authorize/post/remove are not called by this macOS suite. Typed unsupported-cause port remains a follow-up; no API change in this cut.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-notifications-inventory.log SHA256 6195560760b6d0ab48fb3b9bf3b573938f673a71163b6970ec5fa8f457b4036f — EXIT0; outer Cargo seconds 2.490.
+- .bboxy/runs/test-policy-notifications-before.log SHA256 fd06cd9b4502fa4f6d48bf8e392a9113fad5772c993c4f916a4b9d496dd624eb — EXIT0; outer Cargo seconds 0.284.
+- .bboxy/runs/test-policy-notifications-after.log SHA256 46d5d93b37b8331e1b56ed50a9ca17b4e6c3d0ce6ddbc0b9dbf43f581d90a37f — EXIT0; outer Cargo seconds 0.617.

@@ -163,6 +163,7 @@ impl Notifier for Mac {
 mod tests {
     use super::*;
     #[cfg(not(target_os = "macos"))]
+    // keeps: spec desktop-notifications §4 — unsupported backends report the named research marker
     #[test]
     fn known_dummy_is_named_and_requires_research() {
         let error = match open(Box::new(|_| {})) {
@@ -177,6 +178,7 @@ mod tests {
             }
         ));
     }
+    // keeps: spec desktop-notifications §2 — dyn Notifier is a Send + Sync public port
     #[test]
     fn notifier_port_is_send_and_sync() {
         fn port<T: Send + Sync + ?Sized>() {}

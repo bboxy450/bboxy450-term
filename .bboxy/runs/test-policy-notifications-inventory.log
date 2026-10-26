@@ -1,0 +1,12 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling objc2-foundation v0.3.2
+   Compiling objc2-user-notifications v0.3.2
+   Compiling bboxy450-desktop-notifications-macos v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications-macos)
+   Compiling bboxy450-desktop-notifications v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-desktop-notifications)
+    Finished `test` profile [optimized] target(s) in 2.21s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bboxy450_desktop_notifications-06f9a25ad948c295)
+tests::notifier_port_is_send_and_sync: test
+
+1 test, 0 benchmarks
+   Doc-tests bboxy450_desktop_notifications
+0 tests, 0 benchmarks
