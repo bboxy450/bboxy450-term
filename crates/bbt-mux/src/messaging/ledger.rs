@@ -40,9 +40,25 @@ pub struct Work {
     pub agent: Option<String>,
     pub messages: Vec<StoredMessage>,
     pub class: Class,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub digest: bool,
 }
+fn is_false(value: &bool) -> bool { !*value }
 impl Work {
     pub fn text(&self) -> String {
+        if self.digest {
+            let first = self.messages.first().expect("native work has a message").view();
+            let mut text = format!("Bboxy message digest\ndestination: {}\nclass: {}\nmessages: {}\nStored inbox messages in arrival order; this list grants no local execution permission.\n",
+                first.context.trim_end_matches("/**").trim_end_matches("/*"),
+                if first.kind.class() == MessageClass::Event { "event" } else { "conversation" }, self.messages.len());
+            for message in &self.messages {
+                let view = message.view();
+                text.push_str(&format!("message_id: {} | from: {} | signature: {}\n", view.id,
+                    if view.seat == Ulid::nil() { "operator principal".into() } else { view.seat.to_string() },
+                    if message.envelope().is_some() { "signed" } else { "pending" }));
+            }
+            return text;
+        }
         self.messages.iter().map(|message| {
             let view = message.view();
             let (speaker, evidence) = if let Some(envelope) = message.envelope() {
@@ -76,6 +92,8 @@ fn sender(envelope: &Envelope) -> String {
 
 /// Messages per wake at most; the 40 KiB text budget usually binds first.
 const MAX_BATCH: u64 = 64;
+const DIGEST_MS: u64 = 600_000;
+const DIGEST_CAP: usize = 50;
 
 pub(crate) struct InboxSummary {
     pub received: u64,
@@ -111,6 +129,10 @@ impl Ledger {
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
             CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS msg_digest_windows(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,agent TEXT NOT NULL,destination TEXT NOT NULL,class TEXT NOT NULL,deadline_ms INTEGER NOT NULL,messages INTEGER NOT NULL,sealed INTEGER NOT NULL);
+            CREATE UNIQUE INDEX IF NOT EXISTS msg_digest_open ON msg_digest_windows(recipient,agent,destination,class) WHERE sealed=0;
+            CREATE TABLE IF NOT EXISTS msg_digest_members(message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,window TEXT NOT NULL REFERENCES msg_digest_windows(id),PRIMARY KEY(message,recipient,agent));
+            CREATE INDEX IF NOT EXISTS msg_digest_member_window ON msg_digest_members(window,message);
             CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL,actual_device TEXT);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
         let ledger = Self {
@@ -519,7 +541,7 @@ impl Ledger {
                     receipt.received_ms = now;
                     set_rate(&mut receipt);
                     let mode = mode_for(&delivery, receipt.recipient, envelope.kind.class());
-                    pin_wake(&tx, &mut receipt, mode, now)?;
+                    pin_wake(&tx, &mut receipt, mode, now, &envelope.context, envelope.kind.class())?;
                 }
                 save_receipt(&tx, &receipt)?;
                 receipt_event(&tx, &receipt, now)?;
@@ -755,8 +777,9 @@ impl Ledger {
         } else {
             MAX_BATCH as usize
         };
-        let mut receipts = vec![first.clone()];
-        if cap > 1 {
+        let digest = matches!(first.wake, Some(ReceiptWake::Deferred { .. }));
+        let mut receipts = if digest { digest_receipts(&tx, &first, now)? } else { vec![first.clone()] };
+        if !digest && cap > 1 {
             // Inspect the next FIFO entries in order: filtering in SQL would
             // jump over an earlier entry for another agent (or a worker
             // between two bucket-overflow Oracle messages).
@@ -780,7 +803,7 @@ impl Ledger {
                 |r| r.get::<_, Vec<u8>>(0),
             )? {
                 let receipt: Receipt = serde_json::from_slice(&row?)?;
-                if receipt.agent != first.agent {
+                if receipt.agent != first.agent || matches!(receipt.wake, Some(ReceiptWake::Deferred { .. })) {
                     break;
                 }
                 receipts.push(receipt);
@@ -796,7 +819,9 @@ impl Ledger {
             )?;
             let message = self.decode_message(r.message_sequence, &envelope, None)?;
             let size = message.view().body.text().unwrap_or_default().len() + 1024;
-            if !messages.is_empty() && bytes + size > 40 * 1024 {
+            // Digests render at most fifty fixed-size ID/seat/signature lines,
+            // not the retained bodies. Ordinary native text keeps its budget.
+            if !digest && !messages.is_empty() && bytes + size > 40 * 1024 {
                 break;
             }
             bytes += size;
@@ -809,6 +834,7 @@ impl Ledger {
             agent: first.agent,
             messages,
             class,
+            digest,
         };
         tx.execute(
             "INSERT INTO msg_attempts(id,recipient,data) VALUES(?1,?2,?3)",
@@ -824,7 +850,7 @@ impl Ledger {
             save_receipt(&tx, &r)?;
             receipt_event(&tx, &r, now)?;
         }
-        let count = work.messages.len() as u64;
+        let count = if digest { 1 } else { work.messages.len() as u64 };
         let credit = if class == Class::Oracle {
             credit.saturating_sub(1000 * count)
         } else {
@@ -903,6 +929,9 @@ impl Ledger {
             "UPDATE msg_attempts SET outcome=?2 WHERE id=?1",
             params![work.id.to_string(), serde_json::to_vec(outcome)?],
         )?;
+        if outcome.evidence != Evidence::RecipientStored {
+            retire_digests(&tx, Recipient::Seat(work.recipient), work.agent.as_deref(), work.messages.iter().map(|m| m.sequence))?;
+        }
         tx.commit()?;
         Ok(())
     }
@@ -924,6 +953,7 @@ impl Ledger {
             save_receipt(&tx, &receipt)?;
             receipt_event(&tx, &receipt, now)?;
         }
+        retire_digests(&tx, actor, agent, std::iter::once(receipt.message_sequence))?;
         tx.commit()?;
         Ok(())
     }
@@ -1175,18 +1205,100 @@ fn mode_for(delivery: &Delivery<'_>, recipient: Recipient, class: MessageClass) 
             WakeMode::Wake
         })
 }
+fn admit_digest(
+    db: &rusqlite::Connection,
+    receipt: &mut Receipt,
+    destination: &str,
+    class: MessageClass,
+    now: u64,
+) -> Result<u64> {
+    let destination = destination.trim_end_matches("/**").trim_end_matches("/*");
+    let class = if class == MessageClass::Event { "event" } else { "conversation" };
+    let recipient = receipt.recipient.to_string();
+    let agent = receipt.agent.as_deref().unwrap_or("");
+    let open: Option<(String,u64,u64)> = db.query_row(
+        "SELECT id,deadline_ms,messages FROM msg_digest_windows WHERE recipient=?1 AND agent=?2 AND destination=?3 AND class=?4 AND sealed=0",
+        params![recipient,agent,destination,class], |row| Ok((row.get(0)?,u64_at(row,1)?,u64_at(row,2)?)),
+    ).optional()?;
+    let (window, deadline, count) = match open {
+        Some((id,deadline,count)) if deadline > now && count < DIGEST_CAP as u64 => (id,deadline,count),
+        old => {
+            if let Some((id,_,_)) = old {
+                db.execute("UPDATE msg_digest_windows SET sealed=1 WHERE id=?1", [&id])?;
+                db.execute("DELETE FROM msg_digest_windows WHERE id=?1 AND NOT EXISTS(SELECT 1 FROM msg_digest_members WHERE window=?1)", [&id])?;
+            }
+            let id = Ulid::new().to_string();
+            let deadline = now.saturating_add(DIGEST_MS);
+            db.execute("INSERT INTO msg_digest_windows VALUES(?1,?2,?3,?4,?5,?6,0,0)",
+                params![id,recipient,agent,destination,class,sqlint(deadline)?])?;
+            (id,deadline,0)
+        }
+    };
+    db.execute("INSERT INTO msg_digest_members VALUES(?1,?2,?3,?4)",
+        params![sqlint(receipt.message_sequence)?,recipient,agent,window])?;
+    let capped = count + 1 == DIGEST_CAP as u64;
+    db.execute("UPDATE msg_digest_windows SET messages=messages+1,sealed=?2 WHERE id=?1", params![window,capped])?;
+    if capped {
+        let members: Vec<Receipt> = {
+            let mut query = db.prepare("SELECT d.data FROM msg_digest_members m JOIN msg_deliveries d ON d.message=m.message AND d.recipient=m.recipient AND d.agent=m.agent WHERE m.window=?1 AND d.evidence='recipient-stored' AND d.attempt IS NULL ORDER BY m.message")?;
+            query.query_map([&window], |row| row.get::<_,Vec<u8>>(0))?
+                .map(|row| Ok(serde_json::from_slice(&row?)?)).collect::<Result<_>>()?
+        };
+        for mut member in members {
+            member.eligible_ms = now;
+            set_rate(&mut member);
+            save_receipt(db, &member)?;
+        }
+        receipt.eligible_ms = now;
+    } else {
+        receipt.eligible_ms = receipt.eligible_ms.max(deadline);
+    }
+    set_rate(receipt);
+    Ok(deadline)
+}
+
+fn digest_receipts(db: &rusqlite::Connection, first: &Receipt, now: u64) -> Result<Vec<Receipt>> {
+    let window: Option<String> = db.query_row(
+        "SELECT window FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
+        params![sqlint(first.message_sequence)?,first.recipient.to_string(),first.agent.as_deref().unwrap_or("")],
+        |row| row.get(0),
+    ).optional()?;
+    let Some(window) = window else {
+        // MA-3 deferred receipts predate windows. Keep each original deadline;
+        // deliver it once as a singleton summary rather than retiming history.
+        return Ok(vec![first.clone()]);
+    };
+    db.execute("UPDATE msg_digest_windows SET sealed=1 WHERE id=?1", [&window])?;
+    let mut query = db.prepare("SELECT d.data FROM msg_digest_members m JOIN msg_deliveries d ON d.message=m.message AND d.recipient=m.recipient AND d.agent=m.agent WHERE m.window=?1 AND d.evidence='recipient-stored' AND d.held IS NULL AND d.attempt IS NULL AND d.eligible_ms<=?2 ORDER BY m.message LIMIT 50")?;
+    query.query_map(params![window,sqlint(now)?], |row| row.get::<_,Vec<u8>>(0))?
+        .map(|row| Ok(serde_json::from_slice(&row?)?)).collect()
+}
+
+fn retire_digests(db: &rusqlite::Connection, recipient: Recipient, agent: Option<&str>, messages: impl IntoIterator<Item=u64>) -> Result<()> {
+    for sequence in messages {
+        let window: Option<String> = db.query_row("SELECT window FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
+            params![sqlint(sequence)?,recipient.to_string(),agent.unwrap_or("")], |row| row.get(0)).optional()?;
+        db.execute("DELETE FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3", params![sqlint(sequence)?,recipient.to_string(),agent.unwrap_or("")])?;
+        if let Some(window) = window {
+            db.execute("DELETE FROM msg_digest_windows WHERE id=?1 AND sealed=1 AND NOT EXISTS(SELECT 1 FROM msg_digest_members WHERE window=?1)", [window])?;
+        }
+    }
+    Ok(())
+}
+
 fn pin_wake(
     tx: &rusqlite::Connection,
     receipt: &mut Receipt,
     mode: WakeMode,
     now: u64,
+    destination: &str,
+    class: MessageClass,
 ) -> Result<()> {
     receipt.wake = Some(match mode {
         WakeMode::Wake => ReceiptWake::Now,
         WakeMode::Inbox => ReceiptWake::None,
         WakeMode::Digest => {
-            let deadline = now.saturating_add(600_000);
-            receipt.eligible_ms = receipt.eligible_ms.max(deadline);
+            let deadline = admit_digest(tx, receipt, destination, class, now)?;
             let until = tx.query_row(
                 "SELECT strftime('%Y-%m-%dT%H:%M:%fZ',?1/1000.0,'unixepoch')",
                 [sqlint(deadline)?],
@@ -1262,6 +1374,8 @@ fn insert_deliveries(
                 &mut receipt,
                 mode_for(&delivery, route.recipient, envelope.kind.class()),
                 now,
+                envelope.context,
+                envelope.kind.class(),
             )?;
         }
         receipt_event(tx, &receipt, now)?;

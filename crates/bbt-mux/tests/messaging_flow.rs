@@ -837,3 +837,55 @@ fn digest_summaries_do_not_merge_destinations() {
     f.finish(&work, 602_003);
     assert!(f.messaging.ready(602_004).unwrap().is_empty());
 }
+
+// keeps: messaging-attention §3 eligible messages never wait on fenced members.
+#[test]
+fn digest_releases_eligible_members_then_the_fenced_remainder_without_retiming() {
+    use bbt_mux::messaging::tree::{Actor, Right};
+    let mut f = AttentionFixture::new();
+    let peer = SeatRecord::new(Ulid::new(), f.receiver.swarm, "peer", "zsh");
+    f.registry.insert(&peer).unwrap();
+    let destination = format!("seats/{}/inbox", f.receiver.id);
+    f.messaging.tree(f.receiver.swarm).unwrap().grant(Actor::Operator, &destination, peer.id, vec![Right::Write]).unwrap();
+    let eligible = f.send(1_000);
+    let held = f.messaging.send(peer.id, 1, SendRequest::text(&destination, "fenced later"), 2_000).unwrap().view().id;
+    let original = f.messaging.receipts(peer.id, held).unwrap()[0].wake.clone();
+    f.messaging.tree(f.receiver.swarm).unwrap().grant(Actor::Operator, &destination, peer.id, vec![]).unwrap();
+    f.messaging.ready(601_000).unwrap();
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [eligible]);
+    f.finish(&work, 601_001);
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_002).unwrap().is_none());
+    f.messaging.tree(f.receiver.swarm).unwrap().grant(Actor::Operator, &destination, peer.id, vec![Right::Write]).unwrap();
+    f.messaging.ready(601_003).unwrap();
+    assert_eq!(f.messaging.receipts(peer.id, held).unwrap()[0].wake, original);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_003).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [held]);
+    assert_eq!(work.text().matches("Bboxy message digest").count(), 1);
+    f.finish(&work, 601_004);
+    f.reopen();
+    assert!(f.messaging.ready(601_005).unwrap().is_empty());
+    let db = f.ledger_store().connection().unwrap();
+    for table in ["msg_digest_members", "msg_digest_windows"] {
+        assert_eq!(db.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row.get::<_,i64>(0)).unwrap(), 0);
+    }
+}
+
+// keeps: one credit per summary, with ids ordered across sender priority classes.
+#[test]
+fn digest_mixed_priorities_keep_id_order_and_cost_one_native_credit() {
+    let mut f = AttentionFixture::new();
+    let mut oracle = SeatRecord::new(Ulid::new(), f.receiver.swarm, "oracle", "zsh");
+    oracle.role.class = bbt_mux::registry::Class::Oracle;
+    f.registry.insert(&oracle).unwrap();
+    let first = f.send(1_000);
+    let middle = f.messaging.send(oracle.id, 1, SendRequest::text(format!("seats/{}/inbox", f.receiver.id), "oracle-class prose"), 1_500).unwrap().view().id;
+    let last = f.send(2_000);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 601_000).unwrap().unwrap();
+    assert_eq!(work.messages.iter().map(|m| m.view().id).collect::<Vec<_>>(), [first, middle, last]);
+    let db = f.ledger_store().connection().unwrap();
+    let (credit,streak): (i64,i64) = db.query_row("SELECT credit,streak FROM msg_scheduler WHERE recipient=?1", [f.receiver.id.to_string()], |row| Ok((row.get(0)?,row.get(1)?))).unwrap();
+    assert_eq!((credit,streak), (29_000,1));
+    f.finish(&work, 601_001);
+    assert!(f.messaging.ready(601_002).unwrap().is_empty());
+}
