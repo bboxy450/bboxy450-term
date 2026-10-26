@@ -1,0 +1,13 @@
+M2 size regression fix — source253f0bdbbb0a6f88188381e34d9682551ecd9e3e (G), on Oracle-tested84ef9410.
+Presubmit failure at commands.log:3516 was strict Clippy large_enum_variant: UiReply carried512bytes versus Spawn256. No test failure was claimed.
+
+gui/ui.rs:306 — Box<Result<UiLayout,String>>, retaining serde wire shape.
+seat_socket.rs:847 — consume the box into the existing ui_answer owner.
+live.rs:1030 — box the retained local result at the existing outgoing FIFO boundary.
+tests/ctl.rs:865 — the existing close/undo produced-frame fixture sends the same reply through the boxed type.
+
+All-target strict Clippy on bbt-proto, bbt-mux and bboxy450-term: EXIT0/134.553s.
+Existing GUI wire golden2/0 plus compose3/0: EXIT0. Golden file byte-identical to84ef9410.
+CTL integration16/0: EXIT0, test-run34.60s (586.728s including the cold optimized dependency build). This extra check was never a condition for the Oracle to consume the already verified fix.
+Two jobs, explicit target, shared-cache helper, O1/debug0, debug assertions and memory test custody. Paired JSON pins every command, raw-output hash and failure log.
+Original M2 FULL runtime proof remains attributed to65267bad; no night, renderer, full gate or publication claimed here.

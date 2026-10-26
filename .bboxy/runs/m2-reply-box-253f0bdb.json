@@ -1,0 +1,104 @@
+{
+  "source": "253f0bdbbb0a6f88188381e34d9682551ecd9e3e",
+  "base": "84ef9410a464be1f1be2382acfae25af0eb8d83c",
+  "branch": "velvet-m2-reply-box",
+  "change": "GuiAction::UiReply.result uses Box<Result<UiLayout,String>>; only live construction, mux decoding and one ctl fixture mechanically adapt.",
+  "wire_golden_unchanged": true,
+  "golden_sha256": "2ae634d6eee3c1903edca1a8d70cccfbd5f5e43f5d66e4c2813c18a81f55d3e0",
+  "checks": [
+    {
+      "name": "strict",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 134.553,
+      "log": "target/m2-reply-box-proof/strict.log",
+      "sha256": "61f00646fc5e1c532c42ebfed508bb2105280c6023dc4b71c02c4be55d22628b",
+      "test_results": []
+    },
+    {
+      "name": "golden",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden",
+        "--test",
+        "ui_compose"
+      ],
+      "exit": 0,
+      "seconds": 66.156,
+      "log": "target/m2-reply-box-proof/golden.log",
+      "sha256": "65ca495ae1e6c11ac7432560352e070c651a5be499a2671ad2476f5541f88a24",
+      "test_results": [
+        [
+          "2",
+          "0"
+        ],
+        [
+          "3",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "ctl",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "ctl"
+      ],
+      "exit": 0,
+      "seconds": 586.728,
+      "log": "target/m2-reply-box-proof/ctl.log",
+      "sha256": "905f27326f1375c3c21d3ed12cecdca3b26ac5b807073817f050f874dfb10f84",
+      "test_results": [
+        [
+          "16",
+          "0"
+        ]
+      ]
+    }
+  ],
+  "reported_failure": {
+    "kind": "clippy::large_enum_variant",
+    "path": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/84ef9410a464be1f1be2382acfae25af0eb8d83c-4535eb91/commands.log",
+    "line": 3516,
+    "sha256": "cfcf5b6a1cfc1e58b3316b692ce6db130175d1d0ad7d1738a292b3b17c0a1dda"
+  },
+  "environment": {
+    "cargo_jobs": 2,
+    "dev_test_opt_level": 1,
+    "dev_test_debug": 0,
+    "debug_assertions": true,
+    "custody": "memory",
+    "target": "target/m2-reply-box-dev"
+  },
+  "limits": "No new M2 night, renderer/style change, full gate or independent publication. Original FULL M2 runtime proof remains at source65267bad. Required strict and byte-golden checks were handed to the Oracle before the additional ctl run completed."
+}
