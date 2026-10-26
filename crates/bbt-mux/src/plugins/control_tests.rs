@@ -445,11 +445,10 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
     let listener = tokio::net::UnixListener::bind(&socket).unwrap();
     let f = std::sync::Arc::new(Fixture::reference(None, Some(&socket)));
     let trusted = f.trust_reference().await;
-    let other = f.path.with_file_name("bboxy450-term-data_source-other");
-    fs::copy(&f.path, &other).unwrap();
-    let mut other_bytes = fs::read_to_string(&other).unwrap();
-    other_bytes.push_str("\n# distinct second plugin binding\n");
-    fs::write(&other, other_bytes).unwrap();
+    // Keep the independent control inside the existing bounded inventory budget.
+    let other_fixture = Fixture::new();
+    let other = f.path.with_file_name("bboxy450-term-repo_graph-other");
+    fs::copy(&other_fixture.path, &other).unwrap();
     let task = tokio::spawn({
         let f = f.clone();
         let candidate = trusted.candidate.id;
