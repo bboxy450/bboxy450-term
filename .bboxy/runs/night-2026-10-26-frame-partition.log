@@ -1,0 +1,16 @@
+First unattended night frame partition — read-only, source b61ea30b766a3ec62f1a070610c13e81847c7f7b; budgets #355 at d8df8dfa. No new run.
+Oracle night scale 2a122111391c48d19370041dfecbd673: native 967 real PTYs/50 watched, 356 measured frames; measurement EXIT 1, not timeout, 2026-10-26T18:05:46.451080Z–18:07:02.644661Z.
+CPU p99 20.361334 ms >4; frame-work p99 20.710417 ms >8.33; input→GPU 1398.155791 ms >26.666667 at actual 75 Hz (also >120 Hz allocation 16.7); bus 9999.018339/s <10000. All four raw timing failures retained.
+Idle 0 frames/0 callbacks; blocking guards 0; first settled boundary observed. Five raw non-timing unproven items remain, including 120 Hz panel and physical input/scanout; no full acceptance claim.
+Budget rows drain 1.5 ms, projection 1 ms and hardware GPU 6 ms: each 0 available/356 unavailable p99 samples; current report does not export the scene split or GPU duration.
+Only five threshold-selected .001-ms-rounded hitch lines match measured frame IDs: encode p99 over those five 20.841 ms, 351 unavailable; layout 7.949–9.401 ms. This biased subset is not a full-population phase p99.
+Present-wait over those five: p99/max .023 ms; report-only. CPU/GPU clocks are parallel and never summed.
+Nearest-rank CPU p99 frame 207: WindowRedraw 17.616625 ms (86.52%), outside callbacks 2.413083 ms (11.85%), UserWake .180791 ms; no callback attribution errors.
+MEASURE totals: WindowRedraw 714 calls/6.338984031 s CPU; UiProjection 290 calls/.086177888 s inclusive wall; layout/encode have no complete retained phase series. Inclusive observations are not an exclusive CPU sum.
+Probe intervals: Written→LogicOutputRead 1348.697583 ms; ModelPublished→LatestTaken .059875; ProjectionFinished→Encoded 17.5205; Encoded→GPU completion 14.304625. Not exclusive CPU or standalone GPU execution.
+Producer-stop→first-settled logic snapshot interval 1.794014792 s: completion-accounted checkpoint RPC delta 0 ns/0 calls (0%), no checkpoint in flight at either cut.
+Recorder missed: logic 14 at both cuts, supervisor 77→302; retained spans overwritten. No subtraction of cumulative maxima/peaks or claim of lossless/exclusive attribution. ReadRing work label is stale after batching, not a seat count.
+Load1 before 6.209473/after 8.620605; shared-host observation, no isolated speedup attribution.
+Raw directory /Users/feral/.local/state/bboxy450-term/landing/scale/2a122111391c48d19370041dfecbd673; report SHA256 e26e246c46130bd6586d2de20d0b016d43d9748cb5a33e5c2d0862caa49f3bb7.
+Derived /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-budget-b7xz__e8/night-partition.json SHA256 76530d6f90c0427d78fab32c5017bebbfcd281b720d00aa49012730e770610d2; saved analyze_night.py EXIT 0 verifies all raw hashes unchanged.
+Next evidence is the bounded phase/GPU packet landed at 8295dd52; no thresholds, workload or verdict waived, and no duplicate 967 run.

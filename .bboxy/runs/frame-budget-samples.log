@@ -1,0 +1,15 @@
+Frame budget samples — Oracle 36b58f0f, budgets #355 endpoints at signed d8df8dfa; ICD logic-gui.md, GUI GPU→Native numeric evidence only.
+LANDED 8295dd5265fbd8439ee8da3c247e5d75ddabb8fc; author sh scripts/land.sh EXIT 0; tested fc16b7bc0d7990a799e1edca565db67b19241986.
+crates/bboxy450-term/src/main.rs:5482 — stall-only project_scene timing; existing raw Phases remain unchanged.
+gpu.rs:296 and main.rs:5640/:5815 — forward existing GpuSample frame/duration/completion to Native; same nonblocking completion channel and input completion semantics.
+stall.rs:500 — at most 8192 raw MEASURE frame-ID rows retain drain/project_scene/layout/draw/encode/present-wait ns and optional Metal duration; count every clipped frame.
+stall.rs:559/:608 — additive report rows: drain=raw drain-project_scene; projection=project_scene+layout+draw; encode=encode; CPU total=sum raw CPU phases. Row p99 values are not added together.
+CPU allocations 1.5/1.0/1.0 ms plus 0.5 margin; CPU total 4 ms; parallel GPU allocation 6 ms plus 2.33 margin. Host present-wait report-only. Existing assess/verdict/clock/workload unchanged.
+GPU matches exact retained frame ID, including late/out-of-order completion; unavailable is null, never zero. Availability is as of snapshot; clipping and absent/invalid split are explicit. Headless has no invented native project_scene split.
+Final settle log retains the same bounded packet on failure; successful Measurements.frame_budget stores it in the JSON report.
+Three deterministic tests passed: out-of-order/unknown frame matching and parallel CPU/GPU clocks; absent versus observed-zero timings and frozen serialization; 8192-row clipping without reassignment.
+Initial author EXIT 77/test EXIT 101 was the existing frontend-lock failure; raw SHA256 d15f6d442bd9c72a46679b2e1e99e2c4c6283e5c213532af4cf4024e2ad51290. Repaired separately at 8755bd11 before this retry.
+Final presubmit 377.473s: selected 326 passed/0 failed/47 ignored; strict all-target app clippy EXIT 0; fast invariants 14/0; slow checks skipped.
+Raw green log /Users/feral/.local/state/bboxy450-term/landing/presubmits/fc16b7bc0d7990a799e1edca565db67b19241986-4263c0b7/commands.log; SHA256 d91a749a0f7e5c0530bb7b014d79c853f3a4e96c36893736f5bff0253aa02606.
+Machine G signatures verified; exact main.rs/stall.rs/gpu.rs gated-versus-landed diff EXIT 0. Existing untracked w1 logs left untouched.
+No new native/GPU/967 attempt: real scale telemetry is for the next pinned night. Current night is b61ea30b and lacks these rows; #212 stays pending.

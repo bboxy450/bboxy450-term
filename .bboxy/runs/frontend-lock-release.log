@@ -1,0 +1,12 @@
+Frontend lock release — Oracle 0058d4fa, decision #344 lifecycle; ICD ctl-app.md.
+LANDED 8755bd115a9700695dc70ceb07c269c5f8ba24b0; author sh scripts/land.sh EXIT 0; tested b709432932c88f06bd1bbcf6c632b68ec53c5a91.
+crates/bboxy450-term/src/cockpit/owners.rs:157 — Drop explicitly flock(LOCK_UN)s the owned FD before File close, so a forked open-description alias cannot prolong frontend ownership.
+owners.rs:343 — deterministic child retains the CLOEXEC descriptor behind a control socket while parent drops the lock; discovery and a new claim both succeed; shutdown/waitpid cleanup also runs on a failed assertion.
+Observed before repair: untouched frontend_lock_refuses_a_live_owner_and_releases_on_departure failed at :329, Some(true) versus Some(false), during frame-budget presubmit 39987175; its new sample tests passed 3/0.
+Failed raw log SHA256 d15f6d442bd9c72a46679b2e1e99e2c4c6283e5c213532af4cf4024e2ad51290; no blind retry or quarantine.
+Independent private kernel alias probe EXIT 0: both descriptors CLOEXEC; primary close retains flock; explicit unlock permits a new probe. This proves alias behavior, not which child caused the original failure.
+Author capacity attempt EXIT 75 ran no gate; retried after a peer released capacity. Completed presubmit 308.564s, selected 323 passed/0 failed/47 ignored; both lock tests passed.
+Strict cargo clippy --locked -p bboxy450-term --all-targets -- -D warnings EXIT 0; fast invariants 14/0; slow checks not run.
+Raw green log /Users/feral/.local/state/bboxy450-term/landing/presubmits/b709432932c88f06bd1bbcf6c632b68ec53c5a91-13ce4539/commands.log; SHA256 92097da4b6fdc75b3c09da7a673cfd679128313957ee5aec9bc833edad32ba8b.
+Machine signatures G / 9B07E849480C68328CA20684844ECC0587DE7AB0 verified for tested and landed SHAs; exact owners.rs gated/landed diff EXIT 0.
+Only owners.rs changed; no custody, wire, backend ownership selection, workload or timing policy change. No operator input or new native/967 run.
