@@ -8,6 +8,8 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 description = "Embedded synthetic terminal scenes for PTY throughput and fidelity checks"
+# Reference screenshots stay in the repository; crates.io caps uploads at 10 MiB.
+exclude = ["reference/"]
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
