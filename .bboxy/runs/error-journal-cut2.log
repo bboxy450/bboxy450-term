@@ -13,3 +13,5 @@ Installed ICQ0.21.0 fake-env preflight EXIT1 in8ms: ambiguous inherited hook ses
 Retained strict red: items_after_test_module; moved production code before test module, no allowance added.
 Original operator stderr/root cause remains unproven. Historical hooks and async-hook notifications unavailable; no success claim for that gap.
 Raw paths under /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-error-journal-9sb463or; own target-cut2, cache-env/jobs2, O1/debug0/assertions; author land.sh is the final gate.
+LANDED 6b4d574f32dae18e3d6da28c46e33e2edf17a8ad; author land.sh EXIT0 in431.994s; affected kit/mux/app build/tests/strict/invariants and wire goldens green.
+Final commands.log SHA256 5c17f455b779e93129d8a3cf2eca48aad8b35a2a8a584a83d34b1044da1586c5; /Users/feral/.local/state/bboxy450-term/landing/presubmits/6b4d574f32dae18e3d6da28c46e33e2edf17a8ad-1bd10946/commands.log
