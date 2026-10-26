@@ -1870,8 +1870,39 @@ fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() 
     ]);
     let screen = f.ok(&["seat", "screen", &seat]);
     let through = screen["data"]["sequence"].as_u64().unwrap();
-    let invalid = format!("{}..{}", through + 1, through + 1);
-    assert_ne!(f.ctl(&["debug", "fault", "ring-gap", &seat, &invalid]).0, 0);
+    // Keep output advancing after the read: its next sequence is no longer
+    // necessarily future by the time the fault request reaches logic.
+    f.ok(&[
+        "seat",
+        "type",
+        &seat,
+        "printf 'HISTORY_AFTER_SNAPSHOT\\n'\r",
+    ]);
+    f.ok(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^HISTORY_AFTER_SNAPSHOT$",
+        "--timeout",
+        "30000",
+    ]);
+    assert!(
+        f.ok(&["seat", "screen", &seat])["data"]["sequence"]
+            .as_u64()
+            .unwrap()
+            > through
+    );
+    let invalid = format!("{0}..{0}", u64::MAX);
+    let (code, refused) = f.ctl(&["debug", "fault", "ring-gap", &seat, &invalid]);
+    assert_ne!(code, 0, "{refused:?}");
+    assert!(
+        refused[0]["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("ring_gap_invalid_range"),
+        "{refused:?}"
+    );
     let range = format!("1..{through}");
     let op = bbt_mux::Ulid::new().to_string();
     let installed = f.ok(&["debug", "fault", "ring-gap", &seat, &range, "--op", &op]);

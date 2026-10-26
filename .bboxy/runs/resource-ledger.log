@@ -24,3 +24,6 @@ Thirteen actual final-check stage rows all exit 0, attributed CPU 295.836375 sec
 private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
 Evidence: ledger-first-green-cpu-report.json; ledger-mach-calibration.json; ledger-cache-live-proof.json; ledger-measured-command-probe.json; ledger-second-admitted-1.log. Raw final check: /Users/feral/.local/state/bboxy450-term/landing/presubmits/f5c841ca4dbff70dba4bc5fb3f4cdcf849916527-c7e6fae1/commands.log
 Raw check SHA-256: 612c97c87ef69c9c203a70f18e51b6b7a5a0bf0715721c0dd40bc53021d00aa4
+
+Second natural author-window measurement (clock fixture cut)
+ledger-clock-gate-cpu-report.json: UTC00:22:52.073358–00:28:01.274737 brackets the failed8d02be2c author check, with15 whole completed stage rows inside the bracket. Attributed456.004623 CPU seconds / machine2883.600 seconds =15.8137% conservative lower bound;2427.595377 seconds unattributed. Incomplete/cross-boundary stages are not prorated or charged. This tighter real-check window still does not prove90%; the target remains unproven, with no extra validation run started for accounting.
