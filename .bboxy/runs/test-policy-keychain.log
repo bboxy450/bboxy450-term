@@ -1,0 +1,19 @@
+#327 bboxy450-keychain test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own exec5 branch exec5-tests-327-keychain, fresh base cd3c6c5323122d24c1da1178d26a80bd41c12f8a.
+Audit-only signed commit: no tests or doc examples exist in this facade; no source, API, backend selection or credentials changed.
+Before: 0 passed / 0 failed / 0 ignored; summed per-binary test execution 0.000 s. After: 0 passed / 0 failed / 0 ignored; summed per-binary execution 0.000 s. Both are under 30 s, so test-policy §3 applies on coverage alone. Timing improvement is unproven. Outer Cargo wall time (including compilation) is reported separately below.
+Sleep calls removed: 0. No clocks, waits, process probes, native vault calls, Notification Center, authorization or desktop operations introduced. Strict Clippy and selected invariants will run in the combined author presubmit and are not claimed here.
+Overlap scan: no peer in-flight file overlaps; no skipped file.
+
+| Test | Class | Disposition / protected contract |
+|---|---|---|
+| No pre-existing tests or doc examples | — | No invented test count; source unchanged |
+
+Coverage map: No existing invariant/spec test removed or moved. id1-seat-chain §5 explicit file custody remains covered by the separate bboxy450-keychain-file custody suite; facade dispatch has no local test and this audit does not claim one.
+
+Limits: macOS host inventory and zero-test runs only. No claim of native OS vault functionality, Linux/Windows runtime execution, or new acceptance coverage.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-keychain-inventory.log SHA256 1e713a39b4f16baaa096e4073cea1f93f04456d40f99d38579e58abcf03961bb — EXIT0; outer Cargo seconds 2.193.
+- .bboxy/runs/test-policy-keychain-before.log SHA256 6b5f3b69ace953e9050d83ac78940b9a8de190c1e00328ae71eb44478cf94d69 — EXIT0; outer Cargo seconds 0.309.
+- .bboxy/runs/test-policy-keychain-after.log SHA256 6b5f3b69ace953e9050d83ac78940b9a8de190c1e00328ae71eb44478cf94d69 — EXIT0; outer Cargo seconds 0.309.

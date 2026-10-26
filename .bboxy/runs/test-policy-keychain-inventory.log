@@ -1,0 +1,9 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling zeroize v1.9.1
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+   Compiling bboxy450-keychain v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain)
+    Finished `test` profile [optimized] target(s) in 1.85s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bboxy450_keychain-715e878a23b2225b)
+0 tests, 0 benchmarks
+   Doc-tests bboxy450_keychain
+0 tests, 0 benchmarks
