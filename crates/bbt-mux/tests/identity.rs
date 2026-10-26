@@ -1138,6 +1138,13 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
         messaging::wire::SendRequest,
     };
     let mut f = SeatFixture::new(false);
+    // This chain-provider boundary intentionally exercises immediate native
+    // delivery; the receiver's default Digest policy is tested independently.
+    f.registry.set_attention(f.peer.id, f.peer.generation, bbt_proto::registry::AttentionRule {
+        destination: format!("seats/{}/inbox", f.peer.id),
+        class: bbt_proto::messaging::MessageClass::Conversation,
+        mode: bbt_proto::messaging::WakeMode::Wake,
+    }).unwrap();
     let first = f.send("parent");
     let mut request = SendRequest::text(format!("seats/{}/inbox", f.peer.id), "reply");
     request.reply_to = Some(first.envelope().expect("signed fixture envelope").id);
