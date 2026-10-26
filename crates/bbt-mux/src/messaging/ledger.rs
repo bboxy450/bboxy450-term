@@ -43,7 +43,9 @@ pub struct Work {
     #[serde(default, skip_serializing_if = "is_false")]
     pub digest: bool,
 }
-fn is_false(value: &bool) -> bool { !*value }
+fn is_false(value: &bool) -> bool {
+    !*value
+}
 impl Work {
     pub fn text(&self) -> String {
         if self.digest {
@@ -1213,7 +1215,11 @@ fn admit_digest(
     now: u64,
 ) -> Result<u64> {
     let destination = destination.trim_end_matches("/**").trim_end_matches("/*");
-    let class = if class == MessageClass::Event { "event" } else { "conversation" };
+    let class = if class == MessageClass::Event {
+        "event"
+    } else {
+        "conversation"
+    };
     let recipient = receipt.recipient.to_string();
     let agent = receipt.agent.as_deref().unwrap_or("");
     let open: Option<(String,u64,u64)> = db.query_row(
@@ -1221,28 +1227,39 @@ fn admit_digest(
         params![recipient,agent,destination,class], |row| Ok((row.get(0)?,u64_at(row,1)?,u64_at(row,2)?)),
     ).optional()?;
     let (window, deadline, count) = match open {
-        Some((id,deadline,count)) if deadline > now && count < DIGEST_CAP as u64 => (id,deadline,count),
+        Some((id, deadline, count)) if deadline > now && count < DIGEST_CAP as u64 => {
+            (id, deadline, count)
+        }
         old => {
-            if let Some((id,_,_)) = old {
+            if let Some((id, _, _)) = old {
                 db.execute("UPDATE msg_digest_windows SET sealed=1 WHERE id=?1", [&id])?;
                 db.execute("DELETE FROM msg_digest_windows WHERE id=?1 AND NOT EXISTS(SELECT 1 FROM msg_digest_members WHERE window=?1)", [&id])?;
             }
             let id = Ulid::new().to_string();
             let deadline = now.saturating_add(DIGEST_MS);
-            db.execute("INSERT INTO msg_digest_windows VALUES(?1,?2,?3,?4,?5,?6,0,0)",
-                params![id,recipient,agent,destination,class,sqlint(deadline)?])?;
-            (id,deadline,0)
+            db.execute(
+                "INSERT INTO msg_digest_windows VALUES(?1,?2,?3,?4,?5,?6,0,0)",
+                params![id, recipient, agent, destination, class, sqlint(deadline)?],
+            )?;
+            (id, deadline, 0)
         }
     };
-    db.execute("INSERT INTO msg_digest_members VALUES(?1,?2,?3,?4)",
-        params![sqlint(receipt.message_sequence)?,recipient,agent,window])?;
+    db.execute(
+        "INSERT INTO msg_digest_members VALUES(?1,?2,?3,?4)",
+        params![sqlint(receipt.message_sequence)?, recipient, agent, window],
+    )?;
     let capped = count + 1 == DIGEST_CAP as u64;
-    db.execute("UPDATE msg_digest_windows SET messages=messages+1,sealed=?2 WHERE id=?1", params![window,capped])?;
+    db.execute(
+        "UPDATE msg_digest_windows SET messages=messages+1,sealed=?2 WHERE id=?1",
+        params![window, capped],
+    )?;
     if capped {
         let members: Vec<Receipt> = {
             let mut query = db.prepare("SELECT d.data FROM msg_digest_members m JOIN msg_deliveries d ON d.message=m.message AND d.recipient=m.recipient AND d.agent=m.agent WHERE m.window=?1 AND d.evidence='recipient-stored' AND d.attempt IS NULL ORDER BY m.message")?;
-            query.query_map([&window], |row| row.get::<_,Vec<u8>>(0))?
-                .map(|row| Ok(serde_json::from_slice(&row?)?)).collect::<Result<_>>()?
+            query
+                .query_map([&window], |row| row.get::<_, Vec<u8>>(0))?
+                .map(|row| Ok(serde_json::from_slice(&row?)?))
+                .collect::<Result<_>>()?
         };
         for mut member in members {
             member.eligible_ms = now;
@@ -1258,27 +1275,52 @@ fn admit_digest(
 }
 
 fn digest_receipts(db: &rusqlite::Connection, first: &Receipt, now: u64) -> Result<Vec<Receipt>> {
-    let window: Option<String> = db.query_row(
-        "SELECT window FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
-        params![sqlint(first.message_sequence)?,first.recipient.to_string(),first.agent.as_deref().unwrap_or("")],
-        |row| row.get(0),
-    ).optional()?;
+    let window: Option<String> = db
+        .query_row(
+            "SELECT window FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
+            params![
+                sqlint(first.message_sequence)?,
+                first.recipient.to_string(),
+                first.agent.as_deref().unwrap_or("")
+            ],
+            |row| row.get(0),
+        )
+        .optional()?;
     let Some(window) = window else {
         // MA-3 deferred receipts predate windows. Keep each original deadline;
         // deliver it once as a singleton summary rather than retiming history.
         return Ok(vec![first.clone()]);
     };
-    db.execute("UPDATE msg_digest_windows SET sealed=1 WHERE id=?1", [&window])?;
+    db.execute(
+        "UPDATE msg_digest_windows SET sealed=1 WHERE id=?1",
+        [&window],
+    )?;
     let mut query = db.prepare("SELECT d.data FROM msg_digest_members m JOIN msg_deliveries d ON d.message=m.message AND d.recipient=m.recipient AND d.agent=m.agent WHERE m.window=?1 AND d.evidence='recipient-stored' AND d.held IS NULL AND d.attempt IS NULL AND d.eligible_ms<=?2 ORDER BY m.message LIMIT 50")?;
-    query.query_map(params![window,sqlint(now)?], |row| row.get::<_,Vec<u8>>(0))?
-        .map(|row| Ok(serde_json::from_slice(&row?)?)).collect()
+    query
+        .query_map(params![window, sqlint(now)?], |row| {
+            row.get::<_, Vec<u8>>(0)
+        })?
+        .map(|row| Ok(serde_json::from_slice(&row?)?))
+        .collect()
 }
 
-fn retire_digests(db: &rusqlite::Connection, recipient: Recipient, agent: Option<&str>, messages: impl IntoIterator<Item=u64>) -> Result<()> {
+fn retire_digests(
+    db: &rusqlite::Connection,
+    recipient: Recipient,
+    agent: Option<&str>,
+    messages: impl IntoIterator<Item = u64>,
+) -> Result<()> {
     for sequence in messages {
         let window: Option<String> = db.query_row("SELECT window FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
             params![sqlint(sequence)?,recipient.to_string(),agent.unwrap_or("")], |row| row.get(0)).optional()?;
-        db.execute("DELETE FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3", params![sqlint(sequence)?,recipient.to_string(),agent.unwrap_or("")])?;
+        db.execute(
+            "DELETE FROM msg_digest_members WHERE message=?1 AND recipient=?2 AND agent=?3",
+            params![
+                sqlint(sequence)?,
+                recipient.to_string(),
+                agent.unwrap_or("")
+            ],
+        )?;
         if let Some(window) = window {
             db.execute("DELETE FROM msg_digest_windows WHERE id=?1 AND sealed=1 AND NOT EXISTS(SELECT 1 FROM msg_digest_members WHERE window=?1)", [window])?;
         }
@@ -1309,6 +1351,7 @@ fn pin_wake(
     });
     Ok(())
 }
+
 fn insert_deliveries(
     tx: &rusqlite::Transaction<'_>,
     message: &StoredMessage,
