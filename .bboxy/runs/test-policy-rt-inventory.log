@@ -1,0 +1,50 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling libc v0.2.191
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling crossbeam-utils v0.8.23
+   Compiling syn v3.0.9
+   Compiling errno v0.3.14
+   Compiling signal-hook-registry v1.4.8
+   Compiling tokio-macros v2.7.2
+   Compiling mio v1.2.4
+   Compiling bytes v1.12.1
+   Compiling pin-project-lite v0.2.17
+   Compiling crossbeam-queue v0.3.14
+   Compiling tokio v1.54.1
+   Compiling bbt-rt v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-rt)
+    Finished `test` profile [optimized] target(s) in 10.03s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_rt-ac93c6b3edc102e1)
+diagnostics::callbacks::tests::excessive_callback_nesting_is_bounded_and_explicit: test
+diagnostics::callbacks::tests::frame_endpoints_clip_running_callbacks_and_preserve_uncovered_cpu: test
+diagnostics::callbacks::tests::nested_callbacks_count_exclusive_cpu_once: test
+diagnostics::tests::callback_guard_accounts_for_early_return_and_in_flight: test
+diagnostics::tests::disabled_hooks_never_sample_clocks_or_allocate_state: test
+diagnostics::tests::enabled_counters_are_partitioned_by_start_period_and_bounded: test
+diagnostics::tests::probe_requires_the_pinned_ack_and_does_not_stitch_across_gaps: test
+meter::tests::bounded_samples_keep_lifetime_count_and_phase_hitches: test
+meter::tests::idle_gaps_draw_as_stubs_never_count_and_report_time_since: test
+meter::tests::perf_record_windows_percentiles_and_late_frames: test
+
+10 tests, 0 benchmarks
+     Running tests/r5_instruments.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/r5_instruments-fbc044ab32603868)
+real_file_read_stalls_off_ui_while_thread_cpu_and_ui_progress_remain_observable: test
+
+1 test, 0 benchmarks
+     Running tests/runtime.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/runtime-3c266295ea16fdfa)
+a_budgeted_deferred_drain_rearms_its_tail_without_another_producer: test
+a_tick_can_wake_while_paint_is_latched: test
+cancel_kills_the_process_group_including_a_grandchild: test
+command_argv_cwd_env_stderr_and_exit_are_observable: test
+hundred_megabyte_command_finishes_with_a_bounded_view: test
+hundred_thousand_concurrent_notices_keep_all_data_and_the_latest_value: test
+latest_and_view_ring_replace_old_values: test
+million_messages_per_second_never_wait_for_a_consumer: test
+paint_publications_stay_latched_until_a_draw_and_recheck_its_tail: test
+singleton_runtime_and_ui_thread_guard: test
+spawn_failure_and_early_cancel_always_complete: test
+ten_thousand_dirty_sets_wake_once_until_drained: test
+
+12 tests, 0 benchmarks
+   Doc-tests bbt_rt
+0 tests, 0 benchmarks

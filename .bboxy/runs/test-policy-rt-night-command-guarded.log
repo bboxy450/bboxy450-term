@@ -1,0 +1,10 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+    Finished `test` profile [optimized] target(s) in 0.51s
+     Running tests/runtime.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/runtime-3c266295ea16fdfa)
+
+running 1 test
+test real_process_boundary ... stdout=104857600 bytes, retained=262144 bytes, dropped=6384 chunks; Exited status survived full queue
+cancelled process group Some(32152), grandchild 32153 no longer running
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.19s

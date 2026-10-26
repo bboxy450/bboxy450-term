@@ -216,6 +216,7 @@ pub(super) fn failed() {
 mod tests {
     use super::*;
 
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn frame_endpoints_clip_running_callbacks_and_preserve_uncovered_cpu() {
         let mut tracker = Tracker::default();
@@ -253,6 +254,7 @@ mod tests {
         assert_eq!(tail.unattributed_ns, 2);
     }
 
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn nested_callbacks_count_exclusive_cpu_once() {
         let mut tracker = Tracker::default();
@@ -268,6 +270,7 @@ mod tests {
         assert_eq!(frame.errors, 0);
     }
 
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn excessive_callback_nesting_is_bounded_and_explicit() {
         let mut tracker = Tracker::default();

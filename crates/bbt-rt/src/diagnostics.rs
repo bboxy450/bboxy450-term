@@ -430,6 +430,7 @@ fn record_probe_output(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn disabled_hooks_never_sample_clocks_or_allocate_state() {
         let recorder = Recorder::default();
@@ -441,6 +442,7 @@ mod tests {
         assert!(!snapshot.enabled);
         assert!(snapshot.samples.is_empty());
     }
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn enabled_counters_are_partitioned_by_start_period_and_bounded() {
         let recorder = Recorder::default();
@@ -460,6 +462,7 @@ mod tests {
         assert_eq!(snapshot.samples.len(), PERIODS * PHASES.len());
         assert!(snapshot.probe.iter().all(|(_, stamp)| stamp.is_none()));
     }
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn probe_requires_the_pinned_ack_and_does_not_stitch_across_gaps() {
         let recorder = Recorder::default();
@@ -495,6 +498,7 @@ mod tests {
         record_probe_output(state, 7, 2, 7, b"R5P00000001|", ProbeStage::LogicRingRead);
         assert_eq!(recorder.snapshot().probe, first.probe);
     }
+    // keeps: spec runtime §5 and §6 — bounded opt-in measurements and callback/probe attribution
     #[test]
     fn callback_guard_accounts_for_early_return_and_in_flight() {
         let recorder = Recorder::default();

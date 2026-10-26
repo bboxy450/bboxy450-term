@@ -224,6 +224,7 @@ mod tests {
             ..Default::default()
         }
     }
+    // keeps: spec runtime §5 — synthetic frame times preserve hitch and idle accounting
     #[test]
     fn perf_record_windows_percentiles_and_late_frames() {
         let mut meter = HitchMeter::new(120.);
@@ -251,6 +252,7 @@ mod tests {
         };
         assert_eq!(hitch, Some("layout"));
     }
+    // keeps: spec runtime §5 — synthetic frame times preserve hitch and idle accounting
     #[test]
     fn idle_gaps_draw_as_stubs_never_count_and_report_time_since() {
         let mut meter = HitchMeter::new(60.);
@@ -274,6 +276,7 @@ mod tests {
             None
         );
     }
+    // keeps: spec runtime §5 — synthetic frame times preserve hitch and idle accounting
     #[test]
     fn bounded_samples_keep_lifetime_count_and_phase_hitches() {
         let mut meter = HitchMeter::new(120.);

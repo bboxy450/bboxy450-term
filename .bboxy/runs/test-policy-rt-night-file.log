@@ -1,0 +1,9 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+    Finished `test` profile [optimized] target(s) in 0.17s
+     Running tests/r5_instruments.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/r5_instruments-fbc044ab32603868)
+
+running 1 test
+test real_two_second_file_stall_reports_native_measurements ... native file-stall measurement: read=2.002777541s, driver=2.006561875s, driver_cpu=233.042µs
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.01s

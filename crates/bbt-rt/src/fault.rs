@@ -40,6 +40,15 @@ pub struct StalledRead {
 /// reads a pipe-backed File; a separate task releases its bytes afterward.
 /// This injects an application file-read stall, not slow physical storage.
 pub async fn stalled_file_read(delay: Duration) -> io::Result<StalledRead> {
+    stalled_file_read_until(async { tokio::time::sleep(delay).await }).await
+}
+
+/// Hold a real read until a caller-controlled signal. The future is first
+/// polled after the IO worker has created the pipe, so tests can prove progress
+/// while a read is pending without racing a wall-clock delay.
+pub async fn stalled_file_read_until(
+    release: impl std::future::Future<Output = ()> + Send,
+) -> io::Result<StalledRead> {
     crate::assert_not_ui_thread();
     let (ready, started) = tokio::sync::oneshot::channel();
     let (writer, receive) = tokio::sync::oneshot::channel();
@@ -67,7 +76,7 @@ pub async fn stalled_file_read(delay: Duration) -> io::Result<StalledRead> {
     let output = receive
         .await
         .map_err(|_| io::Error::other("R5 pipe failed"))?;
-    tokio::time::sleep(delay).await;
+    release.await;
     crate::handle()
         .spawn_blocking(move || {
             let mut output = output;
