@@ -490,5 +490,46 @@
     "net_freed_bytes": 1744793600,
     "time_epoch": 1792997023.460874,
     "reports": "all raw and JSON evidence outside target retained"
+  },
+  "landing": {
+    "sha": "f19d4bc863ffa2b052bab987c78eb653ccb74b76",
+    "signature": "G",
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "exit": 0,
+    "author_seconds": 953.4213120937347,
+    "capacity_wait_seconds": 0.02012491226196289,
+    "presubmit": {
+      "exit": 0,
+      "verdict": "green",
+      "seconds": 941.9644941249862,
+      "compile_seconds": 426.9861419579829,
+      "run_seconds": 514.978042792005,
+      "passed": 1157,
+      "failed": 0,
+      "ignored": 79,
+      "raw": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/f19d4bc863ffa2b052bab987c78eb653ccb74b76-111a45e1/commands.log",
+      "sha256": "fdfc329279ae938583ff3c7e9bb3fb0fb54735e1cf602551a0bf78eede7b1dd8",
+      "lab_check": "40 pages x 4 densities, 0 findings",
+      "parity": {
+        "cases": 26,
+        "required": 24,
+        "measured": 24,
+        "unproven": 0,
+        "mismatches": 0,
+        "advisory_reviews": 1
+      }
+    },
+    "acceptance": "postsubmit and Oracle review pending; no accepted-main claim"
+  },
+  "cleanup_after_typecheck": {
+    "time_epoch": 1793000044.394998,
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+    "lsof_exit": 1,
+    "allocated_bytes_retired": 796659712,
+    "files": 4139,
+    "preserved": "T1 evidence, raw logs, report hashes, retained signed-source executable, and active author fixed-slot target"
   }
 }
