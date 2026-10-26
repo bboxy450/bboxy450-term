@@ -10,6 +10,10 @@ set -eu
 cd "$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 if [ "${1:-}" = --all ]; then
     shift
+    # Observational, bounded, private metadata only; never decides the night.
+    if [ -f scripts/inference-ledger.py ]; then
+        python3 -I scripts/inference-ledger.py >&2 || :
+    fi
     exec python3 -I scripts/landing_recovery.py night-all "$@"
 fi
 bin=${BBT:-target/debug/bboxy450-term}
