@@ -94,12 +94,8 @@ def run():
         # Native onboarding is fixture setup, not an operator dependency. Trust
         # only this run's own empty work directory in its isolated harness home.
         home = work.parent / 'home'
-        # The runner isolates the app's HOME; the script inherits the runner's.
-        # Validate the explicit seed before editing any native-client preference.
-        marker = home / '.l3-private-home'
-        require(home.is_dir() and (home.stat().st_mode & 0o777) == 0o700 and
-                marker.is_file() and marker.read_text() == 'L3 throwaway harness home\n',
-                'private harness home required')
+        require(Path(os.environ['HOME']).resolve() == home.resolve() and
+                (home / '.l3-private-home').is_file(), 'private harness home required')
         preferences = home / '.claude/.claude.json'
         private = json.loads(preferences.read_text())
         private.setdefault('projects', {})[str(work)] = {'hasTrustDialogAccepted': True}

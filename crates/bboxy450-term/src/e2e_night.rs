@@ -473,13 +473,7 @@ impl App {
         }
         let account = root.join("account");
         let mut launch = ctl(&run, repository, &root.join("zsh-config"));
-        let home = root.join("home");
-        if home.is_dir() {
-            launch
-                .env("HOME", &home)
-                .env("CLAUDE_CONFIG_DIR", home.join(".claude"))
-                .env("CODEX_HOME", home.join(".codex"));
-        }
+        launch.envs(isolate_home(&root.join("home"))?);
         // A deterministic harness is local to this promise's app and its real seats.
         // Do not mutate the runner's PATH or the separate records app's environment.
         if let Some(bin) = fixture_bin {
@@ -583,6 +577,25 @@ fn ctl(run: &Path, cwd: &Path, zdotdir: &Path) -> tokio::process::Command {
 
 /// Runs one promise's script with stdin closed; returns its exit code (None when it was
 /// stopped at the timeout) and the last lines of its output as evidence.
+/// Both sides of night-app use the same private home, even without a seed.
+fn isolate_home(home: &Path) -> Result<[(&'static str, PathBuf); 3], String> {
+    std::fs::create_dir_all(home).map_err(|e| e.to_string())?;
+    if !std::fs::symlink_metadata(home)
+        .map_err(|e| e.to_string())?
+        .file_type()
+        .is_dir()
+    {
+        return Err("private night HOME must be a directory, never a symlink".into());
+    }
+    std::fs::set_permissions(home, std::fs::Permissions::from_mode(0o700))
+        .map_err(|e| e.to_string())?;
+    Ok([
+        ("HOME", home.to_owned()),
+        ("CLAUDE_CONFIG_DIR", home.join(".claude")),
+        ("CODEX_HOME", home.join(".codex")),
+    ])
+}
+
 async fn run_script(
     script: &Path,
     executable: &Path,
@@ -598,7 +611,15 @@ async fn run_script(
     let Ok(err) = file.try_clone() else {
         return (None, "cannot create the script log".into());
     };
+    let Some(promise) = work.parent() else {
+        return (None, "script work directory has no promise parent".into());
+    };
+    let environment = match isolate_home(&promise.join("home")) {
+        Ok(environment) => environment,
+        Err(reason) => return (None, reason),
+    };
     let child = Command::new("sh")
+        .envs(environment)
         .arg(script)
         .env("BBT", executable)
         .env("BBOXY_RUN_DIR", run)
@@ -644,6 +665,66 @@ pub fn exit_code(ok: bool) -> i32 {
 #[cfg(test)]
 mod fixture_home_tests {
     use super::*;
+
+    // keeps: ICD night-app; a script never inherits the caller's harness home
+    #[tokio::test]
+    async fn script_without_a_seed_sees_only_the_private_promise_home() {
+        let temp = tempfile::tempdir().unwrap();
+        let work = temp.path().join("work");
+        std::fs::create_dir(&work).unwrap();
+        let home = temp.path().join("home");
+        let script = temp.path().join("probe.sh");
+        std::fs::write(
+            &script,
+            "printf '%s\\n' \"$HOME\" \"$CLAUDE_CONFIG_DIR\" \"$CODEX_HOME\"\nprintf 'private\\n' > \"$HOME/probe\"\n",
+        )
+        .unwrap();
+        let (exit, output) = run_script(
+            &script,
+            Path::new("unused-bbt"),
+            &temp.path().join("run"),
+            &work,
+            0,
+            "test-account:home-regression",
+        )
+        .await;
+        assert_eq!(exit, Some(0));
+        assert_eq!(
+            output,
+            format!(
+                "{}\n{}\n{}",
+                home.display(),
+                home.join(".claude").display(),
+                home.join(".codex").display()
+            )
+        );
+        assert_ne!(std::env::var_os("HOME").as_deref(), Some(home.as_os_str()));
+        assert_eq!(std::fs::read(home.join("probe")).unwrap(), b"private\n");
+        assert_eq!(
+            std::fs::metadata(home).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+    }
+
+    // keeps: ICD night-app; an alias cannot redirect home setup into another directory
+    #[test]
+    fn private_home_refuses_a_symlink_without_changing_its_target() {
+        let temp = tempfile::tempdir().unwrap();
+        let outside = temp.path().join("outside");
+        let home = temp.path().join("home");
+        std::fs::create_dir(&outside).unwrap();
+        std::fs::set_permissions(&outside, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::os::unix::fs::symlink(&outside, &home).unwrap();
+        assert!(
+            isolate_home(&home)
+                .unwrap_err()
+                .contains("symlink")
+        );
+        assert_eq!(
+            std::fs::metadata(outside).unwrap().permissions().mode() & 0o777,
+            0o755
+        );
+    }
 
     // keeps: spec e2e-script-map §L3
     #[test]

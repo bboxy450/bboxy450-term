@@ -1,0 +1,338 @@
+{
+  "ruling": "Oracle21843464, reiterated1f4d7a6e; ICD#353 night-app",
+  "status": "canonical terminal9/9 green; author landing pending",
+  "base": "c3bca50bb9727db62d91fc40f3de5787b0bd2d52",
+  "mechanisms": [
+    "crates/bboxy450-term/src/e2e_night.rs:581 \u2014 create/validate 0700 nonsymlink home and return the three private environment values for both command types",
+    "crates/bboxy450-term/src/e2e_night.rs:476 \u2014 every app, including an unseeded or records app, receives its private home",
+    "crates/bboxy450-term/src/e2e_night.rs:617 \u2014 every script receives the same promise home and harness paths before spawn",
+    "crates/bboxy450-term/src/e2e_night.rs:671 \u2014 real fixture script prints private HOME/config paths, writes its private sentinel, never sees the caller home",
+    "scripts/e2e/t6_recover.py:97 \u2014 original HOME equality and marker guards restored",
+    "scripts/e2e/t9_restart.py:80 \u2014 original HOME equality and marker guards restored"
+  ],
+  "checks": [
+    {
+      "exit": 101,
+      "seconds": 211.12968969345093,
+      "name": "private-home-unit",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/night-private-home-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "fixture_home_tests",
+        "--",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/private-home-unit.log",
+      "log_sha256": "df6d06d28a0f73f7a50a1957d2c50965d7e2a8660003adcc191798a058d47638"
+    },
+    {
+      "exit": 0,
+      "seconds": 140.98489999771118,
+      "name": "private-home-build",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "scratchpad/night-private-home-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/private-home-build.log",
+      "log_sha256": "499387a845afaabde6cd1ba69ec735a115e4f403f1369a2768a005eb3ac7ace0"
+    },
+    {
+      "exit": 0,
+      "seconds": 32.42443108558655,
+      "name": "private-home-unit-fixed",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/night-private-home-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "fixture_home_tests",
+        "--",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/private-home-unit-fixed.log",
+      "log_sha256": "dd63c248498b59b0718a1d26187295b565500661473f35fcbdf7b512dbaa75f4"
+    },
+    {
+      "exit": 0,
+      "seconds": 136.6126389503479,
+      "name": "private-home-terminal",
+      "argv": [
+        "env",
+        "BBT=/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-private-home-20261026/target/debug/bboxy450-term",
+        "sh",
+        "scripts/e2e-night.sh",
+        "terminal"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/private-home-terminal.log",
+      "log_sha256": "bd07a82968ff5a4568975be32bc780f905aa877beffd8faa2397420df406690d"
+    }
+  ],
+  "terminal": {
+    "summary": {
+      "group": "terminal",
+      "kept": null,
+      "kind": "summary",
+      "partial": [],
+      "passed": 9,
+      "red": [],
+      "state": "green",
+      "total": 9,
+      "tracked": [],
+      "unwritten": []
+    },
+    "verdicts": [
+      {
+        "coverage": "full",
+        "evidence": "{\"harness\": \"claude\", \"place\": \"right\", \"seat\": \"01M5WRG7BEASGZVQQQX0CC956Y\", \"opened_frame\": 141, \"ready_frame\": 145, \"admitted_frame\": 141, \"starting_frame\": 142, \"frames\": 1}\n{\"harness\": \"claude\", \"place\": \"down\", \"seat\": \"01M5WRG84YAJQ72NNXB1Z8NFJK\", \"opened_frame\": 173, \"ready_frame\": 181, \"admitted_frame\": 175, \"starting_frame\": 176, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"tab\", \"seat\": \"01M5WRG8WPYZ4H23PKMTYTGE3D\", \"opened_frame\": 200, \"ready_frame\": 205, \"admitted_frame\": 200, \"starting_frame\": 201, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"right\", \"seat\": \"01M5WRG9RKBYN45ZTRCSRVWDT8\", \"opened_frame\": 225, \"ready_frame\": 229, \"admitted_frame\": 225, \"starting_frame\": 226, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"down\", \"seat\": \"01M5WRGAN0TZ3D96NAB1XZ60ZN\", \"opened_frame\": 252, \"ready_frame\": 258, \"admitted_frame\": 254, \"starting_frame\": 255, \"frames\": 1}\nT1: launcher rows/placements, real PTYs/input, pool names, captures and one-frame startup held",
+        "exit": 0,
+        "function": "T1",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "T2: real PTY received exact typed bytes and all 100000 paste bytes; the first frame after echo ingestion drew that sequence or a later one",
+        "exit": 0,
+        "function": "T2",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"action\": \"window-shrink\", \"before\": [159, 54], \"after\": [49, 18], \"signals\": 1, \"frame_seq\": 269, \"sentinel_ink_cells\": 8586, \"grid_pixels\": 105840, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"window-grow\", \"before\": [49, 18], \"after\": [79, 34], \"signals\": 1, \"frame_seq\": 286, \"sentinel_ink_cells\": 882, \"grid_pixels\": 322320, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"pane-split\", \"before\": [79, 34], \"after\": [38, 34], \"signals\": 1, \"frame_seq\": 310, \"sentinel_ink_cells\": 2686, \"grid_pixels\": 155040, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\nT3: window and pane resizes deliver SIGWINCH/stty size; every new-grid pixel is repainted",
+        "exit": 0,
+        "function": "T3",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"styles\": {\"normal_mass\": 20585, \"bold_mass\": 27132, \"italic_different_pixels\": 62, \"underline_pixels\": 8, \"underline_rows\": [13]}, \"colours\": [{\"wire\": {\"Named\": \"Red\"}, \"rgb\": [204, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Green\"}, \"rgb\": [78, 154, 6], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Blue\"}, \"rgb\": [52, 101, 164], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Indexed\": 196}, \"rgb\": [255, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Spec\": {\"r\": 17, \"g\": 203, \"b\": 145}}, \"rgb\": [17, 203, 145], \"foreground_pixels\": 120, \"background_pixels\": 120}], \"wide\": {\"automatic_equals_explicit\": true, \"han_cells\": 2, \"emoji_cells\": 2, \"both_halves_have_ink\": true}, \"cursor\": [{\"kind\": \"b\", \"pixels\": 120, \"width\": 8, \"height\": 15}, {\"kind\": \"u\", \"pixels\": 8, \"width\": 8, \"height\": 1}, {\"kind\": \"s\", \"pixels\": 15, \"width\": 1, \"height\": 15}], \"cell\": [8, 15]}",
+        "exit": 0,
+        "function": "T4",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"before\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WRH7B57J8J6ETRA95GY9J2\", \"tab\": \"01M5WRH7B51XB21RHT4QBNVM02\", \"focused\": \"01M5WRH7Y1J3YJTQ6V411T07JJ\", \"panes\": [{\"seat\": \"01M5WRH7BYXP0Y2QNDMP47BXAZ\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WRH7PAJNQ1XT37FXTT2YDK\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WRH7Y1J3YJTQ6V411T07JJ\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"after\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WRH7B57J8J6ETRA95GY9J2\", \"tab\": \"01M5WRH7B51XB21RHT4QBNVM02\", \"focused\": \"01M5WRH7Y1J3YJTQ6V411T07JJ\", \"panes\": [{\"seat\": \"01M5WRH7BYXP0Y2QNDMP47BXAZ\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WRH7PAJNQ1XT37FXTT2YDK\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WRH7Y1J3YJTQ6V411T07JJ\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"owners\": {\"logic\": 21294, \"supervisor\": 21293}, \"old_app\": 21288, \"new_app\": 21564, \"ready_frame\": 1, \"first_capture\": \"/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T5/work/t5-first-after.png\", \"pty_pids\": {\"01M5WRH7BYXP0Y2QNDMP47BXAZ\": 21339, \"01M5WRH7PAJNQ1XT37FXTT2YDK\": 21358, \"01M5WRH7Y1J3YJTQ6V411T07JJ\": 21376}, \"verdict\": \"app-only crash keeps real programs, layout, focus and pane scroll\"}",
+        "exit": 0,
+        "function": "T5",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T6\", \"verdict\": \"full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines\", \"seats\": [\"01M5WRHBYP8GJ3C7WJ86WG8PZ5\", \"01M5WRHCX18S71X76X1WMKPFQ8\", \"01M5WRHEECWRYEGTGBWFS416JG\"]}",
+        "exit": 0,
+        "function": "T6",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"phase\": \"before\", \"frame_seq\": 86, \"panes\": {\"01M5WRHN4T2J9DWK11VRP5GT9Q\": [311.0, 71.0, 628.0, 818.0], \"01M5WRHNJ6M7GV4BS70QYCMY6G\": [961.0, 71.0, 628.0, 387.0], \"01M5WRHNRN27W26FG02VYN4B8E\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WRHNJ6M7GV4BS70QYCMY6G\", \"closed_strips\": 0}\n{\"phase\": \"grace-first\", \"frame_seq\": 101, \"panes\": {\"01M5WRHN4T2J9DWK11VRP5GT9Q\": [311.0, 71.0, 628.0, 818.0], \"01M5WRHNRN27W26FG02VYN4B8E\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WRHN4T2J9DWK11VRP5GT9Q\", \"closed_strips\": 1}\n{\"phase\": \"restored\", \"frame_seq\": 116, \"panes\": {\"01M5WRHN4T2J9DWK11VRP5GT9Q\": [311.0, 71.0, 628.0, 818.0], \"01M5WRHNJ6M7GV4BS70QYCMY6G\": [961.0, 71.0, 628.0, 387.0], \"01M5WRHNRN27W26FG02VYN4B8E\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WRHNJ6M7GV4BS70QYCMY6G\", \"closed_strips\": 0}\n{\"phase\": \"grace-second\", \"frame_seq\": 143, \"panes\": {\"01M5WRHN4T2J9DWK11VRP5GT9Q\": [311.0, 71.0, 628.0, 818.0], \"01M5WRHNRN27W26FG02VYN4B8E\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WRHN4T2J9DWK11VRP5GT9Q\", \"closed_strips\": 1}\n{\"phase\": \"gone\", \"frame_seq\": 599, \"panes\": {\"01M5WRHN4T2J9DWK11VRP5GT9Q\": [311.0, 71.0, 628.0, 818.0], \"01M5WRHNRN27W26FG02VYN4B8E\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WRHN4T2J9DWK11VRP5GT9Q\", \"closed_strips\": 0}\nnote: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held",
+        "exit": 0,
+        "function": "T7",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"glyph_rect\": [268.0, 107.5, 11.0, 11.0], \"grade_ink\": {\"inferred\": {\"inner\": 4292, \"peak\": 138, \"outer\": 4252}, \"reported\": {\"inner\": 5938, \"peak\": 191, \"outer\": 0}}, \"states\": [{\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"inferred\", \"observed_ms\": 0, \"process\": {\"kind\": \"running\", \"pid\": 27611}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}, {\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"reported\", \"observed_ms\": 1793040440513, \"process\": {\"kind\": \"running\", \"pid\": 27611}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}]}\nT8: real OSC state, silent inferred idle, reported idle/active/child/clear and invalid reports held",
+        "exit": 0,
+        "function": "T8",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T9\", \"verdict\": \"full: explicit ctl restarts preserve 3 seat IDs and native sessions/transcripts, advance generations once, reap old PIDs and retain the shell screen or gap\", \"seats\": [\"01M5WRKW3MVNHYVTCACEZBTQY2\", \"01M5WRKX165694WJPXRWM2D3DH\", \"01M5WRKY7WMS9BJCKMKJXYXARE\"]}",
+        "exit": 0,
+        "function": "T9",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      }
+    ],
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "T1",
+        "issued_by": "test-account:01M5WRG2M2TJ3F8MD9Y2GZ0Q4H",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 18504,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T1/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T2",
+        "issued_by": "test-account:01M5WRGC85KJ9W7W603G0CKJ5T",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 19027,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T3",
+        "issued_by": "test-account:01M5WRGEGB01C378G1JVFCS8C4",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 19201,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T3/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T4",
+        "issued_by": "test-account:01M5WRGYDQVWCG5Y1BEVEPG84X",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 20541,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T4/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T5",
+        "issued_by": "test-account:01M5WRH71PDSKZBPZ24739YXFG",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 21288,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T5/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T6",
+        "issued_by": "test-account:01M5WRHBCDDVY4AXZ3799ABHEM",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 21716,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T7",
+        "issued_by": "test-account:01M5WRHMWAG95JYQJYS4JQNM98",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 22940,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T7/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T8",
+        "issued_by": "test-account:01M5WRKN650MKJDBCVFZQ4NBVR",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 27543,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T8/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T9",
+        "issued_by": "test-account:01M5WRKVTFTAJB88B7CJ0RJJ41",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 28299,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/T9/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5WRM2RKBFCKZH3M2XQXJ6F4",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 29136,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enseZq0O/records-app/run",
+        "windows": 0
+      }
+    ],
+    "app_pid_check": {
+      "argv": [
+        "ps",
+        "-p",
+        "18504,19027,19201,20541,21288,21716,22940,27543,28299,29136",
+        "-o",
+        "pid=,lstart=,args="
+      ],
+      "exit": 1,
+      "stdout": ""
+    },
+    "binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-private-home-20261026/target/debug/bboxy450-term",
+    "binary_sha256": "6661f80afc18bf1191dc8dd5ae2b4434e9354cd50c875b269a1fb5a847bce961"
+  },
+  "failure_disposition": "First compile exposed std::process::Command versus tokio::process::Command; helper now returns owned environment values accepted by both launchers. Original failure log retained.",
+  "limits": [
+    "No operator configuration/identity or login Keychain; private file-account apps, zero windows.",
+    "Original T6/T9 HOME guards restored; existing exact-hook approval recipe and bounded late-review wait unchanged.",
+    "Canonical terminal group only; no claim that the full all-groups night or scale run is green.",
+    "Runner retired successful runtime; public JSONL log, input hashes and the actual test commands remain retained.",
+    "Recorded app PIDs independently absent; no exhaustive transient-child claim."
+  ],
+  "guard_checks": [
+    {
+      "file": "scripts/e2e/t6_recover.py",
+      "original_guard_restored": true,
+      "guard_sha256": "41ceddd60618307c439b215618f6dc0bea032b2c7d3fdd911474de2efd6eda69"
+    },
+    {
+      "file": "scripts/e2e/t9_restart.py",
+      "original_guard_restored": true,
+      "guard_sha256": "41ceddd60618307c439b215618f6dc0bea032b2c7d3fdd911474de2efd6eda69"
+    }
+  ]
+}
