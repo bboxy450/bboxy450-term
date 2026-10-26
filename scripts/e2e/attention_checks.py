@@ -196,7 +196,13 @@ def check(app, model):
     require(last["kind"] == "stored", "fiftieth message was not stored")
     ids.append(last["message"]["envelope"]["id"])
     require(len(ids) == len(set(ids)) == 50, "not 50 distinct digest members")
-    final_receipts = [written(app, mid, receiver) for mid in ids]
+    final_receipts = sorted([written(app, mid, receiver) for mid in ids],
+                            key=lambda row: row["message_sequence"])
+    # The durable arrival sequence, rather than concurrent MCP response order,
+    # is the contract the native digest must preserve.
+    require(len({r["message_sequence"] for r in final_receipts}) == 50,
+            "digest member arrival sequence is not unique")
+    ids = [r["message"] for r in final_receipts]
     attempts = {r["attempt"] for r in final_receipts}
     native_ids = {r["native_id"] for r in final_receipts}
     require(len(attempts) == len(native_ids) == 1, "cap did not produce one native delivery")
