@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T02:55:06Z"
+updated: "2026-10-26T02:59:02Z"
 ---
 # Messaging attention
 
@@ -33,6 +33,7 @@ The operator's words are quoted above, twice. This spec builds into bboxy450-ter
 5. **Batching beats waking.** Many notices in a quiet stretch are one wake, not many.
 6. **Threads need ids that are checked.** A reply to a reminder's id instead of the message's orphaned a thread.
 7. **Measure the cost of a message**: wakes and tokens re-read, per agent and per room, into the ledger.
+8. **Done work came back.** At least six of the Oracle's briefs reached Executors again hours after their work had landed (2026-10-25); each cost a full context re-read and an ancestry check before the agent could answer "already landed". **Gap: whether ICQ replayed them on a session restart, retried a native delivery, or the agents re-read their inboxes; no data.**
 
 ## 2. Two classes of message
 
@@ -77,6 +78,10 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 
 [[messaging-never-held]] holds unchanged: a policy decides only **when a stored message becomes a turn**, never whether it is stored, receipted or delivered to the inbox. A sender sees the receipt `recipient-stored` with `wake: now | deferred-until <time> | none`, so nothing is silent. The operator's mute is the only thing that holds a seat's traffic, as before. Order within a destination is preserved in every mode, and a digest lists messages in order.
 
+## 4a. Superseded and done messages never wake
+
+A message stops being eligible for native delivery, before it wakes anyone, when it is **superseded** (a later message names it in `supersedes`, set by its own sender, or the sender withdraws it) or **done** (it delegates a task whose record is `accepted`, `rejected` or closed, or it is a question whose thread already has an answer from the recipient). It stays stored and visible; its receipt reads `wake: none` with the reason `superseded` or `done`; only a pending wake is cancelled, never an already-written native delivery, which cannot be recalled. A redelivery of an already-delivered message id to the same seat is suppressed by id, never woken twice.
+
 ## 5. Threads
 
 A reply carries `reply_to`, the id of the message it answers; the service checks that id exists in a thread the replier can see, and refuses an unknown one with the error kind `unknown_thread` whose `hint` names the latest message ids of the replier's open threads. A thread is the chain of `reply_to` from its root; "a thread the seat started" (§3) is a thread whose root the seat authored.
@@ -95,7 +100,7 @@ One Executor per row, landed through `land.sh`, each small enough to land the da
 | MA-2 | Policy store on the seat record (an additive optional typed field on `SeatRecord` in `bbt-proto/src/registry.rs`, which drops unknown fields, with its golden case), role-name defaults, `attention_get` and `attention_set` MCP tools, the conversation-only always-wake exceptions | `bbt-proto`, `bbt-mux` | unit tests per mode and exception; the registry golden gains its case |
 | MA-3 | Native delivery consults the policy; inbox always written; the receipt carries `wake` | `bbt-mux` | the [[notices-never-wake]] test; [[messaging-never-held]] still held |
 | MA-4 | Digests on the App clock, window and cap, one delivery listing ids in order | `bbt-mux` | frozen-clock tests at the window and the cap |
-| MA-5 | `reply_to` validation and `unknown_thread` with the hint | `bbt-mux`, `bbt-proto` | refusal and hint tests |
+| MA-5 | `reply_to` validation and `unknown_thread` with the hint; `supersedes`, the done check against task records and answered threads, and suppression of a redelivered id (§4a) | `bbt-mux`, `bbt-proto` | refusal and hint tests; a superseded and a done message stored with `wake: none` and its reason; a redelivered id never woken twice |
 | MA-6 | Orient reports the policy; `ctl seat attention` | `bbt-mux`, `bboxy450-term` | ctl tests; an Orient fixture |
 | MA-7 | `wake` ledger lines and the nightly token fill | `bbt-mux`, `scripts/` | a ledger fixture |
 | MA-8 | Settings › Messaging per seat; the sidebar row shows deferred count and the next digest time | `bbt-ui`, lab | parity cases for the new states |
