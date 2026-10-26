@@ -649,6 +649,7 @@ impl UiVisible {
 }
 #[derive(Debug)]
 enum UiEffect {
+    Compose(bbt_proto::gui::UiComposed),
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
     Mute(SeatId, bool),
@@ -2739,9 +2740,9 @@ impl App {
                                 None => Err("swarm_required"),
                             };
                         match prepared {
-                            Ok(batch) => self
-                                .operation_backlog
-                                .extend(self.composer_client.admitted(batch)),
+                            Ok(batch) => {
+                                self.admit_composer(batch);
+                            }
                             Err(reason) => self.composer_client.refused(reason),
                         }
                     }
@@ -2755,6 +2756,104 @@ impl App {
             window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
         }
         self.request_redraw();
+    }
+    /// Native sends and the UI relay admit the same prepared composer batch.
+    fn admit_composer(&mut self, batch: messaging::Batch) -> Vec<bbt_mux::Ulid> {
+        let commands = self.composer_client.admitted(batch);
+        let ids = commands
+            .iter()
+            .filter_map(|command| match command {
+                live::UiMsg::Messaging { id, .. } => Some(*id),
+                _ => None,
+            })
+            .collect();
+        self.operation_backlog.extend(commands);
+        ids
+    }
+
+    fn compose_ui(&mut self, request: bbt_proto::gui::UiCompose) -> Result<(), String> {
+        if self.live_commands.is_none() || self.closing || self.backend_lost {
+            return Err("backend_unavailable".into());
+        }
+        if self.document.open || self.launcher.is_some() {
+            return Err("composer_not_visible: close the document or launcher first".into());
+        }
+        let (model, stage) = self
+            .live_state
+            .as_deref()
+            .zip(self.focus.stage.as_ref())
+            .ok_or("swarm_required")?;
+        let draft = messaging::ui_compose_draft(model, stage, &request)?;
+        let label = draft.to[0].label.clone();
+        let mut controller = ComposeController::new(composer::Composer {
+            to: draft.to.clone(),
+            text: draft.text.clone(),
+            kind: draft.kind.clone(),
+            focus: true,
+            ..Default::default()
+        });
+        let ComposeOutcome::Submit(draft) = controller.handle(ComposeCommand::Send) else {
+            return Err("composer_submission_refused".into());
+        };
+        // In particular, a role over 32 refuses here before draft, queue or group changes.
+        let batch = self.composer_client.prepare_for(model, stage, draft)?;
+        self.composer_catalog();
+        self.composer = controller;
+        let messages = self.admit_composer(batch);
+        self.message_history.channel("all");
+        self.conversation_reads(false);
+        self.composer_notice();
+        self.ui_collect
+            .as_mut()
+            .expect("UI command collection")
+            .push(UiEffect::Compose(bbt_proto::gui::UiComposed {
+                to: request.to,
+                text: request.text,
+                messages,
+                label,
+                rect: [0.; 4],
+            }));
+        Ok(())
+    }
+
+    fn composed_entry(&self, sent: &bbt_proto::gui::UiComposed) -> Option<usize> {
+        let ids: Vec<_> = sent.messages.iter().map(ToString::to_string).collect();
+        self.conversation.entries.iter().position(|entry| {
+            matches!(entry, bbt_ui::modules::stream_dock::Entry::Message {data, ..}
+                if data.message_ids == ids && data.text == sent.text
+                    && (!matches!(sent.to, bbt_proto::gui::UiComposeTarget::Role(_))
+                        || data.to_label.as_deref() == Some(format!("{} · {} recipients", sent.label, ids.len()).as_str())))
+        })
+    }
+
+    fn composed_frame(
+        &self,
+        sent: &bbt_proto::gui::UiComposed,
+    ) -> Option<bbt_proto::gui::UiComposed> {
+        fn named<'a>(
+            layout: &'a bbt_ui::components::Layout,
+            name: &str,
+        ) -> Option<&'a bbt_ui::components::Layout> {
+            if matches!(&layout.kind, bbt_ui::components::LayoutKind::Named(key) if key == name) {
+                return Some(layout);
+            }
+            layout.children.iter().find_map(|child| named(child, name))
+        }
+        let index = self.composed_entry(sent)?;
+        let layout = &self.conversation_layout.as_ref()?.layout;
+        let viewport = named(layout, "conversation/rows")?.rect;
+        let row = named(layout, &format!("e{index}"))?.rect;
+        let (x, y) = (row.x.max(viewport.x), row.y.max(viewport.y));
+        let (w, h) = (
+            (row.right().min(viewport.right()) - x).max(0.),
+            (row.bottom().min(viewport.bottom()) - y).max(0.),
+        );
+        if w <= 0. || h <= 0. {
+            return None;
+        }
+        let mut receipt = sent.clone();
+        receipt.rect = [x, y, w, h];
+        Some(receipt)
     }
     fn composer_move(&mut self, vertical: Option<bool>, end: Option<bool>, extend: bool) {
         if self.reject_focus {
@@ -4147,6 +4246,7 @@ impl App {
             return Ok(false);
         };
         match effect {
+            UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
             UiEffect::Spawn(id) => match self
                 .spawn_results_seen
                 .get(id)
@@ -4262,6 +4362,12 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::Compose(sent) = effect {
+                        let actual = layout.composed.as_ref().ok_or("ui_frame_refused: sent group is not visible in the produced frame")?;
+                        if actual.to != sent.to || actual.messages != sent.messages || actual.text != sent.text || actual.label != sent.label {
+                            return Err("ui_frame_refused: produced frame shows a different composer send".into());
+                        }
+                    }
                     if let UiEffect::Clock { state: expected, .. } = effect {
                         let actual = layout.clock.ok_or("ui_frame_refused: frame has no animation clock")?;
                         if actual.revision != expected.revision
@@ -4495,9 +4601,7 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
-            UiRequest::Compose(_) => {
-                return Err("ui_compose_unavailable: composer relay is not installed".into());
-            }
+            UiRequest::Compose(request) => self.compose_ui(request)?,
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
                 let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
@@ -4705,7 +4809,15 @@ impl App {
             panes,
             tree,
             spawned: None,
-            composed: None,
+            composed: self.ui_wait.as_ref().and_then(|wait| {
+                wait.effects.iter().find_map(|effect| {
+                    if let UiEffect::Compose(sent) = effect {
+                        self.composed_frame(sent)
+                    } else {
+                        None
+                    }
+                })
+            }),
         };
         if serde_json::to_vec(&layout)
             .map_err(|e| e.to_string())?
@@ -4719,18 +4831,39 @@ impl App {
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
         self.clock_frame = self.clock.frame();
         self.solved_size = logical;
+        let sending = self.ui_wait.as_ref().is_some_and(|wait| {
+            wait.effects
+                .iter()
+                .any(|effect| matches!(effect, UiEffect::Compose(_)))
+        });
         self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
             Some(self.scene.conversation_layout(
                 logical,
                 &composer::Conversation {
                     stream: self.conversation.clone(),
                     composer: self.composer.view.clone(),
-                    scroll: self.conversation_scroll,
+                    scroll: if sending {
+                        f32::MAX
+                    } else {
+                        self.conversation_scroll
+                    },
                 },
             )?)
         } else {
             None
         };
+        if sending {
+            self.conversation_scroll = self
+                .conversation_layout
+                .as_ref()
+                .and_then(|layout| {
+                    bbt_ui::modules::stream_dock::Regions::scroll_extent(
+                        &layout.layout,
+                        "conversation/rows",
+                    )
+                })
+                .map_or(0., |extent| extent[1]);
+        }
         let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
         let layouts = if self.local_tab.is_some() {
             self.scene

@@ -43,6 +43,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
   ui layout                              solved window tree, pane grids, focus and tab
   ui clock freeze|advance <ms>|resume     test-account animation time, acknowledged by its frame
+  ui compose --to <seat|role:r|channel:c> --text <text>   send through the window composer
   seat ls
   seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
              [--name NAME] [--cwd DIR] [--swarm ID]
@@ -414,6 +415,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ));
     }
     let read_flags: Option<&[&str]> = match &command {
+        Command::UiCompose { .. } => Some(&["to", "text"]),
         Command::RecordFetch { .. } | Command::EventsStreams => Some(&[]),
         Command::RecordSearch { .. } => Some(&["type", "cursor"]),
         Command::RecordChanges { .. } => Some(&["since"]),

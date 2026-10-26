@@ -12,6 +12,9 @@ pub use actions::{Action, Regions};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Message {
+    /// Retained message identities for host frame receipts; no visual effect.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub message_ids: Vec<String>,
     pub author: Option<Author>,
     #[serde(rename = "issuer_kind")]
     pub issuer_kind: Option<String>,

@@ -221,11 +221,55 @@ def m2(app):
     rows = app.ctl("seat", "ls")["data"]
     members = {r["record"]["id"] for r in rows if r["record"]["role"]["name"] == "executor"}
     require(members == {first, second} and other not in members, "fixture role grants differ")
-    (app.work / "m2-unavailable.json").write_text(json.dumps({
+    text = "M2_ROLE_" + operation()
+    frame = app.ctl("ui", "compose", "--to", "role:executor", "--text", text)["data"]
+    sent = frame["composed"]
+    ids = sent["messages"]
+    require(frame["frame_seq"] > 0 and sent["text"] == text
+            and sent["to"] == {"kind": "role", "value": "executor"},
+            "no produced-frame composer receipt")
+    require(len(ids) == len(set(ids)) == 2 and sent["label"] == "executor",
+            "role send was not one two-member composer group")
+    x, y, w, h = sent["rect"]
+    require(w > 0 and h > 0 and x >= 0 and y >= 0
+            and x + w <= frame["size"][0] + .01
+            and y + h <= frame["size"][1] + .01,
+            "sent group was outside the produced frame")
+    recipients = set()
+    for mid in ids:
+        rows = [r for r in app.receipts(mid) if r["evidence"] != "sender-stored"
+                and not r["recipient"].startswith("operator")]
+        require(len(rows) == 1 and rows[0]["recipient"] in members,
+                f"role receipt fanout differs: {rows}")
+        recipients.add(rows[0]["recipient"])
+        app.received(mid, {rows[0]["recipient"]})
+    require(recipients == members, "role send omitted or duplicated a matching seat")
+    for seat in (first, second, other):
+        actual = {row["envelope"]["id"] for row in app.inbox(seat)} & set(ids)
+        require(len(actual) == (0 if seat == other else 1), "role inbox leakage")
+        if actual:
+            app.acknowledge(seat, sorted(actual))
+    capture = app.ctl("seat", "capture", "window", app.work / "m2-sent.png")["data"]
+    require(capture["frame_seq"] >= frame["frame_seq"], "capture predates composer receipt")
+
+    # The exact cap case uses real registered role members, never a fake count.
+    for i in range(31):
+        app.spawn("M2 cap " + str(i), "executor", swarm)
+    rows = app.ctl("seat", "ls")["data"]
+    require(sum(r["record"]["role"]["name"] == "executor" for r in rows) == 33,
+            "cap fixture is not 33 real matching seats")
+    refused_text = "M2_REFUSED_" + operation()
+    refusal = app.ctl("ui", "compose", "--to", "role:executor", "--text", refused_text, exit=1)
+    require(refusal["error"]["kind"] == "role_recipient_limit_32", "missing exact role cap refusal")
+    events = app.ctl("events", "tail", "--stream", "swarm-" + swarm,
+                     "--since", "0", "--timeout", "30000")
+    require(refused_text not in json.dumps(events), "refused role send had a retained message effect")
+    (app.work / "m2-result.json").write_text(json.dumps({
         "fixture_members": sorted(members), "nonmember": other,
-        "missing": "composer role-chip selection/send/group receipt and above-32 refusal are not exposed by ctl",
+        "composed_frame": frame, "capture": capture, "messages": ids,
+        "cap_members": 33, "refusal": refusal, "refused_message_absent": True,
         "substituted_send_loops": False}, indent=2) + "\n")
-    raise AssertionError("missing_composer_role_control: exact role fixture is ready; role fanout, grouped send and role_recipient_limit_32 cannot be driven by existing ctl")
+    print("M2: two exact role recipients, one rendered composer group with message IDs, one receipt each, nonmember excluded, 33 refused before message effects")
 
 
 def m6(app):

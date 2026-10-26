@@ -202,6 +202,82 @@ fn role_recipients_are_captured_from_scoped_registry_membership_and_cap_at_32() 
 }
 
 #[test]
+fn ui_role_compose_uses_one_real_composer_group_and_scoped_targets() {
+    use bbt_proto::gui::{UiCompose, UiComposeTarget};
+    use bbt_ui_model::{Role, RoleClass, Seat, SeatId, Stage, Swarm};
+    let swarm = SwarmId::from_u128(1);
+    let mut model = bboxy450_term::model::Model::default();
+    model
+        .ui
+        .window
+        .sidebar
+        .swarms
+        .push(Swarm::new(swarm, "scope", vec![]));
+    let stage = Stage {
+        swarm: Some(swarm),
+        tab: None,
+        focused: None,
+    };
+    for i in 1..=3 {
+        let mut seat = Seat::new(SeatId::from_u128(i), swarm, [0; 32], "member", "zsh");
+        seat.role = Some(Role {
+            name: if i == 3 { "creativity" } else { "executor" }.into(),
+            class: RoleClass::Worker,
+        });
+        model.ui.seats.insert(seat.id, seat);
+    }
+    let request = UiCompose {
+        to: UiComposeTarget::Role("executor".into()),
+        text: "one role send".into(),
+    };
+    let submission = bboxy450_term::messaging::ui_compose_draft(&model, &stage, &request).unwrap();
+    let mut client = Client::default();
+    let batch = client.prepare_for(&model, &stage, submission).unwrap();
+    let commands = client.admitted(batch);
+    assert_eq!(commands.len(), 2);
+    let destinations: std::collections::BTreeSet<_> = commands
+        .iter()
+        .map(|command| match command {
+            UiMsg::Messaging {
+                request: Request::Send { message },
+                ..
+            } => message.destination.clone(),
+            _ => panic!("composer send"),
+        })
+        .collect();
+    assert_eq!(
+        destinations,
+        [
+            format!("seats/{}/inbox", Ulid::from(1)),
+            format!("seats/{}/inbox", Ulid::from(2))
+        ]
+        .into()
+    );
+    assert_eq!(client.groups().len(), 1);
+    assert_eq!(client.groups()[0].ids.len(), 2);
+    assert_eq!(client.groups()[0].label, "executor");
+    let absent = UiCompose {
+        to: UiComposeTarget::Seat(Ulid::from(4)),
+        text: "absent".into(),
+    };
+    assert!(matches!(
+        bboxy450_term::messaging::ui_compose_draft(&model, &stage, &absent),
+        Err("composer_seat_not_in_swarm")
+    ));
+    let channel = UiCompose {
+        to: UiComposeTarget::Channel("work".into()),
+        text: "channel send".into(),
+    };
+    assert_eq!(
+        bboxy450_term::messaging::ui_compose_draft(&model, &stage, &channel)
+            .unwrap()
+            .to[0]
+            .destination,
+        "channels/work"
+    );
+}
+
+#[test]
 fn normal_model_build_preserves_correlated_results_across_grid_publications() {
     let mut model = bboxy450_term::model::Model::default();
     let id = Ulid::new();
@@ -655,8 +731,10 @@ fn role_send_is_one_view_with_receipts_only_when_all_its_real_projections_exist(
     );
     assert!(matches!(&missing[0], Entry::Message { data, .. } if data.receipts.is_none()));
     assert!(matches!(&missing[1], Entry::Note { text, .. } if text.contains("1 of 2")));
+    let ids = vec![a.id.to_string(), b.id.to_string()];
     let complete = message_entries(&[a, b], &Default::default(), &groups, scope, &model, None);
     assert_eq!(complete.len(), 1);
+    assert!(matches!(&complete[0], Entry::Message {data, ..} if data.message_ids == ids));
     assert!(
         matches!(&complete[0], Entry::Message { data, .. } if data.to_label.as_deref()==Some("executor · 2 recipients") && data.receipts.as_ref().is_some_and(|r|r.delivered==1 && r.acked==1))
     );

@@ -147,6 +147,7 @@ pub fn message_view(
         String::new()
     };
     Message {
+        message_ids: vec![row.id.to_string()],
         author: Some(Author {
             kind: match row.author.kind {
                 wire::AuthorKind::Seat => "seat",
@@ -522,6 +523,60 @@ pub struct SendGroup {
     pub swarm: SwarmId,
     pub label: String,
     pub ids: Vec<Ulid>,
+}
+
+/// Resolve chrome input in the selected swarm before the composer admits effects.
+pub fn ui_compose_draft(
+    model: &crate::model::Model,
+    stage: &bbt_ui_model::Stage,
+    request: &bbt_proto::gui::UiCompose,
+) -> Result<Submission, &'static str> {
+    use bbt_proto::gui::UiComposeTarget;
+    request.validate()?;
+    let swarm = stage.swarm.ok_or("swarm_required")?;
+    let address = match &request.to {
+        UiComposeTarget::Seat(id) => {
+            let seat = model
+                .ui
+                .seats
+                .get(&bbt_ui_model::SeatId::from_u128(id.0))
+                .filter(|seat| {
+                    seat.swarm == swarm && seat.lifecycle == bbt_ui_model::Lifecycle::Open
+                })
+                .ok_or("composer_seat_not_in_swarm")?;
+            Address {
+                kind: "seat".into(),
+                id: id.to_string(),
+                label: seat.name.clone(),
+                destination: format!("seats/{id}/inbox"),
+                ..Default::default()
+            }
+        }
+        UiComposeTarget::Role(role) => Address {
+            kind: "role".into(),
+            role: role.clone(),
+            label: role.clone(),
+            ..Default::default()
+        },
+        UiComposeTarget::Channel(name) => {
+            let name = name.trim_start_matches("channels/");
+            Address {
+                kind: "channel".into(),
+                id: format!("channels/{name}"),
+                label: name.into(),
+                destination: format!("channels/{name}"),
+                ..Default::default()
+            }
+        }
+    };
+    Ok(Submission {
+        delegate: false,
+        to: vec![address],
+        attach: vec![],
+        text: request.text.clone(),
+        kind: "text".into(),
+        priority: 0,
+    })
 }
 impl Client {
     pub fn groups(&self) -> &VecDeque<SendGroup> {
@@ -918,6 +973,7 @@ pub fn message_entries_with_attachments(
             shown.extend(group.ids.iter().copied());
             view.to_label = Some(format!("{} · {} recipients", group.label, group.ids.len()));
             if members.len() == group.ids.len() {
+                view.message_ids = group.ids.iter().map(ToString::to_string).collect();
                 view.receipts = Some(Receipts {
                     delivered: members.iter().map(|row| row.receipts.delivered).sum(),
                     acked: members.iter().map(|row| row.receipts.acked).sum(),

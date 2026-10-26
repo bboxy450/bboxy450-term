@@ -10,6 +10,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "layout", "Ui"),
     ("ui", "clock", "Ui"),
     ("ui", "notification-click", "Ui"),
+    ("ui", "compose", "Ui"),
 ];
 
 /// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
@@ -23,6 +24,7 @@ macro_rules! ui_commands {
                 motion: bbt_proto::gui::UiScroll,
             },
             UiNotificationClick(String),
+            UiCompose { to: String, text: String },
         ]] $($head)*);
     };
 }
@@ -30,8 +32,35 @@ pub(super) use ui_commands;
 
 /// `ctl ui …` and its pre-grammar aliases, parsed into this noun's commands; `None`
 /// when the words are not this noun's.
-pub(super) fn parse(words: &[&str], _cx: &super::ParseCx) -> Result<Option<Command>, String> {
+pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", "compose"] => {
+            let to = cx
+                .flags
+                .get("to")
+                .filter(|s| !s.trim().is_empty())
+                .cloned()
+                .ok_or_else(|| {
+                    format!("{USAGE_PREFIX}ui compose requires --to <seat|role:r|channel:c>")
+                })?;
+            let text = cx
+                .flags
+                .get("text")
+                .filter(|s| !s.trim().is_empty())
+                .cloned()
+                .ok_or_else(|| format!("{USAGE_PREFIX}ui compose requires --text <message>"))?;
+            if to.chars().any(char::is_control) || to == "role:" || to == "channel:" {
+                return Err(format!(
+                    "{USAGE_PREFIX}ui compose requires a resolved seat, role or channel"
+                ));
+            }
+            if text.len() > bbt_proto::messaging::MAX_TEXT {
+                return Err(format!(
+                    "{USAGE_PREFIX}ui compose text exceeds the message limit"
+                ));
+            }
+            Command::UiCompose { to, text }
+        }
         ["ui", "clock", "freeze"] => Command::Ui(bbt_proto::gui::UiRequest::Clock(
             bbt_proto::gui::UiClockCommand::Freeze,
         )),
@@ -111,6 +140,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
         ..
     } = cx;
     let data = match command {
+        Command::UiCompose { to, text } => compose(&mut client, to, text)?,
         Command::Ui(request) => {
             serde_json::to_value(client.ui(request)?).map_err(|e| e.to_string())?
         }
@@ -145,4 +175,53 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui layout",
     "ui clock freeze",
     "ui notification-click s",
+    "ui compose --to s --text hi",
 ];
+
+/// Resolve the explicit target and send it through the admitted window composer.
+pub(super) fn compose(client: &mut Client, to: String, text: String) -> Result<Value, String> {
+    use bbt_proto::gui::{UiCompose, UiComposeTarget, UiRequest};
+    let to = if let Some(role) = to.strip_prefix("role:") {
+        UiComposeTarget::Role(role.into())
+    } else if let Some(channel) = to.strip_prefix("channel:") {
+        UiComposeTarget::Channel(channel.into())
+    } else {
+        UiComposeTarget::Seat(resolve(&client.seats()?, &to)?.record.id)
+    };
+    serde_json::to_value(client.ui(UiRequest::Compose(UiCompose { to, text }))?)
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn compose_requires_bounded_text_and_an_explicit_target() {
+        let parse = |words: &[&str]| {
+            super::super::parse_full(&words.iter().map(|s| (*s).into()).collect::<Vec<_>>())
+        };
+        let parsed = parse(&[
+            "ui",
+            "compose",
+            "--to",
+            "role:executor",
+            "--text",
+            "two words",
+        ])
+        .unwrap();
+        assert!(
+            matches!(parsed.command, Command::UiCompose {to, text} if to == "role:executor" && text == "two words")
+        );
+        for words in [
+            vec!["ui", "compose"],
+            vec!["ui", "compose", "--to", "role:executor"],
+            vec!["ui", "compose", "--text", "hello"],
+            vec!["ui", "compose", "--to", "role:", "--text", "hello"],
+            vec![
+                "ui", "compose", "--to", "seat", "--text", "hello", "--other", "x",
+            ],
+        ] {
+            assert!(parse(&words).is_err(), "{words:?}");
+        }
+    }
+}
