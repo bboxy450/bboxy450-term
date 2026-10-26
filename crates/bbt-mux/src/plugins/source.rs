@@ -337,10 +337,10 @@ impl DataSourceProvider {
             result
         };
         let result = result.and_then(|value| self.current().map(|_| value));
-        if result.is_err() {
-            if let Some(client) = slot.take() {
-                self.handle.block_on(client.shutdown());
-            }
+        if result.is_err()
+            && let Some(client) = slot.take()
+        {
+            self.handle.block_on(client.shutdown());
         }
         self.observe(pid, method, &result);
         result.and_then(|value| {
