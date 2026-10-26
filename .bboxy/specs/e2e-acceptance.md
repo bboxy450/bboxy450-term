@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-26T08:49:33Z"
+updated: "2026-10-26T08:54:25Z"
 ---
 # E2E acceptance
 
@@ -55,7 +55,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 
 - **L1** ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn
 - **L2** a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot
-- **L3** every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the user's own ~/.claude and ~/.codex are byte-identical before and after, while each seat's private harness home (decision #279) is the app's to seed and the native client's to write its own runtime and trust state into
+- **L3** every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the app itself never writes the user's own ~/.claude or ~/.codex (our wiring arrives by launch arguments, environment and the per-seat runtime of #279, never by editing those files); writes the native client makes there are its own and are listed by path with their cause, the only accepted one the app causes being the trust record of our own hooks when the hook review of #270 approves them; seats share the user's normal harness home and login, since a private home per seat would need a login per seat
 - **L4** a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task
 
 ### scrollback

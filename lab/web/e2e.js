@@ -58,7 +58,7 @@ window.E2E_PROMISES = [
  {
   "id": "L3",
   "group": "launcher and placement",
-  "text": "every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the user's own ~/.claude and ~/.codex are byte-identical before and after, while each seat's private harness home (decision #279) is the app's to seed and the native client's to write its own runtime and trust state into"
+  "text": "every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the app itself never writes the user's own ~/.claude or ~/.codex (our wiring arrives by launch arguments, environment and the per-seat runtime of #279, never by editing those files); writes the native client makes there are its own and are listed by path with their cause, the only accepted one the app causes being the trust record of our own hooks when the hook review of #270 approves them; seats share the user's normal harness home and login, since a private home per seat would need a login per seat"
  },
  {
   "id": "L4",
