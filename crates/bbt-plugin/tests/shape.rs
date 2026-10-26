@@ -12,6 +12,7 @@ fn fixture() -> Value {
                 "result":Contract::DataSource.method_schema(name,true).unwrap(),"timeout_ms":1000})).collect::<Vec<_>>()}]})
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn versions_are_major_minor_and_unknown_fields_are_additive() {
     for invalid in ["1", "1.0.0", "-1.0", "01.0", "1.00", "1.4294967296"] {
@@ -37,6 +38,7 @@ fn versions_are_major_minor_and_unknown_fields_are_additive() {
         .unwrap();
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn app_prefix_provider_hyphens_and_exact_name_boundary() {
     let name = PluginName::parse("another-app", "another-app-data_source-git-kb").unwrap();
@@ -77,6 +79,7 @@ fn app_prefix_provider_hyphens_and_exact_name_boundary() {
     );
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn unknown_contract_major_missing_method_and_budget_are_named_refusals() {
     let name = PluginName::parse("bboxy450-term", "bboxy450-term-data_source-reference").unwrap();
@@ -110,6 +113,7 @@ fn unknown_contract_major_missing_method_and_budget_are_named_refusals() {
     assert!(Version::compatible("1.0", Contract::Provider.version()).is_err());
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant() {
     use bbt_plugin::{policy::Tier,trust::{Grants,TrustRecord}};

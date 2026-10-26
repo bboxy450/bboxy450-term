@@ -27,6 +27,7 @@ fn typed(method: &str, value: &Value, result: bool) -> Value {
     }
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn independent_eight_method_fixtures_match_schema_and_portable_types() {
     let fixtures: Vec<Value> =
@@ -68,6 +69,7 @@ fn independent_eight_method_fixtures_match_schema_and_portable_types() {
     assert!(d::method_schema("execute", false).is_none());
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn malformed_pages_references_and_create_without_destination_fail_the_schema() {
     for (method, value) in [
@@ -95,6 +97,7 @@ fn malformed_pages_references_and_create_without_destination_fail_the_schema() {
     }
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn document_unknown_metadata_and_markdown_are_preserved() {
     let fixtures: Vec<Value> =

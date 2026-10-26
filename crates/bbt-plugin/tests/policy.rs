@@ -3,6 +3,7 @@ use bbt_plugin::{
     policy::{FailurePolicy, Hook, Phase, RoleClass, Tier, allowed_env_name, filter_environment},
 };
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn contract_authority_is_fixed_and_hooks_raise_exposure() {
     for c in Contract::ALL {
@@ -67,6 +68,7 @@ fn contract_authority_is_fixed_and_hooks_raise_exposure() {
     }
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn credential_names_lose_even_inside_the_environment_allowlist() {
     let pairs = [

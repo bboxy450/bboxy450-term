@@ -1,0 +1,58 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+    Finished `test` profile [optimized] target(s) in 9.40s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_plugin-a9df536b0f1f75c6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/contracts-e3aa71e98e352f15)
+
+running 3 tests
+test the_four_pinned_tables_are_concrete_and_additive ... ok
+test task_methods_keep_native_arguments_and_require_an_etag_on_every_write ... ok
+test every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/data_source.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/data_source-f872fed1fa533a13)
+
+running 3 tests
+test document_unknown_metadata_and_markdown_are_preserved ... ok
+test independent_eight_method_fixtures_match_schema_and_portable_types ... ok
+test malformed_pages_references_and_create_without_destination_fail_the_schema ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/policy.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/policy-e1b971417d6df926)
+
+running 2 tests
+test credential_names_lose_even_inside_the_environment_allowlist ... ok
+test contract_authority_is_fixed_and_hooks_raise_exposure ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/registry-d412312dd42217de)
+
+running 2 tests
+test approval_uses_the_fixed_primary_contract_tier_and_grants_nothing_extra ... ok
+test discovery_and_a_desired_enable_flag_do_not_imply_account_trust ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/shape.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/shape-9f4fb41e5cddc15f)
+
+running 4 tests
+test app_prefix_provider_hyphens_and_exact_name_boundary ... ok
+test descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant ... ok
+test versions_are_major_minor_and_unknown_fields_are_additive ... ok
+test unknown_contract_major_missing_method_and_budget_are_named_refusals ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+   Doc-tests bbt_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

@@ -1,0 +1,29 @@
+# #327 bbt-plugin test sweep
+
+Oracle46f7fa1e; fresh base 383171c2cf4358d65bf75820668f8919a358d87b. Tests only; overlap scan empty.
+All 14 tests protect decision #278's concrete schemas, additive plugin boundary, fixed tiers/roles, minimum approval/grants and named refusals. No tests deleted or moved; no sleeps or process/time dependencies existed. The valid() fixture helper now compiles a method schema once and uses it for both base and future-minor input; both assertions are unchanged.
+Before 14/0/0 ignored; after 14/0/0 ignored. Reported binary times sum 0.04 s before / 0.06 s after. No halving claim on this short protected suite. Strict Clippy and affected invariants run once in combined author validation.
+
+| Test | Class | Kept contract |
+|---|---|---|
+| `tests/contracts.rs::every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/contracts.rs::the_four_pinned_tables_are_concrete_and_additive` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/contracts.rs::task_methods_keep_native_arguments_and_require_an_etag_on_every_write` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/data_source.rs::independent_eight_method_fixtures_match_schema_and_portable_types` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/data_source.rs::malformed_pages_references_and_create_without_destination_fail_the_schema` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/data_source.rs::document_unknown_metadata_and_markdown_are_preserved` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/policy.rs::contract_authority_is_fixed_and_hooks_raise_exposure` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/policy.rs::credential_names_lose_even_inside_the_environment_allowlist` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/registry.rs::approval_uses_the_fixed_primary_contract_tier_and_grants_nothing_extra` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/registry.rs::discovery_and_a_desired_enable_flag_do_not_imply_account_trust` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/shape.rs::versions_are_major_minor_and_unknown_fields_are_additive` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/shape.rs::app_prefix_provider_hyphens_and_exact_name_boundary` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/shape.rs::unknown_contract_major_missing_method_and_budget_are_named_refusals` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+| `tests/shape.rs::descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant` | D3 | decision #278 — frozen v1 schemas, additive boundaries and host authority |
+
+Coverage map: #278 contract/version tables -> contracts.rs; mandatory etag/signed_record -> task_methods_keep_native_arguments_and_require_an_etag_on_every_write; eight portable data_source methods and minor extensions -> data_source.rs independent fixture matrix (fixture bytes unchanged); fixed role/tier/hook budgets and environment redaction -> policy.rs; name/major/budget/permission refusal codes and descriptor non-authority -> shape.rs; disabled/untrusted discovery and minimum approval -> registry.rs. No invariant or spec acceptance line loses a test; wire-visible version/names and additive boundaries stay protected.
+
+Evidence (copies normalize trailing blank lines; private originals retained):
+- .bboxy/runs/test-policy-plugin-inventory.log SHA256 2f9ec8394fefd7be1b516523bd0730c85e0dbc26780894d3aef4bc2a6a385939 — EXIT0.
+- .bboxy/runs/test-policy-plugin-before.log SHA256 c34c5c11ee9beb63b1aa7bd39b8b14fb2561ae28627b6f9015709c0a9dadc8ae — EXIT0.
+- .bboxy/runs/test-policy-plugin-after.log SHA256 56dc050d09aaddf04a27b5256f7d1502b8ede0b93b1d5b78c53d7b57c86c1b23 — EXIT0.

@@ -1,0 +1,94 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling autocfg v1.5.1
+   Compiling syn v3.0.9
+   Compiling num-traits v0.2.19
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling num-integer v0.1.47
+   Compiling cfg-if v1.0.5
+   Compiling zerocopy v0.8.63
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.154
+   Compiling version_check v0.9.5
+   Compiling ahash v0.8.12
+   Compiling num-bigint v0.4.8
+   Compiling parking_lot_core v0.9.12
+   Compiling ref-cast v1.0.27
+   Compiling num-rational v0.4.2
+   Compiling num-iter v0.1.46
+   Compiling aho-corasick v1.1.5
+   Compiling num-complex v0.4.6
+   Compiling ref-cast-impl v1.0.27
+   Compiling smallvec v1.16.3
+   Compiling scopeguard v1.2.0
+   Compiling once_cell v1.21.4
+   Compiling lock_api v0.4.14
+   Compiling num v0.4.3
+   Compiling regex-automata v0.4.18
+   Compiling syn v2.0.119
+   Compiling bit-vec v0.8.0
+   Compiling unicode-general-category v1.1.0
+   Compiling heck v0.5.0
+   Compiling borrow-or-share v0.2.4
+   Compiling foldhash v0.2.0
+   Compiling allocator-api2 v0.2.21
+   Compiling jsonschema-value v0.60.1
+   Compiling hashbrown v0.17.1
+   Compiling fluent-uri v0.4.1
+   Compiling strum_macros v0.28.0
+   Compiling bit-set v0.8.0
+   Compiling fraction v0.17.0
+   Compiling parking_lot v0.12.5
+   Compiling vsimd v0.8.0
+   Compiling outref v0.5.2
+   Compiling bytecount v0.6.9
+   Compiling micromap v0.3.0
+   Compiling percent-encoding v2.3.2
+   Compiling num-cmp v0.1.0
+   Compiling referencing v0.60.1
+   Compiling strum v0.28.0
+   Compiling uuid-simd v0.8.0
+   Compiling fancy-regex v0.19.2
+   Compiling regex v1.13.1
+   Compiling jsonschema-regex v0.60.1
+   Compiling email_address v0.2.9
+   Compiling data-encoding v2.11.1
+   Compiling bbt-plugin v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-plugin)
+   Compiling jsonschema v0.60.1
+    Finished `test` profile [optimized] target(s) in 1m 09s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_plugin-a9df536b0f1f75c6)
+0 tests, 0 benchmarks
+     Running tests/contracts.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/contracts-e3aa71e98e352f15)
+every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations: test
+task_methods_keep_native_arguments_and_require_an_etag_on_every_write: test
+the_four_pinned_tables_are_concrete_and_additive: test
+
+3 tests, 0 benchmarks
+     Running tests/data_source.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/data_source-f872fed1fa533a13)
+document_unknown_metadata_and_markdown_are_preserved: test
+independent_eight_method_fixtures_match_schema_and_portable_types: test
+malformed_pages_references_and_create_without_destination_fail_the_schema: test
+
+3 tests, 0 benchmarks
+     Running tests/policy.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/policy-e1b971417d6df926)
+contract_authority_is_fixed_and_hooks_raise_exposure: test
+credential_names_lose_even_inside_the_environment_allowlist: test
+
+2 tests, 0 benchmarks
+     Running tests/registry.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/registry-d412312dd42217de)
+approval_uses_the_fixed_primary_contract_tier_and_grants_nothing_extra: test
+discovery_and_a_desired_enable_flag_do_not_imply_account_trust: test
+
+2 tests, 0 benchmarks
+     Running tests/shape.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/shape-9f4fb41e5cddc15f)
+app_prefix_provider_hyphens_and_exact_name_boundary: test
+descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant: test
+unknown_contract_major_missing_method_and_budget_are_named_refusals: test
+versions_are_major_minor_and_unknown_fields_are_additive: test
+
+4 tests, 0 benchmarks
+   Doc-tests bbt_plugin
+0 tests, 0 benchmarks

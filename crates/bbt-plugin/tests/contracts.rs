@@ -3,18 +3,14 @@ use serde_json::{Value, json};
 
 fn valid(contract: Contract, method: &str, result: bool, value: Value) {
     let schema = contract.method_schema(method, result).unwrap();
-    jsonschema::validator_for(&schema)
-        .unwrap()
-        .validate(&value)
-        .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    validator.validate(&value).unwrap();
     let mut extended = value;
     extended["future_minor_field"] = json!({"ignore":true});
-    jsonschema::validator_for(&schema)
-        .unwrap()
-        .validate(&extended)
-        .unwrap();
+    validator.validate(&extended).unwrap();
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations() {
     for contract in Contract::ALL {
@@ -53,6 +49,7 @@ fn every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations() {
     );
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn the_four_pinned_tables_are_concrete_and_additive() {
     valid(Contract::Session, "describe", false, json!({}));
@@ -135,6 +132,7 @@ fn the_four_pinned_tables_are_concrete_and_additive() {
     }
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn task_methods_keep_native_arguments_and_require_an_etag_on_every_write() {
     let id = "00000000000000000000000001";

@@ -5,6 +5,7 @@ use bbt_plugin::{
     shape::PluginName,
 };
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn approval_uses_the_fixed_primary_contract_tier_and_grants_nothing_extra() {
     for system in Contract::ALL {
@@ -27,6 +28,7 @@ fn approval_uses_the_fixed_primary_contract_tier_and_grants_nothing_extra() {
     );
 }
 
+// keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn discovery_and_a_desired_enable_flag_do_not_imply_account_trust() {
     let name = PluginName {
