@@ -2596,6 +2596,15 @@ impl App {
                         None
                     }
                 }));
+            self.conversation.entries.extend(self.scene.restart_lines(swarm.id).map(|text| {
+                bbt_ui::modules::stream_dock::Entry::Message {
+                    data: Box::new(bbt_ui::modules::stream_dock::Message {
+                        text: text.into(), presence: true, kind: Some("presence".into()),
+                        ..Default::default()
+                    }),
+                    show_channel: None,
+                }
+            }));
         }
         self.conversation.entries.extend(
             self.task_records
@@ -5241,25 +5250,30 @@ impl App {
     /// Data and focus may change between ticks; only a usable frame projects
     /// their newest state. A refused drawable leaves the pending work intact.
     fn project_scene(&mut self, frame_ready: bool) {
-        if !frame_ready || !self.scene_dirty {
+        if !frame_ready {
             return;
         }
-        let Some(model) = &self.live_state else {
-            return;
-        };
-        self.scene.set_model_with_clock(
-            model,
-            self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
-            &self.clock,
-        );
-        self.scene.set_starting(
-            &self.starting,
-            model,
-            self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
-        );
-        self.scene_dirty = false;
-        if let Some(stall) = &self.stall {
-            stall.model_applied();
+        if self.scene_dirty {
+            let Some(model) = &self.live_state else {
+                return;
+            };
+            self.scene.set_model_with_clock(
+                model,
+                self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
+                &self.clock,
+            );
+            self.scene.set_starting(
+                &self.starting,
+                model,
+                self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
+            );
+            self.scene_dirty = false;
+            if let Some(stall) = &self.stall {
+                stall.model_applied();
+            }
+        }
+        if self.scene.advance_restarts(self.clock.now()) {
+            self.refresh_conversation();
         }
     }
     fn complete_paint_sources(&self) {

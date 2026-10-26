@@ -44,6 +44,21 @@ fn identity_note(identity: &bbt_proto::GuiIdentity) -> String {
     }
 }
 
+// lab.css restarted-out: hold to 85%, then CSS `ease` until four seconds.
+fn restarted_alpha(seconds: f32) -> f32 {
+    if seconds <= 3.4 { return 1.; }
+    if seconds >= 4. { return 0.; }
+    let progress = (seconds - 3.4) / 0.6;
+    let (mut lo, mut hi) = (0., 1.);
+    for _ in 0..16 {
+        let t = (lo + hi) / 2.;
+        let x = 0.75 * t * (1. - t) + t * t * t;
+        if x < progress { lo = t; } else { hi = t; }
+    }
+    let t = (lo + hi) / 2.;
+    1. - (0.3 * t * (1. - t) * (1. - t) + 3. * t * t * (1. - t) + t * t * t)
+}
+
 /// Settings > Rim size range (rim-glow §3).
 pub const RIM_MIN: f32 = TOKENS.glow.rim_min as f32;
 pub const RIM_MAX: f32 = TOKENS.glow.rim_max as f32;
@@ -188,6 +203,8 @@ pub struct Scene {
     /// Seats waiting for the operator (attention §2): since when, and whether muted.
     attention: HashMap<SeatId, (Instant, bool)>,
     attention_origins: HashMap<SeatId, Instant>,
+    restart_generations: HashMap<SeatId, (u64, Option<Instant>, bbt_ui_model::SwarmId)>,
+    restart_lines: Vec<(bbt_ui_model::SwarmId, String)>,
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -348,6 +365,8 @@ impl Scene {
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
+            restart_generations: HashMap::new(),
+            restart_lines: vec![],
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -404,6 +423,11 @@ impl Scene {
     }
     /// Whether any swell or attention loop still needs frames at `now`.
     pub fn animating(&self, now: Instant) -> bool {
+        if self.restart_generations.values().any(|(_, at, _)| {
+            at.is_some_and(|at| now.saturating_duration_since(at).as_secs_f32() < 4.)
+        }) {
+            return true;
+        }
         if self.closed.iter().any(|(_, until, _, _)| now < *until) {
             return true;
         }
@@ -453,6 +477,8 @@ impl Scene {
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
+            restart_generations: HashMap::new(),
+            restart_lines: vec![],
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -489,6 +515,29 @@ impl Scene {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
+        self.restart_generations.retain(|seat, _| {
+            model
+                .ui
+                .seats
+                .get(seat)
+                .is_some_and(|seat| seat.lifecycle == bbt_ui_model::Lifecycle::Open)
+        });
+        for (id, seat) in &model.ui.seats {
+            if seat.lifecycle != bbt_ui_model::Lifecycle::Open {
+                continue;
+            }
+            let current = self.restart_generations.entry(*id).or_insert((
+                seat.process_generation,
+                None,
+                seat.swarm,
+            ));
+            if current.0 != seat.process_generation {
+                current.1 = (seat.process_generation > current.0)
+                    .then(|| animation_now.unwrap_or_else(Instant::now));
+                current.0 = seat.process_generation;
+            }
+            current.2 = seat.swarm;
+        }
         self.attention
             .retain(|seat, _| model.attention.contains_key(seat));
         self.attention_origins
@@ -712,6 +761,35 @@ impl Scene {
     pub fn backend_ready(&mut self) {
         self.backend_lost = false;
     }
+    /// Retire each four-second notice once; bounded stream lines survive projections.
+    pub fn advance_restarts(&mut self, now: Instant) -> bool {
+        let mut changed = false;
+        for (id, (generation, at, swarm)) in &mut self.restart_generations {
+            if at.is_some_and(|at| now.saturating_duration_since(at).as_secs_f32() >= 4.) {
+                *at = None;
+                if let Some(row) = self
+                    .seat_index
+                    .get(id)
+                    .and_then(|index| self.seats.get(*index))
+                {
+                    self.restart_lines.push((
+                        *swarm,
+                        format!("{} restarted · process generation {generation}", row.name),
+                    ));
+                    changed = true;
+                }
+            }
+        }
+        if self.restart_lines.len() > 512 {
+            self.restart_lines.drain(..self.restart_lines.len() - 512);
+        }
+        changed
+    }
+    pub fn restart_lines(&self, swarm: bbt_ui_model::SwarmId) -> impl Iterator<Item = &str> {
+        self.restart_lines
+            .iter()
+            .filter_map(move |(owner, text)| (*owner == swarm).then_some(text.as_str()))
+    }
     /// Read the actual pane body after layout, including its padding.
     pub fn pane_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
         self.pane_keys()
@@ -823,6 +901,11 @@ impl Scene {
         let mut seats = self.seats.clone();
         for (id, index) in &self.seat_index {
             (seats[*index].swell, seats[*index].attention) = self.envelope(*id, now);
+            if let Some((_, Some(at), _)) = self.restart_generations.get(id) {
+                let elapsed = now.saturating_duration_since(*at).as_secs_f32();
+                seats[*index].restarted = elapsed < 4.;
+                seats[*index].restarted_alpha = restarted_alpha(elapsed);
+            }
         }
         let title = STYLE.spacing.title_bar as f32;
         let sidebar_width = 300_f32.min(size[0] * 0.35);
@@ -1972,6 +2055,35 @@ mod depth_tests {
                 .iter()
                 .all(|(_, attention)| !attention)
         );
+    }
+
+    // keeps: spec ux-prototype §5
+    #[test]
+    fn restart_notice_is_one_shot_on_generation_change_and_then_one_stream_line() {
+        use bboxy450_term::{grids::Grids, model};
+        use bbt_proto::registry::SeatRecord;
+        use bbt_mux::Ulid;
+        use std::time::Duration;
+        let mut record = SeatRecord::new(Ulid(3), Ulid(2), "fixture", "zsh");
+        let mut model = model::build(std::slice::from_ref(&record), &Grids::new(), &model::Model::default());
+        let mut scene = Scene::live();
+        let start = Instant::now();
+        scene.set_model_at(&model, &model.ui.window.stage, Some(start));
+        assert!(scene.restart_generations[&SeatId::from_u128(3)].1.is_none(), "initial metadata is not a restart");
+        record.generation += 1;
+        model = model::build(std::slice::from_ref(&record), &Grids::new(), &model);
+        scene.set_model_at(&model, &model.ui.window.stage, Some(start));
+        let at = |ms| start + Duration::from_millis(ms);
+        assert!(scene.animating(at(3_999)));
+        assert!(!scene.advance_restarts(at(3_999)));
+        scene.set_model_at(&model, &model.ui.window.stage, Some(at(3_999)));
+        assert_eq!(scene.restart_generations[&SeatId::from_u128(3)].1, Some(start), "reprojection restarted the timer");
+        assert_eq!(restarted_alpha(3.4), 1.);
+        assert!((restarted_alpha(3.7) - 0.1976).abs() < 0.001);
+        assert!(scene.advance_restarts(at(4_000)));
+        assert!(!scene.advance_restarts(at(8_000)), "notice emitted twice");
+        assert_eq!(scene.restart_lines(bbt_ui_model::SwarmId::from_u128(2)).collect::<Vec<_>>(), ["fixture restarted · process generation 2"]);
+        assert!(!scene.animating(at(8_000)));
     }
 
     // keeps: spec ux-prototype §5

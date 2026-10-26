@@ -196,6 +196,7 @@ pub struct SeatRow {
     pub shortcut: Option<String>,
     pub subtitle: Option<String>,
     pub restarted: bool,
+    pub restarted_alpha: f32,
     pub interrupt_sent: bool,
     pub noise: Option<f32>,
     /// Optional per-container density override, as in the subtitle fixture.
@@ -233,6 +234,7 @@ impl SeatRow {
             shortcut: None,
             subtitle: None,
             restarted: false,
+            restarted_alpha: 1.,
             interrupt_sent: false,
             noise: None,
             row_height: None,
@@ -470,13 +472,11 @@ impl SeatRow {
             );
         }
         if self.restarted {
-            right.push(
-                named(
-                    "restarted",
-                    chip("restarted", ui::Color::Accent, 0.16, false, false),
-                )
-                .into(),
-            );
+            let mut tag = chip("restarted", ui::Color::Accent, 0.16, false, false);
+            if let c::Element::Box(body) = &mut tag {
+                body.style.overrides.opacity = Some(self.restarted_alpha.clamp(0., 1.));
+            }
+            right.push(named("restarted", tag).into());
         }
         if !self.held.is_empty() {
             right.push(

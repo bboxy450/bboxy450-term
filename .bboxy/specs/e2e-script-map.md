@@ -25,7 +25,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T3 | `scripts/e2e/T3.sh` | full | — | |
 | T4 | `scripts/e2e/T4.sh` | full | — | |
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
-| T6 | `scripts/e2e/T6.sh` | partial | the app says so; resumes by session id (only the zsh respawn is proven) | |
+| T6 | `scripts/e2e/T6.sh` | full | | |
 | T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
@@ -146,6 +146,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** scripts/e2e/T5.sh:8; ctl/app.rs:97; ctl-cli.md:67.
 
 ### T6
+
+**Current script:** Three real PTY seats run installed interactive Claude and Codex against a scripted loopback model, plus zsh. Only the runner-owned supervisor is killed. All three seat IDs remain, their process generations advance exactly once, and the old PIDs disappear. Both native clients keep their actual session IDs and their resumed model requests contain the prior assistant turn; the provider never calls app tools or chooses a session ID. The shell answers again with a new PID. Positioned sidebar restart chips and produced-frame captures prove the app says the seats restarted; the frozen app clock holds the chip to 3.4 s, captures its fade, then at 4 s checks it is gone and each new generation has exactly one stream line. Later frames must not re-arm or duplicate the notice. Throwaway harness setup and project/hook review are scripted in the private account; no remote model or OS presentation claim.
 
 **Promise:** the supervisor dies: seats survive; the app says so, restarts it, re-attaches, resumes by session id.
 

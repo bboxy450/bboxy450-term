@@ -49,6 +49,8 @@ for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENAI_API_KEY",
 env.update(DISABLE_AUTOUPDATER="1", CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
 first_turn = config.get("first_turn", False)
 assert isinstance(first_turn, bool)
+interactive = config.get("interactive", False)
+assert isinstance(interactive, bool)
 prompt = ("Orient, report the assigned L4 fixture task, then reply L4_NATIVE_OK."
           if first_turn else "Reply L3_NATIVE_OK. Use no tools.")
 
@@ -59,13 +61,13 @@ if kind == "claude":
     allowed = ["mcp__bboxy__orient"]
     if first_turn:
         allowed.append("mcp__bboxy__task_report")
-    args += ["-p", "--verbose", "--output-format", "stream-json",
-             "--permission-mode", "dontAsk", "--allowedTools", *allowed, "--", prompt]
-    # Preserve the native seat PID: exec, rather than a wrapper-owned subprocess.
-    output = work / (os.environ["BBOXY_SEAT_ID"] + ".native.jsonl")
-    fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.dup2(fd, 1)
-    os.close(fd)
+    if not interactive:
+        args += ["-p", "--verbose", "--output-format", "stream-json"]
+        output = work / (os.environ["BBOXY_SEAT_ID"] + ".native.jsonl")
+        fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.dup2(fd, 1)
+        os.close(fd)
+    args += ["--permission-mode", "dontAsk", "--allowedTools", *allowed, "--", prompt]
 else:
     assert kind == "codex", kind
     runtime = args[:2] == ["app-server", "--listen"]

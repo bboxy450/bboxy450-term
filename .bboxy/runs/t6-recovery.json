@@ -1,0 +1,459 @@
+{
+  "promise": "T6 supervisor death: stable seats, native session resume and restart notices",
+  "status": "full current-source script held; author landing and postsubmit acceptance pending",
+  "runtime_app_base": "8dd485372ed36f1576e153bbeb957444806b7f72",
+  "source_refs": [
+    {
+      "source": "crates/bboxy450-term/src/scene.rs:48",
+      "mechanism": "lab CSS ease fade over the final 15% of four seconds"
+    },
+    {
+      "source": "crates/bboxy450-term/src/scene.rs:518",
+      "mechanism": "record only actual generation transitions; repeated model projections retain their origin"
+    },
+    {
+      "source": "crates/bboxy450-term/src/scene.rs:765",
+      "mechanism": "retire each notice once into at most 512 UI-local stream lines"
+    },
+    {
+      "source": "crates/bboxy450-term/src/main.rs:2599",
+      "mechanism": "project notices in the existing conversation stream for their own swarm"
+    },
+    {
+      "source": "crates/bboxy450-term/src/main.rs:5275",
+      "mechanism": "retire notice on a real produced-frame path shared by window and headless"
+    },
+    {
+      "source": "crates/bbt-ui/src/modules/seat_row.rs:199",
+      "mechanism": "retain existing chip composition, with supplied paint opacity"
+    },
+    {
+      "source": "scripts/e2e/t6_recover.py:80",
+      "mechanism": "real installed interactive clients and zsh run under the existing ctl/PTY path"
+    },
+    {
+      "source": "scripts/e2e/t6_recover.py:138",
+      "mechanism": "fault only the recorded unchanged child of the runner-owned frontend"
+    },
+    {
+      "source": "scripts/e2e/t6_recover.py:196",
+      "mechanism": "both resumed native model requests must contain the previous assistant turn"
+    },
+    {
+      "source": "scripts/e2e/native_launch.py:52",
+      "mechanism": "opt-in interactive Claude fixture; prior L3/L4 default argv/output stays unchanged"
+    }
+  ],
+  "checks": [
+    {
+      "name": "build",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 236.47295093536377,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/build.log",
+      "log_sha256": "b104926ccb505e8fcdaf5d58cb340a1aefd6f1c946b5ab7f31327b27d82b131e"
+    },
+    {
+      "name": "build-notice",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 101,
+      "seconds": 38.1413369178772,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/build-notice.log",
+      "log_sha256": "b274eb1b37fba0b04bfba11694dab56a8aa07c3f2a9d1c590a9047588130f0a3"
+    },
+    {
+      "name": "build-four-seconds",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 52.09374690055847,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/build-four-seconds.log",
+      "log_sha256": "5311dab9459479426924285e5ef27e15ad8edc8baca7767563603efa854bf071"
+    },
+    {
+      "name": "notice-unit",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "restart_notice_is_one_shot_on_generation_change_and_then_one_stream_line"
+      ],
+      "exit": 0,
+      "seconds": 57.72728610038757,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/notice-unit.log",
+      "log_sha256": "6ce98724f752128bb8ac2cc8217100ae5a6f0e4c87d3cd69269632c3780b0230"
+    },
+    {
+      "name": "coverage",
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_ui.py"
+      ],
+      "exit": 0,
+      "seconds": 0.0702970027923584,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/coverage.log",
+      "log_sha256": "3872f5a85da677f909ec5c55a5821758c34e2394460567a29f8043b480cc1105"
+    },
+    {
+      "name": "baseline-refusal-fixed",
+      "argv": [
+        "python3",
+        "-IB",
+        "-"
+      ],
+      "exit": 0,
+      "seconds": 0.08952093124389648,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/baseline-refusal-fixed.log",
+      "log_sha256": "5342671b11f783f421c683786b89a4bb459ed64f63345bf50abbef38a1f7febd"
+    },
+    {
+      "name": "native-ready-fence",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t6-20261026/run_t6.py"
+      ],
+      "exit": 0,
+      "seconds": 5.703845024108887,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/native-ready-fence.log",
+      "log_sha256": "37a04c5db7e59f61f7ed6ffc7a035bcc537a2c3ba4e68a0a333a08a5721f2e39"
+    },
+    {
+      "name": "native-four-seconds",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t6-20261026/run_t6.py"
+      ],
+      "exit": 1,
+      "seconds": 32.130090951919556,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/native-four-seconds.log",
+      "log_sha256": "7b2096c480269f7a73afdc24eaf175c4082be3521b5130af4d54ad0815c62587"
+    },
+    {
+      "name": "native-private-harness",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t6-20261026/run_t6.py"
+      ],
+      "exit": 0,
+      "seconds": 6.2781548500061035,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/native-private-harness.log",
+      "log_sha256": "71e4771a8170c5d9fa25e32a90dcc2af093e705f5e8e16b31ce7f6ce0754a2cd"
+    },
+    {
+      "name": "native-final",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t6-20261026/run_t6.py"
+      ],
+      "exit": 0,
+      "seconds": 8.1474449634552,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/native-final.log",
+      "log_sha256": "9bef069749041fd21dff7a5e0d2ffbe8402e104181e2b2733af8a12f0f3fdec2"
+    }
+  ],
+  "native": {
+    "root": "/private/tmp/at6-natbisag",
+    "startup": {
+      "backend_ready": true,
+      "close": null,
+      "custody_backend": "file",
+      "events_ready": false,
+      "frame_seq": 1,
+      "generation": 1,
+      "gui_ready": true,
+      "mode": "headless",
+      "pid": 38292,
+      "run_dir": "/private/tmp/at6-natbisag/run",
+      "running": true,
+      "unattended": true,
+      "windows": 0
+    },
+    "script_exit": 0,
+    "script_seconds": 7.549008846282959,
+    "before": [
+      {
+        "seat": "01M5W4MFN48PMXTJC8X86AM6M3",
+        "name": "T6 native Claude",
+        "harness": "claude",
+        "session": "01a1784a-3eb3-4257-ab4c-64563eb49322",
+        "generation": 1,
+        "process": {
+          "kind": "running",
+          "pid": 38300
+        }
+      },
+      {
+        "seat": "01M5W4MGBQ0QC82PMMZ9VTVV4W",
+        "name": "T6 native Codex",
+        "harness": "codex",
+        "session": "01a1784a-442e-7212-be54-e1ac37f50eff",
+        "generation": 1,
+        "process": {
+          "kind": "running",
+          "pid": 38346
+        }
+      },
+      {
+        "seat": "01M5W4MHC6H60V5RR7NQNVGRGF",
+        "name": "T6 zsh",
+        "harness": "zsh",
+        "session": null,
+        "generation": 1,
+        "process": {
+          "kind": "running",
+          "pid": 38403
+        }
+      }
+    ],
+    "after": [
+      {
+        "seat": "01M5W4MFN48PMXTJC8X86AM6M3",
+        "name": "T6 native Claude",
+        "harness": "claude",
+        "session": "01a1784a-3eb3-4257-ab4c-64563eb49322",
+        "generation": 2,
+        "process": {
+          "kind": "running",
+          "pid": 38443
+        }
+      },
+      {
+        "seat": "01M5W4MGBQ0QC82PMMZ9VTVV4W",
+        "name": "T6 native Codex",
+        "harness": "codex",
+        "session": "01a1784a-442e-7212-be54-e1ac37f50eff",
+        "generation": 2,
+        "process": {
+          "kind": "running",
+          "pid": 38456
+        }
+      },
+      {
+        "seat": "01M5W4MHC6H60V5RR7NQNVGRGF",
+        "name": "T6 zsh",
+        "harness": "zsh",
+        "session": null,
+        "generation": 2,
+        "process": {
+          "kind": "running",
+          "pid": 38480
+        }
+      }
+    ],
+    "fault": {
+      "app": 38292,
+      "supervisor": 38293,
+      "birth_and_command": "Mon Oct 26 05:58:13 2026     /Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target/debug/bboxy450-term"
+    },
+    "requests": [
+      {
+        "kind": "claude",
+        "phase": "before",
+        "path": "/v1/messages?beta=true",
+        "assistant_before": false,
+        "request_sha256": "729e0dbf699942e2b2afa6a8c5f6f191c1c5fb01dd76154e37708fd656dbfab6"
+      },
+      {
+        "kind": "codex",
+        "phase": "before",
+        "path": "/v1/responses",
+        "assistant_before": false,
+        "request_sha256": "e28e4899239cdffe0f5844394131f7adf81e34ea8099b1fe09c0cdd8f7378b0a"
+      },
+      {
+        "kind": "claude",
+        "phase": "after",
+        "path": "/v1/messages?beta=true",
+        "assistant_before": true,
+        "request_sha256": "ef1804f9b59bd71163e346e0e1738d52ebb2add2f483f5f08d57886dca2e0e6a"
+      },
+      {
+        "kind": "codex",
+        "phase": "after",
+        "path": "/v1/responses",
+        "assistant_before": true,
+        "request_sha256": "304803096704bb14368d2b473c09b7ed39ee7160343b1f65fd64e4b0cd15adaf"
+      }
+    ],
+    "fade_pixels": [
+      {
+        "node": "named:swarm0/body/tab0/seat0/right/restarted",
+        "opaque_distance": 52,
+        "faded_distance": 11
+      },
+      {
+        "node": "named:swarm0/body/tab1/seat0/right/restarted",
+        "opaque_distance": 52,
+        "faded_distance": 11
+      },
+      {
+        "node": "named:swarm0/body/tab2/seat0/right/restarted",
+        "opaque_distance": 43,
+        "faded_distance": 8
+      }
+    ],
+    "notice_clock": {
+      "origin": {
+        "frozen": true,
+        "revision": 1,
+        "time_ms": 3144
+      },
+      "done": {
+        "frozen": true,
+        "revision": 4,
+        "time_ms": 7144
+      },
+      "later": {
+        "frozen": true,
+        "revision": 5,
+        "time_ms": 11144
+      }
+    },
+    "verdict": "full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines",
+    "orderly_stop": {
+      "backend_ready": false,
+      "close": {
+        "complete": true,
+        "grace": [],
+        "notices": [],
+        "omitted": {
+          "grace": 0,
+          "notices": 0,
+          "slots": 0,
+          "truncated_notices": 0
+        },
+        "slots": [
+          {
+            "seat": "01M5W4MFN48PMXTJC8X86AM6M3",
+            "swarm": "01M5W4MFMQWG7FQAWZ1BQ7YYRF",
+            "tab": "01M5W4MFMQDDN7ZE36G7BRMK12"
+          },
+          {
+            "seat": "01M5W4MGBQ0QC82PMMZ9VTVV4W",
+            "swarm": "01M5W4MFMQWG7FQAWZ1BQ7YYRF",
+            "tab": "01M5W4MGB8YZS9H30HBCNAGN0H"
+          },
+          {
+            "seat": "01M5W4MHC6H60V5RR7NQNVGRGF",
+            "swarm": "01M5W4MFMQWG7FQAWZ1BQ7YYRF",
+            "tab": "01M5W4MHB9N3TM73AWJW08G5H1"
+          }
+        ]
+      },
+      "custody_backend": "file",
+      "events_ready": false,
+      "frame_seq": 190,
+      "generation": 1,
+      "gui_ready": false,
+      "mode": "headless",
+      "running": false,
+      "unattended": true,
+      "windows": 0
+    }
+  },
+  "artifacts": {
+    "calls.jsonl": "f2b8c00682a09f4ea5ecdb1321e6319ce953689de222d152475c979644635975",
+    "result.json": "8c274f6f5205318cd38f7b8a08ce0d8872c55721f1fe6dbe87a36b1577f39786",
+    "work/01M5W4MFN48PMXTJC8X86AM6M3-screen.json": "07c22194dccc66730be5be95fabd10d68e154703229ccd97e4dd2a71ef17230e",
+    "work/01M5W4MGBQ0QC82PMMZ9VTVV4W-screen.json": "3a99b12cb827dc1f280e09460679132d36666c704bb5720b5214548bbef199cf",
+    "work/01M5W4MHC6H60V5RR7NQNVGRGF-screen.json": "a4b70a3c1a51d058ceeddb06103b2c5ff3a058d94bf9daf60d61e4193db27f89",
+    "work/baseline.png": "897931ce473dd3141d87ee36c453dea11b614d81c499358f05a0965dad783b90",
+    "work/layout.json": "35dff2d15ae436dc97e4afe36d448b47daad0346d3a104a373938938049db2d7",
+    "work/output.log": "d897cb71b465fe77247c7f66951d3ce60bd8315a2930e1fe8d516100bc23d3d8",
+    "work/t6-after-01M5W4MFN48PMXTJC8X86AM6M3.jsonl": "65134105c5ff43421b1513b9aaa8556c95e0edae5666793566d0da8cb3c3533c",
+    "work/t6-after-01M5W4MFN48PMXTJC8X86AM6M3.png": "184d64aa90575020c4da6bf30735a661dc4314fb4784844573b5ab8961c04652",
+    "work/t6-after-01M5W4MGBQ0QC82PMMZ9VTVV4W.jsonl": "fefb9c79ec00ada45730790320e9a417314c9b5316b281276ebb3c1a3f559a52",
+    "work/t6-after-01M5W4MGBQ0QC82PMMZ9VTVV4W.png": "f0ddb05bfba1d33542a642b623399cf470ad3709104fef0d0e713fbd17bc9c74",
+    "work/t6-after-01M5W4MHC6H60V5RR7NQNVGRGF.jsonl": "ea9e5c4a1894ed167341ed463d9109e2f3e8ab6e74e8a299edae3ddc72f1b4ef",
+    "work/t6-after-01M5W4MHC6H60V5RR7NQNVGRGF.png": "1e17b2f2a61b2228f0a3482815512ca6005c87f876f5cd9b80d625290b0b3b46",
+    "work/t6-before-01M5W4MFN48PMXTJC8X86AM6M3.jsonl": "6691a240c8a70c0abf231672b6cf121d50ae157da34cc9d839594156fda19172",
+    "work/t6-before-01M5W4MFN48PMXTJC8X86AM6M3.png": "ba58b9dcc60439406a82f7ff97da05c8a4c6fbfd304658fca07c808ce690ec53",
+    "work/t6-before-01M5W4MGBQ0QC82PMMZ9VTVV4W.jsonl": "9c907a883c382d668a6308f165ad19d5cca6558440974e4edc3978f615205f75",
+    "work/t6-before-01M5W4MGBQ0QC82PMMZ9VTVV4W.png": "1f0ef1acb71c538c7a33929c860af3e92a165c66615af189eab3ad2e4d050e49",
+    "work/t6-before-01M5W4MHC6H60V5RR7NQNVGRGF.jsonl": "0c13cc964af0f543c4f7ed9c97a6e61b6974ddbce1bb67ce244a5871a8f7a175",
+    "work/t6-before-01M5W4MHC6H60V5RR7NQNVGRGF.png": "28e76c9e0391e1b2e6cb5aa73eff322ce8374f245efb9502ef3c35d72ec9a758",
+    "work/t6-clock-origin.jsonl": "17d307e65cf6ac8c21504bea2e1ddcc06e8c01e558f548292d56145b0ea695e2",
+    "work/t6-codex-expected-hooks.jsonl": "7a3a88a75ebd503d8c8d20891dde268f262cba761c9930350286b478761868c4",
+    "work/t6-notice-done-layout.jsonl": "e7d87baf909d7ddbe681328c83b30104aeecda3e5f8440347c5a13326c3e7578",
+    "work/t6-notice-done.jsonl": "939906e8a42fe37a9f486b4ac7f93588a46e20ee01ce0a4bb66615632edf6e6c",
+    "work/t6-notice-done.png": "897931ce473dd3141d87ee36c453dea11b614d81c499358f05a0965dad783b90",
+    "work/t6-notice-fade-layout.jsonl": "0555590f1ecb98dabe5bfb076e0b588dc2b46babf179b01cdff6324ce3681b7b",
+    "work/t6-notice-fade.jsonl": "f9a658f832ad5ba7db44ca8e6438f49cafadfd46fecd453b866c9602de147d82",
+    "work/t6-notice-fade.png": "75da0a6fda5e8f9369d799c325735e2d5a239d7765d3f9b425561da455bf5acd",
+    "work/t6-notice-hold-layout.jsonl": "84ae1bf56bbb181e9f51059c223eb14e46c296ddad9a9c2afc52580f352a3580",
+    "work/t6-notice-hold.jsonl": "fa9672306e6ba33a1a20218b8091185636bd281c90c5bfc04886dfe59abe6e94",
+    "work/t6-notice-hold.png": "08218dcdab173f93e1576c421b35a773ae8dcc8669cc739c260044c8b5493de8",
+    "work/t6-notice-later-layout.jsonl": "f806915430a24436ee27d635ffbb5b0548c5c71342a4612cec9fa627c89eaa16",
+    "work/t6-owned-supervisor.json": "bf81c1dbb5f905028a3c27af1e25a218ada6932480147b8c17943eaf2fb5c318",
+    "work/t6-recovery.json": "0e264212062f54f85f514348e0989fd110b150dbafd936185047cf94e1873415",
+    "work/task-calls.jsonl": "7954622d5ef268e0164e9b609ff8d70104a4d4262e13d8376c06046400909c86"
+  },
+  "code_sha256": {
+    "crates/bboxy450-term/src/scene.rs": "33cebd54ae11179df1e6b4a75790a27fabf8cf0457a5334a57b1c4c015fb3618",
+    "crates/bboxy450-term/src/main.rs": "5fc97595a5970f1250eb467d5c28ce1740d0b8f82eab478c97f4e21cbb273237",
+    "crates/bbt-ui/src/modules/seat_row.rs": "fff75b82a602b97b13403879dd9c8ad110af26124d6638618bf88d2364e89b4d",
+    "scripts/e2e/T6.sh": "4e79ea1484f99387b7b02aa956fbe671619bd54e2c752622edb664177aecf1a8",
+    "scripts/e2e/t6_recover.py": "c9647f07bff4ff36e1a7f17802205602be85311927ee2b574e83265d85113280",
+    "scripts/e2e/native_launch.py": "f2d2ee1812ef3fe15e1e1c320fe22239d6579911a91ecfe0240c2a65a94ca762",
+    "scripts/e2e/T6.fixture-bin/claude": "5d749606dceacb40da40f18cc6c1b4b4b3e56031a3146151801a624cfc57ff18",
+    "scripts/e2e/T6.fixture-bin/codex": "0965de9c372dc75c273c6ab8525342292ed1370f4c812e9ea4b7f3013fb9c646",
+    "scripts/e2e/T6.fixture-home/.claude/.claude.json": "b27fc66e2f15c928549dbf8a3d65847bb0292a827b21715010ba54ba06a3cc85",
+    "scripts/e2e/T6.fixture-home/.claude/settings.json": "2a6f603efcedf5bc471160828587dd3e043ad62ecc09b936ecdeecb94456dc4f",
+    "scripts/e2e/T6.fixture-home/.codex/config.toml": "2f7bd7aca2ad30d49e2cf479cc979295f89480364a137372ce07f719c8278fb2",
+    "scripts/e2e/T6.fixture-home/.l3-private-home": "63585f624de8a40533db8e399f3d8a1d996604e15baa071cce4c5fa61507893e"
+  },
+  "retained_binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/t6-runtime-bboxy450-term",
+  "retained_binary_sha256": "7e18fe21664712f0c461998aa8b44562aa7e17ad1f70d3f5648104d27ca11f11",
+  "baseline": {
+    "native_resume_root": "/private/tmp/at6-p5jlucpr",
+    "ui_assertion": "current restart-chip assertion rejects its real produced frame with missing restart notice",
+    "witnesses": "print-mode Claude had exited and was not a live recovery fixture; private onboarding source/default No selection and chooser timing required isolated setup; wrong layout parent and missing opacity field were fixture/patch errors, corrected before final proof",
+    "no_transport_blame": "a chooser that remained on No does not establish app input loss"
+  },
+  "limits": [
+    "model responses are scripted on loopback, not a remote-model behaviour or billing claim",
+    "no OS window, desktop input, scanout or real-time frame SLO claim",
+    "restart stream lines are UI-local and bounded to 512; no new bus event or persistence claim",
+    "app-crash adoption remains the separately reported T5 gap"
+  ]
+}
