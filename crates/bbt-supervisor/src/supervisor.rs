@@ -1079,7 +1079,7 @@ impl Drop for Actor {
 }
 
 impl Actor {
-    fn tick_seats(&mut self) -> io::Result<()> {
+    fn tick_seats(&mut self, read_buffer: &mut [u8; OUTPUT_CHUNK_BYTES]) -> io::Result<()> {
         if self.notification_waiter.is_some_and(|id| {
             !self.seats.get(&id).is_some_and(|seat| {
                 seat.pending_event.is_some()
@@ -1102,7 +1102,7 @@ impl Actor {
         }
         for id in ids {
             let mut seat = self.seats.remove(&id).unwrap();
-            seat.tick(self)?;
+            seat.tick(self, read_buffer)?;
             self.seats.insert(id, seat);
         }
         Ok(())
@@ -1119,6 +1119,9 @@ impl Actor {
 
     fn run(&mut self) -> io::Result<()> {
         let mut events = Events::with_capacity(256);
+        // Reads replace only the returned prefix; keep one initialized buffer
+        // across seats and turns instead of clearing it for every output chunk.
+        let mut read_buffer = [0; OUTPUT_CHUNK_BYTES];
         loop {
             let mut turn = self.capture_diagnostics.start(
                 capture_diagnostics::Phase::SupervisorTurn,
@@ -1181,7 +1184,7 @@ impl Actor {
                 0,
                 0,
             );
-            self.tick_seats()?;
+            self.tick_seats(&mut read_buffer)?;
             sweep.finish(capture_diagnostics::Outcome::Ok, self.seats.len() as u64, 0);
             self.flush_sockets();
             let ready = self.seats.values().any(|seat| {
@@ -2478,7 +2481,11 @@ impl Seat {
         Ok(())
     }
 
-    fn tick(&mut self, actor: &mut Actor) -> io::Result<()> {
+    fn tick(
+        &mut self,
+        actor: &mut Actor,
+        read_buffer: &mut [u8; OUTPUT_CHUNK_BYTES],
+    ) -> io::Result<()> {
         if self.exited.is_none()
             && self.terminate_at.is_none()
             && self.closing.expired(Instant::now())
@@ -2554,7 +2561,6 @@ impl Seat {
             {
                 break;
             }
-            let mut bytes = [0; OUTPUT_CHUNK_BYTES];
             let capacity = self
                 .ring
                 .as_ref()
@@ -2580,7 +2586,7 @@ impl Seat {
                 let read = unsafe {
                     libc::read(
                         self.fd,
-                        bytes[count..].as_mut_ptr().cast(),
+                        read_buffer[count..].as_mut_ptr().cast(),
                         capacity - count,
                     )
                 };
@@ -2608,7 +2614,7 @@ impl Seat {
                 break;
             }
             if count > 0 {
-                self.output.extend_from_slice(&bytes[..count]);
+                self.output.extend_from_slice(&read_buffer[..count]);
                 self.output_since.get_or_insert_with(Instant::now);
                 if count == capacity || self.ring.is_none() {
                     if let Err(error) = self.flush_output() {
@@ -3391,7 +3397,7 @@ mod capture_read_tests {
                     bytes: vec![b'x'],
                 });
             }
-            actor.tick_seats().unwrap();
+            actor.tick_seats(&mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
             // Exactly one credit is returned per sweep, independently of time.
             delivered.push(rx.try_recv().unwrap());
         }
@@ -3450,7 +3456,7 @@ mod capture_read_tests {
         actor.seats.get_mut(&waiting).unwrap().writer = None;
         assert_eq!(rx.try_recv().unwrap().sequence(), Some(10));
         publish(&mut actor, hot, Some(11));
-        actor.tick_seats().unwrap();
+        actor.tick_seats(&mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
         let event = rx.try_recv().unwrap();
         assert_eq!(event.seat(), hot);
         assert_eq!(event.sequence(), Some(11));
@@ -3463,7 +3469,7 @@ mod capture_read_tests {
         actor.seats.get_mut(&waiting).unwrap().pending_event = None;
         assert_eq!(rx.try_recv().unwrap().sequence(), Some(12));
         publish(&mut actor, hot, Some(13));
-        actor.tick_seats().unwrap();
+        actor.tick_seats(&mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
         let event = rx.try_recv().unwrap();
         assert_eq!(event.seat(), hot);
         assert_eq!(event.sequence(), Some(13));
@@ -3490,7 +3496,7 @@ mod capture_read_tests {
         seat.output_since = Some(Instant::now());
         seat.ring = Some(handle);
         seat.read_ready = true;
-        seat.tick(&mut actor).unwrap();
+        seat.tick(&mut actor, &mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
         assert!(!seat.eof, "zero-length read invented EOF on a live PTY");
         assert!(
             seat.registered,
@@ -3550,7 +3556,7 @@ mod capture_read_tests {
         );
         assert_eq!(seat.exited.as_ref().unwrap().code, 0);
         for _ in 0..3 {
-            seat.tick(&mut actor).unwrap();
+            seat.tick(&mut actor, &mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
         }
         let events: Vec<_> = rx.try_iter().collect();
         assert_eq!(events.len(), 1, "missing or duplicate exit: {events:?}");
@@ -3604,7 +3610,7 @@ mod capture_read_tests {
                 .unwrap()
         );
         while !seat.exit_published {
-            seat.tick(&mut actor).unwrap();
+            seat.tick(&mut actor, &mut [0; OUTPUT_CHUNK_BYTES]).unwrap();
             assert!(Instant::now() < until, "exiting PTY was not drained/reaped");
             std::thread::sleep(Duration::from_millis(1));
         }
