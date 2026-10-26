@@ -95,16 +95,20 @@ try {
     const back=document.createElement('div');back.className='spot-back';
     document.body.replaceChildren(image,back);document.body.style.overflow='hidden';
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    const style=getComputedStyle(back);
-    return {background:style.backgroundColor,filter:style.backdropFilter,material:STYLE.material};
+    const style=getComputedStyle(back),before=getComputedStyle(back,'::before');
+    const onHost=style.backdropFilter!=='none';
+    return {background:style.backgroundColor,filter:onHost?style.backdropFilter:before.backdropFilter,
+      filter_layer:onHost?'host':'::before',material:STYLE.material};
   })()`);
-  if (!material.filter.includes('blur(14px)')) throw Error(`unexpected approved filter: ${material.filter}`);
+  if (!material.filter.includes(`blur(${material.material.backdrop_blur_px}px)`)) {
+    throw Error(`unexpected approved filter: ${material.filter}`);
+  }
   const expected = await cdp.call('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
   await fs.writeFile(path.join(output, 'l1-web-blur.png'), Buffer.from(expected.data, 'base64'));
-  await cdp.eval(`document.querySelector('.spot-back').style.backdropFilter='none';new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+  await cdp.eval(`document.querySelector('.spot-back').style.setProperty('--back-blur','0px');new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
   const negative = await cdp.call('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
   await fs.writeFile(path.join(output, 'l1-web-no-blur.png'), Buffer.from(negative.data, 'base64'));
-  await cdp.eval(`document.querySelector('.spot-back').style.backdropFilter='blur(${2 * material.material.backdrop_blur_px}px) saturate(1.15)';new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+  await cdp.eval(`document.querySelector('.spot-back').style.setProperty('--back-blur','${2 * material.material.backdrop_blur_px}px');new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
   const excessive = await cdp.call('Page.captureScreenshot', {format: 'png', captureBeyondViewport: false});
   await fs.writeFile(path.join(output, 'l1-web-double-blur.png'), Buffer.from(excessive.data, 'base64'));
   const result = await cdp.eval(`(async()=>{
@@ -114,13 +118,13 @@ try {
       const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
       const context=canvas.getContext('2d');context.drawImage(image,0,0);return context.getImageData(0,0,image.width,image.height).data;
     }));
-    const viewport=${JSON.stringify(input.size)},picker=${JSON.stringify(input.picker)},scale=${dpr};
+    const viewport=${JSON.stringify(input.size)},picker=${JSON.stringify(input.picker)},scale=${dpr},edge=${Math.ceil(3 * material.material.backdrop_blur_px)};
     const counts=[0,0,0];let pixels=0;
     // 3 blur radii inside the window, outside a 140px guard for the panel shadow.
     // Geometry comes from the actual produced frame, never hand-picked image crops.
     for(let y=0;y<${height};y++)for(let x=0;x<${width};x++){
       const lx=(x+.5)/scale,ly=(y+.5)/scale;
-      if(lx<42||ly<42||lx>=viewport[0]-42||ly>=viewport[1]-42)continue;
+      if(lx<edge||ly<edge||lx>=viewport[0]-edge||ly>=viewport[1]-edge)continue;
       if(lx>=picker[0]-140&&lx<=picker[0]+picker[2]+140&&ly>=picker[1]-140&&ly<=picker[1]+picker[3]+140)continue;
       pixels++;const at=(y*${width}+x)*4;
       for(let variant=0;variant<3;variant++){
@@ -131,7 +135,7 @@ try {
     if(!pixels)throw Error('no observable backdrop pixels outside the panel/shadow');
     return {pixels,changed:counts[0],changed_fraction:counts[0]/pixels,no_blur_changed:counts[1],no_blur_fraction:counts[1]/pixels,
       double_blur_changed:counts[2],double_blur_fraction:counts[2]/pixels,
-      sample_region:{window_interior:[42,42,viewport[0]-84,viewport[1]-84],
+      sample_region:{window_interior:[edge,edge,viewport[0]-2*edge,viewport[1]-2*edge],
         excludes_picker_shadow:[picker[0]-140,picker[1]-140,picker[2]+280,picker[3]+280],
         rule:'pixel centre inside window_interior and outside excludes_picker_shadow'},
       channel_tolerance:8,changed_budget:.001,approved_blur_pass:counts[0]/pixels<=.001,
