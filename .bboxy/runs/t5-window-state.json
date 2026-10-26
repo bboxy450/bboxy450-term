@@ -1,7 +1,7 @@
 {
   "decision": 344,
   "cut": "2: journal window state and restore before first produced frame",
-  "status": "T5 canonical script full; author landing pending",
+  "status": "LANDED; canonical T5 full; author green; postsubmit and Oracle review unverified",
   "base": "d8a89a5cf17c9c1f560f39d8bb46092afa4e8c24",
   "mechanisms": [
     "crates/bbt-proto/src/gui/app.rs:104 \u2014 versioned layout/focus/sidebar/scroll state only; optional hello snapshot preserves prior None bytes",
@@ -11,10 +11,10 @@
     "crates/bboxy450-term/src/window_state.rs:34 \u2014 captures actual UI topology and scroll; unknown/offscreen historical anchors retained",
     "crates/bboxy450-term/src/window_state.rs:112 \u2014 restores layout/focus while retaining current registry metadata and authority",
     "crates/bboxy450-term/src/window_writes.rs:56 \u2014 one save in flight with latest-state coalescing; frame replies wait for their save, input remains independent",
-    "crates/bboxy450-term/src/live.rs:397 \u2014 operation-correlated saves never occupy ordinary reply slots or block History",
+    "crates/bboxy450-term/src/live.rs:398 \u2014 operation-correlated saves never occupy ordinary reply slots or block History",
     "crates/bboxy450-term/src/live.rs:285 \u2014 restores topology before initial model preparation/publication",
-    "crates/bboxy450-term/src/main.rs:5307 \u2014 deferred first frame rearms model wakes without claiming a completed frame",
-    "crates/bboxy450-term/src/main.rs:5311 \u2014 visible history and prepared grids must exist before first restored draw",
+    "crates/bboxy450-term/src/main.rs:5373 \u2014 deferred first frame rearms model wakes without claiming a completed frame",
+    "crates/bboxy450-term/src/main.rs:5377 \u2014 visible history and prepared grids must exist before first restored draw",
     "crates/bboxy450-term/src/headless.rs:393 \u2014 first submit requires actual backend metadata; no demo frame can announce readiness",
     "scripts/e2e/t5_relaunch.py:32 \u2014 faults only birth/argv-checked owned app, reattaches same account/run and checks exact layout/process/cookies"
   ],
@@ -382,7 +382,25 @@
         "path": "/private/tmp/at5-state-g0nbx6ut/work/t5-first-after.jsonl",
         "bytes": 282,
         "sha256": "47a278eaa2e4b169c452d1abde97335c32bf333a62918b0092f3be134446c322"
+      },
+      "termination.json": {
+        "path": "/private/tmp/at5-state-g0nbx6ut/termination.json",
+        "bytes": 205,
+        "sha256": "0bcba5b3662f503e2bdbf620b0cabf01642022dc6fd6607d78bc4d13fdbab579"
       }
+    },
+    "shutdown_observation": {
+      "argv": [
+        "ps",
+        "-p",
+        "79796,79875,79798,79797,79807,79820,79831",
+        "-o",
+        "pid=,lstart=,args="
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "",
+      "all_recorded_pids_absent": true
     }
   },
   "failures_disposition": [
@@ -396,5 +414,80 @@
     "Readiness is frame1; immediate capture is frame2, not a frame1 PNG.",
     "Exact state and visible numbered rows checked; PNG byte equality not claimed because focus animation differs.",
     "Full nightly/postsubmit and Oracle review remain unverified until separately reported."
-  ]
+  ],
+  "landed_source": "b0b2f48fbbf8299736dc7275958c0797325eaaa9",
+  "landing": [
+    {
+      "sha": "b0b2f48fbbf8299736dc7275958c0797325eaaa9",
+      "exit": 0,
+      "verdict": "green",
+      "compile_seconds": 278.9090781660052,
+      "run_seconds": 380.93450679199304,
+      "test_seconds": 371.5129993747687,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/b0b2f48fbbf8299736dc7275958c0797325eaaa9-efd90c69/commands.log",
+      "affected": [
+        "bboxy450-term",
+        "bbt-mux",
+        "bbt-proto"
+      ],
+      "raw_log_sha256": "4a17afe16b7a29e72395a9718948bc3c3c80b6492c2f99e77e5edd71d40f132b",
+      "rust_counts": [
+        775,
+        0,
+        82
+      ],
+      "invariants": [
+        "invariants: Cargo test batch: cargo test --locked --no-fail-fast --target-dir /private/tmp/bboxy450-gate-slot-1/target -p bboxy450-term -p bbt-mux --lib --test ctl --test gui_endpoint --test logic --test messaging_flow --test recovery -- --exact checkpoint_bounded_recovery ctl_never_prints_secrets ctl_endpoint_opt_in_and_ancestry_refusal custody_hold_never_holds_local_delivery logic::ring_batch_tests::ring_reads_are_batched watched_lane_gets_at_least_half_of_replay_pages",
+        "invariants: 19 checks, 0 failures, 11 slow checks skipped",
+        "invariants: 7 unaffected-crate checks skipped"
+      ],
+      "strict_clippy_exit": 0,
+      "fixture_summaries": [
+        "Ran 129 fixture tests in 47.715s; failures=0",
+        "Ran 46 tests in 128.058s",
+        "OK",
+        "Ran 31 tests in 0.573s",
+        "OK"
+      ]
+    }
+  ],
+  "author_wrapper": {
+    "exit": 0,
+    "seconds": 670.3082039356232,
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/state-author.log",
+    "sha256": "ab7fa66ac53403a8a17802012db4f37c9e41b1c669254f9030bef60025229983"
+  },
+  "source_hashes": {
+    "crates/bbt-proto/src/gui/app.rs": "abbf5db609ccdcd1f406f0e7d215dfd56f7029fd84ef8c0c65790cd67a7c87f7",
+    "crates/bbt-mux/src/window_journal.rs": "79f894f533ef03f346911b1764d16b229313f2a974e7a1eeaca8d780f59754a4",
+    "crates/bbt-mux/src/seat_socket.rs": "797e06227ccacb72be04b2cfe569c854c2ca4d1e84fa4827c61389c7b86cc74b",
+    "crates/bboxy450-term/src/window_state.rs": "032e942a11657f0f3124d976edde9423e9fe703eaf84bcf61b1ed7a66c8ebde2",
+    "crates/bboxy450-term/src/window_writes.rs": "5e61bb3649c6b0f36dcc0966852ee4d7eecc78f3a903dbd62edee05a7189a65d",
+    "crates/bboxy450-term/src/live.rs": "8210547d8ed9d978dfc9a21c68678418ffabe2a873190c33030b6b0a518801e0",
+    "crates/bboxy450-term/src/main.rs": "549936db74d50e479ef75c03bf18b50edd43964df6232f6e8ed6aa3be3db1c4b",
+    "crates/bboxy450-term/src/headless.rs": "3a5c8eeb1ed3c7d72e48f326f9861b6ce2e414478c0c087923f7240432167ffa",
+    "scripts/e2e/t5_relaunch.py": "e524d41bef12e2d5ee8f82c603547166979aae64c5b666592ba13b69b015aa24"
+  },
+  "terminal_headers": {
+    "T1": "# coverage: full",
+    "T2": "# coverage: full",
+    "T3": "# coverage: full",
+    "T4": "# coverage: full",
+    "T5": "# coverage: full",
+    "T6": "# coverage: full",
+    "T7": "# coverage: full",
+    "T8": "# coverage: full",
+    "T9": "# coverage: full"
+  },
+  "cleanup": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+    "lsof_exit": 1,
+    "open_handles": 0,
+    "allocated_bytes_freed": 2431909888,
+    "kept": "raw logs, PNGs, reports and hashes; shared caches untouched"
+  }
 }
