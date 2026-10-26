@@ -1,0 +1,395 @@
+M6 — authoritative state before the window mute receipt
+Owner: Kestrel Voidwing <EXECUTOR>
+Oracle brief: bf0933a8-4dba-4984-acc2-12e581874b9a
+Approved mechanism/cut: 5705c59a-5938-43ef-9387-343a42493fc5
+Worktree: /Users/feral/mydev/bboxy450-term-exec5
+
+Mechanism
+crates/bbt-mux/src/seat_socket.rs — after the existing authorized/journaled GUI mute succeeds, read the authoritative GuiSeat and send it before the existing Messaging receipt. Only the GUI door receives that snapshot. The ctl response shape and native mutation authorization are unchanged. The retained state event and its ACK still flow through the bus independently.
+crates/bboxy450-term/src/live.rs — the existing FIFO classifier keeps a raw Seat snapshot separate from the correlated Messaging receipt; its new pure regression covers an outstanding mute followed by ordinary input.
+scripts/night-boundaries.d/bbt-mux.sh — exact selector for the real supervisor/PTY/socket regression. That boundary is night-only. No operator identity, login Keychain, window or desktop input is used.
+The app's three-second UI receipt deadline is unchanged. No assertion is relaxed.
+
+Deterministic counterexample
+The real socket test never attaches an events lane. On the old implementation the mute operation receipt arrives before any authoritative state and the test fails. After the fix GUI mute, unmute and a repeated same-value write all expose retained metadata first; ctl retains its old single terminal reply.
+The before/after timeout is a 30-second hang guard, not a speed assertion. The protocol order and retained metadata determine the verdict.
+
+Source f19bca38d055e90a3f7412abcb9c8a38fc5f17ac (signature G)
+App binary SHA256 4137ccb2e2a3ce2ea90cff79e8b26a5a11f7baefaf10d7f793d88fdaf3db2d5f
+
+RED old implementation + new socket regression
+{"argv": ["sh", "-c", ". ./scripts/cache-env.sh; exec cargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bbt-mux --lib seat_socket::gui_tests::mute_reply_refreshes_authoritative_seat_before_receipt_without_events -- --exact --nocapture"], "exit": 101, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/mute-response-red.log", "phase": "finished", "pid": 95287, "seconds": 218.43704104423523, "sha256": "93ec5e1f452c95d5205efcd739e08792dee46e2e225121f5b7605efb32d4f20e"}
+
+GREEN fixed socket regression
+{"argv": ["sh", "-c", ". ./scripts/cache-env.sh; exec cargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bbt-mux --lib seat_socket::gui_tests::mute_reply_refreshes_authoritative_seat_before_receipt_without_events -- --ignored --exact --nocapture"], "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/mute-response-green.log", "phase": "finished", "pid": 5705, "seconds": 23.71709895133972, "sha256": "d594fddd83f7ad28c1e2c0bf9c464bd0a98f7e44863b5bd4c463848e27bef199"}
+
+FIFO correlation + held-mute refusal + app build
+{"argv": ["sh", "-c", "set -eu\n. ./scripts/cache-env.sh\ncargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bboxy450-term --bin bboxy450-term live::tests::mute_snapshot_preserves_its_receipt_and_the_next_operation -- --exact --nocapture\ncargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bbt-mux --lib messaging::service::reference_tests::first_held_operator_delivers_an_authorless_intent_but_cannot_mute -- --exact --nocapture\ncargo build --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bboxy450-term --bins"], "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/mute-unit-and-app.log", "phase": "finished", "pid": 9250, "seconds": 68.53601503372192, "sha256": "57117327c70379c1ca3487ba5204fabc4d09a72f78802c97ab5f11ca38e33724"}
+
+Separate backlog observation (not fixed by this cut)
+{
+  "case": "own-current-1",
+  "swarm": {
+    "retained": 365,
+    "admitted": 184,
+    "acknowledged": 169,
+    "pending": 8
+  },
+  "account": {
+    "retained": 92,
+    "admitted": 84,
+    "acknowledged": 70,
+    "pending": 14
+  },
+  "seat": {
+    "retained": 10,
+    "admitted": 9,
+    "acknowledged": 9,
+    "pending": 0
+  },
+  "observation": "inactive run metadata after failure; not append-time or delivery-time evidence"
+}
+Inactive post-failure metadata is an observation of the final frontier, not proof of append or delivery timestamps. The Oracle owns routing this separate finding.
+
+Bisect disposition
+50886e32 parent and2593266d candidate: identical optimized application binaries, each M6 3/3 pass. Their app binary SHA256 is df36854ab4b0f953dbc5fa7fe9361de0637048d956dbb7c37c8a934bbbf435a6. Default-profile bb6d6c16 M6 3/3 pass; default-profile e82e47e2 M6 2/3 pass with one genuine UI receipt timeout. Later forward cohorts ca96cc85 and97a7cb77 each3/3 pass. These samples do not establish a causal commit or prove the failure load-only. The Oracle stopped the unreliable forward bisect in favor of the deterministic socket counterexample. The private native-Keychain test isolation is retained byte-for-byte.
+
+M6 repeat evidence: 10/10 PASS, ten fresh promise accounts plus ten separate records accounts; all twenty apps report file custody, headless mode, zero windows, and receiver-derived test-account labels. All twenty recorded app PIDs are independently gone (ps exit1/no rows). Aggregate runner exit1 in each M6-only kit is expected for its intentionally omitted other promises, not a full-night verdict.
+Frozen source and binary: {"binary": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/binaries/fixed/bboxy450-term", "binary_sha256": "4137ccb2e2a3ce2ea90cff79e8b26a5a11f7baefaf10d7f793d88fdaf3db2d5f", "changed_paths": ["crates/bboxy450-term/src/live.rs", "crates/bbt-mux/src/seat_socket.rs", "scripts/night-boundaries.d/bbt-mux.sh"], "signature": "G", "source": "f19bca38d055e90a3f7412abcb9c8a38fc5f17ac", "unit_and_build_result": {"argv": ["sh", "-c", "set -eu\n. ./scripts/cache-env.sh\ncargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bboxy450-term --bin bboxy450-term live::tests::mute_snapshot_preserves_its_receipt_and_the_next_operation -- --exact --nocapture\ncargo test --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bbt-mux --lib messaging::service::reference_tests::first_held_operator_delivers_an_authorless_intent_but_cannot_mute -- --exact --nocapture\ncargo build --target-dir \"$BBOXY_CARGO_TARGET_DIR\" --locked --offline -p bboxy450-term --bins"], "exit": 0, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/mute-unit-and-app.log", "phase": "finished", "pid": 9250, "seconds": 68.53601503372192, "sha256": "57117327c70379c1ca3487ba5204fabc4d09a72f78802c97ab5f11ca38e33724"}}
+Per-run M6 evidence:
+[
+  {
+    "run": 1,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 25.544612169265747,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-1/night.jsonl",
+    "log_sha256": "755dd3ec8ec67ac939a3623b18c719c4530897c18556b754d4cf22bbce04aadd",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA289CB2QG24QYFV0QA2AW",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 14652,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enQsY2V0/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA2XVDZSJYC7NHJFS97MM1",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 15422,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enQsY2V0/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 2,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 21.097299814224243,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-2/night.jsonl",
+    "log_sha256": "46f57d196f306c968d24c0bdb1549faf5893e103101df6c79be8eeb56fb769cb",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA2ZJ4TWG8A2WJFMGWGHC9",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 15451,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en1eZ8gl/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA3J45AGY4A4JANZ5XP68V",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 16309,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en1eZ8gl/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 3,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 33.23707580566406,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-3/night.jsonl",
+    "log_sha256": "4e8f260d720b6f82b0e9634015d464844aa61642320ca634e14359920eeeea55",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA3M5WMEC7GTRDRDVB3XMG",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 16479,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0JJ47I/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA4JVE6VXC7WCYKA9X5927",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 18208,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en0JJ47I/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 4,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 33.953031063079834,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-4/night.jsonl",
+    "log_sha256": "abfea4c688286f917639ddf0817edf0a71c05f68e5cbf01a51cc8fe227a3465f",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA4MNTKYR3AWXJRQRWRAX3",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 18292,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enmYBNfd/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA5KWB4DWY1GHE1N7BYT0T",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 19125,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enmYBNfd/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 5,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 24.462893962860107,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-5/night.jsonl",
+    "log_sha256": "ee4029dd85e283a778e07c049ad6e5008c5b8c5c9def711fcaf5489cbc1cb89c",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA5NTVSKT0Q8W935878KCN",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 19215,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enwNxul7/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA6C0X1F4KFVZCDKT0WSR2",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 19999,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enwNxul7/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 6,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 29.953577041625977,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-6/night.jsonl",
+    "log_sha256": "76d82101317468d532b8fe7a8777938e3d0338c5c4dbf2a1ac9b704bf4543aea",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA6DS27XRF6B5Y04GWPN7T",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 20031,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enVnT4lg/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA78W5YSTBN1Q6C0YP0JXK",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 20713,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enVnT4lg/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 7,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 29.591185092926025,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-7/night.jsonl",
+    "log_sha256": "5b939eca59614fb38145d82ae7497fd64589973fe65889fe924d5c081de6e5a3",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA7AY99DXJMSZY3B18YE7A",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 20797,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2envjL1TB/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA85PSXMRR90Z2KVACMNGN",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 22567,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2envjL1TB/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 8,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 43.58664512634277,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-8/night.jsonl",
+    "log_sha256": "c10f10994c435f8995ee791e88870a78479994dd777816aa3ecd627b026f9e63",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA885C2N4PCNCRN7FZ92H0",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 22789,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrg3Mvp/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VA9FYYT3C16QS40W86XQ77",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 26767,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enrg3Mvp/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 9,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 33.893330097198486,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-9/night.jsonl",
+    "log_sha256": "62e0ed71f95cf1f3a209e7f93767e13c0684cbb78508d8aaee91d4df5d19303a",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VA9JE660DPB7GQQG6CYT23",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 27144,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2bBhnb/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VAAH01KBEQD2BJDHJQBCQB",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 29167,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2en2bBhnb/records-app/run",
+        "windows": 0
+      }
+    ]
+  },
+  {
+    "run": 10,
+    "m6_exit": 0,
+    "m6_verdict": "pass",
+    "seconds": 38.810232162475586,
+    "aggregate_runner_exit": 1,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/fixed-10/night.jsonl",
+    "log_sha256": "4adfc9febecbc14d512e69f9d2dc150684e36f5719a6494d10794541c1192877",
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "M6",
+        "issued_by": "test-account:01M5VAAKSW91SJ728CG0WWPBYE",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 29334,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enDvr7OG/M6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5VABPQZS42039V8BN6EWPCP",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 31069,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enDvr7OG/records-app/run",
+        "windows": 0
+      }
+    ]
+  }
+]
+Kit manifest SHA256 b81bf1323cc5107c1e1c69b93835bba017b59f90c229770f0585d1b42e988542
+Result packet SHA256 0b4e3921660e2e975bccdf69f15d61aa41eb8facb45dadab2d7f415aa577ef61
+Author presubmit follows this evidence commit through scripts/land.sh; its real exit/verdict is reported separately.
+Coverage remains partial: priority delays, never deletes is still explicitly unproven by M6. The M6-only runner kit intentionally omits other promises; its aggregate group exit is not a full-night verdict.
