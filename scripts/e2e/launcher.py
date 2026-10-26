@@ -9,6 +9,8 @@ import shlex
 import subprocess
 import sys
 
+# Import the shared assertions without writing caches into the source checkout.
+sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location("night_ui", Path(__file__).with_name("ui.py"))
 ui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ui)
