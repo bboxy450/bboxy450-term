@@ -101,8 +101,19 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         ["debug", "notifications"] => Command::DebugNotifications,
         ["debug", "errors"] => Command::Debug {
             request: bbt_proto::gui::DebugRequest::Errors {
-                since: flag("since").map(|s| s.parse().map_err(|_| format!("{USAGE_PREFIX}debug errors --since: Unix milliseconds"))).transpose()?,
-                seat: flag("seat").map(|s| s.parse().map_err(|_| format!("{USAGE_PREFIX}debug errors --seat: seat ID"))).transpose()?,
+                since: flag("since")
+                    .map(|s| {
+                        s.parse().map_err(|_| {
+                            format!("{USAGE_PREFIX}debug errors --since: Unix milliseconds")
+                        })
+                    })
+                    .transpose()?,
+                seat: flag("seat")
+                    .map(|s| {
+                        s.parse()
+                            .map_err(|_| format!("{USAGE_PREFIX}debug errors --seat: seat ID"))
+                    })
+                    .transpose()?,
             },
             snapshot: None,
         },
@@ -242,6 +253,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "debug notifications",
     "debug logs app",
+    "debug errors",
     "debug journal account/01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
     "debug metrics",
     "debug fault ring-gap s 1..2",

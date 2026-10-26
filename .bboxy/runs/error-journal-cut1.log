@@ -1,0 +1,15 @@
+#56 cut1 — best-effort run diagnostics, Rook <EXECUTOR>
+Brief aec5dcde; split ruling cf405d78; operator resumed after reboot handoff.
+crates/bbt-rt/src/error_journal.rs — nonblocking bounded datagrams, private rotated JSONL, redaction, bounded pages and ack cursor.
+crates/bboxy450-term/src/{main,headless,scene}.rs — owned sink, unread HUD, no empty-log wake and count-only redraw.
+ctl/debug.rs + ctl.rs — offline debug errors, Unix-ms/seat filters, preserves accepted BrokenPipe handling.
+mux shim/MCP/plugin/provider/logic + supervisor — central failure reports; no request arguments or env maps.
+Core command: cargo test --locked -p bbt-rt --lib error_journal::tests:: --target-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-error-journal-9sb463or/target — EXIT0,6/0.
+Core raw SHA256 d1fe7c879e59f9df0469ce85c193c583dd3697e4a743677f7f7124a25a9570ef
+CLI command: cargo test --locked -p bboxy450-term --test diagnostics --target-dir /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-error-journal-9sb463or/target — EXIT0,1/0.
+CLI raw SHA256 8aa6a705584b4b4c981c0e1401db96fadd13d7fb9ad377a32d8b2bb98cb5d7a3
+Profiles dev/test O1 debug0, own target, cache-env, jobs2.
+Retained red1: fixture root permissions; red2: actual shared flag validator rejected --seat; both corrected, no weakened assertion.
+Missing/full sink, rotation, redaction, byte-page bound, symlink refusal and unread ack asserted; actual child ctl/MCP/shim fixture has no app/account.
+Native global hook observer and parent-session isolation deliberately deferred to cut2; original operator stderr/cause unproven.
+Author presubmit/strict and HUD regression pending at this commit; no live operator mutation or scale run.

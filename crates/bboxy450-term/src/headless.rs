@@ -84,7 +84,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
     };
     let logger = Logger::new();
     let diagnostics_sink = sink.clone();
-    let _diagnostics = bbt_rt::error_journal::Server::start(crate::diagnostic_root(args)?, move |n| diagnostics_sink(UiEvent::ErrorCount(n))).ok();
+    let _diagnostics = crate::diagnostic_root(args).ok().and_then(|root| {
+        bbt_rt::error_journal::Server::start(root, move |n| {
+            diagnostics_sink(UiEvent::ErrorCount(n))
+        })
+        .ok()
+    });
     let (context, rendering) = tokio::sync::oneshot::channel();
     context
         .send(live::RenderContext {
@@ -174,7 +179,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
-                    UiEvent::ErrorCount(count) => { if app.unread_errors != count { app.unread_errors = count; dirty = true; } }
+                    UiEvent::ErrorCount(count) => {
+                        if app.unread_errors != count {
+                            app.unread_errors = count;
+                            dirty = true;
+                        }
+                    }
                     UiEvent::Wake => capacity_wait = false,
                     UiEvent::CommandsReady(ready) => app.commands_ready(ready),
                     UiEvent::BackendInfo {
@@ -393,7 +403,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     gpu.resize([size[0] as u32, size[1] as u32]);
                     dirty = true;
                 }
-                if dirty && submitted == rendered && backend && app.live_state.as_ref().is_some_and(|m|m.metadata_initialized) {
+                if dirty
+                    && submitted == rendered
+                    && backend
+                    && app
+                        .live_state
+                        .as_ref()
+                        .is_some_and(|m| m.metadata_initialized)
+                {
                     app.project_scene(true);
                     let layouts = app.solve_ui(size)?;
                     app.focus_layout_ready();
@@ -426,46 +443,50 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         )
                         .map_err(|_| "headless resize admission full")?;
                     }
-                    if app.window_restore_waits() { app.window_data_wait(); dirty=false; } else {
-                    submitted += 1;
-                    let wake = thread.clone();
-                    let callbacks = callbacks.clone();
-                    let mut base = app.scene.paint(&layouts, size, None, None);
-                    if let Some(page) = &app.local_page_layout {
-                        base.extend(page.paint());
-                    }
-                    let mut foreground = app.scene.foreground_with_document(
-                        size,
-                        app.launcher_layout.as_ref(),
-                        None,
-                        app.conversation_layout.as_ref(),
-                        app.document_layout.as_ref(),
-                    );
-                    foreground.extend(app.scene.error_overlay(size, app.unread_errors));
-                    gpu.draw_layers_notifying(
-                        base,
-                        foreground,
-                        &model,
-                        &app.pane_bounds,
-                        submitted,
-                        app.clock_frame.time_ms,
-                        completed.clone(),
-                        move || {
-                            callbacks.fetch_add(1, Ordering::Relaxed);
-                            wake.unpark();
-                        },
-                    )?;
-                    if app.ui_observe {
-                        app.frame_observations.produced(
-                            submitted, &model,
-                            app.pane_bounds.iter().map(|(seat, _)| *seat),
+                    if app.window_restore_waits() {
+                        app.window_data_wait();
+                        dirty = false;
+                    } else {
+                        submitted += 1;
+                        let wake = thread.clone();
+                        let callbacks = callbacks.clone();
+                        let mut base = app.scene.paint(&layouts, size, None, None);
+                        if let Some(page) = &app.local_page_layout {
+                            base.extend(page.paint());
+                        }
+                        let mut foreground = app.scene.foreground_with_document(
+                            size,
+                            app.launcher_layout.as_ref(),
+                            None,
+                            app.conversation_layout.as_ref(),
+                            app.document_layout.as_ref(),
                         );
-                    }
-                    let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
-                    app.starting_produced(submitted, &layouts);
-                    app.complete_paint_sources();
-                    ui_frame = layout.map(|layout| (submitted, layout));
-                    dirty = false;
+                        foreground.extend(app.scene.error_overlay(size, app.unread_errors));
+                        gpu.draw_layers_notifying(
+                            base,
+                            foreground,
+                            &model,
+                            &app.pane_bounds,
+                            submitted,
+                            app.clock_frame.time_ms,
+                            completed.clone(),
+                            move || {
+                                callbacks.fetch_add(1, Ordering::Relaxed);
+                                wake.unpark();
+                            },
+                        )?;
+                        if app.ui_observe {
+                            app.frame_observations.produced(
+                                submitted,
+                                &model,
+                                app.pane_bounds.iter().map(|(seat, _)| *seat),
+                            );
+                        }
+                        let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
+                        app.starting_produced(submitted, &layouts);
+                        app.complete_paint_sources();
+                        ui_frame = layout.map(|layout| (submitted, layout));
+                        dirty = false;
                     }
                 }
                 if let Some(send) = &app.live_commands {

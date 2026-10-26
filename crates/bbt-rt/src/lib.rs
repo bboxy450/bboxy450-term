@@ -15,10 +15,10 @@ use tokio::runtime::{Builder, Handle, Runtime};
 mod commands;
 #[cfg(feature = "runtime")]
 pub mod diagnostics;
+pub mod error_journal;
 #[cfg(feature = "runtime")]
 pub mod fault;
 mod meter;
-pub mod error_journal;
 #[cfg(feature = "runtime")]
 mod queues;
 mod wake;

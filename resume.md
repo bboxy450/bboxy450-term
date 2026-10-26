@@ -57,3 +57,8 @@ This addendum supersedes the earlier pending-ruling/no-reply statements for the 
 Vesper approved the narrow Codex observer: only after verified loaded thread plus owner PID; `thread/resume` with `excludeTurns:true`; zero config, permission or model fields; generation-cancelled; observation only; never attach this observer to the operator's running seat. Hook wrapping remains rejected.
 
 Sequence when work is explicitly resumed: cut1 lands the journal core, ctl errors and MCP/plugin/spawn/worker failure capture as a separate complete, green cut. Cut2 adds the Codex hook/completed subscription on the same branch line and records the seam as one line in `.bboxy/interfaces/app-harness.md`. No further Oracle approval is needed between those cuts. The actual operator hook's original stderr/cause remains unproven; the ruling is not runtime evidence.
+
+
+## Resumed by the operator — 2026-10-26 22:00 UTC
+
+Direct instruction `continue` resumes #56. Implement the Oracle-approved two cuts, with no unrelated work. The parent-harness environment correction is deferred to cut2 alongside actual hook evidence; cut1 remains the error journal and central capture. Rebased onto current origin/main, preserving Sable's CliOutput/BrokenPipe behavior at the ctl stdout seam.

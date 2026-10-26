@@ -359,7 +359,9 @@ pub fn run_cli(args: &[String], sink: &impl HookSink) {
         return;
     }
     let started = Instant::now();
-    if let Err(error) = run(args, sink) { sink.failed(args, &error.to_string(), started.elapsed()); }
+    if let Err(error) = run(args, sink) {
+        sink.failed(args, &error.to_string(), started.elapsed());
+    }
 }
 /// The caller authenticates and encodes its own fallback wire. The shared 50 ms
 /// deadline includes input, OSC and fallback delivery.

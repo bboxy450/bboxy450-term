@@ -46,18 +46,36 @@ fn identity_note(identity: &bbt_proto::GuiIdentity) -> String {
 
 // lab.css restarted-out: hold to 85%, then the shared motion.ease until four seconds.
 fn restarted_alpha(seconds: f32) -> f32 {
-    if seconds <= 3.4 { return 1.; }
-    if seconds >= 4. { return 0.; }
-    let curve = STYLE.motion.ease.strip_prefix("cubic-bezier(")
-        .and_then(|value| value.strip_suffix(')')).expect("motion.ease is a cubic-bezier token");
-    let mut coordinates = curve.split(',').map(|value| value.trim().parse::<f32>().expect("motion.ease coordinate"));
-    let [x1, y1, x2, y2] = std::array::from_fn(|_| coordinates.next().expect("motion.ease has four coordinates"));
+    if seconds <= 3.4 {
+        return 1.;
+    }
+    if seconds >= 4. {
+        return 0.;
+    }
+    let curve = STYLE
+        .motion
+        .ease
+        .strip_prefix("cubic-bezier(")
+        .and_then(|value| value.strip_suffix(')'))
+        .expect("motion.ease is a cubic-bezier token");
+    let mut coordinates = curve
+        .split(',')
+        .map(|value| value.trim().parse::<f32>().expect("motion.ease coordinate"));
+    let [x1, y1, x2, y2] = std::array::from_fn(|_| {
+        coordinates
+            .next()
+            .expect("motion.ease has four coordinates")
+    });
     let progress = (seconds - 3.4) / 0.6;
     let (mut lo, mut hi) = (0., 1.);
     for _ in 0..16 {
         let t = (lo + hi) / 2.;
         let x = 3. * x1 * t * (1. - t) * (1. - t) + 3. * x2 * t * t * (1. - t) + t * t * t;
-        if x < progress { lo = t; } else { hi = t; }
+        if x < progress {
+            lo = t;
+        } else {
+            hi = t;
+        }
     }
     let t = (lo + hi) / 2.;
     1. - (3. * y1 * t * (1. - t) * (1. - t) + 3. * y2 * t * t * (1. - t) + t * t * t)
@@ -1673,14 +1691,61 @@ impl Scene {
     }
     /// Run errors stay visible even when the performance HUD is closed.
     pub fn error_overlay(&self, size: [f32; 2], unread: u64) -> Vec<c::Paint> {
-        if unread == 0 { return Vec::new(); }
+        if unread == 0 {
+            return Vec::new();
+        }
         let ctx = self.ui_context();
-        let text = c::Element::Text(c::Text::new(format!("{unread} unread errors · ctl debug errors"), ui::Text {
-            step: ui::TypeStep::Micro, paint: ui::Paint::solid(ui::Color::Foreground), ..Default::default()
-        }));
-        let card = c::Element::Box(c::Box::new(ui::Style::new(ui::Preset::Hud), vec![text.into()]));
+        let text = c::Element::Text(c::Text::new(
+            format!("{unread} unread errors · ctl debug errors"),
+            ui::Text {
+                step: ui::TypeStep::Micro,
+                paint: ui::Paint::solid(ui::Color::Foreground),
+                ..Default::default()
+            },
+        ));
+        let card = c::Element::Box(c::Box::new(
+            ui::Style::new(ui::Preset::Hud),
+            vec![text.into()],
+        ));
         let rect = Rect::new((size[0] - 330.).max(0.), (size[1] - 42.).max(0.), 316., 0.);
-        card.layout(rect, ctx, &self.metrics).map(|layout| c::paint(&layout, ctx)).unwrap_or_default()
+        card.layout(rect, ctx, &self.metrics)
+            .map(|layout| c::paint(&layout, ctx))
+            .unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod error_hud_tests {
+    use super::*;
+    fn texts(ops: &[c::Paint]) -> Vec<String> {
+        let mut out = Vec::new();
+        for op in ops {
+            match op {
+                c::Paint::Group { ops, .. } => out.extend(texts(ops)),
+                c::Paint::Draw(list) | c::Paint::Underlay(list) => {
+                    for primitive in &list.primitives {
+                        if let bbt_ui_model::draw::Prim::Text { text, .. } = primitive {
+                            out.push(text.to_string());
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        out
+    }
+    // keeps: #56 — failures are visible with the perf overlay closed, clear on read.
+    #[test]
+    fn unread_errors_paint_their_count_without_a_performance_hud() {
+        let scene = Scene::live();
+        assert!(scene.error_overlay([800., 600.], 0).is_empty());
+        let painted = texts(&scene.error_overlay([800., 600.], 3));
+        assert!(
+            painted
+                .iter()
+                .any(|t| t == "3 unread errors · ctl debug errors"),
+            "{painted:?}"
+        );
     }
 }
 
@@ -2077,15 +2142,22 @@ mod depth_tests {
     #[test]
     fn restart_notice_is_one_shot_on_generation_change_and_then_one_stream_line() {
         use bboxy450_term::{grids::Grids, model};
-        use bbt_proto::registry::SeatRecord;
         use bbt_mux::Ulid;
+        use bbt_proto::registry::SeatRecord;
         use std::time::Duration;
         let mut record = SeatRecord::new(Ulid(3), Ulid(2), "fixture", "zsh");
-        let mut model = model::build(std::slice::from_ref(&record), &Grids::new(), &model::Model::default());
+        let mut model = model::build(
+            std::slice::from_ref(&record),
+            &Grids::new(),
+            &model::Model::default(),
+        );
         let mut scene = Scene::live();
         let start = Instant::now();
         scene.set_model_at(&model, &model.ui.window.stage, Some(start));
-        assert!(scene.restart_generations[&SeatId::from_u128(3)].1.is_none(), "initial metadata is not a restart");
+        assert!(
+            scene.restart_generations[&SeatId::from_u128(3)].1.is_none(),
+            "initial metadata is not a restart"
+        );
         record.generation += 1;
         model = model::build(std::slice::from_ref(&record), &Grids::new(), &model);
         scene.set_model_at(&model, &model.ui.window.stage, Some(start));
@@ -2093,12 +2165,21 @@ mod depth_tests {
         assert!(scene.animating(at(3_999)));
         assert!(!scene.advance_restarts(at(3_999)));
         scene.set_model_at(&model, &model.ui.window.stage, Some(at(3_999)));
-        assert_eq!(scene.restart_generations[&SeatId::from_u128(3)].1, Some(start), "reprojection restarted the timer");
+        assert_eq!(
+            scene.restart_generations[&SeatId::from_u128(3)].1,
+            Some(start),
+            "reprojection restarted the timer"
+        );
         assert_eq!(restarted_alpha(3.4), 1.);
         assert!((restarted_alpha(3.7) - 0.053921).abs() < 0.001);
         assert!(scene.advance_restarts(at(4_000)));
         assert!(!scene.advance_restarts(at(8_000)), "notice emitted twice");
-        assert_eq!(scene.restart_lines(bbt_ui_model::SwarmId::from_u128(2)).collect::<Vec<_>>(), ["fixture restarted · process generation 2"]);
+        assert_eq!(
+            scene
+                .restart_lines(bbt_ui_model::SwarmId::from_u128(2))
+                .collect::<Vec<_>>(),
+            ["fixture restarted · process generation 2"]
+        );
         assert!(!scene.animating(at(8_000)));
     }
 

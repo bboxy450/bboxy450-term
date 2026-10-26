@@ -8,9 +8,16 @@ use std::time::Instant;
 struct SeatSocketSink;
 impl HookSink for SeatSocketSink {
     fn failed(&self, args: &[String], reason: &str, elapsed: std::time::Duration) {
-        let harness = args.windows(2).find(|p| p[0] == "--agent").map_or("unknown", |p| p[1].as_str());
-        let mut row = bbt_rt::error_journal::Failure::new("hook", "bboxy_shim", reason).harness(harness).duration(elapsed);
-        if let Ok(seat) = std::env::var("BBOXY_SEAT_ID") { row = row.seat(seat); }
+        let harness = args
+            .windows(2)
+            .find(|p| p[0] == "--agent")
+            .map_or("unknown", |p| p[1].as_str());
+        let mut row = bbt_rt::error_journal::Failure::new("hook", "bboxy_shim", reason)
+            .harness(harness)
+            .duration(elapsed);
+        if let Ok(seat) = std::env::var("BBOXY_SEAT_ID") {
+            row = row.seat(seat);
+        }
         bbt_rt::error_journal::report(row);
     }
     fn send(&self, seat: Ulid, event: ShimEvent, until: Instant) -> Result<()> {

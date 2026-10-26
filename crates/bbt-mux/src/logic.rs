@@ -638,8 +638,14 @@ impl LogicClient {
 
     fn record_exit(&self, cause: String, log: bool) {
         if self.exit_cause.set(cause).is_ok() {
-            if log { eprintln!("logic worker exited: {}", self.exit_cause.get().unwrap()); }
-            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("logic", "worker_exit", self.exit_cause.get().unwrap()));
+            if log {
+                eprintln!("logic worker exited: {}", self.exit_cause.get().unwrap());
+            }
+            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
+                "logic",
+                "worker_exit",
+                self.exit_cause.get().unwrap(),
+            ));
         }
     }
 
@@ -4627,8 +4633,14 @@ impl Worker {
         )?;
         record.harness_session_id = plan.harness_session_id;
         let diagnostics_root = self.config.run_dir.to_string_lossy().into_owned();
-        plan.spec.env.insert("BBOXY_RUN_DIR".into(), diagnostics_root.clone());
-        if let Some(companion) = &mut plan.spec.companion { companion.env.insert("BBOXY_RUN_DIR".into(), diagnostics_root); }
+        plan.spec
+            .env
+            .insert("BBOXY_RUN_DIR".into(), diagnostics_root.clone());
+        if let Some(companion) = &mut plan.spec.companion {
+            companion
+                .env
+                .insert("BBOXY_RUN_DIR".into(), diagnostics_root);
+        }
         let store = SqliteStore::open(&root)?;
         if let Some(bytes) = store.get("restart_checkpoint")?
             && !bytes.is_empty()
@@ -4873,9 +4885,15 @@ impl Worker {
             &spec.cwd,
             record.location == crate::registry::Location::Local,
         );
-        let Reply::Spawned { info } = self.request_for_seat(record.id, Action::Spawn { spec }).inspect_err(|e| {
-            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("spawn", "seat", e).seat(record.id).harness(&record.harness_kind));
-        })?
+        let Reply::Spawned { info } = self
+            .request_for_seat(record.id, Action::Spawn { spec })
+            .inspect_err(|e| {
+                bbt_rt::error_journal::report(
+                    bbt_rt::error_journal::Failure::new("spawn", "seat", e)
+                        .seat(record.id)
+                        .harness(&record.harness_kind),
+                );
+            })?
         else {
             return Err(invalid("spawn reply mismatch"));
         };

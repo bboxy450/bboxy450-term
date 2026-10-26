@@ -15,6 +15,7 @@ pub const MAX_RECORD: usize = 16 * 1024;
 pub const MAX_FILE: u64 = 1024 * 1024;
 pub const ARCHIVES: usize = 2;
 pub const MAX_ROWS: usize = 256;
+pub const MAX_PAGE: usize = 128 * 1024;
 const SOCKET: &str = "diagnostics.sock";
 const ACTIVE: &str = "diagnostics.jsonl";
 const READ: &str = ".diagnostics-read";
@@ -171,8 +172,10 @@ pub fn report_to(root: &Path, failure: Failure) -> bool {
     }
     #[cfg(unix)]
     {
-        let Ok(sender)=std::os::unix::net::UnixDatagram::unbound() else {return false;};
-        sender.set_nonblocking(true).is_ok() && sender.send_to(&bytes,root.join(SOCKET)).is_ok()
+        let Ok(sender) = std::os::unix::net::UnixDatagram::unbound() else {
+            return false;
+        };
+        sender.set_nonblocking(true).is_ok() && sender.send_to(&bytes, root.join(SOCKET)).is_ok()
     }
     #[cfg(not(unix))]
     {
@@ -288,6 +291,8 @@ pub fn read(
     seat: Option<&str>,
     acknowledge: bool,
 ) -> io::Result<Value> {
+    #[cfg(feature = "runtime")]
+    crate::assert_not_ui_thread();
     let mut all = Vec::new();
     let mut malformed = 0;
     for name in (1..=ARCHIVES)
@@ -346,8 +351,19 @@ pub fn read(
                 && seat.is_none_or(|seat| row["seat"].as_str() == Some(seat))
         })
         .collect();
-    let omitted = selected.len().saturating_sub(MAX_ROWS);
-    let selected: Vec<_> = selected.into_iter().skip(omitted).cloned().collect();
+    let total = selected.len();
+    let mut bytes = 1024;
+    let mut page = std::collections::VecDeque::new();
+    for row in selected.into_iter().rev().take(MAX_ROWS) {
+        let size = serde_json::to_vec(row)?.len() + 1;
+        if bytes + size > MAX_PAGE {
+            break;
+        }
+        bytes += size;
+        page.push_front(row.clone());
+    }
+    let selected: Vec<_> = page.into();
+    let omitted = total.saturating_sub(selected.len());
     if acknowledge && since.is_none() && seat.is_none() {
         if let Some(id) = selected.last().and_then(|r| r["id"].as_str()) {
             let temp = format!(
@@ -460,7 +476,9 @@ fn serve(
     std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
     receiver.set_read_timeout(Some(Duration::from_secs(1)))?;
     let _ = ready.try_send(Ok(()));
-    let mut prior = None;
+    // Zero is already the UI's initial value. Never wake it for an empty log.
+    let mut prior = Some(0);
+    let mut next_count = std::time::Instant::now();
     let mut bytes = [0u8; MAX_RECORD + 1];
     while !stop.load(Ordering::Relaxed) {
         match receiver.recv(&mut bytes) {
@@ -484,6 +502,12 @@ fn serve(
                 .contains(&e.kind()) => {}
             Err(e) => return Err(e),
         }
+        // Accepted rows still append individually. Bound rescans and UI count
+        // updates during an error burst; idle polls cause no UI callback.
+        if std::time::Instant::now() < next_count {
+            continue;
+        }
+        next_count = std::time::Instant::now() + Duration::from_millis(250);
         if let Ok(data) = read(root, None, None, false) {
             let n = data["unread"].as_u64().unwrap_or(0);
             if prior != Some(n) {
@@ -591,6 +615,24 @@ mod tests {
 
     // keeps: diagnostics are best effort; a full/missing sink never waits on IO
     #[test]
+    fn diagnostic_read_pages_keep_newest_rows_inside_the_wire_byte_bound() {
+        let root = Root::new();
+        for _ in 0..80 {
+            let row = Failure::new("provider", "read", "failed")
+                .stderr("io error ".repeat(450).as_bytes())
+                .value();
+            append(&root.0, &serde_json::to_vec(&row).unwrap(), MAX_FILE).unwrap();
+        }
+        let page = read(&root.0, None, None, false).unwrap();
+        assert!(page["omitted"].as_u64().unwrap() > 0);
+        assert!(!page["rows"].as_array().unwrap().is_empty());
+        assert!(serde_json::to_vec(&page).unwrap().len() <= MAX_PAGE);
+        let read = read(&root.0, None, None, true).unwrap();
+        assert_eq!(read["unread"], 0);
+    }
+
+    // keeps: diagnostics are best effort; a full/missing sink never waits on IO
+    #[test]
     fn diagnostic_sender_reports_a_missing_or_full_sink_without_waiting_for_a_reader() {
         let root = Root::new();
         assert!(!report_to(
@@ -627,6 +669,7 @@ mod tests {
             .recv_timeout(Duration::from_secs(60))
             .unwrap()
             .unwrap();
+        assert!(rx.try_recv().is_err(), "empty journal woke its UI consumer");
         assert!(report_to(
             &root.0,
             Failure::new("hook", "UserPromptSubmit", "nonzero exit")

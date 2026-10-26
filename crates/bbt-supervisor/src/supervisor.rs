@@ -866,8 +866,24 @@ impl Supervisor {
             .spawn(move || {
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| actor.run()));
                 match result {
-                    Ok(result) => { if let Err(e) = &result { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("supervisor", "worker_exit", e)); } result },
-                    Err(payload) => { bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("supervisor", "worker_exit", "worker panicked")); std::panic::resume_unwind(payload) }
+                    Ok(result) => {
+                        if let Err(e) = &result {
+                            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
+                                "supervisor",
+                                "worker_exit",
+                                e,
+                            ));
+                        }
+                        result
+                    }
+                    Err(payload) => {
+                        bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
+                            "supervisor",
+                            "worker_exit",
+                            "worker panicked",
+                        ));
+                        std::panic::resume_unwind(payload)
+                    }
                 }
             })?;
         Ok(Self {

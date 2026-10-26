@@ -14,7 +14,10 @@ pub enum DebugProcess {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DebugRequest {
     /// Unix milliseconds; an unfiltered read acknowledges retained error rows.
-    Errors { since: Option<u64>, seat: Option<Ulid> },
+    Errors {
+        since: Option<u64>,
+        seat: Option<Ulid>,
+    },
     Logs {
         process: DebugProcess,
         since: u64,
