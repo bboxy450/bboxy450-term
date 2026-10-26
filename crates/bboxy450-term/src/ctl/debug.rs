@@ -81,6 +81,7 @@ macro_rules! debug_commands {
                 from: u64,
                 to: u64,
             },
+            DebugSpawnGate(bbt_proto::gui::UiSpawnGateCommand),
             Debug {
                 request: bbt_proto::gui::DebugRequest,
                 snapshot: Option<PathBuf>,
@@ -149,6 +150,25 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
                 to,
             }
         }
+        ["debug", "fault", "spawn-hold"] => {
+            Command::DebugSpawnGate(bbt_proto::gui::UiSpawnGateCommand::Arm)
+        }
+        ["debug", "fault", "spawn-release", op] => {
+            let op = op
+                .parse()
+                .map_err(|_| format!("{USAGE_PREFIX}spawn-release needs an operation ID"))?;
+            let request =
+                bbt_proto::gui::UiRequest::SpawnGate(bbt_proto::gui::UiSpawnGateCommand::Release {
+                    op,
+                });
+            request
+                .validate()
+                .map_err(|reason| format!("{USAGE_PREFIX}{reason}"))?;
+            let bbt_proto::gui::UiRequest::SpawnGate(command) = request else {
+                unreachable!()
+            };
+            Command::DebugSpawnGate(command)
+        }
         ["debug", "metrics"] => Command::Debug {
             request: bbt_proto::gui::DebugRequest::Metrics,
             snapshot: None,
@@ -188,6 +208,10 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
         ..
     } = cx;
     let data = match command {
+        Command::DebugSpawnGate(command) => {
+            serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::SpawnGate(command))?)
+                .map_err(|error| error.to_string())?
+        }
         Command::DebugFault { seat, from, to } => {
             let seat = resolve(&client.seats()?, &seat)?.record.id;
             client.debug(bbt_proto::gui::DebugRequest::RingGap { seat, from, to })?
@@ -216,3 +240,45 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "debug snapshot /tmp/debug.json",
     "debug ps",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // keeps: e2e-script-map §L2 — the existing operator debug noun owns fixture controls.
+    #[test]
+    fn spawn_gate_parser_keeps_the_held_operation_and_rejects_nil_release() {
+        let parse = |words: &[&str]| {
+            super::super::parse_full(
+                &words
+                    .iter()
+                    .map(|word| (*word).to_owned())
+                    .collect::<Vec<_>>(),
+            )
+        };
+        let arm = parse(&["debug", "fault", "spawn-hold"]).unwrap();
+        assert!(matches!(
+            arm.command,
+            Command::DebugSpawnGate(bbt_proto::gui::UiSpawnGateCommand::Arm)
+        ));
+        let release = parse(&[
+            "debug",
+            "fault",
+            "spawn-release",
+            "00000000000000000000000001",
+        ])
+        .unwrap();
+        assert!(
+            matches!(release.command, Command::DebugSpawnGate(bbt_proto::gui::UiSpawnGateCommand::Release { op }) if op == Ulid(1))
+        );
+        assert!(
+            parse(&[
+                "debug",
+                "fault",
+                "spawn-release",
+                "00000000000000000000000000"
+            ])
+            .is_err()
+        );
+    }
+}

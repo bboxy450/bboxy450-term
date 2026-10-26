@@ -30,7 +30,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
-| L2 | `scripts/e2e/L2.sh` | partial | never a guessed slot | |
+| L2 | `scripts/e2e/L2.sh` | full | — | Captured right/down/tab/space slots survive later keyboard focus before backend dispatch; exact starting/final rectangles, siblings, wrong/duplicate release refusals and original same-op replay |
 | L3 | `scripts/e2e/L3.sh` | partial | harness: stand-in; missing: real Claude/Codex consume the launch wiring; terminal zsh has no agent skill/MCP contract | Private HOME/config hashes, per-seat argv/overlays, pinned skill, real inherited MCP handshake/orient and published shim activity |
 | L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
@@ -201,6 +201,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Deterministic steps (plan):** For each right/down/tab/space: focus anchor A; choose placement through launcher, capture target and revision, then change focus to B before the correlated spawn completes. Read layout and capture A/B/new seat.
 
 **Required assertions:** New seat uses the captured anchor/generation and exact selected side/tab/space; sibling ratios and prior panes preserved, no placement resolved from later focus.
+
+**Current script:** The original CLI placement, generation, sibling and same-operation replay assertions remain. For every right/down/tab/space pick, `debug fault spawn-hold` reserves one admitted launch on the test-account GUI owner before IO dispatch. The script reads its operation-keyed, actually produced starting rectangle, changes focus by the ordinary pane keyboard route, and releases that exact operation with `debug fault spawn-release <op>`. Its real seat must replace the captured slot with the same rectangle and retain the original siblings, tab and swarm. Wrong-operation and duplicate releases refuse; each release adds exactly one real seat. The keyboard action supersedes the older spawn *frame waiter*, whose named refusal is recorded; it does not cancel the admitted launch. Explicit `ctl ui focus` deliberately fences prior placements and cannot stand in for this race. The gate refuses live accounts, retains at most one existing bounded reservation, changes no deadline and pauses no process.
 
 **Gaps at baseline afff4758:** Parser accepts only --place tab (other values explicitly refused); right/down/space controls, captured-placement injection/relay and solved layout dump are missing. Space support must be observed, not guessed from protocol.
 

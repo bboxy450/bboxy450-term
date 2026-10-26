@@ -1,9 +1,9 @@
-# coverage: partial; missing: never a guessed slot
+# coverage: full
 # L2: all four CLI picks, sibling geometry and replay after focus changes.
-# The pending-spawn focus-change race has unit coverage, not a night witness yet.
+# The test-account dispatch barrier holds one admitted op, never an IO owner.
 set -eu
 exec python3 -I - "$BBT" "$E2E_WORK" <<'PY'
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 from pathlib import Path
 binary, work = Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve()
 sequence = 0
@@ -32,6 +32,115 @@ def capture(seat,label,frame):
     assert path.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
     assert reply['frame_seq']>=frame
     return str(path)
+
+def pending_focus(place, anchor):
+    before = ctl('ui','focus',anchor)
+    known = {s['record']['id']:s for s in ctl('seat','ls')}
+    name = f'L2 pending {place}'
+    ctl('debug','fault','spawn-hold')
+    args = ['seat','spawn','zsh','--place',place,'--name',name,'--cwd',str(cwd)]
+    # Hold exactly one admitted command before backend dispatch. All UI/control
+    # traffic keeps its ordinary path, without a stopped process or a sleep.
+    out = (work/f'l2-pending-{place}.stdout').open('w')
+    err = (work/f'l2-pending-{place}.stderr').open('w')
+    child = None
+    row = None
+    try:
+        child = subprocess.Popen([str(binary),'ctl',*args], env=os.environ,
+                                 stdin=subprocess.DEVNULL, stdout=out, stderr=err)
+        deadline = time.monotonic() + 10
+        while True:
+            pending = ctl('ui','layout')
+            rows = [r for r in pending.get('starting',[]) if r['name'] == name]
+            if len(rows) == 1 and rows[0]['first_frame_seq'] is not None:
+                break
+            assert child.poll() is None and time.monotonic() < deadline, (
+                'no produced pending placement before backend completion', place, pending)
+        row = rows[0]
+        assert row['state'] == {'kind':'starting'} and child.poll() is None, row
+        assert row['harness_kind'] == 'zsh' and row['op'] not in known, row
+        assert row['first_frame_seq'] > row['admitted_frame_seq'], row
+        code, wrong = request('debug','fault','spawn-release','00000000000000000000000001',check=False)
+        assert code != 0 and 'spawn_gate_not_held' in wrong['error']['message'], wrong
+        assert child.poll() is None, 'wrong release completed the held launch'
+        selected = row['placement']
+        if place in ('right','down'):
+            assert selected == {'kind':'split','tab':before['tab'],'target':anchor,
+                'target_generation':known[anchor]['record']['generation'],
+                'side':'right' if place == 'right' else 'bottom'}, selected
+        else:
+            assert selected['kind'] == 'new_tab' and selected['tab'] != before['tab'], selected
+        assert pending['tab'] == selected['tab'], (pending, row)
+        assert (pending['swarm'] != before['swarm']) == (place == 'space'), (pending, before)
+        starting_capture = capture('window',f'pending-{place}-starting',pending['frame_seq'])
+        # The explicit focus verb fences earlier placements. Ordinary pane navigation
+        # is intentionally used instead. A new UI action supersedes the spawn's
+        # frame waiter, not its already admitted operation or captured placement.
+        moved = ctl('ui','key','cmd-alt-tab')
+        assert moved['frame_seq'] > pending['frame_seq'], (pending, moved)
+        assert moved['focused'] in known and moved['focused'] != anchor, moved
+        focus_capture = capture(moved['focused'],f'pending-{place}-later-focus',moved['frame_seq'])
+        assert child.wait(timeout=10) != 0, 'superseded frame waiter unexpectedly succeeded'
+        out.flush(); err.flush()
+        reply = json.loads((work/f'l2-pending-{place}.stdout').read_text())
+        assert reply['ok'] is False and 'superseded' in reply['error']['message'], reply
+        still = ctl('ui','layout')
+        retained = [r for r in still.get('starting',[]) if r['op'] == row['op']]
+        # The pending pane can be off-screen after navigation. Its admission is
+        # retained by the operation, even when it is absent from the visible tree.
+        if retained:
+            assert retained[0]['state'] == {'kind':'starting'}, retained
+    finally:
+        if row is not None:
+            ctl('debug','fault','spawn-release',row['op'])
+        out.close(); err.close()
+        if child is not None and child.poll() is None:
+            child.wait(timeout=40)
+    deadline = time.monotonic() + 30
+    while True:
+        after = {s['record']['id']:s for s in ctl('seat','ls')}
+        added = set(after) - set(known)
+        if added:
+            break
+        assert time.monotonic() < deadline, ('accepted spawn never completed', place)
+    assert len(added) == 1 and set(known) <= set(after), (known, after)
+    seat = added.pop()
+    record = after[seat]['record']
+    assert record['name'] == name and record['harness_kind'] == 'zsh', record
+    final = ctl('ui','focus',seat)
+    assert final['swarm'] == pending['swarm'] and final['tab'] == selected['tab'], final
+    same(rect(final,seat), row['rect'])
+    if place in ('right','down'):
+        for sibling in before['panes']:
+            if sibling['seat'] != anchor:
+                same(sibling['rect'], rect(final,sibling['seat']))
+        for sibling in pending['panes']:
+            same(sibling['rect'], rect(final,sibling['seat']))
+        x,y,w,h = rect(final,seat)
+        ax,ay,aw,ah = rect(final,anchor)
+        if place == 'right':
+            assert x >= ax+aw and abs(y-ay)<0.01 and abs(h-ah)<0.01, final
+        else:
+            assert y >= ay+ah and abs(x-ax)<0.01 and abs(w-aw)<0.01, final
+    else:
+        assert len(final['panes']) == 1, final
+    image = capture(seat,f'pending-{place}',final['frame_seq'])
+    code, duplicate = request('debug','fault','spawn-release',row['op'],check=False)
+    assert code != 0 and 'spawn_gate_not_held' in duplicate['error']['message'], duplicate
+    assert len(ctl('seat','ls')) == len(known)+1, 'release duplicated the launch'
+    result = {'place':place,'anchor':anchor,
+              'captured':row,'pending_frame':pending['frame_seq'],
+              'later_focus':moved,'superseded_frame_reply':reply,
+              'seat':seat,'final':final,'capture':image,
+              'starting_capture':starting_capture,'focus_capture':focus_capture}
+    (work/f'l2-pending-{place}.json').write_text(json.dumps(result,indent=2)+'\n')
+    print(json.dumps({'kind':'L2-pending','place':place,'op':row['op'],
+        'placement':selected,'anchor':anchor,'later_focus':moved['focused'],
+        'admitted_frame':row['admitted_frame_seq'],'starting_frame':row['first_frame_seq'],
+        'pending_frame':pending['frame_seq'],'focus_frame':moved['frame_seq'],
+        'final_frame':final['frame_seq'],'starting_rect':row['rect'],
+        'final_rect':rect(final,seat),'seat':seat,'one_release_one_seat':True}),flush=True)
+    return result
 
 status=ctl('app','status')
 assert status['windows']==0 and status['custody_backend']=='file', status
@@ -83,10 +192,12 @@ restored=ctl('ui','focus',aid)
 assert restored['swarm']==swarm and restored['tab']==tab
 for seat in (aid,bid,cid,did): same(rect(down,seat),rect(restored,seat))
 assert len(ctl('seat','ls'))==6
+races = [pending_focus(place,aid) for place in ('right','down','tab','space')]
+assert len(ctl('seat','ls'))==10
 (work/'l2-result.json').write_text(json.dumps({
     'placements':['tab','right','down','space'], 'sibling_rectangles_preserved':True,
     'retry_same_seat':cid,'captured_revision':c['layout_revision'],
     'applied_revision':c['applied_layout_revision'],'captures':captures,
-    'pending_focus_race':'not witnessed by this script'},indent=2)+'\n')
-print('L2: tab/right/down/new swarm space, captured anchor/generation, sibling rectangles, produced frames and same-op replay held; pending-focus race remains partial')
+    'pending_focus_races':races},indent=2)+'\n')
+print('L2: tab/right/down/new swarm space, captured anchor/generation, sibling rectangles, produced frames and same-op replay held; captured pending slots survive later keyboard focus')
 PY

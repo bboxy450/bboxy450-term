@@ -41,6 +41,8 @@ pub enum UiRequest {
     },
     /// Deterministic animation time, admitted only for a verified test account.
     Clock(UiClockCommand),
+    /// One launch-dispatch barrier for a verified test-account owner.
+    SpawnGate(UiSpawnGateCommand),
     /// Send through the window's retained composer, not a direct messaging call.
     Compose(UiCompose),
 }
@@ -82,6 +84,9 @@ impl UiRequest {
             Self::Scroll { seat, .. } if *seat == Ulid::nil() => {
                 Err("invalid_ui_scroll: expected a seat ID")
             }
+            Self::SpawnGate(UiSpawnGateCommand::Release { op }) if *op == Ulid::nil() => {
+                Err("invalid_spawn_gate: expected the held operation ID")
+            }
             Self::Resize { cols, rows }
                 if !(2..=512).contains(cols) || !(1..=256).contains(rows) =>
             {
@@ -90,6 +95,14 @@ impl UiRequest {
             _ => Ok(()),
         }
     }
+}
+
+/// Controls only the next admitted launch; it never pauses an IO owner or changes time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UiSpawnGateCommand {
+    Arm,
+    Release { op: Ulid },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

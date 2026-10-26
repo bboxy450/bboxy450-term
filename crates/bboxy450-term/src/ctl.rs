@@ -90,6 +90,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
   debug metrics                           logic + GUI history heap/page counters
   debug fault ring-gap <seat> <from>..<to>  test-account retained-history gap mask
+  debug fault spawn-hold                  test-account: hold the next admitted launch
+  debug fault spawn-release <op>          release that exact launch once
   debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
   debug ps                                this app's process tree; no argv or environment
   debug notifications                     bounded test recording; no OS presentation
@@ -424,7 +426,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             request: bbt_proto::gui::DebugRequest::Logs { .. },
             ..
         } => Some(&["since"]),
-        Command::Debug { .. } | Command::DebugFault { .. } => Some(&[]),
+        Command::Debug { .. } | Command::DebugFault { .. } | Command::DebugSpawnGate(_) => Some(&[]),
         Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };

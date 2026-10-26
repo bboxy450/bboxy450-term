@@ -12,6 +12,7 @@ mod headless;
 mod live;
 mod log;
 mod scene;
+mod spawn_gate;
 mod stall;
 
 use bboxy450_term::launcher::{
@@ -1748,6 +1749,7 @@ struct App {
     close_regions: Vec<(SeatId, Rect, bool)>,
     starting_close_regions: Vec<(bbt_mux::Ulid, Rect)>,
     starting: bboxy450_term::starting::Starting,
+    spawn_gate: spawn_gate::Gate<live::UiMsg>,
     starting_timers: BTreeMap<bbt_mux::Ulid, tokio::task::AbortHandle>,
     submitted_frame: u64,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
@@ -1906,6 +1908,7 @@ impl App {
             close_regions: vec![],
             starting_close_regions: Vec::new(),
             starting: Default::default(),
+            spawn_gate: Default::default(),
             starting_timers: BTreeMap::new(),
             submitted_frame: 0,
             reject: None,
@@ -3491,7 +3494,19 @@ impl App {
             }
             Ok(()) => {
                 if let Some(launch) = launch {
+                    let op = launch.op;
                     self.admit_starting(launch);
+                    let pending = &mut self.pending_commands;
+                    self.spawn_gate.capture(op, || {
+                        let index = pending
+                            .iter()
+                            .position(|message| match message {
+                                live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => *id == op,
+                                _ => false,
+                            })
+                            .expect("newly admitted spawn is still queued");
+                        pending.remove(index).expect("admitted queue entry")
+                    });
                 }
                 if superseding_scroll.is_some_and(|seat| self.ui_wait.as_ref().is_some_and(|wait| wait.effects.iter().any(|effect| matches!(effect, UiEffect::Scroll(_, target) if *target == seat)))) {
                     self.cancel_ui("ui_scroll_refused: superseded by admitted input/navigation");
@@ -4573,6 +4588,32 @@ impl App {
             self.answer_ui(id, self.last_ui_frame());
             return false;
         }
+        if let UiRequest::SpawnGate(command) = request {
+            let result = (|| {
+                // Fixture control preserves the pending UI action and reports
+                // the last completed frame, rather than predicting a new one.
+                let layout = self.last_ui_frame()?;
+                match command {
+                    bbt_proto::gui::UiSpawnGateCommand::Arm => {
+                        self.spawn_gate
+                            .arm(self.test_account)
+                            .map_err(str::to_owned)?;
+                    }
+                    bbt_proto::gui::UiSpawnGateCommand::Release { op } => {
+                        let message = self.spawn_gate
+                            .release(self.test_account, op)
+                            .map_err(str::to_owned)?;
+                        // Move the existing bounded reservation; never prepare
+                        // or admit a second launch for the release command.
+                        self.pending_commands.push_front(message);
+                        self.flush_commands();
+                    }
+                }
+                Ok(layout)
+            })();
+            self.answer_ui(id, result);
+            return false;
+        }
         self.cancel_ui("ui_frame_refused: a newer UI operation superseded this request");
         let sources = self.drain();
         self.dispatch_wake_sources(&sources);
@@ -4869,6 +4910,7 @@ impl App {
                 self.scroll_pane(seat, request.correlated(id));
             }
             UiRequest::Focus { .. }
+            | UiRequest::SpawnGate(_)
             | UiRequest::NotificationClick { .. }
             | UiRequest::Seats
             | UiRequest::Layout => {
