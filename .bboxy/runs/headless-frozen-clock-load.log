@@ -32,3 +32,10 @@ A newly chosen target path was stopped before tests (EXIT143 /97.939618s); lsof 
 Raw first author log: /Users/feral/.local/state/bboxy450-term/landing/presubmits/8d02be2c3c98c017763832ac735959b6ab7f022c-30808e91/commands.log
 Raw SHA-256: 893471b77e10c587dac8cd15ed2cff358f4478a8ff40b60b9abe3456bfcd0876
 Evidence: frozen-gap-target-correction.json; frozen-gap-control-stable.result.json; gap-snapshot-mutation-result.json; gap-restored-control.result.json. Restored corrected cargo test EXIT0 /6.023615s,1/0. Final author validation remains pending at the time of this commit.
+
+Final author result
+LANDED e8773b6676e681cf8e7e492e47ce11daa67f2e48 (good signature, ancestor of origin/main, exec3 clean). Corrected author command EXIT0; BUILD275.672673s/RUN217.851101s, total493.524357s, test execution132.259320s. Strict affected-crate Clippy0; fast invariants13/0,11slow and13unaffected checks skipped. Raw log contains331 passed test executions,0failed,3ignored (includes the invariant's exact repeated boundary check, not a unique-test count). Frozen-clock, selector cfg regression and corrected retained-gap test all pass together.
+Raw final log: /Users/feral/.local/state/bboxy450-term/landing/presubmits/e8773b6676e681cf8e7e492e47ce11daa67f2e48-7d2c44e0/commands.log
+SHA-256: 5b3ac6709a6e9b8ba09670f674f6262634c02f45b5e8126acd3c20180044adf9
+Capacity-only attempts exited75 and ran no checks. First admitted author check failed77 as recorded above; the corrected cut was then admitted and landed automatically. No full CI or web/native parity claim for this non-rendering cut. Compiler checks do not launch production custody.
+Evidence: frozen-final-proof.json; frozen-fixed-admitted-1.log; frozen-capacity-launcher-fixed.json. Other than the repaired336 row, quarantine entries remain unchanged. The broader327 sweep is still open; its333-entry runtime inventory and29 reviewed draft classifications are not a completed sweep.
