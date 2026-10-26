@@ -32,7 +32,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
 | L2 | `scripts/e2e/L2.sh` | full | — | Captured right/down/tab/space slots survive later keyboard focus before backend dispatch; exact starting/final rectangles, siblings, wrong/duplicate release refusals and original same-op replay |
 | L3 | `scripts/e2e/L3.sh` | full | harness: installed clients, scripted local model | App startup/launch preserves user config bytes; native MCP/plugin/skill consumption and exact hook recipe; each native write listed by path/cause; real zsh shell hooks and unchanged user zshrc |
-| L4 | `scripts/e2e/L4.sh` | partial | script not implemented: a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task | |
+| L4 | `scripts/e2e/L4.sh` | full | harness: installed clients; model: scripted localhost | Fresh delegated fixture tasks; native orient→report API result order, read-only MCP journals and seat/generation attribution; exact verification and one seat-authored report |
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
 | S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
 | S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; paging hitch meter | |
@@ -224,13 +224,13 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 ### L4
 
-**Promise:** a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task.
+**Promise:** a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task, proven with installed native clients against a scripted local model and app records showing both calls routed and attributed to the seat (0177a9cb). Real-model choices are advisory, never a verdict; the night holds no provider credentials.
 
-**Deterministic steps (plan):** `task create 'L4-H' --verify 'sh scripts/e2e/L4.sh'`, spawn a fresh H=claude,codex, delegate by #N, send a deterministic first-turn instruction, run prompt recipes if matched, wait for its report. Read the real bridge calls and task document rather than treating the assistant's text as evidence.
+**Script:** `scripts/e2e/L4.sh` and `first_turn.py` create one private task per installed native client with verify `true`, run that command independently, spawn the fresh seat and delegate by #N. The loopback model waits for the admitted delegation, then emits `orient`, `task_report` and a completion marker through the clients' real Messages/Responses protocols. It never calls the MCP bridge itself. Original launch overlays, bound PIDs and the private Codex runtime remain; Claude allows only the two bboxy tools and Codex uses the exact app-owned hook-review recipe shared with L3. No operator account/login, provider credentials, external model API or start nudge is needed.
 
-**Required assertions:** For each harness, first model turn includes successful orient then valid task_report for its assigned task; recorded scope seat/generation matches launch, verify_result.command exactly matches task.verify, exit_code0. Script independently checks effects.
+**Required assertions:** For each fresh generation-1 seat, the first native API sequence is orient→report→completion; the report request cannot be emitted until that client returns the orient tool result, and completion requires its report tool result. Read-only `ctl debug journal seat/<id>/<op>` must show both successful calls with the exact bound seat, generation and executor role, and orient must include the assigned task ID. `ctl task status` must show one report attributed to `seat:<id>`, the exact operation, `verify_result.command == task.verify == true` and the independently observed exit 0. The native completion output is inspected, but no model text supplies the verdict. Later completion-only responses to the queued delegation introduce no extra tool call.
 
-**Gaps at baseline afff4758:** recipe run/detect, read-only bridge/turn journal, task report/status collection exposed to ctl; own harness login provisioning. No self-report can supply the missing first-turn/call-order evidence.
+**Evidence boundary:** Model choices are scripted, explicitly in the coverage header; judgement and intuitiveness remain advisory under 0177a9cb. API observations record result IDs and request hashes only, never authorization headers or message bodies. Native transcripts and task/journal proof stay in the private run; compact call/seat/report evidence enters the night output. GUI EventsRead intentionally excludes private control audits, so the script uses the existing read-only journal plus actual native API result ordering rather than widening that port.
 
 **Baseline pointers:** ctl.rs:1817; proto/messaging.rs:480; mcp/journal.rs:120; e2e-acceptance.md:4a.
 

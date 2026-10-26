@@ -31,7 +31,7 @@ base = "http://127.0.0.1:" + str(port)
 # client explicitly; recursively invoking this wrapper would prove nothing.
 wrapper = Path(__file__).with_name("L3.fixture-bin").resolve()
 search = os.pathsep.join(p for p in os.get_exec_path()
-                         if Path(p).resolve() != wrapper and Path(p).name != "L3.fixture-bin")
+                         if Path(p).resolve() != wrapper and not Path(p).name.endswith(".fixture-bin"))
 executable = shutil.which(kind, path=search)
 assert executable, "installed native client unavailable: " + kind
 assert Path(executable).resolve().parent != wrapper
@@ -47,14 +47,20 @@ for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENAI_API_KEY",
             "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"):
     env.pop(key, None)
 env.update(DISABLE_AUTOUPDATER="1", CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1")
+first_turn = config.get("first_turn", False)
+assert isinstance(first_turn, bool)
+prompt = ("Orient, report the assigned L4 fixture task, then reply L4_NATIVE_OK."
+          if first_turn else "Reply L3_NATIVE_OK. Use no tools.")
 
 if kind == "claude":
     env.update(ANTHROPIC_BASE_URL=base,
                ANTHROPIC_AUTH_TOKEN="throwaway-local-fixture-only",
                ANTHROPIC_MODEL="claude-sonnet-4-6", ENABLE_TOOL_SEARCH="false")
+    allowed = ["mcp__bboxy__orient"]
+    if first_turn:
+        allowed.append("mcp__bboxy__task_report")
     args += ["-p", "--verbose", "--output-format", "stream-json",
-             "--permission-mode", "dontAsk", "--allowedTools", "mcp__bboxy__orient",
-             "--", "Reply L3_NATIVE_OK. Use no tools."]
+             "--permission-mode", "dontAsk", "--allowedTools", *allowed, "--", prompt]
     # Preserve the native seat PID: exec, rather than a wrapper-owned subprocess.
     output = work / (os.environ["BBOXY_SEAT_ID"] + ".native.jsonl")
     fd = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -73,6 +79,6 @@ else:
     ]:
         args += ["-c", value]
     if not runtime:
-        args += ["--no-alt-screen", "--", "Reply L3_NATIVE_OK. Use no tools."]
+        args += ["--no-alt-screen", "--", prompt]
 
 os.execve(executable, [executable, *args], env)

@@ -155,10 +155,8 @@ def native_claude():
                 plugin=plugin, hook=hook, turns=done["num_turns"])
 
 
-def native_codex():
-    seat = ctl("seat", "spawn", "codex", "--role", "executor", "--place", "tab",
-               "--cwd", str(WORK), "--name", "L3 native Codex")['data']['seat']
-    ctl("seat", "wait", seat, "--text", "Hooks need review|Ask Codex to do anything|" + MARKER,
+def approve_codex_hooks(seat, marker=MARKER, prefix="l3"):
+    ctl("seat", "wait", seat, "--text", "Hooks need review|Ask Codex to do anything|" + marker,
         "--timeout", "30000")
     screen = ctl("seat", "screen", seat)["data"]
     approved = False
@@ -171,10 +169,17 @@ def native_codex():
         assert count and int(count[1]) == len(expected) == 10, (plain, expected)
         assert "2. Trust all and continue" in plain, plain
         assert not (WORK / ".codex").exists(), "unexpected repository hook source"
-        (WORK / "l3-codex-hook-review.txt").write_text(plain)
-        (WORK / "l3-codex-expected-hooks.jsonl").write_text("\n".join(expected) + "\n")
+        (WORK / (prefix + "-codex-hook-review.txt")).write_text(plain)
+        (WORK / (prefix + "-codex-expected-hooks.jsonl")).write_text("\n".join(expected) + "\n")
         ctl("seat", "key", seat, "down", "enter")
         approved = True
+    return approved
+
+
+def native_codex():
+    seat = ctl("seat", "spawn", "codex", "--role", "executor", "--place", "tab",
+               "--cwd", str(WORK), "--name", "L3 native Codex")['data']['seat']
+    approved = approve_codex_hooks(seat)
     screen = until(lambda: ctl("seat", "screen", seat)["data"],
                    lambda x: json.dumps(x).count(MARKER) >= 2, "native Codex result")
     # The native runtime's Reported observation outranks a Shim observation;
