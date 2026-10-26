@@ -3,7 +3,7 @@
     "Oracle fe4a93ae",
     "Oracle aa40e0a9"
   ],
-  "status": "actual Codex and actual Claude Code terminal9/9 green on matching binary; fixture5/0; author admission pending",
+  "status": "LANDED; author checks green; postsubmit and Oracle acceptance unverified",
   "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
   "mechanisms": [
     "crates/bboxy450-term/src/e2e_night.rs \u2014 isolated_command calls env_clear and copies only PATH/TERM/POSIX locale/TMPDIR before setting private HOME, CLAUDE_CONFIG_DIR and CODEX_HOME",
@@ -586,5 +586,554 @@
     "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-env-20261026/target",
     "lsof_exit": 1,
     "allocated_bytes_retired": 1384906752
+  },
+  "landing": {
+    "affected": [
+      "bboxy450-term"
+    ],
+    "author": "bboxy450@gmail.com",
+    "author_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "base": "6a48d1444a5e0f137bb455628e9b1dcc6e3d8748",
+    "branch": "aster-night-env",
+    "build_attempts": 1,
+    "check_timings": [
+      {
+        "affected": [
+          "bboxy450-term"
+        ],
+        "compile_seconds": 433.22507383400807,
+        "gate_log": null,
+        "gate_log_sha256": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/e2398084a47cb4becfb06cfe80a47f60342ec83f-462ecda2/commands.log",
+        "recheck": null,
+        "run_seconds": 144.7485100409831,
+        "sha": "e2398084a47cb4becfb06cfe80a47f60342ec83f",
+        "test_seconds": 122.14846516388934,
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 22.60004487709375
+      }
+    ],
+    "commands": [
+      {
+        "argv": [
+          "sh",
+          "scripts/quarantine-test.sh",
+          "--locked",
+          "-p",
+          "bboxy450-term"
+        ],
+        "tools": [
+          "scripts/quarantine-test.sh",
+          "scripts/quarantine.py"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term"
+        ],
+        "tools": [
+          "scripts/invariants.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "bboxy450-prefix"
+        ],
+        "tools": [
+          "scripts/brand.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "cross-os-facade"
+        ],
+        "tools": [
+          "scripts/cross-os.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "images-resolve"
+        ],
+        "tools": [
+          "scripts/images.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "kill-only-own-pids"
+        ],
+        "tools": [
+          "scripts/kill-own-pids.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "layering"
+        ],
+        "tools": [
+          "scripts/layering.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "licenses-present"
+        ],
+        "tools": [
+          "scripts/licenses.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "local-first"
+        ],
+        "tools": [
+          "scripts/local-first.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "never-block-swarm"
+        ],
+        "tools": [
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "no-chokepoints"
+        ],
+        "tools": [
+          "scripts/cross-os.sh",
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "no-copyleft-deps"
+        ],
+        "tools": [
+          "scripts/deps-licences.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "bboxy450-term",
+          "ui-never-waits"
+        ],
+        "tools": [
+          "scripts/ui-lint.sh"
+        ]
+      }
+    ],
+    "compile_seconds": 433.22507383400807,
+    "incremental_rechecks": 0,
+    "paths": [
+      ".bboxy/runs/night-env-isolation.json",
+      "crates/bboxy450-term/src/e2e_night.rs"
+    ],
+    "presubmit_seconds": 585.7907135420246,
+    "retries": 0,
+    "run_seconds": 144.7485100409831,
+    "sha": "e2398084a47cb4becfb06cfe80a47f60342ec83f",
+    "test_seconds": 122.14846516388934,
+    "tested_sha": "e2398084a47cb4becfb06cfe80a47f60342ec83f",
+    "tests_started": true,
+    "tier": "code",
+    "timestamp": "2026-10-26T20:28:12.348398+00:00",
+    "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+    "unclassified_seconds": 22.60004487709375
+  },
+  "author": {
+    "exit": 0,
+    "seconds": 599.070937871933,
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/night-env-author-capacity.log",
+    "log_sha256": "b0c432554f83f5dca68ac223b9d80b00d46d2074e8328e7499af279a554de92d",
+    "presubmits": [
+      {
+        "affected": [
+          "bboxy450-term"
+        ],
+        "attempt": 0,
+        "binary_durations": [
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/bboxy450_term-1f3b7500d39c550f",
+            "over_60s": false,
+            "seconds": 0.21
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/bboxy450_term-6abfc665729fb828",
+            "over_60s": false,
+            "seconds": 0.43
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/cockpit-81df191e7afb79c3",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/ctl-1e0c675f539958f6",
+            "over_60s": false,
+            "seconds": 55.45
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/ctl_records-61934613cef111d5",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/custody-a8ee0b4870ece200",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/documents-15d9b14475796e3c",
+            "over_60s": false,
+            "seconds": 0.01
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/e2e_night-a679cbe975adfc30",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/headless-24843629b26dc5ec",
+            "over_60s": false,
+            "seconds": 0.49
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/hosts-78ef1a563ae36386",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/knowledge_e2e-a00b3cba2bd185ed",
+            "over_60s": false,
+            "seconds": 3.88
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/launcher-140e269757894dad",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/lifecycle-04c90717faddb573",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/messaging_flow-9c645eb5ec6c1680",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/messaging_ui-ef7f83bc6d636fb5",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/native_signing-d95ec0f75a1c45e5",
+            "over_60s": false,
+            "seconds": 0.49
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/plugins-9693c1b383015480",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/r5_stall-ce6dbe6cf6064059",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/recovery-033262c3898be5c9",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/scrollback-3d3ada0865b96ba6",
+            "over_60s": false,
+            "seconds": 0.06
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/settings-3cbfea04d5c21975",
+            "over_60s": false,
+            "seconds": 0.05
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/test_account-6b8e2daeb8b26040",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "doc-tests:bboxy450_term",
+            "over_60s": false,
+            "seconds": 0.0
+          },
+          {
+            "binary": "/private/tmp/bboxy450-gate-slot-2/target/debug/deps/ctl-1e0c675f539958f6",
+            "over_60s": false,
+            "seconds": 54.14
+          }
+        ],
+        "build_cap_seconds": 1800.0,
+        "commands": [
+          {
+            "argv": [
+              "sh",
+              "scripts/quarantine-test.sh",
+              "--locked",
+              "-p",
+              "bboxy450-term"
+            ],
+            "tools": [
+              "scripts/quarantine-test.sh",
+              "scripts/quarantine.py"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term"
+            ],
+            "tools": [
+              "scripts/invariants.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "bboxy450-prefix"
+            ],
+            "tools": [
+              "scripts/brand.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "cross-os-facade"
+            ],
+            "tools": [
+              "scripts/cross-os.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "images-resolve"
+            ],
+            "tools": [
+              "scripts/images.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "kill-only-own-pids"
+            ],
+            "tools": [
+              "scripts/kill-own-pids.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "layering"
+            ],
+            "tools": [
+              "scripts/layering.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "licenses-present"
+            ],
+            "tools": [
+              "scripts/licenses.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "local-first"
+            ],
+            "tools": [
+              "scripts/local-first.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "never-block-swarm"
+            ],
+            "tools": [
+              "scripts/never-block.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "no-chokepoints"
+            ],
+            "tools": [
+              "scripts/cross-os.sh",
+              "scripts/never-block.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "no-copyleft-deps"
+            ],
+            "tools": [
+              "scripts/deps-licences.sh"
+            ]
+          },
+          {
+            "argv": [
+              "sh",
+              "scripts/invariants.sh",
+              "--affected",
+              "bboxy450-term",
+              "ui-never-waits"
+            ],
+            "tools": [
+              "scripts/ui-lint.sh"
+            ]
+          }
+        ],
+        "compile_seconds": 433.22507383400807,
+        "error": null,
+        "exit": 0,
+        "finding": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/e2398084a47cb4becfb06cfe80a47f60342ec83f-462ecda2/commands.log",
+        "operation": "5a433e72b30e48fca2344b4575937b8b",
+        "run_bound_seconds": 900.0,
+        "run_seconds": 144.7485100409831,
+        "seconds": 577.9741775420262,
+        "sha": "e2398084a47cb4becfb06cfe80a47f60342ec83f",
+        "test_seconds": 122.14846516388934,
+        "tests_started": true,
+        "tier": "code",
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 22.60004487709375,
+        "verdict": "green",
+        "log_sha256": "62bc67ade2d844deae29879d5191be69d30e6171b3f61d39f893c50b6fc3dcd5",
+        "rust_summaries": [
+          "test result: ok. 106 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s",
+          "test result: ok. 132 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.43s",
+          "test result: ok. 0 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 55.45s",
+          "test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 4 passed; 0 failed; 21 ignored; 0 measured; 0 filtered out; finished in 0.49s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.88s",
+          "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+          "test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 54.14s"
+        ],
+        "fixture_summaries": [
+          "invariants: 14 checks, 0 failures, 11 slow checks skipped"
+        ]
+      }
+    ]
   }
 }
