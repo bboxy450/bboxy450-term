@@ -3,7 +3,7 @@ id: "01M5VZ9QAFFKTBGQ7779KC225Y"
 type: "task"
 number: 343
 title: "MA-9: unattended event, DM and fifty-message digest-cap proof"
-status: "claimed"
+status: "reported"
 role: "executor"
 owner: "Kestrel Voidwing"
 verify: "bboxy450-term e2e night --group 'messaging and tasks'"
@@ -12,7 +12,7 @@ links:
   - { to: "[[notices-never-wake]]", rel: invariant }
   - { to: "[[e2e-acceptance]]", rel: acceptance }
 created: "2026-10-26T11:24:58Z"
-updated: "2026-10-26T11:24:58Z"
+updated: "2026-10-26T12:38:11Z"
 ---
 # MA-9 attention night
 
@@ -33,3 +33,7 @@ Assigned by Vesper in `99edc18d-9d85-47d3-992d-ad0a6b97e213`; product priority r
 5. Land through `scripts/land.sh`; retain command exits, raw-log hashes, exact native request/receipt evidence and any uncovered clause. One author validation, no separate precheck or full gate.
 
 Overlap: `scripts/overlap.sh` is absent on the starting main; read-only tracked-diff checks of exec3/4/6, Nyx and Rook found no in-flight overlap in these paths. Rebase any later shared count/map edits.
+
+## Report
+
+Implementation landed through land.sh at `a345fdc0`. Canonical messaging night passed all seven scripts; M7 is full, the group amber only for prior partial M1/M3/M5/M6. Author checks: selected Rust969/0, strict Clippy0, invariants24/0, geometry87/87 with0mismatches; one unchanged icon advisory. Exact commands, exits, hashes, original fixture failures and private evidence paths: `.bboxy/runs/ma9-attention-night.log`. Postsubmit acceptance remains the Oracle's review.
