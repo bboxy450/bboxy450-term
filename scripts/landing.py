@@ -474,8 +474,8 @@ def presubmit(base):
     clean_source(root)
     data = affected(base + "..HEAD", root=root)
     if data["tier"] == "wide":
-        with Slot():
-            return wide_check(root, data)["exit"]
+        with Slot() as slot:
+            return slot.result(wide_check(root, data)["exit"])
     options = fixture_options()
     legacy = options.get("timeout_seconds")
     if legacy is not None and (not math.isfinite(float(legacy)) or not 0 < float(legacy) <= 900):
@@ -794,12 +794,25 @@ def remove_slot(path, root):
     path.rmdir()
 
 
+def slot_notice(text):
+    # An unavailable messenger never owns capacity or changes the command's verdict.
+    try:
+        subprocess.run(["icq", "send", "#bboxy450-term", text], stdin=subprocess.DEVNULL,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=1, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
 class Slot:
     def __init__(self, label="land", preferred=None):
         self.path = None
         self.number = None
         self.token = uuid.uuid4().hex
         self.root = repository()
+        self.sha = git("rev-parse", "HEAD", cwd=self.root)
+        self.return_code = 0
+        self.release_notified = False
         self.label, self.preferred = label, preferred
         self.previous_environment = {}
 
@@ -842,18 +855,32 @@ class Slot:
                       "BBOXY_GATE_SLOT_OWNER": str(os.getpid())}
             self.previous_environment = {k: os.environ.get(k) for k in values}
             os.environ.update(values)
+            slot_notice(f"SLOT {number} TAKEN {os.getpid()} {self.sha}")
             print(f"{self.label}: {'gate ' if self.label == 'ci-local' else ''}slot {number} of {limit}", flush=True)
             return self
         raise Refusal(f"all {limit} slots are taken", 75)
 
-    def __exit__(self, *unused):
+    def result(self, code):
+        self.return_code = code
+        return code
+
+    def __exit__(self, kind, error, traceback):
+        code = self.return_code if error is None else getattr(error, "code", 130 if isinstance(error, KeyboardInterrupt) else 1)
+        if not isinstance(code, int):
+            code = 1
         try:
             if self.path is not None:
                 with slot_guard(self.path, blocking=True):
                     data = json.loads((self.path / "owner.json").read_text())
                     if data.get("token") == self.token and data.get("pid") == os.getpid():
                         remove_slot(self.path, self.root)
+        except BaseException as cleanup_error:
+            code = getattr(cleanup_error, "code", 1)
+            raise
         finally:
+            if self.path is not None and not self.release_notified:
+                self.release_notified = True
+                slot_notice(f"SLOT {self.number} RELEASED {os.getpid()} {code}")
             for key, value in self.previous_environment.items():
                 if value is None:
                     os.environ.pop(key, None)
@@ -910,11 +937,11 @@ def ci_local(arguments):
     ledger_origin(root)
     clean_source(root)
     sha = git("rev-parse", "HEAD", cwd=root)
-    with Slot("ci-local"):
+    with Slot("ci-local") as slot:
         tree, environment = candidate_environment(root, sha)
         environment["BBOXY_GATE_SLOT"] = "none"
-        return command(["sh", "scripts/ci-local.sh", *arguments], cwd=tree,
-                       env=environment, capture=False, check=False).returncode
+        return slot.result(command(["sh", "scripts/ci-local.sh", *arguments], cwd=tree,
+                                   env=environment, capture=False, check=False).returncode)
 
 
 def announcement(sha, subject):
