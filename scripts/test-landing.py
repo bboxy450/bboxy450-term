@@ -324,6 +324,21 @@ class AffectedTests(unittest.TestCase):
         self.assertEqual(result["affected"], ["a", "b", "c"])
         self.assertEqual(result["parity"], "yes")
 
+    def test_packaged_input_copy_keeps_its_canonical_source_native(self):
+        self.repo.write("lab/web/fixture.json", "{}\n")
+        self.repo.write("crates/b/release-inputs/lab/web/fixture.json", "{}\n")
+        self.repo.base = self.repo.commit("Fixture packaged source input")
+        check = SOURCE.with_name("release-inputs.py")
+        self.assertEqual(subprocess.run([sys.executable, "-I", check, self.repo.root],
+                                       capture_output=True).returncode, 0)
+        result = self.changed("lab/web/fixture.json")
+        self.assertEqual(result["native_inputs"], ["b"])
+        self.assertEqual(result["affected"], ["b", "c"])
+        failed = subprocess.run([sys.executable, "-I", check, self.repo.root],
+                                capture_output=True, text=True)
+        self.assertEqual(failed.returncode, 1)
+        self.assertIn("crates/b/release-inputs/lab/web/fixture.json differs", failed.stderr)
+
     def test_rust_include_concat_and_raw_paths_identify_only_real_consumers(self):
         self.repo.write("crates/b/src/lib.rs", 'pub const IMAGE:&[u8]=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../lab/web/bboxy.png"));\n')
         self.repo.write("crates/c/src/lib.rs", 'pub const UI:&str=include_str!(r"../../../lab/web/ui.js");\n')

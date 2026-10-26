@@ -34,3 +34,16 @@ Core retains Apache-2.0 and its vendored notices; the other packages use MIT OR 
 ## Release artifacts
 
 Run `cargo package --workspace --locked` from a clean signed source. Cargo verifies the unpublished sibling cohort through its temporary registry. Bind every archive to its source commit and SHA-256, sign each `.crate` with the release key, and verify the signed release tag and detached signatures. Publishing, registry login and remote tag publication are performed by the release operator.
+
+## Bundled inputs
+
+The `release-inputs/` subtree keeps each canonical repository path. The fast
+`packaged-inputs-current` invariant compares every copy byte for byte, and the
+native-input derivation in `scripts/landing.py` selects each owning crate when
+its canonical source changes.
+
+| Crate | Canonical inputs under `release-inputs/` |
+|---|---|
+| `bboxy450-ui-core` | `design/tokens.toml`, `design/style.json` |
+| `bboxy450-term` | `lab/web/components.js`, `lab/web/bboxy.png`, `.bboxy/specs/e2e-acceptance.md`, `crates/bbt-ui-model/tests/fixtures/scene15.json` |
+| `bboxy450-book` | `lab/web/components.js`, `lab/web/bboxy.png`, `crates/bbt-proto/src/seat_names.json`, `crates/bbt-ui-model/tests/fixtures/scene15.json` |
