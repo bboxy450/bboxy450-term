@@ -1805,6 +1805,7 @@ struct App {
     ctl_captures: Vec<live::CaptureAsk>,
     ctl_focus: bboxy450_term::focus_ack::Pending,
     ui_observe: bool,
+    frame_observations: bboxy450_term::frame_observation::Frames,
     ui_frame: Option<(u64, Result<bbt_proto::gui::UiLayout, String>)>,
     ui_wait: Option<UiWait>,
     ui_focus: Option<bbt_mux::Ulid>,
@@ -1974,6 +1975,7 @@ impl App {
             ctl_captures: Vec::new(),
             ctl_focus: Default::default(),
             ui_observe: args.iter().any(|arg| arg == "--ctl"),
+            frame_observations: Default::default(),
             ui_frame: None,
             ui_wait: None,
             ui_focus: None,
@@ -4010,6 +4012,9 @@ impl App {
         drop(latest_measurement);
         let received_at = bbt_rt::diagnostics::now();
         if let Some(state) = state {
+            if self.ui_observe {
+                self.frame_observations.ingest(&state);
+            }
             if self.starting.observe(&state) {
                 self.starting_changed();
             }
@@ -5009,6 +5014,7 @@ impl App {
             scale,
             self.verify.grid_size,
         );
+        let mut terminal_text = 16 * 1024;
         let panes = self
             .pane_bounds
             .iter()
@@ -5023,6 +5029,9 @@ impl App {
                     scroll: model
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
+                    rendered: model.prepared_screens.get(seat).and_then(|source| {
+                        self.frame_observations.read(*seat, source, &mut terminal_text)
+                    }),
                 })
             })
             .collect();
@@ -5445,7 +5454,6 @@ impl App {
             vec![]
         };
         phases.draw = start.elapsed();
-        let ui_frame = self.ui_observe.then(|| self.ui_layout(logical, &layouts));
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -5550,7 +5558,14 @@ impl App {
             }
             self.last_presented = Some(std::time::SystemTime::now());
             self.starting_produced(self.meter.total_frames(), &layouts);
-            if let Some(layout) = ui_frame {
+            if self.ui_observe {
+                if let Some(model) = &self.live_state {
+                    self.frame_observations.produced(
+                        self.meter.total_frames(), model,
+                        self.pane_bounds.iter().map(|(seat, _)| *seat),
+                    );
+                }
+                let layout = self.ui_layout(logical, &layouts);
                 self.present_ui(self.meter.total_frames(), layout);
             }
             if !self.app_ready_sent

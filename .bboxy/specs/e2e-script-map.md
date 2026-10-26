@@ -21,7 +21,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | ID | script | coverage | missing | tracked-by |
 |---|---|---|---|---|
 | T1 | `scripts/e2e/T1.sh` | full | — | |
-| T2 | `scripts/e2e/T2.sh` | partial | the echo appears within one frame; the 100 kB paste compared in full (the script truncates the received copy, so extra bytes pass) | |
+| T2 | `scripts/e2e/T2.sh` | full | — | |
 | T3 | `scripts/e2e/T3.sh` | partial | resizing a pane (only the window is resized); no stale cells after the redraw | |
 | T4 | `scripts/e2e/T4.sh` | partial | wide glyphs and emoji align to the grid (cell widths and continuations are not read); colours other than red | |
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |

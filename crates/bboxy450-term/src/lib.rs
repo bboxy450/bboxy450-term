@@ -7,6 +7,7 @@ pub mod ctl;
 pub mod documents;
 pub mod e2e_night;
 pub mod focus_ack;
+pub mod frame_observation;
 pub mod grids;
 pub mod hosts;
 pub mod keyboard;

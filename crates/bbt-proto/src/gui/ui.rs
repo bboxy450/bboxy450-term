@@ -349,6 +349,32 @@ pub struct UiPane {
     pub focused: bool,
     #[serde(default)]
     pub scroll: UiScrollPosition,
+    /// The exact live grid encoded in this produced frame; absent for old hosts,
+    /// unavailable grids and historical displays. This is not a logic screen read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rendered: Option<UiRenderedScreen>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiRenderedScreen {
+    pub view: crate::View,
+    pub sequence: u64,
+    /// Omitted when the shared text budget cannot hold the complete grid.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lines: Option<Vec<String>>,
+    pub ingested: UiScreenIngestion,
+}
+
+/// UI-owner ingestion, counted against successful frame submissions. The first
+/// frame keeps the source it actually drew even if a later frame catches up.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiScreenIngestion {
+    pub view: crate::View,
+    pub sequence: u64,
+    pub after_frame_seq: u64,
+    pub first_frame_seq: u64,
+    pub first_drawn_view: crate::View,
+    pub first_drawn_sequence: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

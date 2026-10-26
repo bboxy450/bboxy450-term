@@ -126,6 +126,33 @@ fn await_value(fixture: &Fixture, mut read: impl FnMut() -> Option<Value>) -> Va
     }
 }
 
+// keeps: spec e2e-acceptance T2 (one-frame echo and exact full paste)
+#[test]
+#[ignore = "night: real GPU/PTY boundary, test-policy #327 B2"]
+fn terminal_input_echo_frame_and_full_paste_use_a_private_account() {
+    let mut f = Fixture::new();
+    let account = f.root.path().join("t2-account");
+    f.run = account.join("run");
+    let started = f.ok(&[
+        "app", "start", "--headless", "--ctl", "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    f.pid = started["data"]["pid"].as_u64().map(|pid| pid as u32);
+    assert_eq!(started["data"]["custody_backend"], "file");
+    assert_eq!(started["data"]["windows"], 0);
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../scripts/e2e/T2.sh");
+    let out = Command::new("sh").arg(script)
+        .env("BBT", BIN).env("BBOXY_RUN_DIR", &f.run)
+        .env("E2E_WORK", f.root.path().join("work"))
+        .env("BBOXY_CTL_ISSUER", "test-account:t2")
+        .current_dir(f.root.path()).stdin(Stdio::null()).output().unwrap();
+    assert!(out.status.success(), "{}\n{}\n{}",
+        String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr), f.log());
+    f.ok(&["app", "stop"]);
+    f.wait_stopped();
+}
+
 // keeps: spec ctl-cli §1a (operator placement receipt)
 #[test]
 #[ignore = "night: real GUI/process boundary, test-policy #327 B2"]

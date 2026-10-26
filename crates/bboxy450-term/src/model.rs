@@ -11,7 +11,7 @@ use bbt_core::{
 };
 use bbt_mux::Ulid;
 use bbt_proto::events::{EventGap, GuiEventCursor, GuiEventPage, GuiEventPayload, GuiEventRecord};
-use bbt_proto::{GuiSeat, Screen, SeatId, SeatRecord, SeatState, registry};
+use bbt_proto::{GuiSeat, Screen, SeatId, SeatRecord, SeatState, View, registry};
 use bbt_render::{
     cells::terminal::{
         self, Cell, Cursor, CursorShape, Grid, PreparedGrid, TerminalRenderer, Underline,
@@ -502,12 +502,15 @@ pub struct Model {
     pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
+    pub screen_baselines: BTreeMap<SeatId, (View, u64)>,
     pub subtitles: BTreeMap<SeatId, String>,
     /// Historical display only. Live modes, replicas and acknowledgements keep
     /// using screens; the UI never owns a history parser or a fetched page.
     pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
     pub scroll: Arc<crate::scrollback::Readback>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
+    /// Provenance from the same screen used to prepare each cached grid.
+    pub prepared_screens: BTreeMap<SeatId, PreparedScreen>,
     pub states: BTreeMap<SeatId, SeatState>,
     /// Signing holds affect messaging, never whether terminal panes stay live.
     pub identity: Option<bbt_proto::GuiIdentity>,
@@ -537,10 +540,12 @@ impl Default for Model {
             messaging_deferred: BTreeMap::new(),
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
+            screen_baselines: BTreeMap::new(),
             subtitles: BTreeMap::new(),
             history: BTreeMap::new(),
             scroll: Arc::default(),
             frames: BTreeMap::new(),
+            prepared_screens: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
             custody_reply: None,
@@ -1150,11 +1155,16 @@ fn build_with_clock(
         messaging_deferred: previous.messaging_deferred.clone(),
         hosts: previous.hosts.clone(),
         ui: model,
+        screen_baselines: screens
+            .keys()
+            .filter_map(|seat| grids.baseline(*seat).map(|baseline| (*seat, baseline)))
+            .collect(),
         screens,
         subtitles,
         history,
         scroll: previous.scroll.clone(),
         frames,
+        prepared_screens: BTreeMap::new(),
         states,
         identity: previous.identity.clone(),
         custody_reply: previous.custody_reply.clone(),
@@ -1197,6 +1207,13 @@ fn split(ids: &[SeatId]) -> ui::SplitNode {
     )
 }
 
+#[derive(Clone)]
+pub struct PreparedScreen {
+    pub screen: Arc<Screen>,
+    /// Historical screens have no live capture cursor.
+    pub baseline: Option<(View, u64)>,
+}
+
 struct CachedPane {
     screen: Arc<Screen>,
     focused: bool,
@@ -1234,6 +1251,7 @@ impl PanePreparer {
             .retain(|seat, _| model.screens.contains_key(seat));
         let theme = model.ui.window.theme;
         let mut frames = BTreeMap::new();
+        let mut prepared_screens = BTreeMap::new();
         for (&seat, screen) in &model.screens {
             let screen = model
                 .history
@@ -1257,8 +1275,18 @@ impl PanePreparer {
                 );
             }
             frames.insert(seat, self.cached[&seat].frame.clone());
+            prepared_screens.insert(
+                seat,
+                PreparedScreen {
+                    screen: self.cached[&seat].screen.clone(),
+                    baseline: (!model.history.contains_key(&seat))
+                        .then(|| model.screen_baselines.get(&seat).copied())
+                        .flatten(),
+                },
+            );
         }
         model.frames = frames;
+        model.prepared_screens = prepared_screens;
         measurement.finish(model.screens.len() as u64, 0);
         Ok(())
     }

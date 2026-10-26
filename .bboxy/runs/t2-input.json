@@ -1,0 +1,287 @@
+{
+  "task": "T2 terminal input and full paste",
+  "base": "e61afaef3003a61562e34adabf55666b81e0a441",
+  "ruling": "Corvin da57ce56 / ICQ 43a22115-6e6b-49ca-b226-c0a5b645a374: first frame after GUI screen-sequence ingestion draws that sequence or later; no input-admission receipt",
+  "status": "focused functional and frame assertions held; author landing and postsubmit acceptance pending",
+  "mechanisms": [
+    "model.rs PreparedScreen pairs the cached PreparedGrid with its exact screen and live View/sequence; historical display has no live cursor claim",
+    "frame_observation.rs Frames::ingest observes the GUI-owner publication; produced records only successful frame submissions and retains the first actual drawn source",
+    "main.rs drain and native submit use the same observer as headless.rs; UiPane.rendered is sent through the existing produced-frame relay",
+    "UiPane.rendered lines are all-or-absent under a shared 16 KiB budget; ordinary seat screen remains unchanged",
+    "t2_input.py receiver opens no expected source: it reads actual typed bytes and a single raw bracketed-paste transaction from its own real PTY",
+    "T2.sh has no readiness sleep, extra Enter/Ctrl-D, or truncating comparison; its full coverage header matches e2e-script-map"
+  ],
+  "baseline_false_positive": {
+    "root": "/private/tmp/at2-jm4ncb63",
+    "script_exit": 0,
+    "expected_bytes": 100000,
+    "received_bytes": 100001,
+    "prefix_equal": true,
+    "exact_equal": false,
+    "extra_hex": "0a",
+    "expected_sha256": "9b759f39ceeaa6747776806572b38e7366936f962b4ac0c45bd88d24acaa3118",
+    "received_sha256": "c11b16df6f7183a66bb98eea5c358f3bd832d3ec01ac8dde015787b32158044f",
+    "mechanism": "the old recipe explicitly pressed Enter after paste and compared only the first 100000 received bytes"
+  },
+  "retained_e2e": {
+    "root": "/private/tmp/at2-b5lpbklf",
+    "result": {
+      "root": "/private/tmp/at2-b5lpbklf",
+      "script": "scripts/e2e/T2.sh",
+      "startup": {
+        "backend_ready": true,
+        "close": null,
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 1,
+        "generation": 1,
+        "gui_ready": true,
+        "mode": "headless",
+        "pid": 22381,
+        "run_dir": "/private/tmp/at2-b5lpbklf/run",
+        "running": true,
+        "unattended": true,
+        "windows": 0
+      },
+      "exit": 0,
+      "seconds": 2.0765082836151123,
+      "stopped": {
+        "backend_ready": false,
+        "close": {
+          "complete": true,
+          "grace": [],
+          "notices": [],
+          "omitted": {
+            "grace": 0,
+            "notices": 0,
+            "slots": 0,
+            "truncated_notices": 0
+          },
+          "slots": [
+            {
+              "seat": "01M5VSQQS3F5GPTPGJW3SCMZFV",
+              "swarm": "01M5VSQQRMGXWKMZ81FYGPRQJP",
+              "tab": "01M5VSQQRM23YEDSWZTA467Z4F"
+            }
+          ]
+        },
+        "custody_backend": "file",
+        "events_ready": false,
+        "frame_seq": 63,
+        "generation": 1,
+        "gui_ready": false,
+        "mode": "headless",
+        "running": false,
+        "unattended": true,
+        "windows": 0
+      }
+    },
+    "frame_seq": 57,
+    "rendered_sequence": 7,
+    "ingestion": {
+      "after_frame_seq": 56,
+      "first_drawn_sequence": 7,
+      "first_drawn_view": {
+        "generation": 1,
+        "seat": "01M5VSQQS3F5GPTPGJW3SCMZFV",
+        "view_generation": "01M5VSQR2N853G5QGYKK3ZXDNS"
+      },
+      "first_frame_seq": 57,
+      "sequence": 7,
+      "view": {
+        "generation": 1,
+        "seat": "01M5VSQQS3F5GPTPGJW3SCMZFV",
+        "view_generation": "01M5VSQR2N853G5QGYKK3ZXDNS"
+      }
+    },
+    "echo_drawn": true,
+    "receiver": {
+      "typed_bytes": 22,
+      "paste_bytes": 100000,
+      "sha256": "9b759f39ceeaa6747776806572b38e7366936f962b4ac0c45bd88d24acaa3118",
+      "pid": 22417,
+      "tty": "/dev/ttys024"
+    },
+    "exact_full_equal": true,
+    "calls_sha256": "21694fb3dbc35b9d66ad1f50c89b246e4f820693dff59af8f45548def62e0d87",
+    "frame_reply_sha256": "fdfed4f35bf0e8156fd8f7f4e70bf67506e1c16182744b42c68c2090b79ed748"
+  },
+  "checks": [
+    {
+      "name": "check",
+      "argv": [
+        "cargo",
+        "check",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets"
+      ],
+      "exit": 0,
+      "seconds": 66.46395206451416,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/check.log",
+      "log_sha256": "0738b488bf67a973a38a1e8a216d726c0eda0adc9dc764fe0064ed9e54c5319f"
+    },
+    {
+      "name": "focused",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "frame_observation",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 136.03695678710938,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/focused.log",
+      "log_sha256": "7161a6a038bbf17847b371e003f364b338459161b7039629170aa303b6a9f6f0"
+    },
+    {
+      "name": "native",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "terminal_input_echo_frame_and_full_paste_use_a_private_account",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 43.35295581817627,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/native.log",
+      "log_sha256": "b0d253e5699f8e4ac9f2f8fefacb4128b5dd6bd79ccd9cacea3d379522587649"
+    },
+    {
+      "name": "strict",
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-proto",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 29.828146934509277,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/strict.log",
+      "log_sha256": "f78cc0096a1068f8c3c71d8d881c3fa6cc067924fc46e496cbe30d81ce71632a"
+    },
+    {
+      "name": "wire",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 31.14941692352295,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/wire.log",
+      "log_sha256": "ee8a6788a48ca10728114d32046fcb2c96f6527ed50026578655b64a00bb7726"
+    },
+    {
+      "name": "focused-final",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "frame_observation",
+        "--",
+        "--nocapture"
+      ],
+      "exit": 0,
+      "seconds": 16.470664978027344,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/focused-final.log",
+      "log_sha256": "d2d9d28ea5cc091104093954aa6417771e1f1eca50dd337a97dd85822856cdd8"
+    },
+    {
+      "name": "assertion-tests",
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_t2_input.py"
+      ],
+      "exit": 0,
+      "seconds": 0.13202381134033203,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/assertion-tests.log",
+      "log_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5"
+    }
+  ],
+  "counts": {
+    "frame_observer_unit_tests": 3,
+    "gui_wire_tests": 2,
+    "real_headless_private_account_tests": 1,
+    "assertion_falsification_tests": 1,
+    "falsification_faults": 6,
+    "strict_clippy_exit": 0
+  },
+  "compatibility": {
+    "frozen_prefix_bytes": 52269,
+    "frozen_prefix_sha256": "d2539e7ffbaf9142f613e89eee364eb8fd77b08ca6dd10a02e258a3186df6f11",
+    "old_golden_lines_unchanged": true,
+    "wire_version_unchanged": 3
+  },
+  "binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/t2-runtime-bboxy450-term",
+    "sha256": "37abfef56a3e38a327c18e2b6ba2b370e327b897b53e1e2afa115326df442ce4"
+  },
+  "code_manifest": {
+    "crates/bboxy450-term/src/frame_observation.rs": "4597de2864072c76353b6db5a3f66364ff0d65a64393aaba3c7b30b04980c475",
+    "crates/bboxy450-term/src/headless.rs": "5c4b7826997c671df8c39873269ae5ad94373792870db6a98d8e9224e81145ae",
+    "crates/bboxy450-term/src/lib.rs": "4338b785849d34e99ec58feaca7112b2fce55ae09336fced2fffb4eb323eb132",
+    "crates/bboxy450-term/src/main.rs": "c6affdffbaf65634ea2014532c9b5172c391a2ec0c808e858187dc0a582a5e6b",
+    "crates/bboxy450-term/src/model.rs": "2e2010f8bcc61313451cad7a8899d07912c91b893445c3d17d56bb3cd009b335",
+    "crates/bboxy450-term/tests/headless.rs": "ce3d984ff9798129003f85d06e3e6823a52d08ea3a8443da76fad7905b05dcb9",
+    "crates/bbt-proto/src/gui/ui.rs": "960913680f97d2102f17021b56e5c03d51fe73ab6dd5db8eae6d4821d0448314",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "939b38dbcbf81303df2afe72b7fd2b0a62f05f9b86c651e5d41c0c1eb944dbbc",
+    "scripts/e2e/T2.sh": "30ecd4f25a4d98903e39a89156867fec2f51bd3494b0f4768a18824e5b6e6eb4",
+    "scripts/e2e/t2_input.py": "15f8f44ceef01a430a9544fb1fd5f0d701fe02defa04b94cc5825b41fd7278e3",
+    "scripts/e2e/test_t2_input.py": "2009783b2ddf8aae8e0b0953bdb5591373d6e19e68819e6c95aa8c1807c9518b"
+  },
+  "other_observations": [
+    {
+      "command": "python3 -IB scripts/e2e/test_ui.py",
+      "exit": 1,
+      "result": "4 passed / 1 failed at line83: existing partial-only assertion includes accepted full L1; both files unchanged by T2",
+      "owner_notified": "Sable ICQ e8e08d16-9e65-48bd-98e5-5235df2a9a25"
+    }
+  ],
+  "gaps": [
+    "No photon/scanout or OS window-presentation claim; this proves the ruled produced-frame source bound headlessly.",
+    "No native harness response-time claim; the receiver is a real PTY fixture.",
+    "Postsubmit and Oracle review remain unverified."
+  ]
+}

@@ -437,7 +437,6 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         app.conversation_layout.as_ref(),
                         app.document_layout.as_ref(),
                     );
-                    let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
                     gpu.draw_layers_notifying(
                         base,
                         foreground,
@@ -451,6 +450,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             wake.unpark();
                         },
                     )?;
+                    if app.ui_observe {
+                        app.frame_observations.produced(
+                            submitted, &model,
+                            app.pane_bounds.iter().map(|(seat, _)| *seat),
+                        );
+                    }
+                    let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
                     app.starting_produced(submitted, &layouts);
                     app.complete_paint_sources();
                     ui_frame = layout.map(|layout| (submitted, layout));
