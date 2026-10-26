@@ -285,16 +285,30 @@ impl Requests {
                     .operation_results
                     .rows()
                     .find(|row| row.op == pending.op && row.serial > pending.serial);
+                let verb = match &pending.request {
+                    PluginRequest::Trust { .. } => "trust",
+                    PluginRequest::Enable { .. } => "enable",
+                    PluginRequest::Disable { .. } => "disable",
+                    PluginRequest::List => unreachable!(),
+                };
                 match row.map(|row| &row.reply) {
                     None => {
                         plugin.actionable = false;
-                        plugin.health.say = Some(format!("Control {} pending", pending.op));
+                        plugin.pending = Some(bbt_ui::modules::settings::plugins::IntentPending {
+                            verb: verb.into(),
+                        });
                     }
-                    Some(
-                        crate::messaging::Reply::Unknown(reason)
-                        | crate::messaging::Reply::Refused(reason),
-                    ) => {
-                        plugin.health.say = Some(format!("Control {}: {reason}", pending.op));
+                    Some(crate::messaging::Reply::Refused(reason)) => {
+                        plugin.refused = Some(bbt_ui::modules::settings::plugins::IntentRefused {
+                            verb: verb.into(),
+                            reason: reason.clone(),
+                        });
+                    }
+                    Some(crate::messaging::Reply::Unknown(reason)) => {
+                        plugin.alerts.push(format!(
+                            "{verb} outcome unknown · {} · {reason}",
+                            pending.op
+                        ));
                     }
                     _ => {}
                 }
@@ -387,6 +401,66 @@ mod tests {
         assert_eq!(view.trust, "untrusted");
         assert_eq!(view.contract.ok, None);
         assert!(!view.health.say.unwrap().contains("old binary"));
+    }
+    #[test]
+    fn plugin_intents_show_their_outcome_without_changing_observed_values_or_health() {
+        let mut model = crate::model::Model {
+            plugin_registry: Some(std::sync::Arc::new(vec![entry(None)])),
+            ..Default::default()
+        };
+        let mut requests = Requests::default();
+        let request = PluginRequest::Trust {
+            path: entry(None).candidate.source,
+            sha256: Some("a".repeat(64)),
+        };
+        let Some(crate::cockpit::UiMsg::PluginControl { id, .. }) =
+            requests.issue(&model, request).unwrap()
+        else {
+            panic!()
+        };
+        let mut observed = Records::default();
+        project(&mut observed, Some(&model));
+        let before = serde_json::to_value(&observed.plugins[0]).unwrap();
+        let mut pending = observed.clone();
+        requests.decorate(&mut pending, &model);
+        assert_eq!(pending.plugins[0].pending.as_ref().unwrap().verb, "trust");
+        assert!(!pending.plugins[0].actionable);
+        assert_eq!(pending.plugins[0].trust, observed.plugins[0].trust);
+        assert_eq!(pending.plugins[0].enabled, observed.plugins[0].enabled);
+        assert_eq!(
+            serde_json::to_value(&pending.plugins[0].health).unwrap(),
+            before["health"]
+        );
+
+        std::sync::Arc::make_mut(&mut model.operation_results).push(
+            id,
+            crate::messaging::Reply::Refused("plugin_changed_since_observed".into()),
+        );
+        let mut refused = observed.clone();
+        requests.decorate(&mut refused, &model);
+        let refusal = refused.plugins[0].refused.as_ref().unwrap();
+        assert_eq!(refusal.verb, "trust");
+        assert_eq!(refusal.reason, "plugin_changed_since_observed");
+        assert!(refused.plugins[0].pending.is_none());
+        assert_eq!(refused.plugins[0].trust, observed.plugins[0].trust);
+        assert_eq!(refused.plugins[0].enabled, observed.plugins[0].enabled);
+        assert_eq!(
+            serde_json::to_value(&refused.plugins[0].health).unwrap(),
+            before["health"]
+        );
+
+        std::sync::Arc::make_mut(&mut model.operation_results).push(
+            id,
+            crate::messaging::Reply::Unknown("transport lost".into()),
+        );
+        let mut unknown = observed;
+        requests.decorate(&mut unknown, &model);
+        assert!(unknown.plugins[0].refused.is_none());
+        assert!(unknown.plugins[0].alerts[0].contains("trust outcome unknown"));
+        assert_eq!(
+            serde_json::to_value(&unknown.plugins[0].health).unwrap(),
+            before["health"]
+        );
     }
     #[test]
     fn unknown_plugin_effect_reuses_its_id_and_other_plugins_remain_independent() {

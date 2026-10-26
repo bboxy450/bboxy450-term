@@ -35,6 +35,17 @@ pub struct Call {
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
+pub struct IntentPending {
+    pub verb: String,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct IntentRefused {
+    pub verb: String,
+    pub reason: String,
+}
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Plugin {
     #[serde(skip)]
     pub candidate: String,
@@ -56,6 +67,10 @@ pub struct Plugin {
     pub trace: bool,
     pub calls: Vec<Call>,
     pub alerts: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pending: Option<IntentPending>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refused: Option<IntentRefused>,
 }
 
 const WINDOW_MS: f64 = 60_000.;
@@ -351,6 +366,15 @@ impl Settings {
         }
         for (i, plugin) in self.values.plugins.iter().enumerate() {
             let key = format!("card0/plugin{i}");
+            let pending = plugin
+                .pending
+                .as_ref()
+                .map(|pending| match pending.verb.as_str() {
+                    "trust" => "trusting…",
+                    "enable" => "enabling…",
+                    "disable" => "disabling…",
+                    _ => "pending…",
+                });
             let control = if let Some(root) = &plugin.root {
                 b.text(
                     &format!("{key}/control"),
@@ -361,7 +385,24 @@ impl Settings {
                     true,
                 )
             } else if plugin.trust != "trusted" {
-                b.button_sized(&format!("{key}/control"), "Trust…", None, "primary", 12.5)
+                if let Some(pending) = pending {
+                    b.text(&format!("{key}/control"), pending, 10., 400, false, true)
+                } else {
+                    b.button_sized(&format!("{key}/control"), "Trust…", None, "primary", 12.5)
+                }
+            } else if let Some(pending) = pending {
+                row(
+                    &format!("{key}/control"),
+                    plain(None, [0.; 4], 0.),
+                    10.,
+                    vec![
+                        natural(b.text(&format!("{key}/pending"), pending, 10., 400, false, true)),
+                        natural(faded(
+                            b.toggle(&format!("{key}/toggle"), plugin.enabled),
+                            0.4,
+                        )),
+                    ],
+                )
             } else {
                 b.toggle(&format!("{key}/control"), plugin.enabled)
             };
@@ -528,6 +569,15 @@ impl Settings {
                     .enumerate()
                     .map(|(j, message)| alert(&format!("{key}/alert{j}"), message).into()),
             );
+            if let Some(refused) = &plugin.refused {
+                parts.push(
+                    alert(
+                        &format!("{key}/alert{}", plugin.alerts.len()),
+                        &format!("{} refused · {}", refused.verb, refused.reason),
+                    )
+                    .into(),
+                );
+            }
             if trusted {
                 parts.push(timeline(b, &format!("{key}/timeline"), plugin).into());
             }
