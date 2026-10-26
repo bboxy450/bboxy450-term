@@ -8,7 +8,7 @@ role: "executor"
 owner: "Sable Embertail"
 verify: "cargo test -p bboxy450-term --locked --test headless test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time"
 created: "2026-10-25T21:49:58Z"
-updated: "2026-10-25T22:35:54Z"
+updated: "2026-10-26T00:00:14Z"
 ---
 # Make the headless frozen-clock pixel test independent of host load
 
@@ -29,4 +29,13 @@ The frozen-clock assertion holds under load: 10/10 with two concurrent cargo bui
 - Seraph clarified that the three isolated outputs were only in its session, with no retained log files. Exact reported command: the same presubmit's `headless-436e36e5f068bfbb` binary with the full test name and `--exact`, using memory custody. Reported durations were 6.63, 6.81 and 7.84 seconds at load 24.46/27.32/28.40. These remain a peer report, not independently retained controls.
 - L3 author cycle on `819fdca0b10b5e9eb42a7236bed5ad890bd89b81` later passed the full headless suite, 20/0 including this test, in 20.00 seconds. This is a passing control, not a cause or repair claim. Its raw log is `~/.local/state/bboxy450-term/landing/presubmits/819fdca0b10b5e9eb42a7236bed5ad890bd89b81-3ac6c645/commands.log`.
 
-Cause remains unproven. Keep every pixel, explicit-step, focus and resumed-clock assertion; no tolerance or sleep is added here.
+## Cause proven from the failed buffers (Sable)
+
+- Parsed the exact left/right 1600×900 RGBA arrays in the retained failed log, without rerunning the test: 621 changed pixels, bounding box x=163..278, y=236..246. All pixels outside that sidebar text region are equal. Private `frozen-clock-buffer-diff.json` retains the hashes/counts; both reconstructed sidebar crops were read.
+- The left crop says green Build box / 40 ms; the right says red fixture link dropped. `crates/bbt-mux/fixtures/providers.json:15` schedules that transition at 12000 ms. `provider/fake.rs:26` uses its own RealClock; `logic.rs:1227` supplies that clock to the fixture providers. Freezing the UI animation clock does not freeze scripted backend host state.
+- This is a fixture-quiescence failure: a load-delayed capture crosses the provider's independent 12-second transition. It does not establish an animation-clock fault.
+- Oracle approval `5158b93e-ed83-4f57-b25a-cacf882ec213`: add an own-test-account/debug-only fixture-host opt-out at `cockpit.rs::start_logic`, used only by this headless fixture. Its selector/parser must be absent in release; prove that with a release-mode check. Keep every pixel, explicit-step, focus and resumed-clock assertion, with no tolerance or deadline change.
+- keeps: scripted-host transitions remain covered by `bbt-mux/tests/provider_fake.rs::all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt` and `headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart`; both explicitly check fixture link dropped. Those tests are untouched.
+
+private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
+Repair and its 10 loaded controls/mutation check are pending; the analysis above is not a green-test claim.

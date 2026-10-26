@@ -1,0 +1,26 @@
+Resource ledger step 1 — Sable Embertail <EXECUTOR>, 2026-10-25
+
+LANDED 0bd20ea89d84da012210de047b56e9614c17d1b3; signed, own exec3 worktree clean. Checked source f5c841ca4dbff70dba4bc5fb3f4cdcf849916527; only a disjoint records commit moved before the final landing.
+
+Mechanism
+scripts/resource-ledger.py — optional per-stage time/rusage and 10-second machine sampling, daily private JSONL, PID/start fingerprints, recorded descendant attribution and unknowns retained. Missing accounting storage never prevents the workload or changes its exit. No argv, environment, capabilities or transcripts are persisted.
+scripts/landing.py — measure existing leaf commands; retain BUILD/RUN clocks and skip duplicate parent accounting. Record the checked-to-landed cut map.
+scripts/ci-local.sh and scripts/invariants.sh — optional leaf-stage hooks, independent sampler, existing verdict/affected selection unchanged; final CI receipt remains last.
+scripts/cache-env.sh — after successful cache selection, a silent background best-effort binding records only selected worktree/port/PID/start fingerprint. No daemon lifecycle change.
+CPU from libproc uses Mach ticks converted with mach_timebase_info (125/3 on this host); the live getrusage control and unit check cover this. Waited-command CPU and separately sampled selected-cache self/reaped-child CPU are labeled and summed once. Disk samples are lower bounds for recorded processes, never block-operation counts presented as bytes. Peak individual RSS and sampled group peak are labeled separately.
+
+Verification
+Author land.sh EXIT 0, BUILD 0.477651s, RUN 342.685391s, test time 254.729743s. Python: 85 landing fixtures + 38 recovery fixtures + 11 ledger tests = 134 passed, 0 failed. Fast invariants 11 passed, 0 failed; 11 slow and 15 unaffected-crate checks skipped. No Rust workspace/clippy/full CI/parity claim for this scripts-only cut.
+The 11 ledger tests cover accounting-store loss, exact child output/exit, signal forwarding to recorded descendants, PID reuse, shared cache selection/reuse/conflict, reaped-child CPU, no double charge, libproc units, private JSONL and driver cut retention outside Git.
+Private integration probe: measured child exit 7 and existing phase-clock transitions preserved. Actual cache-env source returned 0, ordinary cache-on message only, private binding mode 0600 and correct selected PID.
+
+Failures retained
+First libproc pilot assumed nanoseconds; the live control disproved it. That pilot was stopped and preserved as invalid, not evidence of coverage. Mach timebase conversion corrected the implementation.
+First real author check e87f8d09 EXIT 77: a new self-test was called in legacy synthetic CI trees lacking the optional helper. Presence guard fixed it; exact regression 1/0, final full fixture run green. Capacity-only attempts exited 75 and ran no checks; one admitted attempt exited 78 at a moved-main conflict, resolved by preserving main affected selection and adding only the metering hooks.
+
+Acceptance limit
+Thirteen actual final-check stage rows all exit 0, attributed CPU 295.836375 seconds. The first machine bracketing window contains 8295.910 seconds, a conservative 3.5661% attribution lower bound; 8000.073625 seconds remain unattributed. The window includes 8.675 seconds before and 490.935 seconds after the check, plus gates launched before instrumentation rollout. The 90% CPU target in spec 333 remains UNPROVEN. No extra full gate is started for this; the next naturally instrumented validation/postsubmit supplies the next measurement. Inference reader and board remain outside step 1.
+
+private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
+Evidence: ledger-first-green-cpu-report.json; ledger-mach-calibration.json; ledger-cache-live-proof.json; ledger-measured-command-probe.json; ledger-second-admitted-1.log. Raw final check: /Users/feral/.local/state/bboxy450-term/landing/presubmits/f5c841ca4dbff70dba4bc5fb3f4cdcf849916527-c7e6fae1/commands.log
+Raw check SHA-256: 612c97c87ef69c9c203a70f18e51b6b7a5a0bf0715721c0dd40bc53021d00aa4
