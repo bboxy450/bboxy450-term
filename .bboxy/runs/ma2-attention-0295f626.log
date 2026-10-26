@@ -1,0 +1,15 @@
+MA-2 host source 0295f626a029c7cc1359c0e3be8d1d64f5868682 (G), velvet-ma2-attention-policy.
+Contract f89b3c82 is separate and first; task #338 was pushed by the Oracle as d8b2ca60.
+
+registry.rs:61 — set_attention updates only the supplied admitted seat/generation in the existing immediate SQLite transaction; unrelated fields survive.
+messaging/attention.rs:32 — Class::Oracle, then exact architect/creativity names, then Executor; every Event default is Inbox.
+messaging/attention.rs:74 — canonical exact destination/class overrides, replacement and 128-rule bound.
+messaging/attention.rs:97 — signed kind derives class; operator/delegation/own-thread exceptions apply only to conversation; no mute or native effect.
+mcp/attention.rs:18,49 — own-seat tool schemas and strict typed parsing carry no receiver id or authority facts.
+logic.rs:2524 — existing admitted actor and operation journal fence reads, writes and replay; success uses committed policy, not a post-write read.
+
+Final 2f union at 72486adc: protocol8/0, composer19/0, CLI unit23/0, CLI integration16/0, all EXIT0. M2 runtime files match f936995e; only one additive policy golden row differs. Contract source components match f89b3c82 exactly; all prior 51286 golden bytes are unchanged.
+Host full suite at 97742a1e, inspected files byte-identical at 72486adc: policy8/0, MCP51/0/3 ignored, EXIT0. After committed-result response 0295f626: affected own-seat/restart/replay MCP2/0, EXIT0. No whole-suite claim on that follow-up.
+Commands, per-file and raw-output SHA256s, scope and skipped-check details: paired JSON.
+M2 FULL runtime proof and earlier failures remain in m2-compose-65267bad.json; no new night/parity or performance claim.
+Presubmit has not run in this pane; mandatory landing verification remains with the Oracle as agreed. No publication or merge claimed.

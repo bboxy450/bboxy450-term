@@ -1,0 +1,193 @@
+{
+  "base": "c2d783d7933a822af9d54b3354f2c35eb71795a9",
+  "contract": "f89b3c82ab8a940b343142c66f5252a6e84dfcc6",
+  "task": "d0d403b962de7fc22e52b42f921a96f74a2cd29f",
+  "branch": "velvet-ma2-attention-policy",
+  "host_check": {
+    "source": "97742a1e0333106546e9347eb159c3bff4ac2d29",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-mux",
+      "--locked",
+      "--target-dir",
+      "target/m2-compose-dev",
+      "--test",
+      "attention_policy",
+      "--test",
+      "mcp"
+    ],
+    "exit": 0,
+    "policy_passed": 8,
+    "mcp_passed": 51,
+    "mcp_ignored": 3,
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/ma2-host-final.log",
+    "sha256": "a396e9d97dceacae9000cb7a0b6717c994bf6ec92d0fa88a4d88c4a52e34c203"
+  },
+  "rebase": {
+    "host_and_contract_components_byte_identical": true,
+    "file_sha256": {
+      "crates/bbt-mux/src/logic.rs": "ab94124a3d6e578535e92f69f14ffd7be953dd4f56ddc1c61dcbed0f070bfbcb",
+      "crates/bbt-mux/src/mcp/attention.rs": "04f8724dabc8a6aa4c4cadb462a0cc68de0423498bac51079bff162da80fcd76",
+      "crates/bbt-mux/src/mcp/mod.rs": "6b1f8225a2918fcf2194fea7b117502a5e8d2008fa2448905346e9d7bbe6b907",
+      "crates/bbt-mux/src/mcp/tools.rs": "9eb53a89fa90ae6023b686d9d66be61bf7e9ead50cbedec72b9c22e1bfe91eac",
+      "crates/bbt-mux/src/messaging/attention.rs": "22237d15f1f6ab52f9d62d04a50c9f4503ad620cac727c1cf215bf5ca6a6e366",
+      "crates/bbt-mux/src/messaging/mod.rs": "af8339211d1ca78107dd4a8ff1a93fec5f4939fe2054c548d55f5292ccab1fc2",
+      "crates/bbt-mux/src/registry.rs": "91113fe33466fd00332259f23a2ccf698e384bc37c59c2ae60a771317c28149d",
+      "crates/bbt-mux/tests/attention_policy.rs": "691fd4cb7a0fabde555a5477b54f1fc26516ccd12ce38cb0a21d4a35637e055c",
+      "crates/bbt-mux/tests/mcp.rs": "13cfe2119262eb2ef3d3dd0da02be8e3bcde5cd85dca90cbd3ae9aad82041464",
+      "crates/bbt-proto/src/registry.rs": "f1120606abc932dc8430f8811f8881d5d16a82e2d9e7df74fe15cefc4dee7c45",
+      "crates/bbt-proto/tests/registry_attention.rs": "46e7bf91027583aebf13badae16785d59c9defd4507f1ecf0b2ba24948801d89"
+    },
+    "contract_existing_golden_bytes_unchanged": 51286,
+    "contract_new_cases": 1
+  },
+  "rule_bound": 128,
+  "native_delivery_changed": false,
+  "digest_changed": false,
+  "reply_validation_changed": false,
+  "presubmit": "Not run here; mandatory presubmit belongs to the Oracle landing already requested, without a second broad precheck.",
+  "host_source": "0295f626a029c7cc1359c0e3be8d1d64f5868682",
+  "host_full_suite_source": "72486adcd4d6447ed104106046f1fa9eeb0d45b9",
+  "m2_source": "f936995e974fdff133572ff64cab329dbd5e0248",
+  "union_checks": [
+    {
+      "name": "contract",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden",
+        "--test",
+        "registry_attention",
+        "--test",
+        "ui_compose"
+      ],
+      "exit": 0,
+      "seconds": 19.281,
+      "log": "target/ma2-attention-proof/cut2f-contract.log",
+      "sha256": "f312672e7e265b639dab692f576702b5b6b641b7a38440754c9fa7700192ae76",
+      "check_tree": "72486adcd4d6447ed104106046f1fa9eeb0d45b9",
+      "results": [
+        [
+          "2",
+          "0"
+        ],
+        [
+          "3",
+          "0"
+        ],
+        [
+          "3",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "composer",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "messaging_ui"
+      ],
+      "exit": 0,
+      "seconds": 218.586,
+      "log": "target/ma2-attention-proof/cut2f-composer.log",
+      "sha256": "b542b4120063d04875e50a1daac227a76469ae3cd5d203e12929908262df068f",
+      "check_tree": "72486adcd4d6447ed104106046f1fa9eeb0d45b9",
+      "results": [
+        [
+          "19",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "cli-unit",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "ctl::"
+      ],
+      "exit": 0,
+      "seconds": 21.373,
+      "log": "target/ma2-attention-proof/cut2f-cli-unit.log",
+      "sha256": "48f432ea4988d0cf534ca5933426a7a39f7c8138bd09c603929db76dabfaf3b4",
+      "check_tree": "72486adcd4d6447ed104106046f1fa9eeb0d45b9",
+      "results": [
+        [
+          "23",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "cli-integration",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "ctl"
+      ],
+      "exit": 0,
+      "seconds": 42.726,
+      "log": "target/ma2-attention-proof/cut2f-cli-integration.log",
+      "sha256": "474f4f3e192c35b2c22af27035466ae69b679242722a98b151fecbaa199fa778",
+      "check_tree": "72486adcd4d6447ed104106046f1fa9eeb0d45b9",
+      "results": [
+        [
+          "16",
+          "0"
+        ]
+      ]
+    }
+  ],
+  "followup": {
+    "source": "0295f626a029c7cc1359c0e3be8d1d64f5868682",
+    "change": "A successful attention_set returns the committed policy directly, without a second store read. No native/M2/contract change.",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-mux",
+      "--locked",
+      "--target-dir",
+      "target/m2-compose-dev",
+      "--test",
+      "mcp",
+      "mcp_attention"
+    ],
+    "exit": 0,
+    "passed": 2,
+    "log": "/Users/feral/mydev/bboxy450-term-exec6/target/ma2-attention-proof/commit-result.log",
+    "sha256": "df4dd0ba53e025233b610df918d5ebee6c3fb4e914d2a0a9365677c93e6c5daf"
+  },
+  "limits": [
+    "Full host 59-pass/3-skip result belongs to 97742a1e and byte-identical rebased 72486adc. The only subsequent source change is the four-line committed-result response; its two affected MCP tests pass on 0295f626.",
+    "The first mcp_attention-filtered prototype selected zero pure policy tests; none were counted. The later unfiltered policy run passed all eight.",
+    "No repeat night/parity, strict Clippy or author presubmit claim. M2 FULL runtime evidence stays at m2-compose-65267bad.json. Native policy application, digests and thread validation remain MA-3/4/5."
+  ]
+}
