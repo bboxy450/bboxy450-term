@@ -4,13 +4,13 @@ number: 140
 type: invariant
 title: every commit on main carries a good signature
 status: active
-check: test "$(git log --format='%G?' HEAD | grep -c .)" -gt 0 && test "$(git log --format='%G?' HEAD | grep -vc '^G$')" = 0
+check: R="${SIGNED_RANGE:-HEAD}"; L="$(git log --format='%G?' $R)"; test -n "$L" && test "$(printf '%s\n' "$L" | grep -vc '^G$')" = 0
 cost: an unsigned commit breaks the chain from artifact to key; releases inherit the gap
 links:
   - { to: "[[provenance]]", rel: constrains }
   - { to: "[[identity]]", rel: constrains }
 created: 2026-10-22T21:14:24Z
-updated: 2026-10-22T21:14:24Z
+updated: "2026-10-26T01:27:26Z"
 ---
 # Every commit on main carries a good signature
 
@@ -31,5 +31,7 @@ trace to a key; everything built on it, including a crate release, inherits
 the gap. Fix the config, never paper over with `--no-gpg-sign`.
 
 **Evidence.** `398 of 398 commits G at a9ab5c1` (Architect, 2026-10-22).
+
+**Tiered by range (the Oracle, 2026-10-25, from Aster's presubmit: the check verified every commit's signature in the whole history, twice, on every presubmit, minutes and growing).** History on `main` is immutable, so only a cut's own commits can break this property: the presubmit sets `SIGNED_RANGE=<base>..HEAD` and verifies those, once; the night and the watcher run it with no range, over the whole history. The check reads `git log` once and counts both conditions from that one read.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
