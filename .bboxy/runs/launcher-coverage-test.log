@@ -1,0 +1,8 @@
+# Launcher coverage metadata successor — 2026-10-26
+LANDED c495ce12e30fd2318c7772ee58fd3885dac7895f, signed G; sh scripts/land.sh EXIT 0 / 512.120 s.
+scripts/e2e/test_ui.py:81 — require exactly one map row and match each script header to its declared full/partial status; preserve nonempty exact missing-list checks for partial scripts. The old assertion wrongly required the accepted full L1 case to remain partial.
+python3 -I -B scripts/e2e/test_ui.py — 5 passed, 0 failed; prior source 4 passed, 1 failed at the obsolete partial-only assertion. git diff --check EXIT 0.
+Author affected app tests 302 passed / 0 failed / 44 ignored, plus one separately selected invariant test passed; strict Clippy 0; invariants 14/0 (11 slow and 12 unaffected skipped), recovery fixtures 46/0, resource-ledger fixtures 23/0.
+Author raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/c495ce12e30fd2318c7772ee58fd3885dac7895f-eed8fe31/commands.log SHA256 799f904954b76c74f68150f1a5b8cb327d225bbc21ca164665a87ed0bc1ddd69.
+One Python self-test file only; no producer, app, wire, renderer, launcher scripts or native fixture change. Full canonical L1–L4 GREEN proof remains .bboxy/runs/launcher-l4.log; no repeated native night or postsubmit acceptance claim.
+Own author slot/target released by driver; tracked worktree clean at landing. Aster notified of the shared test-only successor; no T-group overlap.
