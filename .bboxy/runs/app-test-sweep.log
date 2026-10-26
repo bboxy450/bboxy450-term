@@ -1,0 +1,363 @@
+Sable Embertail <EXECUTOR> — #327 bboxy450-term test sweep
+
+Scope: app tests/cfg(test), the smallest model clock seam, and append-only exact night selectors (Oracle618e403c and standing3c2df395). Inventory: current-source cargo -- --list,333 tests, no unmapped entries.226 reviewed;107 peer-owned rows deliberately unchanged (including the already accepted Rook lifecycle/custody cut).
+
+Mechanisms:
+- model::build keeps its normal clock read in the original location; build_at supplies explicit monotonic/wall coordinates. Close/model/frame fixtures use deadline61000 at wall1000. The clock-bypass mutation failed the close assertions and the original source hash was restored.
+- Live IO test publications signal Notify via the real DirtySet wake. The fixture drains the DirtySet and checks the retained Model before waiting, eliminating the10ms polling loop. Removed three unobserved fixed delays. Notify coalescing and cancellation now inspect Pending directly.
+- Recovery ACK backpressure uses a ListSeats reply barrier instead of a250ms negative timeout. Cancellation tests poll the retained future once; positive asynchronous waits keep guards of at least30s.
+- Public snapshot, typed terminal results, generated pane controls, pane bounds and rim paint replace private queue/map/rim/swell checks. Real boundary checks preserve state, pixels, ordering, ownership, output and exactness assertions.
+- Removed no_launcher_paint_proof (A2): printed paint bytes were not asserted, and its only assertion pinned the fixture pane count. retained_launcher_hit_regions_and_unwrapped_foreground_order checks the actual paint output and ordering.
+-40 exact named boundary selectors appended; no blanket --ignored. The old selector prefix is byte-identical. All40 passed: prior R5+night runner2/0, headless17/0 and remaining IO/recovery/CLI21/0. Existing lifecycle/custody selectors unchanged.
+-4 sleep calls removed (live.rs); the16s recovery sleep uses start_paused. Remaining short observation polls exist only in retained real-boundary night fixtures. No speed threshold was added.
+
+Verification (raw logs retained privately; paths and hashes in manifest):
+- app-controlled-close-tests: EXIT0,7/0; clock-bypass mutation cargo EXIT101 as expected, source restored; mutation driver EXIT0.
+- app-sweep-library-tests: EXIT0,80/0; app-sweep-settings-tests: EXIT0,8/0.
+- app-headless-night-validation: EXIT0,17/0; app-remaining-night-validation-fixed-2: EXIT0,21/0.
+- app-sweep-live-unit-check: EXIT0,20/0,3 intentionally ignored boundary cases.
+- Initial remaining-boundary compilation failed E0609 because Context has no rim field; fixed to inspect actual pane layout. An accidental missing private driver launch exited2 and performed no test. Strengthened scene paint checks initially rejected two arbitrary fixture IDs at the shader seed validator; those fixtures now use a bounded deterministic seat ID. These red logs are retained.
+- app-rewritten-unit-validation-fixed: EXIT0; scene17/0 and notification recording/worker6/0. Author presubmit pending in this source commit; successor evidence records its actual result.
+
+Counts and timing:
+- Before:333 discovered,330 default and3 existing ignored. After expected:332 discovered,289 default and43 ignored (40 moved,1 deleted). Exact post-rebase runtime counts will come from the author log.
+- Green before log e8773b66: test phase132.259320s; commands.log SHA2565b3ac6709a6e9b8ba09670f674f6262634c02f45b5e8126acd3c20180044adf9. Earlier red8d02 log test103.746069s is retained but is not a green baseline. Shared-load timing is advisory, not a speed verdict.
+
+Coverage map:
+Each row below is tied to the actual runtime inventory. Kept and rewritten tests have keeps tags; every moved row names its exact night selector in app-test-sweep-map.json. No invariant check or wire golden is deleted or changed. No default-invariant check names a moved function; the pending restart_keeps_working_state anchor is untouched.
+
+| Runtime test | Classification / disposition | Contract / retained coverage |
+|---|---|---|
+| unittests src/lib.rs / attention::tests::all_three_wait_reasons_and_generation_are_typed | D — keep and tag | spec attention §1 |
+| unittests src/lib.rs / attention::tests::live_state_updates_preserve_stage_and_handling_survives_model_rebuild | D — keep and tag | spec attention §5 |
+| unittests src/lib.rs / attention::tests::muted_and_supplied_notification_preferences_never_post_or_change_focus | D — keep and tag | spec attention §3 |
+| unittests src/lib.rs / attention::tests::one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key | D — keep and tag | spec attention §5 |
+| unittests src/lib.rs / close::tests::t7_a_delayed_close_publication_still_announces_retention_once | D — keep and tag | spec c1-live-seats (close/undo and retention) |
+| unittests src/lib.rs / close::tests::t7_expiry_removes_only_the_row_and_emits_one_exact_retained_notice | D — keep and tag | spec c1-live-seats (close/undo and retention) |
+| unittests src/lib.rs / close::tests::t7_grace_uses_only_the_matching_registry_deadline_and_generation | D — keep and tag | spec c1-live-seats (close/undo and retention) |
+| unittests src/lib.rs / close::tests::t7_metadata_rebuild_restores_the_same_generation_tree_and_focus | B1 — controlled-clock seam candidate; no edit yet | spec c1-live-seats (close/undo and retention) |
+| unittests src/lib.rs / close::tests::t7_position_and_undo_snapshot_use_the_actual_split_without_optimistic_close | D — keep and tag | spec c1-live-seats (close/undo and retention) |
+| unittests src/lib.rs / close_frame::tests::close_needs_the_confirmed_operation_not_just_a_model_or_layout_edit | B1 — controlled-clock fixture candidate; retain produced-frame and operation/generation assertions | spec ctl-cli §1a |
+| unittests src/lib.rs / close_frame::tests::undo_needs_the_same_generation_open_and_shown_in_its_restored_pane | B1 — controlled-clock fixture candidate; retain produced-frame and operation/generation assertions | spec ctl-cli §1a |
+| unittests src/lib.rs / cockpit::gui_io_tests::full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline | D — keep transport boundary; consider exact night selector after complete map | spec c1-live-seats§2 / shared GUI wire / test-policy§4 |
+| unittests src/lib.rs / cockpit::gui_io_tests::oversized_request_is_rejected_before_enqueue_without_stopping_the_writer | C1 — replace writer_task.is_finished assertion with a second successfully delivered public request | spec c1-live-seats§2 / shared GUI wire / test-policy§4 |
+| unittests src/lib.rs / cockpit::gui_io_tests::startup_write_deadline_is_two_seconds_of_controlled_time | D — keep and tag | spec c1-live-seats§2 / shared GUI wire / test-policy§4 |
+| unittests src/lib.rs / cockpit::gui_io_tests::writer_task_death_is_disconnected_even_while_the_reader_stays_connected | C3 — assert typed disconnected output and refused send, not exact internal reason prose; normalize watchdog to policy minimum | spec c1-live-seats§2 / shared GUI wire / test-policy§4 |
+| unittests src/lib.rs / ctl::app::tests::startup_diagnostic_does_not_claim_an_unobserved_exit | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::app::tests::startup_diagnostic_names_a_sigbus_child_and_its_matching_report | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::app::tests::startup_diagnostic_preserves_a_real_terminating_signal | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::app::tests::startup_diagnostic_preserves_exit_codes_and_core_dump_status | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::app::tests::startup_diagnostic_selects_newest_post_launch_report_for_its_pid_only | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::noun_verb_tests::each_verb_is_listed_once_in_its_own_nouns_table | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::placement_parser_tests::explicit_placements_relay_intents_without_choosing_an_anchor_in_the_cli | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::a_paste_is_bracketed_only_when_asked_and_cannot_end_itself | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::a_refusal_that_beats_the_request_is_still_read | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::commands_parse_in_the_spec_s_shapes | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::errors_name_a_kind_a_hint_and_an_exit | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::every_verb_maps_to_exactly_one_window_action | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::task_verbs_parse_typed_evidence_and_require_their_own_flags | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::the_endpoint_file_round_trips | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::ui_clock_commands_use_the_existing_relay_and_reject_non_integer_advances | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::ui_keys_are_bounded_chrome_names_and_never_terminal_text | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::tests::ui_scroll_parses_only_the_typed_window_motions | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::wait_contract_tests::an_already_matching_state_needs_no_new_page | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::wait_contract_tests::an_empty_page_at_the_injected_deadline_is_a_timeout | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::wait_contract_tests::page_progress_rechecks_the_exact_current_subagent_predicate | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::wait_contract_tests::text_wait_rechecks_the_screen_after_an_empty_fallback_page | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / ctl::wait_contract_tests::wait_qualifiers_require_an_activity_predicate | skip: Seraph/Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/lib.rs / e2e_night::fixture_home_tests::fixture_home_copies_private_configs_without_sharing_the_seed | D — keep contract regression | spec e2e-script-map §L3 |
+| unittests src/lib.rs / e2e_night::fixture_home_tests::fixture_home_refuses_a_link_outside_its_seed | D — keep contract regression | spec e2e-script-map §L3 |
+| unittests src/lib.rs / focus_ack::tests::a_newer_placement_or_the_wrong_pane_never_gets_a_success_acknowledgment | D — keep; add keeps tag after336 lands | spec ctl-cli §1a (reply after produced end-state frame) |
+| unittests src/lib.rs / focus_ack::tests::an_already_consumed_result_in_an_older_ui_snapshot_does_not_supersede_focus | D — keep; add keeps tag after336 lands | spec ctl-cli §1a (reply after produced end-state frame) |
+| unittests src/lib.rs / focus_ack::tests::an_earlier_placement_settles_before_focus_and_only_a_completed_frame_acknowledges_it | D — keep; add keeps tag after336 lands | spec ctl-cli §1a (reply after produced end-state frame) |
+| unittests src/lib.rs / focus_ack::tests::replacing_and_expiring_focus_are_bounded_and_do_not_complete_another_operation | D — keep; add keeps tag after336 lands | spec ctl-cli §1a (reply after produced end-state frame) |
+| unittests src/lib.rs / grids::tests::subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines | D — keep; tag after336 lands | spec c1-live-seats §2a |
+| unittests src/lib.rs / keyboard_adapter_uses_neutral_core_and_live_modes | D — keep contract regression | invariant kitty-keyboard |
+| unittests src/lib.rs / launcher::operator_tests::a_new_space_has_a_fresh_swarm_and_first_tab_without_retargeting_the_old_one | D — keep; tag after336 lands | spec c1-live-seats §2a |
+| unittests src/lib.rs / launcher::operator_tests::captured_operator_anchor_survives_later_focus_and_revision_changes | D — keep; tag after336 lands | spec c1-live-seats §2a |
+| unittests src/lib.rs / launcher::operator_tests::explicit_split_never_falls_back_when_the_anchor_is_missing_or_cross_swarm | D — keep; tag after336 lands | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::event_lane_tests::a_large_newest_live_record_takes_precedence_over_read_page_bytes | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::byte_budget_is_independent_of_row_count | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::empty_pages_and_refusals_have_distinct_monotonic_completion_revisions | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::metadata_rebuild_and_reconnect_preserve_the_published_window | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::requested_old_page_survives_a_full_live_window_until_replaced | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::rows_dedupe_by_canonical_identity_and_keep_per_stream_order | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::sparse_history_pages_keep_next_without_acknowledging_or_marking_read | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::stale_transport_snapshots_cannot_roll_back_operator_read_state | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::event_lane_tests::window_eviction_is_visible_and_old_replays_do_not_repopulate_it | D — keep; tag contract | spec l9-messaging-tasks §3 |
+| unittests src/lib.rs / model::tests::a_second_spawn_and_refresh_preserve_the_first_explicit_split | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::custody_held_spawns_release_in_admission_order_with_the_same_captured_requests | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::screen_rows_preserve_palette_styles_width_combining_and_cursor | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / model::tests::worker_preparation_reuses_unchanged_frames_and_updates_focus_without_grid_copy | D — keep; tag contract | spec c1-live-seats §2a |
+| unittests src/lib.rs / notifications::recording::tests::recording_readback_redacts_encoded_key_bytes | D — keep; tag contract | spec attention §3 |
+| unittests src/lib.rs / notifications::recording::tests::refused_ids_and_retained_history_stay_bounded_before_redaction | C1 — rewrite private field checks to public snapshot | spec attention §3 |
+| unittests src/lib.rs / notifications::recording::tests::stable_id_replaces_and_only_an_outstanding_id_can_activate_the_callback | D — keep; tag contract | spec attention §3 |
+| unittests src/lib.rs / notifications::tests::a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process | D — keep; tag contract | spec attention §3 |
+| unittests src/lib.rs / notifications::tests::a_mute_admitted_during_authorization_prevents_the_pending_post | D — keep; tag contract | spec attention §3 |
+| unittests src/lib.rs / notifications::tests::replacement_and_removal_use_the_same_id_off_the_caller_thread | D — keep; tag contract | spec attention §3 |
+| unittests src/lib.rs / settings::tests::atomic_patch_preserves_a_config_symlink | D — keep and tag; strengthen two weak refusal/save checks | spec e2e-acceptance §1 G1/G2 |
+| unittests src/lib.rs / settings::tests::busy_configuration_refuses_without_waiting_or_altering_the_file | D — keep and tag; strengthen two weak refusal/save checks | spec e2e-acceptance §1 G1/G2 |
+| unittests src/lib.rs / settings::tests::harness_array_patches_preserve_entry_comments_even_when_an_entry_is_removed | D — keep and tag; strengthen two weak refusal/save checks | spec attention §3 |
+| unittests src/lib.rs / settings::tests::native_second_item_hold_keeps_unlock_available_after_an_allowed_access | D — keep and tag; strengthen two weak refusal/save checks | decision #315 |
+| unittests src/lib.rs / settings::tests::native_unknown_checks_the_same_id_and_never_replays_on_disconnect | D — keep and tag; strengthen two weak refusal/save checks | decision #315 |
+| unittests src/lib.rs / settings::tests::patches_survive_restart_and_preserve_comments_and_unmanaged_keys | D — keep and tag; strengthen two weak refusal/save checks | spec e2e-acceptance §1 G1/G2 |
+| unittests src/lib.rs / settings::tests::refused_save_keeps_original_bytes_and_read_does_not_create_a_file | D — keep and tag; strengthen two weak refusal/save checks | spec e2e-acceptance §1 G1/G2 |
+| unittests src/lib.rs / settings::tests::stale_save_cannot_acknowledge_a_newer_edit | D — keep and tag; strengthen two weak refusal/save checks | spec e2e-acceptance §1 G1/G2 |
+| unittests src/main.rs / animation_clock::tests::an_overflowing_advance_does_not_change_the_frozen_frame_or_revision | D — keep; add keeps tag after336 lands | spec ctl-cli §1 (ui clock freeze/advance/resume) |
+| unittests src/main.rs / animation_clock::tests::an_unfrozen_advance_is_refused_without_changing_the_timeline | D — keep; add keeps tag after336 lands | spec ctl-cli §1 (ui clock freeze/advance/resume) |
+| unittests src/main.rs / animation_clock::tests::frozen_frames_ignore_wall_time_and_advance_exactly_to_the_swell_peak | D — keep; add keeps tag after336 lands | spec ctl-cli §1 (ui clock freeze/advance/resume) |
+| unittests src/main.rs / animation_clock::tests::resume_keeps_the_virtual_instant_and_then_follows_live_time | D — keep; add keeps tag after336 lands | spec ctl-cli §1 (ui clock freeze/advance/resume) |
+| unittests src/main.rs / budget::tests::hud_gpu_mean_counts_spans_without_a_cpu_row | D — keep | spec runtime §5 (hitch meter exposes completed GPU spans) |
+| unittests src/main.rs / budget::tests::late_gpu_completions_pair_by_frame_and_evicted_samples_are_ignored | C1 — remove only private queue-length assertion; public paired/pending/report checks already prove bound | spec runtime §5 (bounded hitch meter) |
+| unittests src/main.rs / capture::tests::a_crop_stays_inside_the_frame | D — keep; tag after336 lands | spec ctl-cli §1 |
+| unittests src/main.rs / capture_step_tests::an_occluded_window_answers_from_its_last_frame_or_says_why_not | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / command_retry::tests::a_closed_receiver_wakes_delivery_once_without_polling | D — keep; tag contract | spec ctl-cli §1a |
+| unittests src/main.rs / command_retry::tests::busy_delivery_resumes_in_fifo_order_without_a_frame_or_poll | D — keep; tag contract | spec ctl-cli §1a |
+| unittests src/main.rs / command_retry::tests::capacity_is_reserved_once_and_stale_events_release_it | D — keep; tag contract | spec ctl-cli §1a |
+| unittests src/main.rs / composer_host_tests::composer_submit_is_focus_local_and_newline_tab_navigation_remain_local | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / composer_host_tests::consumed_composer_press_never_leaks_a_kitty_release_after_focus_changes | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / composer_host_tests::operation_admission_is_bounded_without_consuming_terminal_input_capacity | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / composer_host_tests::settings_keyboard_routes_edits_and_balances_only_the_prior_pty_release | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / composer_host_tests::settings_mute_requires_a_visible_real_focused_seat_and_awaits_metadata | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / composer_host_tests::t7_command_z_is_local_once_and_control_z_remains_terminal_input | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / ctl_ui_key_tests::every_advertised_chrome_key_uses_the_native_input_boundary | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / ctl_ui_key_tests::virtual_chords_leave_native_pressed_keys_and_releases_alone | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / default_spawn_tests::default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / default_spawn_tests::host_picks_preserve_structured_location_without_parsing_labels | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / display_link::tests::core_video_timestamp_matches_sdk_abi | D — keep; tag after336 lands | spec runtime §4 (native callback ABI) |
+| unittests src/main.rs / display_link::tests::data_racing_a_tick_still_requests_a_frame_after_pause | D — keep; tag after336 lands | spec runtime §4 |
+| unittests src/main.rs / display_link::tests::raw_notices_drain_without_paint_but_never_hide_a_tick_or_model | D — keep; tag after336 lands | spec runtime §4 |
+| unittests src/main.rs / display_link::tests::tick_wake_after_pause_does_not_reopen_link | D — keep; tag after336 lands | spec runtime §4 |
+| unittests src/main.rs / e2e_checklist::tests::a_new_local_graph_has_no_invented_results_or_run_metadata | D — keep; tag contract | spec e2e-acceptance §1 |
+| unittests src/main.rs / e2e_checklist::tests::the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded | D — keep; tag contract | spec e2e-acceptance §1 |
+| unittests src/main.rs / gpu::backdrop_key_tests::a_frosted_op_after_host_drawing_is_never_keyed | D — keep; deterministic contract regression | spec runtime §4 |
+| unittests src/main.rs / gpu::backdrop_key_tests::keys_follow_prior_content_and_only_timed_content_follows_time | D — keep; deterministic contract regression | spec runtime §4 |
+| unittests src/main.rs / gpu::clear_fold_tests::a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer | D — keep; deterministic contract regression | spec runtime §4 |
+| unittests src/main.rs / gpu::clear_fold_tests::a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared | D — keep; deterministic contract regression | spec runtime §4 |
+| unittests src/main.rs / input_tests::admission_limits_preserve_accepted_bytes_and_allow_merging_at_the_entry_cap | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / input_tests::input_queued_while_backend_is_lost_survives_resume_and_a_full_queue | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / input_tests::operator_keys_use_pty_bytes_and_keep_command_shortcuts_out_of_the_shell | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / input_tests::pane_controls_coalesce_to_the_latest_visible_set_and_size | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / input_tests::ten_minute_disconnect_bounds_admission_and_drains_accepted_input_in_order | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / input_tests::text_bursts_keep_byte_order_first_id_and_generation_boundaries | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::a_graph_press_never_reaches_the_pty_but_an_earlier_pty_press_gets_its_release | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::actual_controller_filters_picks_climbs_and_preserves_the_named_gaps | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::cold_notification_waits_for_its_exact_seat_and_never_selects_a_substitute | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::consumed_local_presses_keep_local_repeats_without_leaking_into_the_pty | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::document_keys_never_navigate_the_covered_pane_and_balance_prior_pty_releases | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::document_return_anchor_survives_refresh_and_reconciles_a_removed_seat | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::graph_navigation_is_local_and_global_shortcuts_still_reach_the_app | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::ime_preedit_converts_utf8_cursor_bytes_to_utf16_without_committing | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::modal_input_never_reaches_a_pty_and_picks_do_not_repeat | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::published_screens_do_not_undo_local_focus_or_create_locate | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::stage_switch_waits_for_the_new_outer_pane_before_locate_once | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::terminal_keys_stay_byte_exact_while_explicit_chords_move_focus | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / launcher_host_tests::terminal_route_uses_live_modes_and_forwards_only_requested_releases | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / lazy_projection_tests::model_publishes_between_frames_do_not_project_during_drain | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / lazy_projection_tests::one_thousand_publications_between_two_ticks_schedule_at_most_two_callbacks | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / live::tests::controls_obey_logic_size_limits_and_discard_old_generations | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::empty_page_completions_publish_and_refusals_complete_only_the_matched_stream | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::first_refused_resize_converges_without_another_ui_resize | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::generic_spawn_preserves_inputs_and_uses_io_defaults | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::held_and_reordered_knowledge_replies_do_not_block_control_or_history_results | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::knowledge_demand_survives_a_full_command_queue_and_coalesces | B1 — synchronous readiness poll; no timed negative assertion | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::knowledge_reply_correlation_cannot_consume_an_unrelated_result | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events | B2 — exact named night selector | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::native_retained_results_publish_every_revision_and_survive_metadata_rebuild | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::native_terminal_replies_are_correlated_and_async_identity_never_releases_them | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame | B2 — exact named night selector | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input | B2 — exact named night selector | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::refused_watch_retries_stay_bounded_and_coalesce_the_latest_size | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::resize_before_a_coalesced_watch_keeps_its_desired_grid | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::scroll_history_errors_are_correlated_behind_operations_and_async_pushes | C1 — public typed result/action/layout checks replace private storage inspection | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::scroll_history_reads_yield_to_already_published_applied_actions | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::sent_control_waits_for_an_observation_or_refusal_before_retrying | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / live::tests::waiting_attention_is_published_before_ack_but_history_pages_are_passive | D — keep; deterministic contract regression | spec c1-live-seats §2a |
+| unittests src/main.rs / placement_tests::new_membership_does_not_focus_without_a_matching_spawn_result | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / placement_tests::spawn_pick_uses_ui_focus_and_only_known_catalogue_ids | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / scene::depth_tests::app_clock_steps_the_actual_focus_rims_to_450_ms_without_moving_layout | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::attention_loops_until_handled_and_a_muted_seat_stays_quiet | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::controlled_attention_keeps_its_logical_phase_across_metadata_publications | C1 — rewrite private checks to actual pane bounds/rim paint output | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::pane_rects_are_identical_across_activity_states | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::published_attention_drives_both_blocks_without_moving_focus_or_restarting_swell | C1 — rewrite private checks to actual pane bounds/rim paint output | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::depth_tests::the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar | C1 — rewrite private checks to actual pane bounds/rim paint output | spec ux-prototype §5 |
+| unittests src/main.rs / scene::identity_note_tests::the_frame_labels_test_accounts_without_changing_real_identity_notes | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::document_uses_effective_context_without_moving_panes_and_keeps_hud_last | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16 | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::no_launcher_paint_proof | A2 — delete; covered by scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order | spec ux-prototype §5; scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order |
+| unittests src/main.rs / scene::launcher_tests::repeated_document_publications_keep_the_original_focus_swell_instant | C1 — rewrite private checks to actual pane bounds/rim paint output | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::retained_launcher_hit_regions_and_unwrapped_foreground_order | D — keep; deterministic contract regression | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::settings_owns_one_inner_scroller_and_uses_the_effective_theme_density_and_rim | C1 — public typed result/action/layout checks replace private storage inspection | spec ux-prototype §5 |
+| unittests src/main.rs / scene::launcher_tests::t7_close_and_undo_hits_are_the_actual_retained_buttons | B1 — rewrite with explicit model clock | spec ux-prototype §5 |
+| unittests src/main.rs / scroll_input_tests::admitted_input_resets_a_queued_scroll_anchor_and_refusal_does_not | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / scroll_input_tests::scroll_shortcuts_stay_local_for_repeats_and_kitty_releases | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / scroll_input_tests::ten_minutes_of_scroll_pressure_keep_one_composed_intent_per_pane | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / smoke_tests::a_real_resize_fails_the_probe_even_without_any_frame_or_callback | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / smoke_tests::idle_waits_for_producer_queued_work_and_late_frames_before_starting | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / smoke_tests::interrupted_idle_windows_never_pass_and_deadline_has_a_named_reason | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / smoke_tests::occlusion_keeps_the_full_idle_window_and_old_timers_cannot_end_a_new_one | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / spawn_admission_tests::claude_presets_reach_spawn_and_only_claude_gets_presets | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / spawn_admission_tests::existing_oracle_note_uses_the_displayed_swarm_and_never_blocks_the_default | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / spawn_admission_tests::generic_and_legacy_spawns_share_the_same_cap | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / stall::load::tests::busy_ring_page_names_its_query_and_stays_unknown | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path | B2 — exact named night selector | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::gui_keeps_applying_and_acknowledging_while_side_finish_is_held | B2 — exact named night selector | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::probe_row_fits_every_fifteen_and_fifty_pane_fixture | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::settle_diagnostic_names_the_active_predicates_without_inventing_ui_results | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::load::tests::timeout_prints_and_saves_each_seat_without_inventing_unobserved_backend_results | D — keep; deterministic contract regression | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::tests::extra_wake_sources_are_bounded_and_overflow_is_named | D — keep; tag contract | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::tests::frame_cpu_join_keeps_callback_identity_and_null_gaps_in_the_report | D — keep; tag contract | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::tests::lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip | D — keep; tag contract | spec seats-967-frame §3 |
+| unittests src/main.rs / stall::tests::wake_sources_and_pending_queues_survive_settle_serialization | D — keep; tag contract | spec seats-967-frame §3 |
+| unittests src/main.rs / verification_tests::live_screen_hash_matches_frozen_palette_unicode_and_link_fixtures | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / verification_tests::no_sender_model_retains_read_demand_without_undeliverable_commands | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / verification_tests::verification_grid_validation_and_window_fit_use_real_cell_bounds | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / wake_post_tests::a_visual_frame_services_raw_work_before_its_deadline_and_keeps_the_newest_model | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| unittests src/main.rs / wake_post_tests::sustained_output_is_deadline_bounded_without_ticks_or_paint | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/cockpit.rs / app_io_owner_observes_both_child_process_exits | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/cockpit.rs / cancelled_exit_watch_preserves_orderly_child_shutdown | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/cockpit.rs / gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/cockpit.rs / real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/cockpit.rs / same_run_directory_relaunches_and_spawns_after_orderly_shutdown | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/ctl.rs / a_wrong_capability_is_refused_with_its_reason | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_capture_is_answered_by_the_window | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_drives_a_claude_seat_from_outside_the_app | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_help_prints_its_own_usage | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_never_prints_secrets | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_noun_verb_grammar_replies_and_errors | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_record_write_signs_e2e_records_only | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_screen_input_and_wait_drive_a_seat | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_seat_restart_starts_the_next_generation | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_task_create_opens_an_unassigned_operator_task | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / ctl_task_transitions_preserve_verification_and_operation_identity | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / debug_reads_real_process_logs_journal_cursors_and_disabled_capture_without_a_window | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_logic_restart | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / hook_list_names_the_codex_overlay_from_launch_rs | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / real_ctl_keeps_a_refusal_that_interrupts_its_request_write | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl.rs / without_ctl_the_app_writes_no_endpoint | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/ctl_records.rs / ctl_events_discover_filter_and_resume_without_a_second_consumer_or_ack | B2 — exact named night selector | spec ctl-cli §1 |
+| tests/ctl_records.rs / ctl_record_read_keeps_the_endpoint_exit_when_the_socket_closes_mid_request | B2 — exact named night selector | spec ctl-cli §1 |
+| tests/ctl_records.rs / ctl_records_fetch_search_pages_and_changes_use_the_private_provider | B2 — exact named night selector | spec ctl-cli §1 |
+| tests/custody.rs / custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry | skip: Rook | peer-owned/out of this cut; preserve existing test |
+| tests/documents.rs / attachment_overflow_is_named_on_the_message_without_changing_its_projection | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / composer_wraps_task_paths_once_and_preserves_existing_wire_references | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / errors_and_disconnect_finish_once_and_retry_only_on_a_new_open | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_the_read | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / metadata_publications_retain_an_unconsumed_document_reply | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_claim | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / retained_attachment_targets_are_bounded_as_whole_references | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / task_delegate_keeps_its_provider_path | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/documents.rs / the_provenance_card_displays_test_account_attribution_without_certifying_metadata | D — keep; tag contract | spec l9-messaging-tasks §4 |
+| tests/e2e_night.rs / the_runner_turns_script_exit_codes_into_verdicts_and_a_summary | B2 — exact named night selector appended; body assertions retained | spec e2e-acceptance §3 |
+| tests/headless.rs / app_resize_replies_with_the_first_frame_at_the_new_size | B2 — exact night selector; real GUI/PTY/GPU boundary | spec ctl-cli §1a (resize produced-frame boundary) |
+| tests/headless.rs / ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame | B2 — exact night selector; check first read after receipt and actual PID exit | spec ctl-cli §1a (keyboard end-state frame boundary) |
+| tests/headless.rs / ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher | B2 — exact night selector; check first read after receipt and actual PID exit | spec ctl-cli §1a (chrome and foreground frame boundary) |
+| tests/headless.rs / ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus | B2 — exact night selector; real GUI/PTY/GPU boundary | spec ctl-cli §1a (historical produced-frame boundary) |
+| tests/headless.rs / explicit_placements_capture_the_anchor_preserve_siblings_and_acknowledge_the_pane_frame | B2 — exact night selector; assertions retained; two private-log checks rewritten to observed PID absence | spec ctl-cli §1a (operator placement receipt) |
+| tests/headless.rs / headless_cli_starts_real_gui_types_captures_and_stops_without_a_window | B2 — exact night selector; assertions retained; two private-log checks rewritten to observed PID absence | spec ctl-cli §1b (headless lifecycle and capture boundary) |
+| tests/headless.rs / headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable | B2 — exact night selector, real boundary retained | spec ctl-cli §1b (ten real launch/result boundaries) |
+| tests/headless.rs / headless_smoke_uses_the_idle_probe_with_no_window_or_operator | B2 — exact night selector, real boundary retained | spec runtime §4 (real memory-custody idle boundary) |
+| tests/headless.rs / idle_probe_rejects_an_external_lifecycle_wake | B2 — exact night selector, real boundary retained | spec runtime §4 (idle probe rejects actual external invalidation) |
+| tests/headless.rs / notification_recording_requires_a_test_account_before_startup | D — keep cheap pre-start refusal in default suite | spec attention §3 / test-account recording |
+| tests/headless.rs / recording_notifications_replace_mute_and_activate_the_exact_headless_pane | B2 — exact night selector; assertions retained; two private-log checks rewritten to observed PID absence | spec attention §5 (notification-to-produced-frame boundary) |
+| tests/headless.rs / retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes | B2 — exact night selector; retain protected regression | spec ctl-cli§1/debug fault retained history |
+| tests/headless.rs / scripted_host_opt_out_is_debug_only_and_requires_a_test_account | D — keep and tag after336 lands | task336 |
+| tests/headless.rs / seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame | B2 — exact night selector; check first read after receipt and actual PID exit | spec ctl-cli §1a (frame wait and hidden-capture boundary) |
+| tests/headless.rs / stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid | D — keep cheap pre-start refusal in default suite | spec ctl-cli §1b |
+| tests/headless.rs / t7_headless_close_receipts_restore_the_same_tab_and_extent | B2 — exact night selector; assertions retained; two private-log checks rewritten to observed PID absence | spec ctl-cli §1a (close/undo produced-frame boundary) |
+| tests/headless.rs / test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time | B2 — exact night selector; retain protected regression | task336 |
+| tests/headless.rs / ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer | B2 — exact night selector; real GUI/PTY/GPU boundary | spec ctl-cli §5 (actual identity admission boundary) |
+| tests/headless.rs / unattended_headless_control_uses_its_own_file_account | B2 — exact night selector, real boundary retained | spec ctl-cli §1b (file-account headless control boundary) |
+| tests/headless.rs / unattended_idle_smoke_keeps_file_custody_without_a_window | B2 — exact night selector, real boundary retained | spec runtime §4 (real file-custody idle boundary) |
+| tests/headless.rs / unattended_without_a_test_account_is_refused_before_native_custody | D — keep cheap pre-start refusal in default suite | spec ctl-cli §5 |
+| tests/hosts.rs / provider_data_binds_settings_launcher_and_survives_model_rebuilds | D — keep; tag contract | spec d1-providers §3 |
+| tests/knowledge_e2e.rs / malformed_repeated_and_oversized_pages_fail_closed_instead_of_publishing_partial_rows | D — keep; deterministic contract regression | spec e2e-acceptance §1 |
+| tests/knowledge_e2e.rs / observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies | D — keep; deterministic contract regression | spec e2e-acceptance §1 |
+| tests/knowledge_e2e.rs / one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes | D — keep; deterministic contract regression | spec e2e-acceptance §1 |
+| tests/launcher.rs / a_connecting_host_keeps_the_existing_browseable_projection | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / a_provider_disconnect_invalidates_its_path_and_cannot_dive_again | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / cancelling_composition_restores_committed_text_and_the_selection | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / catalog_refresh_preserves_the_selected_id_across_reordering | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / direct_activation_outside_the_rows_is_local_and_preserves_selection | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / each_down_provider_state_refuses_both_pick_and_dive | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / enter_descends_ordinary_parents_and_picks_the_typed_harness_default | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / enter_picks_the_parent_default_and_right_still_opens_placements | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / escape_climbs_one_explicit_level_before_closing_even_with_a_query | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / field_selection_insertion_and_deletion_never_split_a_surrogate_pair | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / left_and_backspace_leave_nonempty_queries_to_the_text_field | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / link_state_blocks_activation_even_without_the_legacy_down_flag | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / placement_pick_captures_the_ui_stage_and_generation_before_any_reply | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / preedit_never_filters_or_activates_and_commit_replaces_the_original_selection | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / reroll_is_a_pure_name_request_and_does_not_discard_navigation | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / selection_wraps_and_empty_results_are_safe | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/launcher.rs / typed_descent_then_right_commits_the_existing_projection_path | D — keep; tag contract | spec ux-prototype §5.4 |
+| tests/lifecycle.rs / lifecycle_real_process_boundary | skip: Rook | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_flow.rs / composed_decision_and_task_delegation_cross_the_real_gui_boundary | B2 — exact named night selector | spec l9-messaging-tasks §5 |
+| tests/messaging_ui.rs / a_disconnect_retries_the_captured_ids_and_ignores_the_old_unknown_publication | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / a_newer_live_cursor_cannot_make_an_old_empty_page_prove_newer_coverage | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / a_refused_inbox_page_retries_its_actual_cursor_only_on_explicit_view | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / a_refused_retained_page_finishes_the_read_and_waits_for_an_explicit_retry | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / normal_model_build_preserves_correlated_results_across_grid_publications | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / older_display_projections_cannot_undo_new_receipts_or_release_evidence | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / receiving_does_not_mark_read_and_counts_require_complete_retained_coverage | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / repeated_disconnects_release_result_admission_without_accepting_old_socket_replies | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / reply_window_is_bounded_and_replacements_keep_the_same_correlation | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / result_byte_bound_includes_correlation_metadata_and_names_oversize_reads | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / role_recipients_are_captured_from_scoped_registry_membership_and_cap_at_32 | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / role_send_is_one_view_with_receipts_only_when_all_its_real_projections_exist | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / send_captures_the_selected_swarm_exact_destination_and_stable_operation_id | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reason | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / task_views_keep_canonical_status_and_require_the_actual_zero_exit_report | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/messaging_ui.rs / unrelated_replies_cannot_clear_the_draft_and_durable_held_is_named | skip: Velvet | peer-owned/out of this cut; preserve existing test |
+| tests/native_signing.rs / native_bundle_recipe_installs_the_same_requirement_without_real_signing | D — keep; tag contract | decision #315 |
+| tests/native_signing.rs / native_runner_installs_the_team_requirement_and_reuses_it_on_the_next_run | D — keep; tag contract | decision #315 |
+| tests/plugins.rs / real_binary_runs_headless_against_a_fixture_without_opening_the_production_root | B2 — exact night selector | spec plugins §5 |
+| tests/r5_stall.rs / synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io | B2 — exact named night selector appended; body assertions retained | spec runtime §6 |
+| tests/recovery.rs / codex_service_fixture | D — retain already-ignored boundary helper, exercised only by exact recovery parent selectors | spec c1-live-seats §4 |
+| tests/recovery.rs / logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/recovery.rs / partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/recovery.rs / recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/recovery.rs / restart_catalogue_accepts_completion_within_the_sessions_startup_budget | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/recovery.rs / restart_catalogue_preserves_terminal_recovery_failures | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/recovery.rs / restart_catalogue_still_rejects_a_hang | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/recovery.rs / shutdown_during_pending_recovery_reaps_children_without_restarting | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/recovery.rs / supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv | B2 — exact named night selector | spec c1-live-seats §4 |
+| tests/scrollback.rs / ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_casts | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/scrollback.rs / ctl_scroll_finishes_live_noops_refusals_disconnects_and_local_supersession | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/scrollback.rs / scrollback_dimension_admission_uses_the_heap_budget | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/scrollback.rs / scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/scrollback.rs / solved_scroll_readback_leaves_unindexed_live_null_and_invalidates_old_sequences | D — keep; deterministic contract regression | spec c1-live-seats §4 |
+| tests/settings.rs / settings_io_coalesces_edits_without_losing_other_fields_and_survives_restart | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/settings.rs / settings_metadata_rebuild_preserves_context_and_the_preferences_snapshot | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/settings.rs / settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/settings.rs / settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppression | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/settings.rs / settings_projects_missing_identity_honestly_and_uses_the_backend_role_defaults | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/settings.rs / settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count | D — keep; tag contract | spec ux-prototype §5.6 |
+| tests/test_account.rs / logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority | B2 — exact named night selector | decision #313 |
+| tests/test_account.rs / test_account_selector_is_explicit_and_rejects_bad_flags_before_custody | D — keep; deterministic contract regression | decision #313 |

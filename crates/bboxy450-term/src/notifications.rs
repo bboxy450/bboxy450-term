@@ -268,6 +268,7 @@ mod tests {
         )]
         .into()
     }
+    // keeps: spec attention §3
     #[test]
     fn replacement_and_removal_use_the_same_id_off_the_caller_thread() {
         let calls = Arc::new(Mutex::new(vec![]));
@@ -281,12 +282,12 @@ mod tests {
         .unwrap();
         let known: BTreeSet<_> = [NotificationId("seat".into())].into();
         worker.submit(notice("first", 1), known.clone());
-        receive.recv_timeout(Duration::from_secs(2)).unwrap();
+        receive.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.submit(notice("first", 1), known.clone());
         worker.submit(notice("replacement", 1), known.clone());
-        receive.recv_timeout(Duration::from_secs(2)).unwrap();
+        receive.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.submit(Desired::new(), known);
-        receive.recv_timeout(Duration::from_secs(2)).unwrap();
+        receive.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.join().unwrap();
         let calls = calls.lock().unwrap();
         assert_eq!(
@@ -299,6 +300,7 @@ mod tests {
         assert!(calls.iter().all(|(_, id)| *id != thread::current().id()));
     }
 
+    // keeps: spec attention §3
     #[test]
     fn a_fresh_worker_withdraws_known_inactive_ids_from_an_old_process() {
         let calls = Arc::new(Mutex::new(vec![]));
@@ -311,7 +313,7 @@ mod tests {
         )
         .unwrap();
         worker.submit(Desired::new(), [NotificationId("old-seat".into())].into());
-        receive.recv_timeout(Duration::from_secs(2)).unwrap();
+        receive.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.join().unwrap();
         assert_eq!(
             calls
@@ -324,6 +326,7 @@ mod tests {
         );
     }
 
+    // keeps: spec attention §3
     #[test]
     fn a_mute_admitted_during_authorization_prevents_the_pending_post() {
         struct DelayedAuthorization {
@@ -337,7 +340,7 @@ mod tests {
                 self.release
                     .lock()
                     .unwrap()
-                    .recv_timeout(Duration::from_secs(2))
+                    .recv_timeout(Duration::from_secs(30))
                     .unwrap();
                 Ok(Authorization::Granted)
             }
@@ -363,10 +366,10 @@ mod tests {
         .unwrap();
         let known: BTreeSet<_> = [NotificationId("seat".into())].into();
         worker.submit(notice("waiting", 1), known.clone());
-        started.recv_timeout(Duration::from_secs(2)).unwrap();
+        started.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.submit(Desired::new(), known);
         release.send(()).unwrap();
-        done.recv_timeout(Duration::from_secs(2)).unwrap();
+        done.recv_timeout(Duration::from_secs(30)).unwrap();
         worker.join().unwrap();
     }
 }

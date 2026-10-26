@@ -860,6 +860,7 @@ impl Drop for Io {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: decision #315
     #[test]
     fn native_second_item_hold_keeps_unlock_available_after_an_allowed_access() {
         use bbt_proto::identity::{
@@ -926,6 +927,7 @@ mod tests {
         assert_eq!(control.view().attempt.as_deref(), Some("returned"));
         assert!(!control.view().enabled);
     }
+    // keeps: decision #315
     #[test]
     fn native_unknown_checks_the_same_id_and_never_replays_on_disconnect() {
         use bbt_proto::identity::{
@@ -1002,6 +1004,7 @@ mod tests {
         assert_eq!(control.view().attempt.as_deref(), Some("cancelled"));
         assert!(control.view().enabled);
     }
+    // keeps: spec e2e-acceptance §1 G1/G2
     #[test]
     fn patches_survive_restart_and_preserve_comments_and_unmanaged_keys() {
         let dir = tempfile::tempdir().unwrap();
@@ -1029,6 +1032,7 @@ mod tests {
         assert_eq!(prefs.appearance.theme, "light");
         assert!(!prefs.notifications.enabled);
     }
+    // keeps: spec e2e-acceptance §1 G1/G2
     #[test]
     fn refused_save_keeps_original_bytes_and_read_does_not_create_a_file() {
         let dir = tempfile::tempdir().unwrap();
@@ -1039,8 +1043,16 @@ mod tests {
         fs::write(&path, "[appearance\n# broken").unwrap();
         assert!(store.save(&[Patch::Glow(false)]).is_err());
         assert_eq!(fs::read_to_string(&path).unwrap(), "[appearance\n# broken");
+        // Use a valid document so this checks the invalid patch, rather than
+        // failing for the already-covered malformed input file.
+        fs::write(&path, "# valid before the refused patch\n").unwrap();
         assert!(store.save(&[Patch::Rim(f32::NAN)]).is_err());
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            "# valid before the refused patch\n"
+        );
     }
+    // keeps: spec e2e-acceptance §1 G1/G2
     #[test]
     fn stale_save_cannot_acknowledge_a_newer_edit() {
         let mut state = State::default();
@@ -1066,12 +1078,13 @@ mod tests {
         });
         assert!(state.saved());
     }
+    // keeps: spec e2e-acceptance §1 G1/G2
     #[test]
     fn atomic_patch_preserves_a_config_symlink() {
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join("actual.toml");
         let link = dir.path().join("config.toml");
-        fs::write(&target, "# actual\n").unwrap();
+        fs::write(&target, "# actual\n[appearance]\nglow = true\n").unwrap();
         std::os::unix::fs::symlink(&target, &link).unwrap();
         Store::new(link.clone())
             .save(&[Patch::Glow(false)])
@@ -1083,7 +1096,9 @@ mod tests {
                 .is_symlink()
         );
         assert!(fs::read_to_string(target).unwrap().contains("# actual"));
+        assert!(!Store::new(link).load().unwrap().appearance.glow);
     }
+    // keeps: spec e2e-acceptance §1 G1/G2
     #[test]
     fn busy_configuration_refuses_without_waiting_or_altering_the_file() {
         let dir = tempfile::tempdir().unwrap();
@@ -1102,6 +1117,7 @@ mod tests {
         );
         assert_eq!(fs::read_to_string(path).unwrap(), "# retained\n");
     }
+    // keeps: spec attention §3
     #[test]
     fn harness_array_patches_preserve_entry_comments_even_when_an_entry_is_removed() {
         let dir = tempfile::tempdir().unwrap();

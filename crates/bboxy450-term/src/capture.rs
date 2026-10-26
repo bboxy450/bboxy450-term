@@ -133,6 +133,7 @@ impl Crop {
 #[cfg(test)]
 mod tests {
     use super::Crop;
+    // keeps: spec ctl-cli §1 (capture bounds)
     #[test]
     fn a_crop_stays_inside_the_frame() {
         let crop = |x, y, width, height| Crop {

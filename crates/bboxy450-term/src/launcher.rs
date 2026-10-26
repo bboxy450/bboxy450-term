@@ -208,6 +208,7 @@ mod operator_tests {
             place,
         }
     }
+    // keeps: spec c1-live-seats §2a (captured operator placement)
     #[test]
     fn captured_operator_anchor_survives_later_focus_and_revision_changes() {
         let mut model = model();
@@ -262,6 +263,7 @@ mod operator_tests {
             crate::model::SpawnOutcome::Placed(SeatId::from_u128(5))
         );
     }
+    // keeps: spec c1-live-seats §2a (captured operator placement)
     #[test]
     fn explicit_split_never_falls_back_when_the_anchor_is_missing_or_cross_swarm() {
         let model = model();
@@ -281,6 +283,7 @@ mod operator_tests {
                 .starts_with("placement_swarm_changed")
         );
     }
+    // keeps: spec c1-live-seats §2a (captured operator placement)
     #[test]
     fn a_new_space_has_a_fresh_swarm_and_first_tab_without_retargeting_the_old_one() {
         let model = model();

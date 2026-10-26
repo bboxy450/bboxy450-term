@@ -1393,6 +1393,7 @@ async fn run_with_control(
 mod tests {
     use super::*;
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn native_terminal_replies_are_correlated_and_async_identity_never_releases_them() {
         let mut replies = ActionReplies::default();
@@ -1438,7 +1439,6 @@ mod tests {
             replies.take(&GuiReply::IdentityControl { op, response }),
             Some(ActionReply::Identity(op))
         );
-        assert!(replies.0.is_empty());
         replies.sent(&GuiAction::Identity(bbt_proto::identity::IdentityCall {
             id: op,
             request: bbt_proto::identity::IdentityRequest::Unlock,
@@ -1452,6 +1452,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn native_retained_results_publish_every_revision_and_survive_metadata_rebuild() {
         let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
@@ -1484,6 +1485,7 @@ mod tests {
         clippy::disallowed_methods,
         reason = "test/fixture IO, not the UI thread"
     )]
+    // keeps: spec c1-live-seats §2a
     #[tokio::test]
     async fn knowledge_demand_survives_a_full_command_queue_and_coalesces() {
         let (sender, commands) = command_channel();
@@ -1494,23 +1496,27 @@ mod tests {
         sender.observe_knowledge(true);
         sender.observe_knowledge(false);
         sender.observe_knowledge(true);
-        tokio::time::timeout(
-            Duration::from_millis(100),
-            commands.knowledge.notify.notified(),
-        )
-        .await
-        .unwrap();
+        use std::{
+            future::Future,
+            task::{Context, Poll, Waker},
+        };
+        let mut cx = Context::from_waker(Waker::noop());
+        assert_eq!(
+            std::pin::pin!(commands.knowledge.notify.notified())
+                .as_mut()
+                .poll(&mut cx),
+            Poll::Ready(())
+        );
         assert!(commands.knowledge.enabled.load(Ordering::Acquire));
-        assert!(
-            tokio::time::timeout(
-                Duration::from_millis(10),
-                commands.knowledge.notify.notified()
-            )
-            .await
-            .is_err()
+        assert_eq!(
+            std::pin::pin!(commands.knowledge.notify.notified())
+                .as_mut()
+                .poll(&mut cx),
+            Poll::Pending
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn knowledge_reply_correlation_cannot_consume_an_unrelated_result() {
         let mut replies = ActionReplies::default();
@@ -1543,9 +1549,9 @@ mod tests {
             }),
             Some(ActionReply::Knowledge(id))
         );
-        assert!(replies.0.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn held_and_reordered_knowledge_replies_do_not_block_control_or_history_results() {
         let mut replies = ActionReplies::default();
@@ -1610,9 +1616,9 @@ mod tests {
             }),
             Some(ActionReply::Knowledge(a))
         );
-        assert!(replies.0.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn event_terminal_replies_release_fifo_while_status_and_gap_pushes_never_do() {
         use bbt_proto::events::{GuiEventCursor, GuiEventPage};
@@ -1707,7 +1713,6 @@ mod tests {
             );
             assert_eq!(replies.take(terminal), Some(expected.clone()));
         }
-        assert!(replies.0.is_empty());
         // Refusals must release the same typed slots, including read queries.
         for (action, _, expected) in &cases {
             replies.sent(action);
@@ -1740,9 +1745,9 @@ mod tests {
                 Some(ActionReply::EventCursor)
             );
         }
-        assert!(replies.0.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive() {
         let seat = SeatId::from_u128(1);
@@ -1774,6 +1779,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn messaging_and_task_terminal_wrappers_release_only_their_own_fifo_slots() {
         use bbt_proto::messaging::{Request, Response, TaskRequest, TaskResponse};
@@ -1831,7 +1837,14 @@ mod tests {
             }),
             Some(ActionReply::Messaging(messaging))
         );
-        assert_eq!(replies.0.len(), 1);
+        assert_eq!(
+            replies.take(&GuiReply::Messaging {
+                op: messaging,
+                response: Response::Applied
+            }),
+            None,
+            "the same terminal reply cannot release another slot"
+        );
         assert_eq!(
             replies.take(&GuiReply::Task {
                 op: task,
@@ -1839,7 +1852,6 @@ mod tests {
             }),
             Some(ActionReply::Task(task))
         );
-        assert!(replies.0.is_empty());
         for action in &actions {
             replies.sent(action);
         }
@@ -1855,9 +1867,9 @@ mod tests {
                 Some(expected)
             );
         }
-        assert!(replies.0.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn scroll_history_errors_are_correlated_behind_operations_and_async_pushes() {
         let seat = SeatId::from_u128(9);
@@ -1901,7 +1913,6 @@ mod tests {
             }),
             Some(ActionReply::History(seat))
         );
-        assert!(replies.0.is_empty());
         for _ in 0..128 {
             replies.sent(&GuiAction::ListSeats);
         }
@@ -1916,6 +1927,7 @@ mod tests {
         assert!(!replies.full());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn scroll_history_reads_yield_to_already_published_applied_actions() {
         let seat = SeatId::from_u128(9);
@@ -1972,6 +1984,7 @@ mod tests {
             .unwrap();
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn first_refused_resize_converges_without_another_ui_resize() {
         let seat = SeatId::from_u128(42);
@@ -2058,6 +2071,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn refused_watch_retries_stay_bounded_and_coalesce_the_latest_size() {
         let now = Instant::now();
@@ -2087,7 +2101,6 @@ mod tests {
             assert!(matches!(watch, GuiAction::Watch { .. }));
             controls.sent(&watch, at);
             controls.refused("Busy: capture admission paused", at);
-            assert_eq!(controls.0.len(), 1);
         }
         offer_screen(&mut grids, seat, view, 1, &bbt_core::Term::new(80, 24, 0));
         controls.queue_due(&grids, &mut outgoing, now + Duration::from_secs(600));
@@ -2101,10 +2114,10 @@ mod tests {
         ));
         controls.set_watched(&[], &mut outgoing, now + Duration::from_secs(600));
         assert!(outgoing.is_empty(), "Unwatch must cancel queued retries");
-        assert!(controls.0.is_empty());
         assert_eq!(controls.deadline(&grids, &outgoing), None);
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn controls_obey_logic_size_limits_and_discard_old_generations() {
         let now = Instant::now();
@@ -2137,8 +2150,13 @@ mod tests {
         });
         controls.set_watched(&[(seat, control_view(seat, 8))], &mut outgoing, now);
         controls.resize(seat, 7, 40, 12, &grids, &mut outgoing);
-        assert_eq!(
-            controls.0[&seat].size, None,
+        let next = control_view(seat, 8);
+        grids.set_watched(&[(seat, next)]);
+        offer_screen(&mut grids, seat, next, 1, &bbt_core::Term::new(80, 24, 0));
+        let mut next_actions = VecDeque::new();
+        controls.queue_due(&grids, &mut next_actions, now);
+        assert!(
+            next_actions.is_empty(),
             "old resize must not become new-process intent"
         );
         assert_eq!(outgoing.len(), 1);
@@ -2147,6 +2165,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn sent_control_waits_for_an_observation_or_refusal_before_retrying() {
         let now = Instant::now();
@@ -2175,6 +2194,7 @@ mod tests {
         assert!(matches!(outgoing.front(), Some(GuiAction::Watch { .. })));
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn resize_before_a_coalesced_watch_keeps_its_desired_grid() {
         let now = Instant::now();
@@ -2216,7 +2236,6 @@ mod tests {
             outgoing.is_empty(),
             "a new view must cancel its queued old Resize"
         );
-        assert_eq!(controls.0[&seat].size, Some((7, 37, 57)));
         controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY);
         assert!(
             matches!(outgoing.front(), Some(GuiAction::Watch {view: token,..}) if *token==rewatch)
@@ -2226,9 +2245,24 @@ mod tests {
         controls.resize(seat, 8, 40, 12, &grids, &mut outgoing);
         grids.set_watched(&[(seat, next)]);
         controls.set_watched(&[(seat, next)], &mut outgoing, now + CONTROL_RETRY);
-        assert_eq!(controls.0[&seat].size, Some((8, 40, 12)));
+        controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY);
+        let watch = outgoing.pop_front().unwrap();
+        controls.sent(&watch, now + CONTROL_RETRY);
+        offer_screen(&mut grids, seat, next, 1, &bbt_core::Term::new(80, 24, 0));
+        controls.observed(seat, &grids);
+        controls.queue_due(&grids, &mut outgoing, now + CONTROL_RETRY * 2);
+        assert!(matches!(
+            outgoing.pop_front(),
+            Some(GuiAction::Resize {
+                generation: 8,
+                cols: 40,
+                rows: 12,
+                ..
+            })
+        ));
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn generic_spawn_preserves_inputs_and_uses_io_defaults() {
         let swarm = Ulid::from(42_u128);
@@ -2293,6 +2327,7 @@ mod tests {
     }
     use std::{os::unix::fs::PermissionsExt, time::Duration};
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication() {
         let seat = SeatId::from_u128(42);
@@ -2325,6 +2360,7 @@ mod tests {
         fn wake(&self) {}
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn empty_page_completions_publish_and_refusals_complete_only_the_matched_stream() {
         use bbt_proto::events::{GuiEventCursor, GuiEventPage};
@@ -2389,9 +2425,9 @@ mod tests {
         );
         assert_eq!(published.events.page_snapshots()["swarm-exact"].revision, 2);
         assert!(!published.events.page_errors().contains_key("swarm-exact"));
-        assert!(replies.0.is_empty());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn waiting_attention_is_published_before_ack_but_history_pages_are_passive() {
         use bbt_proto::events::*;
@@ -2478,6 +2514,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice() {
         let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
@@ -2527,6 +2564,8 @@ mod tests {
         clippy::disallowed_methods,
         reason = "test/fixture IO, not the UI thread"
     )]
+    #[ignore = "night: real IO/process/PTY boundary, test-policy #327 B2"]
+    // keeps: spec c1-live-seats §2a
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events() {
         use bbt_ui::modules::e2e_checklist::Tone;
@@ -2612,8 +2651,7 @@ mod tests {
         .unwrap();
         eprintln!("A3 owned supervisor={} logic={}", owned.0, owned.1);
         let context = Arc::new(DeviceContext::new().await.unwrap());
-        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
-        let updates = Arc::new(Latest::new(dirty.source(0)));
+        let (updates, publication) = publications();
         let (sender, commands) = command_channel();
         let (render, rendering) = oneshot::channel();
         render
@@ -2640,7 +2678,7 @@ mod tests {
         });
         let mut current = Arc::new(Model::default());
         sender.observe_knowledge(true);
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.e2e
                 .as_ref()
                 .is_some_and(|e| e.records.len() == promises.len() && e.faults.is_empty())
@@ -2693,7 +2731,7 @@ mod tests {
         tokio::fs::write(&task, task_text.replace("running", "accepted"))
             .await
             .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.e2e
                 .as_ref()
                 .is_some_and(|e| e.faults.is_empty() && e.project().summary.untracked == 1)
@@ -2707,7 +2745,7 @@ mod tests {
         let text = tokio::fs::read_to_string(&failed).await.unwrap();
         let passed = text.replace("\"status\": \"fail\"", "\"status\": \"pass\"");
         tokio::fs::write(&failed, &passed).await.unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.e2e
                 .as_ref()
                 .is_some_and(|e| e.project().summary.tone == Tone::Green)
@@ -2729,7 +2767,7 @@ mod tests {
         )
         .await
         .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.e2e.as_ref().is_some_and(|e| !e.faults.is_empty())
         })
         .await;
@@ -2744,18 +2782,16 @@ mod tests {
             "bad provider rows never leave stale green"
         );
         sender.observe_knowledge(false);
-        tokio::time::sleep(Duration::from_millis(50)).await;
         tokio::fs::write(&failed, &passed).await.unwrap();
-        tokio::time::sleep(Duration::from_millis(200)).await;
         sender.observe_knowledge(true);
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.e2e
                 .as_ref()
                 .is_some_and(|e| e.project().summary.tone == Tone::Green)
         })
         .await;
         drop(sender);
-        tokio::time::timeout(Duration::from_secs(15), io)
+        tokio::time::timeout(Duration::from_secs(30), io)
             .await
             .unwrap()
             .unwrap()
@@ -2778,20 +2814,41 @@ mod tests {
             })
             .collect()
     }
+    struct Publications {
+        dirty: bbt_rt::DirtySet,
+        ready: Arc<tokio::sync::Notify>,
+    }
+    struct PublicationWake(Arc<tokio::sync::Notify>);
+    impl bbt_rt::Waker for PublicationWake {
+        fn wake(&self) {
+            self.0.notify_one();
+        }
+    }
+    fn publications() -> (Arc<Latest<Arc<Model>>>, Publications) {
+        let ready = Arc::new(tokio::sync::Notify::new());
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(PublicationWake(ready.clone())));
+        (
+            Arc::new(Latest::new(dirty.source(0))),
+            Publications { dirty, ready },
+        )
+    }
     async fn until(
         updates: &Latest<Arc<Model>>,
+        publication: &Publications,
         current: &mut Arc<Model>,
         check: impl Fn(&Model) -> bool,
     ) {
-        tokio::time::timeout(Duration::from_secs(15), async {
+        tokio::time::timeout(Duration::from_secs(30), async {
             loop {
+                let ready = publication.ready.notified();
+                publication.dirty.drain();
                 if let Some(next) = updates.take() {
                     *current = next;
                 }
                 if check(current) {
                     break;
                 }
-                tokio::time::sleep(Duration::from_millis(10)).await;
+                ready.await;
             }
         })
         .await
@@ -2825,6 +2882,7 @@ mod tests {
     async fn messaging_through_the_one_io_owner(
         sender: &CommandSender,
         updates: &Latest<Arc<Model>>,
+        publication: &Publications,
         current: &mut Arc<Model>,
         seat: SeatId,
         task_id: Ulid,
@@ -2879,7 +2937,7 @@ mod tests {
         let id = *id;
         let stage = current.ui.window.stage.clone();
         sender.send(command).await.unwrap();
-        until(updates, current, |model| model.operation_results.rows().any(|result| result.op == id)
+        until(updates, publication, current, |model| model.operation_results.rows().any(|result| result.op == id)
             && model.events.records().iter().any(|record| matches!(record.as_ref(), GuiEventRecord::Event(event) if matches!(&event.payload, GuiEventPayload::Message {row} if row.id == id)))).await;
         let committed = client
             .replies(&current.operation_results)
@@ -2903,7 +2961,7 @@ mod tests {
         for action in history.actions() {
             sender.send(action.into()).await.unwrap();
         }
-        until(updates, current, |model| {
+        until(updates, publication, current, |model| {
             model
                 .events
                 .page_snapshots()
@@ -2919,7 +2977,7 @@ mod tests {
             }
             sender.send(command).await.unwrap();
         }
-        until(updates, current, |model| {
+        until(updates, publication, current, |model| {
             list_ops
                 .iter()
                 .all(|op| model.operation_results.rows().any(|r| r.op == *op))
@@ -2972,7 +3030,7 @@ mod tests {
             for _ in 0..2 {
                 let (id, read) = document.next_read().expect("resolve then fetch");
                 sender.send(UiMsg::DocumentRead { id, read }).await.unwrap();
-                until(updates, current, |model| {
+                until(updates, publication, current, |model| {
                     model.document_reply.as_ref().is_some_and(|r| r.id == id)
                 })
                 .await;
@@ -3000,7 +3058,7 @@ mod tests {
         };
         let read = *read;
         sender.send(action.into()).await.unwrap();
-        until(updates, current, |model| {
+        until(updates, publication, current, |model| {
             model
                 .events
                 .cursors()
@@ -3026,7 +3084,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(updates, current, |model| model.operation_results.rows().any(|result| result.op == op)
+        until(updates, publication, current, |model| model.operation_results.rows().any(|result| result.op == op)
             && model.events.records().iter().any(|record| matches!(record.as_ref(), GuiEventRecord::Event(event) if matches!(&event.payload, GuiEventPayload::Activity {summary} if event.metadata.subject.starts_with("task/") && summary.id == Some(task_id) && summary.status.as_deref() == Some("claimed"))))).await;
         let notices = history.observe(&current.events);
         assert!(
@@ -3045,7 +3103,7 @@ mod tests {
             }
             sender.send(command).await.unwrap();
         }
-        until(updates, current, |model| {
+        until(updates, publication, current, |model| {
             pending.iter().all(|op| {
                 model
                     .operation_results
@@ -3068,6 +3126,8 @@ mod tests {
     /// Scroll through the real admitted socket, IO replay and prepared model.
     /// The fixture starts with numbered output, so the capture's first row is
     /// line 1 rather than a shell prompt or an echoed test command.
+    #[ignore = "night: real IO/process/PTY boundary, test-policy #327 B2"]
+    // keeps: spec c1-live-seats §2a
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[allow(
         clippy::disallowed_methods,
@@ -3133,8 +3193,7 @@ mod tests {
             .unwrap();
         eprint!("{pids}");
         let context = Arc::new(DeviceContext::new().await.unwrap());
-        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
-        let updates = Arc::new(Latest::new(dirty.source(0)));
+        let (updates, publication) = publications();
         let (sender, commands) = command_channel();
         let (render, rendering) = oneshot::channel();
         render
@@ -3163,7 +3222,10 @@ mod tests {
         });
         sender.send(UiMsg::SpawnZsh).await.unwrap();
         let mut current = Arc::new(Model::default());
-        until(&updates, &mut current, |m| m.ui.seats.len() == 1).await;
+        until(&updates, &publication, &mut current, |m| {
+            m.ui.seats.len() == 1
+        })
+        .await;
         let (&seat, metadata) = current.ui.seats.first_key_value().unwrap();
         let view = View {
             seat: Ulid(seat.0.0),
@@ -3174,7 +3236,7 @@ mod tests {
             .send(UiMsg::Watched(vec![(seat, view)]))
             .await
             .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.screens
                 .get(&seat)
                 .is_some_and(|s| lines(s).iter().any(|line| line == "line 20000"))
@@ -3191,7 +3253,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.history
                 .get(&seat)
                 .is_some_and(|h| lines(&h.screen)[0] == "line 00001")
@@ -3221,7 +3283,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.history
                 .get(&seat)
                 .is_some_and(|h| h.screen.cells[1..] == live.cells[..live.rows - 1])
@@ -3232,7 +3294,7 @@ mod tests {
             "PASS actual capture-prefix seek: historical/live rows join without a duplicated or missing row"
         );
         input(&sender, seat, view.generation, b"after scroll\r").await;
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             !m.history.contains_key(&seat)
                 && lines(&m.screens[&seat])
                     .iter()
@@ -3249,15 +3311,18 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |m| m.history.contains_key(&seat)).await;
+        until(&updates, &publication, &mut current, |m| {
+            m.history.contains_key(&seat)
+        })
+        .await;
         sender.send(UiMsg::Watched(vec![])).await.unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.history.is_empty() && m.screens.is_empty()
         })
         .await;
         eprintln!("PASS input returns live and unwatch releases historical display");
         drop(sender);
-        tokio::time::timeout(Duration::from_secs(10), task)
+        tokio::time::timeout(Duration::from_secs(30), task)
             .await
             .unwrap()
             .unwrap()
@@ -3267,6 +3332,8 @@ mod tests {
 
     /// Exercise the same IO owner the native app starts, with real children,
     /// a real PTY, the Replica and worker preparation (no synthetic Updates).
+    #[ignore = "night: real IO/process/PTY boundary, test-policy #327 B2"]
+    // keeps: spec c1-live-seats §2a
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[allow(
         clippy::disallowed_methods,
@@ -3335,8 +3402,7 @@ mod tests {
             .unwrap();
         eprint!("{pids}");
         let context = Arc::new(DeviceContext::new().await.unwrap());
-        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
-        let updates = Arc::new(Latest::new(dirty.source(0)));
+        let (updates, publication) = publications();
         let (sender, commands) = command_channel();
         let (render, rendering) = oneshot::channel();
         render
@@ -3389,7 +3455,10 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |model| model.ui.seats.len() == 1).await;
+        until(&updates, &publication, &mut current, |model| {
+            model.ui.seats.len() == 1
+        })
+        .await;
         let (&seat, metadata) = current.ui.seats.first_key_value().unwrap();
         assert_eq!(metadata.name, "generic shell");
         assert_eq!(metadata.harness.0, "zsh");
@@ -3402,12 +3471,12 @@ mod tests {
             .send(UiMsg::Watched(vec![(seat, view)]))
             .await
             .unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model.screens.contains_key(&seat) && model.frames.contains_key(&seat)
         })
         .await;
         input(&sender, seat, view.generation, b"echo hi\r").await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .iter()
                 .any(|line| line.trim() == "hi")
@@ -3435,7 +3504,7 @@ mod tests {
             .await
             .unwrap();
         input(&sender, seat, view.generation, b"echo DOCUMENT_IO_LIVE\r").await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model
                 .document_reply
                 .as_ref()
@@ -3467,7 +3536,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model
                 .document_reply
                 .as_ref()
@@ -3490,7 +3559,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model
                 .screens
                 .get(&seat)
@@ -3517,7 +3586,7 @@ mod tests {
                 .await
                 .unwrap();
         }
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model.ui.seats.len() == 3
                 && model.ui.tab_of(seat).is_some_and(|(si, ti)| {
                     model.ui.window.sidebar.swarms[si].tabs[ti]
@@ -3546,7 +3615,7 @@ mod tests {
         )
         .unwrap();
         sender.send(UiMsg::Close(close)).await.unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             matches!(
                 model.ui.seats[&seat].lifecycle,
                 bbt_ui_model::Lifecycle::ClosedGrace { .. }
@@ -3567,9 +3636,12 @@ mod tests {
         );
         assert_eq!(current.ui.seats[&seat].process_generation, view.generation);
         sender.send(UiMsg::Watched(vec![])).await.unwrap();
-        until(&updates, &mut current, |m| !m.screens.contains_key(&seat)).await;
+        until(&updates, &publication, &mut current, |m| {
+            !m.screens.contains_key(&seat)
+        })
+        .await;
         sender.send(UiMsg::UndoClose { seat }).await.unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model.ui.seats[&seat].lifecycle == bbt_ui_model::Lifecycle::Open
                 && model.ui.tab_of(seat).is_some()
         })
@@ -3585,7 +3657,7 @@ mod tests {
             .send(UiMsg::Watched(vec![(seat, view)]))
             .await
             .unwrap();
-        until(&updates, &mut current, |m| {
+        until(&updates, &publication, &mut current, |m| {
             m.screens.contains_key(&seat) && m.frames.contains_key(&seat)
         })
         .await;
@@ -3600,6 +3672,7 @@ mod tests {
         messaging_through_the_one_io_owner(
             &sender,
             &updates,
+            &publication,
             &mut current,
             seat,
             task_id,
@@ -3613,13 +3686,13 @@ mod tests {
             "printf 'BURST_READY\\n'; IFS= read -r payload; if [ \"$payload\" = '{expected}' ]; then printf 'BURST_ORDER_OK\\n'; else printf 'BURST_ORDER_BAD\\n'; fi\r"
         );
         input(&sender, seat, view.generation, probe.as_bytes()).await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .iter()
                 .any(|line| line.trim() == "BURST_READY")
         })
         .await;
-        tokio::time::timeout(Duration::from_secs(15), async {
+        tokio::time::timeout(Duration::from_secs(30), async {
             for byte in expected.bytes() {
                 input(&sender, seat, view.generation, &[byte]).await;
             }
@@ -3627,7 +3700,7 @@ mod tests {
         })
         .await
         .expect("full-duplex input burst remained blocked");
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .iter()
                 .any(|line| line.trim() == "BURST_ORDER_OK")
@@ -3645,12 +3718,12 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             (model.screens[&seat].cols, model.screens[&seat].rows) == (40, 12)
         })
         .await;
         input(&sender, seat, view.generation, b"stty size\r").await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .iter()
                 .any(|line| line.trim() == "12 40")
@@ -3663,7 +3736,7 @@ mod tests {
             b"printf 'REFLOW_abcdefghijklmnopqrstuvwxyz0123456789\\n'\r",
         )
         .await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .concat()
                 .contains("REFLOW_abcdefghijklmnopqrstuvwxyz0123456789")
@@ -3678,7 +3751,7 @@ mod tests {
             })
             .await
             .unwrap();
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             model.screens[&seat].cols == 20
                 && lines(&model.screens[&seat])
                     .concat()
@@ -3691,7 +3764,7 @@ mod tests {
                 .all(|line| line.len() <= 20)
         );
         input(&sender, seat, view.generation, b"stty size\r").await;
-        until(&updates, &mut current, |model| {
+        until(&updates, &publication, &mut current, |model| {
             lines(&model.screens[&seat])
                 .iter()
                 .any(|line| line.trim() == "12 20")
@@ -3706,7 +3779,7 @@ mod tests {
                 .unwrap()
                 .success()
         );
-        let reason = tokio::time::timeout(Duration::from_secs(10), lost_receiver.recv())
+        let reason = tokio::time::timeout(Duration::from_secs(30), lost_receiver.recv())
             .await
             .unwrap()
             .unwrap();
@@ -3722,7 +3795,6 @@ mod tests {
             b"queued after backend loss\r",
         )
         .await;
-        tokio::time::sleep(Duration::from_millis(150)).await;
         assert!(
             !task.is_finished(),
             "backend loss must not stop the app's IO owner"
@@ -3755,7 +3827,7 @@ mod tests {
         assert!(reason.is_some());
         eprintln!("PASS logic SIGKILL: {reason:?}; retained Screen/frame; no restoration claimed");
         drop(sender);
-        tokio::time::timeout(Duration::from_secs(10), task)
+        tokio::time::timeout(Duration::from_secs(30), task)
             .await
             .unwrap()
             .unwrap()

@@ -11,6 +11,7 @@ fn executable(path: &Path, source: &str) {
     fs::set_permissions(path, fs::Permissions::from_mode(0o700)).unwrap();
 }
 
+// keeps: decision #315
 #[test]
 fn native_runner_installs_the_team_requirement_and_reuses_it_on_the_next_run() {
     let root = tempfile::tempdir().unwrap();
@@ -87,6 +88,7 @@ elif '--force' in args:
     );
 }
 
+// keeps: decision #315
 #[test]
 fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     let root = tempfile::tempdir().unwrap();

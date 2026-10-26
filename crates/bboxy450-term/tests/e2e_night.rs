@@ -21,7 +21,8 @@ fn assert_night_apps_stopped(output: &std::process::Output) {
             "night left its control endpoint: {app}"
         );
         let pid: libc::pid_t = app["pid"].as_u64().unwrap().try_into().unwrap();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        // Hang guard only; successful PID absence determines completion.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
         loop {
             // SAFETY: signal zero only queries this night's recorded app PID;
             // it neither signals the process nor supplies a PID-kill fallback.
@@ -41,7 +42,9 @@ fn assert_night_apps_stopped(output: &std::process::Output) {
     }
 }
 
+// keeps: spec e2e-acceptance §3 (night verdict, signed record and custody boundary)
 #[test]
+#[ignore = "night: real process boundary, test-policy #327 B2"]
 fn the_runner_turns_script_exit_codes_into_verdicts_and_a_summary() {
     let scripts = tempfile::tempdir().unwrap();
     let bin = scripts.path().join("T1.fixture-bin");

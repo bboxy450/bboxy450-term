@@ -1645,6 +1645,7 @@ pub fn private_entry(args: &[String]) -> Option<Result<(), String>> {
 mod tests {
     use super::*;
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries() {
         use bbt_mux::supervisor::capture_diagnostics::Recorder;
@@ -1806,6 +1807,7 @@ mod tests {
         (probe, calls)
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn ring_probe_follows_pages_and_never_combines_marker_bytes_across_a_gap() {
         for gap in [false, true] {
@@ -1856,6 +1858,7 @@ mod tests {
         }
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn failed_tail_keeps_known_ring_cursor_and_does_not_report_marker_absence() {
         let (probe, _) = scripted_probe(vec![output_page(1, b"R5PA", Some(1), false)]);
@@ -1879,6 +1882,7 @@ mod tests {
         assert_eq!(rows[&Ulid::from(2)].paused_in_examined_tail, None);
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn busy_ring_page_names_its_query_and_stays_unknown() {
         let (probe, _) = scripted_probe(vec![]);
@@ -1903,6 +1907,7 @@ mod tests {
         assert!(!row.tail_complete);
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn settle_diagnostic_names_the_active_predicates_without_inventing_ui_results() {
         let probe = NativeSettleProbe::default();
@@ -1945,6 +1950,7 @@ mod tests {
         );
     }
 
+    // keeps: spec seats-967-frame §3
     #[tokio::test]
     #[allow(
         clippy::disallowed_methods,
@@ -2070,6 +2076,8 @@ mod tests {
         stream.write_all(&bytes).await.unwrap();
     }
 
+    // keeps: spec seats-967-frame §3
+    #[ignore = "night: real boundary, test-policy #327 B2"]
     #[tokio::test]
     #[allow(
         clippy::disallowed_methods,
@@ -2171,6 +2179,8 @@ mod tests {
         drop(gui);
     }
 
+    // keeps: spec seats-967-frame §3
+    #[ignore = "night: real boundary, test-policy #327 B2"]
     #[tokio::test]
     #[allow(
         clippy::disallowed_methods,
@@ -2211,6 +2221,7 @@ mod tests {
         }
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn probe_row_fits_every_fifteen_and_fifty_pane_fixture() {
         for count in [15, 50] {
@@ -2228,6 +2239,7 @@ mod tests {
         }
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn functional_ci_reports_timing_failures_and_the_slow_switch_enforces_them() {
         let mut config = Config {

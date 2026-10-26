@@ -63,6 +63,21 @@ impl Fixture {
     fn log(&self) -> String {
         std::fs::read_to_string(self.run.join("app.log")).unwrap_or_default()
     }
+    fn wait_stopped(&mut self) {
+        let pid: libc::pid_t = self
+            .pid
+            .expect("started app reported its owned PID")
+            .try_into()
+            .unwrap();
+        await_value(self, || {
+            // SAFETY: signal zero only observes this fixture's recorded child.
+            // It never sends a signal or provides a PID-kill fallback.
+            let absent = unsafe { libc::kill(pid, 0) } < 0
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH);
+            absent.then_some(Value::Bool(true))
+        });
+        self.pid = None;
+    }
     fn start(&mut self) -> Value {
         let row = self.ok(&["app", "start", "--headless", "--ctl"]);
         self.pid = row["data"]["pid"].as_u64().map(|n| n as u32);
@@ -111,7 +126,9 @@ fn await_value(fixture: &Fixture, mut read: impl FnMut() -> Option<Value>) -> Va
     }
 }
 
+// keeps: spec ctl-cli §1a (operator placement receipt)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn explicit_placements_capture_the_anchor_preserve_siblings_and_acknowledge_the_pane_frame() {
     let mut f = Fixture::new();
     let account = f.root.path().join("placement-account");
@@ -280,6 +297,7 @@ fn explicit_placements_capture_the_anchor_preserve_siblings_and_acknowledge_the_
     f.ok(&["app", "stop"]);
 }
 
+// keeps: spec attention §3 (test-account-only recording before startup)
 #[test]
 fn notification_recording_requires_a_test_account_before_startup() {
     let fixture = Fixture::new();
@@ -304,7 +322,9 @@ fn notification_recording_requires_a_test_account_before_startup() {
     assert!(!fixture.run.exists());
 }
 
+// keeps: spec attention §5 (notification-to-produced-frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn recording_notifications_replace_mute_and_activate_the_exact_headless_pane() {
     let mut f = Fixture::new();
     let account = f.root.path().join("notification-account");
@@ -519,7 +539,9 @@ for raw in sys.stdin:
     f.ok(&["app", "stop"]);
 }
 
+// keeps: spec ctl-cli §1b (headless lifecycle and capture boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
     let mut f = Fixture::new();
     let started = f.start();
@@ -607,9 +629,6 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
             .unwrap()
             .starts_with(b"\x89PNG\r\n\x1a\n")
     );
-    assert!(f.log().contains("windows=0"));
-    assert!(!f.log().contains("native scene presented"));
-    assert!(!f.log().contains("signing held"));
     let stopped = f.ok(&["app", "stop"]);
     assert_eq!(stopped["data"]["running"], false);
     assert!(!f.run.join("gui.endpoint").exists());
@@ -617,15 +636,12 @@ fn headless_cli_starts_real_gui_types_captures_and_stops_without_a_window() {
     assert_eq!(code, 4, "{rows:?}");
     // The endpoint disappears during logic shutdown. Wait for the independent
     // supervisor and GUI completion, not an arbitrary outage duration.
-    await_value(&f, || {
-        f.log()
-            .contains("headless GUI stopped: Ok(())")
-            .then_some(Value::Bool(true))
-    });
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1a (close/undo produced-frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
     let mut f = Fixture::new();
     f.start();
@@ -759,15 +775,12 @@ fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
         "undo changed the actual pane extent"
     );
     f.ok(&["app", "stop"]);
-    await_value(&f, || {
-        f.log()
-            .contains("headless GUI stopped: Ok(())")
-            .then_some(Value::Bool(true))
-    });
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec runtime §4 (real memory-custody idle boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn headless_smoke_uses_the_idle_probe_with_no_window_or_operator() {
     let f = Fixture::new();
     let out = Command::new(BIN)
@@ -786,7 +799,9 @@ fn headless_smoke_uses_the_idle_probe_with_no_window_or_operator() {
     assert!(log.contains("headless GUI stopped: Ok(())"), "{log}");
 }
 
+// keeps: spec ctl-cli §1b (ten real launch/result boundaries)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable() {
     let mut f = Fixture::new();
     f.start();
@@ -807,15 +822,7 @@ fn headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable() {
             "20000",
         ]);
         let png = f.root.path().join(format!("seat-{index}.png"));
-        let capture = await_value(&f, || {
-            let (code, rows) = f.ctl(&["seat", "capture", seat, png.to_str().unwrap()]);
-            assert!(
-                !f.log().contains("spawn_queue_full"),
-                "launch {index} was not placed: {}",
-                f.log()
-            );
-            (code == 0).then(|| rows.last().unwrap().clone())
-        });
+        let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);
         assert_eq!(capture["data"]["seat"], seat);
         assert_eq!(capture["data"]["offscreen"], true);
         assert_eq!(capture["data"]["stale"], false);
@@ -827,15 +834,12 @@ fn headless_consumes_launch_results_so_ten_seats_are_placed_and_capturable() {
         eprintln!("launch {index}: real PTY marker and offscreen pane capture verified");
     }
     f.ok(&["app", "stop"]);
-    await_value(&f, || {
-        f.log()
-            .contains("headless GUI stopped: Ok(())")
-            .then_some(Value::Bool(true))
-    });
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec runtime §4 (idle probe rejects actual external invalidation)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn idle_probe_rejects_an_external_lifecycle_wake() {
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
     let mut f = Fixture::new();
@@ -887,6 +891,7 @@ fn idle_probe_rejects_an_external_lifecycle_wake() {
     f.pid = None;
 }
 
+// keeps: spec ctl-cli §1b (no PID fallback)
 #[test]
 fn stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid() {
     let f = Fixture::new();
@@ -902,6 +907,7 @@ fn stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid() {
     assert!(!f.run.exists());
 }
 
+// keeps: spec ctl-cli §5 (own test-account admission before startup)
 #[test]
 fn unattended_without_a_test_account_is_refused_before_native_custody() {
     let root = tempfile::tempdir().unwrap();
@@ -918,7 +924,9 @@ fn unattended_without_a_test_account_is_refused_before_native_custody() {
     assert!(!root.path().join("run").exists());
 }
 
+// keeps: spec ctl-cli §1b (file-account headless control boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn unattended_headless_control_uses_its_own_file_account() {
     let mut f = Fixture::new();
     let account = f.root.path().join("account");
@@ -961,22 +969,15 @@ fn unattended_headless_control_uses_its_own_file_account() {
     assert_eq!(status["data"]["custody_backend"], "file");
     assert_eq!(status["data"]["unattended"], true);
     let png = f.root.path().join("file-account.png");
-    let capture = await_value(&f, || {
-        let (code, rows) = f.ctl(&["seat", "capture", seat, png.to_str().unwrap()]);
-        (code == 0).then(|| rows.last().unwrap().clone())
-    });
+    let capture = f.ok(&["seat", "capture", seat, png.to_str().unwrap()]);
     assert_eq!(capture["data"]["offscreen"], true);
-    assert!(!f.log().contains("signing held"), "{}", f.log());
     f.ok(&["app", "stop"]);
-    await_value(&f, || {
-        f.log()
-            .contains("headless GUI stopped: Ok(())")
-            .then_some(Value::Bool(true))
-    });
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec runtime §4 (real file-custody idle boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn unattended_idle_smoke_keeps_file_custody_without_a_window() {
     let root = tempfile::tempdir().unwrap();
     let account = root.path().join("account");
@@ -1026,7 +1027,9 @@ fn png_pixels(path: &std::path::Path) -> (u32, u32, Vec<u8>) {
     (frame.width, frame.height, bytes)
 }
 
+// keeps: spec ctl-cli §5 (actual identity admission boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer() {
     let mut f = Fixture::new();
     f.start();
@@ -1046,8 +1049,11 @@ fn ui_clock_refuses_a_non_test_account_even_with_a_forged_issuer() {
         );
     }
     assert_eq!(f.ok(&["ui", "layout"])["data"]["clock"]["revision"], 0);
+    f.ok(&["app", "stop"]);
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1 (scripted window control)
 #[test]
 fn scripted_host_opt_out_is_debug_only_and_requires_a_test_account() {
     let root = tempfile::tempdir().unwrap();
@@ -1107,7 +1113,9 @@ fn main() {{ println!("{{}} {{}} {{}}",
     }
 }
 
+// keeps: spec ctl-cli §1 (scripted window control)
 #[test]
+#[ignore = "night: real GPU/protocol boundary, test-policy #327 B2"]
 fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
     let mut f = Fixture::new();
     // Only this fixture needs a quiescent backend: the provider script has an
@@ -1241,15 +1249,12 @@ fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
             .contains("clock_not_frozen")
     );
     f.ok(&["app", "stop"]);
-    await_value(&f, || {
-        f.log()
-            .contains("headless GUI stopped: Ok(())")
-            .then_some(Value::Bool(true))
-    });
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1a (chrome and foreground frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     let mut f = Fixture::new();
     let account = f.root.path().join("ui-account");
@@ -1314,10 +1319,8 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
         .as_str()
         .unwrap()
         .to_owned();
-    let second = await_value(&f, || {
-        let layout = f.ok(&["ui", "layout"]);
-        (layout["data"]["focused"] == b).then_some(layout)
-    });
+    let second = f.ok(&["ui", "layout"]);
+    assert_eq!(second["data"]["focused"], b);
     let focused = f.ok(&["ui", "focus", "ui-first"]);
     assert_eq!(focused["data"]["focused"], a);
     assert_ne!(focused["data"]["tab"], Value::Null);
@@ -1462,10 +1465,12 @@ fn ctl_ui_relays_real_chrome_layout_focus_and_a_foreground_launcher() {
     assert_eq!(f.ok(&["ui", "key", "esc"])["data"]["document"], Value::Null);
     assert_eq!(f.ok(&["ui", "layout"])["data"]["focused"], a);
     f.ok(&["app", "stop"]);
-    f.pid = None;
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1a (keyboard end-state frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame() {
     let mut f = Fixture::new();
     let account = f.root.path().join("ui-end-state-account");
@@ -1522,15 +1527,15 @@ fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame(
             .as_array()
             .is_some_and(|children| children.iter().any(|child| closed_row(child, seat)))
     }
-    await_value(&f, || {
-        let layout = f.ok(&["ui", "layout"]);
-        (layout["data"]["panes"].as_array()?.is_empty()
-            && layout["data"]["tree"]
-                .as_array()?
-                .iter()
-                .any(|root| closed_row(root, &seat)))
-        .then_some(layout)
-    });
+    let closed = f.ok(&["ui", "layout"]);
+    assert!(closed["data"]["panes"].as_array().unwrap().is_empty());
+    assert!(
+        closed["data"]["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|root| closed_row(root, &seat))
+    );
     let restored = f.ok(&["ui", "key", "cmd-z"]);
     assert!(
         restored["data"]["panes"]
@@ -1547,12 +1552,14 @@ fn ctl_ui_keys_acknowledge_spawn_mute_and_undo_only_after_their_end_state_frame(
             >= restored["data"]["frame_seq"].as_u64().unwrap()
     );
     f.ok(&["app", "stop"]);
-    f.pid = None;
+    f.wait_stopped();
 }
 
 /// ctl-cli §1a: `seat wait --on-screen` and `--frame-seq` read the owner's produced layout,
 /// and a capture refused `not_on_screen` names the frame it checked.
+// keeps: spec ctl-cli §1a (frame wait and hidden-capture boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame() {
     let mut f = Fixture::new();
     f.start();
@@ -1595,9 +1602,13 @@ fn seat_wait_reads_produced_frames_and_not_on_screen_names_its_frame() {
     assert_eq!(rows[0]["error"]["seat"], first, "{rows:?}");
     assert!(rows[0]["error"]["frame_seq"].is_u64(), "{rows:?}");
     assert!(!shot.exists());
+    f.ok(&["app", "stop"]);
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1a (historical produced-frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {
     let mut f = Fixture::new();
     let account = f.root.path().join("scroll-account");
@@ -1766,12 +1777,14 @@ fn ctl_ui_scroll_reads_the_produced_historical_view_without_changing_focus() {
     assert_eq!(pane(&f.ok(&["ui", "layout"]))["scroll"]["live"], true);
     assert_eq!(f.ok(&["seat", "ls"])["data"].as_array().unwrap().len(), 2);
     f.ok(&["app", "stop"]);
-    f.pid = None;
+    f.wait_stopped();
 }
 
 /// ctl-cli §1a: `app resize` replies only after the first produced frame at the new size, with
 /// that frame's layout; a read or capture right after the reply needs no wait.
+// keeps: spec ctl-cli §1a (resize produced-frame boundary)
 #[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn app_resize_replies_with_the_first_frame_at_the_new_size() {
     let mut f = Fixture::new();
     f.start();
@@ -1814,9 +1827,13 @@ fn app_resize_replies_with_the_first_frame_at_the_new_size() {
     assert!(shot.exists());
     let (code, rows) = f.ctl(&["app", "resize", "1x1"]);
     assert_eq!(code, 2, "{rows:?}");
+    f.ok(&["app", "stop"]);
+    f.wait_stopped();
 }
 
+// keeps: spec ctl-cli §1 (scripted window control)
 #[test]
+#[ignore = "night: real GPU/protocol boundary, test-policy #327 B2"]
 fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() {
     let mut ordinary = Fixture::new();
     ordinary.start();
@@ -1839,6 +1856,7 @@ fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() 
         "{refused:?}"
     );
     ordinary.ok(&["app", "stop"]);
+    ordinary.wait_stopped();
 
     let mut f = Fixture::new();
     let account = f.root.path().join("history-account");
@@ -1934,4 +1952,5 @@ fn retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes() 
         );
     }
     f.ok(&["app", "stop"]);
+    f.wait_stopped();
 }

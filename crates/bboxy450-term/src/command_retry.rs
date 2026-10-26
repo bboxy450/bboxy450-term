@@ -57,6 +57,7 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
+    // keeps: spec ctl-cli §1a
     #[tokio::test]
     #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn capacity_is_reserved_once_and_stale_events_release_it() {
@@ -72,7 +73,7 @@ mod tests {
         }
         assert!(wakes.try_recv().is_err());
         receiver.recv().await.unwrap();
-        let ready = tokio::time::timeout(Duration::from_secs(5), wakes.recv())
+        let ready = tokio::time::timeout(Duration::from_secs(30), wakes.recv())
             .await
             .unwrap()
             .unwrap();
@@ -85,7 +86,7 @@ mod tests {
         retry.arm(&sender, move |ready| {
             let _ = wake.send(ready);
         });
-        let ready = tokio::time::timeout(Duration::from_secs(5), wakes.recv())
+        let ready = tokio::time::timeout(Duration::from_secs(30), wakes.recv())
             .await
             .unwrap()
             .unwrap();
@@ -98,6 +99,7 @@ mod tests {
         assert!(wakes.try_recv().is_err());
     }
 
+    // keeps: spec ctl-cli §1a
     #[tokio::test]
     #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn a_closed_receiver_wakes_delivery_once_without_polling() {
@@ -109,7 +111,7 @@ mod tests {
             let _ = wake.send(ready);
         });
         drop(receiver);
-        let ready = tokio::time::timeout(Duration::from_secs(5), wakes.recv())
+        let ready = tokio::time::timeout(Duration::from_secs(30), wakes.recv())
             .await
             .unwrap()
             .unwrap();
@@ -117,6 +119,7 @@ mod tests {
         assert!(wakes.try_recv().is_err());
     }
 
+    // keeps: spec ctl-cli §1a
     #[tokio::test]
     #[allow(clippy::disallowed_methods)] // The test macro owns a runtime; UI delivery never blocks.
     async fn busy_delivery_resumes_in_fifo_order_without_a_frame_or_poll() {
@@ -152,7 +155,7 @@ mod tests {
         assert!(matches!(receiver.recv().await, Some(UiMsg::Watched(_))));
 
         for (generation, id, expected) in [(7, ids[0], b"first"), (8, ids[1], b"later")] {
-            let ready = tokio::time::timeout(Duration::from_secs(5), wakes.recv())
+            let ready = tokio::time::timeout(Duration::from_secs(30), wakes.recv())
                 .await
                 .unwrap()
                 .unwrap();

@@ -55,6 +55,7 @@ mod tests {
     use super::*;
     use bbt_ui::modules::e2e_checklist::Tone;
 
+    // keeps: spec e2e-acceptance §1
     #[test]
     fn a_new_local_graph_has_no_invented_results_or_run_metadata() {
         let graph = Graph::new(vec![], vec![]).unwrap();
@@ -66,6 +67,7 @@ mod tests {
         assert!(out.rows.iter().all(|row| row.record.is_none()));
     }
 
+    // keeps: spec e2e-acceptance §1
     #[test]
     fn the_host_can_replace_its_snapshot_and_scroll_stays_local_and_bounded() {
         let seed = Graph::new(vec![], vec![]).unwrap();

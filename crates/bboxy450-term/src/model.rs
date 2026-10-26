@@ -856,6 +856,29 @@ impl Model {
 /// Pure assembly on IO. Keep the current layout when its membership is unchanged
 /// and keep every unchanged screen Arc; no screen content is copied here.
 pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
+    build_with_clock(seats, grids, previous, || {
+        (Instant::now(), bbt_mux::store::now_ms())
+    })
+}
+
+/// Build against explicit monotonic and wall coordinates for deterministic hosts/tests.
+#[doc(hidden)]
+pub fn build_at(
+    seats: &[SeatRecord],
+    grids: &Grids,
+    previous: &Model,
+    now: Instant,
+    wall_ms: u64,
+) -> Model {
+    build_with_clock(seats, grids, previous, || (now, wall_ms))
+}
+
+fn build_with_clock(
+    seats: &[SeatRecord],
+    grids: &Grids,
+    previous: &Model,
+    clock: impl FnOnce() -> (Instant, u64),
+) -> Model {
     let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ModelBuild);
     let bootstrap = !previous.metadata_initialized
         && previous.ui.seats.is_empty()
@@ -867,8 +890,7 @@ pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
             grids.screen(id).map(|screen| (id, screen))
         })
         .collect();
-    let now = Instant::now();
-    let now_ms = bbt_mux::store::now_ms();
+    let (now, now_ms) = clock();
     let mut layout_source = std::borrow::Cow::Borrowed(&previous.ui);
     let mut closes = previous.closes.clone();
     if closes.needs_reconcile(seats) {
@@ -1426,6 +1448,7 @@ mod tests {
         model.ui.window.sidebar.swarms[0].tabs[0].tree.clone()
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn reversed_spawn_replies_use_their_captured_anchors_and_duplicates_are_inert() {
         use bbt_proto::seat_state::Side;
@@ -1471,6 +1494,7 @@ mod tests {
         assert_eq!(spawn_tree(&model), expected);
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn removed_or_replaced_anchor_keeps_the_new_seat_and_names_the_partial_outcome() {
         for replaced in [false, true] {
@@ -1508,6 +1532,7 @@ mod tests {
         }
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn unknown_spawn_and_unrelated_metadata_never_place_or_lose_the_request() {
         let grids = Grids::new();
@@ -1537,6 +1562,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn a_second_spawn_and_refresh_preserve_the_first_explicit_split() {
         let grids = Grids::new();
@@ -1569,6 +1595,7 @@ mod tests {
         assert_eq!(model.ui.window.sidebar.swarms[0].tabs[1].id, tab);
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn pending_spawns_are_bounded_and_a_reused_id_never_requeues_an_effect() {
         let mut model = Model::default();
@@ -1589,6 +1616,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn custody_held_spawns_release_in_admission_order_with_the_same_captured_requests() {
         let mut model = Model::default();
@@ -1631,6 +1659,7 @@ mod tests {
         id
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn metadata_build_keeps_screen_identity_and_canonical_state_ignores_stale_generations() {
         let mut grids = Grids::new();
@@ -1670,6 +1699,7 @@ mod tests {
         assert_eq!(next.ui.seats[&id].title, "permission");
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     fn screen_rows_preserve_palette_styles_width_combining_and_cursor() {
         let mut term = bbt_core::Term::new(12, 2, 0);
@@ -1691,6 +1721,7 @@ mod tests {
         assert!(screen_grid(&screen, Theme::Dark, false).is_err());
     }
 
+    // keeps: spec c1-live-seats §2a
     #[test]
     #[cfg(target_os = "macos")]
     #[allow(
@@ -1773,6 +1804,7 @@ mod event_lane_tests {
         }))
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn rows_dedupe_by_canonical_identity_and_keep_per_stream_order() {
         let mut lane = EventLane::default();
@@ -1790,6 +1822,7 @@ mod event_lane_tests {
         assert_eq!(lane.records().len(), 3);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn window_eviction_is_visible_and_old_replays_do_not_repopulate_it() {
         let mut lane = EventLane::default();
@@ -1807,6 +1840,7 @@ mod event_lane_tests {
         assert_eq!(lane.artifacts().created, 512);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn byte_budget_is_independent_of_row_count() {
         let mut lane = EventLane::default();
@@ -1827,6 +1861,7 @@ mod event_lane_tests {
         assert!(lane.omitted().contains_key("index"));
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn stale_transport_snapshots_cannot_roll_back_operator_read_state() {
         let mut lane = EventLane::default();
@@ -1856,6 +1891,7 @@ mod event_lane_tests {
         assert_eq!(lane.cursors()["index"].read, 10);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn sparse_history_pages_keep_next_without_acknowledging_or_marking_read() {
         let mut lane = EventLane::default();
@@ -1909,6 +1945,7 @@ mod event_lane_tests {
         assert!(!lane.cursors().contains_key("account"));
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn requested_old_page_survives_a_full_live_window_until_replaced() {
         let mut lane = EventLane::default();
@@ -1945,6 +1982,7 @@ mod event_lane_tests {
         assert_eq!(lane.page_snapshots()["index"].revision, 2);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn empty_pages_and_refusals_have_distinct_monotonic_completion_revisions() {
         let mut lane = EventLane::default();
@@ -1974,6 +2012,7 @@ mod event_lane_tests {
         assert_eq!(lane.page_snapshots()["index"].revision, 2);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn a_large_newest_live_record_takes_precedence_over_read_page_bytes() {
         let mut lane = EventLane::default();
@@ -2011,6 +2050,7 @@ mod event_lane_tests {
         assert!(lane.bytes() <= EVENT_BYTES);
     }
 
+    // keeps: spec l9-messaging-tasks §3
     #[test]
     fn metadata_rebuild_and_reconnect_preserve_the_published_window() {
         let mut model = Model::default();

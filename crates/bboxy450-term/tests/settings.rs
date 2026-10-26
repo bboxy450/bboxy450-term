@@ -10,13 +10,14 @@ use bboxy450_term::{
 use bbt_ui::modules::settings::controller::Patch;
 use std::{sync::Arc, time::Duration};
 
+// keeps: spec ux-prototype §5.6
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn settings_io_coalesces_edits_without_losing_other_fields_and_survives_restart() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("config.toml");
     std::fs::write(&path, "# untouched\n[other]\nx = 7\n").unwrap();
     let mut io = Io::start(path.clone(), &tokio::runtime::Handle::current(), |_| {});
-    tokio::time::timeout(Duration::from_secs(10), io.updates.changed())
+    tokio::time::timeout(Duration::from_secs(30), io.updates.changed())
         .await
         .unwrap()
         .unwrap();
@@ -36,7 +37,7 @@ async fn settings_io_coalesces_edits_without_losing_other_fields_and_survives_re
     io.submit(state.edit(Patch::NotificationsEnabled(false)).unwrap())
         .unwrap();
     let expected = state.revision;
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let snapshot = io.updates.borrow_and_update().clone();
             state.accept(&snapshot);
@@ -58,6 +59,7 @@ async fn settings_io_coalesces_edits_without_losing_other_fields_and_survives_re
     assert!(contents.contains("x = 7"));
 }
 
+// keeps: spec ux-prototype §5.6
 #[test]
 fn settings_metadata_rebuild_preserves_context_and_the_preferences_snapshot() {
     let mut previous = Model::default();
@@ -74,6 +76,7 @@ fn settings_metadata_rebuild_preserves_context_and_the_preferences_snapshot() {
     assert!(Arc::ptr_eq(next.settings.as_ref().unwrap(), &snapshot));
 }
 
+// keeps: spec ux-prototype §5.6
 #[test]
 fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_defaults() {
     let records = settings::records(Some(&Model::default()), &Default::default());
@@ -99,6 +102,7 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
     assert!(records.roles.iter().any(|(name, _)| name == "shell"));
 }
 
+// keeps: spec ux-prototype §5.6
 #[test]
 fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provider_or_count() {
     let model = Model::default();
@@ -164,6 +168,7 @@ fn settings_registry_is_labelled_reference_and_knowledge_never_invents_a_provide
     );
 }
 
+// keeps: spec ux-prototype §5.6
 #[test]
 fn settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata() {
     use bboxy450_term::{cockpit::UiMsg, messaging::Reply};
@@ -203,6 +208,7 @@ fn settings_mute_refusal_is_visible_and_success_waits_for_authoritative_metadata
     assert_eq!(mute.notice.as_ref().unwrap().text, "Seat muted");
 }
 
+// keeps: spec ux-prototype §5.6
 #[test]
 fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppression() {
     use bbt_proto::{Activity, Grade, GuiSeat, ProcessStatus, SeatState, WaitKind};

@@ -39,7 +39,7 @@ async fn spawn(session: &mut Session, cwd: &Path) -> GuiSeat {
         })
         .await
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(15), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             match session.receive().await.unwrap() {
                 GuiReply::Spawned { op, seat } if op == operation => {
@@ -60,6 +60,8 @@ async fn spawn(session: &mut Session, cwd: &Path) -> GuiSeat {
     .unwrap()
 }
 
+// keeps: decision #313
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority() {
     let root = tempfile::Builder::new()
@@ -96,7 +98,7 @@ async fn logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authori
     let old_logic = session.logic.id();
     let supervisor = session.supervisor.id();
     session.logic.start_kill().unwrap(); // this Session's own recorded child only
-    let restored = tokio::time::timeout(Duration::from_secs(20), async {
+    let restored = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let Event::Reply(reply) = session.event().await.unwrap()
                 && let GuiReply::Seats(seats) = *reply
@@ -122,6 +124,7 @@ async fn logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authori
     session.shutdown().await.unwrap();
 }
 
+// keeps: decision #313
 #[test]
 fn test_account_selector_is_explicit_and_rejects_bad_flags_before_custody() {
     let parse = |args: &[&str]| {

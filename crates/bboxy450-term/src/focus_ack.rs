@@ -188,6 +188,7 @@ mod tests {
         };
         model.request_spawn(op, spec).unwrap();
     }
+    // keeps: spec ctl-cli §1a (produced-frame focus receipt)
     #[test]
     fn an_earlier_placement_settles_before_focus_and_only_a_completed_frame_acknowledges_it() {
         let (mut model, first, second) = fixture();
@@ -217,6 +218,7 @@ mod tests {
             (first, 7, 100)
         );
     }
+    // keeps: spec ctl-cli §1a (produced-frame focus receipt)
     #[test]
     fn a_newer_placement_or_the_wrong_pane_never_gets_a_success_acknowledgment() {
         let (mut model, first, second) = fixture();
@@ -242,6 +244,7 @@ mod tests {
         };
         assert!(answer.result.unwrap_err().starts_with("focus_superseded:"));
     }
+    // keeps: spec ctl-cli §1a (produced-frame focus receipt)
     #[test]
     fn an_already_consumed_result_in_an_older_ui_snapshot_does_not_supersede_focus() {
         let (mut model, first, second) = fixture();
@@ -258,6 +261,7 @@ mod tests {
             matches!(pending.poll(&model,Some(second),|_|true,9),Some(Effect::Apply(id)) if id==first)
         );
     }
+    // keeps: spec ctl-cli §1a (produced-frame focus receipt)
     #[test]
     fn replacing_and_expiring_focus_are_bounded_and_do_not_complete_another_operation() {
         let (_, first, second) = fixture();

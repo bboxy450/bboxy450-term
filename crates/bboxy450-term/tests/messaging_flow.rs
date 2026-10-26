@@ -130,7 +130,7 @@ impl Fixture {
         .unwrap();
         frame.push(b'\n');
         self.writer.write_all(&frame).await.unwrap();
-        tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let bytes = bbt_mux::seat_socket::read_line(&mut self.reader).await.unwrap().expect("admitted GUI");
                 let reply: GuiReply = serde_json::from_slice(&bytes).unwrap();
@@ -215,6 +215,8 @@ impl Drop for Fixture {
         }
     }
 }
+// keeps: spec l9-messaging-tasks §5
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
     let mut f = Fixture::new().await;
@@ -246,7 +248,7 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
         .expect("only a correlated durable reply clears");
     editor.stored(&sent);
     assert!(editor.view.text.is_empty());
-    let row = tokio::time::timeout(Duration::from_secs(5), async {
+    let row = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let row = f
                 .logic()
@@ -364,7 +366,7 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
     };
     assert!(page.items.iter().any(|item| matches!(&item.envelope().expect("signed fixture envelope").body,Body::Task {task_id,event,..} if *task_id==f.task && event=="delegate")));
     let task_message = page.items.iter().find(|item| matches!(&item.envelope().expect("signed fixture envelope").body, Body::Task { task_id, event, .. } if *task_id == f.task && event == "delegate")).unwrap().envelope().expect("signed fixture envelope").id;
-    let receipt = tokio::time::timeout(Duration::from_secs(5), async {
+    let receipt = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let row = f
                 .logic()

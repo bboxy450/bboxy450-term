@@ -72,7 +72,7 @@ mod tests {
     use bbt_proto::registry::{CloseRecord, Lifecycle as RegistryLifecycle, SeatRecord};
     use bbt_ui_model as ui;
 
-    fn fixture() -> (Model, Model, Model, Intent) {
+    fn fixture() -> (Model, Model, Model, Intent, Instant) {
         let now = Instant::now();
         let seat = SeatId::from_u128(2);
         let op = Ulid(9);
@@ -124,22 +124,22 @@ mod tests {
         closed[1].close = Some(CloseRecord {
             operation: op,
             revision: 12,
-            deadline_ms: bbt_mux::store::now_ms() + 60_000,
+            deadline_ms: 61_000,
             position: intent.position.clone(),
         });
         let grids = crate::grids::Grids::new();
-        let hidden = crate::model::build(&closed, &grids, &open);
-        let restored = crate::model::build(&records, &grids, &hidden);
-        (open, hidden, restored, intent)
+        let hidden = crate::model::build_at(&closed, &grids, &open, now, 1000);
+        let restored = crate::model::build_at(&records, &grids, &hidden, now, 1000);
+        (open, hidden, restored, intent, now)
     }
+    // keeps: spec ctl-cli §1a (produced-frame close receipt)
     #[test]
     fn close_needs_the_confirmed_operation_not_just_a_model_or_layout_edit() {
-        let (open, hidden, _, intent) = fixture();
+        let (open, hidden, _, intent, now) = fixture();
         let target = Target::close(&intent);
         assert!(!target.ready(&open).unwrap());
         let mut layout_only = open.clone();
-        layout_only.ui =
-            ui::close(&open.ui, intent.seat, Instant::now(), crate::close::GRACE).unwrap();
+        layout_only.ui = ui::close(&open.ui, intent.seat, now, crate::close::GRACE).unwrap();
         assert!(!target.ready(&layout_only).unwrap());
         assert!(target.ready(&hidden).unwrap());
         assert!(!target.shown(None, |_| true));
@@ -148,11 +148,12 @@ mod tests {
         wrong.operation = Ulid(99);
         assert!(!Target::close(&wrong).ready(&hidden).unwrap());
     }
+    // keeps: spec ctl-cli §1a (produced-frame close receipt)
     #[test]
     fn undo_needs_the_same_generation_open_and_shown_in_its_restored_pane() {
-        let (open, hidden, restored, intent) = fixture();
-        assert!(Target::undo(&open, intent.seat, Instant::now()).is_err());
-        let target = Target::undo(&hidden, intent.seat, Instant::now()).unwrap();
+        let (open, hidden, restored, intent, now) = fixture();
+        assert!(Target::undo(&open, intent.seat, now).is_err());
+        let target = Target::undo(&hidden, intent.seat, now).unwrap();
         assert!(!target.ready(&hidden).unwrap());
         assert!(target.ready(&restored).unwrap());
         assert!(!target.shown(None, |_| true));

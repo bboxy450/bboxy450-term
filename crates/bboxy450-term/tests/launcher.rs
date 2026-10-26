@@ -114,6 +114,7 @@ fn focused_model() -> Model {
     }
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn placement_pick_captures_the_ui_stage_and_generation_before_any_reply() {
     use bbt_proto::seat_state::{Placement, Side};
@@ -152,6 +153,7 @@ fn placement_pick_captures_the_ui_stage_and_generation_before_any_reply() {
     ));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab() {
     use bbt_proto::seat_state::{Placement, Side};
@@ -187,6 +189,7 @@ fn explicit_placement_rows_override_modifiers_and_empty_stage_opens_a_tab() {
     assert!(matches!(empty, Placement::NewTab { .. }));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn typed_descent_then_right_commits_the_existing_projection_path() {
     let mut control = controller();
@@ -205,6 +208,7 @@ fn typed_descent_then_right_commits_the_existing_projection_path() {
     assert_eq!(selected(&control), Some("ssh:rig:codex:bottom"));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn selection_wraps_and_empty_results_are_safe() {
     let mut control = controller();
@@ -229,6 +233,7 @@ fn selection_wraps_and_empty_results_are_safe() {
     }
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn left_and_backspace_leave_nonempty_queries_to_the_text_field() {
     let mut control = controller();
@@ -246,6 +251,7 @@ fn left_and_backspace_leave_nonempty_queries_to_the_text_field() {
     assert_eq!(control.handle(Command::Left), Outcome::Local);
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn escape_climbs_one_explicit_level_before_closing_even_with_a_query() {
     let mut control = controller();
@@ -261,6 +267,7 @@ fn escape_climbs_one_explicit_level_before_closing_even_with_a_query() {
     assert_eq!(control.handle(Command::Escape), Outcome::Close);
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn reroll_is_a_pure_name_request_and_does_not_discard_navigation() {
     let mut control = controller();
@@ -274,6 +281,7 @@ fn reroll_is_a_pure_name_request_and_does_not_discard_navigation() {
     }
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn preedit_never_filters_or_activates_and_commit_replaces_the_original_selection() {
     let mut control = controller();
@@ -317,6 +325,7 @@ fn preedit_never_filters_or_activates_and_commit_replaces_the_original_selection
     assert_eq!(control.launcher.edit.as_ref().unwrap().caret, Some(6));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn field_selection_insertion_and_deletion_never_split_a_surrogate_pair() {
     use bboxy450_term::launcher::CaretMove;
@@ -348,6 +357,7 @@ fn field_selection_insertion_and_deletion_never_split_a_surrogate_pair() {
     assert_eq!(control.launcher.edit.as_ref().unwrap().caret, Some(2));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn cancelling_composition_restores_committed_text_and_the_selection() {
     let mut control = controller();
@@ -363,6 +373,7 @@ fn cancelling_composition_restores_committed_text_and_the_selection() {
     assert_eq!(control.launcher.edit.as_ref().unwrap().select, Some([0, 3]));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn a_provider_disconnect_invalidates_its_path_and_cannot_dive_again() {
     let mut control = controller();
@@ -380,6 +391,7 @@ fn a_provider_disconnect_invalidates_its_path_and_cannot_dive_again() {
     assert_eq!(row.link.as_ref().unwrap().label(), "fixture link lost");
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn catalog_refresh_preserves_the_selected_id_across_reordering() {
     let mut control = controller();
@@ -392,6 +404,7 @@ fn catalog_refresh_preserves_the_selected_id_across_reordering() {
     assert_eq!(control.launcher.view().selected, 2);
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn enter_picks_the_parent_default_and_right_still_opens_placements() {
     let mut control = controller();
@@ -420,6 +433,7 @@ fn enter_picks_the_parent_default_and_right_still_opens_placements() {
     );
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn enter_descends_ordinary_parents_and_picks_the_typed_harness_default() {
     let mut control = controller();
@@ -455,6 +469,7 @@ fn enter_descends_ordinary_parents_and_picks_the_typed_harness_default() {
     assert!(typed.launcher.path.is_empty());
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers() {
     let mut control = controller();
@@ -500,6 +515,7 @@ fn digits_pick_or_dive_only_on_an_empty_query_and_preserve_modifiers() {
     }
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live() {
     let mut control = controller();
@@ -549,6 +565,7 @@ fn the_cap_refuses_parent_and_leaf_picks_while_navigation_and_right_stay_live() 
     );
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn each_down_provider_state_refuses_both_pick_and_dive() {
     for state in [
@@ -575,6 +592,7 @@ fn each_down_provider_state_refuses_both_pick_and_dive() {
     ));
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn a_connecting_host_keeps_the_existing_browseable_projection() {
     let mut control = controller();
@@ -587,6 +605,7 @@ fn a_connecting_host_keeps_the_existing_browseable_projection() {
     // Actual spawning is a separate bounded dispatch, guarded by the provider.
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn link_state_blocks_activation_even_without_the_legacy_down_flag() {
     let mut control = controller();
@@ -601,6 +620,7 @@ fn link_state_blocks_activation_even_without_the_legacy_down_flag() {
     assert_eq!(control.handle(Command::Right), Outcome::HostUnavailable);
 }
 
+// keeps: spec ux-prototype §5.4
 #[test]
 fn direct_activation_outside_the_rows_is_local_and_preserves_selection() {
     let mut control = controller();

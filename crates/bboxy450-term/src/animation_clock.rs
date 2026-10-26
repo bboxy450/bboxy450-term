@@ -117,6 +117,7 @@ mod tests {
     use super::*;
     use UiClockCommand::{Advance, Freeze, Resume};
 
+    // keeps: spec ctl-cli §1 (test-account animation clock)
     #[test]
     fn frozen_frames_ignore_wall_time_and_advance_exactly_to_the_swell_peak() {
         let start = Instant::now();
@@ -133,6 +134,7 @@ mod tests {
         assert_eq!(clock.at(much_later), peak.now);
     }
 
+    // keeps: spec ctl-cli §1 (test-account animation clock)
     #[test]
     fn resume_keeps_the_virtual_instant_and_then_follows_live_time() {
         let start = Instant::now();
@@ -153,6 +155,7 @@ mod tests {
         assert_eq!(pinned.state.time_ms, 473);
     }
 
+    // keeps: spec ctl-cli §1 (test-account animation clock)
     #[test]
     fn an_unfrozen_advance_is_refused_without_changing_the_timeline() {
         let start = Instant::now();
@@ -171,6 +174,7 @@ mod tests {
         );
     }
 
+    // keeps: spec ctl-cli §1 (test-account animation clock)
     #[test]
     fn an_overflowing_advance_does_not_change_the_frozen_frame_or_revision() {
         let start = Instant::now();

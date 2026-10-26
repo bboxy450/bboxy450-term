@@ -219,6 +219,7 @@ mod tests {
         }
     }
 
+    // keeps: spec attention §5
     #[test]
     fn one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key() {
         let now = Instant::now();
@@ -260,6 +261,7 @@ mod tests {
         assert!(!state.paint().is_empty());
     }
 
+    // keeps: spec attention §1
     #[test]
     fn all_three_wait_reasons_and_generation_are_typed() {
         let now = Instant::now();
@@ -278,6 +280,7 @@ mod tests {
         }
     }
 
+    // keeps: spec attention §3
     #[test]
     fn muted_and_supplied_notification_preferences_never_post_or_change_focus() {
         let now = Instant::now();
@@ -318,6 +321,7 @@ mod tests {
         assert!(state.notifications(&settings, false, None).is_empty());
     }
 
+    // keeps: spec attention §5
     #[test]
     fn live_state_updates_preserve_stage_and_handling_survives_model_rebuild() {
         let seat = fixture(Activity::Waiting(WaitKind::Auth));

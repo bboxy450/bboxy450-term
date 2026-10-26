@@ -15,6 +15,8 @@ use std::{
     time::{Duration, Instant},
 };
 
+// keeps: spec ctl-cli §1
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[test]
 fn ctl_record_read_keeps_the_endpoint_exit_when_the_socket_closes_mid_request() {
     let root = tempfile::tempdir().unwrap();
@@ -116,6 +118,8 @@ fn data(root: &Path, run: &Path, args: &[&str]) -> Value {
     lines[0]["data"].clone()
 }
 
+// keeps: spec ctl-cli §1
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ctl_records_fetch_search_pages_and_changes_use_the_private_provider() {
     let root = tempfile::tempdir().unwrap();
@@ -272,6 +276,8 @@ fn has(lines: &[Value], text: &str) -> bool {
         .any(|r| r.get("event").is_some_and(|e| e.to_string().contains(text)))
 }
 
+// keeps: spec ctl-cli §1
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ctl_events_discover_filter_and_resume_without_a_second_consumer_or_ack() {
     let root = tempfile::tempdir().unwrap();

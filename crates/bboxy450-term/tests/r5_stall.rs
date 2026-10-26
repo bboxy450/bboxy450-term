@@ -7,7 +7,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+// keeps: spec runtime §6 (one mixed-IO process boundary)
 #[test]
+#[ignore = "night: real process boundary, test-policy #327 B2"]
 fn synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io() {
     let root = tempfile::Builder::new()
         .prefix("r5-contract-")

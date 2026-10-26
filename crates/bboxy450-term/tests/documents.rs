@@ -14,6 +14,7 @@ fn reference(n: u64) -> d::RecordRef {
 fn result(reader: &mut Reader, id: Ulid, value: serde_json::Value) -> std::sync::Arc<Reply> {
     reader.response(id, Ok(value)).unwrap().prepare()
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_claim() {
     let mut host = Host::default();
@@ -47,6 +48,7 @@ fn resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_
     assert_eq!(host.links["#47"], Some(47));
     assert!(host.settled());
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn the_provenance_card_displays_test_account_attribution_without_certifying_metadata() {
     for label in [Some("test-account:01M5QXCFMCR0Z4ZFYZM5JY8QBZ"), None] {
@@ -78,6 +80,7 @@ fn the_provenance_card_displays_test_account_attribution_without_certifying_meta
         assert_eq!(prepared.document.prov.signed, None);
     }
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target() {
     let mut host = Host::default();
@@ -105,6 +108,7 @@ fn reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target
     assert!(!host.open);
     assert!(host.next_read().is_none());
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn errors_and_disconnect_finish_once_and_retry_only_on_a_new_open() {
     let mut host = Host::default();
@@ -138,6 +142,7 @@ fn errors_and_disconnect_finish_once_and_retry_only_on_a_new_open() {
     );
     assert!(reader.disconnected("again").is_none());
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file() {
     let mut reader = Reader::default();
@@ -168,6 +173,7 @@ fn oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file
         matches!(&result(&mut reader,id,json!(record)).response,Response::Failed(s) if s.starts_with("stale_reference:"))
     );
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn metadata_publications_retain_an_unconsumed_document_reply() {
     use std::{sync::Arc, time::Instant};
@@ -195,6 +201,7 @@ fn metadata_publications_retain_an_unconsumed_document_reply() {
     }
 }
 
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn retained_attachment_targets_are_bounded_as_whole_references() {
     let references: Vec<_> = (1..=34).map(|n| format!("[[#{n}]]")).collect();
@@ -207,6 +214,7 @@ fn retained_attachment_targets_are_bounded_as_whole_references() {
     assert_eq!(bounded.omitted, 1);
 }
 
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn attachment_overflow_is_named_on_the_message_without_changing_its_projection() {
     use bboxy450_term::messaging::{self, MessageAttachments};
@@ -247,6 +255,7 @@ fn attachment_draft(path: &str) -> bbt_ui::modules::composer::Submission {
         priority: 0,
     }
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn composer_wraps_task_paths_once_and_preserves_existing_wire_references() {
     use bboxy450_term::{cockpit::UiMsg, messaging::Client};
@@ -270,6 +279,7 @@ fn composer_wraps_task_paths_once_and_preserves_existing_wire_references() {
         assert_eq!(args.attachments, [expected]);
     }
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted() {
     let client = bboxy450_term::messaging::Client::default();
@@ -297,6 +307,7 @@ fn composer_refuses_unknown_attachment_shapes_before_any_send_is_admitted() {
         );
     }
 }
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn task_delegate_keeps_its_provider_path() {
     use bboxy450_term::messaging::{self, Client};
@@ -329,6 +340,7 @@ fn task_delegate_keeps_its_provider_path() {
     );
 }
 
+// keeps: spec l9-messaging-tasks §4
 #[test]
 fn known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_the_read() {
     let mut host = Host::default();

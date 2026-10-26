@@ -80,14 +80,12 @@ fn drive(
     history: &mut History,
     records: &[HistoryRecord],
     count: usize,
-) -> (BTreeMap<SeatId, Arc<Historical>>, usize, Duration) {
+) -> (BTreeMap<SeatId, Arc<Historical>>, usize) {
     let mut displays = BTreeMap::new();
     let mut fetches = 0;
-    let mut longest = Duration::ZERO;
+    let now = Instant::now();
     for _ in 0..100_000 {
-        let start = Instant::now();
-        if let Some(GuiAction::GetHistory { seat, from, to }) = history.next_action(Instant::now())
-        {
+        if let Some(GuiAction::GetHistory { seat, from, to }) = history.next_action(now) {
             let (rows, next) = page(records, from, to);
             assert!(
                 !rows.is_empty(),
@@ -103,14 +101,14 @@ fn drive(
                 displays.remove(&seat);
             }
         }
-        longest = longest.max(start.elapsed());
         if displays.len() == count {
-            return (displays, fetches, longest);
+            return (displays, fetches);
         }
     }
     panic!("history did not converge to {count} displays");
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 fn scrollback_dimension_admission_uses_the_heap_budget() {
     let token = view(SeatId::from_u128(1), 1);
@@ -156,6 +154,7 @@ fn scrollback_dimension_admission_uses_the_heap_budget() {
     }
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay_bounded() {
     let mut bytes = b"\x1b[32m\x1b[?1h".to_vec();
@@ -189,7 +188,6 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
     let seat = SeatId::from_u128(1);
     let token = view(seat, 1);
     let mut history = History::default();
-    let top_start = Instant::now();
     history
         .request(seat, token, through, screen.clone(), Request::top())
         .unwrap();
@@ -202,7 +200,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         pending_sample["panes"][0]["retained_history_bytes"],
         serde_json::Value::Null
     );
-    let (top, fetches, longest) = drive(&mut history, &records, 1);
+    let (top, fetches) = drive(&mut history, &records, 1);
     assert_eq!(fetches, 1, "top must not prefetch the remaining transcript");
     assert_eq!(text(&top[&seat].screen.cells[0]), "line 00001");
     assert_eq!(
@@ -222,9 +220,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             .next_action(Instant::now() + Duration::from_secs(60))
             .is_none()
     );
-    let top_elapsed = top_start.elapsed();
 
-    let end_start = Instant::now();
     history
         .request(
             seat,
@@ -238,7 +234,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             },
         )
         .unwrap();
-    let (join, _, join_quantum) = drive(&mut history, &records, 1);
+    let (join, _) = drive(&mut history, &records, 1);
     let live_row = reference.history_bounds().end - 24;
     assert_eq!(
         join[&seat].screen.cells,
@@ -249,8 +245,6 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         &screen.cells[..23],
         "no duplicated or missing row at the live join"
     );
-    let end_elapsed = end_start.elapsed();
-    let seek_start = Instant::now();
     history
         .request(
             seat,
@@ -264,16 +258,15 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             },
         )
         .unwrap();
-    let (middle, _, seek_quantum) = drive(&mut history, &records, 1);
+    let (middle, _) = drive(&mut history, &records, 1);
     assert_eq!(
         middle[&seat].screen.cells,
         reference.history_window(10_000, 24).unwrap()
     );
-    let seek_elapsed = seek_start.elapsed();
     history
         .request(seat, token, through, screen.clone(), Request::top())
         .unwrap();
-    let (again, fetches, _) = drive(&mut history, &records, 1);
+    let (again, fetches) = drive(&mut history, &records, 1);
     assert_eq!(fetches, 1);
     assert_eq!(text(&again[&seat].screen.cells[0]), "line 00001");
     history
@@ -334,10 +327,6 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
         // peer must display after its second turn, within two four-seat rounds.
         assert!(first[&seat] <= 8, "peer's parser starved behind long seek");
     }
-    eprintln!(
-        "20k seek: top={top_elapsed:?}, capture-prefix-to-live={end_elapsed:?}, seek-row10000={seek_elapsed:?}, longest_parse_turn={:?}",
-        longest.max(join_quantum).max(seek_quantum)
-    );
 
     let gap_records = vec![
         HistoryRecord::Bytes {
@@ -360,7 +349,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
     history
         .request(seat, token, 5, screen.clone(), Request::top())
         .unwrap();
-    let (gap, _, _) = drive(&mut history, &gap_records, 1);
+    let (gap, _) = drive(&mut history, &gap_records, 1);
     assert_eq!(text(&gap[&seat].screen.cells[2]), "line 3");
     assert_eq!(text(&gap[&seat].screen.cells[3]), "");
     assert_eq!(
@@ -452,7 +441,7 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
             )
             .unwrap();
     }
-    let (displays, fetches, _) = drive(&mut fifty, &records, 50);
+    let (displays, fetches) = drive(&mut fifty, &records, 50);
     let actual = BYTES.with(Cell::get);
     let accounted = fifty.retained_heap_bytes().unwrap();
     COUNT.with(|count| count.set(false));
@@ -510,6 +499,7 @@ fn scroll_fixture() -> (SeatId, View, Arc<Screen>, Vec<HistoryRecord>, u64) {
     )
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 fn ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_casts() {
     let (seat, token, screen, records, tail) = scroll_fixture();
@@ -524,7 +514,7 @@ fn ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_ca
             Request::top().correlated(op),
         )
         .unwrap();
-    let (top, _, _) = drive(&mut history, &records, 1);
+    let (top, _) = drive(&mut history, &records, 1);
     assert_eq!(top[&seat].top_row, 0);
     assert_eq!(text(&top[&seat].screen.cells[0]), "line 00001");
     let reply = history.take_completion().unwrap();
@@ -545,7 +535,7 @@ fn ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_ca
             Request::row(17).correlated(Ulid::new()),
         )
         .unwrap();
-    let (at, _, _) = drive(&mut history, &records, 1);
+    let (at, _) = drive(&mut history, &records, 1);
     assert_eq!(at[&seat].top_row, 17);
     assert_eq!(text(&at[&seat].screen.cells[0]), "line 00018");
     history.take_completion().unwrap();
@@ -598,6 +588,7 @@ fn ctl_scroll_completes_absolute_rows_cached_hits_and_u64_tail_without_signed_ca
     );
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 fn ctl_scroll_finishes_live_noops_refusals_disconnects_and_local_supersession() {
     let (seat, token, screen, _, _) = scroll_fixture();
@@ -670,6 +661,7 @@ fn ctl_scroll_finishes_live_noops_refusals_disconnects_and_local_supersession() 
     );
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 fn solved_scroll_readback_leaves_unindexed_live_null_and_invalidates_old_sequences() {
     use bboxy450_term::scrollback::{Position, Readback};

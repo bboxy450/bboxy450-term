@@ -1084,6 +1084,7 @@ mod backdrop_key_tests {
         )
     }
 
+    // keeps: spec runtime §4
     #[test]
     fn a_frosted_op_after_host_drawing_is_never_keyed() {
         let ops = [draw("#0B0B10"), material(ui::Material::Frosted)];
@@ -1091,6 +1092,7 @@ mod backdrop_key_tests {
         assert_eq!(keys(&ops, 0., true), vec![None, None]);
     }
 
+    // keeps: spec runtime §4
     #[test]
     fn keys_follow_prior_content_and_only_timed_content_follows_time() {
         let fixed = [draw("#0B0B10"), material(ui::Material::Frosted)];
@@ -1188,6 +1190,7 @@ mod clear_fold_tests {
         (pixels, counts)
     }
 
+    // keeps: spec runtime §4
     #[test]
     fn a_folded_clear_draws_the_scene_byte_identically_in_one_pass_fewer() {
         let scene = crate::scene::Scene::new();
@@ -1205,6 +1208,7 @@ mod clear_fold_tests {
         assert_eq!(after.passes() + 1, before.passes());
     }
 
+    // keeps: spec runtime §4
     #[test]
     fn a_target_whose_first_op_is_a_material_or_nothing_is_still_cleared() {
         let frosted = || Paint::Material {

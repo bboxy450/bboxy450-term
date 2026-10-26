@@ -7,7 +7,9 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 
+// keeps: spec plugins §5
 #[test]
+#[ignore = "night: real app/plugin process boundary, test-policy #327 B2"]
 fn real_binary_runs_headless_against_a_fixture_without_opening_the_production_root() {
     let root = tempfile::tempdir().unwrap();
     let binary = root.path().join("bboxy450-term-data_source-reference");

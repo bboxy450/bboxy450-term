@@ -74,7 +74,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
         })
         .await
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             match session.receive_state().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => break seat,
@@ -91,6 +91,8 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
     .unwrap()
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(
     clippy::disallowed_methods,
@@ -117,7 +119,7 @@ async fn real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_conn
         .await
         .unwrap();
     assert!(status.success());
-    let changed = tokio::time::timeout(Duration::from_secs(10), async {
+    let changed = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let GuiReply::Seat(seat) = session.receive_state().await.unwrap()
                 && seat.record.id == first.record.id
@@ -147,6 +149,8 @@ async fn real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_conn
     );
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(
     clippy::disallowed_methods,
@@ -202,7 +206,7 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
             GuiReply::Error { reason, .. } if reason == expected
         ));
         assert!(
-            tokio::time::timeout(Duration::from_secs(3), read_line(&mut reader))
+            tokio::time::timeout(Duration::from_secs(30), read_line(&mut reader))
                 .await
                 .unwrap()
                 .unwrap()
@@ -231,19 +235,23 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
     for bytes in [b"{".to_vec(), vec![b'x'; 1024 * 1024 + 1]] {
         let stream = tokio::net::UnixStream::connect(&path).await.unwrap();
         let (read, mut write) = stream.into_split();
-        let _ = tokio::time::timeout(Duration::from_secs(3), write.write_all(&bytes))
+        let _ = tokio::time::timeout(Duration::from_secs(30), write.write_all(&bytes))
             .await
             .unwrap();
         let _ = write.shutdown().await;
-        let result =
-            tokio::time::timeout(Duration::from_secs(3), read_line(&mut BufReader::new(read)))
-                .await
-                .unwrap();
+        let result = tokio::time::timeout(
+            Duration::from_secs(30),
+            read_line(&mut BufReader::new(read)),
+        )
+        .await
+        .unwrap();
         assert!(matches!(result, Ok(None) | Err(_)));
     }
     session.shutdown().await.unwrap();
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(
     clippy::disallowed_methods,
@@ -253,7 +261,7 @@ async fn app_io_owner_observes_both_child_process_exits() {
     let root = tempfile::Builder::new().prefix("c1a-").tempdir().unwrap();
     let mut session = start(root.path()).await;
     session.logic.start_kill().unwrap();
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if matches!(
                 session.event().await.unwrap(),
@@ -270,7 +278,7 @@ async fn app_io_owner_observes_both_child_process_exits() {
     .unwrap();
     assert!(session.supervisor.try_wait().unwrap().is_none());
     session.supervisor.start_kill().unwrap();
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if matches!(
                 session.event().await.unwrap(),
@@ -288,6 +296,8 @@ async fn app_io_owner_observes_both_child_process_exits() {
     session.shutdown().await.unwrap();
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(
     clippy::disallowed_methods,
@@ -301,10 +311,15 @@ async fn cancelled_exit_watch_preserves_orderly_child_shutdown() {
     let mut session = start(root.path()).await;
     assert!(session.list().await.unwrap().is_empty());
     // The live IO loop repeatedly cancels this wait when another command wins.
+    use std::{
+        future::Future,
+        task::{Context, Waker},
+    };
     assert!(
-        tokio::time::timeout(Duration::from_millis(50), session.event())
-            .await
-            .is_err()
+        std::pin::pin!(session.event())
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
     );
     session.shutdown().await.unwrap();
     assert!(
@@ -314,6 +329,8 @@ async fn cancelled_exit_watch_preserves_orderly_child_shutdown() {
     );
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[allow(
     clippy::disallowed_methods,

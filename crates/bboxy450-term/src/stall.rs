@@ -1027,6 +1027,7 @@ pub fn headless(config: Config) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn frame_cpu_join_keeps_callback_identity_and_null_gaps_in_the_report() {
         use bbt_rt::diagnostics::{CallbackCpuSlice, CallbackFrameCpu, CallbackKindCpu};
@@ -1094,6 +1095,7 @@ mod tests {
         assert_eq!(joined["kinds"][0]["largest_callback"]["clipped_end"], true);
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn wake_sources_and_pending_queues_survive_settle_serialization() {
         let mut counters = WakeCounters::default();
@@ -1152,6 +1154,7 @@ mod tests {
         assert_eq!(messages["frames"], 1);
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn extra_wake_sources_are_bounded_and_overflow_is_named() {
         let mut counters = WakeCounters::default();
@@ -1161,6 +1164,7 @@ mod tests {
         assert_eq!(json["overflow"], 3);
     }
 
+    // keeps: spec seats-967-frame §3
     #[test]
     fn lower_row_echo_does_not_acknowledge_a_probe_or_bypass_the_clip() {
         let mut term = bbt_core::Term::new(24, 8, 0);

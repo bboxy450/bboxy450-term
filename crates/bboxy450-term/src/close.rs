@@ -433,6 +433,7 @@ mod tests {
         (model, tree, ids[2])
     }
 
+    // keeps: spec c1-live-seats §4 (close, undo and retained history)
     #[test]
     fn t7_position_and_undo_snapshot_use_the_actual_split_without_optimistic_close() {
         let (model, mut tree, seat) = fixture();
@@ -465,6 +466,7 @@ mod tests {
         assert!(model.window.sidebar.swarms[0].closed.is_empty());
     }
 
+    // keeps: spec c1-live-seats §4 (close, undo and retained history)
     #[test]
     fn t7_metadata_rebuild_restores_the_same_generation_tree_and_focus() {
         let (ui, tree, seat) = fixture();
@@ -493,17 +495,17 @@ mod tests {
         .unwrap();
         model.closes.register(intent.clone()).unwrap();
         let grids = crate::grids::Grids::new();
-        let open = crate::model::build(&records, &grids, &model);
+        let open = crate::model::build_at(&records, &grids, &model, now, 1000);
         assert_eq!(open.ui.window.sidebar.swarms[0].tabs[0].tree, tree);
         let mut closed = records.clone();
         closed[2].lifecycle = Lifecycle::ClosedGrace;
         closed[2].close = Some(bbt_proto::registry::CloseRecord {
             operation: intent.operation,
             revision: 12,
-            deadline_ms: bbt_mux::store::now_ms() + 60_000,
+            deadline_ms: 61_000,
             position: intent.position.clone(),
         });
-        let hidden = crate::model::build(&closed, &grids, &open);
+        let hidden = crate::model::build_at(&closed, &grids, &open, now, 1000);
         assert_eq!(hidden.ui.window.sidebar.swarms[0].closed.len(), 1);
         assert_eq!(
             hidden.ui.window.sidebar.swarms[0].tabs[0]
@@ -519,7 +521,7 @@ mod tests {
                 .contains(&seat)
         );
         assert_eq!(hidden.closes.latest(now), Some(seat));
-        let read = status(&hidden, Instant::now());
+        let read = status(&hidden, now);
         assert_eq!(read["complete"], true);
         assert_eq!(read["grace"].as_array().unwrap().len(), 1);
         assert_eq!(read["grace"][0]["seat"], seat.to_string());
@@ -531,15 +533,15 @@ mod tests {
                 .iter()
                 .any(|s| s["seat"] == seat.to_string())
         );
-        let refresh = crate::model::build(&closed, &grids, &hidden);
+        let refresh = crate::model::build_at(&closed, &grids, &hidden, now, 1000);
         assert_eq!(refresh.ui.window.sidebar.swarms[0].closed.len(), 1);
-        let restored = crate::model::build(&records, &grids, &refresh);
+        let restored = crate::model::build_at(&records, &grids, &refresh, now, 1000);
         assert_eq!(restored.ui.window.sidebar.swarms[0].tabs[0].tree, tree);
         assert_eq!(restored.ui.window.stage.focused, Some(seat));
         assert_eq!(restored.ui.seats[&seat].process_generation, 7);
         assert!(restored.ui.window.sidebar.swarms[0].closed.is_empty());
         assert!(restored.closes.latest(now).is_none());
-        let read = status(&restored, Instant::now());
+        let read = status(&restored, now);
         assert!(read["grace"].as_array().unwrap().is_empty());
         assert!(
             read["slots"]
@@ -549,6 +551,7 @@ mod tests {
                 .any(|s| s["seat"] == seat.to_string())
         );
     }
+    // keeps: spec c1-live-seats §4 (close, undo and retained history)
     #[test]
     fn t7_expiry_removes_only_the_row_and_emits_one_exact_retained_notice() {
         let (mut ui, tree, seat) = fixture();
@@ -580,6 +583,7 @@ mod tests {
         assert!(state.undo(seat, now + GRACE).is_err());
     }
 
+    // keeps: spec c1-live-seats §4 (close, undo and retained history)
     #[test]
     fn t7_a_delayed_close_publication_still_announces_retention_once() {
         let (ui, tree, seat) = fixture();
@@ -629,6 +633,7 @@ mod tests {
         );
     }
 
+    // keeps: spec c1-live-seats §4 (close, undo and retained history)
     #[test]
     fn t7_grace_uses_only_the_matching_registry_deadline_and_generation() {
         let (model, tree, seat) = fixture();

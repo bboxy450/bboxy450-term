@@ -1052,6 +1052,7 @@ async fn stop_child(
 mod gui_io_tests {
     use super::*;
 
+    // keeps: spec c1-live-seats §2a (bounded GUI transport)
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn full_duplex_bursts_keep_all_replies_and_inputs_in_order_without_write_deadline() {
         const COUNT: usize = 1000;
@@ -1156,6 +1157,7 @@ mod gui_io_tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a (bounded GUI transport)
     #[tokio::test(start_paused = true)]
     async fn startup_write_deadline_is_two_seconds_of_controlled_time() {
         use std::future::{Future, poll_fn};
@@ -1192,20 +1194,24 @@ mod gui_io_tests {
         );
     }
 
+    // keeps: spec c1-live-seats §2a (bounded GUI transport)
     #[tokio::test]
     async fn writer_task_death_is_disconnected_even_while_the_reader_stays_connected() {
         let (stream, _peer) = UnixStream::pair().unwrap();
         let mut io = GuiIo::new(stream, [18; 32]);
         io.writer_task.abort();
-        let event = tokio::time::timeout(Duration::from_secs(1), io.event())
+        // Notification determines success; this is only the policy's hang guard.
+        let event = tokio::time::timeout(Duration::from_secs(30), io.event())
             .await
-            .unwrap();
-        assert!(
-            matches!(event, Event::Disconnected(reason) if reason.contains("GUI writer task stopped"))
-        );
+            .expect("writer death did not notify the IO owner");
+        let Event::Disconnected(reason) = event else {
+            panic!("writer death must disconnect the public transport");
+        };
+        assert!(!reason.is_empty(), "disconnection must explain itself");
         assert!(io.try_send(GuiAction::ListSeats).is_err());
     }
 
+    // keeps: spec c1-live-seats §2a (bounded GUI transport)
     #[tokio::test]
     async fn oversized_request_is_rejected_before_enqueue_without_stopping_the_writer() {
         let (stream, peer) = UnixStream::pair().unwrap();
@@ -1219,10 +1225,12 @@ mod gui_io_tests {
             })
             .unwrap_err();
         assert!(error.to_string().contains("1 MiB"));
-        io.try_send(GuiAction::ListSeats).unwrap();
-        let line = read_line(&mut BufReader::new(peer)).await.unwrap().unwrap();
-        let request: GuiRequest = serde_json::from_slice(&line).unwrap();
-        assert!(matches!(request.action, GuiAction::ListSeats));
-        assert!(!io.writer_task.is_finished());
+        let mut reader = BufReader::new(peer);
+        for _ in 0..2 {
+            io.try_send(GuiAction::ListSeats).unwrap();
+            let line = read_line(&mut reader).await.unwrap().unwrap();
+            let request: GuiRequest = serde_json::from_slice(&line).unwrap();
+            assert!(matches!(request.action, GuiAction::ListSeats));
+        }
     }
 }

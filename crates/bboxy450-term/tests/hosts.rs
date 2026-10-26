@@ -16,6 +16,7 @@ fn host(location: Where, state: HostState) -> GuiHost {
         region: Some("east-test-1".into()),
     }
 }
+// keeps: spec d1-providers §3
 #[test]
 fn provider_data_binds_settings_launcher_and_survives_model_rebuilds() {
     let hosts = vec![

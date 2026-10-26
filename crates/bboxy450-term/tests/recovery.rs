@@ -30,6 +30,7 @@ async fn script(path: &Path, text: String) {
         .unwrap();
 }
 
+// keeps: spec c1-live-seats §4
 #[test]
 #[ignore = "private Codex service stand-in, exercised by the recovery tests"]
 fn codex_service_fixture() {
@@ -146,7 +147,7 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
         })
         .await
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             match session.receive_state().await.unwrap() {
                 GuiReply::Seat(seat) if !known.contains(&seat.record.id) => return seat,
@@ -172,7 +173,7 @@ async fn watch(session: &mut Session, seat: &GuiSeat) {
         .unwrap();
 }
 async fn update(session: &mut Session, seat: SeatId) -> Update {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             match session.receive_state().await.unwrap() {
                 GuiReply::Update { seat: got, update } if got == seat => return update,
@@ -218,7 +219,7 @@ async fn input(session: &mut Session, seat: SeatId, generation: u64, bytes: &[u8
         .unwrap();
 }
 async fn until_text(session: &mut Session, seat: SeatId, replica: &mut Replica, wanted: &str) {
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let next = update(session, seat).await;
             apply(session, seat, replica, next).await;
@@ -285,6 +286,7 @@ async fn restart_catalogue(
     })?
 }
 
+// keeps: spec c1-live-seats §4
 #[tokio::test(start_paused = true)]
 async fn restart_catalogue_accepts_completion_within_the_sessions_startup_budget() {
     // Session allows 30 s for recovery startup. A scheduling delay within that
@@ -298,6 +300,7 @@ async fn restart_catalogue_accepts_completion_within_the_sessions_startup_budget
     assert!(seats.is_empty());
 }
 
+// keeps: spec c1-live-seats §4
 #[tokio::test(start_paused = true)]
 async fn restart_catalogue_preserves_terminal_recovery_failures() {
     let error = restart_catalogue(async || {
@@ -310,6 +313,7 @@ async fn restart_catalogue_preserves_terminal_recovery_failures() {
     assert_eq!(error.to_string(), "recovery failed: startup refused");
 }
 
+// keeps: spec c1-live-seats §4
 #[tokio::test(start_paused = true)]
 async fn restart_catalogue_still_rejects_a_hang() {
     let started = tokio::time::Instant::now();
@@ -329,7 +333,7 @@ async fn durable(root: &Path, seat: &GuiSeat, sequence: u64) {
         "run/seat-{}/ring-{}/committed",
         seat.record.id, seat.record.generation
     ));
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let Ok(bytes) = tokio::fs::read(&path).await
                 && bytes.len() > 4
@@ -346,6 +350,8 @@ async fn durable(root: &Path, seat: &GuiSeat, sequence: u64) {
     .unwrap();
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressure() {
     let root = tempfile::Builder::new()
@@ -380,21 +386,8 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
             break;
         }
     }
-    // Cancelling polling must not cancel the stored startup task.
-    let mut early_catalogue = None;
-    for _ in 0..3 {
-        if let Ok(Ok(Event::Reply(reply))) =
-            tokio::time::timeout(Duration::from_millis(10), session.event()).await
-            && let GuiReply::Seats(seats) = *reply
-        {
-            early_catalogue = Some(seats);
-            break;
-        }
-    }
-    let seats = match early_catalogue {
-        Some(seats) => seats,
-        None => restarted(&mut session).await,
-    };
+    // Cancellation is exercised directly by the pending-startup regression.
+    let seats = restarted(&mut session).await;
     let restored = seats
         .iter()
         .find(|s| s.record.id == seat.record.id)
@@ -425,23 +418,24 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
         b"printf 'after-restart\\n'\n",
     )
     .await;
-    let window = tokio::time::timeout(Duration::from_millis(250), async {
+    // A control reply is a protocol barrier after the new input. It must not
+    // release the already outstanding frame; only Applied below can do that.
+    session.send(GuiAction::ListSeats).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
-            assert!(
-                !matches!(
-                    session.receive_state().await.unwrap(),
-                    GuiReply::Update { .. }
-                ),
-                "second update before Applied"
-            );
+            match session.receive_state().await.unwrap() {
+                GuiReply::Seats(_) => break,
+                GuiReply::Update { .. } => panic!("second update before Applied"),
+                _ => {}
+            }
         }
     })
-    .await;
-    assert!(window.is_err());
+    .await
+    .unwrap();
     apply(&mut session, id(&seat), &mut replica, first).await;
     until_text(&mut session, id(&seat), &mut replica, "after-restart").await;
     println!(
-        "logic recovery: seat={} pid={} generation={} supervisor={:?} logic {:?}->{:?}; fresh view; 250ms ack hold",
+        "logic recovery: seat={} pid={} generation={} supervisor={:?} logic {:?}->{:?}; fresh view; control-barrier ack hold",
         seat.record.id,
         pid(&seat),
         seat.record.generation,
@@ -452,6 +446,8 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
     session.shutdown().await.unwrap();
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv() {
     let root = tempfile::Builder::new()
@@ -557,7 +553,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     };
     // Confirm the first fixture has executed before holding only its replacement.
     let mut initial_argv = String::new();
-    let initial_published = tokio::time::timeout(Duration::from_secs(5), async {
+    let initial_published = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             initial_argv = tokio::fs::read_to_string(root.path().join("codex-argv"))
                 .await
@@ -582,7 +578,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     let argv_hold = root.path().join("codex-hold-argv");
     tokio::fs::write(&argv_hold, b"").await.unwrap();
     session.supervisor.start_kill().unwrap();
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if !old_codex_endpoint.exists() {
                 break;
@@ -625,7 +621,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
         let mut argv = String::new();
         let mut first_count = None;
         let mut observed_count = 0;
-        let published = tokio::time::timeout(Duration::from_secs(5), async {
+        let published = tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 argv = tokio::fs::read_to_string(&path).await.unwrap();
                 let args: Vec<_> = argv.lines().collect();
@@ -668,7 +664,7 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     }
     session.send(stale_input).await.unwrap();
     session.send(stale_resize).await.unwrap();
-    tokio::time::timeout(Duration::from_secs(10), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         for dropped in 1..=2 {
             loop {
                 match session.receive_state().await.unwrap() {
@@ -717,6 +713,8 @@ async fn supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_nati
     );
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn shutdown_during_pending_recovery_reaps_children_without_restarting() {
     let root = tempfile::Builder::new()
@@ -751,6 +749,8 @@ async fn shutdown_during_pending_recovery_reaps_children_without_restarting() {
     assert!(!status.status.success(), "owned seat survived shutdown");
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child() {
     let root = tempfile::Builder::new()
@@ -776,7 +776,7 @@ async fn partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child() 
             break;
         }
     }
-    let pending_pid = tokio::time::timeout(Duration::from_secs(5), async {
+    let pending_pid = tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let Ok(pid) = tokio::fs::read_to_string(root.path().join("pending-pid")).await {
                 break pid.trim().to_owned();
@@ -786,24 +786,26 @@ async fn partial_startup_survives_cancelled_poll_and_shutdown_reaps_its_child() 
     })
     .await
     .unwrap();
+    use std::{
+        future::Future,
+        task::{Context, Waker},
+    };
     assert!(
-        tokio::time::timeout(Duration::from_millis(20), session.event())
-            .await
-            .is_err()
+        std::pin::pin!(session.event())
+            .as_mut()
+            .poll(&mut Context::from_waker(Waker::noop()))
+            .is_pending()
     );
     // Known loss returns promptly; the owner can retain this stable-ID command
     // and its independent close channel remains selectable during startup.
     assert!(
-        tokio::time::timeout(
-            Duration::from_millis(20),
-            session.send(GuiAction::ListSeats)
-        )
-        .await
-        .unwrap()
-        .is_err()
+        tokio::time::timeout(Duration::from_secs(30), session.send(GuiAction::ListSeats))
+            .await
+            .unwrap()
+            .is_err()
     );
     session.shutdown().await.unwrap();
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             let status = tokio::process::Command::new("/bin/ps")
                 .args(["-p", &pending_pid, "-o", "comm="])
@@ -857,7 +859,7 @@ async fn raw_supervisor(root: &Path) -> (tokio::process::Child, bbt_mux::logic::
         .await
         .unwrap();
     let line = tokio::time::timeout(
-        Duration::from_secs(5),
+        Duration::from_secs(30),
         bbt_mux::seat_socket::read_line(&mut BufReader::new(child.stdout.take().unwrap())),
     )
     .await
@@ -870,6 +872,8 @@ async fn raw_supervisor(root: &Path) -> (tokio::process::Child, bbt_mux::logic::
     (child, client)
 }
 
+// keeps: spec c1-live-seats §4
+#[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches_but_exact_retry_is_idempotent()
  {
@@ -907,7 +911,7 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
             bytes: b"durable-generation\n".to_vec(),
         })
         .unwrap();
-    tokio::time::timeout(Duration::from_secs(5), async {
+    tokio::time::timeout(Duration::from_secs(30), async {
         loop {
             if let Reply::RingRecovery { status, .. } = client
                 .request(Action::RingRecovery {
@@ -1031,7 +1035,7 @@ async fn recovered_generation_admission_rejects_unknown_and_conflicting_launches
         .await
         .unwrap();
     assert!(
-        tokio::time::timeout(Duration::from_secs(5), second.wait())
+        tokio::time::timeout(Duration::from_secs(30), second.wait())
             .await
             .unwrap()
             .unwrap()

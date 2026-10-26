@@ -185,6 +185,7 @@ mod tests {
     use super::*;
     use std::sync::mpsc;
 
+    // keeps: spec attention §3
     #[test]
     fn stable_id_replaces_and_only_an_outstanding_id_can_activate_the_callback() {
         let (send, received) = mpsc::channel();
@@ -228,6 +229,7 @@ mod tests {
         );
     }
 
+    // keeps: spec attention §3
     #[test]
     fn recording_readback_redacts_encoded_key_bytes() {
         let backend = Recorder::new(Arc::new(|_| {}));
@@ -245,6 +247,7 @@ mod tests {
         assert!(!snapshot.contains(&bytes));
     }
 
+    // keeps: spec attention §3
     #[test]
     fn refused_ids_and_retained_history_stay_bounded_before_redaction() {
         let backend = Recorder::new(Arc::new(|_| {}));
@@ -262,15 +265,15 @@ mod tests {
         for _ in 0..HISTORY {
             backend.remove(&id).unwrap();
         }
-        let state = backend.state.try_lock().unwrap();
-        assert_eq!(state.records.len(), HISTORY);
-        assert!(state.omitted_records > 0);
+        let snapshot = backend.snapshot().unwrap();
+        let records = snapshot["records"].as_array().unwrap();
+        assert_eq!(records.len(), HISTORY);
+        assert!(snapshot["omitted_records"].as_u64().unwrap() > 0);
         assert!(
-            state
-                .records
+            records
                 .iter()
                 .all(|row| row["id"].as_str().unwrap().len() <= 128)
         );
-        assert!(state.outstanding.is_empty());
+        assert_eq!(snapshot["outstanding_count"], 0);
     }
 }

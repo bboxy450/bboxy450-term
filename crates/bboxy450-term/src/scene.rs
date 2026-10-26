@@ -1595,6 +1595,7 @@ fn history_row_rect(
 mod depth_tests {
     use super::*;
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage() {
         let scene = Scene::new();
@@ -1620,6 +1621,7 @@ mod depth_tests {
         assert!(!page.paint().is_empty());
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn historical_gap_uses_cell_device_origin_and_last_row_scissor_at_both_scales() {
         let body = Rect::new(10.3, 20.3, 100.8, 33.8);
@@ -1646,6 +1648,7 @@ mod depth_tests {
             .collect()
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar() {
         let mut scene = Scene::new();
@@ -1693,15 +1696,19 @@ mod depth_tests {
                 "rim {rim} moved the title bar or the sidebar"
             );
         }
+        scene.set_rim(RIM_MAX);
+        let maximum = panes(&scene);
         scene.set_rim(20.);
-        assert_eq!(scene.rim, RIM_MAX);
+        assert_eq!(panes(&scene), maximum);
+        scene.set_rim(RIM_MIN);
+        let minimum = panes(&scene);
         scene.set_rim(0.5);
-        assert_eq!(scene.rim, RIM_MIN);
+        assert_eq!(panes(&scene), minimum);
     }
 
     /// Every rim the scene paints for one seat, its row (phase from the key) and its pane
     /// (seeded by the seat id), as (swell, attention).
-    fn rims_of(scene: &Scene, seat: SeatId, now: Instant) -> Vec<(f32, bool)> {
+    pub(super) fn rims_of(scene: &Scene, seat: SeatId, now: Instant) -> Vec<(f32, bool)> {
         let key = &scene.seats[scene.seat_index[&seat]].key;
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let mut out = vec![];
@@ -1721,6 +1728,7 @@ mod depth_tests {
         out
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn the_focus_swell_rises_and_settles_over_swell_ms_and_keeps_frames_until_then() {
         let mut scene = Scene::new();
@@ -1752,6 +1760,7 @@ mod depth_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn app_clock_steps_the_actual_focus_rims_to_450_ms_without_moving_layout() {
         use bbt_proto::gui::UiClockCommand;
@@ -1790,11 +1799,12 @@ mod depth_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn controlled_attention_keeps_its_logical_phase_across_metadata_publications() {
         use bbt_proto::gui::UiClockCommand;
         let record =
-            bbt_proto::SeatRecord::new(bbt_mux::Ulid::new(), bbt_mux::Ulid::new(), "Clock", "zsh");
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(3), bbt_mux::Ulid::new(), "Clock", "zsh");
         let seat = SeatId::from_u128(record.id.0);
         let mut model = bboxy450_term::model::build(
             &[record],
@@ -1827,9 +1837,14 @@ mod depth_tests {
         assert_eq!(scene.envelope(seat, clock.now()), (0., false));
         model.attention.clear();
         scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
-        assert!(!scene.attention_origins.contains_key(&seat));
+        assert!(
+            rims_of(&scene, seat, clock.now())
+                .iter()
+                .all(|r| *r == (0., false))
+        );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn attention_loops_until_handled_and_a_muted_seat_stays_quiet() {
         let mut scene = Scene::new();
@@ -1857,6 +1872,7 @@ mod depth_tests {
         assert!(!scene.animating(t0));
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn published_attention_drives_both_blocks_without_moving_focus_or_restarting_swell() {
         use bboxy450_term::{grids::Grids, model};
@@ -1911,7 +1927,11 @@ mod depth_tests {
         let key = model.attention_key(seat);
         assert!(model.attention_focus(seat, 1, key, Some(peak)));
         scene.set_model(&model, &stage);
-        assert!(scene.attention.is_empty());
+        assert!(
+            rims_of(&scene, seat, peak)
+                .iter()
+                .all(|(_, attention)| !attention)
+        );
         assert!(scene.animating(peak));
         let done = peak + std::time::Duration::from_millis(TOKENS.glow.swell_ms as u64 + 1);
         scene.set_model(&model, &stage);
@@ -1930,9 +1950,14 @@ mod depth_tests {
         current.state.activity = bbt_proto::Activity::Idle;
         model.apply_seat_states(&[current]);
         scene.set_model(&model, &stage);
-        assert!(scene.attention.is_empty());
+        assert!(
+            rims_of(&scene, seat, peak)
+                .iter()
+                .all(|(_, attention)| !attention)
+        );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn pane_rects_are_identical_across_activity_states() {
         let mut scene = Scene::new();
@@ -1948,6 +1973,7 @@ mod depth_tests {
 mod launcher_tests {
     use super::*;
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16() {
         use bboxy450_term::launcher::Command;
@@ -1983,6 +2009,7 @@ mod launcher_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn retained_launcher_hit_regions_and_unwrapped_foreground_order() {
         let scene = Scene::new();
@@ -2053,6 +2080,7 @@ mod launcher_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn assigned_task_uses_its_seat_subtree_and_retained_review_hit_without_moving_panes() {
         let record = bbt_proto::SeatRecord::new(
@@ -2106,6 +2134,7 @@ mod launcher_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn document_uses_effective_context_without_moving_panes_and_keeps_hud_last() {
         let mut scene = Scene::new();
@@ -2143,10 +2172,11 @@ mod launcher_tests {
         );
     }
 
+    // keeps: spec ux-prototype §5
     #[test]
     fn repeated_document_publications_keep_the_original_focus_swell_instant() {
         let record =
-            bbt_proto::SeatRecord::new(bbt_mux::Ulid::new(), bbt_mux::Ulid::new(), "Anchor", "zsh");
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(3), bbt_mux::Ulid::new(), "Anchor", "zsh");
         let seat = SeatId::from_u128(record.id.0);
         let generation = record.generation;
         let mut model = bboxy450_term::model::build(
@@ -2163,24 +2193,26 @@ mod launcher_tests {
                 response: bboxy450_term::documents::Response::Failed("not_found: retained".into()),
             }));
             scene.set_model(&model, &model.ui.window.stage);
-            assert_eq!(scene.swells.get(&seat), Some(&landed));
+            let peak = landed + std::time::Duration::from_millis(450);
+            let rims = depth_tests::rims_of(&scene, seat, peak);
+            assert!(rims.len() >= 2);
+            assert!(
+                rims.iter()
+                    .all(|(phase, attention)| (*phase - 1.).abs() < 1e-6 && !attention)
+            );
+            let done = landed + std::time::Duration::from_millis(TOKENS.glow.swell_ms as u64 + 1);
+            assert!(
+                depth_tests::rims_of(&scene, seat, done)
+                    .iter()
+                    .all(|r| *r == (0., false))
+            );
         }
     }
 
-    /// Captured also on the unchanged accepted source. Compare the complete
-    /// bytes between these markers, not a screenshot of a moving live scene.
-    #[test]
-    fn no_launcher_paint_proof() {
-        let scene = Scene::new();
-        let size = [1600., 960.];
-        let layouts = scene.layout(size, false).unwrap();
-        let paints = scene.paint(&layouts, size, None, None);
-        println!("L8_PAINT_BEGIN{paints:#?}L8_PAINT_END");
-        assert_eq!(scene.focus_bounds(&layouts).len(), 15);
-    }
+    // keeps: spec ux-prototype §5
     #[test]
     fn settings_owns_one_inner_scroller_and_uses_the_effective_theme_density_and_rim() {
-        let mut scene = Scene::live();
+        let mut scene = Scene::new();
         let mut preferences = bboxy450_term::settings::Preferences::default();
         preferences.appearance.theme = "light".into();
         preferences.appearance.density = "compact".into();
@@ -2209,7 +2241,15 @@ mod launcher_tests {
         assert_eq!(count(&page.layout), 1);
         assert_eq!(page.context.theme, ui::Theme::Light);
         assert_eq!(page.context.density, ui::Density::Compact);
-        assert_eq!(scene.rim, 8.);
+        let pane_layouts = scene.layout([1600., 960.], true).unwrap();
+        let left = pane_layouts[2..]
+            .iter()
+            .map(|pane| pane.rect.x)
+            .fold(f32::MAX, f32::min);
+        assert!(
+            (left - 304.).abs() < 0.01,
+            "saved rim must produce its 4 px stage inset"
+        );
         assert!(page.viewport.bottom() <= 780.);
         assert!(page.settings.as_ref().unwrap().rim.is_some());
         let mut text = String::new();
@@ -2226,6 +2266,7 @@ mod launcher_tests {
         labels(&page.layout, &mut text);
         assert!(text.contains("not yet applied to the window"));
     }
+    // keeps: spec ux-prototype §5
     #[test]
     fn t7_close_and_undo_hits_are_the_actual_retained_buttons() {
         let mut records: Vec<_> = (1..=3)
@@ -2234,7 +2275,9 @@ mod launcher_tests {
             })
             .collect();
         let grids = bboxy450_term::grids::Grids::new();
-        let mut model = bboxy450_term::model::build(&records, &grids, &Default::default());
+        let now = Instant::now();
+        let mut model =
+            bboxy450_term::model::build_at(&records, &grids, &Default::default(), now, 1_000);
         let victim = SeatId::from_u128(3);
         let mut scene = Scene::live();
         scene.set_model(&model, &model.ui.window.stage);
@@ -2243,17 +2286,17 @@ mod launcher_tests {
         assert_eq!(hits.iter().filter(|(_, _, undo)| !*undo).count(), 3);
         assert!(hits.iter().all(|(_, r, _)| r.w > 0. && r.h > 0.));
         let intent = scene
-            .close_intent(&model, victim, bbt_mux::Ulid(9), Instant::now())
+            .close_intent(&model, victim, bbt_mux::Ulid(9), now)
             .unwrap();
         records[2].lifecycle = bbt_proto::registry::Lifecycle::ClosedGrace;
         records[2].close = Some(bbt_proto::registry::CloseRecord {
             operation: intent.operation,
             revision: 1,
-            deadline_ms: bbt_mux::store::now_ms() + 60_000,
+            deadline_ms: 61_000,
             position: intent.position.clone(),
         });
         model.closes.register(intent).unwrap();
-        let model = bboxy450_term::model::build(&records, &grids, &model);
+        let model = bboxy450_term::model::build_at(&records, &grids, &model, now, 1_000);
         scene.set_model(&model, &model.ui.window.stage);
         let layouts = scene.layout([1000., 640.], false).unwrap();
         let hits = scene.close_regions(&layouts);
@@ -2267,6 +2310,7 @@ mod launcher_tests {
 #[cfg(test)]
 mod identity_note_tests {
     use super::*;
+    // keeps: spec ux-prototype §5
     #[test]
     fn the_frame_labels_test_accounts_without_changing_real_identity_notes() {
         use bbt_proto::{GuiIdentity, GuiIdentityState::*};

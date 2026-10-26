@@ -19,6 +19,7 @@ pub mod scrollback;
 pub mod settings;
 
 #[cfg(test)]
+// keeps: invariant kitty-keyboard
 #[test]
 fn keyboard_adapter_uses_neutral_core_and_live_modes() {
     keyboard::assert_adapter();

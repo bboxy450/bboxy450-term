@@ -383,12 +383,14 @@ impl Drop for DisplayLink {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec runtime §4 (on-demand native pacing)
     #[test]
     fn tick_wake_after_pause_does_not_reopen_link() {
         // draw has called set_active(false); its already-queued tick Wake is
         // delivered afterwards, with no new model or input invalidation.
         assert_eq!(wake_action(&[TICK_SOURCE], false), WakeAction::Ignore);
     }
+    // keeps: spec runtime §4 (on-demand native pacing)
     #[test]
     fn data_racing_a_tick_still_requests_a_frame_after_pause() {
         assert_eq!(
@@ -401,6 +403,7 @@ mod tests {
         // Unknown sources remain real invalidations; telemetry never gates work.
         assert_eq!(wake_action(&[999], false), WakeAction::Invalidate);
     }
+    // keeps: spec runtime §4 (on-demand native pacing)
     #[test]
     fn raw_notices_drain_without_paint_but_never_hide_a_tick_or_model() {
         for sources in [&[0][..], &[1][..], &[0, 1][..]] {
@@ -415,6 +418,7 @@ mod tests {
             WakeAction::Invalidate
         );
     }
+    // keeps: spec runtime §4 (on-demand native pacing)
     #[test]
     fn core_video_timestamp_matches_sdk_abi() {
         assert_eq!(std::mem::size_of::<Smpte>(), 24);

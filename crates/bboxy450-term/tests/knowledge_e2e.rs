@@ -106,6 +106,7 @@ fn screen(loader: &E2eLoader) -> String {
     )
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     let mut fixture = Fixture::new();
@@ -198,6 +199,7 @@ fn one_signed_corpus_drives_the_screen_and_ctl_projection_through_changes() {
     assert_eq!(call.args["cursor"], "0");
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn malformed_repeated_and_oversized_pages_fail_closed_instead_of_publishing_partial_rows() {
     let mut loader = E2eLoader::new(promises().unwrap());
@@ -228,6 +230,7 @@ fn malformed_repeated_and_oversized_pages_fail_closed_instead_of_publishing_part
     assert!(loader.next_request().is_none());
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies() {
     use bbt_proto::GuiAction;

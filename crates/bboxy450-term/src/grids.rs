@@ -127,6 +127,7 @@ mod tests {
             }),
         }
     }
+    // keeps: spec c1-live-seats §2a (watched replicas and shared screens)
     #[test]
     fn subscription_diff_reuses_unchanged_arcs_and_drops_rewatched_baselines() {
         let mut grids = Grids::new();
