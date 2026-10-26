@@ -48,3 +48,12 @@ Native local references: /Users/feral/.cargo/registry/src/index.crates.io-1949cf
 ## Safe restart
 
 Read this file and issue#62 first. Check date, Git status/log/actual diffs, then current authenticated Oracle inbox. All evidence and source are local. Do not replay old briefs as new work. Vesper is the sole ruling/spec contact: Corvin and Wren sessions are shut down. No new tasks under the operator wrap-up order. Git author Boxy <bboxy450@gmail.com>; every commit signed with9B07E849480C68328CA20684844ECC0587DE7AB0. GitHub plugin is logged in as retired Gonzih, do not use it for writes; local gh api user verified bboxy450.
+
+
+## Oracle ruling received during shutdown — cf405d78-f563-426a-8ec4-19c22737c945
+
+This addendum supersedes the earlier pending-ruling/no-reply statements for the subscription question only. It does not revoke the operator's direct shutdown/no-new-tasks order, and no code, test, gate or native subscription was restarted.
+
+Vesper approved the narrow Codex observer: only after verified loaded thread plus owner PID; `thread/resume` with `excludeTurns:true`; zero config, permission or model fields; generation-cancelled; observation only; never attach this observer to the operator's running seat. Hook wrapping remains rejected.
+
+Sequence when work is explicitly resumed: cut1 lands the journal core, ctl errors and MCP/plugin/spawn/worker failure capture as a separate complete, green cut. Cut2 adds the Codex hook/completed subscription on the same branch line and records the seam as one line in `.bboxy/interfaces/app-harness.md`. No further Oracle approval is needed between those cuts. The actual operator hook's original stderr/cause remains unproven; the ruling is not runtime evidence.
