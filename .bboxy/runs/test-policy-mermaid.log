@@ -1,0 +1,40 @@
+# #327 bbt-mermaid test sweep
+
+Oracle46f7fa1e; fresh base 658a39ffb71b211d17d5fd43290499f0eea4411b. Tests and cfg(test) only; overlap scan empty.
+22 libtests plus the public doc example pass before and after: 23/0/0 ignored. No deletion/move, no sleeps present or removed, no wall-clock waits. All fixture bytes and include paths unchanged. Rendering setup is shared only for the immutable real-fixture geometry; each property still asserts its own behavior, and layout_is_deterministic still renders every source independently four times. The shared corpus has an explicit non-empty guard.
+Reported binary times total 0.14 s before / 0.07 s after; no speed threshold or halving claim below coarse reporting resolution. Strict Clippy and affected invariants are combined author validation.
+
+| Test | Class | Kept contract |
+|---|---|---|
+| `src/flowchart.rs::links` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/flowchart.rs::shapes_groups_classes_and_subgraph_endpoints` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/flowchart.rs::rejects_unsupported` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/layered.rs::pav_keeps_order_and_gaps` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/sequence.rs::parses_messages_notes_and_blocks` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/sequence.rs::rejects_unsupported` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/state.rs::states_transitions_and_composites` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/state.rs::notes_sit_beside_their_state` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/state.rs::rejects_unsupported` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/text.rs::cleans_quotes_breaks_and_entities` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `src/text.rs::statements_keep_quoted_newlines` | D2 | spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback |
+| `tests/fixtures.rs::fixture_counts` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::every_bboxy_mermaid_block_has_a_fixture` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::subgraph_direction_is_honoured_unless_linked_outside` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::multi_edges_take_distinct_paths` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::every_fixture_lays_out` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::no_overlapping_nodes` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::clusters_hold_members_and_exclude_others` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::edges_start_and_end_on_borders` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::everything_inside_the_size` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::layout_is_deterministic` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `tests/fixtures.rs::unsupported_syntax_is_an_error` | D2 | spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout |
+| `src/lib.rs` public parse/layout doc example | D2 | document-viewer §Crate layout; example remains byte-identical because it is outside the permitted cfg(test) edit scope |
+
+Coverage map: document-viewer Mermaid subset -> flowchart/state/sequence parser positives and unsupported negatives; labels/quoted newlines -> text tests; order/gap solver -> layered PAV behavior; required 20 docs and 20 state inputs -> fixture_counts; every .bboxy Mermaid source has a fixture and every fixture has a source -> every_bboxy_mermaid_block_has_a_fixture; real geometry -> no overlap, cluster containment, border endpoints and frame bounds; distinct links/subgraph direction -> dedicated source cases; repeatability -> fresh independent layout_is_deterministic invocations. No spec acceptance or invariant check lost coverage.
+
+The geometry cache calls the real render parser/layout once per real fixture with the same public MonoMeasure/Style inputs as before. It names parse/layout failures during initialization. The cluster test still independently parses source, then checks geometry against its memberships. This avoids repeated setup without replacing any production algorithm with expected fixture geometry.
+
+Evidence (copies normalize trailing blank lines; private originals retained):
+- .bboxy/runs/test-policy-mermaid-inventory.log SHA256 541f9aa5e4b142d7964fcbb47742d837755ea2b99e23cc751d554903da42f34f — EXIT0.
+- .bboxy/runs/test-policy-mermaid-before.log SHA256 71f1b5763ea5ba7767e8b69873e91b7d56527d147c0ba62721aef12a966c1fde — EXIT0.
+- .bboxy/runs/test-policy-mermaid-after.log SHA256 0d712cdcd1471e20d8e70f6aaf5b046842801846bb3ee83686a4ab1beefdf215 — EXIT0.

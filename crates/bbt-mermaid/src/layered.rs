@@ -1271,6 +1271,7 @@ fn pav(d: &[f32], w: &[f32], sep: &[f32]) -> Vec<f32> {
 mod tests {
     use super::pav;
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn pav_keeps_order_and_gaps() {
         let x = pav(&[10.0, 0.0, 5.0], &[1.0, 1.0, 1.0], &[4.0, 4.0]);

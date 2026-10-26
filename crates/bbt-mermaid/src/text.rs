@@ -151,6 +151,7 @@ pub(crate) fn label(lines: Vec<String>, role: TextRole, rect: Rect) -> Label {
 mod tests {
     use super::*;
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn cleans_quotes_breaks_and_entities() {
         assert_eq!(
@@ -171,6 +172,7 @@ mod tests {
         );
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn statements_keep_quoted_newlines() {
         let lines = strip_frontmatter(

@@ -2,9 +2,12 @@
 //! on borders, clusters hold their members, everything inside the size, and
 //! the layout is deterministic.
 
-#![allow(clippy::disallowed_methods, reason = "dev tool and test fixture IO, not the UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "dev tool and test fixture IO, not the UI thread"
+)]
 
-use bbt_mermaid::{Geometry, Kind, MonoMeasure, Point, Rect, Shape, Style, layout, parse, render};
+use bbt_mermaid::{Geometry, Kind, MonoMeasure, Point, Rect, Shape, Style, parse, render};
 use std::path::Path;
 
 const EPS: f32 = 0.5;
@@ -33,6 +36,23 @@ fn all() -> Vec<(String, String)> {
     v.extend(fixtures("docs"));
     v.extend(fixtures("state"));
     v
+}
+
+// Immutable fixture outputs are shared across the independent geometry checks.
+// The determinism check below still renders each source repeatedly itself.
+fn rendered() -> &'static [(String, String, Geometry)] {
+    static RENDERED: std::sync::OnceLock<Vec<(String, String, Geometry)>> =
+        std::sync::OnceLock::new();
+    RENDERED.get_or_init(|| {
+        all()
+            .into_iter()
+            .map(|(name, source)| {
+                let geometry = render(&source, &MonoMeasure::default(), &Style::default())
+                    .unwrap_or_else(|error| panic!("{name}: {error}"));
+                (name, source, geometry)
+            })
+            .collect()
+    })
 }
 
 /// Mermaid fences in every Markdown file under `dir`, recursively.
@@ -103,12 +123,14 @@ fn on_shape(shape: Shape, r: &Rect, p: Point) -> bool {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn fixture_counts() {
     assert_eq!(fixtures("docs").len(), 20);
     assert_eq!(fixtures("state").len(), 20);
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn every_bboxy_mermaid_block_has_a_fixture() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.bboxy");
@@ -136,6 +158,7 @@ fn every_bboxy_mermaid_block_has_a_fixture() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn subgraph_direction_is_honoured_unless_linked_outside() {
     let g = geo("flowchart TB\n subgraph S\n direction LR\n a --> b\n end\n x --> S");
@@ -155,6 +178,7 @@ fn subgraph_direction_is_honoured_unless_linked_outside() {
     assert!(pos("b").x > pos("a").x + 1.0);
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn multi_edges_take_distinct_paths() {
     for src in [
@@ -172,21 +196,21 @@ fn multi_edges_take_distinct_paths() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn every_fixture_lays_out() {
-    for (name, src) in all() {
-        let g = render(&src, &MonoMeasure::default(), &Style::default());
-        assert!(g.is_ok(), "{name}: {:?}", g.err());
-        let g = g.unwrap();
+    let fixtures = rendered();
+    assert!(!fixtures.is_empty(), "the real fixture corpus is required");
+    for (name, _, g) in fixtures {
         assert!(!g.nodes.is_empty(), "{name}: no nodes");
         assert!(g.size.w > 0.0 && g.size.h > 0.0, "{name}: empty size");
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn no_overlapping_nodes() {
-    for (name, src) in all() {
-        let g = geo(&src);
+    for (name, _, g) in rendered() {
         let solid: Vec<_> = g
             .nodes
             .iter()
@@ -207,14 +231,14 @@ fn no_overlapping_nodes() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn clusters_hold_members_and_exclude_others() {
-    for (name, src) in all() {
-        let d = parse(&src).unwrap();
+    for (name, src, g) in rendered() {
+        let d = parse(src).unwrap();
         let (bbt_mermaid::Diagram::Flowchart(f) | bbt_mermaid::Diagram::State(f)) = &d else {
             continue;
         };
-        let g = layout(&d, &MonoMeasure::default(), &Style::default()).unwrap();
         let rect_of = |id: &str| g.clusters.iter().find(|c| c.id == id).unwrap().rect;
         for (i, n) in f.nodes.iter().enumerate() {
             let nr = g.nodes[i].rect;
@@ -284,10 +308,10 @@ fn clusters_hold_members_and_exclude_others() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn edges_start_and_end_on_borders() {
-    for (name, src) in all() {
-        let g = geo(&src);
+    for (name, _, g) in rendered() {
         for e in &g.edges {
             assert!(
                 e.points.len() >= 2,
@@ -351,10 +375,10 @@ fn edges_start_and_end_on_borders() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn everything_inside_the_size() {
-    for (name, src) in all() {
-        let g = geo(&src);
+    for (name, _, g) in rendered() {
         let frame = Rect {
             x: -EPS,
             y: -EPS,
@@ -395,6 +419,7 @@ fn everything_inside_the_size() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn layout_is_deterministic() {
     for (name, src) in all() {
@@ -405,6 +430,7 @@ fn layout_is_deterministic() {
     }
 }
 
+// keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn unsupported_syntax_is_an_error() {
     for src in [

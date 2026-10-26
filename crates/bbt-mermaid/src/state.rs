@@ -360,6 +360,7 @@ mod tests {
         parse(&strip_frontmatter(src)).unwrap()
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn states_transitions_and_composites() {
         let f = sd(
@@ -377,6 +378,7 @@ mod tests {
         assert_eq!(by("j").shape, Shape::Bar);
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn notes_sit_beside_their_state() {
         let c = sd("stateDiagram\n[*] --> Still:::calm\nStill --> Moving:::fast : go");
@@ -392,6 +394,7 @@ mod tests {
         assert_eq!(f.edges[2].to, Endpoint::Node(1));
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn rejects_unsupported() {
         let bad = |s: &str| parse(&strip_frontmatter(s)).is_err();

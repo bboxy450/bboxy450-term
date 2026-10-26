@@ -804,6 +804,7 @@ mod tests {
     use super::*;
     use crate::text::strip_frontmatter;
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn parses_messages_notes_and_blocks() {
         let q = parse(&strip_frontmatter(
@@ -874,6 +875,7 @@ mod tests {
         ));
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn rejects_unsupported() {
         let bad = |s: &str| parse(&strip_frontmatter(s)).is_err();

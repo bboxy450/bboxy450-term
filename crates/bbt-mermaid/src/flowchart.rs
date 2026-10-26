@@ -606,6 +606,7 @@ mod tests {
         parse(&strip_frontmatter(src)).unwrap()
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn links() {
         let f = fc(
@@ -630,6 +631,7 @@ mod tests {
         assert_eq!(f.nodes.len(), 4);
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn shapes_groups_classes_and_subgraph_endpoints() {
         let f = fc(
@@ -648,6 +650,7 @@ mod tests {
         assert_eq!(f.class_defs[0].style, "stroke-dasharray: 5 5");
     }
 
+    // keeps: spec document-viewer §Mermaid — supported syntax, deterministic true-size geometry and honest source fallback
     #[test]
     fn rejects_unsupported() {
         assert!(parse(&strip_frontmatter("flowchart TD\nA@{ shape: rect }")).is_err());

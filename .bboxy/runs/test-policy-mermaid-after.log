@@ -1,0 +1,45 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bbt-mermaid v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-mermaid)
+    Finished `test` profile [optimized] target(s) in 6.94s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_mermaid-7c2496a07458bdeb)
+
+running 11 tests
+test layered::tests::pav_keeps_order_and_gaps ... ok
+test sequence::tests::rejects_unsupported ... ok
+test state::tests::rejects_unsupported ... ok
+test state::tests::notes_sit_beside_their_state ... ok
+test flowchart::tests::shapes_groups_classes_and_subgraph_endpoints ... ok
+test flowchart::tests::links ... ok
+test sequence::tests::parses_messages_notes_and_blocks ... ok
+test text::tests::cleans_quotes_breaks_and_entities ... ok
+test flowchart::tests::rejects_unsupported ... ok
+test state::tests::states_transitions_and_composites ... ok
+test text::tests::statements_keep_quoted_newlines ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/fixtures-bb021a3581d5478c)
+
+running 11 tests
+test multi_edges_take_distinct_paths ... ok
+test subgraph_direction_is_honoured_unless_linked_outside ... ok
+test unsupported_syntax_is_an_error ... ok
+test fixture_counts ... ok
+test every_fixture_lays_out ... ok
+test everything_inside_the_size ... ok
+test no_overlapping_nodes ... ok
+test edges_start_and_end_on_borders ... ok
+test clusters_hold_members_and_exclude_others ... ok
+test layout_is_deterministic ... ok
+test every_bboxy_mermaid_block_has_a_fixture ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+   Doc-tests bbt_mermaid
+
+running 1 test
+test crates/bbt-mermaid/src/lib.rs - (line 8) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+all doctests ran in 0.46s; merged doctests compilation took 0.29s
