@@ -1,0 +1,24 @@
+Frozen-clock fixture — Sable Embertail <EXECUTOR>, 2026-10-25
+
+Task 336, runtime source 7784082e8498fe8690ffcc5912c1df5217000d21 (signed).
+Cause: the exact old failed RGBA buffers differ in 621 pixels, only sidebar x163..278/y236..246. Read reconstructed crops: green Build box / 40 ms becomes red fixture link dropped. The provider fixture independently schedules that change at 12000 ms on RealClock; no animation fault was demonstrated. Full source/log pointers remain in task 336.
+
+Mechanism
+crates/bboxy450-term/src/cockpit/fixture_hosts.rs — smoke behavior unchanged; the off selector is read only under debug_assertions and only with Config.test_account present. Without that combination scripted hosts remain enabled. Release has no selector string/parser.
+crates/bboxy450-term/src/cockpit.rs::start_logic — call that selector before the existing LogicBootstrap; no provider/clock/animation behavior change.
+crates/bboxy450-term/tests/headless.rs — only the frozen-animation fixture sets the off selector. Its entire prior test body, excluding the new fixture setting/comment, is byte-identical (proof frozen-assertions-unchanged.json). All full-buffer pixel, explicit-step, focus, swell and resume assertions remain; no tolerance, sleep or deadline change.
+The new integration regression compiles the actual selector source in debug/release modes. Both modes test unset/off/unrecognized values, smoke and non-test-account behavior; the release binary is also checked for absence of the selector bytes. Compiled regression 1/0, EXIT0 in 0.744 s. Independent direct compile/readback has six successful mode/selector rows.
+
+Loaded controls
+10/10 exact frozen-clock tests passed, two independent real Cargo release builds active before and after every test. Durations 3.089, 2.542, 2.168, 2.318, 2.151, 2.231, 3.188, 3.094, 3.242, 2.256 seconds. Both builders reached compilation (30 Compiling lines each); descendant snapshots are retained per repetition. They were stopped intentionally with SIGTERM after the tenth check, exit -15 each; no recorded descendants remained. This is not a successful-build claim. lsof showed no open target files; both own load targets retired, 175542272 allocated bytes freed.
+Build/test commands and recorded PIDs: frozen-build.command.json, frozen-loaded.command.json and frozen-loaded-result.json. Initial cargo test --no-run EXIT0 / 482.889 s. Loaded controller EXIT0 / 29.882 s. No operator identity, login Keychain, display input or window was used; the fixture creates its own file-custody account.
+
+Mutation
+First clock-wide mutation failed at the earlier exact frame-time acknowledgement (ui_frame_refused); its EXIT101 is retained but was not counted as a pixel-assertion proof.
+The narrower GPU-paint-only mutation added elapsed real time to the headless shader time while retaining the logical clock metadata. The same test then EXIT101 at "wall time and capture work cannot advance a frozen animation". Raw log SHA-256 f01091b823bd4029d509bf2e04a988036920a077ef5da8f56b53f5cca83f90f0. It failed after a 24.090 s compile/test command. The diagnostic driver exits0 only after checking that expected refusal and restoring headless.rs byte-for-byte (SHA-256 5a503d3d7a089bf3f0a9a04822dc1b277466e601fc90de956164cb10858f5fd3, git diff --quiet EXIT0). animation_clock.rs is also restored, git diff --quiet EXIT0.
+Restored-source cargo test EXIT0 / 33.399 s, runtime test 1/0 in 2.89 s. Author validation is pending; its log/result is reported in the handoff.
+
+keeps: bbt-mux/tests/provider_fake.rs::all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt and ::headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart still check fixture link dropped. Those tests and scripted provider behavior remain untouched.
+
+private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
+Evidence: frozen-clock-buffer-diff.json; frozen-clock-left-sidebar.png; frozen-clock-right-sidebar.png; frozen-selector-proof.json; frozen-assertions-unchanged.json; frozen-loaded-result.json; frozen-load-targets-retired.json; frozen-mutation-result.json; frozen-paint-mutation-result.json. Raw command/test logs remain private. No broader 327 audit, real-harness, visual parity or scale claim.

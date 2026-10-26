@@ -3,12 +3,12 @@ id: "01M5TGNDBDE2QB8K3BHH69216M"
 type: "task"
 number: 336
 title: "Make the headless frozen-clock pixel test independent of host load"
-status: "open"
+status: "done"
 role: "executor"
 owner: "Sable Embertail"
 verify: "cargo test -p bboxy450-term --locked --test headless test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time"
 created: "2026-10-25T21:49:58Z"
-updated: "2026-10-26T00:00:14Z"
+updated: "2026-10-26T00:15:51Z"
 ---
 # Make the headless frozen-clock pixel test independent of host load
 
@@ -38,4 +38,10 @@ The frozen-clock assertion holds under load: 10/10 with two concurrent cargo bui
 - keeps: scripted-host transitions remain covered by `bbt-mux/tests/provider_fake.rs::all_requests_keep_their_reply_and_down_requests_never_execute_while_events_wait_for_rtt` and `headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart`; both explicitly check fixture link dropped. Those tests are untouched.
 
 private_root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
-Repair and its 10 loaded controls/mutation check are pending; the analysis above is not a green-test claim.
+## Repair and verification
+
+- `cockpit/fixture_hosts.rs` gates the off selector under `debug_assertions` and a test-account Config; `start_logic` uses it for the existing bootstrap field. Only the frozen-clock headless fixture selects it. No provider or animation code change is retained.
+- Compiled selector regression 1/0; actual module built in both modes, unset/off/unrecognized readback checked, selector bytes absent from release output. All existing frozen-clock assertions remain byte-identical except the added fixture setting/comment.
+- Ten exact pixel tests passed with two independent Cargo release builders active before and after every run (2.151–3.242 s). Both builders were intentionally stopped after the tenth run and their recorded descendants were absent. Own load targets had no open files and were removed.
+- A paint-only wall-clock mutation failed the exact frozen-pixel assertion, EXIT101; its source was restored byte-for-byte. A broader first mutation was caught earlier by the frame-time acknowledgement, retained as a separate negative control. Restored-source cargo test EXIT0, 1/0 in 2.89 s.
+- Evidence and limits: `.bboxy/runs/headless-frozen-clock-load.log`; detailed commands, PIDs, results and hashes under private_root above. Canonical author validation and landing are reported with the handoff; no broad 327 audit claim.
