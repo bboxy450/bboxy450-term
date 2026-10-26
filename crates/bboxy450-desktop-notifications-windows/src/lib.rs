@@ -20,6 +20,7 @@ pub fn open() -> Result<(), Unsupported> {
 
 #[cfg(test)]
 mod tests {
+    // keeps: spec desktop-notifications §4 — named Unsupported OS and exact public research marker
     #[test]
     fn research_marker_is_the_runtime_result() {
         let error = super::open().unwrap_err();

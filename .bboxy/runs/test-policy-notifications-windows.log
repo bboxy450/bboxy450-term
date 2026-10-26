@@ -1,0 +1,19 @@
+#327 bboxy450-desktop-notifications-windows test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own exec5 branch exec5-tests-327-notifications-windows, fresh base 7830930da1df8a16d2391761bbe46f8d07c57fd0.
+Only keeps: tags in existing tests/cfg(test) modules. Production prefixes, public API and test assertions remain byte-identical.
+Before: 1 passed / 0 failed / 0 ignored; summed per-binary test execution 0.000 s. After: 1 passed / 0 failed / 0 ignored; summed per-binary execution 0.000 s. Both are under 30 s, so test-policy §3 applies on coverage alone. Timing improvement is unproven. Outer Cargo wall time (including compilation) is reported separately below.
+Sleep calls removed: 0. No clocks, waits, process probes, native vault calls, Notification Center, authorization or desktop operations introduced. Strict Clippy and selected invariants will run in the combined author presubmit and are not claimed here.
+Overlap scan: no peer in-flight file overlaps; no skipped file.
+
+| Test | Class | Disposition / protected contract |
+|---|---|---|
+| `src/lib.rs::research_marker_is_the_runtime_result` | D2 | retain unchanged assertions and tag protected contract; spec desktop-notifications §4 — named Unsupported OS and exact public research marker |
+
+Coverage map: desktop-notifications §4 explicitly requires this OS name and exact DO RESEARCH BEFORE IMPLEMENTING marker as the runtime refusal. This honest-specific-failure contract is D2 rather than A3/C3 until a typed cause exists (Oracle ruling 44845a1d). Production open() is actually called; test does not compare a constructed fixture to itself. Assertions unchanged.
+
+Limits: Pure stub open() only, compiled/executed on macOS. No native windows API or runtime integration claimed. Typed-cause port remains a follow-up; no API change.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-notifications-windows-inventory.log SHA256 af95d6a5a84ceaf171a1fc343871ff8401abe5c665a6fb0c2b60145eff9c0181 — EXIT0; outer Cargo seconds 0.530.
+- .bboxy/runs/test-policy-notifications-windows-before.log SHA256 338e4c7d4b797bad9aee7ca353b1cb7ee88c37bd8b084181505afbf7503f5f54 — EXIT0; outer Cargo seconds 0.259.
+- .bboxy/runs/test-policy-notifications-windows-after.log SHA256 0a1a32782d9aad60c512ee0750b08b03ecd3f189571562dd60fd927382f269f8 — EXIT0; outer Cargo seconds 0.591.
