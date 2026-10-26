@@ -9,7 +9,7 @@ links:
   - { to: "[[resource-ledger]]", rel: builds-on }
   - { to: "[[seats-967-frame]]", rel: constrains }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:13:24Z"
+updated: "2026-10-26T18:31:26Z"
 ---
 # Budgets
 
@@ -22,14 +22,15 @@ Two clocks run in parallel and are never added together: the **CPU path** of the
 | Stage | Endpoints in the code (`bboxy450-term`, source 2dc967db) | Allocation p99 | Measured |
 |---|---|---|---|
 | Drain | frame start to the call of `project_scene` (`main.rs:5482`), the event drain and model update only; the current `phases.drain` (`main.rs:5492`) includes `project_scene` and is split by timing it separately | 1.5 ms | not yet split |
-| Projection | `project_scene` plus `phases.layout` plus `phases.draw` (scene paint and foreground construction, `main.rs:5550-5583`) | 1.0 ms | 4 321 projections for 42 frames before Rook's fix |
-| Encode and submit | `phases.encode`: the actual command encoding and `queue.submit` (`gpu.rs:413-511`, returned at `main.rs:5596`) | 1.0 ms | encode 4.9 ms after the atlas fix |
+| Projection | `project_scene` plus `phases.layout` plus `phases.draw` (scene paint and foreground construction, `main.rs:5550-5583`) | 1.0 ms | layout alone 7.9 to 9.4 ms on the hitch frames of the first night run (b61ea30b); full-population p99 awaits the sampling cut |
+| Encode and submit | `phases.encode`: the actual command encoding and `queue.submit` (`gpu.rs:413-511`, returned at `main.rs:5596`) | 1.0 ms | 10.8 to 20.8 ms on the hitch frames (b61ea30b), a biased subset of 5 of 356 |
 | CPU margin | | 0.5 ms | |
-| **CPU path total** | the three above, which sum exactly to the meter's CPU total (`bbt-rt/src/meter.rs:16`, drain plus layout plus draw plus encode) | **under 4 ms** (the invariant) | 292 ms on 0e97dc32 |
+| **CPU path total** | the three above, which sum exactly to the meter's CPU total (`bbt-rt/src/meter.rs:16`, drain plus layout plus draw plus encode) | **under 4 ms** (the invariant) | 20.4 ms on b61ea30b, from 292 ms on 0e97dc32; the p99 frame was 86.5 % window redraw |
 | GPU execution | Metal's own GPU execution duration for the frame's command buffer (`gpu.rs:495-498`) | 6.0 ms | 8.9 ms before the blur fix, at 75 Hz |
 | GPU margin | | 2.33 ms | |
 | Present wait | `phases.present_wait`, the host's wait; reported, not allocated, expected near zero, since the UI thread never waits | report only | |
-| Input to GPU | end to end from input admission to the GPU completion of the frame that shows it | within 2 frame intervals, 16.7 ms (the invariant) | 1 076 ms |
+| Input to GPU | end to end from input admission to the GPU completion of the frame that shows it | within 2 frame intervals, 16.7 ms (the invariant) | 1 398 ms on b61ea30b, of which **1 349 ms is supervisor write to logic read** |
+| Supervisor write to logic read | the supervisor-to-logic leg of input to GPU ([[supervisor-logic]]) | one frame interval, 8.33 ms | 1 349 ms on b61ea30b: the dominant leg, owned on the supervisor and logic side, not the window |
 
 **How samples are kept.** The partitioned run records bounded raw per-frame samples of each phase and of the GPU duration, without changing thresholds or scheduling (Rook's proposal); a frame whose GPU duration is unavailable counts as unavailable, never as zero; the verdict per row is its p99 over available samples with the unavailable count beside it. A stage over its row is its owner's to fix or to argue for a reallocation, never a silent overrun.
 
