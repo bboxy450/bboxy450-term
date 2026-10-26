@@ -1,4 +1,6 @@
 //! Native sidebar metadata and the optional frozen scene-15 smoke fixture.
+mod starting;
+use bboxy450_term::starting::Slot;
 use bbt_ui::{
     self as ui, components as c,
     modules::{
@@ -168,6 +170,7 @@ pub struct Scene {
     pub seats: Vec<SeatRow>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
+    starting: Option<starting::StartingScene>,
     seat_index: HashMap<SeatId, usize>,
     focused: Option<SeatId>,
     live: bool,
@@ -252,6 +255,26 @@ fn tree(v: &serde_json::Value) -> SplitNode {
         tree(&v["b"]),
     )
 }
+fn pane_body(layout: &c::Layout) -> Option<Rect> {
+    if matches!(&layout.kind, c::LayoutKind::Named(name) if name == "pane/term") {
+        let mut rect = layout.rect;
+        if let Some(c::Layout {
+            kind: c::LayoutKind::Box { style, .. },
+            ..
+        }) = layout.children.first()
+        {
+            let [top, right, bottom, left] = style.padding;
+            rect = Rect::new(
+                rect.x + left,
+                rect.y + top,
+                (rect.w - left - right).max(0.),
+                (rect.h - top - bottom).max(0.),
+            );
+        }
+        return Some(rect);
+    }
+    layout.children.iter().find_map(pane_body)
+}
 impl Scene {
     pub fn new() -> Self {
         // lab/web/showcase.js BASE, with its frozen 15-seat split fixture.
@@ -312,6 +335,7 @@ impl Scene {
             layout_revision: 0,
             swarms: vec![],
             tree: Some(tree(&fixture["tree"])),
+            starting: None,
             seat_index: (0..15).map(|i| (SeatId::from_u128(i as u128), i)).collect(),
             focused: Some(SeatId::from_u128(0)),
             live: false,
@@ -416,6 +440,7 @@ impl Scene {
             layout_revision: 0,
             swarms: vec![],
             tree: None,
+            starting: None,
             seat_index: HashMap::new(),
             focused: None,
             live: true,
@@ -460,6 +485,7 @@ impl Scene {
             bbt_rt::diagnostics::ProbeStage::LatestTaken,
             bbt_rt::diagnostics::ProbeStage::ProjectionStarted,
         );
+        self.starting = None;
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
@@ -601,14 +627,10 @@ impl Scene {
     /// Retained hit boxes: never a guessed strip/pane coordinate.
     pub fn close_regions(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect, bool)> {
         let mut out = vec![];
-        for (id, layout) in self
-            .tree
-            .as_ref()
-            .map(SplitNode::leaves)
-            .unwrap_or_default()
-            .into_iter()
-            .zip(layouts.iter().skip(2))
-        {
+        for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
+            let Slot::Seat(id) = slot else {
+                continue;
+            };
             if let Some(rect) = named(layout, "pane/strip/close").map(|layout| layout.rect) {
                 out.push((id, rect, false));
             }
@@ -630,7 +652,15 @@ impl Scene {
         out
     }
     pub fn focused(&self) -> Option<SeatId> {
-        self.focused
+        match self
+            .starting
+            .as_ref()
+            .and_then(|state| state.projection.focused)
+        {
+            Some(Slot::Launch(_)) => None,
+            Some(Slot::Seat(id)) => Some(id),
+            None => self.focused,
+        }
     }
     pub fn set_tasks(
         &mut self,
@@ -683,43 +713,28 @@ impl Scene {
     }
     /// Read the actual pane body after layout, including its padding.
     pub fn pane_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
-        fn body(layout: &c::Layout) -> Option<Rect> {
-            if matches!(&layout.kind, c::LayoutKind::Named(name) if name == "pane/term") {
-                let mut rect = layout.rect;
-                if let Some(c::Layout {
-                    kind: c::LayoutKind::Box { style, .. },
-                    ..
-                }) = layout.children.first()
-                {
-                    let [top, right, bottom, left] = style.padding;
-                    rect = Rect::new(
-                        rect.x + left,
-                        rect.y + top,
-                        (rect.w - left - right).max(0.),
-                        (rect.h - top - bottom).max(0.),
-                    );
-                }
-                return Some(rect);
-            }
-            layout.children.iter().find_map(body)
-        }
-        self.tree
-            .as_ref()
-            .map(SplitNode::leaves)
-            .unwrap_or_default()
-            .into_iter()
+        self.pane_keys()
             .zip(layouts.iter().skip(2))
-            .filter_map(|(id, layout)| body(layout).map(|rect| (id, rect)))
+            .filter_map(|(slot, layout)| {
+                if let Slot::Seat(id) = slot {
+                    pane_body(layout).map(|rect| (id, rect))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
     /// Spatial focus uses the whole pane, independently of terminal body sizes.
     pub fn focus_bounds(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect)> {
-        self.tree
-            .as_ref()
-            .map(SplitNode::leaves)
-            .unwrap_or_default()
-            .into_iter()
-            .zip(layouts.iter().skip(2).map(|layout| layout.rect))
+        self.pane_keys()
+            .zip(layouts.iter().skip(2))
+            .filter_map(|(slot, layout)| {
+                if let Slot::Seat(id) = slot {
+                    Some((id, layout.rect))
+                } else {
+                    None
+                }
+            })
             .collect()
     }
     pub fn update(&mut self, sequence: usize) {
@@ -890,6 +905,8 @@ impl Scene {
                 .unwrap_or_default(),
         };
         let mut cards = if !self.live || self.swarms.is_empty() {
+            let mut card = card;
+            card.extra.extend(self.starting_rows(None, ctx));
             vec![card]
         } else {
             self.swarms
@@ -943,6 +960,7 @@ impl Scene {
                             .element(ctx, &self.metrics, strip_width)
                         })
                         .collect();
+                    view.extra.extend(self.starting_rows(Some(swarm.id), ctx));
                     view
                 })
                 .collect()
@@ -979,14 +997,8 @@ impl Scene {
         ];
         // The gutter between panes is the rim size and the stage inset half of it (rim-glow
         // §2): neighbouring rims' outer halves meet; depth never reaches the layout.
-        for (id, rect) in self
-            .tree
-            .as_ref()
-            .filter(|_| panes)
-            .map(|tree| stage_split(tree, bounds, self.rim).panes)
-            .unwrap_or_default()
-        {
-            let seat = seats[self.seat_index[&id]].clone();
+        for (slot, rect) in self.pane_rects(bounds, panes) {
+            let seat = self.slot_row(slot, &seats);
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
                 focused: seat.focused,
@@ -994,14 +1006,17 @@ impl Scene {
             };
             let pane = Pane {
                 strip: Strip::new(seat),
-                lines: vec![],
+                lines: self.slot_lines(slot),
                 gap_from: None,
                 resumed: None,
                 min_height: rect.h,
                 unfocused: false,
                 reconnecting: false,
                 reconnected: false,
-                glow_seed: effects.then_some(id.0.0 as u32),
+                glow_seed: match slot {
+                    Slot::Seat(id) => effects.then_some(id.0.0 as u32),
+                    Slot::Launch(_) => None,
+                },
                 opacity: 1.,
                 depth: TOKENS.glow.depth as f32,
                 rim: self.rim,

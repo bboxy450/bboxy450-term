@@ -1,0 +1,3 @@
+#!/bin/sh
+# Real PTY launch fixture; no model, login or fabricated app reply.
+exec python3 -I -B "$(dirname "$0")/../terminal_launch.py" claude "$@"

@@ -38,7 +38,7 @@ seat_field() {
     ctl seat ls | python3 -I -c '
 import json, sys
 seats = json.loads(sys.stdin.readline())["data"]
-s = [x for x in seats if x["record"]["id"] == sys.argv[1]]
+s = [x for x in seats if x.get("record", {}).get("id") == sys.argv[1]]
 d = s[0] if s else {}
 for k in sys.argv[2].split("."):
     d = d.get(k, "") if isinstance(d, dict) else ""

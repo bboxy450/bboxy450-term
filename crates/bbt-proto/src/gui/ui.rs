@@ -29,6 +29,9 @@ pub enum UiRequest {
     NotificationClick {
         seat: Ulid,
     },
+    /// The GUI's retained real-seat metadata and operation-keyed starting panes.
+    /// Reading this never waits for a harness launch or a logic-worker query.
+    Seats,
     Layout,
     /// `ctl app resize`: the window (offscreen or real) to this grid of terminal cells; the
     /// reply is the first produced layout at that size (ctl-cli §1a), its layout sizing panes.
@@ -171,7 +174,7 @@ pub struct UiSpawn {
 }
 
 /// The captured target of a spawn whose pane the reply's frame contains.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiSpawned {
     pub seat: Ulid,
     pub op: Ulid,
@@ -179,6 +182,40 @@ pub struct UiSpawned {
     pub placement: crate::seat_state::Placement,
     pub layout_revision: u64,
     pub applied_layout_revision: u64,
+    /// Observed at completion of the first rendered starting pane, never predicted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub starting: Option<UiStartingFrame>,
+}
+
+/// Decision #340: an operation's presentation has no seat identity or authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiStartingPane {
+    pub op: Ulid,
+    pub name: String,
+    pub harness_kind: String,
+    pub swarm: Ulid,
+    pub placement: crate::seat_state::Placement,
+    pub state: UiStartingState,
+    pub rect: [f32; 4],
+    pub focused: bool,
+    pub admitted_frame_seq: u64,
+    pub first_frame_seq: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum UiStartingState {
+    Starting,
+    Refused { reason: String },
+}
+
+/// The first completed starting frame retained until the real-seat spawn reply.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiStartingFrame {
+    pub admitted_frame_seq: u64,
+    pub frame_seq: u64,
+    pub rect: [f32; 4],
+    pub name: String,
 }
 
 /// The window's existing history navigation, in absolute zero-based row coordinates.
@@ -283,6 +320,11 @@ pub struct UiLayout {
     pub spawned: Option<UiSpawned>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub composed: Option<UiComposed>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub starting: Vec<UiStartingPane>,
+    /// Included only for `UiRequest::Seats`; ordinary layout replies keep it absent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seats: Option<Vec<GuiSeat>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

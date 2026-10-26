@@ -225,6 +225,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         dirty |= app.begin_ui(id, request, size, submitted, prior_spawns);
                     }
                     UiEvent::UiDeadline(id) => app.ui_deadline(id),
+                    UiEvent::StartingDeadline(id) => app.starting_deadline(id),
                     UiEvent::FocusFor(ask) => {
                         app.begin_focus(ask);
                     }
@@ -450,6 +451,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             wake.unpark();
                         },
                     )?;
+                    app.starting_produced(submitted, &layouts);
                     app.complete_paint_sources();
                     ui_frame = layout.map(|layout| (submitted, layout));
                     dirty = false;

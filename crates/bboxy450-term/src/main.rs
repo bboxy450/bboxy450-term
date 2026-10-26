@@ -1,5 +1,6 @@
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
 mod animation_clock;
+mod app_starting;
 mod assets;
 mod budget;
 mod capture;
@@ -62,6 +63,7 @@ pub enum UiEvent {
         prior_spawns: Vec<bbt_mux::Ulid>,
     },
     UiDeadline(bbt_mux::Ulid),
+    StartingDeadline(bbt_mux::Ulid),
     Wake,
     CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
@@ -667,6 +669,7 @@ enum UiEffect {
     /// The window has solved a layout at this logical size (`ctl app resize`).
     Size([f32; 2]),
     Refused(String),
+    StartingDismissed(bbt_mux::Ulid),
 }
 impl UiEffect {
     fn from_message(
@@ -713,8 +716,11 @@ struct UiWait {
 }
 struct UiSpawnCapture {
     op: bbt_mux::Ulid,
-    captured: bboxy450_term::launcher::CapturedSpawn,
+    swarm: bbt_proto::SwarmId,
+    placement: bbt_proto::seat_state::Placement,
+    layout_revision: u64,
     seat: Option<SeatId>,
+    seat_row: Option<bbt_proto::GuiSeat>,
 }
 impl Drop for UiWait {
     fn drop(&mut self) {
@@ -842,6 +848,7 @@ enum RoutedKey {
     OpenSettings,
     MuteFocused,
     UndoClose,
+    DismissStarting(bbt_mux::Ulid),
     SettingsKey(SettingsKey),
     LocalPage(PageCommand),
     ToggleHud,
@@ -1739,6 +1746,10 @@ struct App {
     events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
     close_regions: Vec<(SeatId, Rect, bool)>,
+    starting_close_regions: Vec<(bbt_mux::Ulid, Rect)>,
+    starting: bboxy450_term::starting::Starting,
+    starting_timers: BTreeMap<bbt_mux::Ulid, tokio::task::AbortHandle>,
+    submitted_frame: u64,
     reject: Option<(bbt_mux::Ulid, composer::RejectController)>,
     reject_report: Option<composer::Report>,
     reject_focus: bool,
@@ -1893,6 +1904,10 @@ impl App {
             events_seen: None,
             task_regions: Default::default(),
             close_regions: vec![],
+            starting_close_regions: Vec::new(),
+            starting: Default::default(),
+            starting_timers: BTreeMap::new(),
+            submitted_frame: 0,
             reject: None,
             reject_report: None,
             reject_focus: false,
@@ -3068,6 +3083,7 @@ impl App {
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
+        self.starting.release_focus();
         if let Some(answer) = self
             .ctl_focus
             .fail("focus_superseded: a newer UI focus action replaced this request")
@@ -3442,10 +3458,20 @@ impl App {
             self.close_seat(seat, bbt_mux::Ulid::new(), true);
         }
     }
-    fn queue(&mut self, message: live::UiMsg) {
+    fn queue(&mut self, mut message: live::UiMsg) {
         if self.closing || self.live_commands.is_none() {
             return;
         }
+        let launch = match self.prepare_starting(&mut message) {
+            Ok(launch) => launch,
+            Err(reason) => {
+                self.logger.write(format!("launch refused: {reason}"));
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::Refused(reason));
+                }
+                return;
+            }
+        };
         let superseding_scroll = match &message {
             live::UiMsg::Input { seat, .. } => Some(*seat),
             live::UiMsg::Scroll { seat, request, .. } if request.op.is_none() => Some(*seat),
@@ -3464,6 +3490,9 @@ impl App {
                 }
             }
             Ok(()) => {
+                if let Some(launch) = launch {
+                    self.admit_starting(launch);
+                }
                 if superseding_scroll.is_some_and(|seat| self.ui_wait.as_ref().is_some_and(|wait| wait.effects.iter().any(|effect| matches!(effect, UiEffect::Scroll(_, target) if *target == seat)))) {
                     self.cancel_ui("ui_scroll_refused: superseded by admitted input/navigation");
                 }
@@ -3902,6 +3931,9 @@ impl App {
         drop(latest_measurement);
         let received_at = bbt_rt::diagnostics::now();
         if let Some(state) = state {
+            if self.starting.observe(&state) {
+                self.starting_changed();
+            }
             self.mute.observe(&state);
             if let Some(reply) = &state.custody_reply {
                 self.custody.observe(reply, Instant::now());
@@ -4034,7 +4066,7 @@ impl App {
             self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
-                    if !self.document.open {
+                    if !self.document.open && self.starting.should_focus(op) {
                         self.focus_action_applied(FocusAction::Activate(
                             *seat,
                             FocusOrigin::Keyboard,
@@ -4085,6 +4117,22 @@ impl App {
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
     fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+        if self.launcher.is_none()
+            && !self.document.open
+            && self.local_tab.is_none()
+            && input.state == ElementState::Pressed
+            && !input.repeat
+            && (matches!(&input.logical_key, Key::Named(NamedKey::Escape))
+                || (input.modifiers.state.super_key()
+                    && input.physical_key == PhysicalKey::Code(KeyCode::KeyW)))
+            && let Some(op) = self.starting.focused()
+            && self
+                .starting
+                .get(op)
+                .is_some_and(|launch| launch.refused.is_some())
+        {
+            return RoutedKey::DismissStarting(op);
+        }
         if self.document.open {
             route_document(input, modes)
         } else if self.local_tab.is_some()
@@ -4127,6 +4175,13 @@ impl App {
             RoutedKey::SettingsKey(key) => self.settings_key(key),
             RoutedKey::MuteFocused => self.mute_focused(),
             RoutedKey::UndoClose => self.undo_latest_close(),
+            RoutedKey::DismissStarting(op) => {
+                if self.dismiss_starting(op)
+                    && let Some(effects) = &mut self.ui_collect
+                {
+                    effects.push(UiEffect::StartingDismissed(op));
+                }
+            }
             RoutedKey::LocalPage(command) => {
                 if self.document.open {
                     self.document_command(command);
@@ -4190,7 +4245,10 @@ impl App {
     fn answer_ui(&mut self, id: bbt_mux::Ulid, result: Result<bbt_proto::gui::UiLayout, String>) {
         if let Err(kind) = queue_pending(
             &mut self.pending_commands,
-            live::UiMsg::UiReply { id, result },
+            live::UiMsg::UiReply {
+                id,
+                result: Box::new(result),
+            },
         ) {
             self.admission_refusals.record(kind);
             self.logger.write(self.admission_refusals.report());
@@ -4279,15 +4337,26 @@ impl App {
         };
         match effect {
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
-            UiEffect::Spawn(id) => match self
-                .spawn_results_seen
-                .get(id)
-                .or_else(|| model.spawns.get(id).map(|request| &request.outcome))
-            {
-                Some(SpawnOutcome::Placed(seat)) => Ok(model.ui.tab_of(*seat).is_some()),
-                Some(SpawnOutcome::Pending | SpawnOutcome::AwaitingSeat(_)) | None => Ok(false),
-                Some(outcome) => Err(format!("ui_frame_refused: spawn {id}: {outcome:?}")),
-            },
+            UiEffect::Spawn(id) => {
+                if let Some(launch) = self.starting.get(*id) {
+                    return launch
+                        .refused
+                        .as_ref()
+                        .map_or(Ok(false), |reason| Err(reason.clone()));
+                }
+                if let Some(seat) = self.starting.completed_seat(*id) {
+                    return Ok(model.ui.tab_of(seat).is_some());
+                }
+                match self
+                    .spawn_results_seen
+                    .get(id)
+                    .or_else(|| model.spawns.get(id).map(|request| &request.outcome))
+                {
+                    Some(SpawnOutcome::Placed(seat)) => Ok(model.ui.tab_of(*seat).is_some()),
+                    Some(SpawnOutcome::Pending | SpawnOutcome::AwaitingSeat(_)) | None => Ok(false),
+                    Some(outcome) => Err(format!("ui_frame_refused: spawn {id}: {outcome:?}")),
+                }
+            }
             UiEffect::Operation(id) => {
                 Ok(model.operation_results.rows().any(|reply| reply.op == *id))
             }
@@ -4332,6 +4401,9 @@ impl App {
                 Ok((self.solved_size[0] - w).abs() < 1. && (self.solved_size[1] - h).abs() < 1.)
             }
             UiEffect::Refused(reason) => Err(format!("ui_frame_refused: {reason}")),
+            UiEffect::StartingDismissed(op) => {
+                Ok(self.starting.get(*op).is_none_or(|launch| launch.dismissed))
+            }
         }
     }
     fn poll_ui_frame(&mut self, submitted: u64) -> bool {
@@ -4358,21 +4430,33 @@ impl App {
                     .as_ref()
                     .and_then(|wait| wait.spawn.as_ref())
                     .and_then(|spawn| {
-                        self.spawn_results_seen.get(&spawn.op).or_else(|| {
-                            self.live_state
-                                .as_ref()?
-                                .spawns
-                                .get(&spawn.op)
-                                .map(|s| &s.outcome)
+                        self.starting.completed_seat(spawn.op).or_else(|| {
+                            match self.spawn_results_seen.get(&spawn.op).or_else(|| {
+                                self.live_state
+                                    .as_ref()?
+                                    .spawns
+                                    .get(&spawn.op)
+                                    .map(|s| &s.outcome)
+                            }) {
+                                Some(bboxy450_term::model::SpawnOutcome::Placed(seat)) => {
+                                    Some(*seat)
+                                }
+                                _ => None,
+                            }
                         })
-                    })
-                    .and_then(|outcome| match outcome {
-                        bboxy450_term::model::SpawnOutcome::Placed(seat) => Some(*seat),
-                        _ => None,
                     });
+                let seat_row = placed.and_then(|seat| {
+                    self.live_state
+                        .as_ref()?
+                        .gui_seats
+                        .iter()
+                        .find(|row| row.record.id.0 == seat.0.0)
+                        .cloned()
+                });
                 let wait = self.ui_wait.as_mut().expect("UI waiter observed");
                 if let Some(spawn) = &mut wait.spawn {
                     spawn.seat = placed;
+                    spawn.seat_row = seat_row;
                 }
                 wait.after = Some(submitted + 1);
                 wait.visible = Some(visible);
@@ -4384,6 +4468,10 @@ impl App {
     fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {
         if let Ok(layout) = &mut layout {
             layout.frame_seq = frame;
+            for launch in &mut layout.starting {
+                launch.first_frame_seq =
+                    self.starting.first(launch.op).map(|first| first.frame_seq);
+            }
         }
         self.ui_frame = Some((frame, layout.clone()));
         if self
@@ -4442,20 +4530,18 @@ impl App {
                     {
                         return Err("ui_frame_refused: produced frame does not show the spawned pane".into());
                     }
+                    layout.seats = Some(vec![spawn.seat_row.clone()
+                        .ok_or("ui_frame_refused: spawned seat metadata is unavailable")?]);
                     layout.spawned = Some(bbt_proto::gui::UiSpawned {
                         seat: id,
                         op: spawn.op,
-                        swarm: bbt_mux::Ulid(spawn.captured.spec.swarm.0.0),
-                        placement: spawn
-                            .captured
-                            .spec
-                            .placement
-                            .clone()
-                            .expect("explicit captured placement"),
-                        layout_revision: spawn.captured.layout_revision,
+                        swarm: bbt_mux::Ulid(spawn.swarm.0.0),
+                        placement: spawn.placement.clone(),
+                        layout_revision: spawn.layout_revision,
                         applied_layout_revision: layout
                             .layout_revision
                             .ok_or("ui_frame_refused: frame revision is unavailable")?,
+                        starting: self.starting.first(spawn.op).cloned(),
                     });
                 }
                 Ok(layout)
@@ -4472,8 +4558,15 @@ impl App {
         prior_spawns: Vec<bbt_mux::Ulid>,
     ) -> bool {
         use bbt_proto::gui::UiRequest;
+        self.submitted_frame = submitted;
         if let Err(reason) = request.validate() {
             self.answer_ui(id, Err(reason.into()));
+            return false;
+        }
+        if matches!(request, UiRequest::Seats) {
+            let sources = self.drain();
+            self.dispatch_wake_sources(&sources);
+            self.answer_seats(id);
             return false;
         }
         if matches!(request, UiRequest::Layout) {
@@ -4559,6 +4652,12 @@ impl App {
             }),
             None => {}
         }
+        let spawn = spawn.or_else(|| {
+            effects.iter().find_map(|effect| match effect {
+                UiEffect::Spawn(op) => self.starting_capture(*op),
+                _ => None,
+            })
+        });
         self.await_ui_frame(id, effects, submitted, spawn);
         self.request_redraw();
         true
@@ -4659,8 +4758,15 @@ impl App {
                 });
                 return Ok(Some(UiSpawnCapture {
                     op,
-                    captured,
+                    swarm: captured.spec.swarm,
+                    placement: captured
+                        .spec
+                        .placement
+                        .clone()
+                        .expect("explicit captured placement"),
+                    layout_revision: captured.layout_revision,
                     seat: None,
+                    seat_row: None,
                 }));
             }
             UiRequest::Clock(command) => {
@@ -4762,7 +4868,10 @@ impl App {
                 };
                 self.scroll_pane(seat, request.correlated(id));
             }
-            UiRequest::Focus { .. } | UiRequest::NotificationClick { .. } | UiRequest::Layout => {
+            UiRequest::Focus { .. }
+            | UiRequest::NotificationClick { .. }
+            | UiRequest::Seats
+            | UiRequest::Layout => {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
         }
@@ -4822,14 +4931,28 @@ impl App {
             .into_iter()
             .map(|l| ui_layout_node(l, &mut remaining, &mut remaining_text))
             .collect::<Result<_, _>>()?;
+        let starting_stage = self.scene.starting_stage();
+        let (swarm, tab, focused) = starting_stage.map_or(
+            (stage.swarm, stage.tab, stage.focused),
+            |(swarm, tab, focused)| {
+                (
+                    swarm,
+                    tab,
+                    focused.and_then(|slot| match slot {
+                        bboxy450_term::starting::Slot::Seat(seat) => Some(seat),
+                        bboxy450_term::starting::Slot::Launch(_) => None,
+                    }),
+                )
+            },
+        );
         let layout = UiLayout {
             frame_seq: 0, // filled only by the actual produced-frame callback
             layout_revision: Some(self.scene.layout_revision()),
             clock: Some(self.clock_frame.state),
             size,
-            swarm: stage.swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
-            tab: stage.tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
-            focused: stage.focused.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            swarm: swarm.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            tab: tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
+            focused: focused.map(|id| bbt_mux::Ulid::from(id.0.0)),
             launcher_open: self.launcher.is_some(),
             page: self.local_tab.as_ref().map(|tab| {
                 match tab {
@@ -4842,6 +4965,8 @@ impl App {
             panes,
             tree,
             spawned: None,
+            starting: self.starting_layout(layouts),
+            seats: None,
             composed: self.ui_wait.as_ref().and_then(|wait| {
                 wait.effects.iter().find_map(|effect| {
                     if let UiEffect::Compose(sent) = effect {
@@ -4963,6 +5088,7 @@ impl App {
         let bounds = self.scene.pane_bounds(&layouts);
         self.task_regions = self.scene.task_regions(&layouts);
         self.close_regions = self.scene.close_regions(&layouts);
+        self.starting_close_regions = self.scene.starting_close_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         self.pane_bounds = bounds;
         self.launcher_layout = self
@@ -4999,6 +5125,11 @@ impl App {
             model,
             self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
             &self.clock,
+        );
+        self.scene.set_starting(
+            &self.starting,
+            model,
+            self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage),
         );
         self.scene_dirty = false;
         if let Some(stall) = &self.stall {
@@ -5304,6 +5435,7 @@ impl App {
                 }
             }
             self.last_presented = Some(std::time::SystemTime::now());
+            self.starting_produced(self.meter.total_frames(), &layouts);
             if let Some(layout) = ui_frame {
                 self.present_ui(self.meter.total_frames(), layout);
             }
@@ -5500,6 +5632,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::UiDeadline(id) => self.ui_deadline(id),
+            UiEvent::StartingDeadline(op) => self.starting_deadline(op),
             UiEvent::FocusDeadline(id) => {
                 if let Some(answer) = self.ctl_focus.expire(id) {
                     self.answer_focus(answer);
@@ -6218,6 +6351,20 @@ impl ApplicationHandler<UiEvent> for App {
                     layout.actions.contains("conversation/rows", self.pointer)
                 }) {
                     self.conversation_reads(true);
+                    return;
+                }
+                if let Some((op, _)) =
+                    self.starting_close_regions
+                        .iter()
+                        .copied()
+                        .find(|(_, rect)| {
+                            self.pointer[0] >= rect.x
+                                && self.pointer[0] < rect.right()
+                                && self.pointer[1] >= rect.y
+                                && self.pointer[1] < rect.bottom()
+                        })
+                {
+                    self.dismiss_starting(op);
                     return;
                 }
                 if let Some((seat, _, undo)) =

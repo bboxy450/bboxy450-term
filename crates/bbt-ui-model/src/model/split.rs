@@ -44,8 +44,8 @@ pub fn clamp_ratio(ratio: f32) -> f32 {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SplitNode {
-    Leaf(SeatId),
+pub enum SplitNode<Id = SeatId> {
+    Leaf(Id),
     Split {
         dir: Axis,
         ratio: f32,
@@ -53,7 +53,7 @@ pub enum SplitNode {
         b: Box<Self>,
     },
 }
-impl SplitNode {
+impl<Id: Copy + PartialEq> SplitNode<Id> {
     pub fn split(dir: Axis, ratio: f32, a: Self, b: Self) -> Self {
         Self::Split {
             dir,
@@ -62,13 +62,13 @@ impl SplitNode {
             b: Box::new(b),
         }
     }
-    pub fn leaves(&self) -> Vec<SeatId> {
+    pub fn leaves(&self) -> Vec<Id> {
         match self {
             Self::Leaf(id) => vec![*id],
             Self::Split { a, b, .. } => [a.leaves(), b.leaves()].concat(),
         }
     }
-    pub fn contains(&self, seat: SeatId) -> bool {
+    pub fn contains(&self, seat: Id) -> bool {
         match self {
             Self::Leaf(id) => *id == seat,
             Self::Split { a, b, .. } => a.contains(seat) || b.contains(seat),

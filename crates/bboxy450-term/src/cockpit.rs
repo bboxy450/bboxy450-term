@@ -34,7 +34,7 @@ const GUI_WRITE_CAPACITY: usize = 64;
 pub enum UiMsg {
     UiReply {
         id: bbt_mux::Ulid,
-        result: std::result::Result<bbt_proto::gui::UiLayout, String>,
+        result: Box<std::result::Result<bbt_proto::gui::UiLayout, String>>,
     },
     IdentityControl {
         id: bbt_mux::Ulid,

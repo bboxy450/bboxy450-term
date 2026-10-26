@@ -3,7 +3,7 @@ use super::*;
 
 /// This noun's rows of [`super::VERBS`], in parse order.
 pub(super) const VERBS: &[super::Verb] = &[
-    ("seat", "ls", "ListSeats"),
+    ("seat", "ls", "Ui"),
     ("seat", "attention", "ListSeats"),
     ("seat", "spawn", "Spawn"),
     ("seat", "screen", "Screen"),
@@ -487,7 +487,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 "applied_layout_revision":placed.applied_layout_revision,
                 "frame_seq":layout.frame_seq,"layout":layout})
         }
-        Command::Seats => serde_json::to_value(client.seats()?).map_err(|e| e.to_string())?,
+        Command::Seats => client.listed_seats()?,
         Command::Attention { seat } => attention(&mut client, &seat)?,
         Command::Screen { .. }
         | Command::Resize { .. }
@@ -681,6 +681,42 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "seat restart s",
     "seat resize s 80x24",
 ];
+
+impl Client {
+    /// Attached windows include operation-only rows; bare Session callers retain
+    /// their existing ListSeats lane. A refusal or timeout is never hidden.
+    fn listed_seats(&mut self) -> Result<Value, String> {
+        match self.ui(bbt_proto::gui::UiRequest::Seats) {
+            Ok(layout) if layout.seats.is_some() => listing(layout),
+            Ok(_) => serde_json::to_value(self.seats()?).map_err(|e| e.to_string()),
+            Err(reason) if reason.contains("endpoint_unavailable: no GUI owner") => {
+                serde_json::to_value(self.seats()?).map_err(|e| e.to_string())
+            }
+            Err(reason) => Err(reason),
+        }
+    }
+}
+
+fn listing(layout: bbt_proto::gui::UiLayout) -> Result<Value, String> {
+    let mut rows = layout
+        .seats
+        .unwrap_or_default()
+        .into_iter()
+        .map(serde_json::to_value)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    rows.extend(layout.starting.into_iter().map(|launch| {
+        let (state, reason) = match launch.state {
+            bbt_proto::gui::UiStartingState::Starting => ("starting", None),
+            bbt_proto::gui::UiStartingState::Refused { reason } => ("refused", Some(reason)),
+        };
+        json!({"state":state,"op":launch.op,"name":launch.name,
+            "harness_kind":launch.harness_kind,"swarm":launch.swarm,
+            "placement":launch.placement,"reason":reason,
+            "admitted_frame_seq":launch.admitted_frame_seq,"first_frame_seq":launch.first_frame_seq})
+    }));
+    Ok(Value::Array(rows))
+}
 
 #[cfg(test)]
 mod tests {

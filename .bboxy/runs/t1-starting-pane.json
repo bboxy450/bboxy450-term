@@ -1,0 +1,494 @@
+{
+  "source": "17d60764a098b849da7db7da687ebc172c45e42d",
+  "decision": "#340",
+  "summary": [
+    "T1 real native-launcher keyboard matrix passes in a headless app with private file custody and zero windows.",
+    "Nine real-PTY cases: zsh, Claude fixture and Codex fixture, each at tab/right/down; every starting frame is admitted frame +1.",
+    "Each correlated real seat retains the starting rectangle; PID/tty, nonce input, shared-pool uniqueness, explicit name override and PNG assertions pass.",
+    "Starting operations carry no provisional seat identity, key or grant; expiry/dismissal and immediate-reply cases are covered by pure state and wire tests.",
+    "Existing split arithmetic is shared for real seat and operation leaves; settled scenes retain the existing seat path.",
+    "CLI seat ls reads exact retained GUI rows and operation rows; Client.seats retains its existing bare-session lane.",
+    "Two bare-Session ctl fixtures now authenticate their GUI owner and answer the actual metadata relay; assertions retained.",
+    "An extra held-companion assertion failed because it wrongly required starting state until harness readiness; removed as contrary to #340, not by changing product limits.",
+    "No real model, API, photon/scanout or native-window claim; deterministic harness executables are real PTY processes for T1, not L4 model evidence.",
+    "No postsubmit acceptance claimed before the author landing.",
+    "The shared shell seat_field consumer is red on a mixed real/starting listing before the compatibility fix, green after it."
+  ],
+  "mechanisms": {
+    "crates/bboxy450-term/src/starting.rs:13": "operation leaves and real SeatId leaves have distinct types",
+    "crates/bboxy450-term/src/starting.rs:105": "bounded admission chooses the shared-pool name and captures placement",
+    "crates/bboxy450-term/src/starting.rs:325": "first receipt records an actually produced frame and its solved bounds",
+    "crates/bboxy450-term/src/app_starting.rs:134": "native and headless produced-frame owners use the same transition",
+    "crates/bboxy450-term/src/app_starting.rs:194": "metadata read leaves the active UI waiter intact",
+    "crates/bboxy450-term/src/scene/starting.rs:40": "projection and rows are keyed by operation, without inventing authoritative seats",
+    "crates/bbt-ui-model/src/layout/split.rs:28": "unchanged split arithmetic, generic leaf identity",
+    "scripts/e2e/t1_launch.py:52": "script checks real launcher actions, PTYs, input, names, placement and first-frame receipts"
+  },
+  "baseline": {
+    "source": "0009d0b6",
+    "root": "/private/tmp/at1-7b4gly2z",
+    "script_exit": 1,
+    "failure": "one-frame assertion",
+    "frames": [
+      4,
+      5,
+      6,
+      5,
+      6,
+      4,
+      7,
+      6,
+      7
+    ],
+    "other_matrix_assertions": "passed"
+  },
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--lib",
+        "starting::tests"
+      ],
+      "exit": 0,
+      "seconds": 241.94139374996303,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-starting-tests-1.log",
+      "sha256": "32b843c4e2abb2b1c7085720687cafa9388dca70ffd3bbc2defe49d58289689a"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bbt-ui-model",
+        "--locked",
+        "--lib"
+      ],
+      "exit": 0,
+      "seconds": 18.132250666967593,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-split-tests-1.log",
+      "sha256": "4e083c24f11141a69c7261390d76aa9ea48c522b4fac91c787d1396cda6705fa"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl"
+      ],
+      "exit": 101,
+      "seconds": 128.56150654196972,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-ctl-tests-1.log",
+      "sha256": "34e8c2001f311876be930944e3552043bae525ae79bc1905ad3e0cf2e87375e3"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl"
+      ],
+      "exit": 101,
+      "seconds": 60.756469499960076,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-ctl-tests-2.log",
+      "sha256": "b17072f1102253964fe62deb815cad4b006e7aa17d3dbc6ea7741b255a96c892"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl",
+        "ctl_noun_verb_grammar_replies_and_errors",
+        "--",
+        "--exact"
+      ],
+      "exit": 0,
+      "seconds": 7.397112292004749,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-ctl-focused-3.log",
+      "sha256": "3e8729425ac56319c7aa6ab1c62e3e1348d54500e65fc586b8da40fdc3b0926e"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked",
+        "--test",
+        "ctl",
+        "ctl_screen_input_and_wait_drive_a_seat",
+        "--",
+        "--exact"
+      ],
+      "exit": 0,
+      "seconds": 5.907519417000003,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-ctl-focused-4.log",
+      "sha256": "257c2f69402a35b8eb5e283def0eeb38a187f3eb47402e356489978ba71d9c0d"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-ui-model",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 101,
+      "seconds": 38.43139920796966,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-clippy-1.log",
+      "sha256": "dd14c5b33cb735868146c6cd45ac4eefa2195fb20a1373ad31fe4f4524990d6e"
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "-p",
+        "bbt-ui-model",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 8.95100287499372,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-clippy-2.log",
+      "sha256": "b7c9cb025cdb896a2ba158103ae4cf8af4fbeb6b3291e3c8e412869b30676e75"
+    },
+    {
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 73.71715004200814,
+      "sha": "17d60764a098b849da7db7da687ebc172c45e42d",
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/product-build-final.log",
+      "sha256": "847598727b99498fc38b30dbbd8d6e0f21d42c4edddf39846c78fd812a1db059"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--test",
+        "ui_starting",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 51.413355291995686,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/squashed-wire-check.log",
+      "sha256": "1532e0ebfc225e19d2d5c89ee5cbe281017137e01d9465684f3dd89703b0583a"
+    },
+    {
+      "argv": [
+        "cargo",
+        "check",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--locked"
+      ],
+      "exit": 0,
+      "seconds": 45.43282054102747,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/squashed-app-check.log",
+      "sha256": "6bcc8955c5f33b2f2bff9beaee3db9e9572bd7a8f77f0269012189e3386d04ea"
+    }
+  ],
+  "night": {
+    "root": "/private/tmp/at1-8_kguo98",
+    "script": "sh scripts/e2e/T1.sh",
+    "exit": 0,
+    "seconds": 9.99027705192566,
+    "custody": "file",
+    "windows": 0,
+    "observations": [
+      {
+        "harness": "zsh",
+        "place": "tab",
+        "seat": "01M5VD6RD964TNNRCWPNNG85DY",
+        "opened_frame": 14,
+        "ready_frame": 18,
+        "admitted_frame": 15,
+        "starting_frame": 16,
+        "frames": 1
+      },
+      {
+        "harness": "zsh",
+        "place": "right",
+        "seat": "01M5VD6SBGD6NQZ0EYDWKZV3AT",
+        "opened_frame": 49,
+        "ready_frame": 53,
+        "admitted_frame": 49,
+        "starting_frame": 50,
+        "frames": 1
+      },
+      {
+        "harness": "zsh",
+        "place": "down",
+        "seat": "01M5VD6V2CB8ERYW41YE0AKYSC",
+        "opened_frame": 89,
+        "ready_frame": 98,
+        "admitted_frame": 92,
+        "starting_frame": 93,
+        "frames": 1
+      },
+      {
+        "harness": "claude",
+        "place": "tab",
+        "seat": "01M5VD6WC6KA50A6P6RE1A6R66",
+        "opened_frame": 126,
+        "ready_frame": 134,
+        "admitted_frame": 130,
+        "starting_frame": 131,
+        "frames": 1
+      },
+      {
+        "harness": "claude",
+        "place": "right",
+        "seat": "01M5VD6XHXDWH8ZRXT5A7HR0XC",
+        "opened_frame": 152,
+        "ready_frame": 157,
+        "admitted_frame": 154,
+        "starting_frame": 155,
+        "frames": 1
+      },
+      {
+        "harness": "claude",
+        "place": "down",
+        "seat": "01M5VD6YJXA98G338H6YAKDY7D",
+        "opened_frame": 177,
+        "ready_frame": 184,
+        "admitted_frame": 180,
+        "starting_frame": 181,
+        "frames": 1
+      },
+      {
+        "harness": "codex",
+        "place": "tab",
+        "seat": "01M5VD6ZJFJ8FV7TR8EZCXBATG",
+        "opened_frame": 203,
+        "ready_frame": 209,
+        "admitted_frame": 204,
+        "starting_frame": 205,
+        "frames": 1
+      },
+      {
+        "harness": "codex",
+        "place": "right",
+        "seat": "01M5VD7079DJZH2C1JSX718Z86",
+        "opened_frame": 223,
+        "ready_frame": 227,
+        "admitted_frame": 223,
+        "starting_frame": 224,
+        "frames": 1
+      },
+      {
+        "harness": "codex",
+        "place": "down",
+        "seat": "01M5VD70Z8G635VZGF9W2VZ12A",
+        "opened_frame": 250,
+        "ready_frame": 255,
+        "admitted_frame": 251,
+        "starting_frame": 252,
+        "frames": 1
+      }
+    ],
+    "output_sha256": "3f4e4a570aea9671f3e55d60edc99e5ed4b1a91e6dd3faf830c6419846df0ed5",
+    "binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/t1-17d60764-bboxy450-term",
+    "binary_sha256": "b5a9e38e4b7be71179108717c44581663c87e36b6551a54c7396f1fcf381c175",
+    "script_sha256": "5cfad7f8562c348ac78e2c7622731c9c9e5717312bff7237571fee2646abe173",
+    "helper_sha256": "ab41fc3e97359d7bac147babb64ee3984238b548066dbed23703c21dc77157d0",
+    "captures": [
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-claude-down.png",
+        "sha256": "1cede8627e6566ac26873fb0f9b32ec04c895fe3f53b9b9afd54859e0ea75780"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-claude-right.png",
+        "sha256": "d0cd2f5378c785432bf6d5a458bcf823fa4015c654d7e217323d5c4b3a2866d3"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-claude-tab.png",
+        "sha256": "e82273927d3590e2ea6f5f08d190e63f2f2f78e5159b86c42e8e1077d85e1daa"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-codex-down.png",
+        "sha256": "1de23a1e2b0ee9d23447a2ae613d945926ab1dc32b11c76e71b22a050a39c1ae"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-codex-right.png",
+        "sha256": "0217821bf8ee2b1305d78f004eedb4ba7e706976b5cb265f6307bbd08db7c65e"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-codex-tab.png",
+        "sha256": "fc19ee18ee8b74d7eb421b233a148b9d2c7bf68bab76f331c761494dde93a4da"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-zsh-down.png",
+        "sha256": "8cc222a68d22aa8aca604b1c6b1d72eb1049c3f1c8465a4ef781febc5968a61f"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-zsh-right.png",
+        "sha256": "0e49998b0842f511069f61465c1f8b53ef78a66612beeb404784f39e69148fe6"
+      },
+      {
+        "path": "/private/tmp/at1-8_kguo98/work/t1-zsh-tab.png",
+        "sha256": "c0459f557b8cb780eb14655cdc519bcbead67d33fa67ee4959926e82d2a97805"
+      }
+    ],
+    "binary_original_path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target/debug/bboxy450-term"
+  },
+  "lifetime": {
+    "recorded_pids": [
+      98568,
+      98606,
+      98659,
+      98718,
+      98791,
+      98836,
+      98880,
+      98917,
+      98956,
+      98999
+    ],
+    "ps_exit": 1,
+    "survivors": "",
+    "orderly_stop": true,
+    "note": "app and nine matrix PTY pids recorded; app log confirms cockpit child reaping"
+  },
+  "known_failures": {
+    "extra_fixture_root": "/private/tmp/at1-lfqbxu02",
+    "extra_fixture_exit": 1,
+    "extra_fixture_log_sha256": "dc6a232fc1a74dbab71dd809acda867007e2d8015075c2dd7d88cbce90a2209e",
+    "ctor_typecheck": "initial check found two new upstream GuiSeat.attention fields; final code retains exact GuiSeat rows",
+    "clippy": "items after test module and needless struct update fixed without lint allowances",
+    "ctl_fixtures": "first lacked a GUI metadata reply, then lacked initial owner admission; final two exact cases pass"
+  },
+  "author_attempts": [
+    {
+      "driver_exit": 78,
+      "driver_seconds": 3366.0395228862762,
+      "checks": [
+        {
+          "sha": "351a1af7a166d4b56bac63939dbe8b6914951277",
+          "verdict": "green",
+          "exit": 0,
+          "seconds": 1248.5123273750069,
+          "compile_seconds": 620.9667427499662,
+          "run_seconds": 627.5451510000275,
+          "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/351a1af7a166d4b56bac63939dbe8b6914951277-ff972d7b/commands.log",
+          "sha256": "db8faec4c9fe310701b05f5708af40d1e9e0eea7306200bf6a786334308d687e"
+        },
+        {
+          "sha": "133a4b4285ce3bb62bd72040a64c5d8049816194",
+          "verdict": "green",
+          "exit": 0,
+          "seconds": 1301.6515405420214,
+          "compile_seconds": 722.4312728740624,
+          "run_seconds": 579.2199452929199,
+          "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/133a4b4285ce3bb62bd72040a64c5d8049816194-8ca89e90/commands.log",
+          "sha256": "0739c23b90d7af556277b0d5bda3a6c81e198e5e794c259ce383a43269603deb"
+        },
+        {
+          "sha": "a553131421783e9ba5db492fdd97ee1294aa7c02",
+          "verdict": "green",
+          "exit": 0,
+          "seconds": 782.2826542920084,
+          "compile_seconds": 440.10823216702556,
+          "run_seconds": 342.1737449999782,
+          "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/a553131421783e9ba5db492fdd97ee1294aa7c02-741b757e/commands.log",
+          "sha256": "e3feea60af859c548831575eb5b4fe4ae33280dd6e55eaeff869aea5466ae69e"
+        }
+      ],
+      "reason": "final rebase replayed an old append-then-move contract history against the independently added UiLayoutNode text fixture; own unpublished cut consolidated so rebase sees its final interior insertion",
+      "resolution": "all upstream golden bytes plus exactly three T1 cases; legacy-list parsing error in a private resolution helper corrected before further checks or landing"
+    }
+  ],
+  "listing_consumer": {
+    "red": {
+      "argv": [
+        "sh",
+        "-c",
+        ". scripts/e2e/lib.sh\nctl() { cat \"$T1_LISTING_FIXTURE\"; }\nseat_field \"$T1_EXISTING_SEAT\" record.name\n"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 4, in <module>\n    s = [x for x in seats if x[\"record\"][\"id\"] == sys.argv[1]]\n                             ~^^^^^^^^^^\nKeyError: 'record'\n",
+      "expected": "Vesper Greywind"
+    },
+    "green": {
+      "argv": [
+        "sh",
+        "-c",
+        ". scripts/e2e/lib.sh\nctl() { cat \"$T1_LISTING_FIXTURE\"; }\nseat_field \"$T1_EXISTING_SEAT\" record.name\n"
+      ],
+      "exit": 0,
+      "stdout": "Vesper Greywind\n",
+      "stderr": "",
+      "expected": "Vesper Greywind"
+    },
+    "mechanism": "shared seat_field skips operation-only rows rather than indexing a nonexistent SeatRecord"
+  },
+  "cleanup": {
+    "retired": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+    "lsof_exit": 1,
+    "retired_allocated_bytes": 1801736192,
+    "retired_files": 6392,
+    "retained_binary": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/t1-17d60764-bboxy450-term",
+    "retained_binary_sha256": "b5a9e38e4b7be71179108717c44581663c87e36b6551a54c7396f1fcf381c175",
+    "retained_allocated_bytes": 56942592,
+    "net_freed_bytes": 1744793600,
+    "time_epoch": 1792997023.460874,
+    "reports": "all raw and JSON evidence outside target retained"
+  }
+}

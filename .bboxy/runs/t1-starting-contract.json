@@ -1,0 +1,132 @@
+{
+  "decision": "#340",
+  "purpose": "historical contract-cut proof; paired product implementation is recorded in t1-starting-pane.json",
+  "files": [
+    "crates/bbt-proto/src/gui/ui.rs",
+    "crates/bbt-proto/tests/ui_starting.rs",
+    "crates/bbt-mux/src/gui_capture.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bboxy450-term/tests/ctl.rs",
+    "crates/bboxy450-term/src/cockpit.rs",
+    "crates/bboxy450-term/src/live.rs"
+  ],
+  "compatibility": "old fixture prefix byte-identical; three appended operation/listing/first-frame fixtures; internal UiMsg::UiReply boxed once, with unchanged wire serialization",
+  "checks": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--test",
+        "ui_starting",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 46.50474286079407
+    },
+    {
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 258.51530504226685
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/target",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--test",
+        "ui_starting",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 46.66218686103821
+    }
+  ],
+  "checked_tests": {
+    "ui_starting": 2,
+    "gui_wire_golden": 2
+  },
+  "gaps": [
+    "No starting-pane product behaviour is implemented or claimed by this contract-only cut",
+    "T1 night remains partial and red at the first-frame assertion",
+    "No postsubmit acceptance claimed"
+  ],
+  "author_attempts": [
+    {
+      "tested": "58c6233dacd2e4b00cc904ce4db96a4906a86ddc",
+      "exit": 77,
+      "check_exit": 101,
+      "reason": "strict Clippy large_enum_variant: UiMsg::UiReply grew to624 bytes vs Close352; box only the internal reply payload",
+      "cargo_test_totals": {
+        "passed": 1063,
+        "failed": 0,
+        "ignored": 123
+      },
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/58c6233dacd2e4b00cc904ce4db96a4906a86ddc-141b5cb9/commands.log",
+      "sha256": "0b251c505bb36c9de117775694649a67927106741fd3eb64689b182ea95b3c4f"
+    },
+    {
+      "tested": "1fcd6dd833e578989b1434b98837a2309024bdc6",
+      "exit": 78,
+      "check_exit": 0,
+      "reason": "presubmit green; final rebase conflicted at appended GUI wire cases; retained existing messaging reply and three T1 cases",
+      "seconds": 1070.3267346249777,
+      "compile_seconds": 832.4828276250046,
+      "run_seconds": 237.84308195795165,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/1fcd6dd833e578989b1434b98837a2309024bdc6-bd4af782/commands.log",
+      "sha256": "af5caae389c50cb39094dc6fee7eab4c774cba5fd45c9cecda75a47408bc1274"
+    },
+    {
+      "tested": "c2a5ed65f64bf73ccfac5e274bae94c7ee367d40",
+      "exit": 78,
+      "check_exit": 0,
+      "reason": "second green check met an independent attention golden append at final rebase; union kept all old bytes, and T1 cases moved ahead of later independent additions",
+      "seconds": 1164.1597305000178,
+      "compile_seconds": 926.842331834021,
+      "run_seconds": 237.31675120798172,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/c2a5ed65f64bf73ccfac5e274bae94c7ee367d40-856dc81b/commands.log",
+      "sha256": "f0ad5e2c8def6cb8eea2ec33851ac7e5cba4a06078a7891c0a44c47de64b6908"
+    }
+  ],
+  "golden_extension": {
+    "bytes": 52269,
+    "sha256": "d2539e7ffbaf9142f613e89eee364eb8fd77b08ca6dd10a02e258a3186df6f11",
+    "appended_cases": 3
+  },
+  "raw_logs": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/t1-starting-contract-focused.log",
+      "sha256": "d941aa047c6132e42ad12af91bab12ccf1a6fef89753b0f526051ac308e8d0e9"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/t1-starting-contract-box-clippy.log",
+      "sha256": "41b5f168b9aaaa372a1186be5da9ef3c36b4179851e735aa164246f3b6a0040c"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t1-20261025/t1-starting-contract-union-focused.log",
+      "sha256": "8f396366fd512d6dc8f7fd948efd9acf72a90c367cf26f3d90616b9f3c3531ee"
+    }
+  ]
+}

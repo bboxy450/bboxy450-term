@@ -8,15 +8,24 @@ pub struct Divider {
     pub rect: Rect,
     pub hit_rect: Rect,
 }
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct SplitLayout {
-    pub panes: Vec<(SeatId, Rect)>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct SplitLayout<Id = SeatId> {
+    pub panes: Vec<(Id, Rect)>,
     pub dividers: Vec<Divider>,
+}
+
+impl<Id> Default for SplitLayout<Id> {
+    fn default() -> Self {
+        Self {
+            panes: Vec::new(),
+            dividers: Vec::new(),
+        }
+    }
 }
 
 /// The tiled stage (rim-glow §2): the gutter between panes is the rim size R, so neighbouring
 /// rims' outer halves meet, and the inset at the stage edge is R/2, one outer half.
-pub fn stage_split(tree: &SplitNode, bounds: Rect, rim: f32) -> SplitLayout {
+pub fn stage_split<Id: Copy>(tree: &SplitNode<Id>, bounds: Rect, rim: f32) -> SplitLayout<Id> {
     let inset = rim / 2.;
     let inner = Rect::new(
         bounds.x + inset,
@@ -27,8 +36,14 @@ pub fn stage_split(tree: &SplitNode, bounds: Rect, rim: f32) -> SplitLayout {
     solve_split(tree, inner, rim)
 }
 /// The same solver serves full panes, mini-grids and launcher previews.
-pub fn solve_split(tree: &SplitNode, bounds: Rect, gutter: f32) -> SplitLayout {
-    fn walk(tree: &SplitNode, rect: Rect, gutter: f32, path: &mut NodePath, out: &mut SplitLayout) {
+pub fn solve_split<Id: Copy>(tree: &SplitNode<Id>, bounds: Rect, gutter: f32) -> SplitLayout<Id> {
+    fn walk<Id: Copy>(
+        tree: &SplitNode<Id>,
+        rect: Rect,
+        gutter: f32,
+        path: &mut NodePath,
+        out: &mut SplitLayout<Id>,
+    ) {
         let SplitNode::Split { dir, ratio, a, b } = tree else {
             if let SplitNode::Leaf(id) = tree {
                 out.panes.push((*id, rect));

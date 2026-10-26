@@ -5,8 +5,8 @@ pub mod close_frame;
 pub mod cockpit;
 pub mod ctl;
 pub mod documents;
-pub mod focus_ack;
 pub mod e2e_night;
+pub mod focus_ack;
 pub mod grids;
 pub mod hosts;
 pub mod keyboard;
@@ -24,3 +24,5 @@ pub mod settings;
 fn keyboard_adapter_uses_neutral_core_and_live_modes() {
     keyboard::assert_adapter();
 }
+
+pub mod starting;

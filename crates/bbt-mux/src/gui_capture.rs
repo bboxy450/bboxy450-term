@@ -363,6 +363,8 @@ mod tests {
                     layout_revision: None,
                     spawned: None,
                     composed: None,
+                    starting: Vec::new(),
+                    seats: None,
                     clock: None,
                     size: [1600., 900.],
                     swarm: None,

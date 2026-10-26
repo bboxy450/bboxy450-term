@@ -496,6 +496,8 @@ fn cursor_consistent(cursor: &GuiEventCursor) -> bool {
 /// terminal rows are cloned or locked by the UI while taking that Arc.
 #[derive(Clone)]
 pub struct Model {
+    /// Exact public rows retained for GUI-owned listings, without a logic round trip.
+    pub gui_seats: Arc<[GuiSeat]>,
     pub hosts: Vec<bbt_proto::GuiHost>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
@@ -528,6 +530,7 @@ pub struct Model {
 impl Default for Model {
     fn default() -> Self {
         Self {
+            gui_seats: Arc::default(),
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
             subtitles: BTreeMap::new(),
@@ -835,6 +838,9 @@ impl Model {
     /// Project the portable state after build, before preparation/publication.
     /// State comes from logic; this does not infer activity from terminal text.
     pub fn apply_seat_states(&mut self, seats: &[GuiSeat]) {
+        if self.gui_seats.as_ref() != seats {
+            self.gui_seats = Arc::from(seats);
+        }
         self.states.retain(|id, _| self.ui.seats.contains_key(id));
         for seat in seats {
             self.observe_attention(seat, Instant::now());
@@ -1128,6 +1134,7 @@ fn build_with_clock(
         })
         .collect();
     let mut next = Model {
+        gui_seats: previous.gui_seats.clone(),
         hosts: previous.hosts.clone(),
         ui: model,
         screens,

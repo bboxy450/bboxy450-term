@@ -372,28 +372,40 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     let issued: Vec<_> = page
         .items
         .iter()
-        .filter(|m| m.envelope().expect("signed fixture envelope").issued_by.as_deref() == Some(issuer))
+        .filter(|m| {
+            m.envelope()
+                .expect("signed fixture envelope")
+                .issued_by
+                .as_deref()
+                == Some(issuer)
+        })
         .collect();
     assert!(
         issued
             .iter()
-            .any(|m| m.envelope().expect("signed fixture envelope").kind == bbt_proto::messaging::MessageKind::Task),
+            .any(|m| m.envelope().expect("signed fixture envelope").kind
+                == bbt_proto::messaging::MessageKind::Task),
         "the Delegate message names its issuer: {:?}",
         page.items
             .iter()
-            .map(|m| (&m.envelope().expect("signed fixture envelope").kind, &m.envelope().expect("signed fixture envelope").issued_by))
+            .map(|m| (
+                &m.envelope().expect("signed fixture envelope").kind,
+                &m.envelope().expect("signed fixture envelope").issued_by
+            ))
             .collect::<Vec<_>>()
     );
     assert!(
-        issued
-            .iter()
-            .any(|m| m.envelope().expect("signed fixture envelope").body.text() == Some(&format!("report {task_path}"))),
+        issued.iter().any(
+            |m| m.envelope().expect("signed fixture envelope").body.text()
+                == Some(&format!("report {task_path}"))
+        ),
         "the DM names its issuer"
     );
     assert!(
         issued
             .iter()
-            .all(|m| m.envelope().expect("signed fixture envelope").door == Some(bbt_proto::messaging::Door::Ctl))
+            .all(|m| m.envelope().expect("signed fixture envelope").door
+                == Some(bbt_proto::messaging::Door::Ctl))
     );
     let report = until("the task's report in ctl reports", &log, || {
         ctl(&run, &["reports"])
@@ -877,6 +889,8 @@ async fn ctl_capture_is_answered_by_the_window() {
                             layout_revision: None,
                             spawned: None,
                             composed: None,
+                            starting: Vec::new(),
+                            seats: None,
                             size: [1600., 900.],
                             swarm: None,
                             tab: None,
@@ -1147,7 +1161,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
             quote(&PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term")))
         ),
     );
-    let session = Session::start(Config {
+    let mut session = Session::start(Config {
         executable: app,
         socket: run.join("mux.sock"),
         run_dir: run.clone(),
@@ -1338,7 +1352,12 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
     // rename writes the registry name; the seat list shows it; a blank name is refused.
     let (ok, lines) = ctl(&["seat", "rename", &seat, "night-shell"]);
     assert!(ok && lines[0]["data"]["name"] == "night-shell", "{lines:?}");
-    let (_, lines) = ctl(&["seat", "ls"]);
+    let (code, out, _) = ctl_gui_seats(&mut session, &run, &root).await;
+    assert_eq!(code, Some(0), "{out}");
+    let lines: Vec<Value> = out
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
     assert!(
         lines[0]["data"]
             .as_array()
@@ -1480,19 +1499,72 @@ fn ctl_raw(run: &Path, cwd: &Path, args: &[&str]) -> (Option<i32>, String, Strin
     )
 }
 
+/// A bare Session has no rendering host. Answer this one GUI metadata request
+/// with its real public rows, without inventing a rendered-frame receipt.
+async fn ctl_gui_seats(
+    session: &mut Session,
+    run: &Path,
+    cwd: &Path,
+) -> (Option<i32>, String, String) {
+    // As at real GUI bootstrap, the first request authenticates the owner
+    // before the server forwards any operator asks to this connection.
+    let seats = session.list().await.unwrap();
+    let (run, cwd) = (run.to_path_buf(), cwd.to_path_buf());
+    let mut cli = tokio::task::spawn_blocking(move || ctl_raw(&run, &cwd, &["seat", "ls"]));
+    loop {
+        let event = tokio::select! {
+            result = &mut cli => return result.unwrap(),
+            event = tokio::time::timeout(Duration::from_secs(20), session.event()) =>
+                event.expect("GUI metadata request watchdog").unwrap(),
+        };
+        if let Event::Reply(reply) = event
+            && let GuiReply::UiAsk {
+                op,
+                request: bbt_proto::gui::UiRequest::Seats,
+            } = *reply
+        {
+            session
+                .send(GuiAction::UiReply {
+                    id: op,
+                    result: Box::new(Ok(bbt_proto::gui::UiLayout {
+                        frame_seq: 0,
+                        layout_revision: None,
+                        clock: None,
+                        size: [0., 0.],
+                        swarm: None,
+                        tab: None,
+                        focused: None,
+                        launcher_open: false,
+                        page: None,
+                        document: None,
+                        panes: Vec::new(),
+                        tree: Vec::new(),
+                        spawned: None,
+                        composed: None,
+                        starting: Vec::new(),
+                        seats: Some(seats),
+                    })),
+                })
+                .await
+                .unwrap();
+            return cli.await.unwrap();
+        }
+    }
+}
+
 /// ctl-cli rev. 2, C-0: the noun-verb grammar answers in the §2 shape, fails in the §3 shape
 /// with a hint and the named exit code, honours --op, and the flat names still work.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn ctl_noun_verb_grammar_replies_and_errors() {
     let root = tempfile::tempdir().unwrap();
     let root = root.path().canonicalize().unwrap();
-    let (session, run, seat) = noun_verb_fixture(&root).await;
+    let (mut session, run, seat) = noun_verb_fixture(&root).await;
     let json =
         |text: &str| -> Value { serde_json::from_str(text.lines().next().unwrap()).unwrap() };
 
-    let (code, out, _) = ctl_raw(&run, &root, &["seat", "ls"]);
+    let (code, out, _) = ctl_gui_seats(&mut session, &run, &root).await;
     let reply = json(&out);
-    assert_eq!(code, Some(0));
+    assert_eq!(code, Some(0), "{out}");
     assert_eq!(
         (&reply["ok"], &reply["noun"], &reply["verb"]),
         (&json!(true), &json!("seat"), &json!("ls"))
