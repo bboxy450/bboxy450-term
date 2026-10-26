@@ -1,0 +1,22 @@
+test_validation_scripts_stay_out_of_the_native_input_set (validation_input.AffectedTests.test_validation_scripts_stay_out_of_the_native_input_set) ... FAIL
+
+======================================================================
+FAIL: test_validation_scripts_stay_out_of_the_native_input_set (validation_input.AffectedTests.test_validation_scripts_stay_out_of_the_native_input_set)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 359, in test_validation_scripts_stay_out_of_the_native_input_set
+    self.assertEqual(result["affected"], [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['c'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'c'
+
+- ['c']
++ []
+
+----------------------------------------------------------------------
+Ran 1 test in 2.201s
+
+FAILED (failures=1)

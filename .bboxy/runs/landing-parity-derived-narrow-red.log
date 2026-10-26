@@ -1,0 +1,68 @@
+test_page_recheck_resamples_after_narrowing_the_page_scope (scope_tests.ParityTests.test_page_recheck_resamples_after_narrowing_the_page_scope) ... FAIL
+test_native_page_recheck_keeps_all_cases_in_a_small_scope (scope_tests.ParityTests.test_native_page_recheck_keeps_all_cases_in_a_small_scope) ... FAIL
+test_native_intersection_keeps_the_original_parity_coverage (scope_tests.ParityTests.test_native_intersection_keeps_the_original_parity_coverage) ... FAIL
+
+======================================================================
+FAIL: test_page_recheck_resamples_after_narrowing_the_page_scope (scope_tests.ParityTests.test_page_recheck_resamples_after_narrowing_the_page_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 1769, in test_page_recheck_resamples_after_narrowing_the_page_scope
+    self.assertEqual(landing.parity_cases(self.cases, data), self.cases[2:])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'page': 'launcher.html', 'component': 'launcher', [73 chars]'a'}] != [{'page': 'settings.html', 'component': 'settings', [73 chars]'b'}]
+
+First differing element 0:
+{'page': 'launcher.html', 'component': 'launcher', 'slug': 'a'}
+{'page': 'settings.html', 'component': 'settings', 'slug': 'a'}
+
+- [{'component': 'launcher', 'page': 'launcher.html', 'slug': 'a'},
+-  {'component': 'settings', 'page': 'settings.html', 'slug': 'a'}]
+? ^                                                               ^
+
++ [{'component': 'settings', 'page': 'settings.html', 'slug': 'a'},
+? ^                                                               ^
+
++  {'component': 'settings', 'page': 'settings.html', 'slug': 'b'}]
+
+======================================================================
+FAIL: test_native_page_recheck_keeps_all_cases_in_a_small_scope (scope_tests.ParityTests.test_native_page_recheck_keeps_all_cases_in_a_small_scope)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 1775, in test_native_page_recheck_keeps_all_cases_in_a_small_scope
+    self.assertEqual(landing.parity_cases(self.cases, data), self.cases[2:])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'page': 'launcher.html', 'component': 'launcher', [73 chars]'a'}] != [{'page': 'settings.html', 'component': 'settings', [73 chars]'b'}]
+
+First differing element 0:
+{'page': 'launcher.html', 'component': 'launcher', 'slug': 'a'}
+{'page': 'settings.html', 'component': 'settings', 'slug': 'a'}
+
+- [{'component': 'launcher', 'page': 'launcher.html', 'slug': 'a'},
+-  {'component': 'settings', 'page': 'settings.html', 'slug': 'a'}]
+? ^                                                               ^
+
++ [{'component': 'settings', 'page': 'settings.html', 'slug': 'a'},
+? ^                                                               ^
+
++  {'component': 'settings', 'page': 'settings.html', 'slug': 'b'}]
+
+======================================================================
+FAIL: test_native_intersection_keeps_the_original_parity_coverage (scope_tests.ParityTests.test_native_intersection_keeps_the_original_parity_coverage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 1780, in test_native_intersection_keeps_the_original_parity_coverage
+    self.assertEqual(landing.parity_recheck_pages(cut, moved), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['lab/web/launcher.html', 'lab/web/settings.html'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+'lab/web/launcher.html'
+
+- ['lab/web/launcher.html', 'lab/web/settings.html']
++ []
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.008s
+
+FAILED (failures=3)

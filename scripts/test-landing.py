@@ -293,12 +293,15 @@ class AffectedTests(unittest.TestCase):
         self.assertEqual(result["affected"], ["b", "c"])
         self.assertEqual(result["tier"], "code")
 
-    def test_lab_tier_has_no_product_target_and_shared_parity_is_marked(self):
+    def test_lab_tier_has_no_product_target_and_reports_referenced_pages(self):
+        self.repo.write("lab/web/launcher.html", '<script src="components.js"></script>')
+        self.repo.commit("Fixture page includes")
         result = self.changed("lab/web/components.js")
         self.assertEqual(result["tier"], "lab")
         self.assertEqual(result["affected"], [])
         self.assertEqual(result["parity"], "yes")
-        self.assertEqual(result["shared"], ["lab/web/components.js"])
+        self.assertEqual(result["shared"], [])
+        self.assertEqual(result["lab_pages"], ["lab/web/launcher.html"])
 
     def test_records_do_not_request_native_parity(self):
         result = self.changed(".bboxy/fixture with spaces.md")
@@ -306,6 +309,55 @@ class AffectedTests(unittest.TestCase):
         self.assertEqual(result["parity"], "no")
         self.assertEqual(result["affected"], [])
         self.assertEqual(result["paths"], [".bboxy/fixture with spaces.md"])
+
+    def test_design_input_named_by_build_script_is_code_and_reaches_dependents(self):
+        self.repo.write("crates/a/build.rs", 'fn main(){let _=std::fs::read("../../design/tokens.toml");}\n')
+        self.repo.base = self.repo.commit("Fixture native input consumer")
+        result = self.changed("design/tokens.toml")
+        self.assertEqual(result["tier"], "wide")  # native consumer plus all its dependents
+        self.assertEqual(result["native_inputs"], ["a"])
+        self.assertEqual(result["affected"], ["a", "b", "c"])
+        self.assertEqual(result["parity"], "yes")
+
+    def test_rust_include_concat_and_raw_paths_identify_only_real_consumers(self):
+        self.repo.write("crates/b/src/lib.rs", 'pub const IMAGE:&[u8]=include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../lab/web/bboxy.png"));\n')
+        self.repo.write("crates/c/src/lib.rs", 'pub const UI:&str=include_str!(r"../../../lab/web/ui.js");\n')
+        self.repo.base = self.repo.commit("Fixture nested include")
+        result = self.changed("lab/web/bboxy.png")
+        self.assertEqual(result["tier"], "wide")  # two of three fixture crates
+        self.assertEqual(result["native_inputs"], ["b"])
+        self.assertEqual(result["affected"], ["b", "c"])
+        self.repo.base = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        raw = self.changed("lab/web/ui.js")
+        self.assertEqual(raw["native_inputs"], ["c"])
+        self.assertEqual(raw["tier"], "code")
+
+    def test_named_unit_test_input_is_native_but_comment_and_literal_examples_are_not(self):
+        self.repo.write("crates/a/src/lib.rs", '''
+// include_str!("../../lab/web/lab.js");
+pub const EXAMPLE:&str=r#"include_str!("../../lab/web/lab.js")"#;
+#[cfg(test)] mod tests {
+ const INPUT:&str="lab/web/tokens.js";
+ #[test] fn fixture(){let _=std::fs::read(INPUT);}
+}
+''')
+        self.repo.base = self.repo.commit("Fixture test-only native consumer")
+        native = self.changed("lab/web/tokens.js")
+        self.assertEqual(native["tier"], "wide")
+        self.assertEqual(native["native_inputs"], ["a"])
+        self.repo.base = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        pure = self.changed("lab/web/lab.js")
+        self.assertEqual(pure["tier"], "lab")
+        self.assertEqual(pure["native_inputs"], [])
+
+
+    def test_validation_scripts_stay_out_of_the_native_input_set(self):
+        self.repo.write("scripts/fixture.py", "# baseline validation input\n")
+        self.repo.write("crates/c/src/lib.rs", 'const FIXTURE: &str = include_str!("../../../scripts/fixture.py");\n')
+        self.repo.base = self.repo.commit("Fixture script reader")
+        result = self.changed("scripts/fixture.py")
+        self.assertEqual(result["affected"], [])
+        self.assertEqual(result["native_inputs"], [])
 
 
 class StateTests(unittest.TestCase):
@@ -850,25 +902,6 @@ class LandTests(unittest.TestCase):
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
 
-    def test_shared_visual_inputs_keep_the_existing_parity_recheck(self):
-        self.cut('lab/web/components.js')
-        self.repo.movement('lab/web/launcher.html')
-        hook = self.repo.state / 'move-main.sh'
-        original = landing.command
-        calls = []
-        def check(argv, **kwargs):
-            if argv[:2] == ['sh', 'scripts/presubmit.sh']:
-                sha = run('git', 'rev-parse', 'HEAD', cwd=self.repo.root)
-                landing.append_record('presubmit.log', {'sha': sha, 'exit': 0, 'tier': 'lab', 'affected': []})
-                calls.append(argv)
-                if len(calls) == 1:
-                    run('sh', str(hook), cwd=self.repo.root)
-                return subprocess.CompletedProcess(argv, 0, '', '')
-            return original(argv, **kwargs)
-        with patch.dict(os.environ, self.repo.environment), patch.object(landing, 'repository', return_value=self.repo.root), \
-                patch.object(landing, 'command', side_effect=check), patch.object(landing, 'ledger_module', return_value=None):
-            self.assertEqual(landing.land(), 0)
-        self.assertEqual(len(calls), 2)
 
     def test_intersecting_move_checks_only_the_crate_intersection(self):
         self.cut("crates/b/src/lib.rs")
@@ -1120,6 +1153,42 @@ class LandTests(unittest.TestCase):
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), sha)
+
+    def _page_move(self,overlap):
+        a,b=("a.js","b.js") if overlap else ("components.js","ui.js")
+        self.repo.write("lab/web/launcher.html",'<script src="'+a+'"></script>')
+        self.repo.write("lab/web/settings.html",('<script src="'+a+'"></script>' if overlap else '')+'<script src="'+b+'"></script>')
+        self.repo.write("lab/web/"+a,"// baseline a")
+        self.repo.write("lab/web/"+b,"// baseline b")
+        self.repo.base=self.repo.commit("Fixture page graph")
+        run("git","push","-q","origin","HEAD:main",cwd=self.repo.root)
+        self.cut("lab/web/"+a)
+        self.repo.movement("lab/web/"+b)
+        hook=self.repo.state/"move-main.sh"
+        original=landing.command;calls=[];plans=[]
+        def check(argv,**kwargs):
+            if argv[:2]==["sh","scripts/presubmit.sh"]:
+                sha=run("git","rev-parse","HEAD",cwd=self.repo.root)
+                record={"sha":sha,"exit":0,"tier":"lab","affected":[]}
+                if "--recheck" in argv:
+                    plan=json.loads(Path(argv[argv.index("--recheck")+1]).read_text())
+                    record["recheck"]=plan;plans.append(plan)
+                landing.append_record("presubmit.log",record);calls.append(argv)
+                if len(calls)==1:run("sh",str(hook),cwd=self.repo.root)
+                return subprocess.CompletedProcess(argv,0,"","")
+            return original(argv,**kwargs)
+        with patch.dict(os.environ,self.repo.environment),patch.object(landing,"repository",return_value=self.repo.root),patch.object(landing,"command",side_effect=check),patch.object(landing,"ledger_module",return_value=None):
+            self.assertEqual(landing.land(),0)
+        return calls,plans
+
+    def test_intersecting_pages_get_only_a_page_recheck(self):
+        calls,plans=self._page_move(True)
+        self.assertEqual(len(calls),2)
+        self.assertEqual(plans,[{"affected":[],"commands":[],"parity_pages":["lab/web/settings.html"]}])
+
+    def test_disjoint_pages_reuse_the_green(self):
+        calls,plans=self._page_move(False)
+        self.assertEqual(len(calls),1);self.assertEqual(plans,[])
 
 
 class QuarantineTests(unittest.TestCase):
@@ -1511,6 +1580,11 @@ class ParityTests(unittest.TestCase):
                       {"page": "launcher.html", "component": "launcher", "slug": "b"},
                       {"page": "settings.html", "component": "settings", "slug": "a"}]
         self.calls = []
+        self.web = self.root / "lab/web"
+        self.web.mkdir(parents=True)
+        (self.web / "components.js").write_text("window.C = {};\n")
+        for page in ("launcher.html", "settings.html"):
+            (self.web / page).write_text('<script src="components.js"></script>')
         self.addCleanup(patch.stopall)
         patch.object(landing, "state_directory", return_value=self.state).start()
         patch.object(landing, "parity_directory", return_value=self.cache).start()
@@ -1538,7 +1612,8 @@ class ParityTests(unittest.TestCase):
         return store
 
     def data(self, paths, shared=()):
-        return {"tier": "lab", "paths": paths, "shared": list(shared)}
+        return {"tier": "lab", "paths": paths, "shared": list(shared),
+                "lab_pages": landing.affected_lab_pages(self.root, paths)}
 
     def test_page_edit_compares_stored_native_without_any_product_build(self):
         store = self.stored()
@@ -1558,11 +1633,33 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(len(selected), 2)
         self.assertEqual(selected, landing.parity_cases(list(reversed(self.cases)), self.data([path], [path])))
 
+    def test_mixed_lab_and_native_edits_keep_both_components(self):
+        data = self.data(["lab/web/launcher.html", "crates/bbt-ui/src/modules/settings.rs"])
+        data["tier"] = "code"
+        self.assertEqual(set(c["component"] for c in landing.parity_cases(self.cases, data)),
+                         {"launcher", "settings"})
+
+    def test_shared_lab_sample_does_not_reduce_explicit_native_component_cases(self):
+        data = self.data(["lab/web/components.js", "crates/bbt-ui/src/modules/launcher.rs"])
+        data["tier"] = "code"
+        selected = landing.parity_cases(self.cases, data)
+        self.assertEqual(len([c for c in selected if c["component"] == "launcher"]), 2)
+        self.assertEqual(len(selected), 3)
+
     def test_missing_store_builds_bboxybook_alone(self):
         output = self.root / "out"
         landing.scoped_parity(self.root, self.data(["lab/web/launcher.html"]), output)
         cargo = [c for c in self.calls if c[0] == "cargo"]
         self.assertEqual(cargo, [["cargo", "build", "-p", "bboxybook", "--locked"]])
+        self.assertEqual((output / "native/fixture.png").read_bytes(), b"rendered native")
+
+    def test_native_input_uses_fresh_render_even_when_a_stored_set_exists(self):
+        self.stored()
+        output = self.root / "out"
+        data = self.data(["design/tokens.toml"])
+        data["tier"] = "code"
+        landing.scoped_parity(self.root, data, output)
+        self.assertIn(["cargo", "build", "-p", "bboxybook", "--locked"], self.calls)
         self.assertEqual((output / "native/fixture.png").read_bytes(), b"rendered native")
 
     def test_uncatalogued_page_needs_lab_check_but_no_capture(self):
@@ -1577,6 +1674,136 @@ class ParityTests(unittest.TestCase):
                                           "test result: ok. 0 passed; 0 failed; finished in 0.00s\n")
         self.assertEqual(result, [{"binary": "target/debug/deps/fixture-abc", "seconds": 61.25, "over_60s": True},
                                   {"binary": "doc-tests:fixture", "seconds": 0., "over_60s": False}])
+
+    def test_unlisted_script_follows_transitive_imports_and_samples_affected_pages(self):
+        (self.web / "components.js").write_text('import "./ui.js";')
+        (self.web / "ui.js").write_text('import "./components.js";')  # a cycle is finite
+        data = self.data(["lab/web/ui.js"])
+        self.assertEqual(data["lab_pages"], ["lab/web/launcher.html", "lab/web/settings.html"])
+        selected = landing.parity_cases(self.cases, data)
+        self.assertEqual(len(selected), 2)
+        self.assertEqual({c["page"] for c in selected}, {"launcher.html", "settings.html"})
+
+    def test_half_the_catalogue_keeps_all_cases_and_navigation_does_not_add_dependencies(self):
+        (self.web / "launcher.html").write_text('<script src="ui.js"></script><a href="settings.html">settings</a>')
+        (self.web / "settings.html").write_text('<a href="launcher.html">launcher</a>')
+        (self.web / "ui.js").write_text("window.UI={};")
+        selected = landing.parity_cases(self.cases, self.data(["lab/web/ui.js"]))
+        self.assertEqual(selected, self.cases[:2])
+        self.assertEqual(landing.parity_cases(self.cases, self.data(["lab/web/settings.html"])), self.cases[2:])
+
+    def test_generated_header_follows_records_design_generator_and_deleted_glob_source(self):
+        design = self.root / "design"
+        design.mkdir()
+        (design / "colors.toml").write_text("color='blue'\n")
+        records = self.root / ".bboxy/specs"
+        records.mkdir(parents=True)
+        (records / "a.md").write_text("fixture record\n")
+        (self.web / "gen.py").write_text("# fixture generator\n")
+        (self.web / "tokens.js").write_text('// GENERATED by lab/web/gen.py from design/colors.toml, .bboxy/specs/*.md. Do not edit.\n')
+        (self.web / "components.js").write_text('import "./tokens.js";')
+        for changed in ("design/colors.toml", ".bboxy/specs/a.md", ".bboxy/specs/deleted.md", "lab/web/gen.py"):
+            with self.subTest(changed=changed):
+                self.assertEqual(self.data([changed])["lab_pages"], ["lab/web/launcher.html", "lab/web/settings.html"])
+
+    def test_css_resources_inline_scripts_queries_and_component_host_use_physical_pages(self):
+        (self.web / "launcher.html").write_text('<style>@import "theme.css";</style><script>fetch("data.json")</script>')
+        (self.web / "theme.css").write_text('body{background:url("image.svg?version=1")}')
+        for changed in ("lab/web/theme.css", "lab/web/image.svg", "lab/web/data.json"):
+            self.assertEqual(self.data([changed])["lab_pages"], ["lab/web/launcher.html"])
+        cases = [{"page": "paths.html?scale=1", "component": "paths", "slug": "a"},
+                 {"page": "paths.html?scale=2", "component": "paths", "slug": "b"},
+                 {"page": "@component", "component": "seat-row", "slug": "c"}]
+        self.assertEqual(landing.parity_cases(cases, self.data(["lab/web/paths.html"])), cases[:2])
+        self.assertEqual(landing.parity_cases(cases, self.data(["lab/web/seat-row.html"])), cases[2:])
+
+    def test_unreferenced_script_and_external_symlink_select_no_cases(self):
+        (self.web / "showcase.html").write_text('<script src="showcase.js"></script>')
+        (self.web / "gen.py").write_text('OUTPUT = "showcase.js"\n')
+        (self.web / "tokens.js").write_text('// GENERATED by lab/web/gen.py from design/input.json.\n')
+        (self.web / "components.js").write_text('import "./tokens.js";')
+        self.assertEqual(landing.parity_cases(self.cases, self.data(["lab/web/showcase.js"])), [])
+        outside = tempfile.TemporaryDirectory(prefix="landing-outside-resource-")
+        self.addCleanup(outside.cleanup)
+        secret = Path(outside.name) / "external.js"
+        secret.write_text('import "components.js";')
+        (self.web / "external.js").symlink_to(secret)
+        (self.web / "launcher.html").write_text('<script src="external.js"></script>')
+        self.assertEqual(self.data(["lab/web/external.js"])["lab_pages"], [])
+
+    def test_page_recheck_intersects_derived_pages(self):
+        cut={"affected":[],"lab_pages":["lab/web/a.html","lab/web/b.html"]}
+        move={"affected":[],"lab_pages":["lab/web/b.html","lab/web/c.html"]}
+        self.assertEqual(landing.parity_recheck_pages(cut,move),["lab/web/b.html"])
+        move["lab_pages"]=["lab/web/c.html"]
+        self.assertEqual(landing.parity_recheck_pages(cut,move),[])
+
+    def test_page_recheck_keeps_cross_native_lab_coverage(self):
+        cut={"affected":[],"lab_pages":["lab/web/a.html","lab/web/b.html"]}
+        move={"affected":["bbt-ui"],"lab_pages":[]}
+        self.assertEqual(landing.parity_recheck_pages(cut,move),cut["lab_pages"])
+        self.assertEqual(landing.parity_recheck_pages(move,cut),cut["lab_pages"])
+
+    def test_lab_page_recheck_uses_stored_native_and_only_selected_page(self):
+        self.stored()
+        data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
+        plan=self.root/"recheck.json"
+        plan.write_text(json.dumps({"affected":[],"parity_pages":["lab/web/settings.html"]}))
+        narrowed=landing.recheck_data(data,plan)
+        self.assertEqual(narrowed["tier"],"lab")
+        output=self.root/"out"
+        landing.scoped_parity(self.root,narrowed,output)
+        self.assertEqual(json.loads((output/"requested.json").read_text()),self.cases[2:])
+        self.assertFalse(any(c[0]=="cargo" for c in self.calls))
+
+    def test_lab_recheck_skips_unchanged_records_and_invariants(self):
+        data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
+        plan=self.root/"recheck.json"
+        plan.write_text(json.dumps({"affected":[],"parity_pages":["lab/web/settings.html"]}))
+        with patch.object(landing,"repository",return_value=self.root),patch.object(landing,"affected",return_value=data),patch.object(landing,"records_checks") as records,patch.object(landing,"scoped_parity") as parity:
+            self.assertEqual(landing.presubmit_worker("base",self.root/"result.json",plan),0)
+        records.assert_not_called();parity.assert_called_once()
+        self.assertEqual(self.calls,[])
+
+    def test_recheck_rejects_page_paths_outside_lab(self):
+        data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
+        plan=self.root/"recheck.json";plan.write_text(json.dumps({"affected":[],"parity_pages":["../outside.html"]}))
+        with self.assertRaises(landing.Refusal): landing.recheck_data(data,plan)
+
+
+    def test_page_recheck_resamples_after_narrowing_the_page_scope(self):
+        self.cases.append({"page": "settings.html", "component": "settings", "slug": "b"})
+        data = self.data(["lab/web/components.js"])
+        data["parity_pages"] = ["lab/web/settings.html"]
+        self.assertEqual(landing.parity_cases(self.cases, data), self.cases[2:])
+
+    def test_native_page_recheck_keeps_all_cases_in_a_small_scope(self):
+        self.cases.append({"page": "settings.html", "component": "settings", "slug": "b"})
+        data = self.data(["crates/bbt-render/src/lib.rs"])
+        data.update(tier="code", parity_pages=["lab/web/settings.html"])
+        self.assertEqual(landing.parity_cases(self.cases, data), self.cases[2:])
+
+    def test_native_intersection_keeps_the_original_parity_coverage(self):
+        cut = {"affected": ["bbt-ui"], "lab_pages": ["lab/web/launcher.html"]}
+        moved = {"affected": ["bbt-ui"], "lab_pages": ["lab/web/settings.html"]}
+        self.assertEqual(landing.parity_recheck_pages(cut, moved), [])
+
+    def test_native_shared_sample_uses_physical_catalogue_pages(self):
+        cases = [{"page": "paths.html?scale=1", "component": "paths", "slug": "a"},
+                 {"page": "paths.html?scale=2", "component": "paths", "slug": "b"},
+                 {"page": "@component", "component": "seat-row", "slug": "c"}]
+        data = self.data(["crates/bbt-render/src/lib.rs"])
+        data["tier"] = "code"
+        selected = landing.parity_cases(cases, data)
+        self.assertEqual(len(selected), 2)
+        self.assertEqual({landing.catalogue_page(case) for case in selected},
+                         {"lab/web/paths.html", "lab/web/seat-row.html"})
+
+    def test_catalogue_pages_keep_their_resource_directory(self):
+        cases = [{"page": "nested/paths.html?scale=1", "component": "paths", "slug": "a"},
+                 {"page": "paths.html?scale=1", "component": "paths", "slug": "b"}]
+        data = self.data(["lab/web/nested/paths.html"])
+        self.assertEqual(landing.parity_cases(cases, data), cases[:1])
 
 
 def fixture_suite(extended=False):

@@ -1,0 +1,29 @@
+test_catalogue_pages_keep_their_resource_directory (final_page_cases.ParityTests.test_catalogue_pages_keep_their_resource_directory) ... ok
+test_css_resources_inline_scripts_queries_and_component_host_use_physical_pages (final_page_cases.ParityTests.test_css_resources_inline_scripts_queries_and_component_host_use_physical_pages) ... ok
+test_generated_header_follows_records_design_generator_and_deleted_glob_source (final_page_cases.ParityTests.test_generated_header_follows_records_design_generator_and_deleted_glob_source) ... ok
+test_half_the_catalogue_keeps_all_cases_and_navigation_does_not_add_dependencies (final_page_cases.ParityTests.test_half_the_catalogue_keeps_all_cases_and_navigation_does_not_add_dependencies) ... ok
+test_lab_page_recheck_uses_stored_native_and_only_selected_page (final_page_cases.ParityTests.test_lab_page_recheck_uses_stored_native_and_only_selected_page) ... ok
+test_lab_recheck_skips_unchanged_records_and_invariants (final_page_cases.ParityTests.test_lab_recheck_skips_unchanged_records_and_invariants) ... ok
+test_missing_store_builds_bboxybook_alone (final_page_cases.ParityTests.test_missing_store_builds_bboxybook_alone) ... ok
+test_mixed_lab_and_native_edits_keep_both_components (final_page_cases.ParityTests.test_mixed_lab_and_native_edits_keep_both_components) ... ok
+test_native_input_uses_fresh_render_even_when_a_stored_set_exists (final_page_cases.ParityTests.test_native_input_uses_fresh_render_even_when_a_stored_set_exists) ... ok
+test_native_intersection_keeps_the_original_parity_coverage (final_page_cases.ParityTests.test_native_intersection_keeps_the_original_parity_coverage) ... ok
+test_native_page_recheck_keeps_all_cases_in_a_small_scope (final_page_cases.ParityTests.test_native_page_recheck_keeps_all_cases_in_a_small_scope) ... ok
+test_native_shared_sample_uses_physical_catalogue_pages (final_page_cases.ParityTests.test_native_shared_sample_uses_physical_catalogue_pages) ... ok
+test_page_edit_compares_stored_native_without_any_product_build (final_page_cases.ParityTests.test_page_edit_compares_stored_native_without_any_product_build) ... ok
+test_page_recheck_intersects_derived_pages (final_page_cases.ParityTests.test_page_recheck_intersects_derived_pages) ... ok
+test_page_recheck_keeps_cross_native_lab_coverage (final_page_cases.ParityTests.test_page_recheck_keeps_cross_native_lab_coverage) ... ok
+test_page_recheck_resamples_after_narrowing_the_page_scope (final_page_cases.ParityTests.test_page_recheck_resamples_after_narrowing_the_page_scope) ... ok
+test_per_binary_duration_over_sixty_is_reported (final_page_cases.ParityTests.test_per_binary_duration_over_sixty_is_reported) ... ok
+test_recheck_rejects_page_paths_outside_lab (final_page_cases.ParityTests.test_recheck_rejects_page_paths_outside_lab) ... ok
+test_shared_lab_input_selects_one_fixed_case_per_page (final_page_cases.ParityTests.test_shared_lab_input_selects_one_fixed_case_per_page) ... ok
+test_shared_lab_sample_does_not_reduce_explicit_native_component_cases (final_page_cases.ParityTests.test_shared_lab_sample_does_not_reduce_explicit_native_component_cases) ... ok
+test_uncatalogued_page_needs_lab_check_but_no_capture (final_page_cases.ParityTests.test_uncatalogued_page_needs_lab_check_but_no_capture) ... presubmit: no catalogued cases for these pages
+ok
+test_unlisted_script_follows_transitive_imports_and_samples_affected_pages (final_page_cases.ParityTests.test_unlisted_script_follows_transitive_imports_and_samples_affected_pages) ... ok
+test_unreferenced_script_and_external_symlink_select_no_cases (final_page_cases.ParityTests.test_unreferenced_script_and_external_symlink_select_no_cases) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.163s
+
+OK

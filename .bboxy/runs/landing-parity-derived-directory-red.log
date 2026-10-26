@@ -1,0 +1,22 @@
+test_catalogue_pages_keep_their_resource_directory (nested_case.ParityTests.test_catalogue_pages_keep_their_resource_directory) ... FAIL
+
+======================================================================
+FAIL: test_catalogue_pages_keep_their_resource_directory (nested_case.ParityTests.test_catalogue_pages_keep_their_resource_directory)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 1797, in test_catalogue_pages_keep_their_resource_directory
+    self.assertEqual(landing.parity_cases(cases, data), cases[:1])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [] != [{'page': 'nested/paths.html?scale=1', 'component': 'paths', 'slug': 'a'}]
+
+Second list contains 1 additional elements.
+First extra element 0:
+{'page': 'nested/paths.html?scale=1', 'component': 'paths', 'slug': 'a'}
+
+- []
++ [{'component': 'paths', 'page': 'nested/paths.html?scale=1', 'slug': 'a'}]
+
+----------------------------------------------------------------------
+Ran 1 test in 0.009s
+
+FAILED (failures=1)

@@ -1,0 +1,17 @@
+test_intersecting_pages_get_only_a_page_recheck (__main__.PageLanding.test_intersecting_pages_get_only_a_page_recheck) ... land: slot 1 of 3
+Current branch fixture-cut is up to date.
+Rebasing (1/1)Successfully rebased and updated refs/heads/fixture-cut.
+land: incremental recheck: 
+LANDED 9916569d5d572e9a1d4169225e853e2946ef261f Fixture candidate
+ok
+test_disjoint_pages_reuse_the_green (__main__.PageLanding.test_disjoint_pages_reuse_the_green) ... land: slot 1 of 3
+Current branch fixture-cut is up to date.
+Rebasing (1/1)Successfully rebased and updated refs/heads/fixture-cut.
+land: moved changes are disjoint; reusing presubmit
+LANDED 13ac50c6933e2deaa6d2337d6a79ea6fb0c6e090 Fixture candidate
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 14.269s
+
+OK

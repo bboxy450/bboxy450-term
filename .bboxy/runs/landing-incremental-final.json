@@ -1,0 +1,295 @@
+{
+  "landed_sha": "2704c9e9fc4615545bd3895b168f22fa9b2d0b46",
+  "tested_sha": "cab4c85103cf1f63f6810d0d904b62a537a46148",
+  "source_diff_after_disjoint_rebase_exit": 0,
+  "author": {
+    "exit": 0,
+    "seconds": 443.0323061943054,
+    "capacity_wait_seconds": 997.040107011795,
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-7.log"
+  },
+  "controller": {
+    "passed": 104,
+    "failed": 0
+  },
+  "recovery": {
+    "passed": 46,
+    "failed": 0
+  },
+  "observer": {
+    "passed": 11,
+    "failed": 0
+  },
+  "invariants": {
+    "passed": 11,
+    "failed": 0,
+    "slow_skipped": 11,
+    "unaffected_skipped": 15
+  },
+  "landing": {
+    "affected": [],
+    "author": "bboxy450@gmail.com",
+    "author_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "base": "9dbe7be39e406c1fb475df5faaf08134ac2703f8",
+    "branch": "aster-incremental-recheck",
+    "build_attempts": 1,
+    "check_timings": [
+      {
+        "affected": [],
+        "compile_seconds": 0.3898760410374962,
+        "gate_log": null,
+        "gate_log_sha256": null,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/cab4c85103cf1f63f6810d0d904b62a537a46148-9fdb9363/commands.log",
+        "recheck": null,
+        "run_seconds": 426.93690254195826,
+        "sha": "cab4c85103cf1f63f6810d0d904b62a537a46148",
+        "test_seconds": 333.00354429194704,
+        "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+        "unclassified_seconds": 93.93335825001122
+      }
+    ],
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-landing.py",
+          "--all"
+        ],
+        "fixtures": true,
+        "tools": []
+      },
+      {
+        "argv": [
+          "python3",
+          "-I",
+          "scripts/test-resource-ledger.py"
+        ],
+        "fixtures": true,
+        "tools": [
+          "scripts/test-resource-ledger.py"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          ""
+        ],
+        "tools": [
+          "scripts/invariants.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "bboxy450-prefix"
+        ],
+        "tools": [
+          "scripts/brand.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "cross-os-facade"
+        ],
+        "tools": [
+          "scripts/cross-os.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "images-resolve"
+        ],
+        "tools": [
+          "scripts/images.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "kill-only-own-pids"
+        ],
+        "tools": [
+          "scripts/kill-own-pids.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "layering"
+        ],
+        "tools": [
+          "scripts/layering.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "licenses-present"
+        ],
+        "tools": [
+          "scripts/licenses.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "local-first"
+        ],
+        "tools": [
+          "scripts/local-first.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "never-block-swarm"
+        ],
+        "tools": [
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-chokepoints"
+        ],
+        "tools": [
+          "scripts/cross-os.sh",
+          "scripts/never-block.sh"
+        ]
+      },
+      {
+        "argv": [
+          "sh",
+          "scripts/invariants.sh",
+          "--affected",
+          "",
+          "no-copyleft-deps"
+        ],
+        "tools": [
+          "scripts/deps-licences.sh"
+        ]
+      }
+    ],
+    "compile_seconds": 0.3898760410374962,
+    "incremental_rechecks": 0,
+    "paths": [
+      ".bboxy/runs/landing-incremental-admission-union.log",
+      ".bboxy/runs/landing-incremental-author-failed-fd792.log",
+      ".bboxy/runs/landing-incremental-checks.json",
+      ".bboxy/runs/landing-incremental-ci-trace.log",
+      ".bboxy/runs/landing-incremental-core-green.log",
+      ".bboxy/runs/landing-incremental-core-red.log",
+      ".bboxy/runs/landing-incremental-fifth-disjoint-green.log",
+      ".bboxy/runs/landing-incremental-fifth-disjoint-red.log",
+      ".bboxy/runs/landing-incremental-ledger-integration.json",
+      ".bboxy/runs/landing-incremental-ledger-union.log",
+      ".bboxy/runs/landing-incremental-rebased-graph-green.log",
+      ".bboxy/runs/landing-incremental-rebased-graph-red.log",
+      ".bboxy/runs/landing-incremental-resource-union.log",
+      ".bboxy/runs/landing-incremental-resume-fix.json",
+      ".bboxy/runs/landing-incremental-resume-focused.log",
+      ".bboxy/runs/landing-incremental-script-fixtures-green.log",
+      ".bboxy/runs/landing-incremental-script-fixtures-red.log",
+      ".bboxy/runs/landing-incremental-shared-driver.log",
+      ".bboxy/runs/landing-incremental-signing-key-green.log",
+      ".bboxy/runs/landing-incremental-signing-key-red.log",
+      ".bboxy/runs/landing-incremental-tools.log",
+      ".bboxy/runs/landing-incremental-visual-compatibility.log",
+      ".bboxy/runs/landing-incremental-wide-cwd-green.log",
+      ".bboxy/runs/landing-incremental-wide-cwd-red.log",
+      "scripts/ci-local.sh",
+      "scripts/landing.py",
+      "scripts/test-landing.py"
+    ],
+    "presubmit_seconds": 429.9542794590234,
+    "retries": 1,
+    "run_seconds": 426.93690254195826,
+    "sha": "2704c9e9fc4615545bd3895b168f22fa9b2d0b46",
+    "test_seconds": 333.00354429194704,
+    "tested_sha": "cab4c85103cf1f63f6810d0d904b62a537a46148",
+    "tests_started": true,
+    "tier": "code",
+    "timestamp": "2026-10-26T01:16:54.623206+00:00",
+    "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
+    "unclassified_seconds": 93.93335825001122
+  },
+  "logs": [
+    {
+      "path": ".bboxy/runs/landing-incremental-author-green.log",
+      "sha256": "54dc9278c4b02bd46d278fb8191b7faa4a377f09edbf5f04123a90d18d02c2a4"
+    },
+    {
+      "path": ".bboxy/runs/landing-incremental-checks-green.log",
+      "sha256": "929b044508dbfd53f0bc76ba48cedab487a5074d6632f688b34189b32e709a41"
+    }
+  ],
+  "limits": [
+    "Conservative shared visual-input recheck remains until the derived-page parity cut, per Corvin 7f6fabca.",
+    "Green postsubmit on or after this landing is not yet proven."
+  ],
+  "prior_author_results": [
+    {
+      "attempt": 1,
+      "exit": 75,
+      "seconds": 1.0374441146850586,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-1.log"
+    },
+    {
+      "attempt": 2,
+      "exit": 78,
+      "seconds": 112.49448013305664,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-2.log"
+    },
+    {
+      "attempt": 3,
+      "exit": 78,
+      "seconds": 2.5539910793304443,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-3.log"
+    },
+    {
+      "attempt": 4,
+      "exit": 77,
+      "seconds": 368.7605051994324,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-4.log"
+    },
+    {
+      "attempt": 5,
+      "exit": 75,
+      "seconds": 1.003204107284546,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/incremental-land-5.log"
+    }
+  ]
+}

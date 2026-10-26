@@ -1,0 +1,34 @@
+test_intersecting_pages_get_only_a_page_recheck (__main__.PageLanding.test_intersecting_pages_get_only_a_page_recheck) ... land: slot 1 of 3
+Current branch fixture-cut is up to date.
+Rebasing (1/1)Successfully rebased and updated refs/heads/fixture-cut.
+land: moved changes are disjoint; reusing presubmit
+LANDED b3f318d2930f320294e9bad38796984ce0928ed5 Fixture candidate
+FAIL
+test_disjoint_pages_reuse_the_green (__main__.PageLanding.test_disjoint_pages_reuse_the_green) ... land: slot 1 of 3
+Current branch fixture-cut is up to date.
+Rebasing (1/1)Successfully rebased and updated refs/heads/fixture-cut.
+LANDED fe21b27c4811bbdecb2d5d4061049d442c05abca Fixture candidate
+FAIL
+
+======================================================================
+FAIL: test_intersecting_pages_get_only_a_page_recheck (__main__.PageLanding.test_intersecting_pages_get_only_a_page_recheck)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/parity-next/check-page-landing.py", line 38, in test_intersecting_pages_get_only_a_page_recheck
+    self.assertEqual(len(calls),2)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 1 != 2
+
+======================================================================
+FAIL: test_disjoint_pages_reuse_the_green (__main__.PageLanding.test_disjoint_pages_reuse_the_green)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/landing-wave1-20261025T165653Z/parity-next/check-page-landing.py", line 42, in test_disjoint_pages_reuse_the_green
+    self.assertEqual(len(calls),1);self.assertEqual(plans,[])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 2 tests in 14.452s
+
+FAILED (failures=2)

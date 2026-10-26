@@ -1,0 +1,281 @@
+{
+  "base": "2704c9e9fc4615545bd3895b168f22fa9b2d0b46",
+  "previous_saved_branch": "239b53332e4d073489815945cea334143466f418",
+  "scope": [
+    "scripts/landing.py",
+    "scripts/test-landing.py"
+  ],
+  "checks": [
+    {
+      "log": ".bboxy/runs/landing-parity-derived-focused.log",
+      "sha256": "214eb090e8df5a5c6dbefca72a50bb8039dd9c9623f5256a2020a330ce8c5629"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-pages.log",
+      "sha256": "8e2d6fadf00e7c5be594553d0156f9f9a9b2ec08bf3459f7675fa370076007ed"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-validation.log",
+      "sha256": "38e3abc6602129ab6a650a4cced8c619f23c28df96233af71b3c15f9e64da61a"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-narrow-red.log",
+      "sha256": "80215275d097eb20cd2aeba689e0acb0a7553dada762ca146165a63844ef645c"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-directory-red.log",
+      "sha256": "69d7ef1b4d98c668390eaef1d83b233c1ab8fb86e906b2b2a9e838144d0923f0"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-validation-red.log",
+      "sha256": "e40b3209b4fca0c97b696830da442ff5a264bbd228b58f5754a96cb50d3e2531"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-landing-red.log",
+      "sha256": "477aa85f6a1273591e80f84f240270a2945a235f27807182cb8d8ee0ae05db2f"
+    },
+    {
+      "log": ".bboxy/runs/landing-parity-derived-landing-green.log",
+      "sha256": "b8609ed52a03217a98340502f81bedea83dd916e37ff669a5beee831d194583b"
+    }
+  ],
+  "focused_stages": [
+    {
+      "stage": "prepared parity/native/replay integration before final directory and validation-input guards",
+      "passed": 32,
+      "failed": 0,
+      "result": {
+        "exit": 0,
+        "seconds": 77.39922408299753,
+        "command": [
+          "python3",
+          "-IB",
+          "scratchpad/landing-wave1-20261025T165653Z/parity-next/check-product-parity.py"
+        ],
+        "log": "scratchpad/landing-wave1-20261025T165653Z/parity-next/product-focused.log"
+      }
+    },
+    {
+      "stage": "final physical/directory page selection",
+      "passed": 23,
+      "failed": 0,
+      "result": {
+        "exit": 0,
+        "log": "scratchpad/landing-wave1-20261025T165653Z/parity-next/final-pages-green.log"
+      }
+    },
+    {
+      "stage": "final validation-script compatibility",
+      "passed": 1,
+      "failed": 0,
+      "result": {
+        "exit": 0,
+        "log": "scratchpad/landing-wave1-20261025T165653Z/parity-next/validation-input-green.log"
+      }
+    }
+  ],
+  "red_stages": [
+    {
+      "stage": "in-flight page intersection/reuse",
+      "failed": 2
+    },
+    {
+      "stage": "narrow page sampling/native intersection",
+      "failed": 3
+    },
+    {
+      "stage": "directory identity",
+      "failed": 1
+    },
+    {
+      "stage": "validation scripts",
+      "failed": 1
+    }
+  ],
+  "scratch_union_failure": {
+    "passed": 27,
+    "errors": 1,
+    "mechanism": "copied fixture used pathlib.Path without importing pathlib; changed to existing Path import",
+    "followup_passed": 2
+  },
+  "real_catalogue": {
+    "source_sha": "6c8eb17931ddd20c7242cc606628b1522e8e6b1e",
+    "manifest": "/Users/feral/.cache/bboxy450-term/parity/b89645154912501a56f239bbd6f3d0810a2b8a7a/cases.json",
+    "manifest_sha256": "8ffcbd8744da2b16778c887ae3418b9281350452d6ad098f929b3dda38242891",
+    "catalogue_cases": 2264,
+    "physical_catalogued_pages": 26,
+    "seconds": 3.657703834003769,
+    "rows": {
+      "lab/web/lab.js": {
+        "referenced_pages": [
+          "lab/web/close.html",
+          "lab/web/components.html",
+          "lab/web/compose.html",
+          "lab/web/diagrams.html",
+          "lab/web/documents.html",
+          "lab/web/e2e.html",
+          "lab/web/events.html",
+          "lab/web/first-run.html",
+          "lab/web/glow-inside.html",
+          "lab/web/glyph.html",
+          "lab/web/graph.html",
+          "lab/web/harness-icon.html",
+          "lab/web/index.html",
+          "lab/web/launcher.html",
+          "lab/web/lifecycle.html",
+          "lab/web/logo.html",
+          "lab/web/marks.html",
+          "lab/web/materials.html",
+          "lab/web/message-row.html",
+          "lab/web/mini-grid.html",
+          "lab/web/pane.html",
+          "lab/web/paths.html",
+          "lab/web/perf.html",
+          "lab/web/picker.html",
+          "lab/web/purge.html",
+          "lab/web/seat-row.html",
+          "lab/web/settings.html",
+          "lab/web/shaders.html",
+          "lab/web/showcase.html",
+          "lab/web/sidebar.html",
+          "lab/web/space-header.html",
+          "lab/web/splits.html",
+          "lab/web/stream.html",
+          "lab/web/style.html",
+          "lab/web/swell.html",
+          "lab/web/tab-row.html",
+          "lab/web/title-strip.html",
+          "lab/web/titlebar.html",
+          "lab/web/tokens.html",
+          "lab/web/toolbar-icon.html"
+        ],
+        "catalogued_pages": 26,
+        "catalogue_cases": 2264,
+        "sample_one_per_page": true
+      },
+      "lab/web/ui.js": {
+        "referenced_pages": [
+          "lab/web/components.html",
+          "lab/web/compose.html",
+          "lab/web/lifecycle.html",
+          "lab/web/materials.html",
+          "lab/web/paths.html",
+          "lab/web/perf.html",
+          "lab/web/shaders.html",
+          "lab/web/style.html"
+        ],
+        "catalogued_pages": 6,
+        "catalogue_cases": 568,
+        "sample_one_per_page": false
+      },
+      "lab/web/fixtures.js": {
+        "referenced_pages": [
+          "lab/web/compose.html",
+          "lab/web/graph.html",
+          "lab/web/showcase.html",
+          "lab/web/stream.html"
+        ],
+        "catalogued_pages": 3,
+        "catalogue_cases": 360,
+        "sample_one_per_page": false
+      },
+      "lab/web/showcase.js": {
+        "referenced_pages": [
+          "lab/web/showcase.html"
+        ],
+        "catalogued_pages": 0,
+        "catalogue_cases": 0,
+        "sample_one_per_page": false
+      },
+      "design/tokens.toml": {
+        "referenced_pages": [
+          "lab/web/checks/bad.html",
+          "lab/web/close.html",
+          "lab/web/components.html",
+          "lab/web/compose.html",
+          "lab/web/diagrams.html",
+          "lab/web/documents.html",
+          "lab/web/e2e.html",
+          "lab/web/events.html",
+          "lab/web/first-run.html",
+          "lab/web/glow-inside.html",
+          "lab/web/glyph.html",
+          "lab/web/graph.html",
+          "lab/web/harness-icon.html",
+          "lab/web/index.html",
+          "lab/web/launcher.html",
+          "lab/web/lifecycle.html",
+          "lab/web/logo.html",
+          "lab/web/marks.html",
+          "lab/web/materials.html",
+          "lab/web/message-row.html",
+          "lab/web/mini-grid.html",
+          "lab/web/pane.html",
+          "lab/web/paths.html",
+          "lab/web/perf.html",
+          "lab/web/picker.html",
+          "lab/web/purge.html",
+          "lab/web/seat-row.html",
+          "lab/web/settings.html",
+          "lab/web/shaders.html",
+          "lab/web/showcase.html",
+          "lab/web/sidebar.html",
+          "lab/web/space-header.html",
+          "lab/web/splits.html",
+          "lab/web/stream.html",
+          "lab/web/style.html",
+          "lab/web/swell.html",
+          "lab/web/tab-row.html",
+          "lab/web/title-strip.html",
+          "lab/web/titlebar.html",
+          "lab/web/tokens.html",
+          "lab/web/toolbar-icon.html"
+        ],
+        "catalogued_pages": 26,
+        "catalogue_cases": 2264,
+        "sample_one_per_page": true
+      }
+    }
+  },
+  "native_inputs": {
+    "exit": 0,
+    "metadata_seconds": 0.05991416599135846,
+    "scan_seconds": 8.937169834040105,
+    "workspace_members": 24,
+    "native_consumers": {
+      "design/tokens.toml": [
+        "bbt-ui-model"
+      ],
+      "lab/web/components.js": [
+        "bboxy450-term",
+        "bboxybook"
+      ],
+      "lab/web/e2e.js": [
+        "bbt-ui"
+      ],
+      "design/style.json": [
+        "bbt-ui-model"
+      ]
+    },
+    "nonexistent_inputs_omitted": [
+      "design/styles.toml",
+      "lab/web/avatars.js"
+    ],
+    "additional_style_scan_seconds": 2.224682166997809
+  },
+  "source_hashes": {
+    "scripts/landing.py": "6a45a2787db3f71364f7824a4092aa28592874f80c81d39a74544093c7e1fc76",
+    "scripts/test-landing.py": "7fa3b99e244d9e3673a9b2f3eb032ad8292f7665708015178abbe9cd473d1340"
+  },
+  "overlap_check": {
+    "command": "sh scripts/overlap.sh",
+    "exit": 127,
+    "finding": "script referenced by AGENTS.md is absent on this base; resumed exact two-file claim posted c1cfa16c-a0a4-4e86-a299-c490e88ef817"
+  },
+  "full_author_check": "not yet run",
+  "claims": [
+    "No application/renderer/lab pixels changed; selector verified on private repository fixtures and actual resource/catalogue metadata.",
+    "Pure lab compares stored native truth; a native input chooses fresh native rendering.",
+    "Script and Rust recheck behavior, resource-ledger boundary and automatic slot notices retained."
+  ]
+}
