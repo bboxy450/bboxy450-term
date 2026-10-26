@@ -233,17 +233,36 @@ pub struct Messaging {
     operator_device_attribution: Option<Ulid>,
 }
 impl Messaging {
-    fn reply_parent(&mut self, swarm: Ulid, reader: Recipient, id: Option<Ulid>) -> Result<Option<StoredMessage>> {
-        let Some(id) = id else { return Ok(None); };
+    fn reply_parent(
+        &mut self,
+        swarm: Ulid,
+        reader: Recipient,
+        id: Option<Ulid>,
+    ) -> Result<Option<StoredMessage>> {
+        let Some(id) = id else {
+            return Ok(None);
+        };
         let message = match self.swarm(swarm)?.ledger.by_id(id) {
             Ok(message) => message,
-            Err(error) if error.downcast_ref::<rusqlite::Error>().is_some_and(|e| matches!(e,rusqlite::Error::QueryReturnedNoRows)) => return Ok(None),
+            Err(error)
+                if error
+                    .downcast_ref::<rusqlite::Error>()
+                    .is_some_and(|e| matches!(e, rusqlite::Error::QueryReturnedNoRows)) =>
+            {
+                return Ok(None);
+            }
             Err(error) => return Err(error),
         };
         if let Recipient::Seat(seat) = reader {
             match self.can_read(seat, &message) {
-                Ok(()) => {},
-                Err(error) if error.downcast_ref::<std::io::Error>().is_some_and(|e| e.kind()==std::io::ErrorKind::InvalidData) => return Ok(None),
+                Ok(()) => {}
+                Err(error)
+                    if error
+                        .downcast_ref::<std::io::Error>()
+                        .is_some_and(|e| e.kind() == std::io::ErrorKind::InvalidData) =>
+                {
+                    return Ok(None);
+                }
                 Err(error) => return Err(error),
             }
         }
@@ -254,18 +273,37 @@ impl Messaging {
         let hint = if tips.is_empty() {
             "No recent visible thread tips; list your inbox before replying, or start a new message.".into()
         } else {
-            format!("Use reply_to with a visible thread tip: {}. Omit thread_id to inherit it.", tips.iter().map(ToString::to_string).collect::<Vec<_>>().join(", "))
+            format!(
+                "Use reply_to with a visible thread tip: {}. Omit thread_id to inherit it.",
+                tips.iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
         };
-        Ok(MessageRefusal { kind: "unknown_thread".into(), message: "reply_to must name a message in a visible thread with a matching thread_id".into(), hint })
+        Ok(MessageRefusal {
+            kind: "unknown_thread".into(),
+            message: "reply_to must name a message in a visible thread with a matching thread_id"
+                .into(),
+            hint,
+        })
     }
-    fn inherit_reply(&mut self, swarm: Ulid, reader: Recipient, parent: Option<&StoredMessage>, request: &mut SendRequest) -> Result<Option<MessageRefusal>> {
-        let Some(parent) = parent else { return Ok(None); };
+    fn inherit_reply(
+        &mut self,
+        swarm: Ulid,
+        reader: Recipient,
+        parent: Option<&StoredMessage>,
+        request: &mut SendRequest,
+    ) -> Result<Option<MessageRefusal>> {
+        let Some(parent) = parent else {
+            return Ok(None);
+        };
         let root = self.swarm(swarm)?.ledger.thread_root(parent.view().id)?.1;
         // The root's retained label is inherited. A branch's caller-supplied
         // label never changes which reply_to chain owns the conversation.
         let thread = self.swarm(swarm)?.ledger.by_id(root)?.view().thread_id;
         if request.thread_id.is_some_and(|id| id != thread) {
-            return self.thread_refusal(swarm,reader).map(Some);
+            return self.thread_refusal(swarm, reader).map(Some);
         }
         request.thread_id = Some(thread);
         Ok(None)
@@ -929,7 +967,9 @@ impl Messaging {
             super::api::Response::Held { reason, .. } => {
                 Err(invalid(format!("signing held: {reason}")))
             }
-            super::api::Response::Refused { error } => Err(invalid(format!("{}: {}; {}", error.kind,error.message,error.hint))),
+            super::api::Response::Refused { error } => Err(invalid(format!(
+                "{}: {}; {}", error.kind, error.message, error.hint
+            ))),
             _ => unreachable!(),
         }
     }
@@ -1046,12 +1086,19 @@ impl Messaging {
             return Err(invalid(format!("held: {reason}")));
         }
         self.set_operator_device(authority.device_id)?;
-        let sender = self.operator_reference.expect("operator reference admitted").recipient();
-        let parent = self.reply_parent(swarm,sender,request.reply_to)?;
+        let sender = self
+            .operator_reference
+            .expect("operator reference admitted")
+            .recipient();
+        let parent = self.reply_parent(swarm, sender, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
-            return Ok(super::api::Response::Refused { error: self.thread_refusal(swarm,sender)? });
+            return Ok(super::api::Response::Refused {
+                error: self.thread_refusal(swarm, sender)?,
+            });
         }
-        if request.destination.is_empty() && let Some(parent) = &parent {
+        if request.destination.is_empty()
+            && let Some(parent) = &parent
+        {
             request.destination = sender_inbox(parent);
         }
         request.destination = super::tree::normalize(&request.destination, true)?;
@@ -1079,7 +1126,6 @@ impl Messaging {
         let body = body.unwrap_or_else(|| Body::Text {
             text: request.text.clone(),
         });
-
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
             if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
@@ -1088,7 +1134,7 @@ impl Messaging {
                 message: Box::new(old),
             });
         }
-        if let Some(error) = self.inherit_reply(swarm,sender,parent.as_ref(),&mut request)? {
+        if let Some(error) = self.inherit_reply(swarm, sender, parent.as_ref(), &mut request)? {
             return Ok(super::api::Response::Refused { error });
         }
         let routes = self.swarm(swarm)?.tree.resolve(
@@ -1161,11 +1207,15 @@ impl Messaging {
             ));
         }
         let sender = source.reference.recipient();
-        let parent = self.reply_parent(swarm,sender,request.reply_to)?;
+        let parent = self.reply_parent(swarm, sender, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
-            return Ok(super::api::Response::Refused { error: self.thread_refusal(swarm,sender)? });
+            return Ok(super::api::Response::Refused {
+                error: self.thread_refusal(swarm, sender)?,
+            });
         }
-        if request.destination.is_empty() && let Some(parent) = &parent {
+        if request.destination.is_empty()
+            && let Some(parent) = &parent
+        {
             request.destination = sender_inbox(parent);
         }
         request.destination = super::tree::normalize(&request.destination, true)?;
@@ -1190,13 +1240,12 @@ impl Messaging {
         if request.destination == format!("swarms/{swarm}") {
             request.destination.push_str("/*");
         }
-
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
             return Ok(super::api::Response::Stored {
                 message: Box::new(old),
             });
         }
-        if let Some(error) = self.inherit_reply(swarm,sender,parent.as_ref(),&mut request)? {
+        if let Some(error) = self.inherit_reply(swarm, sender, parent.as_ref(), &mut request)? {
             return Ok(super::api::Response::Refused { error });
         }
         let routes = self.swarm(swarm)?.tree.resolve(
@@ -1334,9 +1383,11 @@ impl Messaging {
         }
         let record = self.record(from, generation)?;
         let reader = Recipient::Seat(from);
-        let parent = self.reply_parent(record.swarm,reader,request.reply_to)?;
+        let parent = self.reply_parent(record.swarm, reader, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
-            return Ok(super::api::Response::Refused { error: self.thread_refusal(record.swarm,reader)? });
+            return Ok(super::api::Response::Refused {
+                error: self.thread_refusal(record.swarm, reader)?,
+            });
         }
         if request.destination.is_empty() {
             let parent = parent.as_ref().ok_or_else(|| invalid("message_send needs a destination, or reply_to to answer a message's sender"))?;
@@ -1361,7 +1412,7 @@ impl Messaging {
                 message: Box::new(old),
             });
         }
-        if let Some(error) = self.inherit_reply(record.swarm,reader,parent.as_ref(),&mut request)? {
+        if let Some(error) = self.inherit_reply(record.swarm, reader, parent.as_ref(), &mut request)? {
             return Ok(super::api::Response::Refused { error });
         }
         let actor = if operator {
@@ -3222,56 +3273,126 @@ mod native_attention_tests {
 
 #[cfg(test)]
 mod thread_tests {
+    use super::super::{
+        api::{Request, Response},
+        keys::LocalSeatKeys,
+    };
     use super::*;
-    use super::super::{api::{Request,Response},keys::LocalSeatKeys};
     use ed25519_dalek::SigningKey;
 
-    fn fixture() -> (tempfile::TempDir,Registry,Messaging,SeatRecord,SeatRecord) {
+    fn fixture() -> (
+        tempfile::TempDir,
+        Registry,
+        Messaging,
+        SeatRecord,
+        SeatRecord,
+    ) {
         let root = tempfile::tempdir().unwrap();
-        let registry = Registry::new(SqliteStore::open(&object_dir(root.path(),"account").unwrap()).unwrap());
+        let registry =
+            Registry::new(SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap());
         let swarm = Ulid::new();
-        let mut caller = SeatRecord::new(Ulid::new(),swarm,"oracle-class caller","zsh");
+        let mut caller = SeatRecord::new(Ulid::new(), swarm, "oracle-class caller", "zsh");
         caller.role.class = Class::Oracle;
-        let peer = SeatRecord::new(Ulid::new(),swarm,"peer","zsh");
+        let peer = SeatRecord::new(Ulid::new(), swarm, "peer", "zsh");
         registry.insert(&caller).unwrap();
         registry.insert(&peer).unwrap();
-        let messaging = Messaging::open(root.path(),Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[71;32])))).unwrap();
-        (root,registry,messaging,caller,peer)
+        let messaging = Messaging::open(
+            root.path(),
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[71; 32]))),
+        )
+        .unwrap();
+        (root, registry, messaging, caller, peer)
     }
 
     // keeps: admitted local operator errors remain typed before pending/signing effects.
     #[test]
     fn operator_pending_unknown_reply_refuses_before_message_or_signing_effects() {
-        let (_root,_registry,mut messaging,caller,_peer) = fixture();
-        let mut request = SendRequest::text("","unknown parent");
+        let (_root, _registry, mut messaging, caller, _peer) = fixture();
+        let mut request = SendRequest::text("", "unknown parent");
         request.reply_to = Some(Ulid::new());
-        let response = messaging.request_operator_pending(None,&Default::default(),caller.swarm,Request::Send {message:request},1_000).unwrap();
-        let Response::Refused {error} = response else { panic!("typed refusal") };
-        assert_eq!(error.kind,"unknown_thread");
+        let response = messaging
+            .request_operator_pending(
+                None,
+                &Default::default(),
+                caller.swarm,
+                Request::Send { message: request },
+                1_000,
+            )
+            .unwrap();
+        let Response::Refused { error } = response else {
+            panic!("typed refusal")
+        };
+        assert_eq!(error.kind, "unknown_thread");
         assert!(!error.hint.is_empty());
-        let count:i64 = messaging.swarm(caller.swarm).unwrap().ledger.store.connection().unwrap().query_row("SELECT count(*) FROM msg_messages",[],|row|row.get(0)).unwrap();
-        assert_eq!(count,0);
+        let count: i64 = messaging
+            .swarm(caller.swarm)
+            .unwrap()
+            .ledger
+            .store
+            .connection()
+            .unwrap()
+            .query_row("SELECT count(*) FROM msg_messages", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
         let db = messaging.account.connection().unwrap();
-        for table in ["msg_counters","msg_held"] {
-            assert_eq!(db.query_row(&format!("SELECT count(*) FROM {table}"),[],|row|row.get::<_,i64>(0)).unwrap(),0);
+        for table in ["msg_counters", "msg_held"] {
+            assert_eq!(
+                db.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                    .get::<_, i64>(0))
+                    .unwrap(),
+                0
+            );
         }
     }
 
     // keeps: Oracle priority class never opens another sender's private operator thread.
     #[test]
     fn oracle_class_cannot_reply_to_or_hint_a_private_operator_inbox_thread() {
-        let (_root,_registry,mut messaging,caller,peer) = fixture();
-        let visible = messaging.request_operator_pending(None,&Default::default(),caller.swarm,Request::Send {
-            message:SendRequest::text(format!("seats/{}/inbox",caller.id),"visible to caller")
-        },1_000).unwrap();
-        let Response::Stored {message} = visible else { panic!("local operator inbox delivery") };
+        let (_root, _registry, mut messaging, caller, peer) = fixture();
+        let visible = messaging
+            .request_operator_pending(
+                None,
+                &Default::default(),
+                caller.swarm,
+                Request::Send {
+                    message: SendRequest::text(
+                        format!("seats/{}/inbox", caller.id),
+                        "visible to caller",
+                    ),
+                },
+                1_000,
+            )
+            .unwrap();
+        let Response::Stored { message } = visible else {
+            panic!("local operator inbox delivery")
+        };
         let visible = message.view().id;
-        let private = messaging.send(peer.id,1,SendRequest::text("operator/inbox","private to operator"),2_000).unwrap().view().id;
-        let mut request = SendRequest::text("","cannot answer that private thread");
+        let private = messaging
+            .send(
+                peer.id,
+                1,
+                SendRequest::text("operator/inbox", "private to operator"),
+                2_000,
+            )
+            .unwrap()
+            .view()
+            .id;
+        let mut request = SendRequest::text("", "cannot answer that private thread");
         request.reply_to = Some(private);
-        let response = messaging.request(caller.id,1,Request::Send {message:request},false,None,3_000).unwrap();
-        let Response::Refused {error} = response else { panic!("private operator thread remains hidden") };
-        assert_eq!(error.kind,"unknown_thread");
+        let response = messaging
+            .request(
+                caller.id,
+                1,
+                Request::Send { message: request },
+                false,
+                None,
+                3_000,
+            )
+            .unwrap();
+        let Response::Refused { error } = response else {
+            panic!("private operator thread remains hidden")
+        };
+        assert_eq!(error.kind, "unknown_thread");
         assert!(error.hint.contains(&visible.to_string()));
         assert!(!error.hint.contains(&private.to_string()));
     }

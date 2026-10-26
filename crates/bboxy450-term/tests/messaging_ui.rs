@@ -68,6 +68,31 @@ fn unrelated_replies_cannot_clear_the_draft_and_durable_held_is_named() {
     assert_eq!(c.status, Status::Held("identity pending".into()));
     assert!(c.replies(&results).0.is_none());
 }
+
+// keeps: a typed thread refusal leaves the composer draft intact and names its recovery.
+#[test]
+fn thread_refusal_keeps_the_draft_and_visible_thread_hint() {
+    let mut client = Client::default();
+    let batch = client.prepare(Some(SwarmId::from_u128(1)), draft()).unwrap();
+    let commands = client.admitted(batch);
+    let UiMsg::Messaging { id, .. } = commands[0] else {
+        panic!("send");
+    };
+    let tip = Ulid::new();
+    let mut results = Results::default();
+    results.push(id, Reply::Messaging(Response::Refused {
+        error: bbt_proto::messaging::MessageRefusal {
+            kind: "unknown_thread".into(),
+            message: "parent is not visible".into(),
+            hint: format!("reply to {tip}"),
+        },
+    }));
+    let (cleared, follow_up) = client.replies(&results);
+    assert!(cleared.is_none());
+    assert!(follow_up.is_empty());
+    assert!(matches!(&client.status, Status::Refused(reason)
+        if reason.contains("unknown_thread") && reason.contains(&tip.to_string())));
+}
 #[test]
 fn reply_window_is_bounded_and_replacements_keep_the_same_correlation() {
     let mut r = Results::default();

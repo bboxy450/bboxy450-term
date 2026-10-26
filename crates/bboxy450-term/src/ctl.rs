@@ -1456,7 +1456,9 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
             tail.error(&mut line);
         }
         let exit = if message_refusal.is_some() { 1 } else { fail.exit };
-        if let Some(error) = message_refusal { line["error"] = json!(error); }
+        if let Some(error) = message_refusal {
+            line["error"] = json!(error);
+        }
         println!("{line}");
         std::process::exit(exit);
     }

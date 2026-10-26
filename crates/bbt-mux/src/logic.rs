@@ -382,11 +382,19 @@ fn operator_response<T: serde::de::DeserializeOwned>(result: serde_json::Value) 
 fn messaging_response(result: serde_json::Value) -> Result<crate::messaging::api::Response> {
     let error = &result["structuredContent"]["error"];
     if result["isError"] == true
-        && let (Some(kind),Some(message),Some(hint)) = (error["kind"].as_str(),error["message"].as_str(),error["hint"].as_str())
+        && let (Some(kind), Some(message), Some(hint)) = (
+            error["kind"].as_str(),
+            error["message"].as_str(),
+            error["hint"].as_str(),
+        )
     {
-        return Ok(crate::messaging::api::Response::Refused { error: bbt_proto::messaging::MessageRefusal {
-            kind: kind.into(),message: message.into(),hint: hint.into(),
-        }});
+        return Ok(crate::messaging::api::Response::Refused {
+            error: bbt_proto::messaging::MessageRefusal {
+                kind: kind.into(),
+                message: message.into(),
+                hint: hint.into(),
+            },
+        });
     }
     operator_response(result)
 }
@@ -3744,7 +3752,9 @@ impl Worker {
             .messaging
             .request(record.id, record.generation, request, false, None, now_ms())
         {
-            Ok(crate::messaging::api::Response::Refused { error }) => crate::mcp::messaging::refused(call.op_id,error),
+            Ok(crate::messaging::api::Response::Refused { error }) => {
+                crate::mcp::messaging::refused(call.op_id, error)
+            }
             Ok(response) => {
                 let mut value = crate::mcp::messaging::result_for_seat(actor, response);
                 if call.tool == "message_list" {
@@ -6455,7 +6465,9 @@ impl Worker {
                     .request_operator_pending(device, &origin, swarm, request, now_ms())
             }
         } {
-            Ok(crate::messaging::api::Response::Refused { error }) => crate::mcp::messaging::refused(id,error),
+            Ok(crate::messaging::api::Response::Refused { error }) => {
+                crate::mcp::messaging::refused(id, error)
+            }
             Ok(response) => match serde_json::to_value(response) {
                 Ok(value) => crate::mcp::success(id, value),
                 Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),

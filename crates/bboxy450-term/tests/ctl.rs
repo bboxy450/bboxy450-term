@@ -2306,21 +2306,49 @@ async fn ctl_seat_restart_starts_the_next_generation() {
 async fn ctl_unknown_thread_keeps_the_typed_hint_and_exits_one() {
     let root = tempfile::tempdir().unwrap();
     let root = root.path().canonicalize().unwrap();
-    let (session,run,seat) = noun_verb_fixture(&root).await;
+    let (session, run, seat) = noun_verb_fixture(&root).await;
     let visible = bbt_mux::Ulid::new().to_string();
-    let (code,out,_) = ctl_raw(&run,&root,&["message","send",&seat,"a visible conversation","--op",&visible]);
-    assert_eq!(code,Some(0),"{out}");
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "message",
+            "send",
+            &seat,
+            "a visible conversation",
+            "--op",
+            &visible,
+        ],
+    );
+    assert_eq!(code, Some(0), "{out}");
     let op = bbt_mux::Ulid::new().to_string();
     let unknown = bbt_mux::Ulid::new().to_string();
-    let (code,out,_) = ctl_raw(&run,&root,&["message","send",&seat,"cannot answer that id","--reply-to",&unknown,"--op",&op]);
-    let reply:Value = serde_json::from_str(out.trim()).unwrap();
-    assert_eq!(code,Some(1),"{reply}");
-    assert_eq!(reply["ok"],false);
-    assert_eq!(reply["op"],op);
-    assert_eq!(reply["error"]["kind"],"unknown_thread");
-    assert!(reply["error"]["message"].as_str().is_some_and(|message|!message.is_empty()));
+    let (code, out, _) = ctl_raw(
+        &run,
+        &root,
+        &[
+            "message",
+            "send",
+            &seat,
+            "cannot answer that id",
+            "--reply-to",
+            &unknown,
+            "--op",
+            &op,
+        ],
+    );
+    let reply: Value = serde_json::from_str(out.trim()).unwrap();
+    assert_eq!(code, Some(1), "{reply}");
+    assert_eq!(reply["ok"], false);
+    assert_eq!(reply["op"], op);
+    assert_eq!(reply["error"]["kind"], "unknown_thread");
+    assert!(
+        reply["error"]["message"]
+            .as_str()
+            .is_some_and(|message| !message.is_empty())
+    );
     let hint = reply["error"]["hint"].as_str().unwrap();
-    assert!(hint.contains(&visible),"{reply}");
-    assert!(!hint.contains(&unknown),"{reply}");
+    assert!(hint.contains(&visible), "{reply}");
+    assert!(!hint.contains(&unknown), "{reply}");
     session.shutdown().await.unwrap();
 }

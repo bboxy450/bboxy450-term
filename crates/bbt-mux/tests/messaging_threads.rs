@@ -158,11 +158,72 @@ fn mismatched_thread_refuses_but_a_visible_parent_still_routes_and_inherits() {
 #[test]
 fn acknowledged_thread_tips_stay_visible_and_only_the_latest_tip_is_suggested() {
     let mut f = Fixture::new();
-    let root = f.send(f.peer.id,f.caller.id,"visible root",1_000);
-    f.messaging.acknowledge(f.caller.id,root,None,1_001).unwrap();
-    let Response::Stored { message } = f.reply(root,None) else { panic!("valid reply") };
+    let root = f.send(f.peer.id, f.caller.id, "visible root", 1_000);
+    f.messaging
+        .acknowledge(f.caller.id, root, None, 1_001)
+        .unwrap();
+    let Response::Stored { message } = f.reply(root, None) else {
+        panic!("valid reply")
+    };
     let latest = message.view().id;
-    let error = f.refusal(Ulid::new(),None);
+    let error = f.refusal(Ulid::new(), None);
     assert!(error.hint.contains(&latest.to_string()));
-    assert!(!error.hint.contains(&root.to_string()), "one latest tip per actual chain");
+    assert!(
+        !error.hint.contains(&root.to_string()),
+        "one latest tip per actual chain"
+    );
+}
+
+// keeps: an old sender-only cache migrates without changing the retained reply chain.
+#[test]
+fn legacy_thread_cache_reopens_with_the_same_visible_tip_and_inherited_root() {
+    let mut f = Fixture::new();
+    let root = f.send(f.peer.id, f.caller.id, "visible root", 1_000);
+    let Response::Stored { message } = f.reply(root, None) else {
+        panic!("valid reply")
+    };
+    let tip = message.view().id;
+    drop(f.messaging);
+    let ledger = SqliteStore::open(
+        &object_dir(f.root.path(), &format!("swarm-{}", f.caller.swarm)).unwrap(),
+    )
+    .unwrap();
+    ledger.connection().unwrap().execute_batch(
+        "ALTER TABLE msg_thread_roots RENAME TO saved_thread_roots;
+         CREATE TABLE msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL);
+         INSERT INTO msg_thread_roots SELECT message,sender FROM saved_thread_roots;
+         DROP TABLE saved_thread_roots;",
+    ).unwrap();
+    f.messaging = Messaging::open(
+        f.root.path(),
+        Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[70; 32]))),
+    )
+    .unwrap();
+    let error = f.refusal(Ulid::new(), None);
+    assert!(error.hint.contains(&tip.to_string()));
+    assert!(!error.hint.contains(&root.to_string()));
+    let Response::Stored { message } = f.reply(tip, None) else {
+        panic!("migrated reply remains valid")
+    };
+    assert_eq!(message.view().thread_id, root);
+    assert_eq!(message.view().reply_to, Some(tip));
+}
+
+// keeps: hints expose at most eight recent visible chains, newest first.
+#[test]
+fn hints_bound_the_recent_visible_thread_tips_to_eight() {
+    let mut f = Fixture::new();
+    let roots: Vec<_> = (0..10)
+        .map(|n| f.send(f.peer.id, f.caller.id, "another root", 1_000 + n))
+        .collect();
+    let error = f.refusal(Ulid::new(), None);
+    for root in &roots[..2] {
+        assert!(!error.hint.contains(&root.to_string()));
+    }
+    let mut prior = 0;
+    for root in roots[2..].iter().rev() {
+        let at = error.hint.find(&root.to_string()).expect("visible tip");
+        assert!(at > prior);
+        prior = at;
+    }
 }
