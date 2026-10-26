@@ -37,9 +37,9 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
 | S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; paging hitch meter | |
 | S4 | `scripts/e2e/S4.sh` | partial | over-budget GUI viewport fixture (live Replica is capped at 32768 cells); history heap allocation accounting is not exported by ctl | |
-| K1 | `scripts/e2e/K1.sh` | partial | script not implemented: every key combination reaches the program under the kitty protocol when the program asks for it; ⌘⌥ navigation stays the app's; plain keys are the terminal's | |
+| K1 | `scripts/e2e/K1.sh` | partial | every platform key combination and modifier; native press/repeat/release and IME/composition; Cmd-Opt navigation through the app | |
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
-| K3 | `scripts/e2e/K3.sh` | partial | script not implemented: ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal | |
+| K3 | `scripts/e2e/K3.sh` | partial | Cmd-click on a .md path or a wikilink opens the document modal | |
 | R1 | `scripts/e2e/R1.sh` | full | | |
 | R2 | `scripts/e2e/R2.sh` | full | — | |
 | R3 | `scripts/e2e/R3.sh` | full | | |
@@ -299,6 +299,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 **Promise:** every key combination reaches the program under the kitty protocol when the program asks for it; ⌘⌥ navigation stays the app's; plain keys are the terminal's.
 
+**Current partial proof:** `keyboard_checks.py K1` runs a real raw-mode PTY receiver that requests Kitty enhancement flag 1. It compares actual input bytes with an independent protocol table for 15 named keys and 26 Ctrl-letter presses, checks two literal inputs, and checks that app Cmd-T/Esc adds no PTY bytes. Unique input markers delimit each observation without a negative-timeout assertion. The native key/modifier/repeat/release/IME seam and Cmd-Opt navigation remain unproven; the header and row retain those gaps.
+
 **Deterministic steps (plan):** Run a raw Kitty negotiation/decoder fixture. Table-drive every encoder-supported key x modifiers x press/repeat/release via app keyboard-event seam; compare received bytes to pinned expected encodings. Exercise Cmd-Opt navigation and plain terminal keys while capturing active focus.
 
 **Required assertions:** Exact protocol bytes for requested Kitty modes, no app navigation bytes in PTY, plain keys arrive once; press/release suppression and IME/composition remain distinct.
@@ -322,6 +324,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 ### K3
 
 **Promise:** ⌘G opens the Graph tab; ⌘-click on a .md path or a wikilink opens the document modal.
+
+**Current partial proof:** `keyboard_checks.py K3` sends app Cmd-G, checks the Graph page and produced-frame sequence, captures the window, dismisses Graph with Esc and verifies the same terminal focus still accepts a command. Cmd-click on paths and wikilinks remains unproven until the structured pointer seam of ICD [[#347]] is implemented; the header and row retain that gap.
 
 **Deterministic steps (plan):** From a pane showing a fixture.md path and `[[#N]]`, issue app Cmd-G and app-owned Cmd-click on each semantic text target, then capture/read active tab/modal and resolved record.
 
