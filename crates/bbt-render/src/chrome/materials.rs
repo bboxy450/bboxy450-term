@@ -1015,6 +1015,7 @@ fn render_layered_with(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn backdrop_copy_covers_fractional_support_and_clips_offscreen_edges() {
         let surface = Surface {
@@ -1043,6 +1044,7 @@ mod tests {
         assert_eq!(flat.backdrop_region(1., 200, 100).unwrap(), None);
         assert!(surface.backdrop_region(f32::NAN, 200, 100).is_err());
     }
+    // keeps: spec rim-glow §7 — nearest-text-cell focus-swell luminance cap
     #[test]
     fn the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap() {
         // rim-glow §7 acceptance (Wren's swell.html curve): at its peak (envelope 1) the swell
@@ -1104,6 +1106,7 @@ mod tests {
             "swell weight over the nearest cell {worst}"
         );
     }
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn downsampled_blur_matches_the_full_resolution_mirrored_gaussian() {
         // A worst case for the 1/4 blur: 1-3 px stripes under a sigma-20 frosted box touching
@@ -1204,6 +1207,7 @@ mod tests {
         }
         list
     }
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn blur_reuse_is_pixel_identical_and_only_on_equal_keys() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -1230,6 +1234,7 @@ mod tests {
         assert_eq!(render(&mut renderer, &b, None), fresh_b);
         assert_eq!(render(&mut renderer, &a, None), fresh_a);
     }
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn headless_renders_reuse_one_pass_and_match_fresh_renderers() {
         let none = DrawList::default();
@@ -1262,6 +1267,7 @@ mod tests {
             "unkeyed renders never cache a blur"
         );
     }
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn zero_blur_still_samples_the_backdrop_and_fractional_edge_texels() {
         let surface = Surface {
@@ -1279,6 +1285,7 @@ mod tests {
             Some([2, 3, 12, 10])
         );
     }
+    // keeps: spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing
     #[test]
     fn nonfinite_and_negative_material_parameters_are_rejected() {
         let s = Surface {

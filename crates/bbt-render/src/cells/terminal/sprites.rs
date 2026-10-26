@@ -404,6 +404,7 @@ pub fn raster(sprite: Sprite, w: u32, h: u32, scale: u32) -> Vec<u8> {
 mod tests {
     use super::*;
 
+    // keeps: spec renderer §1b — joined procedural sprites outrank font glyphs
     #[test]
     fn double_rules_join_without_stubs_or_filled_crossings() {
         for scale in [1, 2] {

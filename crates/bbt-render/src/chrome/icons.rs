@@ -15,6 +15,7 @@ mod tests {
 
     const SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 3L21 21M3 21L21 3" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg>"#;
 
+    // keeps: spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse
     #[test]
     fn bitmap_minification_integrates_footprints_and_reuses_the_atlas_entry() {
         let image = Image {
@@ -51,6 +52,7 @@ mod tests {
         assert!(atlas.image("bars", [8., 8.], 0.).is_err());
     }
 
+    // keeps: spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse
     #[test]
     fn transparent_bitmap_texels_contribute_no_hidden_rgb_to_minification() {
         let mut atlas = IconAtlas::new(vec![Image {
@@ -65,6 +67,7 @@ mod tests {
         assert_eq!(&atlas.pixels[at..at + 4], &[0, 0, 128, 128]);
     }
 
+    // keeps: spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse
     #[test]
     fn size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs() {
         let mut atlas = IconAtlas::new(Assets::with_svgs(vec![], &[("cross", SVG)])).unwrap();

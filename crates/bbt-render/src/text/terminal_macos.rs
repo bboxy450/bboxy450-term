@@ -377,6 +377,7 @@ impl Fonts {
 mod tests {
     use super::*;
 
+    // keeps: spec renderer §1b — native fallback/emoji ink remains inside terminal cells
     #[test]
     fn color_emoji_ink_fits_its_cell_box_at_each_density() {
         for scale in [1, 2] {
@@ -424,6 +425,7 @@ mod tests {
         }
     }
 
+    // keeps: spec renderer §1b — native fallback/emoji ink remains inside terminal cells
     #[test]
     fn fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face() {
         for scale in [1, 2] {

@@ -421,6 +421,7 @@ pub(super) fn rasterize(_: &Key) -> Result<Mask> {
 mod shadow_tests {
     use super::*;
 
+    // keeps: spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks
     #[test]
     fn gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs() {
         let point = Mask {
@@ -510,6 +511,7 @@ mod tests {
         pixels
     }
 
+    // keeps: spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks
     #[test]
     fn cropped_glyph_components_reproduce_native_line_masks() {
         let mut cache = HashMap::new();
@@ -569,30 +571,32 @@ mod tests {
         );
     }
 
+    // keeps: spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks
     #[test]
-    fn fallback_font_variations_and_phases_bind_cache_keys() {
-        let a = shape("Aa許", TextStyle::default(), None, 1., 0.).unwrap();
-        let same = shape("Aa許", TextStyle::default(), None, 1., 0.).unwrap();
-        assert_eq!(a.glyphs[0].key, same.glyphs[0].key);
-        let bold = shape(
-            "Aa許",
-            TextStyle {
-                weight: 600,
-                ..Default::default()
-            },
-            None,
-            1.,
-            0.,
-        )
-        .unwrap();
-        let phase = shape("Aa許", TextStyle::default(), None, 1., 0.25).unwrap();
-        assert_ne!(a.glyphs[0].key, bold.glyphs[0].key);
-        assert_ne!(a.glyphs[0].key, phase.glyphs[0].key);
-        assert_ne!(
-            a.glyphs[0].key.glyphs[0].font,
-            a.glyphs[2].key.glyphs[0].font
-        );
+    fn cached_fallback_font_variations_and_phases_preserve_native_coverage() {
+        let mut cache = HashMap::new();
+        for (style, phase) in [
+            (TextStyle::default(), 0.),
+            (TextStyle::default(), 0.),
+            (
+                TextStyle {
+                    weight: 600,
+                    ..Default::default()
+                },
+                0.,
+            ),
+            (TextStyle::default(), 0.25),
+            (TextStyle::default(), 0.),
+        ] {
+            let line = shape("Aa許", style, None, 1., phase).unwrap();
+            let expected =
+                super::super::text::rasterize_at("Aa許", style, None, 1., phase).unwrap();
+            assert_eq!([line.width, line.height], [expected.width, expected.height]);
+            assert_eq!(line.advance, expected.advance);
+            assert_eq!(composite(&line, &mut cache), expected.mask);
+        }
     }
+    // keeps: spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks
     #[test]
     fn compact_state_symbols_keep_exact_coverage_at_each_origin() {
         let mut cache = HashMap::new();

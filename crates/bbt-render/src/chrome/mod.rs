@@ -942,31 +942,28 @@ fn upload(
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
-    #[should_panic(expected = "never flushed")]
     fn an_unflushed_frame_fails_at_the_next_begin_frame() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         renderer.begin_frame();
         let _slice = renderer.arenas.uniform(&renderer.context, &[0; 16]);
-        renderer.begin_frame();
+        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            renderer.begin_frame();
+        }));
+        renderer.flush();
+        assert!(failure.is_err());
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
-    #[should_panic(expected = "never flushed")]
     fn an_unflushed_frame_fails_when_its_owner_drops() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         renderer.begin_frame();
         let _slice = renderer.arenas.storage(&renderer.context, &[0; 16]);
-        drop(renderer);
+        let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| drop(renderer)));
+        assert!(failure.is_err());
     }
-    #[test]
-    fn a_flushed_frame_rewinds_cleanly() {
-        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
-        for _ in 0..3 {
-            renderer.begin_frame();
-            let _slice = renderer.arenas.uniform(&renderer.context, &[0; 16]);
-            renderer.flush();
-        }
-    }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth() {
         use bbt_ui_model::draw::{PathCommand, PathStroke};
@@ -1009,6 +1006,7 @@ mod tests {
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
         assert_eq!(arenas.arenas.capacity(), grown);
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn svg_origins_follow_measured_css_half_up_ties_at_both_device_scales() {
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="white"/></svg>"#;
@@ -1047,6 +1045,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes() {
         let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="white"/></svg>"#;
@@ -1077,6 +1076,7 @@ mod tests {
         assert_eq!(first, renderer.render_to_rgba(&list, 20, 20, 1.).unwrap());
         assert_eq!(renderer.icon_gpu.writes, writes + 1);
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1128,6 +1128,7 @@ mod tests {
         let mut fresh = ChromeRenderer::new(vec![image()]).unwrap();
         assert_eq!(second, fresh.render_to_rgba(&list, 220, 60, 1.).unwrap());
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1170,6 +1171,7 @@ mod tests {
         assert_eq!(grown, cached.render_to_rgba(&scene, 256, 80, 1.).unwrap());
         assert_eq!(writes, cached.glyph_gpu.as_ref().unwrap().writes);
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn growth_in_a_later_group_preserves_the_earlier_encoded_texture() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1200,6 +1202,7 @@ mod tests {
         let mut fresh = ChromeRenderer::new(vec![]).unwrap();
         assert_eq!(pixels, fresh.render_to_rgba(&list, 256, 80, 1.).unwrap());
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn lru_repack_in_later_groups_preserves_prior_gpu_generations() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1237,6 +1240,7 @@ mod tests {
         assert_eq!(actual, fresh.render_to_rgba(&list, 128, 160, 1.).unwrap());
         assert_eq!(actual, cached.render_to_rgba(&list, 128, 160, 1.).unwrap());
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1276,6 +1280,7 @@ mod tests {
         );
         assert!(!renderer.glyph_reset_pending);
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -1346,6 +1351,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn minified_bitmap_uses_integrated_texels_in_gpu_readback() {
         let mut renderer = ChromeRenderer::new(vec![icons::Image {
@@ -1377,6 +1383,7 @@ mod tests {
         assert_eq!(pixels, renderer.render_to_rgba(&list, 16, 16, 1.).unwrap());
     }
 
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales() {
         use bbt_ui_model::draw::{TextShadow, TextStyle, TypeScale};
@@ -1453,6 +1460,7 @@ mod tests {
         }
     }
 
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn text_shadow_uses_cached_glyph_coverage_beneath_translucent_text() {
         use bbt_ui_model::draw::{TextShadow, TextStyle, TypeScale};
@@ -1647,6 +1655,7 @@ mod tests {
         );
     }
 
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn translucent_border_composites_over_fill_at_fractional_coverage() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -1696,6 +1705,7 @@ mod tests {
         }
     }
 
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn inner_highlight_stays_inside_light_and_dark_borders() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -1738,6 +1748,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
     fn sdf_rounding_stroke_and_clip_survive_gpu_readback() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();

@@ -482,6 +482,7 @@ pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn native_fonts_are_reused_per_thread_and_keyed_by_every_input() {
         let style = TextStyle::default();
@@ -514,6 +515,7 @@ mod tests {
             "cached equals fresh"
         );
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn measurement_matches_painted_metrics_bit_for_bit() {
         use bbt_ui_model::draw::TypeScale;
@@ -566,6 +568,7 @@ mod tests {
         }
         assert_eq!(cases, 16_384);
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn measurement_does_not_require_a_raster_canvas() {
         let text = "W".repeat(10_000);
@@ -574,6 +577,7 @@ mod tests {
         assert!(metrics.ascent > 0. && metrics.descent >= 0.);
         assert!(rasterize(&text, TextStyle::default(), None, 1.).is_err());
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn italic_uses_real_family_faces_and_keeps_exact_ui_weight() {
         use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained};
@@ -636,6 +640,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn optical_size_and_logical_shaping_do_not_change_with_backing_scale() {
         use bbt_ui_model::draw::TypeScale;
@@ -657,6 +662,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face() {
         use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained};
@@ -691,6 +697,7 @@ mod tests {
             mono(600).post_script_name()
         });
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn quarter_pixel_phases_change_coverage_without_changing_logical_metrics() {
         let a = rasterize_at("AV fi", TextStyle::default(), None, 1., 0.).unwrap();
@@ -704,6 +711,7 @@ mod tests {
         }
         assert!(rasterize_at("a", TextStyle::default(), None, 1., f32::NAN).is_err());
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold() {
         use bbt_ui_model::draw::TypeScale;
@@ -729,6 +737,7 @@ mod tests {
         }
         assert!(widths[1] < widths[3] - 0.5 && widths[2] > widths[0] + 0.5);
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied() {
         use bbt_ui_model::draw::TypeScale;
@@ -761,6 +770,7 @@ mod tests {
             "nonzero token must add letter spacing"
         );
     }
+    // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn coretext_shapes_unicode_and_ellipsizes_at_the_given_width() {
         let style = TextStyle::default();

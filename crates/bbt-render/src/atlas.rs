@@ -102,6 +102,7 @@ impl GlyphAtlas {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1b — grayscale and premultiplied-color atlas growth preserves prior glyphs
     #[test]
     fn growth_keeps_uploaded_glyph_coordinates_and_masks() {
         let mut atlas = GlyphAtlas::new(8, 64).unwrap();
@@ -125,6 +126,7 @@ mod tests {
         assert!(atlas.insert(64, 1, &[0; 64]).is_err());
     }
 
+    // keeps: spec renderer §1b — grayscale and premultiplied-color atlas growth preserves prior glyphs
     #[test]
     fn color_atlas_growth_preserves_all_four_premultiplied_channels() {
         let mut atlas = GlyphAtlas::new_color(8, 64).unwrap();

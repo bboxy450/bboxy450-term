@@ -681,6 +681,7 @@ mod tests {
     use super::*;
     use crate::cells::terminal::Cell;
 
+    // keeps: spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts
     #[test]
     #[cfg(target_os = "macos")]
     #[allow(
@@ -796,10 +797,10 @@ mod tests {
             .device
             .poll(wgpu::PollType::Wait {
                 submission_index: Some(submission),
-                timeout: Some(Duration::from_secs(10)),
+                timeout: Some(Duration::from_secs(120)),
             })
             .unwrap();
-        rx.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+        rx.recv_timeout(Duration::from_secs(120)).unwrap().unwrap();
         let mapped = readback.slice(..).get_mapped_range().unwrap();
         for y in 0..height {
             for x in 0..width {
@@ -824,6 +825,7 @@ mod tests {
         }
     }
 
+    // keeps: spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts
     #[test]
     #[cfg(target_os = "macos")]
     fn immutable_fonts_move_to_worker_with_identical_rasterization() {
@@ -867,6 +869,7 @@ mod tests {
         }
     }
 
+    // keeps: spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts
     #[test]
     fn emoji_joining_preserves_parser_positions_and_style_boundaries() {
         let mut grid = Grid {

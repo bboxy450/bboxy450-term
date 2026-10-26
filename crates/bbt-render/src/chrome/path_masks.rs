@@ -185,6 +185,7 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §4.4a — exact vector geometry and coverage
     #[test]
     fn phase_and_stroke_change_coverage_without_colour_or_translation_inputs() {
         let points = [PathCommand::Move([-3., -3.]), PathCommand::Line([3., 3.])];

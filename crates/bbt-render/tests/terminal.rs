@@ -10,6 +10,7 @@ use bbt_render::{
     text::terminal::{Fonts, Format},
 };
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn coretext_fallback_styles_and_emoji_have_real_coverage() {
     let fonts = Fonts::new(&FontConfig::default(), None, false).unwrap();
@@ -53,6 +54,7 @@ fn coretext_fallback_styles_and_emoji_have_real_coverage() {
     );
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn integer_cells_double_with_backing_scale_and_reject_invalid_settings() {
     let one = Fonts::new(&FontConfig::default(), None, false)
@@ -84,6 +86,7 @@ fn integer_cells_double_with_backing_scale_and_reject_invalid_settings() {
     assert!(Fonts::new(&FontConfig::default(), Some(0.), false).is_err());
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn procedural_edges_join_and_second_frame_reuses_every_glyph() {
     let context = pollster::block_on(DeviceContext::new()).unwrap();
@@ -139,6 +142,7 @@ fn procedural_edges_join_and_second_frame_reuses_every_glyph() {
     assert_eq!(&first.rgba[..4], &background);
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn cursor_shapes_and_bad_snapshots_are_observable() {
     let context = pollster::block_on(DeviceContext::new()).unwrap();
@@ -188,6 +192,7 @@ fn cursor_shapes_and_bad_snapshots_are_observable() {
     assert!(renderer.render_to_rgba(&context, &grid).is_err());
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn patterned_underlines_continue_across_cells_and_restart_after_a_gap() {
     let context = pollster::block_on(DeviceContext::new()).unwrap();
@@ -248,6 +253,7 @@ fn patterned_underlines_continue_across_cells_and_restart_after_a_gap() {
     }
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn metal_grayscale_blending_preserves_coverage_in_both_polarities() {
     let context = pollster::block_on(DeviceContext::new()).unwrap();

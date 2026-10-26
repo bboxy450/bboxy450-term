@@ -324,6 +324,7 @@ mod tests {
             "{actual:?} != {expected:?}"
         );
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn overlapping_children_dim_once_and_nested_groups_keep_painter_order() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -346,6 +347,7 @@ mod tests {
         near(sample(&nested, 12, 8), [64, 64, 64, 255]);
         near(sample(&nested, 20, 8), [0, 255, 0, 255]);
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -388,6 +390,7 @@ mod tests {
                 .is_err()
         );
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -408,6 +411,7 @@ mod tests {
         near(sample(&pixels, 22, 10), [255, 255, 255, 255]);
         near(sample(&pixels, 2, 28), [0, 255, 0, 255]);
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -436,6 +440,7 @@ mod tests {
         let isolated = renderer.render_to_rgba(&grouped, 32, 32, 2.).unwrap();
         assert_eq!(plain, isolated);
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing() {
         use bbt_ui_model::draw::{TextStyle, TypeScale};
@@ -484,6 +489,7 @@ mod tests {
                 .all(|(a, b)| a.abs_diff(*b) <= 1)
         );
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn linear_mask_filters_the_completed_layer_once_at_1x_and_2x() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -526,6 +532,7 @@ mod tests {
             }
         }
     }
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn mask_bridge_preserves_destination_alpha_and_the_old_api() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -571,6 +578,7 @@ mod tests {
 #[cfg(all(test, target_os = "macos"))]
 mod clearing_tests {
     use super::*;
+    // keeps: spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks
     #[test]
     fn a_clearing_composite_equals_compositing_onto_transparent() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();

@@ -1,0 +1,121 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Finished `test` profile [optimized] target(s) in 9.96s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_render-c17640c2b5decc03)
+
+running 72 tests
+test chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison ... ok
+test atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels ... ok
+test atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks ... ok
+test cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries ... ok
+test cells::terminal::sprites::tests::double_rules_join_without_stubs_or_filled_crossings ... ok
+test cells::terminal::gpu::tests::immutable_fonts_move_to_worker_with_identical_rasterization ... ok
+test chrome::icons::tests::bitmap_minification_integrates_footprints_and_reuses_the_atlas_entry ... ok
+test chrome::icons::tests::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs ... ok
+test chrome::icons::tests::transparent_bitmap_texels_contribute_no_hidden_rgb_to_minification ... ok
+test chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges ... ok
+test chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint ... ok
+test chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha ... ok
+test chrome::group::clearing_tests::a_clearing_composite_equals_compositing_onto_transparent ... ok
+test chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected ... ok
+test chrome::group::tests::mask_bridge_preserves_destination_alpha_and_the_old_api ... ok
+test chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order ... ok
+test chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels ... ok
+test chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing ... ok
+test chrome::path_masks::tests::phase_and_stroke_change_coverage_without_colour_or_translation_inputs ... ok
+test chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected ... ok
+test chrome::paths::tests::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex ... ok
+test cells::terminal::gpu::tests::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth ... ok
+test chrome::paths::tests::unrepresentable_pattern_cannot_cycle_through_zero_length_phases ... ok
+test chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale ... ok
+test chrome::group::tests::linear_mask_filters_the_completed_layer_once_at_1x_and_2x ... ok
+test chrome::materials::tests::downsampled_blur_matches_the_full_resolution_mirrored_gaussian ... ok
+test chrome::materials::tests::blur_reuse_is_pixel_identical_and_only_on_equal_keys ... ok
+test chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry ... ok
+test chrome::tests::an_unflushed_frame_fails_at_the_next_begin_frame ... ok
+test chrome::tests::an_unflushed_frame_fails_when_its_owner_drops ... ok
+test chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once ... ok
+test chrome::paths::tests::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry ... ok
+test chrome::materials::tests::the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap ... ok
+test chrome::tests::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction ... ok
+test chrome::tests::minified_bitmap_uses_integrated_texels_in_gpu_readback ... ok
+test chrome::tests::inner_highlight_stays_inside_light_and_dark_borders ... ok
+test chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct ... ok
+test chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture ... ok
+test chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes ... ok
+test chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback ... ok
+test chrome::tests::lru_repack_in_later_groups_preserves_prior_gpu_generations ... ok
+test chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops ... ok
+test chrome::tests::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes ... ok
+test chrome::text::tests::measurement_does_not_require_a_raster_canvas ... ok
+test chrome::text::tests::native_fonts_are_reused_per_thread_and_keyed_by_every_input ... ok
+test chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold ... ok
+test chrome::tests::translucent_border_composites_over_fill_at_fractional_coverage ... ok
+test chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics ... ok
+test chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width ... ok
+test chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face ... ok
+test chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied ... ok
+test chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale ... ok
+test chrome::text_cache::tests::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set ... ok
+test chrome::text_cache::tests::path_and_text_masks_share_pins_eviction_and_repacked_uvs ... ok
+test chrome::text_cache::tests::reordered_text_reuses_cached_glyph_phases ... ok
+test chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight ... ok
+test chrome::text_glyphs::shadow_tests::gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs ... ok
+test chrome::text_cache::tests::native_font_cache_moves_from_initializing_worker_to_renderer_thread ... ok
+test chrome::text_glyphs::tests::cached_fallback_font_variations_and_phases_preserve_native_coverage ... ok
+test chrome::text_cache::tests::shapes_evict_least_recent_and_clear_on_scale_or_font_change ... ok
+test chrome::text_cache::tests::unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key ... ok
+test passes::tests::counts_accumulate_per_kind_and_take_resets ... ok
+test text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face ... ok
+test chrome::tests::text_shadow_uses_cached_glyph_coverage_beneath_translucent_text ... ok
+test text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density ... ok
+test chrome::materials::tests::headless_renders_reuse_one_pass_and_match_fresh_renderers ... ok
+test chrome::tests::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales ... ok
+test chrome::text_glyphs::tests::compact_state_symbols_keep_exact_coverage_at_each_origin ... ok
+test chrome::tests::resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales ... ok
+test chrome::text_glyphs::tests::cropped_glyph_components_reproduce_native_line_masks ... ok
+test chrome::tests::arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth ... ok
+test chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit ... ok
+
+test result: ok. 72 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.96s
+
+     Running tests/chrome_x_height.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/chrome_x_height-25b8fae362f76915)
+
+running 1 test
+test coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/smoke.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/smoke-b112cc93700b99a1)
+
+running 3 tests
+test asymmetric_glyph_is_upright ... ok
+test metal_quad_and_80_by_24_cell_backgrounds ... ok
+test coretext_ink_lands_only_in_expected_ascii_cells ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/terminal.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/terminal-43d66554ffb904a0)
+
+running 6 tests
+test integer_cells_double_with_backing_scale_and_reject_invalid_settings ... ok
+test coretext_fallback_styles_and_emoji_have_real_coverage ... ok
+test procedural_edges_join_and_second_frame_reuses_every_glyph ... ok
+test metal_grayscale_blending_preserves_coverage_in_both_polarities ... ok
+test cursor_shapes_and_bad_snapshots_are_observable ... ok
+test patterned_underlines_continue_across_cells_and_restart_after_a_gap ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/variants.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/variants-2c09c8b87796daea)
+
+running 1 test
+test generate_smoke_font_size_scale_theme_matrix ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.15s
+
+   Doc-tests bbt_render
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

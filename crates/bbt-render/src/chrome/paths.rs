@@ -561,6 +561,7 @@ mod tests {
         draw::{Color, DrawList},
         layout::Rect,
     };
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex() {
         let points = [
@@ -588,6 +589,7 @@ mod tests {
             _ => true,
         }));
     }
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn unrepresentable_pattern_cannot_cycle_through_zero_length_phases() {
         let points = [PathCommand::Move([0., 0.]), PathCommand::Line([1., 0.])];
@@ -603,6 +605,7 @@ mod tests {
             fill: None,
         }
     }
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -667,6 +670,7 @@ mod tests {
         renderer.render_to_rgba(&list, 64, 48, 1.).unwrap();
         assert_eq!(renderer.paths.geometry.len(), cached);
     }
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn gpu_path_preserves_order_clip_alpha_and_retained_geometry() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -701,6 +705,7 @@ mod tests {
             "paint and translation do not retessellate"
         );
     }
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn zero_length_round_dashes_render_dots_and_crossings_composite_once() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
@@ -736,6 +741,7 @@ mod tests {
             "crossing is one source-over, not two"
         );
     }
+    // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]
     fn cubic_dash_geometry_is_finite_and_invalid_input_is_rejected() {
         let commands = [

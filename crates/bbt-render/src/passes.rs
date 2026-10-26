@@ -62,6 +62,7 @@ pub fn take() -> Counts {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1 and task 2026-10-22-r-runtime R2b — pass-specific render accounting
     #[test]
     fn counts_accumulate_per_kind_and_take_resets() {
         take();

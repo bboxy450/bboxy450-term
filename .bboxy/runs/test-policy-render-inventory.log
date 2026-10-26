@@ -1,0 +1,195 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling objc2 v0.6.5
+   Compiling objc2-encode v4.1.0
+   Compiling cfg_aliases v0.2.2
+   Compiling libm v0.2.16
+   Compiling num-traits v0.2.19
+   Compiling bytemuck_derive v1.12.1
+   Compiling log v0.4.34
+   Compiling bytemuck v1.25.2
+   Compiling block2 v0.6.2
+   Compiling smallvec v1.16.3
+   Compiling thiserror v2.0.21
+   Compiling bitflags v2.13.2
+   Compiling dispatch2 v0.3.1
+   Compiling arrayvec v0.7.8
+   Compiling objc2-core-foundation v0.3.2
+   Compiling hashbrown v0.17.1
+   Compiling thiserror-impl v2.0.21
+   Compiling syn v2.0.119
+   Compiling objc2-foundation v0.3.2
+   Compiling zerocopy v0.8.63
+   Compiling indexmap v2.14.2
+   Compiling zerocopy-derive v0.8.63
+   Compiling objc2-metal v0.3.2
+   Compiling rustc-hash v1.1.0
+   Compiling unicode-width v0.2.2
+   Compiling naga-types v30.0.1
+   Compiling objc2-core-graphics v0.3.2
+   Compiling naga v30.0.1
+   Compiling simd-adler32 v0.3.10
+   Compiling bit-vec v0.9.1
+   Compiling bit-set v0.10.0
+   Compiling half v2.7.1
+   Compiling parking_lot_core v0.9.12
+   Compiling codespan-reporting v0.13.1
+   Compiling crc32fast v1.5.3
+   Compiling adler2 v2.0.1
+   Compiling raw-window-handle v0.6.2
+   Compiling once_cell v1.21.4
+   Compiling static_assertions v1.1.0
+   Compiling unicode-ident v1.0.27
+   Compiling wgpu-types v30.0.1
+   Compiling parking_lot v0.12.5
+   Compiling objc2-quartz-core v0.3.2
+   Compiling wgpu-hal v30.0.1
+   Compiling float-cmp v0.9.0
+   Compiling strict-num v0.1.1
+   Compiling raw-window-metal v1.1.0
+   Compiling miniz_oxide v0.9.1
+   Compiling polycool v0.4.0
+   Compiling libloading v0.8.9
+   Compiling profiling v1.0.18
+   Compiling arrayref v0.3.9
+   Compiling tiny-skia-path v0.12.0
+   Compiling kurbo v0.13.1
+   Compiling flate2 v1.1.10
+   Compiling miniz_oxide v0.8.9
+   Compiling fdeflate v0.3.7
+   Compiling euclid v0.22.14
+   Compiling wgpu-naga-bridge v30.0.1
+   Compiling wgpu-core v30.0.1
+   Compiling siphasher v1.0.4
+   Compiling litrs v1.0.1
+   Compiling document-features v0.2.12
+   Compiling svgtypes v0.16.1
+   Compiling lyon_geom v1.0.20
+   Compiling png v0.18.1
+   Compiling roxmltree v0.21.1
+   Compiling simplecss v0.2.2
+   Compiling wgpu v30.0.1
+   Compiling wgpu-core-deps-apple v30.0.1
+   Compiling pico-args v0.5.0
+   Compiling data-url v0.3.2
+   Compiling imagesize v0.15.0
+   Compiling usvg v0.48.1
+   Compiling tiny-skia v0.12.0
+   Compiling lyon_path v1.0.19
+   Compiling rgb v0.8.53
+   Compiling float_next_after v1.0.0
+   Compiling lyon_tessellation v1.0.22
+   Compiling resvg v0.48.1
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+   Compiling objc2-core-text v0.3.2
+   Compiling serde-big-array v0.5.1
+   Compiling pollster v0.4.0
+   Compiling cursor-icon v1.2.0
+   Compiling base64 v0.22.1
+   Compiling bbt-core v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-core)
+   Compiling serde_json v1.0.154
+   Compiling bboxy-firehose v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy-firehose)
+   Compiling bbt-render v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-render)
+    Finished `test` profile [optimized] target(s) in 1m 31s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_render-c17640c2b5decc03)
+atlas::tests::color_atlas_growth_preserves_all_four_premultiplied_channels: test
+atlas::tests::growth_keeps_uploaded_glyph_coordinates_and_masks: test
+cells::terminal::gpu::tests::emoji_joining_preserves_parser_positions_and_style_boundaries: test
+cells::terminal::gpu::tests::immutable_fonts_move_to_worker_with_identical_rasterization: test
+cells::terminal::gpu::tests::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth: test
+cells::terminal::sprites::tests::double_rules_join_without_stubs_or_filled_crossings: test
+chrome::diff::tests::tolerance_is_not_an_exact_byte_comparison: test
+chrome::group::clearing_tests::a_clearing_composite_equals_compositing_onto_transparent: test
+chrome::group::tests::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha: test
+chrome::group::tests::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale: test
+chrome::group::tests::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing: test
+chrome::group::tests::linear_mask_filters_the_completed_layer_once_at_1x_and_2x: test
+chrome::group::tests::mask_bridge_preserves_destination_alpha_and_the_old_api: test
+chrome::group::tests::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint: test
+chrome::group::tests::overlapping_children_dim_once_and_nested_groups_keep_painter_order: test
+chrome::icons::tests::bitmap_minification_integrates_footprints_and_reuses_the_atlas_entry: test
+chrome::icons::tests::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs: test
+chrome::icons::tests::transparent_bitmap_texels_contribute_no_hidden_rgb_to_minification: test
+chrome::materials::tests::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges: test
+chrome::materials::tests::blur_reuse_is_pixel_identical_and_only_on_equal_keys: test
+chrome::materials::tests::downsampled_blur_matches_the_full_resolution_mirrored_gaussian: test
+chrome::materials::tests::headless_renders_reuse_one_pass_and_match_fresh_renderers: test
+chrome::materials::tests::nonfinite_and_negative_material_parameters_are_rejected: test
+chrome::materials::tests::the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap: test
+chrome::materials::tests::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels: test
+chrome::path_masks::tests::phase_and_stroke_change_coverage_without_colour_or_translation_inputs: test
+chrome::paths::tests::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected: test
+chrome::paths::tests::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry: test
+chrome::paths::tests::gpu_path_preserves_order_clip_alpha_and_retained_geometry: test
+chrome::paths::tests::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex: test
+chrome::paths::tests::unrepresentable_pattern_cannot_cycle_through_zero_length_phases: test
+chrome::paths::tests::zero_length_round_dashes_render_dots_and_crossings_composite_once: test
+chrome::tests::a_flushed_frame_rewinds_cleanly: test
+chrome::tests::an_unflushed_frame_fails_at_the_next_begin_frame: test
+chrome::tests::an_unflushed_frame_fails_when_its_owner_drops: test
+chrome::tests::arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth: test
+chrome::tests::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops: test
+chrome::tests::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction: test
+chrome::tests::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct: test
+chrome::tests::growth_in_a_later_group_preserves_the_earlier_encoded_texture: test
+chrome::tests::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes: test
+chrome::tests::inner_highlight_stays_inside_light_and_dark_borders: test
+chrome::tests::lru_repack_in_later_groups_preserves_prior_gpu_generations: test
+chrome::tests::minified_bitmap_uses_integrated_texels_in_gpu_readback: test
+chrome::tests::resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales: test
+chrome::tests::sdf_rounding_stroke_and_clip_survive_gpu_readback: test
+chrome::tests::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes: test
+chrome::tests::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales: test
+chrome::tests::text_shadow_uses_cached_glyph_coverage_beneath_translucent_text: test
+chrome::tests::translucent_border_composites_over_fill_at_fractional_coverage: test
+chrome::text::tests::coretext_shapes_unicode_and_ellipsizes_at_the_given_width: test
+chrome::text::tests::italic_uses_real_family_faces_and_keeps_exact_ui_weight: test
+chrome::text::tests::measurement_does_not_require_a_raster_canvas: test
+chrome::text::tests::measurement_matches_painted_metrics_bit_for_bit: test
+chrome::text::tests::native_fonts_are_reused_per_thread_and_keyed_by_every_input: test
+chrome::text::tests::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold: test
+chrome::text::tests::optical_size_and_logical_shaping_do_not_change_with_backing_scale: test
+chrome::text::tests::quarter_pixel_phases_change_coverage_without_changing_logical_metrics: test
+chrome::text::tests::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face: test
+chrome::text::tests::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied: test
+chrome::text_cache::tests::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set: test
+chrome::text_cache::tests::native_font_cache_moves_from_initializing_worker_to_renderer_thread: test
+chrome::text_cache::tests::path_and_text_masks_share_pins_eviction_and_repacked_uvs: test
+chrome::text_cache::tests::reordered_text_reuses_cached_glyph_phases: test
+chrome::text_cache::tests::shapes_evict_least_recent_and_clear_on_scale_or_font_change: test
+chrome::text_cache::tests::unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key: test
+chrome::text_glyphs::shadow_tests::gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs: test
+chrome::text_glyphs::tests::compact_state_symbols_keep_exact_coverage_at_each_origin: test
+chrome::text_glyphs::tests::cropped_glyph_components_reproduce_native_line_masks: test
+chrome::text_glyphs::tests::fallback_font_variations_and_phases_bind_cache_keys: test
+passes::tests::counts_accumulate_per_kind_and_take_resets: test
+text::terminal::platform::tests::color_emoji_ink_fits_its_cell_box_at_each_density: test
+text::terminal::platform::tests::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face: test
+
+73 tests, 0 benchmarks
+     Running tests/chrome_x_height.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/chrome_x_height-25b8fae362f76915)
+coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size: test
+
+1 test, 0 benchmarks
+     Running tests/smoke.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/smoke-b112cc93700b99a1)
+asymmetric_glyph_is_upright: test
+coretext_ink_lands_only_in_expected_ascii_cells: test
+metal_quad_and_80_by_24_cell_backgrounds: test
+
+3 tests, 0 benchmarks
+     Running tests/terminal.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/terminal-43d66554ffb904a0)
+coretext_fallback_styles_and_emoji_have_real_coverage: test
+cursor_shapes_and_bad_snapshots_are_observable: test
+integer_cells_double_with_backing_scale_and_reject_invalid_settings: test
+metal_grayscale_blending_preserves_coverage_in_both_polarities: test
+patterned_underlines_continue_across_cells_and_restart_after_a_gap: test
+procedural_edges_join_and_second_frame_reuses_every_glyph: test
+
+6 tests, 0 benchmarks
+     Running tests/variants.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/variants-2c09c8b87796daea)
+generate_smoke_font_size_scale_theme_matrix: test
+
+1 test, 0 benchmarks
+   Doc-tests bbt_render
+0 tests, 0 benchmarks

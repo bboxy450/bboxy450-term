@@ -1,0 +1,101 @@
+#327 bbt-render test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own worktree exec5, branch exec5-tests-327-render, fresh base 658a39ffb71b211d17d5fd43290499f0eea4411b.
+Allowed scope: existing cfg(test) modules and integration tests; production prefixes verified byte-identical. All 84 original tests inventoried. No wire or parity goldens, fonts, textures, shaders or render fixtures changed.
+Before: 84 passed / 0 failed / 0 ignored; summed per-binary test execution 6.190 s. After: 83 passed / 0 failed / 0 ignored; summed per-binary execution 10.260 s. These are ordinary shared-machine samples, not a speed verdict. Both are under 30 s; test-policy §3 coverage-only rule applies and timing improvement is unproven. Cargo wall times include compilation separately below.
+Sleep calls removed: 0 (none in the test paths). Test-only GPU map/poll hang guards now 120 s instead of 10 s under §4; no time is asserted. Production readback deadlines are unchanged. Strict Clippy and affected invariant checks are deferred to the combined land.sh presubmit, not claimed here.
+Overlap scan: no active peer renderer edit. Shared main tree is tracked-clean and its renderer differences are frozen older source (last chrome/mod.rs edit 2026-10-23); its current tip is lab-only, not an in-flight native diff. No peer file skipped.
+
+| Test before sweep | Class | Disposition / protected contract |
+|---|---|---|
+| `src/atlas.rs::growth_keeps_uploaded_glyph_coordinates_and_masks` | D2 | retain; spec renderer §1b — grayscale and premultiplied-color atlas growth preserves prior glyphs |
+| `src/atlas.rs::color_atlas_growth_preserves_all_four_premultiplied_channels` | D2 | retain; spec renderer §1b — grayscale and premultiplied-color atlas growth preserves prior glyphs |
+| `src/cells/terminal/gpu.rs::prepared_frame_encodes_pane_offsets_clips_and_survives_atlas_growth` | D2 | retain protected GPU boundary; fix §4 poll/map hang guards 10 s -> 120 s without any time assertion or production deadline change; spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts |
+| `src/cells/terminal/gpu.rs::immutable_fonts_move_to_worker_with_identical_rasterization` | D2 | retain; spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts |
+| `src/cells/terminal/gpu.rs::emoji_joining_preserves_parser_positions_and_style_boundaries` | D2 | retain; spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts |
+| `src/cells/terminal/sprites.rs::double_rules_join_without_stubs_or_filled_crossings` | D2 | retain; spec renderer §1b — joined procedural sprites outrank font glyphs |
+| `src/chrome/diff.rs::tolerance_is_not_an_exact_byte_comparison` | D2 | retain; spec renderer §4.4a — pixel tolerance policy rather than exact-byte equality |
+| `src/chrome/group.rs::overlapping_children_dim_once_and_nested_groups_keep_painter_order` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::css_saturation_unpremultiplies_before_filter_and_preserves_destination_alpha` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::outer_and_child_clips_survive_group_splits_and_do_not_leak_to_following_paint` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::empty_and_identity_groups_are_transparent_and_use_the_same_device_at_scale` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::isolated_text_carries_a_premultiplied_mask_and_matches_opaque_compositing` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::linear_mask_filters_the_completed_layer_once_at_1x_and_2x` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::mask_bridge_preserves_destination_alpha_and_the_old_api` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/group.rs::a_clearing_composite_equals_compositing_onto_transparent` | D2 | retain; spec renderer §1a/§1b — ordered isolated layers, alpha, clips and scaled masks |
+| `src/chrome/icons.rs::bitmap_minification_integrates_footprints_and_reuses_the_atlas_entry` | D2 | retain; spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse |
+| `src/chrome/icons.rs::transparent_bitmap_texels_contribute_no_hidden_rgb_to_minification` | D2 | retain; spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse |
+| `src/chrome/icons.rs::size_and_scale_cache_preserves_prior_rasters_and_rejects_unbounded_inputs` | D2 | retain; spec renderer §1/§1a — immutable icon rasters, minification and bounded atlas reuse |
+| `src/chrome/materials.rs::backdrop_copy_covers_fractional_support_and_clips_offscreen_edges` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/materials.rs::the_swell_over_a_neighbours_nearest_text_cell_stays_under_the_cap` | D2 | retain; spec rim-glow §7 — nearest-text-cell focus-swell luminance cap |
+| `src/chrome/materials.rs::downsampled_blur_matches_the_full_resolution_mirrored_gaussian` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/materials.rs::blur_reuse_is_pixel_identical_and_only_on_equal_keys` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/materials.rs::headless_renders_reuse_one_pass_and_match_fresh_renderers` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/materials.rs::zero_blur_still_samples_the_backdrop_and_fractional_edge_texels` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/materials.rs::nonfinite_and_negative_material_parameters_are_rejected` | D2 | retain; spec renderer §1b/§4.4a — bounded backdrop support and exact reusable material compositing |
+| `src/chrome/mod.rs::an_unflushed_frame_fails_at_the_next_begin_frame` | C3 | catch only the contract operation; assert panic without pinning diagnostic prose; flush recovered frame before drop; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::an_unflushed_frame_fails_when_its_owner_drops` | C3 | catch only the contract operation; assert panic without pinning diagnostic prose; flush recovered frame before drop; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::a_flushed_frame_rewinds_cleanly` | A1 | remove assertion-free repetition; arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth proves next-frame rewind with independent pixel equality; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::svg_origins_follow_measured_css_half_up_ties_at_both_device_scales` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::svg_device_rasters_upload_once_and_survive_isolated_passes_and_scale_changes` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::immutable_icons_and_warm_glyphs_are_shared_across_isolated_passes` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::glyph_dirty_writes_and_growth_keep_earlier_texture_coordinates_correct` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::growth_in_a_later_group_preserves_the_earlier_encoded_texture` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::lru_repack_in_later_groups_preserves_prior_gpu_generations` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::empty_clipped_pass_retains_a_pending_gpu_reset_after_eviction` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::colored_text_uses_css_source_over_with_opaque_and_transparent_backdrops` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::minified_bitmap_uses_integrated_texels_in_gpu_readback` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::text_shadow_uses_cached_glyph_coverage_beneath_translucent_text` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::translucent_border_composites_over_fill_at_fractional_coverage` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::inner_highlight_stays_inside_light_and_dark_borders` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/mod.rs::sdf_rounding_stroke_and_clip_survive_gpu_readback` | D2 | retain; spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing |
+| `src/chrome/path_masks.rs::phase_and_stroke_change_coverage_without_colour_or_translation_inputs` | D2 | retain; spec renderer §4.4a — exact vector geometry and coverage |
+| `src/chrome/paths.rs::sub_ulp_dash_remainder_advances_instead_of_repeating_a_vertex` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/paths.rs::unrepresentable_pattern_cannot_cycle_through_zero_length_phases` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/paths.rs::filled_and_hollow_triangles_and_translucent_polygon_use_real_fill_geometry` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/paths.rs::gpu_path_preserves_order_clip_alpha_and_retained_geometry` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/paths.rs::zero_length_round_dashes_render_dots_and_crossings_composite_once` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/paths.rs::cubic_dash_geometry_is_finite_and_invalid_input_is_rejected` | D2 | retain; spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads |
+| `src/chrome/text.rs::native_fonts_are_reused_per_thread_and_keyed_by_every_input` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::measurement_matches_painted_metrics_bit_for_bit` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::measurement_does_not_require_a_raster_canvas` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::italic_uses_real_family_faces_and_keeps_exact_ui_weight` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::optical_size_and_logical_shaping_do_not_change_with_backing_scale` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::ui_weights_use_css_axis_values_and_menlo_medium_uses_regular_face` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::quarter_pixel_phases_change_coverage_without_changing_logical_metrics` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::numeric_ui_weights_select_medium_and_semibold_between_regular_and_bold` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::zero_tracking_keeps_font_kerning_and_nonzero_tracking_is_applied` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text.rs::coretext_shapes_unicode_and_ellipsizes_at_the_given_width` | D2 | retain; spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage |
+| `src/chrome/text_cache.rs::path_and_text_masks_share_pins_eviction_and_repacked_uvs` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_cache.rs::unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_cache.rs::shapes_evict_least_recent_and_clear_on_scale_or_font_change` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_cache.rs::reordered_text_reuses_cached_glyph_phases` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_cache.rs::native_font_cache_moves_from_initializing_worker_to_renderer_thread` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_cache.rs::lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set` | D2 | retain; spec renderer §1 — retained glyph working sets and changed-only atlas uploads |
+| `src/chrome/text_glyphs.rs::gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs` | D2 | retain; spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks |
+| `src/chrome/text_glyphs.rs::cropped_glyph_components_reproduce_native_line_masks` | D2 | retain; spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks |
+| `src/chrome/text_glyphs.rs::fallback_font_variations_and_phases_bind_cache_keys` | C1 | shared cached composition across repeated/default/bold/fractional-phase fallback text equals independent native coverage; spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks |
+| `src/chrome/text_glyphs.rs::compact_state_symbols_keep_exact_coverage_at_each_origin` | D2 | retain; spec renderer §1a — glyph coverage, fallback faces, phases and shadow masks |
+| `src/passes.rs::counts_accumulate_per_kind_and_take_resets` | D2 | retain; spec renderer §1 and task 2026-10-22-r-runtime R2b — pass-specific render accounting |
+| `src/text/terminal_macos.rs::color_emoji_ink_fits_its_cell_box_at_each_density` | D2 | retain; spec renderer §1b — native fallback/emoji ink remains inside terminal cells |
+| `src/text/terminal_macos.rs::fullwidth_forms_use_cjk_fallback_and_ascii_keeps_primary_face` | D2 | retain; spec renderer §1b — native fallback/emoji ink remains inside terminal cells |
+| `tests/chrome_x_height.rs::coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size` | D2 | retain; spec renderer §1a — logical CoreText x-height and invalid-size refusal |
+| `tests/smoke.rs::metal_quad_and_80_by_24_cell_backgrounds` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/smoke.rs::coretext_ink_lands_only_in_expected_ascii_cells` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/smoke.rs::asymmetric_glyph_is_upright` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::coretext_fallback_styles_and_emoji_have_real_coverage` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::integer_cells_double_with_backing_scale_and_reject_invalid_settings` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::procedural_edges_join_and_second_frame_reuses_every_glyph` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::cursor_shapes_and_bad_snapshots_are_observable` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::patterned_underlines_continue_across_cells_and_restart_after_a_gap` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/terminal.rs::metal_grayscale_blending_preserves_coverage_in_both_polarities` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+| `tests/variants.rs::generate_smoke_font_size_scale_theme_matrix` | D2 | retain; spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix |
+
+Coverage map: renderer §1 retained geometry and changed-only uploads -> atlas growth, dirty-write, LRU generation/repack, SVG/icon reuse, path retention and 800-draw arena comparison. Public pixels cannot detect unnecessary reuploads, so the explicit upload-efficiency counters remain paired with independent pixel checks. Submission misuse -> both panic checks catch only the violating begin/drop operation, not device setup; recovered begin state flushes before drop. The assertion-free rewind test is removed only because arena_slices_match_per_draw_buffers_across_many_draws_and_mid_frame_growth proves the same next-frame path with fresh-renderer pixels and stable grown capacity.
+renderer §1a/§1b/§4.4a native text/blending -> all 16,384 measurement cases, the multilingual glyph-component matrix, alpha/compositing tests, fallback/weight/phase masks, SVG snapping, blur/shadow/rim cap and exact vector tests retained. The rewritten fallback test uses one shared component cache across repeated default, bold and fractional-phase input, comparing dimensions, advance and every mask byte to independently rasterized native lines; it no longer asserts private cache key/font structs. Terminal §4.1/§4.2/§4.3 -> all smoke, fallback/emoji, cursor/decorations, font/size/scale/theme generated pictures retained. rim-glow §7 -> nearest-neighbor text luminance-cap regression retained. No spec acceptance line or invariant check loses a test.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-render-inventory.log SHA256 cfdffc9acd5b5bd4ce448c33218a408d3463b7726ebba1621e7f501a590b5d6b — EXIT0; outer Cargo seconds 92.963.
+- .bboxy/runs/test-policy-render-before.log SHA256 4181a22601e182af2a3882072e10c240c6c6ec50184c4c8c92ebcc06f22c7bb0 — EXIT0; outer Cargo seconds 6.944.
+- .bboxy/runs/test-policy-render-after.log SHA256 aaae12c97484eba15ea3c2bd788367d7c933a52772abeac921450bb9a1d2ee83 — EXIT0; outer Cargo seconds 21.924.

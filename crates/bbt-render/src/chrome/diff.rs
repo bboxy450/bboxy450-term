@@ -40,6 +40,7 @@ pub fn compare(a: &[u8], b: &[u8]) -> Result<Difference, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §4.4a — pixel tolerance policy rather than exact-byte equality
     #[test]
     fn tolerance_is_not_an_exact_byte_comparison() {
         let a = [100, 100, 100, 255];

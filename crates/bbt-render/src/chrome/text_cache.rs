@@ -475,6 +475,7 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn path_and_text_masks_share_pins_eviction_and_repacked_uvs() {
         use bbt_ui_model::draw::{PathCommand, PathStroke};
@@ -532,6 +533,7 @@ mod tests {
                 .zip(&b.parts)
                 .all(|(p, q)| (p.id, p.offset, p.size) == (q.id, q.offset, q.size))
     }
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn unchanged_lines_reuse_their_shape_and_every_input_is_in_the_key() {
         let mut cache = Cache::new().unwrap();
@@ -602,6 +604,7 @@ mod tests {
         assert_eq!((stats.shape_misses, stats.shape_hits), (9, 1));
         assert_eq!(stats.shape_entries, 9);
     }
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn shapes_evict_least_recent_and_clear_on_scale_or_font_change() {
         let mut cache = Cache::new().unwrap();
@@ -641,6 +644,7 @@ mod tests {
         cache.line("scale", style, None, 1., 0.).unwrap();
         assert_eq!(cache.stats().shape_misses, misses + 1);
     }
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn reordered_text_reuses_cached_glyph_phases() {
         let mut cache = Cache::new().unwrap();
@@ -668,6 +672,7 @@ mod tests {
         assert!(later.hits > first.hits);
         assert_eq!(later.evictions, 0);
     }
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn native_font_cache_moves_from_initializing_worker_to_renderer_thread() {
         fn assert_send<T: Send>() {}
@@ -698,6 +703,7 @@ mod tests {
         assert_eq!(cache.stats().misses, misses);
         assert_eq!(cache.atlas.pixels(), expected);
     }
+    // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn lru_evicts_unpinned_masks_and_repack_keeps_the_current_working_set() {
         let mut cache = Cache::with_limits(32, 128, 4096, 16).unwrap();

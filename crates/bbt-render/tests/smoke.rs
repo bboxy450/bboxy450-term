@@ -6,13 +6,19 @@ fn pixel(rgba: &[u8], width: u32, x: u32, y: u32) -> &[u8] {
     &rgba[i..i + 4]
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn metal_quad_and_80_by_24_cell_backgrounds() {
     // 67*4 is not 256-byte aligned: every readback row must lose its GPU padding.
     let solid = Scene::solid([17, 83, 201, 255], 67, 31);
     let rgba = render_to_rgba(&solid, 67, 31).unwrap();
     assert_eq!(rgba.len(), 67 * 31 * 4);
-    assert!(rgba.as_chunks::<4>().0.iter().all(|p| *p == [17, 83, 201, 255]));
+    assert!(
+        rgba.as_chunks::<4>()
+            .0
+            .iter()
+            .all(|p| *p == [17, 83, 201, 255])
+    );
     write_png(output("quad.png"), &rgba, 67, 31).unwrap();
     let mut scene = Scene::smoke(FontConfig::default(), false).unwrap();
     scene.text.clear();
@@ -32,6 +38,7 @@ fn metal_quad_and_80_by_24_cell_backgrounds() {
     write_png(output("backgrounds.png"), &rgba, w, h).unwrap();
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn coretext_ink_lands_only_in_expected_ascii_cells() {
     let scene = Scene::smoke(FontConfig::default(), false).unwrap();
@@ -72,6 +79,7 @@ fn output(name: &str) -> std::path::PathBuf {
         .join(name)
 }
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn asymmetric_glyph_is_upright() {
     let font = bbt_render::text::Font::new(&FontConfig {

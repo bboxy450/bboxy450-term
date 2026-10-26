@@ -1,6 +1,7 @@
 #![cfg(target_os = "macos")]
 use bbt_render::chrome::text::x_height;
 use bbt_ui_model::draw::{TextStyle, TypeScale};
+// keeps: spec renderer §1a — logical CoreText x-height and invalid-size refusal
 #[test]
 fn coretext_x_height_uses_the_requested_logical_font_and_rejects_invalid_size() {
     for mono in [false, true] {

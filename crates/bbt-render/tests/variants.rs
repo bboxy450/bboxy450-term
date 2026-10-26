@@ -1,7 +1,11 @@
-#![allow(clippy::disallowed_methods, reason = "test/fixture IO, not the UI thread")]
+#![allow(
+    clippy::disallowed_methods,
+    reason = "test/fixture IO, not the UI thread"
+)]
 #![cfg(target_os = "macos")]
 use bbt_render::{FontConfig, HeadlessRenderer, Scene, text::Font, write_png};
 
+// keeps: spec renderer §4.1/§4.2/§4.3 — native headless terminal pixels and font/size/scale/theme matrix
 #[test]
 fn generate_smoke_font_size_scale_theme_matrix() {
     let crate_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
