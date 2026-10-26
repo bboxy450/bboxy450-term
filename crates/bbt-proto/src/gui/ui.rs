@@ -64,9 +64,13 @@ impl UiRequest {
                 Err("invalid_ui_path: expected a printable record locator")
             }
             Self::Key(keys) if keys.is_empty() || keys.len() > 32 => {
-                Err("invalid_ui_keys: expected 1-32 named chrome keys")
+                Err("invalid_ui_keys: expected 1-32 chrome keys")
             }
-            Self::Key(keys) if keys.iter().any(|key| !UI_KEYS.contains(&key.as_str())) => {
+            Self::Key(keys)
+                if keys
+                    .iter()
+                    .any(|key| !UI_KEYS.contains(&key.as_str()) && !ui_text_key(key)) =>
+            {
                 Err("invalid_ui_key: unsupported chrome key; use seat key for PTY input")
             }
             Self::Focus { seat } | Self::NotificationClick { seat } if *seat == Ulid::nil() => {
@@ -239,6 +243,13 @@ pub const UI_KEYS: &[&str] = &[
     "cmd-alt-shift-tab",
 ];
 
+/// A literal query keystroke is one non-control Unicode scalar. Named chords
+/// remain in [`UI_KEYS`]; neither form grants permission to type into a PTY.
+pub fn ui_text_key(value: &str) -> bool {
+    let mut chars = value.chars();
+    chars.next().is_some_and(|c| !c.is_control()) && chars.next().is_none()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "path", rename_all = "snake_case")]
 pub enum UiTarget {
@@ -290,6 +301,10 @@ pub struct UiLayoutNode {
     pub kind: String,
     pub rect: [f32; 4],
     pub children: Vec<UiLayoutNode>,
+    /// Positioned text that paints in this produced node. Older hosts and
+    /// observations exceeding the text budget omit it; absence is not empty text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
 }
 
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.

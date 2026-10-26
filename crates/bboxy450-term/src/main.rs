@@ -751,9 +751,27 @@ fn ui_layout_node(
             .iter()
             .map(|l| ui_layout_node(l, remaining))
             .collect::<Result<_, _>>()?,
+        text: None,
     })
 }
-fn chrome_input(name: &str) -> Result<keyboard::Input<'static>, String> {
+fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
+    if bbt_proto::gui::ui_text_key(name) {
+        let logical_key = Key::Character(name.into());
+        return Ok(keyboard::Input {
+            unmodified_key: logical_key.clone(),
+            logical_key,
+            physical_key: PhysicalKey::Unidentified(winit::keyboard::NativeKeyCode::Unidentified),
+            text: Some(name),
+            text_all_modifiers: Some(name),
+            location: winit::keyboard::KeyLocation::Standard,
+            state: ElementState::Pressed,
+            repeat: false,
+            modifiers: keyboard::Modifiers {
+                state: ModifiersState::empty(),
+                locks: Default::default(),
+            },
+        });
+    }
     let mut parts = name.split('-').collect::<Vec<_>>();
     let name = parts.pop().ok_or("invalid_ui_key: missing key")?;
     let mut state = ModifiersState::empty();
