@@ -120,7 +120,10 @@ impl Host {
             generation: None,
             revision: 0,
         };
-        let stored = load(&plugins.account().connection()?, &id);
+        let stored = {
+            let db = plugins.account().connection()?;
+            load(&db, &id)
+        };
         let (binding, external) = match stored {
             Ok(value)
                 if value
