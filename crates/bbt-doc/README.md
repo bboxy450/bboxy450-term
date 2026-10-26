@@ -1,4 +1,4 @@
-# bbt-doc
+# bboxy450-doc
 
 Native CommonMark/GFM parsing and retained layout, above `bbt-ui`. The host
 supplies font measurement and executes the component draw list. This crate
@@ -19,9 +19,9 @@ monospace without highlighting, and image
 references retain their alt text and destination without loading images.
 
 ```sh
-cargo test -p bbt-doc --locked
-cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact --nocapture
-cargo run -p bboxybook -- documents --repository --out target/bbt-doc
+cargo test -p bboxy450-doc --locked
+cargo test -p bboxy450-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact --nocapture
+cargo run -p bboxy450-book -- documents --repository --out target/bbt-doc
 ```
 
 The corpus gallery enumerates tracked `.bboxy` Markdown, lays out every file
@@ -33,3 +33,11 @@ The corpus test reads every Markdown file under the real `.bboxy/` and fails
 malformed or unclosed YAML with `path:line` from the same parser used by the
 reader. A metadata block also requires `id` and `type` for the work-item index.
 The reader still shows broken metadata and the document body as source.
+
+## Dependency name
+
+The Rust library name remains `bbt_doc`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-doc = { package = "bboxy450-doc", version = "0.1.0" }
+```

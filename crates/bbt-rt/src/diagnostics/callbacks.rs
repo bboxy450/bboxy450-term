@@ -12,36 +12,55 @@ const DEPTH: usize = 16;
 /// The portion of a uniquely identified callback inside a frame interval.
 #[derive(Clone, Copy, Debug)]
 pub struct CallbackCpuSlice {
+    /// Process-thread-local callback identifier, retained across frame cuts.
     pub id: u64,
+    /// Beginning of this interval in enabled-recorder-relative wall nanoseconds.
     pub from_ns: u64,
+    /// End of this interval in enabled-recorder-relative wall nanoseconds.
     pub to_ns: u64,
+    /// Calling thread CPU-clock reading at the interval beginning, in nanoseconds.
     pub from_cpu_ns: u64,
+    /// Calling thread CPU-clock reading at the interval end, in nanoseconds.
     pub to_cpu_ns: u64,
     /// Exclusive CPU; nested callbacks lie inside the timestamps but are excluded.
     pub cpu_ns: u64,
+    /// Whether the callback began before this frame interval.
     pub clipped_start: bool,
+    /// Whether the callback remained open at this frame interval end.
     pub clipped_end: bool,
 }
 
 /// One callback kind's contribution to an interval, not cumulative totals.
 #[derive(Clone, Copy, Debug)]
 pub struct CallbackKindCpu {
+    /// Stable callback phase name corresponding to its fixed kind index.
     pub phase: &'static str,
+    /// Number of exclusive CPU segments accumulated in this interval.
     pub segments: u64,
+    /// Thread CPU charged to this record, in nanoseconds.
     pub cpu_ns: u64,
+    /// Largest callback slice of this kind observed in the interval.
     pub largest: Option<CallbackCpuSlice>,
 }
 
 /// Thread CPU between frame endpoints, including an explicit uncovered part.
 #[derive(Clone, Copy, Debug)]
 pub struct CallbackFrameCpu {
+    /// Beginning of this interval in enabled-recorder-relative wall nanoseconds.
     pub from_ns: u64,
+    /// End of this interval in enabled-recorder-relative wall nanoseconds.
     pub to_ns: u64,
+    /// Calling thread CPU-clock reading at the interval beginning, in nanoseconds.
     pub from_cpu_ns: u64,
+    /// Calling thread CPU-clock reading at the interval end, in nanoseconds.
     pub to_cpu_ns: u64,
+    /// Thread CPU charged to this record, in nanoseconds.
     pub cpu_ns: u64,
+    /// Thread CPU not attributed to one of the instrumented callback kinds.
     pub unattributed_ns: u64,
+    /// Tracker or clock-read errors observed since the preceding frame cut.
     pub errors: u64,
+    /// Fixed callback-kind contributions in phase-discriminant order.
     pub kinds: [CallbackKindCpu; CALLBACK_KINDS],
 }
 

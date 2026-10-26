@@ -1,25 +1,7 @@
-//! Reusable ways to launch, observe and wake terminal harnesses, not a process host.
-//!
-//! The caller owns policy, process lifetime, persistence and wire protocols. Build
-//! a [`launch::LaunchContext`] with caller-supplied skill text, start its plan on a
-//! PTY host, bind a [`Session`] to the resulting process, and feed it OSC/native
-//! observations. [`native_available`] reports attachment identity, while
-//! [`Adapter::wake`] reports transport evidence, never model acceptance. A
-//! [`Evidence::NativeUnknown`] outcome must not be retried or sent via fallback.
-//! Explicit PTY fallback consumes a [`ReadyToken`] through
-//! [`Session::prepare_literal`]; the caller journals and writes those bytes.
-//!
-//! | Harness | Observation | Native wake | PTY fallback |
-//! |---|---|---|---|
-//! | Claude | 7501/7502, sessions file | owned cross-session socket | positive composer readiness |
-//! | Codex | 7501/7502, app-server, 21337 hint | queue/steer RPC | positive composer readiness |
-//! | zsh | 133, 7 | none | canonical echo prompt readiness |
-//! | custom kind | reported OSC or cadence | none built in | operator handoff |
-//!
-//! Hook CLI hosts implement [`hook::HookSink`] for their authenticated fallback
-//! transport. The kit emits OSC on its own controlling terminal when possible;
-//! native endpoint registrations always go to that sink. No global configuration,
-//! role grants, journal, registry or app protocol is imported here.
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
+
 // The extracted module was covered by mux's same IO-owner allowance. Callers
 // run it on IO threads; the optional runtime assertion retains the app's guard.
 #![allow(
@@ -29,10 +11,15 @@
 #[cfg(not(unix))]
 compile_error!("bboxy450-harness-wake-up currently requires Unix sockets and terminals");
 
+/// Single-use positive readiness and guarded literal terminal input.
 pub mod guard;
+/// Bounded hook events, OSC projection and caller-authenticated fallback delivery.
 pub mod hook;
+/// Isolated launch overlays, native runtime plans and owned cleanup.
 pub mod launch;
+/// Bound process/session native transport contracts and evidence.
 pub mod native;
+/// Graded activity observations, state projection and bounded terminal taps.
 pub mod observe;
 
 pub use ulid::Ulid;
@@ -57,32 +44,51 @@ pub use observe::{Grade, Observation, OscTap, Session, State, Status, WaitingKin
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Preferred delivery mechanism recorded for a harness kind.
 pub enum WakeMethod {
+    /// Bound cross-session socket transport.
     ClaudeSocket,
+    /// Bound per-process app-server transport.
     CodexRpc,
+    /// Guarded terminal input under the caller's writer lease.
     Pty,
+    /// Caller handoff when no supported automatic transport exists.
     Operator,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Selected source policy for harness activity observations.
 pub enum StateSource {
+    /// Use explicit harness/native state reports.
     Reported,
+    /// Use bounded hook-derived state reports.
     Hooks,
+    /// Infer activity from observed output cadence.
     Cadence,
 }
 
 /// `kind` is open: custom harnesses use the generic adapter, never an enum cast.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HarnessRecord {
+    /// Open harness-kind identifier; custom values select the generic adapter.
     pub kind: String,
+    /// Caller-facing name associated with this launch or harness record.
     pub name: String,
+    /// Program and ordered arguments supplied to the process host.
     pub command: Vec<String>,
+    /// Preferred transport category, not proof that an attachment is currently available.
     pub wake_method: WakeMethod,
+    /// Selected activity observation policy.
     pub state_source: StateSource,
+    /// Whether the harness record requests launch-time hook wiring.
     pub hooks: bool,
 }
 
 impl HarnessRecord {
+    /// Construct one supported built-in record.
+    ///
+    /// # Errors
+    /// Refuses kinds other than the supported built-in harnesses.
     pub fn builtin(kind: &str) -> Result<Self> {
         let (name, command, wake_method) = match kind {
             "claude" => ("Claude", "claude", WakeMethod::ClaudeSocket),
@@ -99,6 +105,11 @@ impl HarnessRecord {
             hooks: kind != "zsh",
         })
     }
+    /// Check the open kind, display name and nonempty command against the record bounds.
+    ///
+    /// # Errors
+    /// Refuses an empty/oversized kind, oversized name, empty/oversized argument list,
+    /// empty executable or an argument containing a NUL byte.
     pub fn validate(&self) -> Result<()> {
         if self.kind.is_empty()
             || self.kind.len() > 128
@@ -118,11 +129,17 @@ impl HarnessRecord {
 /// a reused PID insufficient. Session strings are native IDs, not our ULIDs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Binding {
+    /// Caller-owned opaque process identity.
     pub seat: Ulid,
+    /// Native harness session identity, not the host ULID.
     pub session: String,
+    /// Bound operating-system process identifier.
     pub pid: u32,
+    /// Observed process start stamp used to reject PID reuse.
     pub process_start: String,
+    /// Nonzero host process-generation fence.
     pub generation: u64,
+    /// Nonzero attachment-generation fence.
     pub attachment_generation: u64,
     /// The explicitly selected runtime hosting this native thread.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -132,11 +149,21 @@ pub struct Binding {
 /// Identity of a seat-owned runtime; no user-global discovery is permitted.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeBinding {
+    /// Explicit endpoint of the caller-owned native runtime.
     pub endpoint: std::path::PathBuf,
+    /// Bound operating-system process identifier.
     pub pid: u32,
+    /// Observed process start stamp used to reject PID reuse.
     pub process_start: String,
 }
 impl Binding {
+    /// Check process, session, generation and optional runtime identity shape.
+    ///
+    /// This checks the stored fields; [`native::verify_process`] checks the live process.
+    ///
+    /// # Errors
+    /// Refuses missing identities, zero fences, an oversized session identifier
+    /// or an invalid optional runtime endpoint/process identity.
     pub fn validate(&self) -> Result<()> {
         if self.seat == Ulid::nil()
             || self.session.is_empty()
@@ -156,52 +183,77 @@ impl Binding {
 }
 
 #[derive(Debug, Clone)]
+/// Explicit endpoint for one bound native attachment.
 pub enum Endpoint {
+    /// Bound cross-session socket endpoint.
     Claude {
+        /// Explicit caller-selected native Unix socket path.
         path: PathBuf,
     },
+    /// Bound app-server endpoint and native thread/turn identity.
     Codex {
+        /// Explicit caller-selected native Unix socket path.
         path: PathBuf,
+        /// Exact native thread identifier bound to the attachment.
         thread: String,
+        /// Expected active turn identifier required for interrupt steering.
         turn: Option<String>,
     },
+    /// No native endpoint is attached.
     None,
 }
 #[derive(Debug, Clone)]
+/// Preflighted native endpoint bound to a specific process/session generation.
 pub struct NativeAttachment {
     binding: Binding,
     endpoint: Endpoint,
 }
 impl NativeAttachment {
+    /// Borrow the exact identity captured by this native attachment.
     pub fn binding(&self) -> &Binding {
         &self.binding
     }
 }
+/// Sendable asynchronous adapter operation borrowing its caller-owned session state.
 pub type AdapterFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+/// Caller delivery intent; queue scheduling and steering remain distinct.
 pub enum Priority {
+    /// Queue for the next opportunity; higher-level scheduling remains with the caller.
     Next,
+    /// Queue with later intent; this does not create a second native scheduler.
     Later,
+    /// Request steering only under explicit caller interrupt authority.
     Now,
 }
 /// Delivery evidence ends at native transport; model consumption is not implied.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Evidence {
+    /// Stored by the sender-side owner; no recipient receipt is established.
     SenderStored,
+    /// Retained by the recipient-side owner; native acceptance is not established.
     RecipientStored,
+    /// Verified native queue or steer admission; model consumption remains unverified.
     NativeQueued,
+    /// Frame written to the native transport; receiver acceptance remains unverified.
     NativeWritten,
+    /// Mutation may have occurred; query it without automatic retry or PTY fallback.
     NativeUnknown,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Native transport evidence and a named diagnostic for one stable delivery identity.
 pub struct WakeOutcome {
+    /// Transport-level evidence, without a claim of model consumption.
     pub evidence: Evidence,
+    /// Native queue or turn identifier returned by the transport, if one was verified.
     pub native_id: Option<String>,
+    /// Bounded diagnostic detail explaining the delivery evidence.
     pub note: String,
 }
 impl WakeOutcome {
+    /// Construct ambiguous native evidence that forbids automatic resubmission.
     pub fn unknown(note: impl Into<String>) -> Self {
         Self {
             evidence: Evidence::NativeUnknown,
@@ -211,19 +263,37 @@ impl WakeOutcome {
     }
 }
 
+/// Harness observation, launch and guarded native-delivery port; application policy stays with the caller.
 pub trait Adapter: Send + Sync {
+    /// Borrow the selected harness record.
     fn record(&self) -> &HarnessRecord;
+    /// Prepare isolated launch wiring on IO.
+    ///
+    /// # Errors
+    /// Returns record/path validation, overlay or serialization/IO failures.
     fn launch(&self, context: &LaunchContext<'_>) -> Result<LaunchPlan>;
+    /// List recognized observation-channel labels; this is not a live transport-availability claim.
     fn observe_channels(&self) -> &'static [&'static str];
+    /// Decode bounded terminal observations without granting off-terminal authority.
     fn on_osc(&mut self, params: &[Vec<u8>], sequence: u64, now_ms: u64) -> Vec<Observation>;
+    /// Project a native event after validating its session identity.
+    ///
+    /// # Errors
+    /// Returns invalid or mismatched native-event identity/shape failures.
     fn on_native(
         &mut self,
         event: &serde_json::Value,
         sequence: u64,
         now_ms: u64,
     ) -> Result<Vec<Observation>>;
+    /// Check current caller facts against positive, short-lived composer readiness.
     fn input_guard(&self, arbiter: &ArbiterView, now_ms: u64) -> Readiness;
+    /// Validate and attach an exact native process/session endpoint.
+    ///
+    /// # Errors
+    /// Returns process, ownership, endpoint, native identity or preflight failures.
     fn attach(&self, endpoint: Endpoint) -> AdapterFuture<'_, Result<NativeAttachment>>;
+    /// Attempt delivery under caller authority and return transport evidence; ambiguous outcomes are retained.
     fn wake<'a>(
         &'a mut self,
         attachment: &'a NativeAttachment,
@@ -251,6 +321,10 @@ impl Adapter for Session {
     fn on_osc(&mut self, params: &[Vec<u8>], sequence: u64, now_ms: u64) -> Vec<Observation> {
         self.osc(params, sequence, now_ms)
     }
+    /// Project a native event after validating its session identity.
+    ///
+    /// # Errors
+    /// Returns invalid or mismatched native-event identity/shape failures.
     fn on_native(
         &mut self,
         event: &serde_json::Value,
@@ -287,6 +361,7 @@ impl Adapter for Session {
             })
         })
     }
+    /// Attempt delivery under caller authority and return transport evidence; ambiguous outcomes are retained.
     fn wake<'a>(
         &'a mut self,
         attachment: &'a NativeAttachment,

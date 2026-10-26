@@ -4,7 +4,18 @@
 )]
 use std::{env, fs, path::PathBuf};
 fn main() {
-    let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("../..");
+    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let workspace = manifest.join("../..");
+    // Development consumes the canonical workspace inputs. Published crates
+    // carry the same bytes locally and do not read outside their package.
+    let root = if workspace.join("crates/bboxybook/Cargo.toml").canonicalize().ok()
+        == manifest.join("Cargo.toml").canonicalize().ok()
+    {
+        workspace
+    } else {
+        manifest.join("release-inputs")
+    };
+    println!("cargo:rustc-env=BBOXY_INPUT_ROOT={}", root.display());
     let source = root.join("lab/web/components.js");
     println!("cargo:rerun-if-changed={}", source.display());
     println!(

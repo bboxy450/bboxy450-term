@@ -108,27 +108,32 @@ impl<T: Default> Row<T> {
 #[allow(clippy::len_without_is_empty)]
 impl<T> Row<T> {
     #[inline]
+    /// Adopt cells and their caller-supplied occupied-prefix length without validation.
     pub fn from_vec(vec: Vec<T>, occ: usize) -> Row<T> {
         Row { inner: vec, occ }
     }
 
     #[inline]
+    /// Return the number of allocated cells in this row.
     pub fn len(&self) -> usize {
         self.inner.len()
     }
 
     #[inline]
+    /// Borrow the final cell, or return `None` for an empty row.
     pub fn last(&self) -> Option<&T> {
         self.inner.last()
     }
 
     #[inline]
+    /// Borrow the final cell mutably and mark the entire row potentially occupied.
     pub fn last_mut(&mut self) -> Option<&mut T> {
         self.occ = self.inner.len();
         self.inner.last_mut()
     }
 
     #[inline]
+    /// Move all cells from the vector to this row's end, leaving the vector empty.
     pub fn append(&mut self, vec: &mut Vec<T>)
     where
         T: GridCell,
@@ -138,6 +143,7 @@ impl<T> Row<T> {
     }
 
     #[inline]
+    /// Prepend the supplied cells and extend the occupied-prefix bookkeeping.
     pub fn append_front(&mut self, mut vec: Vec<T>) {
         self.occ += vec.len();
 
@@ -155,6 +161,10 @@ impl<T> Row<T> {
     }
 
     #[inline]
+    /// Remove and return the prefix before `at`, retaining the suffix in this row.
+    ///
+    /// # Panics
+    /// Panics if `at` exceeds the row length.
     pub fn front_split_off(&mut self, at: usize) -> Vec<T> {
         self.occ = self.occ.saturating_sub(at);
 

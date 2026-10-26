@@ -16,12 +16,15 @@ pub type Side = Direction;
 /// Horizontal direction.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Direction {
+    /// The horizontal direction toward smaller columns.
     Left,
+    /// The horizontal direction toward larger columns.
     Right,
 }
 
 impl Direction {
     #[must_use]
+    /// Return the other horizontal direction.
     pub fn opposite(self) -> Self {
         match self {
             Side::Right => Side::Left,
@@ -47,11 +50,14 @@ pub enum Boundary {
 /// Index in the grid using row, column notation.
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Point<L = Line, C = Column> {
+    /// Row coordinate in the selected line-coordinate type.
     pub line: L,
+    /// Column coordinate in the selected column-coordinate type.
     pub column: C,
 }
 
 impl<L, C> Point<L, C> {
+    /// Construct a coordinate pair without applying grid bounds.
     pub fn new(line: L, column: C) -> Point<L, C> {
         Point { line, column }
     }

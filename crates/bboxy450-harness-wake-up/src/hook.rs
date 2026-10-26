@@ -10,13 +10,22 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
 use std::time::{Duration, Instant};
 
+/// Maximum serialized bounded hook payload, in bytes.
 pub const MAX_RAW: usize = 64 * 1024;
+/// Maximum encoded terminal hook frame, in bytes.
 pub const MAX_OSC: usize = 4096;
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// Recognized hook event with selected bounded original JSON values.
 pub struct ShimEvent {
+    /// Recognized hook event name.
     pub event: String,
+    /// Selected bounded original hook values, not an assistant-generated summary.
     pub raw: Value,
 }
+/// Select known hook fields and bound background-task detail before encoding.
+///
+/// # Errors
+/// Refuses unknown/missing event names, non-object payloads, serialization failures or oversized payloads.
 pub fn prepare(mut raw: Value, agent: &str) -> Result<ShimEvent> {
     let event = raw
         .get("hook_event_name")
@@ -71,6 +80,10 @@ pub fn prepare(mut raw: Value, agent: &str) -> Result<ShimEvent> {
     }
     Ok(frame)
 }
+/// Encode a hook OSC frame, or return `None` when the terminal-frame bound would be exceeded.
+///
+/// # Errors
+/// Returns JSON encoding failures.
 pub fn osc(seat: Ulid, event: &ShimEvent) -> Result<Option<Vec<u8>>> {
     let payload = STANDARD.encode(serde_json::to_vec(&serde_json::json!({"raw":event.raw}))?);
     let bytes = format!(
@@ -80,6 +93,7 @@ pub fn osc(seat: Ulid, event: &ShimEvent) -> Result<Option<Vec<u8>>> {
     .into_bytes();
     Ok((bytes.len() <= MAX_OSC).then_some(bytes))
 }
+/// Return whether this event name belongs to a supported hook vocabulary.
 pub fn known(event: &str) -> bool {
     matches!(
         event,
@@ -146,6 +160,7 @@ pub(crate) fn parse(
         now_ms,
     )
 }
+/// Project a recognized bounded hook into the matching session; invalid observations are ignored.
 pub fn project(
     session: &mut Session,
     event: &ShimEvent,
@@ -348,6 +363,10 @@ pub fn run_cli(args: &[String], sink: &impl HookSink) {
 /// The caller authenticates and encodes its own fallback wire. The shared 50 ms
 /// deadline includes input, OSC and fallback delivery.
 pub trait HookSink {
+    /// Deliver a hook over the caller's authenticated fallback before its shared deadline.
+    ///
+    /// # Errors
+    /// Returns the caller transport's deadline, admission or delivery failure.
     fn send(&self, seat: Ulid, event: ShimEvent, until: Instant) -> Result<()>;
 }
 fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
@@ -428,6 +447,9 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
 }
 /// Write an already encoded caller frame to its Unix socket within the shim's
 /// deadline. No app protocol, capability or registration policy is interpreted.
+///
+/// # Errors
+/// Refuses unsafe endpoints, expired deadlines or socket IO failures.
 pub fn send_socket(path: &std::path::Path, bytes: &[u8], until: Instant) -> Result<()> {
     let mut stream = mio::net::UnixStream::connect(path)?;
     writable(stream.as_raw_fd(), until)?;

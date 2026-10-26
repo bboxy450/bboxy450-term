@@ -1,0 +1,189 @@
+# bboxy450-term design tokens. Single source for the web lab and the Rust build.
+# Colours are sRGB hex. Sizes are CSS px at 1x. Durations are ms.
+# Picked in .kb/ux-pick.md; palette lifted from ~/.agents/identity/bboxy.png.
+
+[meta]
+version = 1
+
+[font]
+chrome = "ui-sans-serif, -apple-system, 'Inter', 'Segoe UI', system-ui, sans-serif"
+mono = "ui-monospace, 'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace"
+
+[color.dark]
+bg = "#0B0B10"                # hoodie
+surface = "#12142A"           # sidebar pill fill
+surface_2 = "#1B1F3F"         # hover / elevated
+line = "#2A2F55"              # hairlines
+fg = "#F2EEE6"                # cream
+fg_dim = "#8A90B0"            # muted text
+accent = "#2E6BFF"            # electric
+accent_soft = "#7B8CFF"       # periwinkle
+navy = "#141A3C"
+sidebar = "#1A1E3C"           # sidebar ground: lighter than bg so the swarm blocks (surface) sit darker on it
+
+[color.light]
+bg = "#F4F3FF"
+surface = "#FFFFFF"
+surface_2 = "#ECEAFF"
+line = "#D6D4F0"
+fg = "#141A3C"
+fg_dim = "#6B7190"
+accent = "#2E6BFF"
+accent_soft = "#7B8CFF"
+navy = "#141A3C"
+sidebar = "#E6E4F5"           # sidebar ground: darker than bg so the white swarm blocks pop
+
+[color.state]
+idle = "#6B7190"
+waiting = "#FFB454"
+errored = "#FF4D5E"
+# active = the seat colour
+
+[color.role]
+oracle = "#FFC53D"
+executor = "#2E6BFF"
+creativity = "#B07BFF"
+architect = "#2EC4D6"              # designs the system and specs; architect-class = oracle-class for priority
+unsigned = "#6B7190"
+
+[color.ui]
+on_accent = "#FFFFFF"         # text and glyphs on accent, seat-colour strips and tiles
+ok = "#2EE6A8"                # done, accepted, signed, fixed
+invariant = "#F2C14E"         # invariant chips and ◆ lines
+
+[color.doc]                   # work-item type hues (documents, graph tree, diagrams legend)
+epic = "#B07BFF"
+spec = "#58A6FF"
+task = "#2EE6A8"
+bug = "#FF6B6B"
+note = "#9AA3C7"
+invariant = "#F2C14E"
+artifact = "#4FD1C5"
+
+[color.subject]               # event-bus subject roots (events.md)
+seat = "#2EE6A8"
+doc = "#58A6FF"
+task = "#B07BFF"
+swarm = "#FFC53D"
+ext = "#FF7A45"
+mux = "#9AA3C7"
+inbox = "#E96BFF"
+artifact = "#4FD1C5"
+dm = "#FF4FA3"
+channel = "#F2D16B"
+cloud = "#58D7FF"
+
+[seat_color]
+# hash(seat key) -> hue index, then lightness band. 36 hues x 2 bands = 72 distinct seat colours per theme.
+saturation = 72
+hue_steps = 36
+bands_dark = [62, 48]         # lightness per band on the dark theme
+bands_light = [46, 36]
+
+[density.touch]
+row_h = 44
+tab_h = 40
+glyph = 16
+icon = 20
+font = 15
+font_small = 13
+pad_x = 14
+gap = 8
+
+[density.comfortable]
+row_h = 28
+tab_h = 26
+glyph = 12
+icon = 16
+font = 13
+font_small = 11
+pad_x = 10
+gap = 6
+
+[density.cozy]
+# the showcase default: compact's footprint with macOS proportions (operator: "not XFCE")
+row_h = 24
+tab_h = 22
+glyph = 11
+icon = 14
+font = 12.5
+font_small = 11
+pad_x = 10
+gap = 5
+
+[density.compact]
+row_h = 20
+tab_h = 18
+glyph = 10
+icon = 12
+font = 12
+font_small = 10
+pad_x = 8
+gap = 4
+
+[radius]
+chip = 4
+grid = 3
+
+[layout]
+cohort_gap = 8                # px of air between cohort blocks in the sidebar
+gutter = 4                    # px between panes = the rim size (glow.rim), so neighbours' outer rim halves meet; follows the Rim size setting; the stage inset is half of it (operator 2026-10-23: "half / half, gap grows with the rim, outer halves meet")
+
+[sidebar]
+width = 260
+width_compact = 220
+edge = 2                      # px, the sidebar's left inset from the window edge
+minigrid_w = 24
+minigrid_h = 16
+collapse_glyphs = 6           # rolled-up glyphs shown per collapsed row before the ellipsis
+
+[strip]
+height = 22
+border_idle = 1
+border_active = 2
+
+[glow]
+# Border glow spec (.kb/ux-pick.md): particle glow in the seat colour, four readings, one shader.
+rim = 4                       # px, the alive rim's default size, centred on the pane border: half outside, half inside (operator 2026-10-23: "rim size configurable from 2 to 8 px, half of size on each side"); Settings › Appearance › Rim size
+rim_min = 2                   # Rim size range
+rim_max = 8
+swell = 40                    # px the focus swell reaches past the rim's outer edge at its peak (operator 2026-10-23: "40px swell is fucking perfect!"; rim-glow §7)
+swell_ms = 900                # the swell's whole life: reach(t) = swell · sin(π t / swell_ms); a waiting seat's attention loop repeats it (attention §2)
+depth = 8                     # px the bloom reaches inside the pane, fixed (the setting is the rim size now); clipped to the content padding (cell edge rule)
+depth_min = 2                 # retiring: the Settings row is the rim size now; kept until the native Settings row (G3) stops reading it
+depth_max = 8
+pane_radius = 14              # px, blur radius at the pane border
+row_radius = 4                # px, sidebar row glow radius; rows sit 20 px apart so halos must not meet
+row_alpha = 0.3               # sidebar rows get this fraction of the pane glow alpha (operator: colours mix into dirt)
+row_particles_active = 4      # particles on an active sidebar row; other states get none
+row_idle = false              # idle rows do not glow at all in the sidebar
+idle_alpha = 0.12             # idle / done: very mild, static
+active_alpha_min = 0.25       # active: pulsates between min and max
+active_alpha_max = 0.70
+active_pulse_ms = 1800        # breathing rate for active
+waiting_alpha_min = 0.25      # waiting: pulsates amber at motion.pulse_ms (1 Hz)
+waiting_alpha_max = 0.80
+errored_alpha = 0.45          # errored: static, red tint
+focused_boost = 1.6           # focused multiplies alpha at every state (clamped to 1)
+particles_idle = 6            # emitter count per pane, scales with activity
+particles_active = 40
+particle_speed = 18           # px per second along the border
+particle_size = 2.2           # px
+
+[dim]
+# Unfocused panes grey out like iTerm2 (ux-pick, 2026-10-21). Content and strip desaturate and fade; the border and
+# the glow keep the seat colour so identity survives.
+saturate = 0.10               # 1 = full colour, 0 = grey; applied to strip and content of unfocused panes
+opacity = 0.45                # content and strip opacity on unfocused panes
+wash = 0.28                   # how much fg_dim is mixed into the unfocused pane background (operator: +20% grey)
+
+[window]
+opacity = 1.0                 # window alpha behind panes, 0.5 to 1.0 (renderer.md §1b); chrome and text stay opaque
+opacity_min = 0.5
+blur = false                  # blur what is behind the window (NSVisualEffectView on macOS)
+blur_radius = 20              # px
+
+[motion]
+pulse_ms = 1000               # waiting-on-input, 1 Hz
+ripple_ms = 400
+hover_ms = 120

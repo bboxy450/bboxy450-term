@@ -32,7 +32,7 @@ include!(concat!(env!("OUT_DIR"), "/icons.rs"));
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub fn images() -> Result<Assets> {
     let mut images = Vec::new();
-    let (width, height, rgba) = read_png_bytes(include_bytes!("../../../lab/web/bboxy.png"))?;
+    let (width, height, rgba) = read_png_bytes(include_bytes!(concat!(env!("BBOXY_INPUT_ROOT"), "/lab/web/bboxy.png")))?;
     images.push(Image {
         name: "bboxy".into(),
         width,

@@ -1,5 +1,6 @@
 [package]
-name = "bbt-mermaid"
+readme = "README.md"
+name = "bboxy450-mermaid"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,3 +10,6 @@ rust-version.workspace = true
 description = "Mermaid flowchart and sequence diagrams: parse and lay out to plain geometry, no rendering"
 
 [dependencies]
+
+[lib]
+name = "bbt_mermaid"

@@ -1,6 +1,6 @@
 //! Debug dump: lay out every `.mmd` under the given directories and write one SVG each.
 //!
-//!     cargo run -p bbt-mermaid --example dump_svg -- OUT_DIR FIXTURE_DIR...
+//!     cargo run -p bboxy450-mermaid --example dump_svg -- OUT_DIR FIXTURE_DIR...
 
 #![allow(clippy::disallowed_methods, reason = "dev tool and test fixture IO, not the UI thread")]
 

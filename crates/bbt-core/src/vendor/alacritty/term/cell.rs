@@ -19,24 +19,43 @@ const MAX_ZEROWIDTH_CHARS: usize = 9;
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     #[derive(Serialize, Deserialize)]
+    /// Cell rendition, underline, wrapping and wide-character layout flags.
     pub struct Flags: u16 {
+        /// Swap foreground and background for rendering.
         const INVERSE                   = 0b0000_0000_0000_0001;
+        /// Use bold rendition.
         const BOLD                      = 0b0000_0000_0000_0010;
+        /// Use italic rendition.
         const ITALIC                    = 0b0000_0000_0000_0100;
+        /// Combined bold and italic rendition.
         const BOLD_ITALIC               = 0b0000_0000_0000_0110;
+        /// Use a single underline.
         const UNDERLINE                 = 0b0000_0000_0000_1000;
+        /// This row continues into the following row.
         const WRAPLINE                  = 0b0000_0000_0001_0000;
+        /// Leading cell of a full-width character.
         const WIDE_CHAR                 = 0b0000_0000_0010_0000;
+        /// Trailing cell reserved by a full-width character.
         const WIDE_CHAR_SPACER          = 0b0000_0000_0100_0000;
+        /// Use dim rendition.
         const DIM                       = 0b0000_0000_1000_0000;
+        /// Combined dim and bold rendition.
         const DIM_BOLD                  = 0b0000_0000_1000_0010;
+        /// Suppress the character while retaining its cell.
         const HIDDEN                    = 0b0000_0001_0000_0000;
+        /// Use a strike-through line.
         const STRIKEOUT                 = 0b0000_0010_0000_0000;
+        /// Spacer preceding a wrapped full-width character.
         const LEADING_WIDE_CHAR_SPACER  = 0b0000_0100_0000_0000;
+        /// Use a double underline.
         const DOUBLE_UNDERLINE          = 0b0000_1000_0000_0000;
+        /// Use a curled underline.
         const UNDERCURL                 = 0b0001_0000_0000_0000;
+        /// Use a dotted underline.
         const DOTTED_UNDERLINE          = 0b0010_0000_0000_0000;
+        /// Use a dashed underline.
         const DASHED_UNDERLINE          = 0b0100_0000_0000_0000;
+        /// Union of supported underline-style flags.
         const ALL_UNDERLINES            = Self::UNDERLINE.bits() | Self::DOUBLE_UNDERLINE.bits()
                                         | Self::UNDERCURL.bits() | Self::DOTTED_UNDERLINE.bits()
                                         | Self::DASHED_UNDERLINE.bits();
@@ -46,21 +65,25 @@ bitflags! {
 /// Counter for hyperlinks without explicit ID.
 static HYPERLINK_ID_SUFFIX: AtomicU32 = AtomicU32::new(0);
 
+/// Reference-counted hyperlink metadata shared by terminal cells.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Hyperlink {
     inner: Arc<HyperlinkInner>,
 }
 
 impl Hyperlink {
+    /// Store hyperlink metadata, deriving a local identifier when none is provided.
     pub fn new<T: ToString>(id: Option<T>, uri: String) -> Self {
         let inner = Arc::new(HyperlinkInner::new(id, uri));
         Self { inner }
     }
 
+    /// Borrow the hyperlink's stable local identifier.
     pub fn id(&self) -> &str {
         &self.inner.id
     }
 
+    /// Borrow the stored URI without opening or validating its destination.
     pub fn uri(&self) -> &str {
         &self.inner.uri
     }
@@ -91,6 +114,7 @@ struct HyperlinkInner {
 }
 
 impl HyperlinkInner {
+    /// Store hyperlink metadata, deriving a local identifier when none is provided.
     pub fn new<T: ToString>(id: Option<T>, uri: String) -> Self {
         let id = match id {
             Some(id) => id.to_string(),
@@ -140,10 +164,15 @@ pub struct CellExtra {
 /// Content and attributes of a single cell in the terminal grid.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Cell {
+    /// Base Unicode character occupying this cell.
     pub c: char,
+    /// Foreground color selection.
     pub fg: Color,
+    /// Background color selection.
     pub bg: Color,
+    /// Rendition and cell-layout flags.
     pub flags: Flags,
+    /// Optional shared combining-character and hyperlink data.
     pub extra: Option<Arc<CellExtra>>,
 }
 

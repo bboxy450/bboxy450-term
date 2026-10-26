@@ -1,4 +1,4 @@
-# bbt-yarn
+# bboxy450-yarn
 
 ## What it is
 
@@ -120,7 +120,7 @@ async fn main() {
 ```
 
 The same executable is `examples/minimal.rs`:
-`cargo run -p bbt-yarn --example minimal`.
+`cargo run -p bboxy450-yarn --example minimal`.
 
 ## Recipes
 
@@ -220,3 +220,11 @@ K0 diagnostic identifiers are provisional but semantic anchors are tested.
 
 Compile-fail fixtures under `crates/bbt-yarn/tests/ui` are the executable repair
 reference. Compile-pass negative controls live beside them under `ui-pass`.
+
+## Dependency name
+
+The Rust library name remains `bbt_yarn`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-yarn = { package = "bboxy450-yarn", version = "0.1.0" }
+```

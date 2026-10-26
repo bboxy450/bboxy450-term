@@ -13,10 +13,10 @@ metadata={'workspace_root':str(fixture),'workspace_members':[],'packages':[]}
 
 def member(name,directory,license):
  path=fixture/directory;path.mkdir(parents=True);(path/'Cargo.toml').write_text('# disposable metadata fixture\n')
- for filename in (['LICENSE-APACHE','NOTICE']if name=='bbt-core'else['LICENSE-MIT','LICENSE-APACHE']):(path/filename).write_bytes((workspace/filename).read_bytes())
+ for filename in (['LICENSE-APACHE','NOTICE']if name=='bboxy450-term-core'else['LICENSE-MIT','LICENSE-APACHE']):(path/filename).write_bytes((workspace/filename).read_bytes())
  package={'id':name,'name':name,'manifest_path':str(path/'Cargo.toml'),'license':license,'license_file':None};metadata['packages'].append(package);metadata['workspace_members'].append(name);return package,path
 
-core,corepath=member('bbt-core','crates/bbt-core','Apache-2.0');ours,ourpath=member('bbt-ui','members/bbt-ui','MIT OR Apache-2.0')
+core,corepath=member('bboxy450-term-core','crates/bbt-core','Apache-2.0');ours,ourpath=member('bboxy450-ui','members/bbt-ui','MIT OR Apache-2.0')
 for name in ['alacritty/LICENSE-APACHE','vte/LICENSE-MIT','vte/LICENSE-APACHE']:
  file=corepath/'src/vendor'/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes((workspace/'crates/bbt-core/src/vendor'/name).read_bytes())
 meta=root/'fixture-metadata.json';cargo=bindir/'cargo';cargo.write_text('''#!/usr/bin/env python3
@@ -31,7 +31,7 @@ with(root/'script-fixtures.log').open('w')as log:
   meta.write_text(json.dumps(metadata));p=subprocess.run(['sh',str(script)],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True);log.write(f'CASE {name}\n{p.stdout}EXIT {p.returncode}; expected {expected}\n');log.flush();print(name,p.returncode,flush=True);assert p.returncode==expected,(name,p.stdout)
   if reason:assert reason in p.stdout,(name,p.stdout)
  check('Yarn absent',0)
- yarn,yarnpath=member('bbt-yarn','members/bbt-yarn','MIT OR Apache-2.0');macros,macrospath=member('bbt-yarn-macros','members/bbt-yarn-macros','MIT OR Apache-2.0');check('Yarn and macros present',0)
+ yarn,yarnpath=member('bboxy450-yarn','members/bbt-yarn','MIT OR Apache-2.0');macros,macrospath=member('bboxy450-yarn-macros','members/bbt-yarn-macros','MIT OR Apache-2.0');check('Yarn and macros present',0)
  file=yarnpath/'LICENSE-MIT';saved=file.read_bytes();file.unlink()
  try:check('present Yarn missing MIT',1,'bbt-yarn/LICENSE-MIT')
  finally:file.write_bytes(saved)
@@ -73,8 +73,8 @@ with(root/'script-fixtures.log').open('w')as log:
  finally:
   metadata['packages'].remove(unknown);metadata['workspace_members'].remove('bbt-unmapped');shutil.rmtree(unknownpath)
  check('all restored',0)
- proto,protopath=member('bbt-proto','members/bbt-proto','MIT OR Apache-2.0')
- mux,muxpath=member('bbt-mux','members/bbt-mux','MIT OR Apache-2.0')
+ proto,protopath=member('bboxy450-proto','members/bbt-proto','MIT OR Apache-2.0')
+ mux,muxpath=member('bboxy450-mux','members/bbt-mux','MIT OR Apache-2.0')
  check('escaped aliases before SPDX keep the license column',0)
  original=mapfile.read_text()
  linked=original.replace(r"internal until decision [[d8-open-source\|#8]]'s plateau",r"internal [[d8-open-source\|#8]] then [[d47-decision-nodes\|nodes]] with [[d48-every-record-has-a-number\|decides\|2]]")

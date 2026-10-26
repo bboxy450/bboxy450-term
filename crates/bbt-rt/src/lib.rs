@@ -1,8 +1,6 @@
-//! One IO runtime, with bounded memory-only handoffs to the UI.
-//!
-//! With the default `runtime` feature, call `init_ui` once at app startup.
-//! The app implements [`Waker`] using its
-//! event-loop proxy; no winit or renderer dependency belongs in this crate.
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
 
 #[cfg(feature = "runtime")]
 use std::sync::Arc;
@@ -39,6 +37,9 @@ static UI_BLOCKING_VIOLATIONS: AtomicU64 = AtomicU64::new(0);
 static COMMANDS: OnceLock<CommandRunner> = OnceLock::new();
 
 /// Start the process-wide two-worker IO runtime, or return the existing handle.
+///
+/// # Panics
+/// Panics if Tokio cannot create the runtime and its worker threads.
 #[cfg(feature = "runtime")]
 pub fn handle() -> &'static Handle {
     RUNTIME
@@ -54,6 +55,9 @@ pub fn handle() -> &'static Handle {
 }
 
 /// Register the UI thread at startup. A different thread cannot replace it.
+///
+/// # Panics
+/// Panics when another thread already owns the UI registration.
 pub fn register_ui_thread() {
     let current = thread::current().id();
     assert_eq!(
@@ -63,6 +67,7 @@ pub fn register_ui_thread() {
     );
 }
 
+/// Return whether the caller is the registered UI thread; false before registration.
 pub fn is_ui_thread() -> bool {
     UI_THREAD
         .get()
@@ -70,6 +75,9 @@ pub fn is_ui_thread() -> bool {
 }
 
 /// Guard a blocking IO entry point; the panic points to its caller.
+///
+/// # Panics
+/// In debug builds, panics and counts a violation when called on the registered UI thread.
 #[track_caller]
 pub fn assert_not_ui_thread() {
     if cfg!(debug_assertions) && is_ui_thread() {
@@ -87,14 +95,21 @@ pub fn ui_blocking_violations() -> u64 {
 /// Memory-only state the UI drains at frame start, under its own time budget.
 #[cfg(feature = "runtime")]
 pub struct UiInbox {
+    /// Bounded endpoint given to producers of individual UI messages.
     pub sender: UiSender,
+    /// Consumer endpoint drained by the registered UI owner.
     pub messages: UiReceiver,
+    /// Disposable command-output history; inspect its dropped counter for eviction.
     pub output: ViewRing<OutputChunk>,
+    /// Wake-source registry shared by the queues and application producers.
     pub dirty: DirtySet,
 }
 
 /// Startup only. Source 0 is messages, source 1 is command output; the remaining
 /// sources are available for parsers, stores and other app producers.
+///
+/// # Panics
+/// Panics on a second initialization, a conflicting UI-thread registration or runtime startup failure.
 #[cfg(feature = "runtime")]
 pub fn init_ui(waker: impl Waker) -> UiInbox {
     register_ui_thread();

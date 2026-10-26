@@ -133,7 +133,7 @@ fn capture_crash_child() {
 
 // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
-#[ignore = "release crash gate: cargo test -p bbt-supervisor --release --lib capture_sigkill -- --ignored --nocapture"]
+#[ignore = "release crash gate: cargo test -p bboxy450-harness-host --release --lib capture_sigkill -- --ignored --nocapture"]
 fn capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost() {
     use std::os::unix::process::ExitStatusExt;
     let count = crash_seats();

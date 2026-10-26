@@ -4,7 +4,7 @@ number: 149
 type: invariant
 title: every key a pane receives is encoded once, by the kitty keyboard protocol against the seat's live mode
 status: active
-check: cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a key that reaches the PTY by a second path, or encoded against a stale mode, is a terminal that lies to the program inside it
 links:
   - { to: "[[d32-kitty-keyboard]]", rel: decision }
@@ -32,7 +32,7 @@ PTY:** paste, operator typing and injected text all pass through the same
 encoder or are bytes the encoder never sees (bracketed paste is wrapped, not
 encoded). bbt-core already keeps the stacks (`C/lib.rs:77` `kitty_keyboard: true`).
 
-**Check.** `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-term-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The pipe is deliberate: a filter that matches no test exits 0 in
 cargo, so the check demands that exactly this named test ran and passed. The exact core-library test covers all 32 flag sets, a real Term's
 push/pop/query and alternate-screen stacks and legacy vectors. The exact app-library

@@ -4,7 +4,7 @@ number: 153
 type: invariant
 title: the glow rim never covers a text cell
 status: active
-check: cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a glow that touches text makes the terminal unreadable at the edge; a glow that moves layout breaks parity for every pane case
 links:
   - { to: "[[rim-glow]]", rel: constrains }
@@ -23,7 +23,7 @@ or the stage inset, which hold no content, and no cell pixel receives glow
 ([[rim-glow]] §1, §3). The whole band is measured,
 never the rim core alone (`glow.rim`, 4 px since 2026-10-23; the width is a token, not a fixed 2).
 
-**Check.** `cargo test -p bbt-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-ui --locked --lib rim_never_covers_text -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The grep demands that exactly this named test ran and passed
 (a cargo filter matching nothing exits 0). G1 creates the test; its commit
 removes `slow` and `gate` from this file so it joins the default set.

@@ -237,7 +237,7 @@ os._exit(0)
 
 // keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
-#[ignore = "W1.2e before/after: GATE_SEATS=967 cargo test --release -p bbt-supervisor --test reaping -- --ignored --nocapture"]
+#[ignore = "W1.2e before/after: GATE_SEATS=967 cargo test --release -p bboxy450-harness-host --test reaping -- --ignored --nocapture"]
 fn exit_events_at_machine_scale() {
     let n = std::env::var("GATE_SEATS")
         .map(|n| n.parse().unwrap())

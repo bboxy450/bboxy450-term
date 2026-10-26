@@ -1,12 +1,6 @@
-//! Terminal grid and parser, independent of PTYs, rendering and process ownership.
-//!
-//! ```
-//! // keeps: spec terminal-core §D1
-//! use bbt_core::{Column, Line, Term};
-//! let mut term = Term::new(80, 24, 0);
-//! term.advance(b"hello");
-//! assert_eq!(term.grid()[Line(0)][Column(0)].c, 'h');
-//! ```
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
 
 use std::mem;
 use std::sync::Arc;
@@ -45,7 +39,7 @@ type OscHook = Box<dyn Fn(&[&[u8]]) + Send + Sync>;
 
 /// A complete model/parser snapshot, including incomplete input and both cursors.
 ///
-/// Runtime listeners, callbacks and queued output events are excluded. The mux must
+/// Runtime listeners, callbacks and queued output events are excluded. The embedding host must
 /// version and validate its enclosing checkpoint record before restoring it.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Checkpoint {
@@ -64,6 +58,9 @@ pub struct Term {
 
 impl Term {
     /// Construct a grid with an explicit bounded scrollback limit.
+    ///
+    /// # Panics
+    /// Panics if there are fewer than two columns or fewer than one visible row.
     pub fn new(cols: usize, rows: usize, history_size: usize) -> Self {
         assert!(
             cols >= term::MIN_COLUMNS,
@@ -92,6 +89,9 @@ impl Term {
     /// Construct a replay terminal without the upstream 1000-row allocation
     /// cache. A zero spare-row budget allocates only actual retained rows.
     /// Ordinary live terminals keep the unchanged [`Term::new`] policy.
+    ///
+    /// # Panics
+    /// Panics for dimensions rejected by `Term::new`.
     pub fn new_with_spare_rows(
         cols: usize,
         rows: usize,
@@ -163,6 +163,7 @@ impl Term {
         self.collect_events();
     }
 
+    /// Borrow the active grid, including its bounded retained history.
     pub fn grid(&self) -> &Grid<Cell> {
         self.model.grid()
     }
@@ -181,6 +182,7 @@ impl Term {
         self.model.viewport_only();
     }
 
+    /// Borrow the active terminal-mode bitset.
     pub fn mode(&self) -> &term::TermMode {
         self.model.mode()
     }
@@ -195,6 +197,7 @@ impl Term {
         self.model.cursor_style()
     }
 
+    /// Clone model and parser state without live callbacks or queued output effects.
     pub fn checkpoint(&self) -> Checkpoint {
         let mut model = self.model.clone();
         model.replace_event_proxy(Events::default());
@@ -227,6 +230,7 @@ impl Term {
         mem::take(&mut self.events)
     }
 
+    /// Return whether synchronized-output parsing retains an unfinished batch.
     pub fn sync_pending(&self) -> bool {
         self.processor.sync_pending()
     }
@@ -236,6 +240,7 @@ impl Term {
         self.processor.sync_timeout().sync_timeout()
     }
 
+    /// Finish buffered synchronized output and collect its newly generated events.
     pub fn stop_sync(&mut self) {
         self.processor.stop_sync(&mut self.model);
         self.collect_events();

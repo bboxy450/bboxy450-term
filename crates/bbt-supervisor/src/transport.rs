@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 
 use crate::protocol::{Frame, Message, Request, VERSION};
 
+/// Largest accepted JSON frame body, excluding its four-byte length prefix.
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
 pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize = 4 * MAX_FRAME_BYTES;
 // The serial supervisor client has one outstanding request. Keep room for its
@@ -28,6 +29,10 @@ fn invalid(message: impl std::fmt::Display) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.to_string())
 }
 
+/// Serialize one current-version frame with its big-endian body-length prefix.
+///
+/// # Errors
+/// Refuses another protocol version, serialization failure or an empty/oversized frame.
 pub fn encode<T: Serialize>(frame: &Frame<T>) -> io::Result<Vec<u8>> {
     if frame.version != VERSION {
         return Err(invalid("unsupported supervisor protocol version"));
@@ -58,7 +63,10 @@ fn checked_length(bytes: [u8; 4]) -> io::Result<usize> {
     Ok(len)
 }
 
-/// Blocking helper for a future split-process client. Length checked before allocation.
+/// Read one complete frame, checking its length before allocation.
+///
+/// # Errors
+/// Returns reader, truncated-frame, length, JSON or protocol-version failures.
 pub fn read_frame<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<Frame<T>> {
     let mut header = [0; 4];
     reader.read_exact(&mut header)?;
@@ -68,6 +76,10 @@ pub fn read_frame<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<Fra
     decode_body(&body)
 }
 
+/// Write one complete encoded frame on the caller's blocking IO owner.
+///
+/// # Errors
+/// Returns encoding, size, version or writer IO failures.
 pub fn write_frame<T: Serialize>(writer: &mut impl Write, frame: &Frame<T>) -> io::Result<()> {
     writer.write_all(&encode(frame)?)
 }
@@ -90,6 +102,10 @@ impl<T> Default for Decoder<T> {
 }
 
 impl<T: DeserializeOwned> Decoder<T> {
+    /// Consume available bytes and return all complete frames, retaining an incomplete tail.
+    ///
+    /// # Errors
+    /// Refuses invalid lengths, JSON payloads or protocol versions.
     pub fn push(&mut self, mut bytes: &[u8]) -> io::Result<Vec<Frame<T>>> {
         let mut frames = Vec::new();
         while !bytes.is_empty() {
@@ -114,12 +130,17 @@ impl<T: DeserializeOwned> Decoder<T> {
         Ok(frames)
     }
 
+    /// Return whether no partial header or body remains buffered.
     pub fn is_empty(&self) -> bool {
         self.buffer.is_empty() && self.body_len.is_none()
     }
 }
 
-/// Private per-user control endpoint. Nothing binds here merely by using the crate.
+/// Compute the original integration's per-user control path; no endpoint is opened.
+/// Independent hosts can supply an explicit path to their configuration.
+///
+/// # Errors
+/// Returns NotFound when the required platform runtime-directory environment is absent.
 pub fn default_socket_path() -> io::Result<PathBuf> {
     #[cfg(target_os = "macos")]
     let base = std::env::var_os("HOME")

@@ -4,7 +4,7 @@ number: 144
 type: invariant
 title: every .bboxy frontmatter parses
 status: active
-check: cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact
+check: cargo test -p bboxy450-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact
 cost: a record the reader cannot parse is invisible to the index, the viewer and every graph built on them
 links:
   - { to: "[[work-items]]", rel: constrains }
@@ -21,7 +21,7 @@ turns into a mapping or a comment). Found by the operator's own document
 reader on 2026-10-22 in two spec titles; the records are the product's data,
 so a parse failure is a product bug.
 
-**Check.** `cargo test -p bbt-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact`
+**Check.** `cargo test -p bboxy450-doc --locked --test corpus real_bboxy_frontmatter_parses -- --exact`
 (`crates/bbt-doc/tests/corpus.rs:53`): the document reader's own parser walks
 every tracked Markdown file under `.bboxy/` and fails with `path:line` on a
 frontmatter it cannot parse or that lacks `id:` or `type:`. Exit 0 held. Part of

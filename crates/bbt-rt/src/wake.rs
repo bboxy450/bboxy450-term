@@ -5,6 +5,7 @@ use std::sync::{
 
 /// An app's non-blocking event-loop wake (for example EventLoopProxy).
 pub trait Waker: Send + Sync + 'static {
+    /// Post an immediate event-loop notice without waiting for the UI owner.
     fn wake(&self);
     /// Service non-visual work on the app's bounded deadline. Consumers without
     /// a display loop may service it immediately.
@@ -26,9 +27,11 @@ struct Shared {
     waker: Arc<dyn Waker>,
 }
 
+/// Shared indexed wake sources with coalesced event admission.
 #[derive(Clone)]
 pub struct DirtySet(Arc<Shared>);
 
+/// A producer handle for one source and its immediate, paint or deferred policy.
 #[derive(Clone)]
 pub struct DirtySource {
     shared: Arc<Shared>,
@@ -52,6 +55,10 @@ impl Shared {
 }
 
 impl DirtySet {
+    /// Allocate a fixed source registry and retain the application wake port.
+    ///
+    /// # Panics
+    /// Panics if `sources` is zero.
     pub fn new(sources: usize, waker: Arc<dyn Waker>) -> Self {
         assert!(sources > 0);
         Self(Arc::new(Shared {
@@ -68,16 +75,28 @@ impl DirtySet {
         }))
     }
 
+    /// Get an immediate source coalesced until the registry is drained.
+    ///
+    /// # Panics
+    /// Panics if `index` is outside this registry.
     pub fn source(&self, index: usize) -> DirtySource {
         self.with_mode(index, Mode::Immediate)
     }
 
     /// Coalesce publications until their consumer completes a real draw.
+    /// Bind this source to a queue whose consumer calls `complete_drain`.
+    ///
+    /// # Panics
+    /// Panics if `index` is outside this registry.
     pub fn paint_source(&self, index: usize) -> DirtySource {
         self.with_mode(index, Mode::Retained)
     }
 
     /// Coalesce non-visual publications until a bounded consumer drain.
+    /// The host must service its deferred wake within its own bounded deadline.
+    ///
+    /// # Panics
+    /// Panics if `index` is outside this registry.
     pub fn deferred_source(&self, index: usize) -> DirtySource {
         assert!(index < self.0.sources);
         self.0.words[index / 64]
@@ -120,6 +139,7 @@ impl DirtySet {
 }
 
 impl DirtySource {
+    /// Publish this source according to its wake policy; never wait for its consumer.
     pub fn mark(&self) {
         let row = &self.shared.words[self.index / 64];
         let bit = 1 << (self.index % 64);

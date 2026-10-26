@@ -4,7 +4,7 @@ number: 152
 type: invariant
 title: glow depth never moves layout
 status: active
-check: cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a glow that touches text makes the terminal unreadable at the edge; a glow that moves layout breaks parity for every pane case
 links:
   - { to: "[[rim-glow]]", rel: constrains }
@@ -22,7 +22,7 @@ by design (gutter = R, inset = R/2, operator 2026-10-23), and
 [[rim-size-is-layout]] bounds exactly what it may move; this invariant was
 "glow settings never move layout" until that pick narrowed it to depth.
 
-**Check.** `cargo test -p bbt-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-ui --locked --lib glow_never_moves_layout -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held; same named-test rule as above. G1 creates it.
 
 **Cost of a violation.** A slider that moves panes breaks strict geometry parity

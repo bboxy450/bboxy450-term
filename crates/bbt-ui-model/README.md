@@ -1,4 +1,4 @@
-# bbt-ui-model — W3.2a
+# bboxy450-ui-core — W3.2a
 
 The first three steps of [[gui-components]]: compile-time tokens, renderer-free
 model/tree edits and logical-pixel layout. Reference: `ux-prototype-v2`, before
@@ -42,7 +42,7 @@ solver at mini-grid/banner scales. At 1000 seat rows a 240 px viewport allocates
 
 Verified locally, 2026-10-21: **28 model/layout/token tests**, **162 workspace
 tests**, `cargo build --workspace --locked`, clippy with `-D warnings`, fmt and
-whitespace checks all passed. `cargo tree -p bbt-ui-model --edges normal
+whitespace checks all passed. `cargo tree -p bboxy450-ui-core --edges normal
 --locked` lists only this crate. Actual output: `.bboxy/runs/w3-2a-final-*.log`.
 
 Lab differences and remaining behaviour:
@@ -73,3 +73,11 @@ Lab differences and remaining behaviour:
   override. CSS colour-string parsing and showcase palette/theme overrides
   belong to the renderer/fixture caller. No real-font, phone-device, Linux or
   hosted-CI check was performed by this pass.
+
+## Dependency name
+
+The Rust library name remains `bbt_ui_model`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.0" }
+```

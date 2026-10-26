@@ -195,16 +195,34 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bboxy-firehose"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
- "bbt-core",
+ "bboxy450-term-core",
  "libc",
  "serde_json",
 ]
 
 [[package]]
+name = "bboxy450-book"
+version = "0.1.0"
+dependencies = [
+ "bboxy450-doc",
+ "bboxy450-render",
+ "bboxy450-ui",
+ "bboxy450-ui-core",
+ "png",
+ "pollster",
+ "regex",
+ "resvg",
+ "serde",
+ "serde_json",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "bboxy450-desktop-notifications"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bboxy450-desktop-notifications-linux",
  "bboxy450-desktop-notifications-macos",
@@ -213,11 +231,11 @@ dependencies = [
 
 [[package]]
 name = "bboxy450-desktop-notifications-linux"
-version = "0.0.1"
+version = "0.1.0"
 
 [[package]]
 name = "bboxy450-desktop-notifications-macos"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "block2 0.6.2",
  "objc2 0.6.5",
@@ -227,15 +245,48 @@ dependencies = [
 
 [[package]]
 name = "bboxy450-desktop-notifications-windows"
-version = "0.0.1"
+version = "0.1.0"
+
+[[package]]
+name = "bboxy450-doc"
+version = "0.1.0"
+dependencies = [
+ "bboxy450-mermaid",
+ "bboxy450-ui",
+ "bboxy450-ui-core",
+ "pulldown-cmark",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "bboxy450-harness-host"
+version = "0.1.0"
+dependencies = [
+ "bboxy450-rt",
+ "bboxy450-term-core",
+ "getrandom 0.3.4",
+ "libc",
+ "mio",
+ "portable-pty",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "ulid",
+ "zstd",
+]
 
 [[package]]
 name = "bboxy450-harness-wake-up"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "base64",
- "bbt-core",
- "bbt-rt",
+ "bboxy450-rt",
+ "bboxy450-term-core",
  "futures-util",
  "libc",
  "mio",
@@ -249,14 +300,14 @@ dependencies = [
 
 [[package]]
 name = "bboxy450-keychain"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bboxy450-keychain-file",
 ]
 
 [[package]]
 name = "bboxy450-keychain-file"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "bboxy450-keychain-windows",
  "getrandom 0.3.4",
@@ -267,110 +318,28 @@ dependencies = [
 
 [[package]]
 name = "bboxy450-keychain-windows"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "windows-sys 0.61.2",
 ]
 
 [[package]]
-name = "bboxy450-term"
-version = "0.0.1"
-dependencies = [
- "bboxy450-desktop-notifications",
- "bbt-core",
- "bbt-doc",
- "bbt-mux",
- "bbt-proto",
- "bbt-render",
- "bbt-rt",
- "bbt-ui",
- "bbt-ui-model",
- "block2 0.6.2",
- "ed25519-dalek 3.0.0",
- "libc",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "objc2-metal 0.3.2",
- "objc2-quartz-core 0.3.2",
- "png",
- "regex",
- "resvg",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml_edit",
- "wgpu",
- "winit",
-]
+name = "bboxy450-mermaid"
+version = "0.1.0"
 
 [[package]]
-name = "bboxybook"
-version = "0.0.1"
-dependencies = [
- "bbt-doc",
- "bbt-render",
- "bbt-ui",
- "bbt-ui-model",
- "png",
- "pollster",
- "regex",
- "resvg",
- "serde",
- "serde_json",
- "wgpu",
- "winit",
-]
-
-[[package]]
-name = "bbt-core"
-version = "0.0.1"
-dependencies = [
- "arrayvec",
- "base64",
- "bitflags 2.13.2",
- "cursor-icon",
- "log",
- "memchr",
- "parking_lot",
- "serde",
- "serde-big-array",
- "serde_json",
- "unicode-width",
-]
-
-[[package]]
-name = "bbt-doc"
-version = "0.0.1"
-dependencies = [
- "bbt-mermaid",
- "bbt-ui",
- "bbt-ui-model",
- "pulldown-cmark",
- "serde",
- "serde_json",
- "serde_yaml",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "bbt-mermaid"
-version = "0.0.1"
-
-[[package]]
-name = "bbt-mux"
-version = "0.0.1"
+name = "bboxy450-mux"
+version = "0.1.0"
 dependencies = [
  "base64",
+ "bboxy450-doc",
+ "bboxy450-harness-host",
  "bboxy450-harness-wake-up",
  "bboxy450-keychain",
- "bbt-core",
- "bbt-doc",
- "bbt-plugin",
- "bbt-proto",
- "bbt-rt",
- "bbt-supervisor",
+ "bboxy450-plugin",
+ "bboxy450-proto",
+ "bboxy450-rt",
+ "bboxy450-term-core",
  "core-foundation 0.10.1",
  "ed25519-dalek 3.0.0",
  "futures-util",
@@ -396,8 +365,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-plugin"
-version = "0.0.1"
+name = "bboxy450-plugin"
+version = "0.1.0"
 dependencies = [
  "jsonschema",
  "serde",
@@ -405,12 +374,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-proto"
-version = "0.0.1"
+name = "bboxy450-proto"
+version = "0.1.0"
 dependencies = [
- "bbt-core",
- "bbt-plugin",
- "bbt-ui-model",
+ "bboxy450-plugin",
+ "bboxy450-term-core",
+ "bboxy450-ui-core",
  "jsonschema",
  "serde",
  "serde_json",
@@ -418,12 +387,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-render"
-version = "0.0.1"
+name = "bboxy450-render"
+version = "0.1.0"
 dependencies = [
  "bboxy-firehose",
- "bbt-core",
- "bbt-ui-model",
+ "bboxy450-term-core",
+ "bboxy450-ui-core",
  "bytemuck",
  "lyon_tessellation",
  "objc2-core-foundation",
@@ -437,8 +406,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-rt"
-version = "0.0.1"
+name = "bboxy450-rt"
+version = "0.1.0"
 dependencies = [
  "crossbeam-queue",
  "libc",
@@ -446,36 +415,67 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-supervisor"
-version = "0.0.1"
+name = "bboxy450-term"
+version = "0.1.0"
 dependencies = [
- "bbt-core",
- "bbt-rt",
- "getrandom 0.3.4",
+ "bboxy450-desktop-notifications",
+ "bboxy450-doc",
+ "bboxy450-mux",
+ "bboxy450-proto",
+ "bboxy450-render",
+ "bboxy450-rt",
+ "bboxy450-term-core",
+ "bboxy450-ui",
+ "bboxy450-ui-core",
+ "block2 0.6.2",
+ "ed25519-dalek 3.0.0",
  "libc",
- "mio",
- "portable-pty",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "objc2-metal 0.3.2",
+ "objc2-quartz-core 0.3.2",
+ "png",
+ "regex",
+ "resvg",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "tempfile",
  "tokio",
- "ulid",
- "zstd",
+ "toml_edit",
+ "wgpu",
+ "winit",
 ]
 
 [[package]]
-name = "bbt-ui"
-version = "0.0.1"
+name = "bboxy450-term-core"
+version = "0.1.0"
 dependencies = [
- "bbt-ui-model",
+ "arrayvec",
+ "base64",
+ "bitflags 2.13.2",
+ "cursor-icon",
+ "log",
+ "memchr",
+ "parking_lot",
+ "serde",
+ "serde-big-array",
+ "serde_json",
+ "unicode-width",
+]
+
+[[package]]
+name = "bboxy450-ui"
+version = "0.1.0"
+dependencies = [
+ "bboxy450-ui-core",
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "bbt-ui-model"
-version = "0.0.1"
+name = "bboxy450-ui-core"
+version = "0.1.0"
 dependencies = [
  "regex",
  "serde_json",
@@ -483,18 +483,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "bbt-yarn"
-version = "0.0.1"
+name = "bboxy450-yarn"
+version = "0.1.0"
 dependencies = [
- "bbt-yarn-macros",
+ "bboxy450-yarn-macros",
  "tokio",
  "tokio-util",
  "trybuild",
 ]
 
 [[package]]
-name = "bbt-yarn-macros"
-version = "0.0.1"
+name = "bboxy450-yarn-macros"
+version = "0.1.0"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",

@@ -10,8 +10,8 @@ message=$1; shift
 [ "$#" -gt 0 ] || { echo "records-push: no paths" >&2; exit 2; }
 target=$(mktemp -d "${TMPDIR:-/tmp}/records-push.XXXXXX")
 trap 'rm -rf "$target"' EXIT
-CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-doc --locked --test corpus -q
-CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-mermaid --locked -q
+CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bboxy450-doc --locked --test corpus -q
+CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bboxy450-mermaid --locked -q
 sh scripts/layering.sh
 sh scripts/pending-flags.sh
 sh scripts/kill-own-pids.sh
@@ -21,7 +21,7 @@ sh scripts/generated-sources.sh
 for p in "$@"; do
     case "$p" in
         .bboxy/specs/e2e-acceptance.md|lab/web/e2e.js)
-            CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bbt-ui --locked --test e2e_checklist -q
+            CARGO_TARGET_DIR="$target" CARGO_INCREMENTAL=0 cargo test -p bboxy450-ui --locked --test e2e_checklist -q
             break ;;
     esac
 done

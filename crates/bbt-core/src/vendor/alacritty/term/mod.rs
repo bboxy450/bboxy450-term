@@ -24,7 +24,9 @@ use crate::vte::ansi::{
     StandardCharset,
 };
 
+/// Terminal cells, rendition flags and shared hyperlink metadata.
 pub mod cell;
+/// Terminal palette override storage.
 pub mod color;
 
 /// Minimum number of columns.
@@ -49,36 +51,63 @@ const INITIAL_TABSTOPS: usize = 8;
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    /// Terminal mode bits consumed by the model, renderer and keyboard encoder.
     pub struct TermMode: u32 {
+        /// No active mode bits.
         const NONE                    = 0;
+        /// Show the terminal cursor.
         const SHOW_CURSOR             = 1;
+        /// Encode cursor keys in application mode.
         const APP_CURSOR              = 1 << 1;
+        /// Encode keypad keys in application mode.
         const APP_KEYPAD              = 1 << 2;
+        /// Report mouse-button transitions.
         const MOUSE_REPORT_CLICK      = 1 << 3;
+        /// Delimit pasted input with bracketed-paste markers.
         const BRACKETED_PASTE         = 1 << 4;
+        /// Encode mouse reports using SGR coordinates.
         const SGR_MOUSE               = 1 << 5;
+        /// Report all pointer motion.
         const MOUSE_MOTION            = 1 << 6;
+        /// Wrap at the right margin.
         const LINE_WRAP               = 1 << 7;
+        /// Treat line feed as carriage return plus line feed.
         const LINE_FEED_NEW_LINE      = 1 << 8;
+        /// Address rows relative to the scrolling region.
         const ORIGIN                  = 1 << 9;
+        /// Insert new cells rather than overwriting them.
         const INSERT                  = 1 << 10;
+        /// Report frontend focus transitions.
         const FOCUS_IN_OUT            = 1 << 11;
+        /// Use the alternate screen grid.
         const ALT_SCREEN              = 1 << 12;
+        /// Report motion while a mouse button is held.
         const MOUSE_DRAG              = 1 << 13;
+        /// Use UTF-8 mouse-coordinate encoding.
         const UTF8_MOUSE              = 1 << 14;
+        /// Translate alternate-screen scrolling into cursor-key input.
         const ALTERNATE_SCROLL        = 1 << 15;
+        /// Request urgency hints for terminal attention.
         const URGENCY_HINTS           = 1 << 17;
+        /// Use unambiguous extended keyboard escape codes.
         const DISAMBIGUATE_ESC_CODES  = 1 << 18;
+        /// Include key press, repeat and release event types.
         const REPORT_EVENT_TYPES      = 1 << 19;
+        /// Include alternate key identities.
         const REPORT_ALTERNATE_KEYS   = 1 << 20;
+        /// Encode all keys as escape sequences.
         const REPORT_ALL_KEYS_AS_ESC  = 1 << 21;
+        /// Include text associated with extended key reports.
         const REPORT_ASSOCIATED_TEXT  = 1 << 22;
+        /// Union of the tracked mouse-reporting mode bits.
         const MOUSE_MODE              = Self::MOUSE_REPORT_CLICK.bits() | Self::MOUSE_MOTION.bits() | Self::MOUSE_DRAG.bits();
+        /// Union of supported extended keyboard reporting flags.
         const KITTY_KEYBOARD_PROTOCOL = Self::DISAMBIGUATE_ESC_CODES.bits()
                                       | Self::REPORT_EVENT_TYPES.bits()
                                       | Self::REPORT_ALTERNATE_KEYS.bits()
                                       | Self::REPORT_ALL_KEYS_AS_ESC.bits()
                                       | Self::REPORT_ASSOCIATED_TEXT.bits();
+         /// All possible bits, including unnamed terminal modes.
          const ANY                    = u32::MAX;
     }
 }
@@ -131,6 +160,7 @@ pub fn viewport_to_point(display_offset: usize, point: Point<usize>) -> Point {
     Point::new(line, point.column)
 }
 
+/// Inclusive damaged-column bounds for one visible terminal line.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LineDamageBounds {
     /// Damaged line number.
@@ -145,11 +175,13 @@ pub struct LineDamageBounds {
 
 impl LineDamageBounds {
     #[inline]
+    /// Record explicit inclusive damage bounds for a line.
     pub fn new(line: usize, left: usize, right: usize) -> Self {
         Self { line, left, right }
     }
 
     #[inline]
+    /// Construct an empty damage interval for the given line width.
     pub fn undamaged(line: usize, num_cols: usize) -> Self {
         Self {
             line,
@@ -159,17 +191,20 @@ impl LineDamageBounds {
     }
 
     #[inline]
+    /// Replace this line's bounds with the undamaged sentinel for its width.
     pub fn reset(&mut self, num_cols: usize) {
         *self = Self::undamaged(self.line, num_cols);
     }
 
     #[inline]
+    /// Include the supplied inclusive column interval in this line's damage.
     pub fn expand(&mut self, left: usize, right: usize) {
         self.left = cmp::min(self.left, left);
         self.right = cmp::max(self.right, right);
     }
 
     #[inline]
+    /// Return whether the bounds describe a nonempty damaged interval.
     pub fn is_damaged(&self) -> bool {
         self.left <= self.right
     }
@@ -193,6 +228,7 @@ pub struct TermDamageIterator<'a> {
 }
 
 impl<'a> TermDamageIterator<'a> {
+    /// Iterate damage visible at the supplied history display offset.
     pub fn new(line_damage: &'a [LineDamageBounds], display_offset: usize) -> Self {
         let num_lines = line_damage.len();
         // Filter out invisible damage.
@@ -278,6 +314,7 @@ impl TermDamageState {
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(serialize = "", deserialize = "T: Default"))]
+/// Vendored terminal model with screen grids, parser callbacks and an embedding event listener.
 pub struct Term<T> {
     /// Terminal focus controlling the cursor shape.
     pub is_focused: bool,
@@ -429,6 +466,7 @@ impl<T> Term<T> {
     }
 
     #[inline]
+    /// Move the display viewport and notify the listener when its offset changes.
     pub fn scroll_display(&mut self, scroll: Scroll)
     where
         T: EventListener,
@@ -443,6 +481,7 @@ impl<T> Term<T> {
         }
     }
 
+    /// Create both terminal screens from the supplied configuration and dimensions.
     pub fn new<D: Dimensions>(config: Config, dimensions: &D, event_proxy: T) -> Term<T> {
         let num_cols = dimensions.columns();
         let num_lines = dimensions.screen_lines();
@@ -796,6 +835,7 @@ impl<T> Term<T> {
     }
 
     #[inline]
+    /// Send an exit request to the embedding event listener; no process is terminated here.
     pub fn exit(&mut self)
     where
         T: EventListener,
@@ -862,6 +902,7 @@ impl<T> Term<T> {
         cursor_style
     }
 
+    /// Borrow terminal-controlled palette overrides.
     pub fn colors(&self) -> &Colors {
         &self.colors
     }
@@ -2262,9 +2303,12 @@ fn version_number(mut version: &str) -> usize {
     version_number
 }
 
+/// Clipboard destination requested by a terminal clipboard operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClipboardType {
+    /// The general clipboard.
     Clipboard,
+    /// The primary selection clipboard.
     Selection,
 }
 
@@ -2318,7 +2362,9 @@ impl IndexMut<Column> for TabStops {
 /// Terminal cursor rendering information.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct RenderableCursor {
+    /// Resolved cursor shape for rendering, including hidden state when selected.
     pub shape: CursorShape,
+    /// Cursor coordinate in the terminal grid.
     pub point: Point,
 }
 
@@ -2345,10 +2391,15 @@ impl RenderableCursor {
 ///
 /// This contains all content required to render the current terminal view.
 pub struct RenderableContent<'a> {
+    /// Iterator over the currently displayed grid cells.
     pub display_iter: GridIterator<'a, Cell>,
+    /// Cursor shape and position for this view.
     pub cursor: RenderableCursor,
+    /// Retained-history row distance from the live viewport.
     pub display_offset: usize,
+    /// Borrowed terminal palette overrides.
     pub colors: &'a color::Colors,
+    /// Active terminal modes for rendering this view.
     pub mode: TermMode,
 }
 
@@ -2373,12 +2424,16 @@ pub mod test {
     use crate::event::VoidListener;
 
     #[derive(Serialize, Deserialize)]
+    /// Explicit terminal dimensions used by model fixtures and embedding tests.
     pub struct TermSize {
+        /// Visible column count.
         pub columns: usize,
+        /// Visible row count.
         pub screen_lines: usize,
     }
 
     impl TermSize {
+        /// Construct a dimension value without imposing terminal minimums.
         pub fn new(columns: usize, screen_lines: usize) -> Self {
             Self {
                 columns,

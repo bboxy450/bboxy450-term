@@ -4,7 +4,7 @@ type: invariant
 number: 318
 title: "ring reads are batched: a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat"
 status: active
-check: cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: with hundreds of seats every catch-up pass serialises hundreds of one-seat round trips through the supervisor, input-to-GPU latency grows with the seat count instead of the page budget, and the watched panes wait behind the unwatched ones' RPCs
 links:
   - { to: "[[no-chokepoints]]", rel: instance-of }
@@ -50,7 +50,7 @@ host in the 3 : 1 lane order of [[watched-replay-priority]] and still applies
 one page per turn. The singleton `ReadRing` stays for explicit history and
 recovery reads and leaves the hot sweep.
 
-**Check.** `cargo test -p bbt-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. **Active (Sable, landed 00fb087c, 2026-10-25).** The batched read landed
 with its test at `crates/bbt-mux/src/logic/ring_batch_tests.rs:274`, and a
 per-host companion beside it: 967 seats cost 121 batched requests and zero

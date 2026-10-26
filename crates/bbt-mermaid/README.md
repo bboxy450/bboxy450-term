@@ -1,4 +1,4 @@
-# bbt-mermaid
+# bboxy450-mermaid
 
 Our own Mermaid engine: parse a diagram and lay it out to plain geometry. No rendering, no workspace dependencies.
 
@@ -32,5 +32,13 @@ Flowcharts and state diagrams use a layered (Sugiyama-lite) layout, `src/layered
 Debug dump, one SVG per fixture:
 
 ```sh
-cargo run -p bbt-mermaid --example dump_svg -- OUT_DIR crates/bbt-mermaid/tests/fixtures/*
+cargo run -p bboxy450-mermaid --example dump_svg -- OUT_DIR crates/bbt-mermaid/tests/fixtures/*
+```
+
+## Dependency name
+
+The Rust library name remains `bbt_mermaid`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-mermaid = { package = "bboxy450-mermaid", version = "0.1.0" }
 ```

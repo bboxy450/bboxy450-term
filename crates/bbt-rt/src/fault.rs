@@ -6,6 +6,9 @@ use std::{
 };
 
 /// CPU consumed by the calling thread, distinct from elapsed frame phases.
+///
+/// # Errors
+/// Returns the operating-system error when the thread CPU clock cannot be read.
 pub fn thread_cpu_time() -> io::Result<Duration> {
     let mut value = libc::timespec {
         tv_sec: 0,
@@ -20,6 +23,9 @@ pub fn thread_cpu_time() -> io::Result<Duration> {
 }
 
 /// Host load witness for accepting or discarding an R5 timing run.
+///
+/// # Errors
+/// Returns an IO error when all three load-average windows cannot be read.
 pub fn host_load_average() -> io::Result<[f64; 3]> {
     let mut values = [0.; 3];
     // SAFETY: getloadavg receives space for exactly the three requested values.
@@ -29,8 +35,10 @@ pub fn host_load_average() -> io::Result<[f64; 3]> {
     Ok(values)
 }
 
+/// Released pipe bytes and the duration of an explicitly injected asynchronous read stall.
 #[derive(Debug)]
 pub struct StalledRead {
+    /// Bytes written by the fixture after its release signal.
     pub bytes: Vec<u8>,
     /// Duration for which the application read future remained incomplete.
     pub elapsed: Duration,
@@ -39,6 +47,9 @@ pub struct StalledRead {
 /// Hold a real file-descriptor read pending for `delay`: the blocking worker
 /// reads a pipe-backed File; a separate task releases its bytes afterward.
 /// This injects an application file-read stall, not slow physical storage.
+///
+/// # Errors
+/// Returns pipe, read, write, task-join or cancelled-handoff errors.
 pub async fn stalled_file_read(delay: Duration) -> io::Result<StalledRead> {
     stalled_file_read_until(async { tokio::time::sleep(delay).await }).await
 }
@@ -46,6 +57,12 @@ pub async fn stalled_file_read(delay: Duration) -> io::Result<StalledRead> {
 /// Hold a real read until a caller-controlled signal. The future is first
 /// polled after the IO worker has created the pipe, so tests can prove progress
 /// while a read is pending without racing a wall-clock delay.
+///
+/// # Errors
+/// Returns pipe, read, write, task-join or cancelled-handoff errors.
+///
+/// # Panics
+/// In debug builds, panics on the registered UI thread; runtime startup may also panic.
 pub async fn stalled_file_read_until(
     release: impl std::future::Future<Output = ()> + Send,
 ) -> io::Result<StalledRead> {

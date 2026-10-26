@@ -1,5 +1,5 @@
 [package]
-name = "bbt-yarn-macros"
+name = "bboxy450-yarn-macros"
 description = "Procedural macros for the yarn async reactor kernel"
 version.workspace = true
 edition.workspace = true
@@ -14,6 +14,7 @@ repository = "https://github.com/Gonzih/kittens-old"
 revision = "293e134526bb2deee96f1197d6268aee64495482"
 
 [lib]
+name = "bbt_yarn_macros"
 proc-macro = true
 
 [dependencies]

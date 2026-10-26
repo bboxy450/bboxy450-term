@@ -1,12 +1,13 @@
 [package]
-name = "bbt-ui-model"
+readme = "README.md"
+name = "bboxy450-ui-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-description = "bboxy450-term: bbt-ui-model"
+description = "Portable terminal cockpit state, layout data and generated design tokens"
 
 [dependencies]
 
@@ -17,3 +18,6 @@ toml = "0.9"
 [dev-dependencies]
 regex = "1"
 serde_json = "1"
+
+[lib]
+name = "bbt_ui_model"

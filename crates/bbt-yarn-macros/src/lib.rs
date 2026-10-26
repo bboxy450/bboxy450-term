@@ -1419,7 +1419,12 @@ fn source_for<'a>(reactor: &'a Reactor, id: &Ident) -> &'a Expr {
 }
 
 fn kittens_path() -> TokenStream2 {
-    kittens_path_from(crate_name("bbt-yarn").ok())
+    // Integration targets see the package as an external crate, but its
+    // preserved library target is bbt_yarn rather than the package name.
+    if std::env::var("CARGO_PKG_NAME").as_deref() == Ok("bboxy450-yarn") {
+        return kittens_path_from(Some(FoundCrate::Itself));
+    }
+    kittens_path_from(crate_name("bboxy450-yarn").ok())
 }
 
 fn kittens_path_from(found: Option<FoundCrate>) -> TokenStream2 {

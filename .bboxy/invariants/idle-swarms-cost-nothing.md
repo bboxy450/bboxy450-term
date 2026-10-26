@@ -6,7 +6,7 @@ title: "the message pump's cost is independent of the number of idle swarms"
 status: pending
 slow: true
 gate: pending-r5i
-check: cargo test -p bbt-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a pump that scans every swarm makes the cockpit slower for every swarm the operator keeps, idle or not, and the maintenance budget was 90 percent pump at 64 swarms
 links:
   - { to: "[[d267-idle-swarms-cost-nothing]]", rel: decision }
@@ -26,7 +26,7 @@ every N ([[d267-idle-swarms-cost-nothing]]). The timing that motivated this
 the R5 diagnostics; the gate is the count, because a count does not depend on
 the machine.
 
-**Check.** `cargo test -p bbt-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-mux --locked --test logic pump_scans_only_dirty_swarms -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The test does not exist yet; the fix after R5g (R5i) creates it
 and its commit removes `slow` and `gate` from this file.
 
