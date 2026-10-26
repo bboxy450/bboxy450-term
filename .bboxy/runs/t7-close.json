@@ -1,6 +1,6 @@
 {
   "promise": "T7 close, real sixty-second grace, native Cmd-Z, exact solved restoration and retained history",
-  "status": "full real script held; author landing and postsubmit acceptance pending",
+  "status": "author landed; full native T7 script held; postsubmit and Oracle review unverified",
   "runtime_source": "2a63aedcd8f55cf449f7096fe03cfb9b44a6e7d7 production bytes (retained T6 runtime); current parent differs by records only",
   "source_refs": [
     {
@@ -58,246 +58,40 @@
       "focused": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
       "panes": [
         {
-          "cols": 78,
-          "focused": false,
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
           "rect": [
             311.0,
             71.0,
             628.0,
             818.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 36,
-              "first_drawn_sequence": 5,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              },
-              "first_frame_seq": 37,
-              "sequence": 5,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              810
-            ],
-            "sequence": 5,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-            }
-          },
+          "cols": 78,
           "rows": 54,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+          "focused": false
         },
         {
-          "cols": 78,
-          "focused": true,
+          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
           "rect": [
             961.0,
             71.0,
             628.0,
             387.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 77,
-              "first_drawn_sequence": 8,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-              },
-              "first_frame_seq": 78,
-              "sequence": 8,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work % t7_cookie=73189; echo T7_READY-$$",
-              "T7_READY-13529",
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              375
-            ],
-            "sequence": 8,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-              "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-            }
-          },
+          "cols": 78,
           "rows": 25,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4"
+          "focused": true
         },
         {
-          "cols": 78,
-          "focused": false,
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
           "rect": [
             961.0,
             502.0,
             628.0,
             387.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 52,
-              "first_drawn_sequence": 3,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
-              },
-              "first_frame_seq": 53,
-              "sequence": 3,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              375
-            ],
-            "sequence": 3,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-              "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
-            }
-          },
+          "cols": 78,
           "rows": 25,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+          "focused": false
         }
       ]
     },
@@ -308,246 +102,40 @@
       "focused": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
       "panes": [
         {
-          "cols": 78,
-          "focused": false,
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
           "rect": [
             311.0,
             71.0,
             628.0,
             818.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 36,
-              "first_drawn_sequence": 5,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              },
-              "first_frame_seq": 37,
-              "sequence": 5,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              810
-            ],
-            "sequence": 5,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-            }
-          },
+          "cols": 78,
           "rows": 54,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+          "focused": false
         },
         {
-          "cols": 78,
-          "focused": true,
+          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
           "rect": [
             961.0,
             71.0,
             628.0,
             387.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 110,
-              "first_drawn_sequence": 8,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-              },
-              "first_frame_seq": 111,
-              "sequence": 8,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work % t7_cookie=73189; echo T7_READY-$$",
-              "T7_READY-13529",
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              375
-            ],
-            "sequence": 8,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
-              "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
-            }
-          },
+          "cols": 78,
           "rows": 25,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4"
+          "focused": true
         },
         {
-          "cols": 78,
-          "focused": false,
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
           "rect": [
             961.0,
             502.0,
             628.0,
             387.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 112,
-              "first_drawn_sequence": 7,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
-              },
-              "first_frame_seq": 113,
-              "sequence": 7,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              375
-            ],
-            "sequence": 7,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-              "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
-            }
-          },
+          "cols": 78,
           "rows": 25,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+          "focused": false
         }
       ]
     },
@@ -556,204 +144,28 @@
       "focused": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
       "panes": [
         {
-          "cols": 78,
-          "focused": true,
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
           "rect": [
             311.0,
             71.0,
             628.0,
             818.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 36,
-              "first_drawn_sequence": 5,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              },
-              "first_frame_seq": 37,
-              "sequence": 5,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              810
-            ],
-            "sequence": 5,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
-              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
-            }
-          },
+          "cols": 78,
           "rows": 54,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+          "focused": true
         },
         {
-          "cols": 78,
-          "focused": false,
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
           "rect": [
             961.0,
             71.0,
             628.0,
             818.0
           ],
-          "rendered": {
-            "ingested": {
-              "after_frame_seq": 137,
-              "first_drawn_sequence": 9,
-              "first_drawn_view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
-              },
-              "first_frame_seq": 138,
-              "sequence": 9,
-              "view": {
-                "generation": 1,
-                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-                "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
-              }
-            },
-            "lines": [
-              "feral@Maksims-Mac-mini work %",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              "",
-              ""
-            ],
-            "pixel_size": [
-              624,
-              810
-            ],
-            "sequence": 9,
-            "view": {
-              "generation": 1,
-              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
-              "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
-            }
-          },
+          "cols": 78,
           "rows": 54,
-          "scroll": {
-            "live": true,
-            "top_row": null
-          },
-          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+          "focused": false
         }
       ]
     },
@@ -915,5 +327,63 @@
   "code_sha256": {
     "scripts/e2e/T7.sh": "19cd8b8f0be2020e194eb277d2d194c8c916fa1f45e803eaf5d3c825f476cddd",
     "scripts/e2e/t7_layout.py": "b389af6eeb879132d4c78c384901a1bf1842b3c4711e8e4ac6e685f024846597"
+  },
+  "landed_code": "d2128b4af95292cc04973fb1db427584d8a73086",
+  "author": {
+    "exit": 0,
+    "seconds": 470.5705580711365,
+    "checks": [
+      {
+        "sha": "d2128b4af95292cc04973fb1db427584d8a73086",
+        "exit": 0,
+        "verdict": "green",
+        "seconds": 461.0890468750149,
+        "compile_seconds": 149.344666833058,
+        "run_seconds": 311.7438856669469,
+        "affected": [
+          "bboxy450-term"
+        ],
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/d2128b4af95292cc04973fb1db427584d8a73086-a93d1e2c/commands.log",
+        "log_sha256": "6b61ecd1c460881251e9874efe0da13d5009a691a178a9917ce9c794ef30944a",
+        "rust_result_sums_including_invariants": [
+          307,
+          0,
+          45
+        ],
+        "test_results": [
+          "test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s",
+          "test result: ok. 123 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.17s",
+          "test result: ok. 0 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 53.89s",
+          "test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 4 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 0.55s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.77s",
+          "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.65s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+          "test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 54.07s"
+        ],
+        "invariants": [
+          "invariants: Cargo test batch: cargo test --locked --no-fail-fast --target-dir /private/tmp/bboxy450-gate-slot-1/target -p bboxy450-term --test ctl -- --exact ctl_never_prints_secrets",
+          "invariants: 14 checks, 0 failures, 11 slow checks skipped",
+          "invariants: 12 unaffected-crate checks skipped"
+        ]
+      }
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t7-20261026/author.log",
+    "log_sha256": "c352245cb4fcdfac6f0554aaf813a1a8b4da6007f5fcd815d500fd8c255d317e"
   }
 }
