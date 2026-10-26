@@ -397,7 +397,9 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
-            GuiAction::GetAttention { id, .. } | GuiAction::SetAttention { id, .. } => ActionReply::Attention(*id),
+            GuiAction::GetAttention { id, .. } | GuiAction::SetAttention { id, .. } => {
+                ActionReply::Attention(*id)
+            }
             GuiAction::Identity(call) => ActionReply::Identity(call.id),
             GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
@@ -1326,7 +1328,7 @@ async fn run_with_control(
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::Plugin {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

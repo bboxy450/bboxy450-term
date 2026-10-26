@@ -2,6 +2,7 @@
 
 mod check;
 mod client;
+pub(crate) mod control;
 mod discovery;
 mod registry;
 mod trust;

@@ -18,6 +18,7 @@ mod events;
 mod host;
 mod identity;
 mod message;
+mod plugin;
 mod record;
 mod seat;
 mod task;
@@ -28,11 +29,12 @@ use self::events::{events_actions, events_replies};
 use self::host::{host_actions, host_replies};
 use self::identity::{identity_actions, identity_replies};
 use self::message::{message_actions, message_replies};
+use self::plugin::{plugin_actions, plugin_replies};
 use self::record::{record_actions, record_replies};
 use self::seat::{seat_actions, seat_replies};
 use self::task::{task_actions, task_replies};
 use self::ui::{ui_actions, ui_replies};
-pub use self::{app::*, debug::*, events::*, identity::*, seat::*, ui::*};
+pub use self::{app::*, debug::*, events::*, identity::*, plugin::*, seat::*, ui::*};
 
 pub type Row = Vec<bbt_core::Cell>;
 
@@ -82,7 +84,7 @@ macro_rules! common_replies {
 flat_enum! {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
-    pub enum GuiAction from [ui_actions, app_actions, debug_actions, identity_actions, host_actions, seat_actions, events_actions, message_actions, task_actions, record_actions]
+    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, events_actions, message_actions, task_actions, record_actions]
 }
 
 flat_enum! {
@@ -92,7 +94,7 @@ flat_enum! {
     clippy::large_enum_variant,
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
-    pub enum GuiReply from [ui_replies, app_replies, debug_replies, identity_replies, host_replies, seat_replies, events_replies, message_replies, task_replies, record_replies, common_replies]
+    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, events_replies, message_replies, task_replies, record_replies, common_replies]
 }
 
 #[cfg(test)]

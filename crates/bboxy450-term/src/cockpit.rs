@@ -36,7 +36,11 @@ pub enum UiMsg {
         id: bbt_mux::Ulid,
         result: Box<std::result::Result<bbt_proto::gui::UiLayout, String>>,
     },
-    GetAttention { id: bbt_mux::Ulid, seat: bbt_mux::Ulid, generation: u64 },
+    GetAttention {
+        id: bbt_mux::Ulid,
+        seat: bbt_mux::Ulid,
+        generation: u64,
+    },
     SetAttention {
         id: bbt_mux::Ulid,
         seat: bbt_mux::Ulid,
@@ -830,6 +834,7 @@ impl Session {
                 | GuiReply::OperatorClose { .. }
                 | GuiReply::OperatorUndoClose { .. }
                 | GuiReply::EventsStreams { .. }
+                | GuiReply::Plugin { .. }
                 | GuiReply::Debug { .. }
                 | GuiReply::OperatorFocus { .. }
                 | GuiReply::Focused { .. }

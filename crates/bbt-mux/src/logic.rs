@@ -172,6 +172,12 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     ),
+    GuiPlugin(
+        Ulid,
+        bbt_proto::gui::PluginRequest,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<Vec<bbt_plugin::registry::Entry>>>,
+    ),
     GuiDebug(
         Ulid,
         bbt_proto::gui::DebugRequest,
@@ -204,7 +210,11 @@ enum Command {
         bool,
         oneshot::Sender<Result<bbt_proto::gui::SeatScreen>>,
     ),
-    GuiAttention(Ulid, Option<u64>, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    GuiAttention(
+        Ulid,
+        Option<u64>,
+        oneshot::Sender<Result<crate::seat_socket::GuiSeat>>,
+    ),
     CtlAttention(
         Ulid,
         bbt_proto::gui::AttentionEdit,
@@ -349,6 +359,7 @@ impl Command {
                 | Self::Status(..)
                 | Self::GuiWatchInterest { .. }
                 | Self::GuiDebug(..)
+                | Self::GuiPlugin(..)
         )
     }
 }
@@ -795,6 +806,21 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
+    pub async fn gui_plugin(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::PluginRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<Vec<bbt_plugin::registry::Entry>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiPlugin(id, request, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("plugin outcome unknown; retain the original operation ID")
+        })?
+    }
     pub async fn gui_debug(
         &self,
         id: Ulid,
@@ -826,7 +852,11 @@ impl LogicClient {
         rx.await
             .map_err(|_| self.unavailable("input outcome unknown; keep the original input id"))?
     }
-    pub async fn gui_attention(&self, seat: Ulid, generation: Option<u64>) -> Result<crate::seat_socket::GuiSeat> {
+    pub async fn gui_attention(
+        &self,
+        seat: Ulid,
+        generation: Option<u64>,
+    ) -> Result<crate::seat_socket::GuiSeat> {
         let (tx, rx) = oneshot::channel();
         self.tx.send(Command::GuiAttention(seat, generation, tx)).await
             .map_err(|_| self.unavailable("logic stopped"))?;
@@ -1941,6 +1971,8 @@ struct Worker {
     index: Arc<Index>,
     knowledge_reads: Arc<tokio::sync::Semaphore>,
     debug_reads: Arc<tokio::sync::Semaphore>,
+    plugins: crate::plugins::control::Control,
+    plugin_jobs: tokio::task::JoinSet<()>,
     watch: FileWatch,
     bus: BusHandle,
     handle: tokio::runtime::Handle,
@@ -1998,6 +2030,18 @@ impl Worker {
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
+        // The selected support/run namespace keeps custom and test runs private.
+        let plugin_roots = crate::plugins::DiscoveryRoots::new(
+            config
+                .run_dir
+                .parent()
+                .ok_or_else(|| invalid("run directory has no support parent"))?,
+            &config.repository,
+        );
+        let plugins = crate::plugins::control::Control::new(
+            crate::plugins::Registry::new(account.clone(), plugin_roots)
+                .map_err(|error| invalid(format!("{}: {}", error.code, error.message)))?,
+        );
         let mut index = Index::open(
             &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
@@ -2045,6 +2089,8 @@ impl Worker {
             index: Arc::new(index),
             knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
+            plugins,
+            plugin_jobs: tokio::task::JoinSet::new(),
             watch,
             bus,
             handle,
@@ -5833,6 +5879,11 @@ impl Worker {
     }
     fn pump_messages(&mut self) -> Result<()> {
         self.service_identity_jobs()?;
+        while let Some(result) = self.plugin_jobs.try_join_next() {
+            if result.is_err() {
+                eprintln!("plugin task interrupted; admitted operation remains unknown");
+            }
+        }
         use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
         while let Some(result) = self.control_deliveries.try_join_next() {
             let delivery = match result {
@@ -5945,7 +5996,13 @@ impl Worker {
                     let binding = view.adapter.binding.clone();
                     let harness = view.adapter.record.kind.clone();
                     let outcome = self.deliver_pty(seat, &work, &text)?;
-                    crate::messaging::wake_cost::note(&work, &binding, &harness, &outcome, now_ms());
+                    crate::messaging::wake_cost::note(
+                        &work,
+                        &binding,
+                        &harness,
+                        &outcome,
+                        now_ms(),
+                    );
                     self.messaging
                         .finish(swarm, &work, &outcome, now_ms(), relayed)?;
                 }
@@ -6172,8 +6229,14 @@ impl Worker {
         self.messaging
             .operator_reference(self.identity.observed_operator_device()?)
     }
-    fn gui_attention(&mut self, id: Ulid, generation: Option<u64>) -> Result<crate::seat_socket::GuiSeat> {
-        if let Some(generation) = generation { self.check_gui_generation(id, generation)?; }
+    fn gui_attention(
+        &mut self,
+        id: Ulid,
+        generation: Option<u64>,
+    ) -> Result<crate::seat_socket::GuiSeat> {
+        if let Some(generation) = generation {
+            self.check_gui_generation(id, generation)?;
+        }
         let mut seat = self.gui_seat(id)?;
         seat.attention = Some(self.messaging.attention_view(&seat.record)?);
         Ok(seat)
@@ -6230,8 +6293,12 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
-            attention: self.messaging.deferred_view(&record).unwrap_or_else(|error|
-                Some(serde_json::json!({"deferred_error":error.to_string()}))),
+            attention: self
+                .messaging
+                .deferred_view(&record)
+                .unwrap_or_else(|error| {
+                    Some(serde_json::json!({"deferred_error":error.to_string()}))
+                }),
             record,
             state: SeatState {
                 generation: view.info.generation,
@@ -6995,6 +7062,44 @@ impl Worker {
                     Command::GuiRecordWrite(id, args, origin, reply) => {
                         let result = self.gui_record_write(id, args, origin);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiPlugin(id, request, origin, reply) => {
+                        let prepared = (|| -> Result<_> {
+                            let origin = self.identity.bind_origin(origin);
+                            let device_id = self.operator_device_for_effect()?;
+                            if request.mutation() {
+                                self.identity.operator_signing()?;
+                            }
+                            let actor = crate::mcp::Actor::Operator {
+                                device_id,
+                                door: origin.door,
+                                issued_by: origin.issued_by,
+                            };
+                            let call = crate::mcp::Call {
+                                op_id: id,
+                                tool: "plugin_control".into(),
+                                args: serde_json::to_value(&request)?,
+                            };
+                            call.validate()?;
+                            Ok((actor, call))
+                        })();
+                        match prepared {
+                            Err(error) => {
+                                let _ = reply.send(Err(error));
+                            }
+                            Ok((actor, call)) => {
+                                let plugins = self.plugins.clone();
+                                let journal = self.operator_journal.clone();
+                                self.plugin_jobs.spawn_on(
+                                    async move {
+                                        let result =
+                                            plugins.request(actor, journal, call, request).await;
+                                        let _ = reply.send(result);
+                                    },
+                                    &self.handle,
+                                );
+                            }
+                        }
                     }
                     Command::GuiDebug(id, request, origin, reply) => {
                         if let bbt_proto::gui::DebugRequest::RingGap { seat, from, to } = request {

@@ -15,6 +15,7 @@ mod e2e;
 mod events;
 mod identity;
 mod message;
+mod plugin;
 mod records;
 mod seat;
 mod task;
@@ -72,6 +73,10 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   message inbox [--since SEQ]
   message receipts <message-id>
   message ack <message-id>
+  plugin list                             actual account registry; never executes untrusted files
+  plugin trust <path>                      pin and inspect a discovered binary; stays disabled
+  plugin enable <candidate-id>
+  plugin disable <candidate-id>
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task status <#N|path|id>
@@ -186,6 +191,7 @@ use e2e::e2e_commands;
 use events::events_commands;
 use identity::identity_commands;
 use message::message_commands;
+use plugin::plugin_commands;
 use records::record_commands;
 use seat::seat_commands;
 use task::task_commands;
@@ -198,6 +204,7 @@ commands! {
         identity_commands,
         seat_commands,
         message_commands,
+        plugin_commands,
         task_commands,
         e2e_commands,
         record_commands,
@@ -215,6 +222,7 @@ const NOUN_VERBS: &[&[Verb]] = &[
     identity::VERBS,
     seat::VERBS,
     message::VERBS,
+    plugin::VERBS,
     task::VERBS,
     e2e::VERBS,
     records::VERBS,
@@ -290,6 +298,7 @@ const NOUN_PARSERS: &[NounParse] = &[
     debug::parse,
     seat::parse,
     message::parse,
+    plugin::parse,
     task::parse,
     e2e::parse,
     records::parse,
@@ -428,7 +437,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             request: bbt_proto::gui::DebugRequest::Logs { .. },
             ..
         } => Some(&["since"]),
-        Command::Debug { .. } | Command::DebugFault { .. } | Command::DebugSpawnGate(_) => Some(&[]),
+        Command::Debug { .. } | Command::DebugFault { .. } | Command::DebugSpawnGate(_) => {
+            Some(&[])
+        }
         Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };
@@ -1466,6 +1477,7 @@ type NounVerbRun = fn(VerbCx<'_>, Command) -> Result<(), String>;
 /// Each noun's noun-verb runner; a verb is run in its noun's file.
 const NOUN_VERB_RUNNERS: &[(&str, NounVerbRun)] = &[
     ("debug", debug::run_verb),
+    ("plugin", plugin::run_verb),
     ("events", events::run_verb),
     ("record", records::run_verb),
     ("ui", ui::run_verb),
@@ -1940,6 +1952,7 @@ mod tests {
             debug::PARSE_SAMPLES,
             seat::PARSE_SAMPLES,
             message::PARSE_SAMPLES,
+            plugin::PARSE_SAMPLES,
             task::PARSE_SAMPLES,
             e2e::PARSE_SAMPLES,
             records::PARSE_SAMPLES,

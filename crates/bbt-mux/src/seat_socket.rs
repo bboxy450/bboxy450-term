@@ -767,6 +767,7 @@ async fn gui_session(
     // Dropping the session aborts these waiters, not a running provider's permit.
     let mut knowledge_reads = tokio::task::JoinSet::new();
     let mut debug_reads = tokio::task::JoinSet::new();
+    let mut plugin_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
@@ -804,6 +805,16 @@ async fn gui_session(
                         } else {
                             let client = client.clone();
                             knowledge_reads.spawn(async move { (id,client.gui_knowledge(method,args).await) });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::Plugin {id,request:query} = request.action {
+                        if plugin_jobs.len() >= 8 {
+                            send(&mut write,&GuiReply::Error {op:id,reason:"plugin_busy: at most eight active plugin controls per connection".into()}).await?;
+                        } else {
+                            let client = client.clone();
+                            let origin = crate::mcp::Origin {door,issued_by:issued_by.clone()};
+                            plugin_jobs.spawn(async move { (id,client.gui_plugin(id,query,origin).await) });
                         }
                         continue;
                     }
@@ -936,6 +947,7 @@ async fn gui_session(
                             },
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
+                            GuiAction::Plugin {..}=>unreachable!("plugins were dispatched independently"),
                             GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
                             GuiAction::RecordWrite {id,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write(id,args,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?}),
                             GuiAction::Watch {seat,view}=> {
@@ -1076,6 +1088,14 @@ async fn gui_session(
                 Some(completed)=knowledge_reads.join_next(),if !knowledge_reads.is_empty()=> {
                     let (op,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
+                }
+                Some(completed)=plugin_jobs.join_next(),if !plugin_jobs.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("plugin reply task interrupted"))?;
+                    let reply=match result {
+                        Ok(entries)=>GuiReply::Plugin {op,entries},
+                        Err(error)=>GuiReply::Error {op,reason:error.to_string()},
+                    };
+                    send(&mut write,&reply).await?;
                 }
                 Some(completed)=debug_reads.join_next(),if !debug_reads.is_empty()=> {
                     let (op,result)=completed.map_err(|_|invalid("debug reply task interrupted"))?;

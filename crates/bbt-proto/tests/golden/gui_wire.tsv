@@ -177,3 +177,8 @@ reply	{"kind":"Seat","body":{"record":{"id":"01M5SQPNMDRRVD7ETM15DHS5AA","swarm"
 reply	{"kind":"Ui","body":{"op":"01M5SQMF7D09CBXDNPM4T3AAAC","layout":{"frame_seq":8,"layout_revision":null,"size":[1600.0,900.0],"swarm":null,"tab":null,"focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[{"kind":"text","rect":[1.0,2.0,3.0,4.0],"children":[],"text":"Claude ▸ Architect"}]}}}
 action	{"kind":"Ui","body":{"id":"00000000000000000000000001","request":{"kind":"spawn_gate","body":{"kind":"arm"}}}}
 action	{"kind":"Ui","body":{"id":"00000000000000000000000002","request":{"kind":"spawn_gate","body":{"kind":"release","op":"00000000000000000000000001"}}}}
+action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"list"}}}
+action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"trust","path":"/private/plugins/bboxy450-term-data_source-stub"}}}
+action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"enable","candidate":"candidate"}}}
+action	{"kind":"Plugin","body":{"id":"00000000000000000000000001","request":{"kind":"disable","candidate":"candidate"}}}
+reply	{"kind":"Plugin","body":{"op":"00000000000000000000000001","entries":[]}}
