@@ -207,6 +207,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
         verb,
         id,
         human,
+        message_refusal,
         ..
     } = cx;
     let data = match command {
@@ -236,7 +237,13 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             let mut message = SendRequest::text(destination, text);
             message.id = id;
             message.reply_to = reply_to;
-            serde_json::to_value(client.messaging(swarm, Request::Send { message })?)
+            let response = client.messaging(swarm, Request::Send { message })?;
+            if let bbt_proto::messaging::Response::Refused { error } = response {
+                let reason = error.message.clone();
+                *message_refusal = Some(error);
+                return Err(reason);
+            }
+            serde_json::to_value(response)
                 .map_err(|e| e.to_string())?
         }
         Command::Ack { message } => {

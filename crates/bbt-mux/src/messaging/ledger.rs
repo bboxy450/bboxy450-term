@@ -140,14 +140,25 @@ impl Ledger {
             CREATE TABLE IF NOT EXISTS msg_deliveries(message INTEGER NOT NULL REFERENCES msg_messages(seq),recipient TEXT NOT NULL,agent TEXT NOT NULL,evidence TEXT NOT NULL,class INTEGER NOT NULL,held TEXT,eligible_ms INTEGER NOT NULL,batch_key TEXT NOT NULL,attempt TEXT,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
-            CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL,root_id TEXT);
             CREATE TABLE IF NOT EXISTS msg_digest_windows(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,agent TEXT NOT NULL,destination TEXT NOT NULL,class TEXT NOT NULL,deadline_ms INTEGER NOT NULL,messages INTEGER NOT NULL,sealed INTEGER NOT NULL);
             CREATE UNIQUE INDEX IF NOT EXISTS msg_digest_open ON msg_digest_windows(recipient,agent,destination,class) WHERE sealed=0;
             CREATE TABLE IF NOT EXISTS msg_digest_members(message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,window TEXT NOT NULL REFERENCES msg_digest_windows(id),PRIMARY KEY(message,recipient,agent));
             CREATE INDEX IF NOT EXISTS msg_digest_member_window ON msg_digest_members(window,message);
             CREATE INDEX IF NOT EXISTS msg_digest_recipient ON msg_digest_windows(recipient,id);
+            CREATE INDEX IF NOT EXISTS msg_outbox_tips ON msg_messages(sender,seq DESC);
+            CREATE INDEX IF NOT EXISTS msg_inbox_tips ON msg_deliveries(recipient,message DESC) WHERE evidence!='sender-stored';
             CREATE TABLE IF NOT EXISTS msg_signatures(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),envelope BLOB NOT NULL,intent_digest TEXT NOT NULL,publication_id TEXT NOT NULL,actual_device TEXT);
             CREATE TABLE IF NOT EXISTS msg_scheduler(recipient TEXT PRIMARY KEY,credit INTEGER NOT NULL,at_ms INTEGER NOT NULL,streak INTEGER NOT NULL);")?;
+        {
+            let db = store.connection()?;
+            let columns = db.prepare("PRAGMA table_info(msg_thread_roots)")?
+                .query_map([], |row| row.get::<_,String>(1))?
+                .collect::<std::result::Result<Vec<_>,_>>()?;
+            if !columns.iter().any(|name| name == "root_id") {
+                db.execute("ALTER TABLE msg_thread_roots ADD COLUMN root_id TEXT", [])?;
+            }
+        }
         let ledger = Self {
             store,
             swarm,
@@ -278,11 +289,31 @@ impl Ledger {
         Recipient::try_from(value).map_err(invalid)
     }
     pub(crate) fn thread_sender(&self, id: Ulid) -> Result<Recipient> {
+        self.thread_root(id).map(|(sender, _)| sender)
+    }
+    pub(crate) fn thread_root(&self, id: Ulid) -> Result<(Recipient,Ulid)> {
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        let sender = thread_sender(&tx, id)?;
+        let root = thread_root(&tx, id)?;
         tx.commit()?;
-        Ok(sender)
+        Ok(root)
+    }
+    pub(crate) fn visible_thread_tips(&self, recipient: Recipient) -> Result<Vec<Ulid>> {
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let ids = {
+            let mut query = tx.prepare("SELECT m.id FROM msg_messages m JOIN (SELECT seq FROM (SELECT seq FROM msg_messages WHERE sender=?1 ORDER BY seq DESC LIMIT 128) UNION SELECT message FROM (SELECT message FROM msg_deliveries WHERE recipient=?1 AND evidence!='sender-stored' ORDER BY message DESC LIMIT 128)) visible ON visible.seq=m.seq ORDER BY m.seq DESC LIMIT 128")?;
+            query.query_map([recipient.to_string()], |row| row.get::<_,String>(0))?
+                .map(|row| Ok(row?.parse::<Ulid>()?)).collect::<Result<Vec<_>>>()?
+        };
+        let mut roots = std::collections::BTreeSet::new();
+        let mut tips = Vec::new();
+        for id in ids {
+            if roots.insert(thread_root(&tx,id)?.1) { tips.push(id); }
+            if tips.len() == 8 { break; }
+        }
+        tx.commit()?;
+        Ok(tips)
     }
     pub fn accept(
         &self,
@@ -350,7 +381,7 @@ impl Ledger {
             ],
         )?;
         let sequence = tx.last_insert_rowid() as u64;
-        remember_thread(&tx, sequence, sender, envelope.reply_to)?;
+        remember_thread(&tx, sequence, envelope.id, sender, envelope.reply_to)?;
         tree::queue_event(
             &tx,
             &Draft::new(
@@ -414,7 +445,7 @@ impl Ledger {
             ],
         )?;
         let sequence = tx.last_insert_rowid() as u64;
-        remember_thread(&tx, sequence, sender, intent.request.reply_to)?;
+        remember_thread(&tx, sequence, intent.id, sender, intent.request.reply_to)?;
         let mut message = StoredMessage {
             sequence,
             content,
@@ -1181,49 +1212,50 @@ fn class_int(class: Class) -> i32 {
 fn remember_thread(
     db: &rusqlite::Connection,
     sequence: u64,
+    id: Ulid,
     sender: Recipient,
     parent: Option<Ulid>,
 ) -> Result<()> {
-    let sender = parent
-        .map(|id| thread_sender(db, id))
+    let (sender,root) = parent
+        .map(|id| thread_root(db, id))
         .transpose()?
-        .unwrap_or(sender);
+        .unwrap_or((sender,id));
     db.execute(
-        "INSERT INTO msg_thread_roots VALUES(?1,?2)",
-        params![sqlint(sequence)?, sender.to_string()],
+        "INSERT INTO msg_thread_roots(message,sender,root_id) VALUES(?1,?2,?3)",
+        params![sqlint(sequence)?, sender.to_string(),root.to_string()],
     )?;
     Ok(())
 }
-fn thread_sender(db: &rusqlite::Connection, mut id: Ulid) -> Result<Recipient> {
+fn thread_root(db: &rusqlite::Connection, mut id: Ulid) -> Result<(Recipient,Ulid)> {
     // New messages retain this derived owner atomically. Legacy chains are
     // resolved once from reply_to and memoized; thread_id never grants a wake.
     let mut path = Vec::new();
     let mut seen = std::collections::BTreeSet::new();
-    let sender = loop {
+    let (sender,root) = loop {
         if !seen.insert(id) {
             return Err(invalid("cyclic reply chain"));
         }
-        let (sequence, sender, parent, known): (u64, String, Option<String>, Option<String>) = db.query_row(
-            "SELECT m.seq,m.sender,COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.reply_to'),json_extract(CAST(m.envelope AS TEXT),'$.intent.request.reply_to')),r.sender FROM msg_messages m LEFT JOIN msg_thread_roots r ON r.message=m.seq WHERE m.id=?1",
-            [id.to_string()], |row| Ok((u64_at(row,0)?,row.get(1)?,row.get(2)?,row.get(3)?)),
+        let (sequence, sender, parent, known,root): (u64, String, Option<String>, Option<String>, Option<String>) = db.query_row(
+            "SELECT m.seq,m.sender,COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.reply_to'),json_extract(CAST(m.envelope AS TEXT),'$.intent.request.reply_to')),r.sender,r.root_id FROM msg_messages m LEFT JOIN msg_thread_roots r ON r.message=m.seq WHERE m.id=?1",
+            [id.to_string()], |row| Ok((u64_at(row,0)?,row.get(1)?,row.get(2)?,row.get(3)?,row.get(4)?)),
         )?;
-        if let Some(known) = known {
-            break known;
+        if let (Some(known),Some(root)) = (known,root) {
+            break (known,root.parse::<Ulid>()?);
         }
         path.push(sequence);
         if let Some(parent) = parent {
             id = parent.parse()?;
         } else {
-            break sender;
+            break (sender,id);
         }
     };
     for sequence in path {
         db.execute(
-            "INSERT OR IGNORE INTO msg_thread_roots VALUES(?1,?2)",
-            params![sqlint(sequence)?, sender],
+            "INSERT INTO msg_thread_roots(message,sender,root_id) VALUES(?1,?2,?3) ON CONFLICT(message) DO UPDATE SET sender=excluded.sender,root_id=excluded.root_id",
+            params![sqlint(sequence)?, sender,root.to_string()],
         )?;
     }
-    Recipient::try_from(sender).map_err(invalid)
+    Ok((Recipient::try_from(sender).map_err(invalid)?,root))
 }
 fn set_rate(receipt: &mut Receipt) {
     let arrival = receipt

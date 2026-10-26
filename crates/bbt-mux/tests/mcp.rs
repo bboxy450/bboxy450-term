@@ -5526,3 +5526,26 @@ fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
             .any(|tool| tool["name"] == "message_list")
     );
 }
+
+// keeps: MA-5 named thread refusals preserve structured fields and operation replay.
+#[test]
+fn unknown_thread_mcp_refusal_keeps_the_visible_hint_and_replays_without_a_send() {
+    let f = Fixture::new();
+    let visible = Ulid::new();
+    data(f.mutate(f.peer.id,visible,"message_send",json!({
+        "destination":format!("seats/{}/inbox",f.own.id),"text":"visible thread tip"
+    })));
+    let op = Ulid::new();
+    let args = json!({"reply_to":Ulid::new(),"text":"cannot answer an unknown id"});
+    let refused = f.mutate(f.own.id,op,"message_send",args.clone());
+    assert_eq!(refused["isError"],true,"{refused}");
+    let result = &refused["structuredContent"];
+    assert_eq!(result["op_id"],json!(op));
+    assert_eq!(result["error"]["code"],"unknown_thread");
+    assert_eq!(result["error"]["kind"],"unknown_thread");
+    assert!(result["error"]["hint"].as_str().unwrap().contains(&visible.to_string()));
+    let text:Value = serde_json::from_str(refused["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(text,*result);
+    let replay = f.mutate(f.own.id,op,"message_send",args);
+    assert_eq!(replay,refused);
+}

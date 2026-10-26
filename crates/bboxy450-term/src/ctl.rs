@@ -1417,6 +1417,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     let mut op = None;
     let mut tail = None;
     let mut capture_seat = None;
+    let mut message_refusal = None;
     let result = parsed.and_then(|parsed| {
         op = parsed.op;
         if let Command::EventsTail { stream, since, .. } = &parsed.command {
@@ -1429,6 +1430,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
             &mut op,
             &mut tail,
             &mut capture_seat,
+            &mut message_refusal,
         )
     });
     if let Err(reason) = result {
@@ -1453,8 +1455,10 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         if let Some(tail) = tail {
             tail.error(&mut line);
         }
+        let exit = if message_refusal.is_some() { 1 } else { fail.exit };
+        if let Some(error) = message_refusal { line["error"] = json!(error); }
         println!("{line}");
-        std::process::exit(fail.exit);
+        std::process::exit(exit);
     }
     Ok(())
 }
@@ -1469,6 +1473,7 @@ struct VerbCx<'a> {
     endpoint_file: PathBuf,
     tail: &'a mut Option<events::Progress>,
     capture_seat: &'a mut Option<Ulid>,
+    message_refusal: &'a mut Option<bbt_proto::messaging::MessageRefusal>,
     out: &'a mut std::io::StdoutLock<'static>,
     noun: &'static str,
     verb: &'static str,
@@ -1536,6 +1541,7 @@ fn run_verb(
     op: &mut Option<Ulid>,
     tail: &mut Option<events::Progress>,
     capture_seat: &mut Option<Ulid>,
+    message_refusal: &mut Option<bbt_proto::messaging::MessageRefusal>,
 ) -> Result<(), String> {
     let (noun, verb) = parsed.verb.expect("a noun-verb form");
     let endpoint_file = parsed
@@ -1604,6 +1610,7 @@ fn run_verb(
         endpoint_file,
         tail,
         capture_seat,
+        message_refusal,
         out: &mut out,
         noun,
         verb,

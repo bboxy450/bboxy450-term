@@ -153,3 +153,16 @@ fn mismatched_thread_refuses_but_a_visible_parent_still_routes_and_inherits() {
     assert_eq!(message.view().thread_id, visible);
     assert_eq!(message.view().context, format!("seats/{}/inbox", f.peer.id));
 }
+
+// keeps: open retained threads remain answerable after application acknowledgement.
+#[test]
+fn acknowledged_thread_tips_stay_visible_and_only_the_latest_tip_is_suggested() {
+    let mut f = Fixture::new();
+    let root = f.send(f.peer.id,f.caller.id,"visible root",1_000);
+    f.messaging.acknowledge(f.caller.id,root,None,1_001).unwrap();
+    let Response::Stored { message } = f.reply(root,None) else { panic!("valid reply") };
+    let latest = message.view().id;
+    let error = f.refusal(Ulid::new(),None);
+    assert!(error.hint.contains(&latest.to_string()));
+    assert!(!error.hint.contains(&root.to_string()), "one latest tip per actual chain");
+}

@@ -464,10 +464,19 @@ pub(crate) fn result_for_seat(actor: &super::SeatActor, response: Response) -> V
     }
 }
 
+pub(crate) fn refused(op: Ulid, error: bbt_proto::messaging::MessageRefusal) -> Value {
+    let mut result = super::error(op, &error.kind, &error.message);
+    result["structuredContent"]["error"]["kind"] = json!(error.kind);
+    result["structuredContent"]["error"]["hint"] = json!(error.hint);
+    result["content"][0]["text"] = json!(result["structuredContent"].to_string());
+    result
+}
+
 pub(crate) fn result(response: Response) -> Value {
     let status = match &response {
         Response::Stored { .. } | Response::Held { .. } => Some("accepted"),
         Response::Applied => Some("applied"),
+        Response::Refused { .. } => Some("rejected"),
         _ => None,
     };
     let mut value = serde_json::to_value(response).expect("W2.4 response is serializable");

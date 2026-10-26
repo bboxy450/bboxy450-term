@@ -827,6 +827,9 @@ impl Client {
                     pending.held.push(reason.clone());
                 }
                 Reply::Messaging(Response::Stored { .. }) if !task => pending.stored += 1,
+                Reply::Messaging(Response::Refused { error }) if !task => {
+                    pending.failures.push(format!("{}: {}; {}",error.kind,error.message,error.hint));
+                }
                 Reply::Task(TaskResponse::Applied) if task => {
                     pending.stored += 1;
                     if let Some(command) = pending.brief.take() {
