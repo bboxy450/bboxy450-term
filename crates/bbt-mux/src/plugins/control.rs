@@ -36,7 +36,7 @@ impl Control {
         request: PluginRequest,
     ) -> Result<Vec<Entry>> {
         let mutation = request.mutation();
-        let _permit = if mutation { &self.effects } else { &self.reads }
+        let permit = if mutation { &self.effects } else { &self.reads }
             .clone()
             .try_acquire_owned()
             .map_err(|_| invalid("plugin_busy: retry with the same operation ID"))?;
@@ -45,30 +45,35 @@ impl Control {
             if mutation {
                 let (retained, fresh) = journal.admit(&actor, &call)?;
                 if !fresh {
-                    return Ok(Prepared::Retained(retained));
+                    return Ok((permit, Prepared::Retained(retained)));
                 }
             }
             let result = prepare(&registry, &actor, &request);
-            Ok(Prepared::Work {
-                registry,
-                actor,
-                journal,
-                call,
-                mutation,
-                result,
-            })
+            Ok((
+                permit,
+                Prepared::Work(Box::new(Work {
+                    registry,
+                    actor,
+                    journal,
+                    call,
+                    mutation,
+                    result,
+                })),
+            ))
         })
         .await?;
+        let (permit, preparation) = preparation;
         let value = match preparation {
             Prepared::Retained(value) => value,
-            Prepared::Work {
-                registry,
-                actor,
-                journal,
-                call,
-                mutation,
-                result,
-            } => {
+            Prepared::Work(work) => {
+                let Work {
+                    registry,
+                    actor,
+                    journal,
+                    call,
+                    mutation,
+                    result,
+                } = *work;
                 // A separate job per plugin: one slow descriptor cannot serialize the host.
                 let result = match result {
                     Ok((_entries, Some(job))) => {
@@ -85,6 +90,7 @@ impl Control {
                     Err(error) => Err(error),
                 };
                 blocking(move || {
+                    let _permit = permit;
                     let value = match result {
                         Ok(entries) => {
                             let value = serde_json::to_value(entries)?;
@@ -95,7 +101,17 @@ impl Control {
                                     "registry exceeds the bounded control page",
                                 )
                             } else {
-                                mcp::success(call.op_id, serde_json::json!({"entries":value}))
+                                let value =
+                                    mcp::success(call.op_id, serde_json::json!({"entries":value}));
+                                if serde_json::to_vec(&value)?.len() > mcp::MAX_RESULT {
+                                    mcp::error(
+                                        call.op_id,
+                                        "plugin_inventory_too_large",
+                                        "encoded registry exceeds the journal response bound",
+                                    )
+                                } else {
+                                    value
+                                }
                             }
                         }
                         Err(error) => mcp::error(call.op_id, "plugin_refused", &error.to_string()),
@@ -125,14 +141,15 @@ impl Control {
 
 enum Prepared {
     Retained(Value),
-    Work {
-        registry: Registry,
-        actor: Actor,
-        journal: Journal,
-        call: Call,
-        mutation: bool,
-        result: Result<(Vec<Entry>, Option<super::InspectionJob>)>,
-    },
+    Work(Box<Work>),
+}
+struct Work {
+    registry: Registry,
+    actor: Actor,
+    journal: Journal,
+    call: Call,
+    mutation: bool,
+    result: Result<(Vec<Entry>, Option<super::InspectionJob>)>,
 }
 
 fn refusal(error: bbt_plugin::Refusal) -> crate::store::Error {
