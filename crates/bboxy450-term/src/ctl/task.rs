@@ -282,3 +282,16 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     };
     super::print_reply(out, noun, verb, id, data, human)
 }
+
+/// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
+#[cfg(test)]
+pub(super) const PARSE_SAMPLES: &[&str] = &[
+    "task list",
+    "task get #1",
+    "task status #1",
+    "task report #1 --summary proof",
+    "task accept #1",
+    "task reject #1 --reason incomplete",
+    "task delegate #1 s",
+    "task create t --verify true",
+];

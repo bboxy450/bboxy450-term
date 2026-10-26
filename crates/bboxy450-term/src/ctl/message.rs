@@ -264,3 +264,13 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     };
     super::print_reply(out, noun, verb, id, data, human)
 }
+
+/// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
+#[cfg(test)]
+pub(super) const PARSE_SAMPLES: &[&str] = &[
+    "message send s hi",
+    "message post swarms/x hi",
+    "message inbox",
+    "message receipts 01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
+    "message ack 01M5Q8A7DQ7EQFKBZH4NXBW3QQ",
+];

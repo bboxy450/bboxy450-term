@@ -641,3 +641,23 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     };
     super::print_reply(out, noun, verb, id, data, human)
 }
+
+/// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
+#[cfg(test)]
+pub(super) const PARSE_SAMPLES: &[&str] = &[
+    "seat ls",
+    "seat spawn zsh",
+    "seat screen s",
+    "seat type s x",
+    "seat key s enter",
+    "seat paste s -",
+    "seat wait s --state idle",
+    "seat capture window /tmp/x.png",
+    "seat watch s",
+    "seat rename s n",
+    "seat close s",
+    "seat undo-close s",
+    "seat focus s",
+    "seat restart s",
+    "seat resize s 80x24",
+];

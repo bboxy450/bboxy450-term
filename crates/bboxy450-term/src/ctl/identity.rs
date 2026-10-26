@@ -39,3 +39,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
         }
     })
 }
+
+/// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
+#[cfg(test)]
+pub(super) const PARSE_SAMPLES: &[&str] = &["identity status", "identity unlock"];
