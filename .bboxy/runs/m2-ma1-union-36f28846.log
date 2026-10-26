@@ -1,0 +1,12 @@
+M2 union source 36f288467df948ee906f22ba56f924122f3f6488 (G), velvet-m2-compose-final on accepted MA-1 3212465ffe501cb49707299297d5902f14587429.
+
+git rebase 3212465f — completed; sole conflict was the golden append. All 50798 MA-1 bytes are an exact unchanged prefix, followed by three compose cases.
+The entire MA-1 message_view function and kind consumer are byte-identical after removing only our message_ids initializer; no MA-1 port was dropped.
+
+cargo test -p bbt-proto --locked --target-dir target/m2-compose-dev --test gui_wire_golden --test ui_compose — EXIT 0, 5 passed.
+cargo test -p bboxy450-term --locked --target-dir target/m2-compose-dev --test messaging_ui — EXIT 0, 19 passed.
+cargo test -p bboxy450-term --locked --target-dir target/m2-compose-dev --lib ctl:: — EXIT 0, 23 passed.
+cargo test -p bboxy450-term --locked --target-dir target/m2-compose-dev --test ctl — EXIT 0, 16 passed.
+All used source scripts/cache-env.sh, jobs 2, own explicit target and memory test custody. Raw log SHA256s: m2-ma1-union-36f28846.json.
+
+M2 FULL/runtime/frame/33-member proof remains attributed to frozen 65267bad and is retained in m2-compose-65267bad.json. No repeat night/parity or new performance claim. Ready for the Oracle's land.sh as requested in db19135f; no self-publication or author presubmit claim.

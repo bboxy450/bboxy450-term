@@ -1,0 +1,36 @@
+{
+  "source": "36f288467df948ee906f22ba56f924122f3f6488",
+  "base": "3212465ffe501cb49707299297d5902f14587429",
+  "branch": "velvet-m2-compose-final",
+  "golden_prefix_bytes_unchanged": 50798,
+  "append_count": 3,
+  "ma1_message_view_consumer_preserved": true,
+  "checks": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/ma1-union-golden.log",
+      "sha256": "d3e70d4ac0fe3b6279ddb1d4e373293262435832e87f9f919b8e734cf07cd971",
+      "passed": 5,
+      "exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/ma1-union-composer.log",
+      "sha256": "8954bc31e688e643208f184b43aacc24a54922e3fdc0e5f361bf832640fdbc3d",
+      "passed": 19,
+      "exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/ma1-union-cli-unit.log",
+      "sha256": "f34211debe1c9d584f412d489829d848bf87e8754ef3798967e5d5c9cac68c57",
+      "passed": 23,
+      "exit": 0
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/ma1-union-cli-integration.log",
+      "sha256": "f719d0c88125ae8550ea79f03feafda8367eb513d1793aa826fa9a705a92e457",
+      "passed": 16,
+      "exit": 0
+    }
+  ],
+  "runtime_evidence": ".bboxy/runs/m2-compose-65267bad.json",
+  "runtime_limit": "No new night or renderer run; scoped M2 full proof stays attributed to 65267bad. Rebase verification is exactly the Oracle-requested golden, composer and CLI checks."
+}
