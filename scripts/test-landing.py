@@ -171,6 +171,11 @@ if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"block
     signal.pause()
 if cfg.get("block_once") and cfg.get("block")==args[0]:
     assert (pathlib.Path(os.environ["BBOXY_CARGO_TARGET_DIR"])/"warm-build-artifact").read_text()=="first attempt"
+if args[0]=="test" and "corpus" in args and cfg.get("corpus_frontmatter"):
+    path=pathlib.Path(cfg["corpus_frontmatter"])
+    if not path.read_text().startswith("---" + chr(10)):
+        print(str(path)+":1: frontmatter missing",flush=True)
+        raise SystemExit(101)
 if cfg.get("fail")==args[0]:raise SystemExit(1)
 if args[0]=="test" and cfg.get("hook"):
     done=state/"hook.done"
@@ -828,6 +833,18 @@ class LandTests(unittest.TestCase):
                         + ("ci-local: all gates passed\n" if status == 0 else "fixture failed\n")
                         + f"ci-local: result {sha} {mode} {status}\n")
         return path
+
+    def test_mixed_script_cut_refuses_frontmatterless_run_record_before_push(self):
+        path = ".bboxy/runs/no-frontmatter.md"
+        self.repo.write(path, "# Evidence without record metadata\n")
+        self.repo.write("scripts/new-check.sh", "#!/bin/sh\nexit 0\n")
+        self.repo.commit("Fixture mixed script and malformed record")
+        (self.repo.state / "behavior.json").write_text(json.dumps({"corpus_frontmatter": path}))
+        result = self.repo.land()
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        self.assertIn(path + ":1: frontmatter missing", result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertFalse((self.repo.state / "landings.log").exists())
 
     def test_narrow_cold_log_is_no_longer_accepted(self):
         sha = self.cut()

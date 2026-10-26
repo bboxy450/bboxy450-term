@@ -1,0 +1,70 @@
+{
+  "brief": "Oracle f63dd09f: records corpus gate for mixed code/script cuts",
+  "status": "regression red before guard, green after; author landing pending",
+  "base": "bdb1a783f55e1ef5f66eef31e08abe4912a62b6d",
+  "mechanisms": [
+    "scripts/landing.py:798 \u2014 every non-lab cut touching .bboxy/*.md runs the existing bbt-doc corpus target before crate/script checks; lab cuts retain their existing records checks",
+    "scripts/test-landing.py:174 \u2014 fixture cargo emits a named corpus refusal for its frontmatter-less note",
+    "scripts/test-landing.py:837 \u2014 private signed repository proves refusal before push, unchanged main and no landing record"
+  ],
+  "checks": [
+    {
+      "name": "records-corpus-before",
+      "exit": 1,
+      "seconds": 0.07963895797729492,
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/test-landing.py",
+        "LandTests.test_mixed_script_cut_refuses_frontmatterless_run_record_before_push"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/records-corpus-before.log",
+      "log_sha256": "d27dcf9a69778f1c887e15ce219375f90b98f17a690a957c1da5ca3915369454"
+    },
+    {
+      "name": "records-corpus-before-fixed",
+      "exit": 1,
+      "seconds": 3.85854172706604,
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/test-landing.py",
+        "LandTests.test_mixed_script_cut_refuses_frontmatterless_run_record_before_push"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/records-corpus-before-fixed.log",
+      "log_sha256": "fb733c96ceaa2dd7be5b6a857777d9de94516f01c3dcc4842361a00740601a92"
+    },
+    {
+      "name": "records-corpus-before-valid",
+      "exit": 1,
+      "seconds": 9.695348978042603,
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/test-landing.py",
+        "LandTests.test_mixed_script_cut_refuses_frontmatterless_run_record_before_push"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/records-corpus-before-valid.log",
+      "log_sha256": "6c412c8718caeda16bcd88f5fc428b0c9921660300dd994135bcde59fd52d6ef"
+    },
+    {
+      "name": "records-corpus-after",
+      "exit": 0,
+      "seconds": 3.4855167865753174,
+      "argv": [
+        "python3",
+        "-IB",
+        "scripts/test-landing.py",
+        "LandTests.test_mixed_script_cut_refuses_frontmatterless_run_record_before_push"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/records-corpus-after.log",
+      "log_sha256": "184b4eca42e347a7212b2f1f335c355065a7a0a6249da749444cfb218cf38875"
+    }
+  ],
+  "limits": [
+    "The regression uses the existing fixture Cargo adapter and a private signed bare Git origin; it tests routing and publication refusal, not a second Markdown parser.",
+    "The real bbt-doc parser remains unchanged; its malformed-frontmatter tests and actual corpus gate are the parser authority.",
+    "No full postsubmit or Oracle acceptance claimed."
+  ],
+  "failure_disposition": "First two fixture-authoring runs had nested Python string-escaping errors. They are retained separately; only records-corpus-before-valid is the actual before-fix counterexample."
+}

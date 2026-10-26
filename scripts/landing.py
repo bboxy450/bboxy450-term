@@ -795,6 +795,8 @@ def presubmit_worker(base, result_path, recheck=None):
             records_checks(root, data["paths"])
             checked(["sh", "scripts/invariants.sh", "--no-cargo"], root)
     else:
+        if any(p.startswith(".bboxy/") and p.endswith(".md") for p in data["paths"]):
+            checked(["cargo", "test", "-p", "bbt-doc", "--locked", "--test", "corpus", "-q"], root)
         packages = [arg for name in data["affected"] for arg in ("-p", name)]
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
