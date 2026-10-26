@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T18:18:53Z"
+updated: "2026-10-26T19:03:15Z"
 ---
 # Messaging attention
 
@@ -68,11 +68,13 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 
 **No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Which default a seat gets, in this order** (Aster's question, 2026-10-25; the Architect is Oracle-class under #262, so the name must be read first): `role.name` of `architect` or `creativity` first; then priority class Oracle; every other seat the Executor defaults. An omitted policy on the seat record means that role default, so records written before MA-2 keep their bytes. The defaults, overridable per seat:
 
-| Role | Direct conversation (DMs, briefs, delegations, replies to it) | Channel conversation | Events |
-|---|---|---|---|
-| Oracle | `wake` | `wake` | `inbox` |
-| Architect, Creativity | `wake` | `inbox` | `inbox` |
-| Executor | `wake` | `digest` | `inbox` |
+| Role | Direct conversation (DMs, briefs, delegations, replies to it) | Named in a channel (addressed by name) | Other channel conversation | Events |
+|---|---|---|---|---|
+| Oracle | `wake` | `wake` | `wake` | `inbox` |
+| Architect, Creativity | `wake` | `wake` | `inbox` | `inbox` |
+| Executor | `wake` | `wake` | `digest` | `inbox` |
+
+**Named in a channel wakes every role** (Wren's question, 2026-10-26): a message that addresses a seat by name is someone talking to that seat, the same intent as a direct message; the code's earlier `digest` for an Executor addressed by name is the fix, and the lab's "direct and by name" grouping was right.
 
 A direct message to an Executor wakes it (an earlier wording put Executors' non-brief conversation in a digest; the lab's reading, that direct conversation wakes, was right and is now the spec).
 
