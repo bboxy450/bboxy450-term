@@ -1,7 +1,7 @@
 {
   "promise": "T4 real cells, colours, styles, wide grid alignment and program cursor shapes",
   "runtime_app_base": "a4ad6dc9c40746e32b43e006c6394e2c34f81c6f",
-  "status": "current-main headless GPU/PTY script held; author landing and postsubmit acceptance pending",
+  "status": "author landed; current-main headless GPU/PTY script held; postsubmit and Oracle acceptance unverified",
   "source_refs": [
     {
       "source": "scripts/e2e/t4_cells.py:29",
@@ -285,5 +285,68 @@
   "gaps": [
     "Headless macOS GPU/PTY proof only; no OS presentation or cross-platform runtime claim.",
     "Postsubmit and Oracle review remain unverified."
-  ]
+  ],
+  "landed_code": "9e5ece03cbc02c91caf52ee09c73d2a6d4c2e1c2",
+  "author": {
+    "exit": 0,
+    "seconds": 619.3960509300232,
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t4-20261026/author.log",
+    "log_sha256": "dee29a32b4cb865288165b307d2b4497c3d9bb7986f28d7527e3c107feba2dae",
+    "checks": [
+      {
+        "sha": "9e5ece03cbc02c91caf52ee09c73d2a6d4c2e1c2",
+        "operation": "d9cea31cbf9a4176bef2df0e24286299",
+        "exit": 0,
+        "verdict": "green",
+        "affected": [
+          "bboxy450-term"
+        ],
+        "seconds": 610.0126299999538,
+        "compile_seconds": 200.28743829100858,
+        "run_seconds": 409.72482858394505,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/9e5ece03cbc02c91caf52ee09c73d2a6d4c2e1c2-97e0a14d/commands.log",
+        "log_sha256": "ff1838889774aafc7aa3e11ef8927eb73a476397f1ed2dbb7e923188db703bc5",
+        "test_result_lines": [
+          "test result: ok. 91 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+          "test result: ok. 122 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.28s",
+          "test result: ok. 0 passed; 0 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 54.10s",
+          "test result: ok. 0 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 4 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 0.57s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s",
+          "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.68s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 3 passed; 0 failed; 6 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s",
+          "test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s",
+          "test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 15 filtered out; finished in 53.89s"
+        ],
+        "invariant_result_lines": [
+          "invariants: Cargo test batch: cargo test --locked --no-fail-fast --target-dir /private/tmp/bboxy450-gate-slot-1/target -p bboxy450-term --test ctl -- --exact ctl_never_prints_secrets",
+          "invariants: 14 checks, 0 failures, 11 slow checks skipped",
+          "invariants: 12 unaffected-crate checks skipped"
+        ]
+      }
+    ],
+    "acceptance": "author presubmit green and fast-forward push; postsubmit/Oracle review not independently verified"
+  },
+  "code_manifest_at_landing": {
+    "scripts/e2e/T4.sh": "c0833a2d16a9ebab5b25e571e9bb06aa0cf595ccabac8a03735e6bc5bd71108e",
+    "scripts/e2e/t4_cells.py": "977b2da46de0820e296bbf7eb092c2b537acc0a6b8bbf81e0f32a16500e7af8f"
+  }
 }
