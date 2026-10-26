@@ -170,3 +170,142 @@ fn unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes() {
         inventory
     );
 }
+
+fn attention_receipt() -> Value {
+    json!({
+        "message_sequence":3,"message":ID,"sender":ID,"recipient":ID,
+        "agent":null,"evidence":"recipient-stored","note":"stored","held":null,
+        "arrivals":[],"received_ms":1,"eligible_ms":2,"batch_key":"seats/target/inbox",
+        "class":"worker","attempt":null,"native_id":null,"relayed_via_main":false
+    })
+}
+
+// keeps: spec messaging-attention §2 — class is signed through kind, never chosen separately
+#[test]
+fn message_class_is_derived_from_kind_and_cannot_be_supplied_by_the_sender() {
+    use bbt_proto::messaging::{MessageClass, MessageKind, WakeMode};
+    for kind in ["text", "chunk", "decision", "task"] {
+        let kind: MessageKind = serde_json::from_value(json!(kind)).unwrap();
+        assert_eq!(kind.class(), MessageClass::Conversation);
+    }
+    for kind in [
+        "presence",
+        "slot_claimed",
+        "slot_released",
+        "cut_claimed",
+        "landed",
+        "gate_result",
+        "task_transition",
+    ] {
+        let kind: MessageKind = serde_json::from_value(json!(kind)).unwrap();
+        assert_eq!(kind.class(), MessageClass::Event);
+    }
+    let mut forged = envelope();
+    forged["class"] = json!("conversation");
+    assert!(serde_json::from_value::<Envelope>(forged).is_err());
+    for mode in ["wake", "inbox", "digest"] {
+        let decoded: WakeMode = serde_json::from_value(json!(mode)).unwrap();
+        assert_eq!(serde_json::to_value(decoded).unwrap(), mode);
+    }
+    assert!(serde_json::from_value::<WakeMode>(json!("mute")).is_err());
+}
+
+// keeps: spec messaging-attention §2 — every event has the pinned structured fields
+#[test]
+fn structured_event_bodies_keep_the_pinned_fields_and_have_no_model_text() {
+    use bbt_proto::messaging::Body;
+    let cases = [
+        json!({"type":"slot_claimed","slot":2,"sha":"abc"}),
+        json!({"type":"slot_released","slot":2,"sha":"abc","exit":-15}),
+        json!({"type":"cut_claimed","branch":"topic","paths":["crates/bbt-proto/src/messaging.rs"]}),
+        json!({"type":"landed","sha":"abc","tier":"narrow","presubmit_seconds":12}),
+        json!({"type":"gate_result","sha":"abc","stage":"presubmit","verdict":"green"}),
+        json!({"type":"task_transition","task":337,"from":"open","to":"delegated"}),
+    ];
+    for value in cases {
+        let decoded: Body = serde_json::from_value(value.clone()).unwrap();
+        assert!(decoded.text().is_none());
+        assert_eq!(serde_json::to_value(decoded).unwrap(), value);
+        let mut extra = value;
+        extra["text"] = json!("untyped prose");
+        assert!(serde_json::from_value::<Body>(extra).is_err());
+    }
+    for tier in ["lab", "narrow", "wide"] {
+        let value = json!({"type":"landed","sha":"abc","tier":tier,"presubmit_seconds":12});
+        assert_eq!(
+            serde_json::to_value(serde_json::from_value::<Body>(value.clone()).unwrap()).unwrap(),
+            value
+        );
+    }
+    for verdict in ["green", "red", "flake", "manual-green", "manual-revert"] {
+        let value = json!({"type":"gate_result","sha":"abc","stage":"postsubmit","verdict":verdict,"predicate":"rust-tests"});
+        assert_eq!(
+            serde_json::to_value(serde_json::from_value::<Body>(value.clone()).unwrap()).unwrap(),
+            value
+        );
+    }
+    for bad in [
+        json!({"type":"slot_claimed","slot":256,"sha":"abc"}),
+        json!({"type":"slot_released","slot":1,"sha":"abc","exit":"0"}),
+        json!({"type":"cut_claimed","branch":"topic","paths":"one path"}),
+        json!({"type":"landed","sha":"abc","tier":"trusted","presubmit_seconds":12}),
+        json!({"type":"gate_result","sha":"abc","stage":"other","verdict":"green"}),
+        json!({"type":"gate_result","sha":"abc","stage":"presubmit","verdict":"manual_green"}),
+        json!({"type":"task_transition","task":4294967296u64,"from":"open","to":"delegated"}),
+    ] {
+        assert!(serde_json::from_value::<Body>(bad).is_err());
+    }
+}
+
+// keeps: spec messaging-attention §2 — optional legacy data and exact flat wake states
+#[test]
+fn receipt_wake_keeps_legacy_bytes_and_uses_the_pinned_flat_states() {
+    use bbt_proto::messaging::{Receipt, ReceiptWake};
+    let original = attention_receipt();
+    let legacy: Receipt = serde_json::from_value(original.clone()).unwrap();
+    assert_eq!(legacy.wake, None);
+    assert_eq!(serde_json::to_value(legacy).unwrap(), original);
+    let until = "2026-10-26T00:10:00Z";
+    for (fields, state) in [
+        (json!({"wake":"now"}), ReceiptWake::Now),
+        (json!({"wake":"none"}), ReceiptWake::None),
+        (
+            json!({"wake":"deferred","until":until}),
+            ReceiptWake::Deferred {
+                until: until.into(),
+            },
+        ),
+    ] {
+        let mut value = original.clone();
+        value
+            .as_object_mut()
+            .unwrap()
+            .extend(fields.as_object().unwrap().clone());
+        let decoded: Receipt = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(decoded.wake, Some(state));
+        assert_eq!(serde_json::to_value(decoded).unwrap(), value);
+    }
+}
+
+// keeps: spec messaging-attention §2 — partial or unknown wake states cannot masquerade as absent
+#[test]
+fn malformed_receipt_wake_states_are_refused() {
+    use bbt_proto::messaging::Receipt;
+    for fields in [
+        json!({"wake":"digest"}),
+        json!({"wake":"wake"}),
+        json!({"wake":true}),
+        json!({"wake":"deferred"}),
+        json!({"wake":"deferred","until":""}),
+        json!({"wake":"deferred","until":12}),
+        json!({"wake":"now","until":"2026-10-26T00:10:00Z"}),
+        json!({"until":"2026-10-26T00:10:00Z"}),
+    ] {
+        let mut value = attention_receipt();
+        value
+            .as_object_mut()
+            .unwrap()
+            .extend(fields.as_object().unwrap().clone());
+        assert!(serde_json::from_value::<Receipt>(value).is_err());
+    }
+}

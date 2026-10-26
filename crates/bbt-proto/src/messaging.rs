@@ -55,6 +55,68 @@ pub enum MessageKind {
     Decision,
     Presence,
     Task,
+    SlotClaimed,
+    SlotReleased,
+    CutClaimed,
+    Landed,
+    GateResult,
+    TaskTransition,
+}
+
+/// Derived from the signed kind, never supplied independently by a sender (#334).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MessageClass {
+    Conversation,
+    Event,
+}
+impl MessageKind {
+    pub const fn class(self) -> MessageClass {
+        match self {
+            Self::Text | Self::Chunk | Self::Decision | Self::Task => MessageClass::Conversation,
+            Self::Presence
+            | Self::SlotClaimed
+            | Self::SlotReleased
+            | Self::CutClaimed
+            | Self::Landed
+            | Self::GateResult
+            | Self::TaskTransition => MessageClass::Event,
+        }
+    }
+}
+
+/// Receiver policy modes; role defaults and admission belong to the host.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WakeMode {
+    Wake,
+    Inbox,
+    Digest,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LandingTier {
+    Lab,
+    Narrow,
+    Wide,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GateStage {
+    Presubmit,
+    Postsubmit,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GateVerdict {
+    Green,
+    Red,
+    Flake,
+    ManualGreen,
+    ManualRevert,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,6 +140,36 @@ pub enum Body {
         path: String,
         summary: String,
     },
+    SlotClaimed {
+        slot: u8,
+        sha: String,
+    },
+    SlotReleased {
+        slot: u8,
+        sha: String,
+        exit: i32,
+    },
+    CutClaimed {
+        branch: String,
+        paths: Vec<String>,
+    },
+    Landed {
+        sha: String,
+        tier: LandingTier,
+        presubmit_seconds: u32,
+    },
+    GateResult {
+        sha: String,
+        stage: GateStage,
+        verdict: GateVerdict,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        predicate: Option<String>,
+    },
+    TaskTransition {
+        task: u32,
+        from: String,
+        to: String,
+    },
 }
 
 impl Body {
@@ -85,7 +177,13 @@ impl Body {
         match self {
             Self::Text { text } => Some(text),
             Self::Task { summary, .. } => Some(summary),
-            Self::Presence { .. } => None,
+            Self::Presence { .. }
+            | Self::SlotClaimed { .. }
+            | Self::SlotReleased { .. }
+            | Self::CutClaimed { .. }
+            | Self::Landed { .. }
+            | Self::GateResult { .. }
+            | Self::TaskTransition { .. } => None,
         }
     }
 }
@@ -567,6 +665,39 @@ pub struct MessageRow {
     pub receipts: ReceiptSummary,
 }
 
+/// Wake evidence is separate from storage/delivery evidence. `until` is RFC 3339.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "wake", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ReceiptWake {
+    Now,
+    None,
+    Deferred { until: String },
+}
+
+// Decode the flat fields as one optional state: legacy rows remain absent,
+// and new states require their matching fields.
+fn receipt_wake<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<ReceiptWake>, D::Error> {
+    #[derive(Deserialize)]
+    struct Fields {
+        wake: Option<String>,
+        until: Option<String>,
+    }
+    let Fields { wake, until } = Fields::deserialize(deserializer)?;
+    match (wake.as_deref(), until) {
+        (None, None) => Ok(None),
+        (Some("now"), None) => Ok(Some(ReceiptWake::Now)),
+        (Some("none"), None) => Ok(Some(ReceiptWake::None)),
+        (Some("deferred"), Some(until)) if !until.trim().is_empty() => {
+            Ok(Some(ReceiptWake::Deferred { until }))
+        }
+        _ => Err(serde::de::Error::custom(
+            "invalid receipt wake: expected now, none, or deferred with until",
+        )),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Receipt {
     pub message_sequence: u64,
@@ -595,6 +726,14 @@ pub struct Receipt {
     pub recipient_device: Option<Ulid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sender_operator: Option<OperatorReference>,
+    /// Omitted on legacy rows; it never changes whether a message was stored.
+    #[serde(
+        default,
+        flatten,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "receipt_wake"
+    )]
+    pub wake: Option<ReceiptWake>,
 }
 
 /// Seat receipts retain their existing ULID string; operator receipts name the device.

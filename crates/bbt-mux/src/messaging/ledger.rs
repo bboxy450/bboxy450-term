@@ -1114,6 +1114,7 @@ fn insert_deliveries(
                 Recipient::Operator(device) => Some(device),
                 _ => None,
             }),
+            wake: None,
             recipient_device: match route.recipient {
                 Recipient::Operator(device) => Some(device),
                 Recipient::OperatorLocal(_) => signing_device,

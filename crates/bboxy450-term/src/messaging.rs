@@ -188,6 +188,12 @@ pub fn message_view(
                 MessageKind::Decision => "decision",
                 MessageKind::Presence => "presence",
                 MessageKind::Task => "task",
+                MessageKind::SlotClaimed => "slot_claimed",
+                MessageKind::SlotReleased => "slot_released",
+                MessageKind::CutClaimed => "cut_claimed",
+                MessageKind::Landed => "landed",
+                MessageKind::GateResult => "gate_result",
+                MessageKind::TaskTransition => "task_transition",
             }
             .into(),
         ),

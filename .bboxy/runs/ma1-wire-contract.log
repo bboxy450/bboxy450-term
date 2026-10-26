@@ -1,0 +1,30 @@
+MA-1 #337 — additive messaging wire contract
+Kestrel Voidwing <EXECUTOR>; exec5-messaging-attention-ma1
+Brief: 99edc18d-9d85-47d3-992d-ad0a6b97e213
+Scope extension: 21042dd8-bd1b-4136-804b-f4d15ad208a0
+Shape ruling: e64096e6, messaging-attention section 2
+Task record: .bboxy/tasks/2026-10-25-ma-1-messaging-wire-contract.md (opened via records-push EXIT 0 at ae73d6102ab1621ffc3c40221666f6da4215c14e)
+
+Mechanisms
+- crates/bbt-proto/src/messaging.rs: MessageKind::class derives conversation/event from the signed kind. No sender-selectable class field; Presence is event and the existing Task stays conversation.
+- Six new kind/body pairs carry exactly the pinned fields: SlotClaimed, SlotReleased, CutClaimed, Landed, GateResult, TaskTransition. LandingTier, GateStage and GateVerdict are typed. Machine event bodies expose no model text.
+- WakeMode declares wake/inbox/digest. Receipt.wake is optional; absent legacy rows emit no new fields. New states encode flat wake=now/none or wake=deferred plus until. The decoder refuses unknown/partial states. Until is the RFC 3339 string carried on the wire; deadline production and interpretation remain in the host's later policy/digest cut.
+- crates/bbt-mux/src/messaging/wire.rs: SendRequestExt::validate refuses every new kind with event_input_unavailable before host admission; typed bodies cannot masquerade under an old kind. Existing conversation validation remains.
+- crates/bbt-mux/src/messaging/ledger.rs: existing receipt construction adds wake: None.
+- crates/bboxy450-term/src/messaging.rs: exhaustive labels cover the six new kinds.
+
+Compatibility
+- All 37925 prior golden bytes are an exact prefix of the updated file, SHA-256 d73fe83c99b80dcb914e5f4182d56bc7b4ef899bd048e62d9157c085859436ce.
+- 17 cases appended: six event bodies; remaining gate verdicts; legacy text, presence and task bodies; legacy absent wake; now, none and deferred wake states.
+- No envelope field or signing format changed. The signed kind still determines its class. No producer, policy store, digest scheduler, native delivery behaviour, GUI or catalogue change.
+
+Focused development acceptance
+. ./scripts/cache-env.sh; cargo test --target-dir <owned MA-1 target> -p bbt-proto --locked --offline --test messaging --test gui_wire_golden
+EXIT 0: messaging 11 passed/0 failed, GUI wire goldens 2 passed/0 failed; both suites 0.00 s after compilation, total 165.080 s. Two Cargo jobs, O1/debug assertions, own stable checkout path and explicit memory custody. No network, operator, Keychain or window used by these tests.
+Raw log SHA-256: 087bfc04e9522d682c7bf7717a8ca522070f479c30fff722a96b3157d6be7cfe (ma1-wire-contract-tests.log).
+
+Overlap check
+scripts/overlap.sh was absent; the existing read-only worktree diff inventory was used. The only matching committed paths were on the old shared main worktree (98220c2a), with no dirty wire/ledger changes. No other active writing worktree touched the six targeted files at inventory time. No shared worktree was edited.
+
+Remaining check
+The author land.sh presubmit checks the affected consumers, strict Clippy, the named refusal test, and selected invariants on the signed cut. MA-2 and later service cuts are separate; notices-never-wake remains pending until MA-3.

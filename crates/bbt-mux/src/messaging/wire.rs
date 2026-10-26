@@ -13,6 +13,19 @@ pub trait SendRequestExt {
 }
 impl SendRequestExt for SendRequest {
     fn validate(&self) -> Result<()> {
+        if matches!(
+            self.kind,
+            MessageKind::SlotClaimed
+                | MessageKind::SlotReleased
+                | MessageKind::CutClaimed
+                | MessageKind::Landed
+                | MessageKind::GateResult
+                | MessageKind::TaskTransition
+        ) {
+            return Err(invalid(
+                "event_input_unavailable: structured events await host admission",
+            ));
+        }
         if self.id == Ulid::nil()
             || self.thread_id == Some(Ulid::nil())
             || self.reply_to == Some(Ulid::nil())
@@ -186,6 +199,12 @@ impl EnvelopeExt for Envelope {
                     && path.len() <= 4096
                     && !event.chars().chain(path.chars()).any(char::is_control)
             }
+            Body::SlotClaimed { .. }
+            | Body::SlotReleased { .. }
+            | Body::CutClaimed { .. }
+            | Body::Landed { .. }
+            | Body::GateResult { .. }
+            | Body::TaskTransition { .. } => false,
         };
         if !body_ok {
             return Err(invalid("message kind/body mismatch or invalid typed body"));
@@ -225,4 +244,30 @@ pub fn parse_public(value: &str) -> Result<[u8; 32]> {
         *byte = u8::from_str_radix(&value[2 * i..2 * i + 2], 16)?;
     }
     Ok(key)
+}
+
+#[cfg(test)]
+mod attention_contract_tests {
+    use super::*;
+
+    // keeps: spec messaging-attention §7 MA-1 — new event input is not admitted by the old host
+    #[test]
+    fn new_event_requests_are_refused_by_name_before_the_service_cut() {
+        for kind in [
+            MessageKind::SlotClaimed,
+            MessageKind::SlotReleased,
+            MessageKind::CutClaimed,
+            MessageKind::Landed,
+            MessageKind::GateResult,
+            MessageKind::TaskTransition,
+        ] {
+            let mut request = SendRequest::text("seats/target/inbox", "");
+            request.kind = kind;
+            let error = request.validate().unwrap_err().to_string();
+            assert!(error.starts_with("event_input_unavailable:"), "{error}");
+        }
+        SendRequest::text("seats/target/inbox", "existing conversation")
+            .validate()
+            .unwrap();
+    }
 }
