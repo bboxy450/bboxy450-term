@@ -21,11 +21,16 @@ def r2():
     measured = []
     for rim in (2, 4, 8):
         app.ctl("ui", "open", "settings", label=f"r2-settings-{rim}")
-        # Search -> navigation; wrap backwards from Account through Shortcuts
-        # and Notifications to Appearance. Additional sections precede these.
-        page = app.ctl("ui", "key", "tab", "tab", "up", "up", "up")
-        require(any(n["kind"] == "named:card0/r2/ctl" for n in nodes(page)),
-                "Settings keyboard did not reach Appearance / Rim size")
+        # Follow the rendered section label, independent of section order.
+        page = app.ctl("ui", "key", "tab", "tab")
+        for _ in range(16):
+            if any(n.get("text") == "Rim size" for n in nodes(page)):
+                break
+            page = app.ctl("ui", "key", "down")
+        else:
+            raise AssertionError("Settings navigation never showed Rim size")
+        require(any(n.get("text") == "Appearance" for n in nodes(page)),
+                "Rim size appeared outside Appearance")
         app.ctl("ui", "key", "tab", "tab", "tab")
         app.ctl("ui", "key", *("left",) * 6)
         if rim > 2:

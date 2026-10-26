@@ -8,13 +8,13 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-26T17:47:10Z"
+updated: "2026-10-26T19:36:43Z"
 ---
 # e2e script map
 
 **Lens.** Each promise of [[e2e-acceptance]] §1 has one night script, `scripts/e2e/<ID>.sh`. Decision [[d316-pass-means-the-whole-promise]]: its prefix-matched `# coverage:` header is the source of current coverage; only `full` is green. Whoever changes a header updates its row in the same commit.
 
-The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts the test-account retained-read gap boundary; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 names the live-viewport fixture limit when it cannot reach history admission. There are 56 current promises, including T9 and M7. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
+The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts the test-account retained-read gap boundary; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 uses an actually drawn, core-valid viewport to assert the named history-budget refusal and continued same-generation live input; heap-allocation accounting remains partial. There are 56 current promises, including T9 and M7. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
 
 The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their code baseline is `afff4758`, their spec baseline is `e48d6f8f`; their steps, assertions, missing hooks and source lines are a dated plan, not a claim about current implementation. Some hooks have since landed. Current coverage comes from the index, not from that historical gap list. T9 was added later and is indexed from its script; it is outside the archived 54-row plan.
 
@@ -36,7 +36,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
 | S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
 | S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; paging hitch meter | |
-| S4 | `scripts/e2e/S4.sh` | partial | over-budget GUI viewport fixture (live Replica is capped at 32768 cells); history heap allocation accounting is not exported by ctl | |
+| S4 | `scripts/e2e/S4.sh` | partial | history heap allocation accounting is not exported by ctl | |
 | K1 | `scripts/e2e/K1.sh` | partial | every platform key combination and modifier; native press/repeat/release and IME/composition; Cmd-Opt navigation through the app | |
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | Cmd-click on a .md path or a wikilink opens the document modal | |
@@ -287,6 +287,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 **Promise:** a pane whose dimensions cannot fit three viewports in the budget refuses history by name, and the live pane is unaffected.
 
+**Current script:** A 240×60 window request yields a core-valid 199×54 live grid under the default fixture settings. The script checks the Replica dimensions and a full-width ruler in the produced GUI frame before requesting history. History must refuse with `history_viewport_exceeds_budget`, then the same process generation must answer new input and its live pane must draw that answer. The history heap-allocation observation remains missing.
+
 **Deterministic steps (plan):** Choose cols/rows whose three viewports exceed the actual heap admission arithmetic; resize and verify live nonce first; request GUI history, inspect named refusal; type a second live nonce and capture.
 
 **Required assertions:** history_viewport_exceeds_budget with valid dimensions; no panic or false 'dimensions unsupported'; generation/live grid still updates and new nonce visible. History allocations remain within cap.
@@ -350,6 +352,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 ### R2
 
 **Promise:** Settings › Rim size 2 to 8 moves only the gutter and the stage inset; at 2, 4 and 8 the gaps are 2, 4, 8 and the insets 1, 2, 4.
+
+**Current script:** Navigate Settings until the produced text names `Rim size`, then require `Appearance` before changing the existing rim control. This follows the section by name rather than its position. At 2, 4 and 8, actual produced pane geometry must show gutters 2, 4 and 8 and stage insets 1, 2 and 4; titlebar, sidebar and content padding remain unchanged.
 
 **Deterministic steps (plan):** Open Appearance via own UI; choose rim size2,4,8 in turn. Dump solved outer/pane/body bounds and capture each with the same tree/window dimensions.
 

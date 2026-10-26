@@ -1,0 +1,521 @@
+{
+  "status": "R2 full PASS; S4 partial PASS with one remaining heap-allocation gap; author landing pending",
+  "mechanisms": {
+    "R2": "Observe rendered Rim size while navigating Settings; require Appearance text before changing the existing rim control. Audit found no other Settings menu count navigation in scripts/e2e. Actual function scripts/e2e/rim_more.py:11.",
+    "S4": "Use app resize 240x60 giving an actual 199x54 grid. Require complete Replica dimensions and a full-width ASCII ruler in the produced GUI frame, then require the named budget refusal and same-generation live input. The produced frame also must draw S4_AFTER after refusal. Actual function scripts/e2e/ui.py:238."
+  },
+  "checks": [
+    {
+      "name": "r2-focused",
+      "exit": 2,
+      "seconds": 0.7657163143157959,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/r2-focused.log",
+      "log_sha256": "6a2cf90403d4b467457f7387e76b231dc2d9fea719c69ead30a58aa56fe9bf44",
+      "promise_rows": []
+    },
+    {
+      "name": "r2-focused-named",
+      "exit": 1,
+      "seconds": 6.6004931926727295,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "rim, swell and attention",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/r2-focused-named.log",
+      "log_sha256": "112a309071885c8d945498fb3a87e35898383ec3ef41615a99865884aace0602",
+      "promise_rows": [
+        {
+          "coverage": "full",
+          "evidence": "R2: real Settings keyboard at 2/4/8 gives gutters 2/4/8 and insets 1/2/4; title/sidebar and content padding unchanged",
+          "exit": 0,
+          "function": "R2",
+          "group": "rim, swell and attention",
+          "kind": "e2e",
+          "missing": [],
+          "verdict": "pass"
+        }
+      ]
+    },
+    {
+      "name": "s4-focused",
+      "exit": 1,
+      "seconds": 4.0096940994262695,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-focused.log",
+      "log_sha256": "3e2b5e0970ae882d387e7dd97cffe9c135cf20debbf4042f81eee4044ff1523f",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "FAIL: S4: ('ui', 'scroll', '01M5WSH0C4VKFBX02YNXGJJFWG', 'top'): expected a structured refusal, got ok=True frame=33",
+          "exit": 1,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "fail"
+        }
+      ]
+    },
+    {
+      "name": "s4-smaller-frame",
+      "exit": 1,
+      "seconds": 2.558872938156128,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-smaller-frame.log",
+      "log_sha256": "158d2bd5d51f84b4411b0e3a2795053d48227ec67299f80407665247139d01eb",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 215x84\nFAIL: S4: ('ui', 'scroll', '01M5WSN64EA3GJGYP0TVN7JJNG', 'top'): expected a structured refusal, got ok=True frame=42",
+          "exit": 1,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "fail"
+        }
+      ]
+    },
+    {
+      "name": "s4-bounded-wire",
+      "exit": 1,
+      "seconds": 2.643334150314331,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-bounded-wire.log",
+      "log_sha256": "c9f9a4e38f2fb652aef0d4b93eac9a7d7a0d8baaffba8a0316b7db688254b4c2",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 215x56\nFAIL: S4: GUI snapshot did not reach 215x56: [1272, 810]",
+          "exit": 1,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "fail"
+        }
+      ]
+    },
+    {
+      "name": "s4-wire-budget-intersection",
+      "exit": 1,
+      "seconds": 3.0783770084381104,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-wire-budget-intersection.log",
+      "log_sha256": "832e695bf9f05e5744532cbb4463df91da23c64037b4010befc74175fd790263",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 199x54\nFAIL: S4: GUI snapshot did not reach 199x54: [1592, 810]",
+          "exit": 1,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "fail"
+        }
+      ]
+    },
+    {
+      "name": "s4-drawn-viewport",
+      "exit": 1,
+      "seconds": 2.3338139057159424,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-drawn-viewport.log",
+      "log_sha256": "2daabdc34d363b6142f3c370c46407486b0b87d5aa3ba4a6cb816cb765b9e137",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 199x54\nS4: valid 199x54 history refused by name; same-generation live input still works; history heap bytes unobserved",
+          "exit": 0,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "pass"
+        }
+      ]
+    },
+    {
+      "name": "s4-live-drawn",
+      "exit": 1,
+      "seconds": 3.174207925796509,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-live-drawn.log",
+      "log_sha256": "9ef4273912c2a023296800a7ac088c49275e626837537a682ab0bb376ee44191",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 199x54\nS4: valid 199x54 history refused by name; same-generation live input still works; history heap bytes unobserved",
+          "exit": 0,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "pass"
+        }
+      ],
+      "recorded_apps": [
+        {
+          "custody_backend": "file",
+          "function": "S4",
+          "issued_by": "test-account:01M5WV8HCZWMC8WPBCM3Y380ZY",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 58144,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enpnqlQh/S4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5WV8KN3QY9GM1P35XWWANCG",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 58277,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enpnqlQh/records-app/run",
+          "windows": 0
+        }
+      ],
+      "pid_check": {
+        "argv": [
+          "ps",
+          "-p",
+          "58144,58277",
+          "-o",
+          "pid=,args="
+        ],
+        "exit": 1,
+        "stdout": ""
+      }
+    },
+    {
+      "name": "s4-final-header",
+      "exit": 1,
+      "seconds": 2.996091842651367,
+      "argv": [
+        "scratchpad/night-private-home-20261026/bin/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "scrollback",
+        "--scripts",
+        "scratchpad/r2-s4-night-20261026/scripts"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/s4-final-header.log",
+      "log_sha256": "abcda6cb0a30e2ea09a5a2c15e51b2954aed4c81bb10941ad1379f37531f51a6",
+      "promise_rows": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 199x54\nS4: valid 199x54 history refused by name; same-generation live input still works; history heap bytes unobserved",
+          "exit": 0,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "pass"
+        }
+      ],
+      "recorded_apps": [
+        {
+          "custody_backend": "file",
+          "function": "S4",
+          "issued_by": "test-account:01M5WV9X0M7J1J6Q7MX9HJQ6ZT",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 60576,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enIl8B2Z/S4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5WV9Z8JCGM8A1VPV77XHGDA",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 60731,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enIl8B2Z/records-app/run",
+          "windows": 0
+        }
+      ],
+      "pid_check": {
+        "argv": [
+          "ps",
+          "-p",
+          "60576,60731",
+          "-o",
+          "pid=,args="
+        ],
+        "exit": 1,
+        "stdout": ""
+      }
+    },
+    {
+      "name": "r2-s4-static",
+      "exit": 0,
+      "seconds": 0.08422398567199707,
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/r2-s4-night-20261026/static-check.py"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/r2-s4-static.log",
+      "log_sha256": "68b7e2d595993d7ff97c237f26455a21aefeef3ad18fdadd545d7028bc12dacb",
+      "summary": "R2 # coverage: full map agrees\nS4 # coverage: partial; missing: history heap allocation accounting is not exported by ctl map agrees\nAST 2/0; shell syntax 2/0; header/map agreement 2/0"
+    }
+  ],
+  "limits": [
+    "Focused runner directories deliberately omit unrelated promises; enclosing group exit 1 is retained, and only the R2/S4 row exit 0 is claimed.",
+    "No style, renderer, history budget, wire limit or timeout changed.",
+    "S4 remains partial for independent history heap allocation accounting.",
+    "Scratch setup failures and the corrected frame-observer assertion are retained."
+  ],
+  "pid_checks": {
+    "s4-drawn-viewport": {
+      "verdict": [
+        {
+          "coverage": "partial",
+          "evidence": "S4 viewport fixture: 199x54\nS4: valid 199x54 history refused by name; same-generation live input still works; history heap bytes unobserved",
+          "exit": 0,
+          "function": "S4",
+          "group": "scrollback",
+          "kind": "e2e",
+          "missing": [
+            "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+            "history heap allocation accounting is not exported by ctl"
+          ],
+          "verdict": "pass"
+        }
+      ],
+      "recorded_apps": [
+        {
+          "custody_backend": "file",
+          "function": "S4",
+          "issued_by": "test-account:01M5WSVJZ44Y7GHH9ZWKSDVASV",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 35409,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enolkmRY/S4/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5WSVMHWD3M6FQ7AS9NTS4EV",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 35683,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enolkmRY/records-app/run",
+          "windows": 0
+        }
+      ],
+      "ps": {
+        "argv": [
+          "ps",
+          "-p",
+          "35409,35683",
+          "-o",
+          "pid=,args="
+        ],
+        "exit": 1,
+        "stdout": ""
+      },
+      "command_result": {
+        "exit": 1,
+        "seconds": 2.3338139057159424
+      }
+    },
+    "r2-focused-named": {
+      "verdict": [
+        {
+          "coverage": "full",
+          "evidence": "R2: real Settings keyboard at 2/4/8 gives gutters 2/4/8 and insets 1/2/4; title/sidebar and content padding unchanged",
+          "exit": 0,
+          "function": "R2",
+          "group": "rim, swell and attention",
+          "kind": "e2e",
+          "missing": [],
+          "verdict": "pass"
+        }
+      ],
+      "recorded_apps": [
+        {
+          "custody_backend": "file",
+          "function": "R2",
+          "issued_by": "test-account:01M5WSHC5BVWWSJ0EX0B577CDM",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 3200,
+          "role": "promise",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enmpA0Te/R2/run",
+          "windows": 0
+        },
+        {
+          "custody_backend": "file",
+          "function": null,
+          "issued_by": "test-account:01M5WSHHGX8CQE5K09NCBY8WPD",
+          "kind": "app",
+          "mode": "headless",
+          "pid": 4559,
+          "role": "records",
+          "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enmpA0Te/records-app/run",
+          "windows": 0
+        }
+      ],
+      "ps": {
+        "argv": [
+          "ps",
+          "-p",
+          "3200,4559",
+          "-o",
+          "pid=,args="
+        ],
+        "exit": 1,
+        "stdout": ""
+      },
+      "command_result": {
+        "exit": 1,
+        "seconds": 6.6004931926727295
+      }
+    }
+  },
+  "baseline_full_night": {
+    "source": "b61ea30b766a3ec62f1a070610c13e81847c7f7b",
+    "jsonl": "/Users/feral/.local/state/bboxy450-term/landing/nights/3f924583c434460e81934bea1771afe2/night.jsonl",
+    "sha256": "3680575b03fd33ea918fee7f2143944794f379acbe06253936f107ea39e92f33",
+    "rows": [
+      {
+        "coverage": "partial",
+        "evidence": "FAIL: S4: S4 fixture_dimensions_unavailable: pane=471x148 Replica=471x69; live grid caps cells at 32768",
+        "exit": 1,
+        "function": "S4",
+        "group": "scrollback",
+        "kind": "e2e",
+        "missing": [
+          "over-budget GUI viewport fixture (live Replica is capped at 32768 cells)",
+          "history heap allocation accounting is not exported by ctl"
+        ],
+        "verdict": "fail"
+      },
+      {
+        "coverage": "full",
+        "evidence": "    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n            f\"Rim {rim}: gutter={gap}, insets={insets}\")\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/feral/.local/state/bboxy450-term/landing/nights/3f924583c434460e81934bea1771afe2/tree/scripts/e2e/ui.py\", line 16, in require\n    raise AssertionError(reason)\nAssertionError: Rim 2: gutter=4.0, insets=[2.0, 2.0, 2.0, 2.0, 2.0, 2.0]",
+        "exit": 1,
+        "function": "R2",
+        "group": "rim, swell and attention",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "fail"
+      }
+    ]
+  },
+  "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
+  "function_hashes": [
+    {
+      "file": "scripts/e2e/rim_more.py",
+      "function": "r2",
+      "matches_tested_function": true,
+      "sha256": "f8d55d2522d40d78fb86e6209e02e8b86576cb7c45f457d7b365ef5cf6922c2f"
+    },
+    {
+      "file": "scripts/e2e/ui.py",
+      "function": "s4",
+      "matches_tested_function": true,
+      "sha256": "76e96832371744c63a637691e6dc74b8eced275da308d450b04352f789ea4993"
+    }
+  ],
+  "source_sha256": {
+    "scripts/e2e/rim_more.py": "c7760654a9b9dd13a849f26c62e5d7563d584a0eff31ba84769bfa9cddd20cec",
+    "scripts/e2e/ui.py": "51b39ababa7595fd3390dfdd93831116960395f22e6c9f4dbd4bcc0e07859743",
+    "scripts/e2e/S4.sh": "35b43394831695eb0f021fd8175be447bd5588c9ce1e7b55bd54ff01f752e883",
+    ".bboxy/specs/e2e-script-map.md": "9b5b478c4b9e3801b29bdb8476adb7e5f02cbdd9bddd77abbda2bd4f0ab1785a"
+  }
+}

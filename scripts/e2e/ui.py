@@ -237,13 +237,15 @@ def s3(app):
 
 def s4(app):
     seat = app.spawn("S4 history admission")
-    app.ctl("app", "resize", "512x256", label="s4-resize")
+    app.ctl("app", "resize", "240x60", label="s4-resize")
     layout = app.ctl("ui", "focus", seat)
     view = pane(layout, seat)
     # Use a real core-valid viewport. No giant synthetic Screen or ctl seat-resize
     # bypass: the window owns the grid and its live program sees these dimensions.
     require(2 <= view["cols"] <= 768 and 1 <= view["rows"] <= 300,
             "fixture is outside supported live dimensions")
+    require(view["cols"] * view["rows"] <= 32768,
+            "fixture exceeds the live Replica cell limit")
     # Resize setup must reach the terminal Replica too. A solved pane rectangle
     # alone does not prove that the queued PTY/GUI resize has been applied.
     for _ in range(100):
@@ -254,9 +256,19 @@ def s4(app):
     else:
         raise AssertionError(f"S4 fixture_dimensions_unavailable: pane={view['cols']}x{view['rows']} "
                              f"Replica={screen['cols']}x{len(screen['rows'])}; live grid caps cells at 32768")
-    app.line(seat, "for i in {1..1000}; do printf 'S4_%04d\\n' $i; done; printf 'S4_BEFORE\\n'")
+    print(f"S4 viewport fixture: {view['cols']}x{view['rows']}", flush=True)
+    ruler = "S4_" + "X" * (view["cols"] - 3)
+    app.line(seat, "for i in {1..1000}; do printf 'S4_%04d\\n' $i; done; "
+             f"printf '{ruler}\\nS4_BEFORE\\n'")
     app.wait(seat, "(?m)^S4_BEFORE$")
     generation = app.ctl("seat", "screen", seat)["generation"]
+    for _ in range(100):
+        shown = pane(app.ctl("ui", "layout", label="s4-drawn"), seat)["rendered"]
+        if shown and shown.get("lines") and len(shown["lines"]) == view["rows"] and ruler in shown["lines"]:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError(f"GUI snapshot did not draw {view['cols']}x{view['rows']} ruler")
     error = app.ctl("ui", "scroll", seat, "top", label="s4-refusal", refused=True)
     require("history_viewport_exceeds_budget" in error["message"],
             f"unrelated history refusal: {error}")
@@ -266,8 +278,16 @@ def s4(app):
     app.wait(seat, "(?m)^S4_AFTER$")
     screen = app.ctl("seat", "screen", seat, label="s4-live")
     require(screen["generation"] == generation, "history refusal replaced the live process")
-    layout = app.ctl("ui", "layout", label="s4-layout")
-    require(pane(layout, seat)["scroll"]["live"], "history refusal stranded the live pane")
+    for _ in range(100):
+        layout = app.ctl("ui", "layout", label="s4-layout")
+        live = pane(layout, seat)
+        require(live["scroll"]["live"], "history refusal stranded the live pane")
+        shown = live.get("rendered")
+        if shown and shown.get("lines") and "S4_AFTER" in shown["lines"]:
+            break
+        time.sleep(0.1)
+    else:
+        raise AssertionError("live pane did not draw input after history refusal")
     print(f"S4: valid {view['cols']}x{view['rows']} history refused by name; "
           "same-generation live input still works; history heap bytes unobserved")
 
