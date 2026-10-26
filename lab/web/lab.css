@@ -1711,3 +1711,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .settings .att-seat { display: flex; align-items: center; gap: var(--s8); flex-wrap: wrap; padding: var(--s4) 0 var(--s8); }
 .settings .att-def { font-family: var(--font-mono); font-size: var(--t-caption); color: var(--fg-dim); }
 .settings .att-mute { margin: 0 0 var(--s4); }
+
+/* launcher root · over pattern: 48 px bands, wider than the 14 px blur so its edges become measurable ramps; a known high-contrast field under the spot-back, the L1 backdrop-blur reference */
+.blur-stage { position: relative; border-radius: var(--r-pill); overflow: hidden; }
+.blur-field { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--fg) 0 48px, var(--bg) 48px 96px); }
+.blur-text { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font: 700 40px/1.1 var(--font-chrome); color: var(--fg); background: var(--bg); padding: var(--s8) 0; }
