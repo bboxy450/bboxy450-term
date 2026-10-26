@@ -1,6 +1,6 @@
 {
   "promise": "T6 restart fade uses the same design token as the web lab",
-  "status": "focused unit and full native T6 script held; author landing pending",
+  "status": "LANDED; author presubmit green; postsubmit and Oracle review unverified",
   "finding": "Wren 31896262: lab.js injects STYLE.motion.ease, so CSS default ease was the wrong fallback curve",
   "source_refs": {
     "crates/bboxy450-term/src/scene.rs:48": "parse the shared cubic-bezier motion.ease token and solve its x/y coordinates; four-second lifetime unchanged",
@@ -133,5 +133,26 @@
     "work/t6-after-01M5W7VD5QYWAYKQPVPFFB296Q.jsonl": "20bbc3717cb929e2484ff97a23d33c30fb80be33fb35a21814a3ee6d6f0a2297",
     "work/t6-notice-fade-layout.jsonl": "5e919ea41e72939adb228279a681d8984401a009a61b956a795dcc0778f5d0c0",
     "work/t6-after-01M5W7VD5QYWAYKQPVPFFB296Q.png": "1812cb5aa44e14e81c98d6ed6d0a663722c9f9f844b8a5e8faeb47f96ec2a2e8"
+  },
+  "landing": {
+    "sha": "cd3b2496b7efeaf8c9f6bb7bd5b29e46173d7c9c",
+    "exit": 0,
+    "verdict": "green",
+    "compile_seconds": 167.70813079096843,
+    "run_seconds": 132.4991475000279,
+    "run_bound_seconds": 900.0,
+    "build_cap_seconds": 1800.0,
+    "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/cd3b2496b7efeaf8c9f6bb7bd5b29e46173d7c9c-8464585b/commands.log",
+    "raw_log_sha256": "05c61a9c187ef2f7587e705c50519022b52218f6a30a51629d31fd88f34a7a04",
+    "wrapper_result": {
+      "exit": 0,
+      "seconds": 310.48968386650085
+    },
+    "summary": [
+      "Rust 307 passed, 0 failed, 45 ignored including the separate secrets invariant",
+      "strict clippy exit 0",
+      "14 fast invariants held; 11 slow and 12 unaffected checks skipped",
+      "Render curve changes only; full native T6 proof held on actual installed Claude/Codex plus zsh; no SLO or OS presentation claim"
+    ]
   }
 }
