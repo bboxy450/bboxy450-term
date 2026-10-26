@@ -44,19 +44,23 @@ fn identity_note(identity: &bbt_proto::GuiIdentity) -> String {
     }
 }
 
-// lab.css restarted-out: hold to 85%, then CSS `ease` until four seconds.
+// lab.css restarted-out: hold to 85%, then the shared motion.ease until four seconds.
 fn restarted_alpha(seconds: f32) -> f32 {
     if seconds <= 3.4 { return 1.; }
     if seconds >= 4. { return 0.; }
+    let curve = STYLE.motion.ease.strip_prefix("cubic-bezier(")
+        .and_then(|value| value.strip_suffix(')')).expect("motion.ease is a cubic-bezier token");
+    let mut coordinates = curve.split(',').map(|value| value.trim().parse::<f32>().expect("motion.ease coordinate"));
+    let [x1, y1, x2, y2] = std::array::from_fn(|_| coordinates.next().expect("motion.ease has four coordinates"));
     let progress = (seconds - 3.4) / 0.6;
     let (mut lo, mut hi) = (0., 1.);
     for _ in 0..16 {
         let t = (lo + hi) / 2.;
-        let x = 0.75 * t * (1. - t) + t * t * t;
+        let x = 3. * x1 * t * (1. - t) * (1. - t) + 3. * x2 * t * t * (1. - t) + t * t * t;
         if x < progress { lo = t; } else { hi = t; }
     }
     let t = (lo + hi) / 2.;
-    1. - (0.3 * t * (1. - t) * (1. - t) + 3. * t * t * (1. - t) + t * t * t)
+    1. - (3. * y1 * t * (1. - t) * (1. - t) + 3. * y2 * t * t * (1. - t) + t * t * t)
 }
 
 /// Settings > Rim size range (rim-glow §3).
@@ -2079,7 +2083,7 @@ mod depth_tests {
         scene.set_model_at(&model, &model.ui.window.stage, Some(at(3_999)));
         assert_eq!(scene.restart_generations[&SeatId::from_u128(3)].1, Some(start), "reprojection restarted the timer");
         assert_eq!(restarted_alpha(3.4), 1.);
-        assert!((restarted_alpha(3.7) - 0.1976).abs() < 0.001);
+        assert!((restarted_alpha(3.7) - 0.053921).abs() < 0.001);
         assert!(scene.advance_restarts(at(4_000)));
         assert!(!scene.advance_restarts(at(8_000)), "notice emitted twice");
         assert_eq!(scene.restart_lines(bbt_ui_model::SwarmId::from_u128(2)).collect::<Vec<_>>(), ["fixture restarted · process generation 2"]);

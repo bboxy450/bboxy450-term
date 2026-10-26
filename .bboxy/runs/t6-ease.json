@@ -1,0 +1,137 @@
+{
+  "promise": "T6 restart fade uses the same design token as the web lab",
+  "status": "focused unit and full native T6 script held; author landing pending",
+  "finding": "Wren 31896262: lab.js injects STYLE.motion.ease, so CSS default ease was the wrong fallback curve",
+  "source_refs": {
+    "crates/bboxy450-term/src/scene.rs:48": "parse the shared cubic-bezier motion.ease token and solve its x/y coordinates; four-second lifetime unchanged",
+    "design/style.json": "motion.ease is the single curve input",
+    "lab/web/lab.js:48": "the lab installs the same token as --ease"
+  },
+  "curve": "cubic-bezier(.2,.8,.2,1)",
+  "native_root": "/private/tmp/at6-ra0hs0i0",
+  "native_verdict": "full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines",
+  "fade_pixels": [
+    {
+      "node": "named:swarm0/body/tab0/seat0/right/restarted",
+      "opaque_distance": 52,
+      "faded_distance": 3
+    },
+    {
+      "node": "named:swarm0/body/tab1/seat0/right/restarted",
+      "opaque_distance": 52,
+      "faded_distance": 3
+    },
+    {
+      "node": "named:swarm0/body/tab2/seat0/right/restarted",
+      "opaque_distance": 43,
+      "faded_distance": 3
+    }
+  ],
+  "notice_clock": {
+    "origin": {
+      "frozen": true,
+      "revision": 1,
+      "time_ms": 4815
+    },
+    "done": {
+      "frozen": true,
+      "revision": 4,
+      "time_ms": 8815
+    },
+    "later": {
+      "frozen": true,
+      "revision": 5,
+      "time_ms": 12815
+    }
+  },
+  "checks": [
+    {
+      "name": "unit",
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term",
+        "restart_notice_is_one_shot_on_generation_change_and_then_one_stream_line"
+      ],
+      "exit": 0,
+      "seconds": 29.03126573562622,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-ease-20261026/unit.log",
+      "log_sha256": "b174892fdf40da7dc5d5de373e50fed1a16df9e167610c96e2430edb03642080"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "exit": 0,
+      "seconds": 27.728084087371826,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-ease-20261026/build.log",
+      "log_sha256": "972b61379803c694fecb323a20c1bf90e463821c06e2a0805ef880acbf6b044a"
+    },
+    {
+      "name": "native",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t6-20261026/run_t6.py"
+      ],
+      "exit": 0,
+      "seconds": 19.035831928253174,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t6-ease-20261026/native.log",
+      "log_sha256": "cef0c39445d2bafc71c9b330c8b36dd6d7789586df8f6609e178ecd460e7a924"
+    }
+  ],
+  "source_sha256": "f0ab5249175170ff2c434e4b2a9354ca8106ee6aa652d9e97190f1c4b6f04b30",
+  "limits": [
+    "no timing SLO or OS presentation claim",
+    "postsubmit and Oracle review unverified"
+  ],
+  "artifacts": {
+    "work/t6-before-01M5W7VD5QYWAYKQPVPFFB296Q.png": "1c83e093df22e346a592c1bad01c883241e030774759e13da6bcbd06773e1b08",
+    "work/t6-before-01M5W7VES69KNQKRZFHZCN4WZM.jsonl": "065f087e88bddd27ca025c61dd19bcd9950a0f9b55d9081943ba090673d25bcf",
+    "work/t6-notice-fade.png": "c8e4083e520a6711cf8a160a191c087e5d0b591431383e2d8474e6fbc5ba866e",
+    "work/t6-clock-origin.jsonl": "7318fc94b67f0b755fdbe5246a53557c0e9f6360f61d38e777a937f11af9d077",
+    "work/t6-notice-hold-layout.jsonl": "b8ef49187843cff80e60c84e5f851094de086a038cabb03966a304854656c1a5",
+    "work/t6-before-01M5W7VBQP0EC33Y99EVA0W3QC.jsonl": "e8c9c6f87b583367b1e31b61eedfa7ca41083c8c3fdfa7c7782acd921d30cb6a",
+    "work/t6-after-01M5W7VBQP0EC33Y99EVA0W3QC.jsonl": "571f140f279b826b1d3c3874a4d3d27262b1aaaad6f6a74455a7b745b0e962f5",
+    "work/01M5W7VD5QYWAYKQPVPFFB296Q-screen.json": "05e1e438a5a992b4caf2d6b5c97ebef2b3eb1a850c4e7016fd0286f3daa15f32",
+    "work/baseline.png": "8b29753d7a46392779e96919056972f17de037c9327b38344a706c5f3f1ea8d5",
+    "work/t6-owned-supervisor.json": "753f868e325ea708ca06822f688ce01f29e52ba28fbbf5104d6f072c52e4f71b",
+    "work/01M5W7VES69KNQKRZFHZCN4WZM-screen.json": "0a9bf63d1c22cca1fbfd7f89eddd2b766fa8e29c1cc51957d2e95272d6cd0690",
+    "work/t6-before-01M5W7VES69KNQKRZFHZCN4WZM.png": "51d2a80b79a7322a98fdc4abedeb670b1821d39c4b9ba846fc854b8c776046db",
+    "work/t6-before-01M5W7VBQP0EC33Y99EVA0W3QC.png": "4d8179dadfaf94923e037228a129f7e426e3177ccac5a1bcf5972bae3c0f846a",
+    "work/t6-after-01M5W7VES69KNQKRZFHZCN4WZM.jsonl": "4c7dbee854cdecf6d2c1eae6d0d92ed74650c9f1f6024772e16b547ec69edac9",
+    "work/task-calls.jsonl": "8c610f79b4f78992d10a1a8b2abee35a9c58fd2d9154bf17227bb64244171a07",
+    "work/t6-notice-hold.png": "03115d0dcc568a2223c8ce0ca3a7bf57cc2ffb0384e45ad3cbe7c568ad8cf90e",
+    "work/t6-notice-done-layout.jsonl": "27cfd3e84ad1d5dfd928d1d759f153cd0e70d84df114e869973ee996a80f4238",
+    "work/t6-codex-expected-hooks.jsonl": "7a3a88a75ebd503d8c8d20891dde268f262cba761c9930350286b478761868c4",
+    "work/t6-after-01M5W7VES69KNQKRZFHZCN4WZM.png": "fb4f48de7d4722694d9316eddcb6e2149aef7bea91a16c6eb40d67218889997d",
+    "work/t6-after-01M5W7VBQP0EC33Y99EVA0W3QC.png": "6d33251bd267e5e8c0fbd2516d54a3bd7e0bdc4765ebe4d4997674bc503d1ef1",
+    "work/t6-notice-done.jsonl": "3a671c4c84bccab7425349d9f677c1bd33841a31398debc6c00384b849abc8d7",
+    "work/t6-before-01M5W7VD5QYWAYKQPVPFFB296Q.jsonl": "fa15fb9c1b9b11d513cc1a37eddc8431a864f78bc8e084f0930bcbfe2a0e4b28",
+    "work/t6-notice-hold.jsonl": "bc30e1f3655b845589510d0aa59082cea382394b2d1ae76b979730c2c89e1a32",
+    "work/layout.json": "35bd0c9757ce3cd29aabd8f38965da094f8307dc1aa136885ac301e52158c438",
+    "work/t6-notice-later-layout.jsonl": "6259c62dd336977e7a699e2c627c9a95322dc87a2422d19be3abb5adddab52b2",
+    "work/t6-notice-done.png": "8b29753d7a46392779e96919056972f17de037c9327b38344a706c5f3f1ea8d5",
+    "work/t6-recovery.json": "de105d1c838cfb644eab39c126533159c8dc584cb1102337673052c2fc3279da",
+    "work/01M5W7VBQP0EC33Y99EVA0W3QC-screen.json": "6fd47cb6cbc7b32860f5ddfdd49bbd39677b149d58e365f95ee461d2bfae1653",
+    "work/t6-notice-fade.jsonl": "984262b4ae7d76fb3fd260b6c5b38cb87e645800a52bcce7950cee71a58ac5e0",
+    "work/t6-after-01M5W7VD5QYWAYKQPVPFFB296Q.jsonl": "20bbc3717cb929e2484ff97a23d33c30fb80be33fb35a21814a3ee6d6f0a2297",
+    "work/t6-notice-fade-layout.jsonl": "5e919ea41e72939adb228279a681d8984401a009a61b956a795dcc0778f5d0c0",
+    "work/t6-after-01M5W7VD5QYWAYKQPVPFFB296Q.png": "1812cb5aa44e14e81c98d6ed6d0a663722c9f9f844b8a5e8faeb47f96ec2a2e8"
+  }
+}
