@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T19:03:15Z"
+updated: "2026-10-26T19:22:49Z"
 ---
 # Messaging attention
 
@@ -74,7 +74,7 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 | Architect, Creativity | `wake` | `wake` | `inbox` | `inbox` |
 | Executor | `wake` | `wake` | `digest` | `inbox` |
 
-**Named in a channel wakes every role** (Wren's question, 2026-10-26): a message that addresses a seat by name is someone talking to that seat, the same intent as a direct message; the code's earlier `digest` for an Executor addressed by name is the fix, and the lab's "direct and by name" grouping was right.
+**What "named" means** (Velvet's producer gap, 2026-10-26: nothing in production set `addressed_by_name`): a channel message names a seat when it carries that seat in its **`mentions`**, a list of seat ids signed with the message; the sending tool (the composer, the MCP send tool) resolves each `@name` in the text to a seat id at send time; the receiver never parses prose to decide it. A name that resolves to no seat is refused at send with the valid names in the hint. **Named in a channel wakes every role** (Wren's question, 2026-10-26): a message that addresses a seat by name is someone talking to that seat, the same intent as a direct message; the code's earlier `digest` for an Executor addressed by name is the fix, and the lab's "direct and by name" grouping was right.
 
 A direct message to an Executor wakes it (an earlier wording put Executors' non-brief conversation in a digest; the lab's reading, that direct conversation wakes, was right and is now the spec).
 
@@ -116,6 +116,7 @@ One Executor per row, landed through `land.sh`, each small enough to land the da
 | MA-6 | Orient reports the policy; `ctl seat attention <seat>` **reads** it, as an optional field on an existing seat read reply (the Oracle's scope cut, 2026-10-25) | `bbt-mux`, `bboxy450-term` | ctl tests; an Orient fixture |
 | MA-7 | `wake` ledger lines and the nightly token fill | `bbt-mux`, `scripts/` | a ledger fixture |
 | MA-8 | Settings › Messaging per seat, where the operator **sets** another seat's policy, and the matching setter on `ctl seat attention`; the sidebar row shows deferred count and the next digest time | `bbt-ui`, lab, `bboxy450-term` | parity cases for the new states; ctl setter tests |
+| MA-10 | `mentions` on the message, resolved from `@name` by the composer and the MCP send tool at send time, signed; the service sets `addressed_by_name` from it | `bbt-proto`, `bbt-mux`, `bboxy450-term` | a mention resolves and wakes an Executor named in a channel; an unresolvable `@name` is refused with the valid names; the golden gains its case |
 | MA-9 | e2e promise and night script together: an event never wakes an idle seat under defaults, a DM does, a digest arrives once **at its cap of 50** (the deterministic path; the window path is proven at unit level on the injected time port) | `e2e-acceptance` §1, `scripts/e2e/` | the night script, coverage full; added with its script so the night never shows an untested promise |
 
 MA-1 lands first, alone, as the contract; MA-2 to MA-7 follow in any order behind it; MA-8 and MA-9 last.

@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-10-26T19:22:49Z"
 ---
 # ICD: messaging ↔ seats
 
@@ -17,7 +17,7 @@ updated: "2026-10-26T16:18:20Z"
 | Side B | every seat through MCP tools and native delivery |
 | The agreement | [[messaging]]; [[l9-messaging-tasks]]; [[messaging-attention]] |
 | Amended by | #285 no gated communications and operator-local continuity; #334 attention, events and threads |
-| What crosses | signed envelopes; conversation and event classes derived from the kind; receipts with evidence states and the wake decision |
+| What crosses | signed envelopes; conversation and event classes derived from the kind; receipts with evidence states and the wake decision; `mentions`, the seat ids a channel message names, resolved from `@name` by the sender's tool and signed, never parsed from prose by the receiver |
 | Timing | digest windows at most 10 minutes or 50 messages; bus p99 at most 13.3 s at 1 000 seats |
 | States and lifecycle | under a custody hold delivery continues as pending intents; the wake decision is pinned at admission; one GUI consumer per device |
 | Failure | nothing is held but by the operator's mute; superseded and done messages never wake; an unknown thread is refused with the open threads named |

@@ -96,7 +96,7 @@ At most eight lines (decision #341); every other detail lives in the evidence fi
 4. The evidence path: a file holding commands with real exits, `file:line` changes, the raw log's sha256, and what was not checked.
 5. Anything left undone, one line.
 
-Raw logs stay out of `.bboxy/runs`: commit the command, the exit, the log's sha256 and a five-to-twenty-line summary.
+Raw logs stay out of `.bboxy/runs`: commit the command, the exit, the log's sha256 and a five-to-twenty-line summary, **as a `.log` or `.json` file, never `.md`**: every Markdown file under `.bboxy/` is a numbered record the corpus check parses, and an evidence note without frontmatter breaks every records push after it (three times on 2026-10-26).
 
 An Executor's report is a claim. A landing is accepted when the postsubmit is green on or after it and the Oracle's review of the landed code raised nothing; the Oracle reverts otherwise.
 
