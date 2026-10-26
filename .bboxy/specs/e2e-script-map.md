@@ -26,7 +26,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | T4 | `scripts/e2e/T4.sh` | full | — | |
 | T5 | `scripts/e2e/T5.sh` | partial | the app is killed and relaunched (only logic is killed); layout, focus and scroll positions are identical | |
 | T6 | `scripts/e2e/T6.sh` | full | | |
-| T7 | `scripts/e2e/T7.sh` | partial | solved pane rectangle and focus after undo; visible grace strip | |
+| T7 | `scripts/e2e/T7.sh` | full | | |
 | T8 | `scripts/e2e/T8.sh` | partial | malformed/unapproved report rejection; reported grade drawn in the seat row | #328: bounded waiting page reads check current main/subagent state and reported grade; no sleep loop |
 | T9 | `scripts/e2e/T9.sh` | partial | a harness resumed by session id (only a zsh seat is restarted) | |
 | L1 | `scripts/e2e/L1.sh` | full | — | Produced text/bounds; all four Claude presets; positive, empty and cleared search; no spawn on Esc. Actual pre-frame under approved lab blur, with no-blur and doubled-blur controls. |
@@ -160,6 +160,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** scripts/e2e/T6.sh:2,14; c1-live-seats.md:212; ctl.rs:1651.
 
 ### T7
+
+**Current script:** A real three-PTY two-level split closes its middle pane. The produced layout and window capture must show the grace strip, remaining seconds and Cmd-Z label. The app's own `ctl ui key cmd-z` route restores the same PID, generation and shell variable, every solved pane rectangle/grid size and the exact focus/tab/swarm. A second close waits the real 60-second registry deadline, then checks the pane, sidebar row and Undo strip are gone; exactly one retained-history notice is drawn; expired Cmd-Z cannot reopen it. Reading retained capture sequences 1 through the saved live cursor must reproduce both known program markers after the process is gone; a successful read of only a gap cannot pass.
 
 **Promise:** closing a pane shows the grace strip for 60 s, ⌘Z brings it back with the PTY and its position; after grace it is gone and says so: the pane and its sidebar row leave, one stream line reads "<name> closed; its history is kept" (nothing is deleted, the ring and the records stay reachable from the seat's record and the Graph tab, [[mantras]] 22), and ⌘Z is no longer offered for it (ruling 2026-10-24; not implemented in the window as of this date, Velvet builds it with Wren's reference).
 

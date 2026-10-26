@@ -1,8 +1,15 @@
-# coverage: partial; missing: solved pane rectangle and focus after undo; visible grace strip
+# coverage: full
 # T7: close and undo use the window's actual layout; never a second lifecycle door.
 # The runner owns the throwaway account/app. This script needs no desktop input.
 . "$(dirname "$0")/lib.sh"
-seat=$(spawn_zsh 'T7 retained fixture') || fail 'spawn refused'
+layout_phase() { python3 -I -B "$(dirname "$0")/t7_layout.py" "$1" "$seat" "$name"; }
+anchor=$(spawn_zsh 'T7 left neighbour') || fail 'anchor spawn refused'
+spawn=$(ctl seat spawn zsh --place right --cwd "$E2E_WORK" --name 'T7 retained fixture') || fail "fixture spawn refused: $spawn"
+printf '%s\n' "$spawn" > "$E2E_WORK/t7-fixture-spawn.json"
+seat=$(printf '%s\n' "$spawn" | jget data.seat) || fail 'fixture spawn reply is malformed'
+spawn=$(ctl seat spawn zsh --place down --cwd "$E2E_WORK" --name 'T7 lower neighbour') || fail "neighbour spawn refused: $spawn"
+printf '%s\n' "$spawn" > "$E2E_WORK/t7-neighbour-spawn.json"
+neighbour=$(printf '%s\n' "$spawn" | jget data.seat) || fail 'neighbour spawn reply is malformed'
 run_line "$seat" 't7_cookie=73189; echo T7_READY-$$'
 wait_text "$seat" '(?m)^T7_READY-[0-9]+$'
 shell=$(seat_field "$seat" state.process.pid)
@@ -54,6 +61,7 @@ wait_ui() {
 # not rely on a spawn reply or a backend screen proving a pane was drawn.
 ctl seat focus "$seat" > "$E2E_WORK/t7-focus.json" || fail 'fixture focus refused'
 wait_ui before
+layout_phase before || fail 'initial solved split is unavailable'
 # A presented pane, not just a live backend record, is required before close.
 ctl seat capture "$seat" "$E2E_WORK/t7-before.png" > "$E2E_WORK/t7-before.json" || fail 'the running pane has no capture'
 wait_lifecycle() {
@@ -106,13 +114,16 @@ close() {
     assert_not_on_screen "$E2E_WORK/t7-hidden.json" "$close_receipt" || fail 'closed pane capture failed for an unrelated reason'
     [ ! -e "$E2E_WORK/t7-hidden.png" ] || fail 'a closed pane wrote an image'
     check_ui grace || fail 'close receipt precedes the retained UI state'
+    layout_phase grace-$1 || fail 'close has no visible grace strip'
 }
 close first
-ctl seat undo-close "$seat" > "$E2E_WORK/t7-undo.json" || fail 'window undo refused'
-undo_frame=$(receipt_frame "$E2E_WORK/t7-undo.json" undo-close) || fail 'undo replied before a produced frame'
+ctl ui key cmd-z > "$E2E_WORK/t7-undo.json" || fail 'native Cmd-Z route refused'
+undo_frame=$(jget data.frame_seq < "$E2E_WORK/t7-undo.json") || fail 'Cmd-Z returned no produced frame'
+wait_lifecycle open 150
 [ "$undo_frame" -gt "$close_frame" ] || fail 'undo did not produce a newer window frame'
 [ "$(seat_field "$seat" record.lifecycle)" = open ] || fail 'undo receipt precedes its lifecycle'
 check_ui restored || fail 'undo receipt precedes the retained UI state'
+layout_phase restored || fail 'Cmd-Z did not restore solved rectangles and focus'
 [ "$(seat_field "$seat" state.process.pid)" = "$shell" ] || fail 'undo spawned another PTY'
 [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'undo replaced the generation'
 run_line "$seat" 'echo T7_PERSIST-$t7_cookie-$$'
@@ -132,6 +143,7 @@ PY
 [ "$?" -eq 0 ] || fail 'restored capture changed extent'
 # Closing it again reads the restored solved layout, proving tab/path/ratios,
 # including a split when the runner has placed this seat beside a neighbour.
+retained_sequence=$(ctl seat screen "$seat" | jget data.sequence) || fail 'no retained screen cursor before final close'
 close second
 python3 -I - "$E2E_WORK/t7-position-first.json" "$E2E_WORK/t7-position-second.json" <<'PY'
 import json,sys
@@ -155,13 +167,25 @@ PY
 [ "$?" -eq 0 ] || fail 'grace deadline was not held'
 [ "$(seat_field "$seat" record.generation)" = "$generation" ] || fail 'expiry invented a new generation'
 wait_ui gone
+layout_phase gone || fail 'expired pane, strip or final notice is wrong'
+ctl ui key cmd-z > "$E2E_WORK/t7-expired-native-undo.json" || fail 'expired Cmd-Z routing refused'
+[ "$(seat_field "$seat" record.lifecycle)" = closed_retained ] || fail 'expired Cmd-Z reopened the seat'
 tries=0
 while kill -0 "$shell" 2>/dev/null; do
     tries=$((tries+1)); [ "$tries" -le 100 ] || fail 'the retained PTY is still running after grace'
     sleep 0.1
 done
 # The record and ring remain readable; no purge is part of close.
-ctl seat screen "$seat" --scrollback 0..1 > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
+ctl seat screen "$seat" --scrollback "1..$retained_sequence" > "$E2E_WORK/t7-retained-history.json" || fail 'retained history is inaccessible'
+python3 -IB - "$E2E_WORK/t7-retained-history.json" "$shell" <<'PYHISTORY'
+import json,re,sys
+from pathlib import Path
+screen=json.loads(Path(sys.argv[1]).read_text())['data']
+text='\n'.join(screen['rows'])
+for marker in ['T7_READY-'+sys.argv[2],'T7_PERSIST-73189-'+sys.argv[2]]:
+    assert re.search('(?m)^'+re.escape(marker)+'$',text), 'retained ring lost actual program output: '+marker
+PYHISTORY
+[ "$?" -eq 0 ] || fail 'retained history lost the known program output'
 if ctl seat undo-close "$seat" > "$E2E_WORK/t7-expired-undo.json" 2>&1; then
     fail 'expired undo was acknowledged as applied'
 fi

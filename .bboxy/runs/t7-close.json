@@ -1,0 +1,919 @@
+{
+  "promise": "T7 close, real sixty-second grace, native Cmd-Z, exact solved restoration and retained history",
+  "status": "full real script held; author landing and postsubmit acceptance pending",
+  "runtime_source": "2a63aedcd8f55cf449f7096fe03cfb9b44a6e7d7 production bytes (retained T6 runtime); current parent differs by records only",
+  "source_refs": [
+    {
+      "source": "scripts/e2e/T7.sh:6",
+      "mechanism": "three real PTYs in one two-level solved split"
+    },
+    {
+      "source": "scripts/e2e/T7.sh:120",
+      "mechanism": "the app-owned keyboard route restores the most recent close; no fabricated control receipt"
+    },
+    {
+      "source": "scripts/e2e/T7.sh:162",
+      "mechanism": "wait for the real 60-second registry deadline and require process exit"
+    },
+    {
+      "source": "scripts/e2e/T7.sh:179",
+      "mechanism": "read actual retained capture bytes and require both program markers after process exit"
+    },
+    {
+      "source": "scripts/e2e/t7_layout.py:25",
+      "mechanism": "all solved pane rectangles, grid sizes, focus, tab and swarm must exactly equal their pre-close frame"
+    },
+    {
+      "source": "scripts/e2e/t7_layout.py:14",
+      "mechanism": "require a positioned grace strip with drawn countdown and Cmd-Z Undo control"
+    },
+    {
+      "source": "scripts/e2e/t7_layout.py:35",
+      "mechanism": "require pane, row and grace control absent, with exactly one drawn history notice"
+    }
+  ],
+  "native": {
+    "root": "/private/tmp/at7-_ckgz2eg",
+    "startup": {
+      "backend_ready": true,
+      "close": null,
+      "custody_backend": "file",
+      "events_ready": false,
+      "frame_seq": 1,
+      "generation": 1,
+      "gui_ready": true,
+      "mode": "headless",
+      "pid": 13506,
+      "run_dir": "/private/tmp/at7-_ckgz2eg/run",
+      "running": true,
+      "unattended": true,
+      "windows": 0
+    },
+    "exit": 0,
+    "seconds": 65.60458278656006,
+    "before": {
+      "frame_seq": 84,
+      "tab": "01M5W5WVH0640EYMVWV71G3MBS",
+      "swarm": "01M5W5WVH0GZMWCDDE2HNT7ZR8",
+      "focused": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+      "panes": [
+        {
+          "cols": 78,
+          "focused": false,
+          "rect": [
+            311.0,
+            71.0,
+            628.0,
+            818.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 36,
+              "first_drawn_sequence": 5,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              },
+              "first_frame_seq": 37,
+              "sequence": 5,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              810
+            ],
+            "sequence": 5,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+            }
+          },
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+        },
+        {
+          "cols": 78,
+          "focused": true,
+          "rect": [
+            961.0,
+            71.0,
+            628.0,
+            387.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 77,
+              "first_drawn_sequence": 8,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+              },
+              "first_frame_seq": 78,
+              "sequence": 8,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work % t7_cookie=73189; echo T7_READY-$$",
+              "T7_READY-13529",
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              375
+            ],
+            "sequence": 8,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+              "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+            }
+          },
+          "rows": 25,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4"
+        },
+        {
+          "cols": 78,
+          "focused": false,
+          "rect": [
+            961.0,
+            502.0,
+            628.0,
+            387.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 52,
+              "first_drawn_sequence": 3,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
+              },
+              "first_frame_seq": 53,
+              "sequence": 3,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              375
+            ],
+            "sequence": 3,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+              "view_generation": "01M5W5WWM75PC39WCEBXC0AV6V"
+            }
+          },
+          "rows": 25,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+        }
+      ]
+    },
+    "restored": {
+      "frame_seq": 118,
+      "tab": "01M5W5WVH0640EYMVWV71G3MBS",
+      "swarm": "01M5W5WVH0GZMWCDDE2HNT7ZR8",
+      "focused": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+      "panes": [
+        {
+          "cols": 78,
+          "focused": false,
+          "rect": [
+            311.0,
+            71.0,
+            628.0,
+            818.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 36,
+              "first_drawn_sequence": 5,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              },
+              "first_frame_seq": 37,
+              "sequence": 5,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              810
+            ],
+            "sequence": 5,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+            }
+          },
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+        },
+        {
+          "cols": 78,
+          "focused": true,
+          "rect": [
+            961.0,
+            71.0,
+            628.0,
+            387.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 110,
+              "first_drawn_sequence": 8,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+              },
+              "first_frame_seq": 111,
+              "sequence": 8,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+                "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work % t7_cookie=73189; echo T7_READY-$$",
+              "T7_READY-13529",
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              375
+            ],
+            "sequence": 8,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4",
+              "view_generation": "01M5W5WX3BXZF4Y6SQ4GY2M3KF"
+            }
+          },
+          "rows": 25,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WVX7Z1FKMA4RQ51TNRF4"
+        },
+        {
+          "cols": 78,
+          "focused": false,
+          "rect": [
+            961.0,
+            502.0,
+            628.0,
+            387.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 112,
+              "first_drawn_sequence": 7,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
+              },
+              "first_frame_seq": 113,
+              "sequence": 7,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              375
+            ],
+            "sequence": 7,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+              "view_generation": "01M5W5WYXARSS4PAW1X0H0ES4C"
+            }
+          },
+          "rows": 25,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+        }
+      ]
+    },
+    "gone": {
+      "frame_seq": 634,
+      "focused": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+      "panes": [
+        {
+          "cols": 78,
+          "focused": true,
+          "rect": [
+            311.0,
+            71.0,
+            628.0,
+            818.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 36,
+              "first_drawn_sequence": 5,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              },
+              "first_frame_seq": 37,
+              "sequence": 5,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+                "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              810
+            ],
+            "sequence": 5,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+              "view_generation": "01M5W5WW3HGP5TMA2JFZN1DYYS"
+            }
+          },
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF"
+        },
+        {
+          "cols": 78,
+          "focused": false,
+          "rect": [
+            961.0,
+            71.0,
+            628.0,
+            818.0
+          ],
+          "rendered": {
+            "ingested": {
+              "after_frame_seq": 137,
+              "first_drawn_sequence": 9,
+              "first_drawn_view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
+              },
+              "first_frame_seq": 138,
+              "sequence": 9,
+              "view": {
+                "generation": 1,
+                "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+                "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
+              }
+            },
+            "lines": [
+              "feral@Maksims-Mac-mini work %",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "pixel_size": [
+              624,
+              810
+            ],
+            "sequence": 9,
+            "view": {
+              "generation": 1,
+              "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+              "view_generation": "01M5W5X04BPGNWW4N4BF75RTCF"
+            }
+          },
+          "rows": 54,
+          "scroll": {
+            "live": true,
+            "top_row": null
+          },
+          "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA"
+        }
+      ]
+    },
+    "observations": [
+      "{\"phase\": \"before\", \"frame_seq\": 84, \"panes\": {\"01M5W5WVHBG3W7Z0JQQEE4SPXF\": [311.0, 71.0, 628.0, 818.0], \"01M5W5WVX7Z1FKMA4RQ51TNRF4\": [961.0, 71.0, 628.0, 387.0], \"01M5W5WW9Y3Q1X3ABZF9C7XMNA\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5W5WVX7Z1FKMA4RQ51TNRF4\", \"closed_strips\": 0}",
+      "{\"phase\": \"grace-first\", \"frame_seq\": 103, \"panes\": {\"01M5W5WVHBG3W7Z0JQQEE4SPXF\": [311.0, 71.0, 628.0, 818.0], \"01M5W5WW9Y3Q1X3ABZF9C7XMNA\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5W5WVHBG3W7Z0JQQEE4SPXF\", \"closed_strips\": 1}",
+      "{\"phase\": \"restored\", \"frame_seq\": 118, \"panes\": {\"01M5W5WVHBG3W7Z0JQQEE4SPXF\": [311.0, 71.0, 628.0, 818.0], \"01M5W5WVX7Z1FKMA4RQ51TNRF4\": [961.0, 71.0, 628.0, 387.0], \"01M5W5WW9Y3Q1X3ABZF9C7XMNA\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5W5WVX7Z1FKMA4RQ51TNRF4\", \"closed_strips\": 0}",
+      "{\"phase\": \"grace-second\", \"frame_seq\": 145, \"panes\": {\"01M5W5WVHBG3W7Z0JQQEE4SPXF\": [311.0, 71.0, 628.0, 818.0], \"01M5W5WW9Y3Q1X3ABZF9C7XMNA\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5W5WVHBG3W7Z0JQQEE4SPXF\", \"closed_strips\": 1}",
+      "{\"phase\": \"gone\", \"frame_seq\": 634, \"panes\": {\"01M5W5WVHBG3W7Z0JQQEE4SPXF\": [311.0, 71.0, 628.0, 818.0], \"01M5W5WW9Y3Q1X3ABZF9C7XMNA\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5W5WVHBG3W7Z0JQQEE4SPXF\", \"closed_strips\": 0}"
+    ],
+    "retained_markers": [
+      "T7_READY-13529",
+      "T7_PERSIST-73189-13529"
+    ],
+    "orderly_stop": {
+      "backend_ready": false,
+      "close": {
+        "complete": true,
+        "grace": [],
+        "notices": [
+          {
+            "swarm": "01M5W5WVH0GZMWCDDE2HNT7ZR8",
+            "text": "T7 retained fixture closed; its history is kept",
+            "time": "13:21",
+            "truncated": false
+          }
+        ],
+        "omitted": {
+          "grace": 0,
+          "notices": 0,
+          "slots": 0,
+          "truncated_notices": 0
+        },
+        "slots": [
+          {
+            "seat": "01M5W5WVHBG3W7Z0JQQEE4SPXF",
+            "swarm": "01M5W5WVH0GZMWCDDE2HNT7ZR8",
+            "tab": "01M5W5WVH0640EYMVWV71G3MBS"
+          },
+          {
+            "seat": "01M5W5WW9Y3Q1X3ABZF9C7XMNA",
+            "swarm": "01M5W5WVH0GZMWCDDE2HNT7ZR8",
+            "tab": "01M5W5WVH0640EYMVWV71G3MBS"
+          }
+        ]
+      },
+      "custody_backend": "file",
+      "events_ready": false,
+      "frame_seq": 650,
+      "generation": 1,
+      "gui_ready": false,
+      "mode": "headless",
+      "running": false,
+      "unattended": true,
+      "windows": 0
+    }
+  },
+  "checks": [
+    {
+      "name": "native",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t7-20261026/run_t7.py"
+      ],
+      "exit": 1,
+      "seconds": 2.1642560958862305,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t7-20261026/native.log",
+      "log_sha256": "6bba218762624ca952cab19a9d26971d6f28752dd559070e401972045855cb35"
+    },
+    {
+      "name": "native-down-placement",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t7-20261026/run_t7.py"
+      ],
+      "exit": 0,
+      "seconds": 65.14273691177368,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t7-20261026/native-down-placement.log",
+      "log_sha256": "08945880fce535dffb4935f0d918e84332f6bcd58212f059df20a68799df7607"
+    },
+    {
+      "name": "native-history",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t7-20261026/run_t7.py"
+      ],
+      "exit": 0,
+      "seconds": 65.55832195281982,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t7-20261026/native-history.log",
+      "log_sha256": "4ae9aa485dff61bf768cb9f93caf278c1dd153964cfbce80b0aee6f2bc4aae1b"
+    },
+    {
+      "name": "native-final",
+      "argv": [
+        "python3",
+        "-IB",
+        "scratchpad/terminal-t7-20261026/run_t7.py"
+      ],
+      "exit": 0,
+      "seconds": 66.23476982116699,
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t7-20261026/native-final.log",
+      "log_sha256": "113099755f9457910923ad358009af20d4d1451ff60425e5646779dcfaa52089"
+    }
+  ],
+  "artifacts": {
+    "result.json": "1853715936cc86031b4fc4e87100b70aac495e9571006e5faedcf51c6e19f978",
+    "calls.jsonl": "04c66e9a168321c0410393851f5fbee321687a94b4367fd224ada745dda54174",
+    "work/t7-restored.json": "16b32b21cb8b1ace1849e993546e02259d6ea726da70b1cf944dc4bb92799347",
+    "work/t7-window-grace-first.jsonl": "65884ba6407792e90218077abbea7b47d897b4f3a0791793cfda9efa3ec0fb9a",
+    "work/t7-layout-grace-first.jsonl": "6f201c0fb96b78f57ee4108b50f4722df39d8bbd96cae799556a5a10af7b3d37",
+    "work/t7-neighbour-spawn.json": "1d4ed77772362e7251e9a0f02fe5085263af9384b772cf237c67308b26ff4f96",
+    "work/t7-fixture-spawn.json": "931bbf82e21c35d2412f95fb131d0baa523dae88f095eafd4661806b5d852e7d",
+    "work/t7-expired-native-undo.json": "e3fe0fe16c29b01e508d07c22d38422d4971a9673112530937bd2d348bb22708",
+    "work/t7-close-first.json": "88c11fd8f0b9da526305e043a713a089a5d80a7c980459f85689b8d05eb7f70d",
+    "work/01M5W5WVHBG3W7Z0JQQEE4SPXF-screen.json": "92e9f0bf0707684e87ae5dd9a0aa24e719a15d1566bd7cd7643bda4919915606",
+    "work/t7-restored.png": "f9d6f653d548afd803a4a9d71fe55e5cf6868b07e27ebd074218b289ec73f335",
+    "work/t7-undo.json": "8087a1bd70649b0e4e486c240ce8a5d33d75268c8311f2005b1b05bc2fbc27d7",
+    "work/baseline.png": "36e54d26bd639b548345de3e61a4a1edb9826e398f2a26b4cc91971b164202fe",
+    "work/t7-window-grace-second.jsonl": "8fff76a946973cf3a4ea5bdea8cd6ef716bd1a456d085c47add3c3557eb4b4c4",
+    "work/t7-window-restored.png": "2b4a18ece379b009476e25b983b0b620c89001fd450714f4721554bc761bd07b",
+    "work/t7-window-grace-second.png": "ba4343270ec2837e77dae05cc4039771350b8602a56bc53123f29d828ef162d4",
+    "work/output.log": "7939123f577207e89d609df9a3d3bf3583f80ac5d3124aeb144cde9540a665a3",
+    "work/t7-ui-grace.json": "f2f398701a11093ae2f4259240b5edaa5489242ca2559501475e889abd073431",
+    "work/t7-focus.json": "d8bb737a8ff319b3950b65cc591a2bd56359193beb9695003128c4cdb69edbd3",
+    "work/t7-layout-restored.jsonl": "842d8e316963f91d08a39ffd3648ba6ed84b971102462148745ca93929012177",
+    "work/t7-window-grace-first.png": "7b792bb67445850cc7e17070ea1edb53deb1d2194af3af87a5c2d4f0d5727272",
+    "work/t7-close-second.json": "949fa4819f6310c1a9c8a78a32dad430f13164cb58dd8665337485287249bbdf",
+    "work/t7-before.png": "2a01631ffadd7e3893a8a7ccb83109cdea26c7c2c89bccea7fc6ae8080dad20f",
+    "work/t7-position-second.json": "6acefef371a4c38d54e4203f4d0ffa43ce5d9dd0aa027b3fe75c87b5678b4539",
+    "work/t7-ui-restored.json": "2b432213e141d4f6c4591044589f0c35d4453c82dca72d40f1b582689a80208a",
+    "work/t7-expired-undo.json": "35c84ce8c9fad37eea8cdd0d94963b9d115c93e4bec4d5979d4d7542ce0759a6",
+    "work/layout.json": "c09b0732694c0257b5e709b717aa459eccf61a8a490dfaf74136cab8744283fa",
+    "work/t7-position-first.json": "e89a26e09039a547d9e093a20cf765471ede4447706c56dd79a086025c82587b",
+    "work/t7-ui-gone.json": "bb43ef6ff70cd2d72df0d2866e499704b8b022078af2baed2b986616fd4266fb",
+    "work/01M5W5WW9Y3Q1X3ABZF9C7XMNA-screen.json": "ccb17256a0b71488a857a2c63d8a46978422b3becd18fd6094eab2e47f1188fd",
+    "work/t7-hidden.json": "59d5f148e2ea6b6eb26dc8d26ce6c9ab574b2638e84106141426d0056a3687ee",
+    "work/t7-layout-grace-second.jsonl": "81e4cf822564a2d0df6e04c69bf61c7def3230c9091d9b2272bad22d90a69eb8",
+    "work/t7-layout-gone.jsonl": "c50f3d279780a4afa3632e3bb0226fa07c53b1e8e6a7a06a3a7da386053af985",
+    "work/t7-gone.json": "46b4db91c94870e6176a2993d7bb1d95f40315476bdc4862d1f37be84c6d4a15",
+    "work/t7-window-restored.jsonl": "3729c456c3e261a207edaa45d13aaad4e79f9118d653f26e4baa1a098640c1db",
+    "work/t7-retained-history.json": "309310d38ad1c82fd6d23f3f6ca0ee788f7ac74058f7391b1c5d787409e15be7",
+    "work/t7-window-gone.png": "33219a8f4d4fe605c01d70ce87cb5381f9361feb140350167f32c52810a245e2",
+    "work/t7-window-before.jsonl": "f4f1b3fa3df775a751c4828a14701ef81c95a7b68b8a5f334e810e1675e59e7f",
+    "work/t7-window-gone.jsonl": "3f66906e877a6fdceebb993e96d3c844494eb0156129f704f0038bad2532d22a",
+    "work/t7-window-before.png": "dd565351e373ce7f8bd5e1ba4b63c09c8b6452721461a15028e91112bef3e805",
+    "work/t7-before.json": "fbbe0c92354f90646c95b17686da3b33d7760980fd30a3dec8cc5d1c5e5728d8",
+    "work/t7-ui-before.json": "bf1acfa461f0de491a4558ca5ccd0c56f0fa4a2b4710c54b37e5b85ee62a7879",
+    "work/t7-layout-before.jsonl": "8c9e602970d9b47f057eb4326ccf19aa183166a871198d20015e0041645b9972",
+    "work/01M5W5WVX7Z1FKMA4RQ51TNRF4-screen.json": "71a51eceff8053b6ecce3f787454f4af4ac474162ee03b3d48e8416438482c4f"
+  },
+  "limits": [
+    "no OS desktop input or scanout claim",
+    "no shortened or synthetic grace clock",
+    "the prior partial history read 0..1 returned an initial gap; the full script reads 1 through the saved capture cursor and asserts actual known program output"
+  ],
+  "code_sha256": {
+    "scripts/e2e/T7.sh": "19cd8b8f0be2020e194eb277d2d194c8c916fa1f45e803eaf5d3c825f476cddd",
+    "scripts/e2e/t7_layout.py": "b389af6eeb879132d4c78c384901a1bf1842b3c4711e8e4ac6e685f024846597"
+  }
+}
