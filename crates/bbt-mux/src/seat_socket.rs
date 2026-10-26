@@ -716,8 +716,9 @@ async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
     capability: [u8; 32],
-    door: crate::mcp::Door,
+    mut door: crate::mcp::Door,
 ) -> Result<()> {
+    let peer_pid=stream.peer_cred().ok().and_then(|cred|cred.pid()).and_then(|pid|u32::try_from(pid).ok());
     let (read, mut write) = stream.into_split();
     // Absorb simultaneous ACKs, but a waiting pane gets a work turn after
     // one action. Otherwise one fast ACK loop can delay the other panes.
@@ -841,13 +842,21 @@ async fn gui_session(
                     }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+                        GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
+                            GuiAction::GuiHello {id,claim}=> {
+                                if claim {
+                                    client.claim_gui(peer_pid.ok_or_else(||invalid("native GUI peer PID unavailable"))?)?;
+                                    door=crate::mcp::Door::Gui;
+                                    if capture_asks.is_none() {capture_asks=Some(client.captures.subscribe());}
+                                }
+                                Ok(GuiReply::GuiHello {op:id,hello:client.gui_hello().await?})
+                            }
                             GuiAction::Ui {id,request}=> {
                                 if door!=crate::mcp::Door::Ctl {return Err(invalid("UI requests use the ctl operator door"));}
                                 let layout=client.ctl_ui(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
@@ -859,7 +868,7 @@ async fn gui_session(
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::App {id,request}=> {
-                                if door!=crate::mcp::Door::Ctl {return Err(invalid("app lifecycle requests use the ctl operator door"));}
+                                if door!=crate::mcp::Door::Ctl && request!=bbt_proto::gui::AppRequest::Activate {return Err(invalid("app lifecycle requests use the ctl operator door"));}
                                 let status=client.captures.app(id,request).await.map_err(invalid)?;
                                 Ok(GuiReply::App {op:id,status})
                             }

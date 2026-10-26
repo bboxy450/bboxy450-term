@@ -1,7 +1,7 @@
 //! App-owned child processes and the single, admitted GUI connection.
 //!
 //! Everything in this module runs on bbt-io or in a private non-UI process.
-//! Capabilities travel over inherited pipes and are never put in argv or logs.
+//! Capabilities travel over inherited pipes and private run owner records, never argv or logs.
 
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -25,6 +25,14 @@ use tokio::{
 };
 
 mod fixture_hosts;
+mod owners;
+pub use owners::{Exit as ProcessExit, Process};
+
+/// A read-only lock observation for ctl's local launcher, not backend discovery.
+pub fn frontend_running(run_dir:&std::path::Path)->Result<Option<bool>> {
+    bbt_rt::assert_not_ui_thread();
+    owners::frontend_running(run_dir)
+}
 
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const GUI_WRITE_CAPACITY: usize = 64;
@@ -277,6 +285,8 @@ pub struct LogicReady {
     pub generation: u64,
     #[serde(default = "unknown_custody")]
     pub custody_backend: String,
+    #[serde(default)]
+    pub account_root: Option<String>,
 }
 fn unknown_custody() -> String {
     "unknown".into()
@@ -455,18 +465,22 @@ async fn supervisor_main() -> Result<()> {
         }),
         ..Default::default()
     })?;
-    write_json(
-        &mut tokio::io::stdout(),
-        &SupervisorReady {
-            socket: config.socket,
-            capability: supervisor.socket_capability(),
-            pid: std::process::id(),
-        },
-    )
-    .await?;
-    wait_for_stop(&mut input).await?;
+    let ready = SupervisorReady {
+        socket: config.socket.clone(),
+        capability: supervisor.socket_capability(),
+        pid: std::process::id(),
+    };
+    owners::write(&config, "supervisor", &ready)?;
+    write_json(&mut tokio::io::stdout(), &ready).await?;
+    use tokio::signal::unix::{SignalKind, signal};
+    let mut terminate = signal(SignalKind::terminate())?;
+    tokio::select! {
+        stopped = wait_for_stop(&mut input) => stopped?,
+        _ = terminate.recv() => eprintln!("supervisor: SIGTERM"),
+    }
     eprintln!("supervisor: orderly shutdown requested");
     supervisor.shutdown()?;
+    owners::retire(&config, "supervisor")?;
     eprintln!("supervisor: shutdown completed");
     Ok(())
 }
@@ -478,6 +492,7 @@ async fn logic_main() -> Result<()> {
         .await?
         .ok_or_else(|| invalid("missing logic bootstrap"))?;
     let bootstrap: LogicBootstrap = serde_json::from_slice(&line)?;
+    let config = bootstrap.config.clone();
     let connection = SocketSupervisor::connect(
         &bootstrap.supervisor.socket,
         bootstrap.supervisor.capability,
@@ -524,24 +539,17 @@ async fn logic_main() -> Result<()> {
         None
     };
     let endpoint = logic.client.gui_endpoint().await?;
-    write_json(
-        &mut tokio::io::stdout(),
-        &LogicReady {
-            root: endpoint
-                .path
-                .parent()
-                .ok_or_else(|| invalid("GUI endpoint has no root"))?
-                .into(),
-            capability: endpoint.capability,
-            identity: logic.client.gui_identity().await?,
-            generation: endpoint.generation,
-            custody_backend: serde_json::to_value(logic.client.identity_status().await?.custody)?
-                .as_str()
-                .unwrap_or("unknown")
-                .into(),
-        },
-    )
-    .await?;
+    let status = logic.client.identity_status().await?;
+    let ready = LogicReady {
+        root: endpoint.path.parent().ok_or_else(|| invalid("GUI endpoint has no root"))?.into(),
+        capability: endpoint.capability,
+        identity: logic.client.gui_identity().await?,
+        generation: endpoint.generation,
+        custody_backend: serde_json::to_value(status.custody)?.as_str().unwrap_or("unknown").into(),
+        account_root: status.root_fingerprint,
+    };
+    owners::write(&config, "logic", &ready)?;
+    write_json(&mut tokio::io::stdout(), &ready).await?;
     // SIGTERM and SIGINT stop logic in order too, so the ctl door closes and its
     // gui.endpoint is removed (invariant #261), as on the window's stop.
     let mut terminate = signal(SignalKind::terminate())?;
@@ -554,14 +562,16 @@ async fn logic_main() -> Result<()> {
     eprintln!("logic: orderly shutdown requested");
     drop(door);
     logic.shutdown()?;
+    owners::retire(&config, "logic")?;
     eprintln!("logic: shutdown completed");
     Ok(())
 }
 
 /// The IO owner, never stored on or dropped from the UI thread.
 pub struct Session {
-    pub supervisor: Child,
-    pub logic: Child,
+    pub supervisor: Process,
+    pub logic: Process,
+    _frontend: owners::FrontendLock,
     pub endpoint: LogicReady,
     config: Config,
     supervisor_ready: SupervisorReady,
@@ -601,7 +611,7 @@ pub enum Event {
     Reply(Box<GuiReply>),
     Exited {
         process: &'static str,
-        status: std::process::ExitStatus,
+        status: ProcessExit,
     },
     Disconnected(String),
 }
@@ -619,17 +629,77 @@ impl Session {
         if let Some(directory) = &config.test_account {
             bbt_mux::identity::TestAccount::prepare_directory(directory)?;
         }
-        let supervisor = start_supervisor(&config).await?;
-        let logic = start_logic(&config, &supervisor.ready, false).await?;
+        let frontend = match owners::FrontendLock::claim(&config)? {
+            Some(lock) => lock,
+            None => {
+                if let Some(record) = owners::read::<LogicReady>(&config, "logic")? {
+                    let mut endpoint = record.ready.clone();
+                    if let Ok(mut io) = attach_gui(&config, &mut endpoint, false).await {
+                        let id = bbt_mux::Ulid::new();
+                        io.try_send(GuiAction::App {
+                            id,
+                            request: bbt_proto::gui::AppRequest::Activate,
+                        })?;
+                        let _ = tokio::time::timeout(Duration::from_secs(2), async {
+                            loop {if matches!(io.event().await,Event::Reply(reply) if matches!(*reply,GuiReply::App {op,..} if op==id)) {break;}}
+                        }).await;
+                    }
+                }
+                return Err(invalid(
+                    "app_already_running: another GUI owns this run; activation attempted",
+                ));
+            }
+        };
+        let (supervisor, supervisor_control, supervisor_ready, attached) =
+            if owners::supervisor_held(&config)? {
+                let record = owners::read::<SupervisorReady>(&config, "supervisor")?
+                .ok_or_else(|| invalid("live supervisor has no matching private run owner record; no second supervisor started"))?;
+                let ready = record.ready.clone();
+                (
+                    Process::adopted(&config, "supervisor", record),
+                    None,
+                    ready,
+                    true,
+                )
+            } else {
+                let owner = start_supervisor(&config).await?;
+                (
+                    Process::Child(owner.child),
+                    owner.control,
+                    owner.ready,
+                    false,
+                )
+            };
+        let (logic, logic_control, endpoint, io) = if let Some(record) =
+            owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached)
+        {
+            let mut endpoint = record.ready.clone();
+            let io = attach_gui(&config, &mut endpoint, true).await?;
+            (
+                Process::adopted(&config, "logic", record),
+                None,
+                endpoint,
+                io,
+            )
+        } else {
+            let owner = start_logic(&config, &supervisor_ready, false).await?;
+            (
+                Process::Child(owner.child),
+                owner.control,
+                owner.endpoint,
+                owner.io,
+            )
+        };
         Ok(Self {
             config,
-            supervisor_ready: supervisor.ready,
-            supervisor: supervisor.child,
-            supervisor_control: supervisor.control,
-            logic: logic.child,
-            logic_control: logic.control,
-            endpoint: logic.endpoint,
-            io: logic.io,
+            _frontend: frontend,
+            supervisor_ready,
+            supervisor,
+            supervisor_control,
+            logic,
+            logic_control,
+            endpoint,
+            io,
             watches: BTreeMap::new(),
             restoring: VecDeque::new(),
             deferred: VecDeque::new(),
@@ -640,6 +710,7 @@ impl Session {
             disconnected: false,
         })
     }
+
     /// Non-blocking enqueue; Busy retains the caller's action and input ID.
     /// Recovery never writes on the task which drains incoming replies.
     pub async fn send(&mut self, action: GuiAction) -> Result<()> {
@@ -762,12 +833,12 @@ impl Session {
                     match result.map_err(|error| invalid(format!("recovery task stopped: {error}")))? {
                         Ok(recovered) => {
                             if let Some(supervisor) = recovered.supervisor {
-                                self.supervisor = supervisor.child;
+                                self.supervisor = Process::Child(supervisor.child);
                                 self.supervisor_control = supervisor.control;
                                 self.supervisor_ready = supervisor.ready;
                             }
                             let logic = recovered.logic;
-                            self.logic = logic.child;
+                            self.logic = Process::Child(logic.child);
                             self.logic_control = logic.control;
                             self.endpoint = logic.endpoint;
                             self.io = logic.io;
@@ -823,7 +894,8 @@ impl Session {
                 }
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
-                GuiReply::Seat(_)
+                GuiReply::GuiHello {..}
+                | GuiReply::Seat(_)
                 | GuiReply::Spawned { .. }
                 | GuiReply::Update { .. }
                 | GuiReply::Ok { .. }
@@ -850,14 +922,14 @@ impl Session {
             task.abort();
             if let Ok(Ok(mut recovered)) = task.await {
                 let _ = stop_child(
-                    &mut recovered.logic.child,
+                    &mut Process::Child(recovered.logic.child),
                     &mut recovered.logic.control,
                     "logic",
                 )
                 .await;
                 if let Some(mut supervisor) = recovered.supervisor {
                     let _ =
-                        stop_child(&mut supervisor.child, &mut supervisor.control, "supervisor")
+                        stop_child(&mut Process::Child(supervisor.child), &mut supervisor.control, "supervisor")
                             .await;
                 }
             }
@@ -871,6 +943,37 @@ impl Session {
         .await;
         logic.and(supervisor)
     }
+}
+
+async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> Result<GuiIo> {
+    let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
+    let mut io = GuiIo::new(stream, endpoint.capability);
+    let id = bbt_mux::Ulid::new();
+    io.try_send(GuiAction::GuiHello { id, claim })?;
+    tokio::time::timeout(STARTUP_TIMEOUT, async {
+        loop {
+            match io.event().await {
+                Event::Reply(reply) => match *reply {
+                    GuiReply::GuiHello { op, hello } if op == id => {
+                        if hello.run_dir != config.run_dir
+                            || hello.account_root != endpoint.account_root
+                        {
+                            return Err(invalid("GUI hello account/run mismatch"));
+                        }
+                        return Ok(());
+                    }
+                    GuiReply::Identity(identity) => endpoint.identity = identity,
+                    GuiReply::Error { reason, .. } => return Err(invalid(reason)),
+                    _ => {}
+                },
+                Event::Disconnected(reason) => return Err(invalid(reason)),
+                _ => {}
+            }
+        }
+    })
+    .await
+    .map_err(|_| invalid("GUI hello deadline elapsed"))??;
+    Ok(io)
 }
 
 async fn start_supervisor(config: &Config) -> Result<StartedSupervisor> {
@@ -1025,7 +1128,7 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .spawn()?)
 }
 async fn stop_child(
-    child: &mut Child,
+    child: &mut Process,
     control: &mut Option<tokio::process::ChildStdin>,
     name: &str,
 ) -> Result<()> {
@@ -1033,6 +1136,7 @@ async fn stop_child(
     if child.try_wait()?.is_some() {
         return Ok(());
     }
+    child.request_stop()?;
     if let Some(mut input) = control.take() {
         let _ = input.write_all(b"stop\n").await;
         let _ = input.shutdown().await;

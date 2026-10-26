@@ -7,6 +7,8 @@ use super::*;
 pub enum AppRequest {
     /// Read the GUI owner's actual readiness, without any capability material.
     Status,
+    /// Raise the existing GUI for a refused second launch.
+    Activate,
     /// Read the explicitly selected test notification backend, never the OS.
     Notifications,
     /// On-demand sample by the GUI IO owner, with no layout or paint work.
@@ -37,10 +39,19 @@ pub struct AppStatus {
     pub history: serde_json::Value,
 }
 
+/// Native GUI discovery, admitted by this run's private capability, never ctl discovery.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GuiHello {
+    pub run_dir: std::path::PathBuf,
+    pub account_root: Option<String>,
+}
+
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.
 macro_rules! app_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
+            /// Discover or claim the native GUI attachment after the former GUI died.
+            GuiHello { id: Ulid, claim: bool },
             /// Ask the app owner through the same admitted operator endpoint.
             App {
                 id: Ulid,
@@ -60,6 +71,8 @@ pub(super) use app_actions;
 macro_rules! app_replies {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
+            /// The account/run bound to this admitted native GUI socket.
+            GuiHello { op: Ulid, hello: GuiHello },
             /// A lifecycle query for the attached GUI owner.
             AppAsk {
                 op: Ulid,

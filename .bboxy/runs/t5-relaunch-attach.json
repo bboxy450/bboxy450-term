@@ -1,0 +1,260 @@
+{
+  "decision": 344,
+  "cut": "1: find and attach, native GUI hello and single frontend",
+  "status": "focused checks green; author pending; T5 canonical coverage remains partial",
+  "mechanisms": {
+    "crates/bboxy450-term/src/cockpit/owners.rs": "same-run/account mode0600 owner records, mode0700 directory, O_NOFOLLOW/CLOEXEC frontend lock and birth-checked owner process observations",
+    "crates/bboxy450-term/src/cockpit.rs": "find live supervisor before start, connect surviving logic by native GUI capability/hello without supervisor lease; replace dead logic, preserve existing independent recovery and orderly app close",
+    "crates/bbt-mux/src/logic.rs": "hello proves actual run and account-root fingerprint; claim updates the GUI PID only after the former GUI has died, rejecting seat descendants",
+    "crates/bbt-mux/src/seat_socket.rs": "native claim is an additive GUI action using kernel peer PID, keeps the same durable GUI lane and independent reply drain",
+    "crates/bboxy450-term/src/ctl/app.rs": "launcher observes the frontend lock before treating a surviving ctl socket as a running app; discovery itself never reads gui.endpoint",
+    "crates/bboxy450-term/src/main.rs": "a refused second launch asks the existing native window to raise through its own GUI relay"
+  },
+  "checks": [
+    {
+      "name": "check",
+      "exit": 101,
+      "seconds": 68.49628186225891,
+      "argv": [
+        "cargo",
+        "check",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/check.log",
+      "log_sha256": "8aeaaf822b2156df619f9c5673085a6801232fc31a2d2ecfea25f021bf0de99f"
+    },
+    {
+      "name": "check-fixed",
+      "exit": 0,
+      "seconds": 10.035183191299438,
+      "argv": [
+        "cargo",
+        "check",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/check-fixed.log",
+      "log_sha256": "b3af7447493ef5f7c9ed318017e6afb18ee9a02efb73cfdc622d9800ae82f988"
+    },
+    {
+      "name": "owners-unit",
+      "exit": 101,
+      "seconds": 85.50706481933594,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "cockpit::owners::tests"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/owners-unit.log",
+      "log_sha256": "c57da71e60a06b41dcf750227ba2a54f753509e1124477663c75ee2c803ef167"
+    },
+    {
+      "name": "owners-unit-private",
+      "exit": 0,
+      "seconds": 12.897350788116455,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "cockpit::owners::tests"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/owners-unit-private.log",
+      "log_sha256": "70d0142b5e56d30a98778926ff1c4efeb37bf0794a064fa6f7de2a1015670f7e"
+    },
+    {
+      "name": "wire",
+      "exit": 0,
+      "seconds": 32.566162109375,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/wire.log",
+      "log_sha256": "66efc16773f0c8df58972d433d8c553997b6285a755f0f40d50ef9763174c1f6"
+    },
+    {
+      "name": "adoption",
+      "exit": 0,
+      "seconds": 27.003134965896606,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "app_relaunch_attaches_to_surviving_owners_and_refuses_a_second_gui",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/adoption.log",
+      "log_sha256": "6202b7d99ed53e1bf6c1b8fd0bb61a092107ed0b4a5fbfb5155e2adabdde6a77"
+    },
+    {
+      "name": "adoption-both",
+      "exit": 0,
+      "seconds": 47.70800590515137,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "app_relaunch",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/adoption-both.log",
+      "log_sha256": "01d715c5be8b3c7d03b96cb77d819abf79bfa8bcbf9d492ccde9d8c0cdb3e2ce"
+    },
+    {
+      "name": "clippy",
+      "exit": 0,
+      "seconds": 13.926536798477173,
+      "argv": [
+        "cargo",
+        "clippy",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/clippy.log",
+      "log_sha256": "2b14fce9febfe81b5fc2656bd104130abd3eaa9de005d9b6cd5f8b413e7e6168"
+    },
+    {
+      "name": "adoption-final",
+      "exit": 0,
+      "seconds": 5.3684022426605225,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/terminal-t6-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "headless",
+        "app_relaunch",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/adoption-final.log",
+      "log_sha256": "533f3af2c343801c9ef570eb9b8450a3f78b0d15517f666887cb1ce5c207b7c6"
+    }
+  ],
+  "scenarios": [
+    {
+      "after_generation": 1,
+      "after_process": {
+        "kind": "running",
+        "pid": 32322
+      },
+      "before_generation": 1,
+      "before_process": {
+        "kind": "running",
+        "pid": 32322
+      },
+      "case": "T5-discovery",
+      "new_app": 32346,
+      "new_logic": 32347,
+      "old_app": 32312,
+      "old_logic": 32317,
+      "owners_gone_after_stop": true,
+      "replace_logic": true,
+      "seat": "01M5WCCGAGEG30B6XAG3ED58YJ",
+      "second_gui_refused": true,
+      "shell_cookie_kept": true,
+      "supervisor": 32314
+    },
+    {
+      "after_generation": 1,
+      "after_process": {
+        "kind": "running",
+        "pid": 32321
+      },
+      "before_generation": 1,
+      "before_process": {
+        "kind": "running",
+        "pid": 32321
+      },
+      "case": "T5-discovery",
+      "new_app": 32343,
+      "new_logic": 32316,
+      "old_app": 32313,
+      "old_logic": 32316,
+      "owners_gone_after_stop": true,
+      "replace_logic": false,
+      "seat": "01M5WCCGABSXAS5Q3TZCRSAAFC",
+      "second_gui_refused": true,
+      "shell_cookie_kept": true,
+      "supervisor": 32315
+    }
+  ],
+  "known_failures": {
+    "check": "first compile found wrong library self path and a private success helper; corrected before tests",
+    "owners-unit": "new unit fixture used a nonprivate temporary root; corrected its own root to0700, no production permission rule weakened"
+  },
+  "source_hashes": {
+    "crates/bboxy450-term/src/cockpit.rs": "15e5a64e8e930342e79ee2f2cc153ff5b8650de3c1824f263a519c2286018f5a",
+    "crates/bboxy450-term/src/cockpit/owners.rs": "35812ae8ff4dbcccfb475adac88578abf790330e2b365743d811cfcc96d9c251",
+    "crates/bboxy450-term/src/ctl/app.rs": "0934ce1d80b2d80402e09918d8a1e73d330b4770392934ccf94a59ec606598f5",
+    "crates/bboxy450-term/src/live.rs": "abbd0572b158459384bc349609096a8a5907f409a8494321d69517f672d3b1a4",
+    "crates/bboxy450-term/src/main.rs": "de8d15a4dfb40b913b74fe783427d8dbcf7ab8bb0101f5ba096300bf518a61af",
+    "crates/bboxy450-term/tests/headless.rs": "b5256dc7db83a88ed8f6758f713836af272e4a4933da7c904687113edaf42b7c",
+    "crates/bbt-mux/src/logic.rs": "46b9a479538e6a5c6de587c1864114204765d7fbd7b67e966d8dc6ed35c997df",
+    "crates/bbt-mux/src/seat_socket.rs": "74c2d27ea9a04afc15ea2c6a295d774274be4dd89d6beaef347a5ee4e9df75ce",
+    "crates/bbt-proto/src/gui/app.rs": "200b628589663f9658c6ba0f59085d56ac88e8ba1944b24d8a5f2b57e910856a",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "c67c8bdf6feac9fb9515bf621f626bccb093b8797ae2fef9850423016f6ef846"
+  },
+  "limits": [
+    "Cut2 journaled layout/focus/scroll persistence and pre-first-frame restoration is not implemented in this cut",
+    "T5.sh remains partial until the full app-kill/layout script lands",
+    "Adopted processes have no OS child wait status: exit reporting explicitly labels status unavailable and whether the private owner record retired",
+    "No OS window-presentation or timing SLO claim",
+    "postsubmit and Oracle review unverified"
+  ]
+}

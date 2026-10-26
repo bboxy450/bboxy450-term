@@ -261,6 +261,7 @@ enum Command {
         oneshot::Sender<Result<()>>,
     ),
     GuiEndpoint(oneshot::Sender<Result<EndpointInfo>>),
+    GuiHello(oneshot::Sender<Result<bbt_proto::gui::GuiHello>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
@@ -347,6 +348,7 @@ impl Command {
             self,
             Self::GuiHosts(_)
                 | Self::GuiEndpoint(_)
+                | Self::GuiHello(_)
                 | Self::GuiSeats(_)
                 | Self::GuiSeat(..)
                 | Self::GuiAttention(..)
@@ -1000,6 +1002,33 @@ impl LogicClient {
         rx.await
             .map_err(|_| self.unavailable("resize outcome unknown"))?
     }
+    pub(crate) async fn gui_hello(&self) -> Result<bbt_proto::gui::GuiHello> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiHello(tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    pub(crate) fn claim_gui(&self, pid: u32) -> Result<()> {
+        let mut slot = self.gui_peers.write().unwrap_or_else(|e| e.into_inner());
+        if let Some(peers) = slot.as_mut() {
+            if peers.gui != pid && crate::ctl_door::parent(peers.gui).is_some() {
+                return Err(invalid(
+                    "app_already_running: native GUI owner is still alive",
+                ));
+            }
+            if matches!(
+                crate::ctl_door::classify(Some(pid as i32), *peers),
+                crate::ctl_door::Admit::Refused(_)
+            ) {
+                return Err(invalid("native GUI claim refused for a seat descendant"));
+            }
+            peers.gui = pid;
+        }
+        Ok(())
+    }
+
     pub async fn gui_endpoint(&self) -> Result<EndpointInfo> {
         let (tx, rx) = oneshot::channel();
         self.tx
@@ -7371,6 +7400,12 @@ impl Worker {
                     Command::GuiResize(id, generation, cols, rows, reply) => {
                         let result = self.seat_resize(id, generation, cols, rows);
                         let _ = reply.send(result);
+                    }
+                    Command::GuiHello(reply) => {
+                        let result=self.identity.status().map(|status|bbt_proto::gui::GuiHello {
+                            run_dir:self.config.run_dir.clone(),account_root:status.root_fingerprint,
+                        });
+                        let _=reply.send(result);
                     }
                     Command::GuiEndpoint(reply) => {
                         let _ = reply.send(Ok(self.gui_info.clone()));

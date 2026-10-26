@@ -34,7 +34,7 @@ pub(super) fn start(
             "{USAGE_PREFIX}app start uses --run-dir, not a custom --endpoint filename"
         ));
     }
-    if endpoint.exists() {
+    if endpoint.exists() && crate::cockpit::frontend_running(root).map_err(|e|e.to_string())?.unwrap_or(true) {
         let mut client = connect(&[], endpoint)?;
         if record_notifications
             && client

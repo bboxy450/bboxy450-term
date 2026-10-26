@@ -5803,6 +5803,10 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::App(live::AppEvent::Ask { id, request }) => {
+                if request==bbt_proto::gui::AppRequest::Activate && let Some(window)=&self.window {
+                    window.set_minimized(false);
+                    window.focus_window();
+                }
                 let empty = bboxy450_term::model::Model::default();
                 let mut status = app_status(
                     "window",

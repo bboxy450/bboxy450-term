@@ -2087,3 +2087,178 @@ fn headless_operator_attention_set_reset_and_replay_use_a_private_account() {
     f.ok(&["app", "stop"]);
     f.wait_stopped();
 }
+// keeps: decision #344 rules 1–3; T5 first cut (window state persistence is separate)
+#[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
+fn app_relaunch_attaches_to_surviving_owners_and_refuses_a_second_gui() {
+    relaunch_after_app_death(false);
+}
+
+// keeps: decision #344 rule 2; replacement logic takes the surviving supervisor lease
+#[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
+fn app_relaunch_replaces_dead_logic_without_restarting_its_supervisor_or_ptys() {
+    relaunch_after_app_death(true);
+}
+
+fn relaunch_after_app_death(replace_logic: bool) {
+    let mut fixture = Fixture::new();
+    let account = fixture.root.path().join("account");
+    let start = fixture.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    fixture.pid = Some(start["data"]["pid"].as_u64().unwrap() as u32);
+    assert_eq!(start["data"]["custody_backend"], "file");
+    let owner = |name: &str| -> u32 {
+        let bytes = std::fs::read(fixture.run.join(format!("{name}.owner.json"))).unwrap();
+        let row: Value = serde_json::from_slice(&bytes).unwrap();
+        row["process"]["pid"].as_u64().unwrap() as u32
+    };
+    let supervisor = owner("supervisor");
+    let logic = owner("logic");
+    let seat =
+        fixture.ok(&["seat", "spawn", "zsh", "--name", "T5 surviving shell"])["data"]["seat"]
+            .as_str()
+            .unwrap()
+            .to_owned();
+    fixture.ok(&[
+        "seat",
+        "type",
+        &seat,
+        "T5_COOKIE=55119; printf 'T5_READY %s\\n' $$\n",
+    ]);
+    fixture.ok(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^T5_READY [0-9]+$",
+        "--timeout",
+        "30000",
+    ]);
+    let before = fixture.ok(&["seat", "ls"])["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == seat)
+        .unwrap()
+        .clone();
+    let mut crash_guard = CrashOwners::new(&[logic, supervisor]);
+    let app = fixture.pid.take().unwrap();
+    // SAFETY: this exact app PID was started and recorded by this private fixture.
+    assert_eq!(unsafe { libc::kill(app as i32, libc::SIGKILL) }, 0);
+    await_value(&fixture, || {
+        crate_process_absent(app).then_some(Value::Bool(true))
+    });
+    if replace_logic {
+        // SAFETY: this is the exact logic child started and recorded by our fixture.
+        assert_eq!(unsafe {libc::kill(logic as i32,libc::SIGKILL)},0);
+        await_value(&fixture, || crate_process_absent(logic).then_some(Value::Bool(true)));
+    }
+    let restarted = fixture.ok(&[
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        account.to_str().unwrap(),
+    ]);
+    fixture.pid = Some(restarted["data"]["pid"].as_u64().unwrap() as u32);
+    crash_guard.armed = false;
+    assert_eq!(owner("supervisor"), supervisor);
+    let current_logic = owner("logic");
+    assert_eq!(current_logic == logic, !replace_logic);
+    let after = fixture.ok(&["seat", "ls"])["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == seat)
+        .unwrap()
+        .clone();
+    assert_eq!(
+        before["record"]["generation"],
+        after["record"]["generation"]
+    );
+    assert_eq!(before["state"]["process"], after["state"]["process"]);
+    fixture.ok(&[
+        "seat",
+        "type",
+        &seat,
+        "printf 'T5_KEPT %s %s\\n' \"$T5_COOKIE\" $$\n",
+    ]);
+    fixture.ok(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "(?m)^T5_KEPT 55119 [0-9]+$",
+        "--timeout",
+        "30000",
+    ]);
+    let second = Command::new(BIN)
+        .args(["--headless", "--ctl", "--unattended", "--test-account"])
+        .arg(&account)
+        .arg("--run-dir")
+        .arg(&fixture.run)
+        .current_dir(fixture.root.path())
+        .env("ZDOTDIR", fixture.root.path().join("shell"))
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!second.status.success());
+    assert!(String::from_utf8_lossy(&second.stderr).contains("app_already_running"));
+    assert_eq!(owner("supervisor"), supervisor);
+    assert_eq!(owner("logic"), current_logic);
+    fixture.ok(&["app", "stop"]);
+    fixture.wait_stopped();
+    assert!(crate_process_absent(supervisor));
+    assert!(crate_process_absent(logic));
+    assert!(crate_process_absent(current_logic));
+    eprintln!("{}", serde_json::json!({
+        "case":"T5-discovery", "replace_logic":replace_logic, "old_app":app,
+        "new_app":restarted["data"]["pid"], "supervisor":supervisor,
+        "old_logic":logic, "new_logic":current_logic, "seat":seat,
+        "before_process":before["state"]["process"], "after_process":after["state"]["process"],
+        "before_generation":before["record"]["generation"], "after_generation":after["record"]["generation"],
+        "second_gui_refused":true, "shell_cookie_kept":true, "owners_gone_after_stop":true
+    }));
+}
+fn crate_process_absent(pid: u32) -> bool {
+    // SAFETY: zero only observes this fixture's recorded process, sending no signal.
+    (unsafe { libc::kill(pid as i32, 0) }) < 0
+        && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+}
+
+// Failure-only cleanup of the exact backend processes created by this fixture.
+struct CrashOwners { processes:Vec<(u32,Vec<u8>)>, armed:bool }
+impl CrashOwners {
+    fn fingerprint(pid:u32)->Option<Vec<u8>> {
+        let out=Command::new("/bin/ps").args(["-p",&pid.to_string(),"-o","lstart=,args="]).output().ok()?;
+        out.status.success().then_some(out.stdout)
+    }
+    fn new(pids:&[u32])->Self {
+        Self {processes:pids.iter().map(|pid|(*pid,Self::fingerprint(*pid).unwrap())).collect(),armed:true}
+    }
+}
+impl Drop for CrashOwners {
+    fn drop(&mut self) {
+        if !self.armed {return;}
+        for (pid,fingerprint) in &self.processes {
+            if Self::fingerprint(*pid).as_ref()==Some(fingerprint) {
+                // SAFETY: PID and process birth/command still match our recorded child.
+                unsafe {libc::kill(*pid as i32,libc::SIGTERM);}
+            }
+        }
+        let end=Instant::now()+Duration::from_secs(5);
+        while self.processes.iter().any(|(pid,_)|!crate_process_absent(*pid)) && Instant::now()<end {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+}
