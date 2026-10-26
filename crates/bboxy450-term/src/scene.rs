@@ -343,9 +343,10 @@ impl Scene {
                 row
             })
             .collect();
-        let fixture: serde_json::Value = serde_json::from_str(include_str!(
-            "../../bbt-ui-model/tests/fixtures/scene15.json"
-        ))
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("BBOXY_INPUT_ROOT"),
+            "/crates/bbt-ui-model/tests/fixtures/scene15.json"
+        )))
         .expect("embedded scene-15 fixture");
         Self {
             #[cfg(test)]
