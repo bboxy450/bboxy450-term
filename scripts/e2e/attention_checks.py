@@ -128,9 +128,9 @@ def receipt(app, message, receiver):
     return rows[0]
 
 
-def written(app, message, receiver):
+def admitted(app, message, receiver):
     row = until(lambda: receipt(app, message, receiver),
-                lambda r: r["evidence"] == "native-written", "native write not witnessed")
+                lambda r: r["evidence"] == "native-queued", "native admission not witnessed")
     require(row["attempt"] and row["native_id"] and row["held"] is None,
             "native receipt is missing its attempt or native ID")
     return row
@@ -171,7 +171,7 @@ def check(app, model):
 
     # The positive DM is also a native-pump barrier for those earlier events.
     direct = app.send(receiver, "M7_DM_" + operation())["data"]["message"]["envelope"]["id"]
-    direct_receipt = written(app, direct, receiver)
+    direct_receipt = admitted(app, direct, receiver)
     require(direct_receipt["wake"] == "now", "DM did not admit an immediate wake")
     after_dm = until(model.inputs, lambda rows: len(rows) >= baseline + 1, "DM model turn absent")
     require(len(after_dm) == baseline + 1 and direct in after_dm[-1]["latest_user"],
@@ -196,7 +196,7 @@ def check(app, model):
     require(last["kind"] == "stored", "fiftieth message was not stored")
     ids.append(last["message"]["envelope"]["id"])
     require(len(ids) == len(set(ids)) == 50, "not 50 distinct digest members")
-    final_receipts = sorted([written(app, mid, receiver) for mid in ids],
+    final_receipts = sorted([admitted(app, mid, receiver) for mid in ids],
                             key=lambda row: row["message_sequence"])
     # The durable arrival sequence, rather than concurrent MCP response order,
     # is the contract the native digest must preserve.
@@ -232,6 +232,7 @@ def check(app, model):
                  provider="scripted loopback, no credentials", initial_idle=initial_idle,
                  approved_app_hooks=hook_review, events=event_ids, event_wakes=0,
                  dm=direct, dm_attempt=direct_receipt["attempt"], dm_turns=1,
+                 receipt_evidence="native-queued; model input is checked independently",
                  digest_ids=ids, before_cap=49, deadline=deferred[0]["until"],
                  digest_attempt=next(iter(attempts)), digest_native_id=next(iter(native_ids)),
                  digest_turns=1, model_requests=final_inputs,
@@ -251,3 +252,7 @@ if __name__ == "__main__":
         model.shutdown()
         model.server_close()
         thread.join()
+        with model.lock:
+            evidence = dict(requests=model.requests, errors=model.errors)
+        (Path(os.environ["E2E_WORK"]) / "m7-native-inputs.json").write_text(
+            json.dumps(evidence, indent=2) + "\n")
