@@ -6,6 +6,7 @@ crates/bboxy450-term/src/live.rs:785 and model.rs:518 — correlated plugin repl
 crates/bboxy450-term/src/main.rs:2139 — Settings controller intents reach admitted host control; produced-frame receipt follows the observed result; no optimistic preference toggle.
 crates/bbt-mux/src/plugins/control.rs:205 — current digest is compared before trust; changed-since-observed is refused before execution; no trust widening.
 crates/bbt-ui/src/modules/settings/plugins.rs:38 — Wren pending/refused public shapes; observed toggle remains disabled while pending, refusal uses amber alert, unknown remains named unknown.
+crates/bboxy450-term/src/settings/registry.rs:406 — pending/refused/unknown regression keeps observed trust, enabled value and actual health unchanged; passed.
 crates/bboxybook/tests/settings.rs:5 — 224 cases including all three new states in four densities and two themes; 72 legacy cases retained.
 Functional binding presubmit: 1054 passed/0 failed/83 ignored; strict Clippy 0; 24 invariants/0; BUILD 418.778s/RUN 447.925s; Settings 200/200 measured, 0 unproven/mismatches/reviews.
 Functional raw /Users/feral/.local/state/bboxy450-term/landing/presubmits/24d7fb154088d878307a948a43a5ebd68f4e8c08-dbfd4a29/commands.log sha256 290fc28e8b4b975944658ee6caf2465de3bb96611fbc4919565b3717d1c04c1e.
