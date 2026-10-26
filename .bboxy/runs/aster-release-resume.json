@@ -1,0 +1,79 @@
+{
+  "status": "operator shutdown checkpoint; no production app/ZIP built; Finder blocker assigned but not implemented",
+  "created_at": "2026-10-26T21:07:35.145018+00:00",
+  "owner": "Aster Cinderwing <EXECUTOR>",
+  "worktree": "/Users/feral/mydev/bboxy450-term-exec4",
+  "main_last_observed": "8c776cbb227295e514c29b4f946de0486bf66cf7",
+  "resume_issue": "https://github.com/bboxy450/bboxy450-term/issues/62",
+  "latest_instructions": {
+    "shutdown": "Oracle63bd298b: commit/sign in-flight work on its branch; nothing unpushed lost; resume in#62",
+    "finder_blocker": "Oracle88ef398d: ahead of release build",
+    "release": "Oracle79ec2ec1: after Kestrel macOS keychain fix on main, run bundle-macos.sh release; include Nyx0.1 stamp only if already landed, else record/ship actual version; ditto ZIP, SHA256, detached GPG.asc; Oracle tags and publishes; no publication by Aster",
+    "boundary_owner": "Oracle90d6c163: Corvin/Wren sessions stopped; rulings/ICDs go to Vesper"
+  },
+  "completed": [
+    {
+      "work": "night environment credential isolation",
+      "landed": "e2398084a47cb4becfb06cfe80a47f60342ec83f",
+      "evidence_successor": "10feb6f15a7c9930afe889a42068c663b2101211",
+      "evidence": ".bboxy/runs/night-env-isolation.json",
+      "checks": "actual Codex9/9 with injected dummy markers; actual Claude Code9/9 with inherited env; fixture5/0; selected Rust333/0/47ignored; strict0; invariants14/0"
+    },
+    {
+      "work": "mixed code/script Markdown corpus guard",
+      "landed": "0e19c69a5273060a5f772bbe9d6f6576644dd744",
+      "evidence_successor": "6c41ad73",
+      "evidence": ".bboxy/runs/records-corpus-guard.json",
+      "checks": "private signed-Git red/green refusal fixture;130+46+31 checks0;11invariants0"
+    }
+  ],
+  "finder_blocker": {
+    "reported_mechanism": "Finder cwd=/; cockpit::Config::discover currently sets repository=std::env::current_dir(); logic then writes /.bboxy and exits with read-only filesystem, cancelling its live Keychain prompt",
+    "source_pointer": "crates/bboxy450-term/src/cockpit.rs:255 \u2014 repository field; current_dir mechanism inspected; operator error report not independently reproduced by Aster",
+    "required_behavior": [
+      "cwd=/ or non-writable defaults to ~/Library/Application Support/bboxy450-term/workspace, created0700, shown in Settings > Records",
+      "add --repository PATH",
+      "unwritable repository degrades with visible notice while logic, identity and custody stay alive"
+    ],
+    "required_proof": [
+      "controlled cwd=/ or read-only temp with own file account/private home keeps logic alive and selects default workspace",
+      "explicit repository flag preserves chosen writable directory",
+      "unwritable source emits visible notice and keeps custody alive",
+      "release .app launched via open on a throwaway file account stays up; own app flags only, no OS desktop input"
+    ],
+    "state": "NOT IMPLEMENTED; no cockpit/logic edits started"
+  },
+  "release_resume": {
+    "dependency": "Kestrel keychain-fix landed main SHA not yet received/verified; ask Kestrel/Vesper. Nyx version stamp is optional under79ec, not a reason to wait.",
+    "kestrel_key": "2868e75c4e031b6ec826d1f7a82af9f34df2968f1ea541ed5334e97b99e5f03a",
+    "command": "sh scripts/bundle-macos.sh release from clean exact main after required fixes",
+    "bundle_contract": "default target/release/bboxy450-term.app; approved Apple Development fingerprint3943AF130A015B36824B7FBC86AA672E7B25F3C4, teamUQB3368A84, identifiercom.bboxy450.term; script copies licences/NOTICE/icon and verifies strict signature",
+    "signing_identity_available": "security find-identity matched the approved fingerprint on2026-10-26",
+    "smoke": "bundle executable --help, ctl --help; python3 -IB scripts/release-smoke.py BUNDLE_EXECUTABLE UNIQUE_SHORT_/tmp/aster-release-*; no --notifications record (debug only); own file account, one realzsh pane draws nonce, orderly stop, all recorded debug-ps PIDs absent, matching binary hash",
+    "smoke_limits": "Existing harness passed with debug binary in1.907s before final binary-hash/all-backend-PID assertions; final production smoke not run. This helper uses cwd=private repository and does not prove the new Finder fallback; separate regression required.",
+    "archive": "ditto -c -k --sequesterRsrc --keepParent APP ZIP; SHA256 ZIP; gpg --batch --pinentry-mode error --local-user9B07E849480C68328CA20684844ECC0587DE7AB0 --armor --detach-sign ZIP; verify codesign strict and GPG VALIDSIG exact fingerprint",
+    "handoff": "artifact paths, hashes, actual Cargo/Info.plist versions, main SHA and raw command exits to Vesper. He signs v0.1 tag and creates GitHub release; Aster never uploads/publishes.",
+    "pre_stamp_build": "10feb6f1/version0.0.1 build interrupted at Vesper b49c954c; SIGINT own group60648, exit-2/215.158s; no release artifact claimed",
+    "local_warm_caches": [
+      "target (252MiB at last read)",
+      "scratchpad/release-0.1.0/target (436MiB partial release dependencies)"
+    ],
+    "superseded": "tarball/package.py plan is superseded by signed .app ZIP; do not use that helper as the release deliverable"
+  },
+  "preserve_branches": {
+    "release_checkpoint": "aster/release-resume-20261026",
+    "r2_s4": "fd0a8b52 on aster/r2-s4-ready-20261026; targeted R2 fullPASS and S4 partialPASS; author interrupted at repriority, no completed verdict; do not claim landed",
+    "original_tested_env_source": "cde1a81145f70345a5c3d94738b37b98817870cb on aster/night-env-tested-20261026"
+  },
+  "deferred_issues": [
+    "https://github.com/bboxy450/bboxy450-term/issues/18",
+    "https://github.com/bboxy450/bboxy450-term/issues/14"
+  ],
+  "helper": {
+    "path": "scripts/release-smoke.py",
+    "sha256": "607c76533b5b13d9df2f316fc19e0af579b43f2f568c18a9967ff526f59a38f1",
+    "check": "Python AST parse0; no production release smoke claim"
+  },
+  "local_logs": "scratchpad/terminal-t5-20261026 contains commands/process IDs/logs/results; raw logs and private test account key material must not enter Git",
+  "no_active_own_work": "all owned builds stopped/completed; no own app/load remains; shared ICQ/cache servers must not be stopped"
+}
