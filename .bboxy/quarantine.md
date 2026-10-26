@@ -22,3 +22,4 @@ against cargo's `test <name> ... FAILED` line.
 |---|---|---|---|---|---|---|
 | `fifty_seats_share_one_supervisor_poller` | bbt-supervisor | Sable | [[#329]] | 2026-10-25 | 2026-11-01 | gate 65927a6c red under three-slot load; 5/5 alone |
 | `durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls` | bbt-mux | Sable | [[#330]] | 2026-10-25 | 2026-11-01 | Nyx and Aster prechecks red; 40/40 alone on tip and main |
+| `adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary` | bbt-mux | Sable | [[#342]] | 2026-10-26 | 2026-11-02 | isolated retry at 4810620ad93529df2b7d13476656c6f7ca3d48ff; /Users/feral/.local/state/bboxy450-term/landing/quarantine/14aa42640a684d0db36f0a540e80272b.log |
