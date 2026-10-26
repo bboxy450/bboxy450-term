@@ -1,6 +1,6 @@
 {
   "scope": "T6/T9 fixture-only repairs found by the first full unattended night",
-  "status": "native cases green; author landing pending",
+  "status": "LANDED; same-binary native cases and author green; full-night rerun and Oracle review unverified",
   "base": "2dc967dbd376200b069f43db4c57b2270997ce20",
   "mechanisms": [
     "scripts/e2e/t6_recover.py:99 \u2014 validate explicit private directory, exact marker and 0700 mode; script HOME is not the app HOME",
@@ -242,5 +242,101 @@
     "The successful runner retired its temporary runtime; retained public JSONL log and input hashes are the evidence. Earlier original/failing runtime remains named in the observation packet.",
     "Recorded app PIDs independently absent; no exhaustive transient-child claim.",
     "Native clients still perform real sessions/transcript resumption against scripted loopback model responses; no model-authored verdict or operator credential."
-  ]
+  ],
+  "landed_source": "61f2afdd3d4f32b07b173f18663eb230503eafdf",
+  "landing": [
+    {
+      "sha": "84bef706d4bfd4f35419c6710b0fcfa900493723",
+      "exit": 0,
+      "verdict": "green",
+      "affected": [
+        "bboxy450-term"
+      ],
+      "compile_seconds": 162.1366887909826,
+      "run_seconds": 403.29707820899785,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/84bef706d4bfd4f35419c6710b0fcfa900493723-48253a84/commands.log",
+      "log_sha256": "99e151ea43793eedfcf6104e03e6eed4566ea4d088300d79ac4da53b10deb78d",
+      "rust_counts": [
+        322,
+        0,
+        47
+      ],
+      "fixture_summaries": [
+        "Ran 129 fixture tests in 64.898s; failures=0",
+        "Ran 46 tests in 205.512s",
+        "OK",
+        "Ran 31 tests in 1.479s",
+        "OK"
+      ],
+      "invariants": [
+        "invariants: Cargo test batch: cargo test --locked --no-fail-fast --target-dir /private/tmp/bboxy450-gate-slot-1/target -p bboxy450-term --test ctl -- --exact ctl_never_prints_secrets",
+        "invariants: 14 checks, 0 failures, 11 slow checks skipped",
+        "invariants: 12 unaffected-crate checks skipped"
+      ]
+    },
+    {
+      "sha": "57502bf85ba7839549b89cc522c2ca8fbba54064",
+      "exit": 0,
+      "verdict": "green",
+      "affected": [],
+      "compile_seconds": 1.0348067079903558,
+      "run_seconds": 271.3772915840382,
+      "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/57502bf85ba7839549b89cc522c2ca8fbba54064-c9d200a7/commands.log",
+      "log_sha256": "37413cba7ad8a4e59b734bdc062e459fa0545c9f30e76c7ee1a81dcb5a9ec70d",
+      "rust_counts": [
+        0,
+        0,
+        0
+      ],
+      "fixture_summaries": [
+        "Ran 129 fixture tests in 67.095s; failures=0",
+        "Ran 46 tests in 202.707s",
+        "OK",
+        "Ran 31 tests in 0.859s",
+        "OK"
+      ],
+      "invariants": []
+    }
+  ],
+  "author_wrapper": {
+    "exit": 0,
+    "seconds": 864.3008029460907,
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/runner-home-author.log",
+    "sha256": "847f2bbd687bdacf72c132478b8677e30bcbf25a69a4c0e3be7ec29708cc454d"
+  },
+  "input_manifest": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical-input-manifest.json",
+    "sha256": "1780c9cced292e053e53bc618580d718d0cdb8dbc9858aad0798fb8186d0e0a1",
+    "source_matches": {
+      "scripts/e2e/t6_recover.py": true,
+      "scripts/e2e/t9_restart.py": true,
+      "scripts/e2e/native_turn.py": true,
+      "scripts/e2e/native_checks.py": true,
+      "scripts/e2e/native_launch.py": true,
+      "scripts/e2e/ui.py": true,
+      "scripts/e2e/task_checks.py": true,
+      "scripts/e2e/launch_probe.py": true,
+      "scripts/e2e/T6.fixture-home/.l3-private-home": true,
+      "scripts/e2e/T6.fixture-home/.claude/settings.json": true,
+      "scripts/e2e/T6.fixture-home/.claude/.claude.json": true,
+      "scripts/e2e/T6.fixture-home/.codex/config.toml": true,
+      "scripts/e2e/T6.fixture-bin/claude": true,
+      "scripts/e2e/T6.fixture-bin/codex": true,
+      "scripts/e2e/T9.fixture-home/.l3-private-home": true,
+      "scripts/e2e/T9.fixture-home/.claude/settings.json": true,
+      "scripts/e2e/T9.fixture-home/.claude/.claude.json": true,
+      "scripts/e2e/T9.fixture-home/.codex/config.toml": true,
+      "scripts/e2e/T9.fixture-bin/claude": true,
+      "scripts/e2e/T9.fixture-bin/codex": true,
+      "crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md": true
+    }
+  },
+  "remaining": {
+    "oracle_ruling": "21843464-1ae2-4110-8bdc-fdf42847cc95, reiterated in1f4d7a6e-7621-4f3f-98ff-60b43d28778d",
+    "required": "Next cut makes run_script use the private promise HOME/CLAUDE_CONFIG_DIR/CODEX_HOME, restores original T6/T9 HOME guards, proves canonical terminal9/9. This fixture-only cut does not close that runner isolation gap."
+  }
 }
