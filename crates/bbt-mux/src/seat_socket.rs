@@ -844,7 +844,7 @@ async fn gui_session(
                             }
                             GuiAction::UiReply {id,result}=> {
                                 if capture_asks.is_none() {return Err(invalid("only the GUI owner answers UI requests"));}
-                                client.captures.ui_answer(id,result);
+                                client.captures.ui_answer(id,*result);
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::App {id,request}=> {

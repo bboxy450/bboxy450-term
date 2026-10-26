@@ -862,7 +862,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                 session
                     .send(GuiAction::UiReply {
                         id: op,
-                        result: Ok(bbt_proto::gui::UiLayout {
+                        result: Box::new(Ok(bbt_proto::gui::UiLayout {
                             clock: None,
                             frame_seq,
                             layout_revision: None,
@@ -877,7 +877,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                             document: None,
                             panes: Vec::new(),
                             tree: Vec::new(),
-                        }),
+                        })),
                     })
                     .await
                     .unwrap();

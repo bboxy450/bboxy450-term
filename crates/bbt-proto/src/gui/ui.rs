@@ -303,7 +303,7 @@ macro_rules! ui_actions {
             /// Only the admitted GUI owner can complete a UI relay.
             UiReply {
                 id: Ulid,
-                result: Result<UiLayout, String>,
+                result: Box<Result<UiLayout, String>>,
             },
         ] $($head)*);
     };
