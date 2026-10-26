@@ -744,7 +744,46 @@ fn ui_layout_node(
     remaining: &mut usize,
     remaining_text: &mut usize,
 ) -> Result<bbt_proto::gui::UiLayoutNode, String> {
+    ui_layout_node_in_clip(layout, None, remaining, remaining_text)?
+        .ok_or_else(|| "ui_layout_unavailable: empty root".into())
+}
+fn ui_layout_node_in_clip(
+    layout: &bbt_ui::components::Layout,
+    clip: Option<Rect>,
+    remaining: &mut usize,
+    remaining_text: &mut usize,
+) -> Result<Option<bbt_proto::gui::UiLayoutNode>, String> {
     use bbt_ui::components::LayoutKind as K;
+    if clip.is_some_and(|clip| clip.w <= 0. || clip.h <= 0.) {
+        return Ok(None);
+    }
+    // The retained scroll content can be much taller than its viewport. Match
+    // the renderer's ScrollView clip while keeping structural ancestors and
+    // the original solved geometry of every visible child (ICD ctl-app #347).
+    let child_clip = if matches!(&layout.kind, K::ScrollView { .. }) {
+        Some(clip.map_or(layout.rect, |clip| {
+            let x = clip.x.max(layout.rect.x);
+            let y = clip.y.max(layout.rect.y);
+            Rect::new(
+                x,
+                y,
+                (clip.right().min(layout.rect.right()) - x).max(0.),
+                (clip.bottom().min(layout.rect.bottom()) - y).max(0.),
+            )
+        }))
+    } else {
+        clip
+    };
+    let children: Vec<_> = layout
+        .children
+        .iter()
+        .filter_map(|child| {
+            ui_layout_node_in_clip(child, child_clip, remaining, remaining_text).transpose()
+        })
+        .collect::<Result<_, _>>()?;
+    if children.is_empty() && clip.is_some_and(|clip| !layout.rect.intersects(clip)) {
+        return Ok(None);
+    }
     *remaining = remaining
         .checked_sub(1)
         .ok_or("ui_layout_oversize: more than 4096 nodes")?;
@@ -775,16 +814,12 @@ fn ui_layout_node(
     } else {
         None
     };
-    Ok(bbt_proto::gui::UiLayoutNode {
+    Ok(Some(bbt_proto::gui::UiLayoutNode {
         kind,
         rect: rect_array(layout.rect),
-        children: layout
-            .children
-            .iter()
-            .map(|l| ui_layout_node(l, remaining, remaining_text))
-            .collect::<Result<_, _>>()?,
+        children,
         text,
-    })
+    }))
 }
 fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
     if bbt_proto::gui::ui_text_key(name) {
@@ -10001,6 +10036,65 @@ mod composer_host_tests {
         );
         assert_ne!(route_settings(&press, 0, true), RoutedKey::UndoClose);
         assert_ne!(route_key(&press, 0, Some("")), RoutedKey::UndoClose);
+    }
+}
+
+#[cfg(test)]
+mod ctl_ui_layout_tests {
+    use super::*;
+
+    // keeps: spec ctl-cli §1a (the visible Graph read stays inside its reply bound)
+    #[test]
+    fn a_full_graph_has_a_bounded_visible_layout_projection() {
+        let scene = scene::Scene::new();
+        let graph = e2e_checklist::Graph::new(vec![], vec![]).unwrap();
+        let page = scene
+            .graph_page_layout([1500., 900.], 240., &graph.checklist, 0.)
+            .unwrap();
+        assert!(page.max_scroll > 0.);
+        let mut nodes = 4096;
+        let mut text = 16 * 1024;
+        let chrome = scene.local_page_chrome([1500., 900.], 240.).unwrap();
+        let projected: Vec<_> = chrome
+            .iter()
+            .chain(std::iter::once(&page.layout))
+            .map(|root| ui_layout_node(root, &mut nodes, &mut text).unwrap())
+            .collect();
+        let bytes = serde_json::to_vec(&projected).unwrap();
+        eprintln!("Graph and chrome projection: {} bytes", bytes.len());
+        assert!(
+            bytes.len() <= 128 * 1024,
+            "Graph layout exceeds its read bound: {} bytes",
+            bytes.len()
+        );
+    }
+
+    // keeps: ICD ctl-app #347 (visible scroll children and their ancestors)
+    #[test]
+    fn a_scroll_projection_keeps_visible_geometry_and_omits_offscreen_children() {
+        use bbt_ui::components::{Layout, LayoutKind};
+        let leaf = |name: &str, y| Layout {
+            rect: Rect::new(10., y, 20., 10.),
+            baseline: 0.,
+            kind: LayoutKind::Named(name.into()),
+            children: vec![],
+        };
+        let scroll = Layout {
+            rect: Rect::new(0., 0., 100., 100.),
+            baseline: 0.,
+            kind: LayoutKind::ScrollView {
+                content: [100., 300.],
+                offset: [0., 0.],
+            },
+            children: vec![leaf("visible", 10.), leaf("offscreen", 200.)],
+        };
+        let mut nodes = 4096;
+        let mut text = 16 * 1024;
+        let projected = ui_layout_node(&scroll, &mut nodes, &mut text).unwrap();
+        assert_eq!(projected.rect, [0., 0., 100., 100.]);
+        assert_eq!(projected.children.len(), 1);
+        assert_eq!(projected.children[0].kind, "named:visible");
+        assert_eq!(projected.children[0].rect, [10., 10., 20., 10.]);
     }
 }
 
