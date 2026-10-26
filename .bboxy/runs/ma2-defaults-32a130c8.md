@@ -2,9 +2,9 @@
 id: 01M5WS5X68YCQEA4CYDCJW22KC
 type: evidence
 number: 356
-title: "MA-2 role precedence and direct wake regression evidence (Velvet)"
+title: "MA-2 role defaults and named conversation regression evidence (Velvet)"
 created: "2026-10-26T18:57:16Z"
-updated: "2026-10-26T18:57:16Z"
+updated: "2026-10-26T19:22:24Z"
 ---
 # MA-2 attention defaults correction — 817e4b43
 
@@ -37,3 +37,21 @@ Raw logs and the verified command manifest remain in `target/ma2-defaults-proof/
 Cleanup: owned `target/m2-reply-box-dev` retired after lsof exit 1 with empty stdout/stderr; 2,167,365,632 allocated bytes removed. `retirement.json` and `retirement-lsof.log` are retained. All proof/gallery directories and frozen MA-5 branches remain intact.
 
 Limits: no full-workspace postsubmit, visual parity, or terminal night claimed for this backend defaults cut. Landing is handed to the Oracle; this source has not been published by this session.
+
+## Named channel conversation — 50cf3f65
+
+Signed source `f35f3c0aa601d87c16787870772290c4710b0a67` on `b1d71e7925f8c7ec3ca6bd43f98171a0d7978b5d`, branch `velvet-ma2-named-wake`. One production line changes the Executor named-conversation default from Digest to Wake. Ordinary channel conversation remains Digest; direct conversation Wake; events Inbox.
+The role/class matrix exercises named Text and named events for all ten combinations; existing receiver overrides still win. MCP Orient reports named Wake. **10 tests passed / 0 failed; mux/app strict all-target Clippy EXIT 0.** Before the fix, the named Executor regression failed Digest versus Wake (EXIT 101).
+
+| Command | Exit | Seconds | Raw log SHA256 |
+|---|---:|---:|---|
+| `cargo test -p bbt-mux --locked --target-dir target/m2-reply-box-dev --test attention_policy role_defaults_never_wake_an_event_and_unknown_names_use_executor_defaults -- --exact` | 101 | 86.6 | `b1bfe672e860354a0345d14190ff2f6cd41e307581a37f33ea8d63c23b285260` |
+| `cargo test -p bbt-mux --locked --target-dir target/m2-reply-box-dev --test attention_policy` | 0 | 47.157 | `f7f3801979d2bb17b0ee65c12502bbf8f3c7ee31d003ae90cf828ddd46a0bb90` |
+| `cargo test -p bbt-mux --locked --target-dir target/m2-reply-box-dev --test mcp mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions -- --exact` | 0 | 14.232 | `8069305e36be6a9afc9aa00affd7cb5ca21e63165262f7a120c4643e50de5a4b` |
+| `cargo clippy -p bbt-mux -p bboxy450-term --all-targets --locked --target-dir target/m2-reply-box-dev -- -D warnings` | 0 | 60.671 | `1668710084821d9645a4fb1bbc9eb9f3d3639bc92bcdd78f3fa7e8beccce654e` |
+
+Raw logs/manifests remain in `target/ma2-named-proof/`; environment matches the earlier MA-2 checks (cache helper, jobs 2, own target supplied by --target-dir, debug memory custody, dev/test opt-level 1, debug 0, debug assertions true).
+
+Scope/limit: `messaging/service.rs:406` still supplies `addressed_by_name: false`, the only production writer of that fact. This proves the default for an already-resolved named-address fact and its public view, not live name detection. The producer/ICD gap was reported to Corvin in ICQ `f1da0d7a-2a1c-4310-8031-054906a5c562`; it is outside this one-line correction. No new routing, wire field, renderer or publication.
+
+Record validation: `cargo test -p bbt-doc --locked --target-dir target/m2-reply-box-dev --test corpus` — EXIT 0, 6 passed, 0 failed, 2.84 s; SHA256 `0a3b782bc18fced02d48ce3f16287768e9661ca124315c4da25847c5f945b5dc`. The initially inherited MA-5 notes lacked frontmatter (5 passed/1 failed); their existing metadata-only repair is included as `770ba1b6`, with no runtime change after source `f35f3c0a`. Raw failure retained as `target/ma2-named-proof/corpus-before-metadata.log`. Owned idle target retired=True, lsof EXIT 1, allocated bytes removed=1,212,833,792; proof/gallery directories retained.
