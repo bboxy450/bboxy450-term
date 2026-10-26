@@ -1419,16 +1419,14 @@ fn source_for<'a>(reactor: &'a Reactor, id: &Ident) -> &'a Expr {
 }
 
 fn kittens_path() -> TokenStream2 {
-    // Integration targets see the package as an external crate, but its
-    // preserved library target is bbt_yarn rather than the package name.
-    if std::env::var("CARGO_PKG_NAME").as_deref() == Ok("bboxy450-yarn") {
-        return kittens_path_from(Some(FoundCrate::Itself));
-    }
     kittens_path_from(crate_name("bboxy450-yarn").ok())
 }
 
 fn kittens_path_from(found: Option<FoundCrate>) -> TokenStream2 {
     match found {
+        // Cargo keeps the library target name for an unrenamed dependency;
+        // proc-macro-crate reports the normalized package name instead.
+        Some(FoundCrate::Name(name)) if name == "bboxy450_yarn" => quote!(::bbt_yarn),
         Some(FoundCrate::Name(name)) => {
             let ident = Ident::new(&name, Span::call_site());
             quote!(::#ident)
@@ -2275,10 +2273,12 @@ mod tests {
     #[test]
     fn dependency_path_resolution_supports_renaming_and_fallback() {
         let renamed = kittens_path_from(Some(FoundCrate::Name("tiny_cats".to_owned())));
+        let published = kittens_path_from(Some(FoundCrate::Name("bboxy450_yarn".to_owned())));
         let itself = kittens_path_from(Some(FoundCrate::Itself));
         let absent = kittens_path_from(None);
 
         assert_eq!(renamed.to_string(), ":: tiny_cats");
+        assert_eq!(published.to_string(), ":: bbt_yarn");
         assert_eq!(itself.to_string(), ":: bbt_yarn");
         assert_eq!(absent.to_string(), ":: bbt_yarn");
         assert_eq!(kittens_path().to_string(), ":: bbt_yarn");
