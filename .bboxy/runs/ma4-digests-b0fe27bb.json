@@ -1,0 +1,191 @@
+{
+  "checks": [
+    {
+      "name": "final-messaging",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--test",
+        "messaging_flow",
+        "--test",
+        "messaging",
+        "--test",
+        "identity"
+      ],
+      "exit": 0,
+      "seconds": 175.319,
+      "log": "target/ma4-digest-proof/final-messaging.log",
+      "sha256": "bdbd4abef1e724a0c69fd962c8127583b96d258f18311fce0a950d85801cd680",
+      "source": "4db663e3bdfe88196871dae5836ba253fee891d2",
+      "test_results": [
+        {
+          "passed": 15,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 15,
+          "failed": 0,
+          "ignored": 1
+        }
+      ]
+    },
+    {
+      "name": "final-service",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--lib",
+        "messaging::service::"
+      ],
+      "exit": 0,
+      "seconds": 90.209,
+      "log": "target/ma4-digest-proof/final-service.log",
+      "sha256": "f8f334804b89eb6da4a76c12881148cbeb94c02913e6405ab3e41a260c4b69e6",
+      "source": "4db663e3bdfe88196871dae5836ba253fee891d2",
+      "test_results": [
+        {
+          "passed": 4,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "final-clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-mux",
+        "--all-targets",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 101,
+      "seconds": 19.379,
+      "log": "target/ma4-digest-proof/final-clippy.log",
+      "sha256": "4926dd79769cdb73d0cd7bd2552cf9976d267fae0a53cdde79c2a45afde360d4",
+      "source": "4db663e3bdfe88196871dae5836ba253fee891d2",
+      "test_results": []
+    },
+    {
+      "name": "verified-clippy",
+      "source": "b0fe27bba114adce44712db65634b6548464f4f8",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-mux",
+        "--all-targets",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "build_seconds_from_cargo": 3.54,
+      "log": "target/ma4-digest-proof/verified-clippy.log",
+      "sha256": "ecdc13c074057c3fcb21b6ed19cb78329f24296a7f11618b2e1c969fb4e7e749",
+      "test_results": []
+    },
+    {
+      "name": "operator-frame",
+      "source": "b0fe27bba114adce44712db65634b6548464f4f8",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-mux",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--test",
+        "mcp",
+        "d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed",
+        "--",
+        "--exact"
+      ],
+      "exit": 0,
+      "build_seconds_from_cargo": null,
+      "log": "target/ma4-digest-proof/operator-frame.log",
+      "sha256": "988fc9a97cef034809d29d00af6d18ab38809fe0a6f8275b59568f4cda0e3767",
+      "test_results": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    }
+  ],
+  "production_source": "4db663e3bdfe88196871dae5836ba253fee891d2",
+  "source": "b0fe27bba114adce44712db65634b6548464f4f8",
+  "branch": "velvet-ma4-digests",
+  "base": "5da083527dbaadd6a7430f3f08c57576df7338a7",
+  "rulings": [
+    "ceae50c7 service injected clock, no frontend bridge",
+    "cd3c6c53 admission-pinned receiver policy",
+    "ec992e6abf7f91ba30d1fa0d3d1721dc6ed5d8e3 eligible members on time; held remainder later; one credit per summary"
+  ],
+  "production_diff_from_checked_source": "",
+  "profile": "one stable O1/debug0 target, debug assertions,2jobs,incremental0,memory custody; cache-env sourced; --target-dir explicit",
+  "limits": [
+    "No app, renderer, proto or frontend clock bridge changes.",
+    "No full gate/night or independent publication; Oracle owns mandatory landing verification as agreed.",
+    "One existing GUI/custody real boundary remains night-only.",
+    "Work.digest defaults false on old native attempt journals and is omitted when false."
+  ],
+  "regression_before": {
+    "source": "b57cfa23",
+    "command": [
+      "cargo",
+      "test",
+      "-p",
+      "bbt-mux",
+      "--locked",
+      "--target-dir",
+      "target/m2-reply-box-dev",
+      "--test",
+      "messaging_flow",
+      "digest_"
+    ],
+    "exit": 101,
+    "log": "target/ma4-digest-proof/before.log",
+    "sha256": "312d0034522d6fbd2cdc334ba544889b5169d6f0aec526951759e01c7f822c27",
+    "result": "three new failures: separate deadlines, mixed destinations, no fifty-message flush; existing admission-pin test passed"
+  },
+  "initial_green": [
+    {
+      "log": "target/ma4-digest-proof/after-first.log",
+      "exit": 0,
+      "sha256": "310a7c1e69f4c9f1cef5cc363054495c43f216ffd69ddde99fcb55d40d43cd33"
+    },
+    {
+      "log": "target/ma4-digest-proof/partial-priority.log",
+      "exit": 0,
+      "sha256": "55656263767887881ad4953ec85e11fb05f00553ac0d1fe5672eafa5046f2e7f"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+MA-4 bounded digests — signed source b0fe27bba114adce44712db65634b6548464f4f8 (G).
+Production is byte-identical to checked4db663e3. The only successor change is digest:false in the existing tests/mcp.rs operator-frame Work literal, preserving its ordinary native framing.
+
+ledger.rs:44/49 — backward-defaulted Work.digest writes one bounded ID/seat/signature summary. It never repastes the retained bodies; ordinary native message bytes stay unchanged, proven by the operator-door/issuer frame check.
+ledger.rs:97/1210 —600000ms /50-message windows, keyed by recipient, subagent, canonical destination and derived MessageClass. The first deadline is persisted with every receipt; the fiftieth admission atomically seals the window and makes the batch eligible. An expired or sealed window never swallows later admissions.
+ledger.rs:782/1277 — one native attempt, IDs in message-sequence order, one scheduling credit per summary. Regular FIFO/4:1/byte-budget behavior is unchanged. Eligible members never wait on a live fence; the held remainder keeps its original deadline and resumes as a later summary (Corvin ec992e6a).
+ledger.rs:1307 — completion/ACK retires only indexed members of that bounded work, then its empty sealed window; no inbox-history scan or deletion of messages/receipts. Old MA-3 deferred rows retain individual deadlines and deliver once as singleton summaries. The service's existing injected ready/prepare time port is the only deadline clock; logic already calls pump_messages on its100ms maintenance lane (logic.rs:7568).
+
+Checks:
+- Signed production4db663e3: messaging18/0 +flow15/0/1night-only +identity15/0, EXIT0/175.319s including build; service4/0, EXIT0/90.209s including build.
+- First all-target strict attempt on4db663e3 EXIT101: one old Work literal omitted the new field. Signedb0fe27bb adds digest:false only in that fixture; production diff is empty.
+- b0fe27bb all-target strict Clippy -D warnings EXIT0 (Cargo3.54s); exact operator frame test1/0 EXIT0 (Cargo9.98s +test0.43s).
+- Before regression b57cfa23 EXIT101: all3 new window/cap/destination cases failed as intended. Final checks include cap at a frozen clock, exact deadline, independent destinations, partial grant fence, mixed priority one-credit ordering, restart/no-repeat, legacy deferred deadlines, protected notices-never-wake and messaging-never-held.
+Full argv, source pointers, failures and raw SHA256 are retained in the JSON and own target/ma4-digest-proof. No sleeps or operator input.
+
+Base5da08352. MA-4 commits: b57cfa23,20c04dad,4db663e3,b0fe27bb.8ed6bb66 and8223eabd are copies of the MA-3 identity fixture source/evidence96502bd1/493d977d; skip if already consumed.
+No protocol, renderer, frontend clock bridge, full gate/night or independent publication. Mandatory landing verification remains with the Oracle. One own target retained for the immediately queued MA-5.
