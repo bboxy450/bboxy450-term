@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T17:11:05Z"
+updated: "2026-10-26T18:43:59Z"
 ---
 # ICD: plugin ↔ host
 
@@ -19,7 +19,7 @@ updated: "2026-10-26T17:11:05Z"
 | Amended by | #249 a plugin is an MCP server; #255 visualization is ours; #278 P-0 rulings |
 | What crosses | JSON Schema contracts with wire names; data only, never pixels. At start the host sends `initialize.params.root`, one UTF-8 absolute path, and nothing else of identity: no root, author, signer, device or account field ever appears on a `data_source` method's arguments (Kestrel, 2026-10-26; both sides of the conformance fixture assert it) |
 | Timing | hook ceilings as data per contract; the handshake and each call are capped at 2 s by default |
-| States and lifecycle | trust is a content-addressed copy; nothing executes before trust; plugins start disabled; one provider instance per root, the root bound at start |
+| States and lifecycle | trust is a content-addressed copy; nothing executes before trust; plugins start disabled; one provider instance per root, the root bound at start. **Swap guard in production** (Kestrel, 2026-10-26): a proposed provider is selected for a root when its handshake succeeds and a bounded read over that root (a `list` page and a `resolve` of a known record, within the call caps) answers without error; otherwise the selection is refused with the provider's reason and the current provider stays. A full comparison of path and digest maps is **not** a production guard, since digests are provider data and a whole-root scan per swap is a global scan; it is acceptance evidence only, for the same-representation stub swap of [[knowledge-base]] §6 |
 | Failure | a refusal names its reason in the app; external writes reply `signed_writer_unavailable` until the signed-writer bridge; authorship is always the host's |
 | Versioning | contracts are versioned in `bbt-plugin`; a provider declares the version it implements |
 | Verified by | `plugin check` on its fixture store; contract conformance fixtures; promises G3, G4, D1 and up, N1 and up |
