@@ -447,6 +447,9 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
     let trusted = f.trust_reference().await;
     let other = f.path.with_file_name("bboxy450-term-data_source-other");
     fs::copy(&f.path, &other).unwrap();
+    let mut other_bytes = fs::read_to_string(&other).unwrap();
+    other_bytes.push_str("\n# distinct second plugin binding\n");
+    fs::write(&other, other_bytes).unwrap();
     let task = tokio::spawn({
         let f = f.clone();
         let candidate = trusted.candidate.id;
