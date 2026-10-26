@@ -44,6 +44,9 @@
     mk(14, 'Juniper Vale', 'claude', 'executor', 'parse logs', 'active'),
   ];
   const seats = BASE.slice(0, SCENE === 15 ? 15 : 8);
+  // a page may supply real seats, tasks, transcripts and stream (window.REAL: the public site); the lab keeps its fixtures
+  const REAL = window.REAL || {};
+  for (const s of seats) { const r = (REAL.seats || {})[s.name]; if (r) Object.assign(s, r); }
   // grade follows the harness record's state source (Settings › Harnesses): osc7501 → reported, hooks → shim, output cadence → inferred
   const GRADE_OF = { osc7501: 'reported', hooks: 'shim', 'output cadence': 'inferred' };
   const gradeFor = h => { const rec = C.SET.harness[h]; return rec ? (GRADE_OF[rec.stateFrom] || (rec.hooks ? 'shim' : 'inferred')) : 'inferred'; };
@@ -105,7 +108,8 @@
   let extOpen = true;
   // provenance fixture: items with weighted derived_from in the annotation form, signed digests, a hash-chained log
   model.spaces[0].provenance = JSON.parse(JSON.stringify(FIX.provenance));
-  model.spaces[0].epics.push(
+  if (REAL.epics) model.spaces[0].epics.push(...REAL.epics);
+  else model.spaces[0].epics.push(
     { id: 'e1', title: 'W3 renderer', open: true, items: [
       { id: 's1', type: 'spec', title: 'renderer.md', status: 'accepted' },
       { id: 'w31', type: 'task', title: 'W3.1 renderer harness', status: 'reported', assignee: 'Nyx Copperwing', artifacts: [{ kind: 'pr', ref: 'bboxy450-term#14', digest: 'fcc8eca', produced_by: 'Nyx Copperwing', responsible: 'Nyx Copperwing', responsibleColor: '#FF4FA3' }, { kind: 'image', ref: 'target/render/smoke/jetbrains-mono-16px-2x-dark.png', digest: '9b1c2e4', produced_by: 'CI' }] },
@@ -114,6 +118,7 @@
     { id: 'e2', title: 'W1 term core', open: false, items: [
       { id: 'w11', type: 'task', title: 'W1.1 term-core fork', status: 'done', assignee: 'Nyx Copperwing' },
       { id: 'w12', type: 'task', title: 'W1.2 byte ring', status: 'open' } ] });
+  if (REAL.stream) model.spaces[0].stream.push(...REAL.stream);
   function space() { const hit = tabOf(focused); return hit ? hit.sp : model.spaces[0]; }   // the cohort of the focused seat
   function tabOf(key) { for (const sp of model.spaces) for (const t of sp.tabs) if ((t.seats || []).some(x => x.key === key)) return { sp, t }; return null; }
   function stageOf() { const sp = space(); const hit = tabOf(focused); const t = hit && hit.sp === sp ? hit.t : sp.tabs[0]; return t ? t.tree : null; }
@@ -669,6 +674,7 @@
   const L = window.LOGS || {};
   const SHELL = [['cargo build --release', 'cargo-build'], ['git log -3', 'git-log'], ['icq --human status', 'icq-status'], ['ls -R .kb', 'ls-kb']];
   function fixtureFor(seat, i) {
+    if (seat.log && L[seat.log]) return L[seat.log].split('\n');   // a seat may name its own transcript
     if (seat.harness === 'claude') return (L['claude-session'] || '').split('\n');
     if (seat.harness === 'codex') return (L['codex-session'] || '').split('\n');
     const out = []; // shell seats: prompt + each shell fixture, rotated by seat index so panes differ
@@ -681,9 +687,26 @@
     const rp = seat.replay;
     const marks = [...term.querySelectorAll(':scope > .gap-mark')];   // history markers (gap, resumed) stay above the replay
     term.innerHTML = '';
-    const lines = el('div', { class: 'lines' }, rp.buf.join('\n'));
-    lines.append(el('span', { class: 'cur', style: 'margin-left:2px' }));
+    const lines = termLines(rp.buf);
+    (lines.lastElementChild || lines).append(el('span', { class: 'cur', style: 'margin-left:2px' }));
     term.append(...marks, lines);
+  }
+  // transcripts draw the way their harness does: Claude's ❯ prompt bar, dim "Ran N" and ✻ lines; Codex's › prompt, "• Ran cmd"
+  // and dim "+ N lines"; **bold** and `code` inline. Plain shell output keeps no class.
+  const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  const inline = s => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  function lineClass(l) {
+    if (l.startsWith('❯ ')) return 'ln-prompt';
+    if (l.startsWith('› ')) return 'ln-cprompt';
+    if (l.startsWith('• Ran ')) return 'ln-ran';
+    if (/^(✻ |Ran \d+ )|^\s+\+ \d+ lines/.test(l)) return 'ln-dim';
+    if (l.startsWith('● ')) return 'ln-done';
+    return '';
+  }
+  function termLines(buf) {
+    const box = el('div', { class: 'lines' });
+    box.innerHTML = buf.map(l => { const c = lineClass(l), body = c === 'ln-ran' ? '<b>• Ran</b> <code>' + esc(l.slice(6)) + '</code>' : inline(l); return '<div class="ln ' + c + '">' + (body || '&#8203;') + '</div>'; }).join('');
+    return box;
   }
   function emit(seat, line) {
     const rp = seat.replay; rp.buf.push(line); if (rp.buf.length > MAXLINES) rp.buf.shift();
@@ -712,7 +735,7 @@
     const lines = fixtureFor(seat, i);
     const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
     seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };
-    if (seat.state === 'waiting' || seat.state === 'errored') seat.replay.waiting = true;   // held until the operator presses 2
+    if (seat.state === 'waiting' || seat.state === 'errored') { seat.replay.waiting = true; requestAnimationFrame(() => paintTerm(seat)); }   // held until the operator presses 2; its last lines show
     else schedule(seat, 300 + i * 170);
   }
 

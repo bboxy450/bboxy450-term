@@ -1724,3 +1724,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 .blur-stage { position: relative; border-radius: var(--r-pill); overflow: hidden; }
 .blur-field { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--fg) 0 48px, var(--bg) 48px 96px); }
 .blur-text { position: absolute; left: 0; right: 0; top: 40%; text-align: center; font: 700 40px/1.1 var(--font-chrome); color: var(--fg); background: var(--bg); padding: var(--s8) 0; }
+
+/* harness transcript lines (showcase termLines): drawn the way Claude Code and Codex draw them */
+.pane .term .ln { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--fg); }
+.pane .term .ln b { color: var(--fg); font-weight: 600; }
+.pane .term .ln code { font: inherit; color: var(--accent); }
+.pane .term .ln-prompt { background: var(--fg); color: var(--bg); font-weight: 600; margin: var(--s3) calc(-1 * var(--s4)); padding: 2px var(--s4); }
+.pane .term .ln-cprompt { background: var(--surface-2); color: var(--fg); margin: var(--s3) calc(-1 * var(--s4)); padding: 2px var(--s4); }
+.pane .term .ln-dim { color: var(--fg-dim); }
+.pane .term .ln-done::first-letter { color: var(--c-ok); }

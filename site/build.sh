@@ -4,4 +4,4 @@ set -eu
 cd "$(dirname "$0")"
 rm -rf dist && mkdir dist
 for f in lab.css tokens.js logs.js lab.js components.js fixtures.js showcase.js bboxy.png; do cp "../lab/web/$f" dist/; done
-cp index.html site.css site.js og.png dist/
+cp index.html site.css site.js real.js og.png dist/

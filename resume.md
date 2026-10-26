@@ -1,4 +1,58 @@
-# Rook continuation — error journal #56
+# RESUME — bboxy450-term
+
+Updated 2026-10-26 16:55 PDT by Vesper Greywind (Oracle). Read this first, then GitHub issue #62 and `.bboxy/graph.md`.
+
+## Where we are
+0.1.0 is cut, signed and mostly published. The swarm is wound down; Rook (#56) was the last Executor working.
+
+- Tag `v0.1.0` (signed) = `d02f6135`. All 24 crates at 0.1.0; packaging is byte-reproducible (two independent builds matched 24/24).
+- crates.io: publishing in dependency order under the new-crate rate limit (one per ~10 min). 14/24 live at 16:53; the loop
+  (`publish-rest.sh`, log `out/publish-rest.log` in the Oracle scratchpad) finishes about 18:35. If it died: rerun it; it skips
+  published crates and waits out 429s.
+- `bboxy-firehose` 0.1.0 was published from `c2218b5b` (= main `c431e24c`), which adds `exclude = ["reference/"]`: the tag's
+  package was 29 MB, over crates.io's 10 MiB cap. Every other crate comes from the tag.
+- Signed app: `bboxy450-term-0.1.0-macos-arm64.zip` (sha256 `f241b55e…`), Apple Development cert, not notarized; Aster's
+  production smoke passed on that exact zip. Info.plist version was stamped by hand (#65).
+- GitHub release: **draft** v0.1.0 on `bboxy450/bboxy450-term-releases` with 52 assets (zip, .asc, .sha256, 24 crates + .asc, SHA256SUMS).
+- Website: https://bboxy450.lol (Cloudflare Worker `bboxy450-site`, static assets, free tier, account gonzih@gmail.com).
+
+## Finish the release (after the last crate, `bboxy450-term`, is live)
+1. `gh repo edit bboxy450/bboxy450-term --visibility public --accept-visibility-change-consequences`
+   (operator approved; history scanned clean: no password, passphrase, cargo token or private key in 27,684 objects).
+2. `gh release edit v0.1.0 -R bboxy450/bboxy450-term-releases --draft=false --latest`
+3. Homebrew: write `Casks/bboxy450-term.rb` in `bboxy450/homebrew-tap` (version 0.1.0, sha256 from the zip's `.sha256`,
+   url `.../bboxy450-term-releases/releases/download/v#{version}/bboxy450-term-#{version}-macos-arm64.zip`, `app` +
+   `binary` stanzas, postflight strips quarantine), signed commit, push.
+4. `icq send '#bboxy450-crates' "bboxy450-term 0.1.0 — first release, 24 crates — https://crates.io/crates/bboxy450-term — https://bboxy450.lol — sig 844ECC0587DE7AB0"`
+5. Close #62.
+
+## Website (`site/`)
+The lab showcase (`lab/web/showcase.html`) with a Download panel, fed real data by `site/real.js`:
+Oracle transcript, one Codex rollout per Executor, GitHub issues as epics, today's ICQ DMs. `site/extract.py` refuses
+to write if any local secret appears. Refresh and deploy: `sh site/refresh.sh && cd site && npx wrangler deploy`.
+
+## Open after 0.1.0 (GitHub issues)
+- #56 error journal: cuts 1+2 landed (4d0e66e4, 6b4d574f) for 0.1.1; the Codex hook's original exit-1 cause is unproven.
+- #65 bundle-macos.sh must stamp the version from Cargo.
+- #51 MA-10 mentions: branch `velvet-ma10-mentions`, signed, not landed.
+- R2/S4: `aster/r2-s4-ready-20261026` (fd0a8b52), not landed. #40 flaky zsh adapter test: cause unproven.
+- Scale: 967 seats miss frame/input budgets (#46 #47 #48 #49 #50). Acceptance coverage gaps: #1–#37.
+- #44 ICQ redelivers old briefs ~25 h later: check a DM's timestamp before acting.
+- Notarization needs a Developer ID Application certificate (operator decision).
+
+## Landed today (all signed, on main)
+#54 Finder cwd (072f213b), #55 keyboard layouts (f47ef1aa), #42 ctl BrokenPipe (77b190be), #360 lock, env isolation,
+Knowledge swap, MA-1..8, the 0.1.0 cut (d02f6135), firehose exclude (c431e24c), the site (3284c774 + this cut).
+
+## Machine rules learned today
+- One gate at a time when disk < 25 GiB; parallel release builds froze the Mac (swap 4.9 GB, 14 GiB free).
+- Gate slots `/tmp/bboxy450-gate-slot-N`; land with `scripts/land.sh` (exit 75 slots, 76 main red, 77 presubmit, 78 conflict, 79 moving).
+- Parked signed branches: sable-release-resume-20261026, aster/release-resume-20261026, aster/release-smoke-0.1.0-20261026,
+  aster/night-env-tested-20261026, nyx-release-0-1-0-wrapup, rook-error-journal-wip-20261026.
+
+---
+
+## Rook continuation — error journal #56
 
 Updated 2026-10-26. The operator's direct `continue` resumed #56 after the shutdown handoff; no unrelated tasks, desktop automation, publication or scale run.
 
