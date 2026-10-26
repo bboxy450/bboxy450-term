@@ -252,6 +252,13 @@ def native_input_crates(root, paths, packages):
     consumers = set()
     for name, package in packages.items():
         directory = Path(package["manifest_path"]).parent
+        # Packaged copies keep the repository-relative source path below
+        # release-inputs/. A source edit therefore reaches its native owner.
+        bundled = directory / "release-inputs"
+        if any(copy.is_file() and root / copy.relative_to(bundled) in wanted
+               for copy in bundled.rglob("*")):
+            consumers.add(name)
+            continue
         for source in directory.rglob("*.rs"):
             if not source.resolve().is_relative_to(root):
                 continue
