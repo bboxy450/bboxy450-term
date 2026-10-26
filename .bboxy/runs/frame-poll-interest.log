@@ -1,0 +1,122 @@
+Frame poll-interest cut — landed evidence, #212 remains pending
+
+Signed candidate: 203095bb466e7a162b61b65d5495caad4bf64e55 (Boxy, machine 9B07E849480C68328CA20684844ECC0587DE7AB0).
+Scope: crates/bbt-supervisor/src/supervisor.rs only.
+Mechanism: skip unchanged Mio PTY interests; change writable interest only after successful reregister. Re-adding the same kqueue read filter re-arms an unread byte, causing another wake while capture is backpressured. Existing read_ready credit retry, finite read quantum, EOF/Exit, input fencing, tick, strong commit and protocol bounds stay intact.
+
+Functional evidence: one owned socket pair and actual Mio poll, no sleep or elapsed-time assertion. Same held-byte test fails without the equality guard and passes with it; then verifies new bytes and both writable-interest transitions. A separate owned PTY probe observed initial_readable=1, without_reregister=0, after_identical_reregister=1, exact held byte.
+
+Verification commands (all O1, debug assertions on, memory selector; bare Supervisor proxy opens no account or identity):
+- held-readiness-red-1: command=["cargo", "test", "-p", "bbt-supervisor", "--locked", "--lib", "supervisor::capture_read_tests::unchanged_poll_interests_do_not_rearm_a_held_source", "--", "--exact", "--nocapture"]; source=36a3e403fc13713c4a0041ac9f449434aa339fb7; diff_sha256=6a7427d65b0c545bd79e6a53a4ece14db0833e187f4be11c6548941cacf1c5c9; exit=101; seconds=30.014883; log_sha256=003bbd80b164ac0d94a8471f92bc059eb084bdab205b9189930a63182b95b067
+  test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 53 filtered out; finished in 0.00s
+- held-readiness-green-1: command=["cargo", "test", "-p", "bbt-supervisor", "--locked", "--lib", "supervisor::capture_read_tests::unchanged_poll_interests_do_not_rearm_a_held_source", "--", "--exact", "--nocapture"]; source=36a3e403fc13713c4a0041ac9f449434aa339fb7; diff_sha256=b2e5d8feed88458b41a6d108ae4177165d0d86413d4de3f465f07501ae3bacf8; exit=0; seconds=21.285731; log_sha256=6ec3f841f4a843aa218c54c33cd6cf3a400c6a2ed7a2b6ff679aa36ae846c78b
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 53 filtered out; finished in 0.02s
+- frame-poll-strict-1: command=["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]; source=36a3e403fc13713c4a0041ac9f449434aa339fb7; diff_sha256=b2e5d8feed88458b41a6d108ae4177165d0d86413d4de3f465f07501ae3bacf8; exit=0; seconds=170.620067; log_sha256=1c3bae1a16fc2b80093992769c7393d7ebdf622d936e40cab6fd90db8704c987
+- frame-native-checks-1: command=["sh", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-poll-0mysn2u1/frame-native-checks.sh"]; source=36a3e403fc13713c4a0041ac9f449434aa339fb7; diff_sha256=b2e5d8feed88458b41a6d108ae4177165d0d86413d4de3f465f07501ae3bacf8; exit=0; seconds=5.774588; log_sha256=defc03738be4764ad75c4a69a430f839927d703c1c2b82b1e008baac12f8c0c1
+  test result: ok. 38 passed; 0 failed; 16 ignored; 0 measured; 0 filtered out; finished in 0.47s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.03s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 1.02s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.01s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.22s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 53 filtered out; finished in 0.05s
+  test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 53 filtered out; finished in 0.14s
+- frame-paired-control-3: command=["python3", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-poll-0mysn2u1/profile-paired-control.py", "capture-pair-v3"]; source=203095bb466e7a162b61b65d5495caad4bf64e55; diff_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855; exit=1; seconds=14.132806; log_sha256=228fa5669eccbf07c17e206d1b6422951f66e1de3619f84812a9ce6c2a062cdc
+- frame-paired-control-4: command=["python3", "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-poll-0mysn2u1/profile-paired-control.py", "capture-pair-v4"]; source=203095bb466e7a162b61b65d5495caad4bf64e55; diff_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855; exit=0; seconds=20.771995; log_sha256=5083af1ccaf689a588b7424559cf1124075049ec69c6d5c1cd46a55f6974af6f
+- frame-poll-land-1: command=["sh", "scripts/land.sh"]; source=203095bb466e7a162b61b65d5495caad4bf64e55; diff_sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855; exit=75; seconds=1.243203; log_sha256=c4ae02107cf4311977e20e18736c9b4e98c3a1cca5b82a1096b807cfbe51fef0
+
+First timing comparison (separate host intervals; no claim of speedup or no regression):
+variant mode seats wall_ms sweep_inclusive_ms query_inclusive_ms
+capture-sweep-v1 quiet 4 83.445792 21.038098 41.454444
+capture-sweep-v1 quiet 64 341.181000 290.775328 182.275372
+capture-sweep-v1 hot 4 51.833417 31.121565 28.257975
+capture-sweep-v1 hot 64 1106.063375 973.471875 599.026764
+capture-sweep-v2 quiet 4 49.559500 7.159118 26.097960
+capture-sweep-v2 quiet 64 908.235917 547.556937 539.677277
+capture-sweep-v2 hot 4 59.034291 36.506290 38.142570
+capture-sweep-v2 hot 64 2487.857708 2234.209028 1500.804875
+
+Corrected close pair (one physical slot, baseline then candidate, identical fixture hash):
+variant mode seats wall_ms process_cpu_ms sweep_inclusive_ms requests sweeps missed overwritten
+unconditional quiet 4 82.211125 78.874 19.541619 4096 8191 0 16427
+unconditional quiet 64 355.974125 368.008 308.199701 4096 8180 0 16951
+unconditional hot 4 35.547667 45.088 23.112668 1195 2829 0 3
+unconditional hot 64 1517.227875 806.595 1330.299656 1083 5258 0 5084
+cached quiet 4 42.700792 49.309 6.761676 4096 8192 0 16431
+cached quiet 64 293.286208 268.231 204.666976 4096 8174 0 16934
+cached hot 4 61.800958 68.572 29.086332 1393 3810 0 2259
+cached hot 64 1156.079375 713.496 846.286696 1376 3460 0 2073
+
+All eight corrected-pair test exits are 0. Successful hot cases prove contiguous returned sequence and exact SHA of READY + 2 MiB zeros + TAIL for every seat. All owned children were absent after shutdown, temporary fixture removed, tracked source restored byte for byte.
+64-seat hot CPU 806.595 -> 713.496 ms; wall 1517.227875 -> 1156.079375 ms. 64-seat quiet CPU 368.008 -> 268.231 ms; wall 355.974125 -> 293.286208 ms. 4-seat hot worsened: CPU 45.088 -> 68.572 ms, wall 35.547667 -> 61.800958 ms. One close pair on a shared host supports removal of this cost, not a general no-regression or frame-budget verdict.
+Process CPU is getrusage(RUSAGE_SELF) across the measured interval, all owned-process threads; post-measure history SHA is outside it. Supervisor phase wall spans are inclusive and completion-accounted; do not add them or infer exclusive CPU. Overwritten retained spans and in_flight endpoints are preserved in raw snapshots.
+Payload SHA is not an independent persisted-header CRC audit. No logic, GUI, 967-seat/50-pane, frame CPU, input-to-GPU or #212 budget result is claimed. #212 remains pending. Non-macOS runtime is unvalidated.
+
+Failed close-pair setup v3: observer saw pids.json between truncate/write during baseline hot64 startup; candidate never ran. Atomic same-directory rename fixes the temporary fixture publication. PID fingerprints are retained at setup start for exact cleanup. pair-v3-cleanup-final.json: all 61 recorded children absent, ps exit1/no rows; no signals needed. No production code/assertion/deadline changed for this harness correction.
+Author attempt1 exit75: all3 slots taken, no presubmit ran. Further author evidence is appended only after actual helper completion.
+
+External retained artifacts: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-poll-0mysn2u1
+Artifact hash manifest:
+frame-implementation.json bytes=575 sha256=722db6d2dd7cb3b2d797cfb4dd4e27cf194d66723f3a2abe2c89db1d7eba6d79
+frame-source-review.json bytes=1593 sha256=5e71a3982c374708ead5467e57d6ab592799f99d7502b9effc80a54119102db5
+rearm-edge-functional-1.json bytes=724 sha256=65c36860093f22b8ab3c56ec29ff40282f98ef8a29c2e9a358603cf60e3ca38c
+metadata-correction.json bytes=717 sha256=62abc2b6dd1d47a2f113e537a294db32040a5ec6abad0a36273a9b83bb414bb6
+pair-v3-cleanup-final.json bytes=838 sha256=97e7cae798bbc98f9b3336bca113191de7033b25ec724fa1cbac4206b27d5757
+pair-v4-restoration-proof.json bytes=146 sha256=68e06ed63a703cd272ec960898b274a6e69bc8f3184d8f0e7f4ae939b606f176
+capture-pair-v4.result.json bytes=99858 sha256=9c0140aadbbf067201338f781ae9d9e237023537caad22f80ce5da3d7efccb82
+capture-pair-v4-summary.json bytes=6603 sha256=8137bbbea890191eba8232cff2200b7ec9156c07a968ed5a76618e65f51f3966
+capture-pair-v4-a.result.json bytes=39921 sha256=f224e1d6dc6da508a17d6471d194859fd66b302c8c55f3746b9330c2d15461be
+capture-pair-v4-b.result.json bytes=39923 sha256=1376f6d349d949804a6a4f3877e52a833f15d2146a821c4d8fea385175644549
+poll_sweep_probe.rs bytes=10608 sha256=d6fb9a937d60e133ff8e8ebcc13fcedd7df670fb91735c6733631ed021a4bf38
+profile-capture-sweep.py bytes=9556 sha256=18d0b77a489f7c354b63012a1285d4b2fa69a5270dfde5e171ad443f86baaccd
+profile-paired-control.py bytes=2452 sha256=a6ca04c2355ddb0200e5952b0cda8d6deabf1b221becdb18b42c3d535c3b6941
+supervisor.candidate.rs bytes=144637 sha256=1e79be8db8e3af6086eae900a6f900366220ad1ae11920bcdba8c72cddeec21b
+
+Raw before/after snapshots, per-case test logs, sampler output and binary/source hashes are bound by the result packets. Earlier failures are retained. No credential, capability, operator account or login Keychain is used by the proxy.
+Default standalone no-IO feature selection emits the existing bbt-rt complete_drain dead-code warning; strict all-target workspace Clippy passes without suppressions.
+
+Proxy endpoint clarification: the timed interval stops at the authoritative captured byte_end for every hot seat, not at a separately proven durable-commit barrier. The post-interval read/SHA audit is outside that timer. This preserves the original D21/D22 behavior and is not a durable-throughput claim.
+
+Author attempt2 rebase proof: {
+  "utc": "2026-10-26T05:34:05.082747+00:00",
+  "old": "203095bb466e7a162b61b65d5495caad4bf64e55",
+  "rebased": "346a6c59587abead0b77eda1f1c27a67f7f47b4f",
+  "checks": {
+    "source_equality": {
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "signature": {
+      "exit": 0,
+      "stdout": "346a6c59587abead0b77eda1f1c27a67f7f47b4f G 9B07E849480C68328CA20684844ECC0587DE7AB0 Boxy <bboxy450@gmail.com>\n",
+      "stderr": ""
+    },
+    "scope": {
+      "exit": 0,
+      "stdout": "crates/bbt-supervisor/src/supervisor.rs\n",
+      "stderr": ""
+    },
+    "old_patch_id": "1d9e0482f09be12a374c790f10df130b1deb8c61",
+    "rebased_patch_id": "1d9e0482f09be12a374c790f10df130b1deb8c61"
+  }
+}
+sha256=0463f69e09b38f3533a5d4f90753b4807c4973810ec7f8497fd5e466adcf73fd
+
+Final author landing (2026-10-26 UTC)
+LANDED 346a6c59587abead0b77eda1f1c27a67f7f47b4f Avoid rearming held PTYs when poll interests stay unchanged
+Author command: sh scripts/land.sh; exit0; outer seconds=795.2252261249814; log_sha256=90f6a0e5798cbe821840007355e200036aa4be4fd81a4e14dd8db60365963b12
+Presubmit verdict green, exact source 346a6c59587abead0b77eda1f1c27a67f7f47b4f, exit0. Selected packages bboxy450-term, bbt-mux, bbt-supervisor. Counts:716 passing outcomes,0 failed,119 ignored across77 suite outcomes (includes named invariant repeats, not unique tests). Strict all-target selected-package Clippy -D warnings0; invariants20/0,11 slow checks skipped and6 unaffected-crate checks skipped. Nonvisual cut, parity not selected. No full postsubmit or night frame outcome is claimed.
+Presubmit log: /Users/feral/.local/state/bboxy450-term/landing/presubmits/346a6c59587abead0b77eda1f1c27a67f7f47b4f-ab3c0b03/commands.log; sha256=5ac4b5a694ceaf42aba95e781b448612efbeeaf5fe4efe75c82f59db8429522a
+Exact command markers:
+presubmit: sh scripts/quarantine-test.sh --locked -p bboxy450-term -p bbt-mux -p bbt-supervisor
+presubmit: cargo clippy --locked -p bboxy450-term -p bbt-mux -p bbt-supervisor --all-targets -- -D warnings
+presubmit: sh scripts/invariants.sh --affected 'bboxy450-term bbt-mux bbt-supervisor'
+Presubmit metadata (binary duration list omitted; raw retained in author log): {"affected": ["bboxy450-term", "bbt-mux", "bbt-supervisor"], "attempt": 0, "build_cap_seconds": 1800.0, "commands": [{"argv": ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "bboxy450-term", "-p", "bbt-mux", "-p", "bbt-supervisor"], "tools": ["scripts/quarantine-test.sh", "scripts/quarantine.py"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor"], "tools": ["scripts/invariants.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "bboxy450-prefix"], "tools": ["scripts/brand.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "cross-os-facade"], "tools": ["scripts/cross-os.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "images-resolve"], "tools": ["scripts/images.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "kill-only-own-pids"], "tools": ["scripts/kill-own-pids.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "layering"], "tools": ["scripts/layering.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "licenses-present"], "tools": ["scripts/licenses.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "local-first"], "tools": ["scripts/local-first.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "never-block-swarm"], "tools": ["scripts/never-block.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "no-chokepoints"], "tools": ["scripts/cross-os.sh", "scripts/never-block.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "no-copyleft-deps"], "tools": ["scripts/deps-licences.sh"]}, {"argv": ["sh", "scripts/invariants.sh", "--affected", "bboxy450-term bbt-mux bbt-supervisor", "ui-never-waits"], "tools": ["scripts/ui-lint.sh"]}], "compile_seconds": 561.5733030420961, "error": null, "exit": 0, "finding": null, "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/346a6c59587abead0b77eda1f1c27a67f7f47b4f-ab3c0b03/commands.log", "operation": "bab909724e8d4f13b5380796d8e9e9f8", "run_bound_seconds": 900.0, "run_seconds": 212.3001901669195, "seconds": 773.8740322090453, "sha": "346a6c59587abead0b77eda1f1c27a67f7f47b4f", "test_seconds": 187.42672091693385, "tests_started": true, "tier": "code", "timing_basis": "setup_and_visible_compile_build;all_other_execution_run", "unclassified_seconds": 24.873469249985646, "verdict": "green"}
+Fetched origin/main contains the landing; main supervisor file equals the landed file; machine signature good; all checks exit0. frame-landing-proof.json sha256=45947921dede24a4d386df2c7db641a4599ca3caabeed036fff7b4972270ea66
+Candidate executable archived before own target retirement: {"bytes": 4030240, "path": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/rook-frame-poll-0mysn2u1/paired-candidate-binary", "sha256": "4f0d96a315d3a0b19080dd1ecaa93fcb28435c96dad7bea4970c03949c8cbc18", "usage": "evidence archive only, not reused for a checkout or gate"}
+
+Source pointers:
+crates/bbt-supervisor/src/supervisor.rs:2115 — remember only successful registered write interest
+crates/bbt-supervisor/src/supervisor.rs:2666 — retain existing EOF/Exit path and avoid unchanged registration
+crates/bbt-supervisor/src/supervisor.rs:2754 — skip identical interest and update cache after success
+crates/bbt-supervisor/src/supervisor.rs:2911 — one-process kernel readiness/data regression, no sleep or wall-clock oracle
