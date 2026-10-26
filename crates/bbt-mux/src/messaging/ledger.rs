@@ -2,6 +2,7 @@
 pub use bbt_proto::messaging::{
     BusPosition, Page, Receipt, Recipient, StoredContent, StoredMessage,
 };
+use bbt_proto::messaging::{MessageClass, ReceiptWake, WakeMode};
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
