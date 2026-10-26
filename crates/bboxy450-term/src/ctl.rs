@@ -457,6 +457,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--reason applies only to task reject"
         ));
     }
+    if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
+        return Err(format!("{USAGE_PREFIX}--to applies only to ui compose"));
+    }
     if (flags.contains_key("subagent") || flags.contains_key("grade"))
         && !matches!(&command, Command::Wait { .. })
     {
@@ -466,6 +469,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     }
     if let Some(unknown) = flags.keys().find(|k| {
         ![
+            "to",
             "swarm",
             "test-account",
             "notifications",
