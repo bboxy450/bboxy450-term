@@ -17,10 +17,8 @@ fn the_real_spec_is_the_only_canonical_promise_list() {
         (promises[0].id.as_str(), promises[0].group.as_str()),
         ("T1", "terminal")
     );
-    assert_eq!(
-        (promises[54].id.as_str(), promises[54].group.as_str()),
-        ("P2", "performance")
-    );
+    let last = promises.last().unwrap();
+    assert_eq!((last.id.as_str(), last.group.as_str()), ("P2", "performance"));
     assert!(promises[0].text.contains("real PTY"));
     let generated = include_str!("../../../lab/web/e2e.js")
         .split_once("window.E2E_PROMISES = ")
