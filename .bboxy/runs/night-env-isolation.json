@@ -1,0 +1,95 @@
+{
+  "brief": [
+    "Oracle fe4a93ae",
+    "Oracle aa40e0a9"
+  ],
+  "status": "fixture5/0 and binary build0; actual Codex/Claude terminal verification pending",
+  "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
+  "mechanisms": [
+    "crates/bboxy450-term/src/e2e_night.rs \u2014 isolated_command calls env_clear and copies only PATH/TERM/POSIX locale/TMPDIR before setting private HOME, CLAUDE_CONFIG_DIR and CODEX_HOME",
+    "ctl lifecycle commands and run_script share that constructor; their test paths/issuer are set explicitly afterward",
+    "private subprocess fixture injects dummy caller child-session/messaging/API markers, checks both launch boundaries and withholds values in assertion messages"
+  ],
+  "allowed_inherited": [
+    "PATH",
+    "TERM",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "LC_COLLATE",
+    "LC_MESSAGES",
+    "LC_MONETARY",
+    "LC_NUMERIC",
+    "LC_TIME",
+    "TMPDIR"
+  ],
+  "checks": [
+    {
+      "name": "night-env-unit",
+      "exit": 0,
+      "seconds": 478.0054728984833,
+      "argv": [
+        "cargo",
+        "test",
+        "--target-dir",
+        "scratchpad/night-env-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "fixture_home_tests",
+        "--",
+        "--nocapture"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/night-env-unit.log",
+      "log_sha256": "8975039425cf3df8b838b016fbeb33643a3e69158e39e6e08e9a5de2c738107a"
+    },
+    {
+      "name": "night-env-build",
+      "exit": 0,
+      "seconds": 260.8757529258728,
+      "argv": [
+        "cargo",
+        "build",
+        "--target-dir",
+        "scratchpad/night-env-20261026/target",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--bin",
+        "bboxy450-term"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/night-env-build.log",
+      "log_sha256": "f78a1acb5e1fef4cec9c5a19f99835f51d67feaa33ce3f8574426f0d0c6f5a60"
+    }
+  ],
+  "limits": [
+    "CODEX_HOME is explicitly replaced with the private path; no other caller CODEX_* key is inherited.",
+    "Test-only root/device identity uses file custody, never the operator account.",
+    "Original T6/T9 HOME guards, mock-provider fixtures, recovery assertions and deadlines remain.",
+    "No two-context night pass, full all-groups/scale pass, author landing or postsubmit acceptance claimed yet."
+  ],
+  "priority": {
+    "ruling": [
+      "fe4a93ae",
+      "aa40e0a9"
+    ],
+    "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
+    "R2_S4": {
+      "branch": "aster-r2-s4-night",
+      "candidate": "fd0a8b52",
+      "author_result": {
+        "exit": -2,
+        "seconds": 460.3942217826843
+      },
+      "candidate_not_on_main": true,
+      "log_sha256": "4cf20afd1a198b817eafedf565ff6406bdf183a9b593bf5e1d0305189fafced9"
+    }
+  },
+  "binary": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-env-20261026/bin/bboxy450-term",
+    "sha256": "87bc547d9ec9c7a81028dcf212d5d0dc674044f915272927857afa2aaac0a610",
+    "bytes": 59731728,
+    "source_sha256": "ee87e9307985f40e57e1bc6a7b34087b6b8c528cf5a034ba6deb8d2365257199"
+  }
+}
