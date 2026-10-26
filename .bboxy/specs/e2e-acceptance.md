@@ -16,7 +16,7 @@ links:
   - { to: "[[rim-glow]]", rel: promises }
   - { to: "[[attention]]", rel: promises }
 created: "2026-10-24T05:17:08Z"
-updated: "2026-10-26T03:25:39Z"
+updated: "2026-10-26T08:49:33Z"
 ---
 # E2E acceptance
 
@@ -55,7 +55,7 @@ Every promised user-facing function, one line of expectation each, from [[vision
 
 - **L1** ⌘T opens the centred launcher over the blurred window with harness rows, search, and role presets; Esc closes it with no spawn
 - **L2** a new seat lands exactly where the operator picked (split right, split down, new tab, new space), never a guessed slot
-- **L3** every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after
+- **L3** every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the user's own ~/.claude and ~/.codex are byte-identical before and after, while each seat's private harness home (decision #279) is the app's to seed and the native client's to write its own runtime and trust state into
 - **L4** a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task
 
 ### scrollback

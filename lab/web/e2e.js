@@ -58,7 +58,7 @@ window.E2E_PROMISES = [
  {
   "id": "L3",
   "group": "launcher and placement",
-  "text": "every launched seat has our MCP server, the hook shim and the bboxy450 skill at launch; the user's own ~/.claude and ~/.codex are byte-identical before and after"
+  "text": "every launched Claude or Codex seat has our MCP server, the hook shim and the bboxy450 skill at launch, and a zsh seat our shell integration; the user's own ~/.claude and ~/.codex are byte-identical before and after, while each seat's private harness home (decision #279) is the app's to seed and the native client's to write its own runtime and trust state into"
  },
  {
   "id": "L4",
