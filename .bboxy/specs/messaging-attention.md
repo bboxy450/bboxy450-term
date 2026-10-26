@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T06:31:27Z"
+updated: "2026-10-26T10:16:16Z"
 ---
 # Messaging attention
 
@@ -98,7 +98,7 @@ A reply carries `reply_to`, the id of the message it answers; the service checks
 
 ## 6. Cost in the ledger
 
-Every native delivery writes a ledger line ([[resource-ledger]] §2) with stage `wake`: seat, destination, class, mode, message ids, and, filled nightly from the transcript, the input tokens of the turn it caused. The board shows wakes and tokens re-read per seat and per destination, and the share caused by events, which under these defaults should be near zero.
+Every native delivery writes **one** ledger line ([[resource-ledger]] §2) with stage `wake` per delivery attempt: the seat, a list of `{id, destination, class, mode}` for every message it carried, the destination, class and mode at top level when all members share them and `mixed` otherwise, and, filled nightly from the transcript, the input tokens of the turn it caused, charged once to the line, never split across rooms (Sable, building MA-7, 2026-10-25). A native write is not a turn accepted: a line whose turn cannot be matched exactly stays `unknown`, never matched to the nearest turn by time. The board shows wakes and tokens re-read per seat and per destination, and the share caused by events, which under these defaults should be near zero.
 
 ## 7. Tasks
 
