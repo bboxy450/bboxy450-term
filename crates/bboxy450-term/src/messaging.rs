@@ -1070,6 +1070,7 @@ fn send(
                 attachments,
                 thread_id: None,
                 reply_to: None,
+                supersedes: None,
             },
         },
     }
