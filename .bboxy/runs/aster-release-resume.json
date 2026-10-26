@@ -3,12 +3,12 @@
   "created_at": "2026-10-26T21:07:35.145018+00:00",
   "owner": "Aster Cinderwing <EXECUTOR>",
   "worktree": "/Users/feral/mydev/bboxy450-term-exec4",
-  "main_last_observed": "8c776cbb227295e514c29b4f946de0486bf66cf7",
+  "main_last_observed": "a2444802a7e7178374b7840565a27c030ad2e603",
   "resume_issue": "https://github.com/bboxy450/bboxy450-term/issues/62",
   "latest_instructions": {
     "shutdown": "Oracle63bd298b: commit/sign in-flight work on its branch; nothing unpushed lost; resume in#62",
     "finder_blocker": "Oracle88ef398d: ahead of release build",
-    "release": "Oracle79ec2ec1: after Kestrel macOS keychain fix on main, run bundle-macos.sh release; include Nyx0.1 stamp only if already landed, else record/ship actual version; ditto ZIP, SHA256, detached GPG.asc; Oracle tags and publishes; no publication by Aster",
+    "release": "Oracle38b63b68 (received after shutdown checkpoint): real operator Keychain works on signed app; do not wait for Kestrel. Trigger is Nyx0.1.0 cut on main, Oracle sends exact SHA; build signed app from that SHA with ZIP/SHA256/.asc/smoke. Include Sable#55 only if already landed.",
     "boundary_owner": "Oracle90d6c163: Corvin/Wren sessions stopped; rulings/ICDs go to Vesper"
   },
   "completed": [
@@ -44,9 +44,9 @@
     "state": "NOT IMPLEMENTED; no cockpit/logic edits started"
   },
   "release_resume": {
-    "dependency": "Kestrel keychain-fix landed main SHA not yet received/verified; ask Kestrel/Vesper. Nyx version stamp is optional under79ec, not a reason to wait.",
+    "dependency": "Await Oracle exact landed Nyx0.1.0 SHA; origin/main a2444802 still reports version0.0.1. Kestrel is no longer a dependency under38b63b68. Sable#55 has landed f47ef1aa. Finder#54 remains unimplemented in this worktree.",
     "kestrel_key": "2868e75c4e031b6ec826d1f7a82af9f34df2968f1ea541ed5334e97b99e5f03a",
-    "command": "sh scripts/bundle-macos.sh release from clean exact main after required fixes",
+    "command": "On receipt of the landed Nyx0.1.0 SHA, use that exact main source and sh scripts/bundle-macos.sh release; ZIP, SHA256, GPG.asc, bundle-help and private file-account smoke. No publication by Aster.",
     "bundle_contract": "default target/release/bboxy450-term.app; approved Apple Development fingerprint3943AF130A015B36824B7FBC86AA672E7B25F3C4, teamUQB3368A84, identifiercom.bboxy450.term; script copies licences/NOTICE/icon and verifies strict signature",
     "signing_identity_available": "security find-identity matched the approved fingerprint on2026-10-26",
     "smoke": "bundle executable --help, ctl --help; python3 -IB scripts/release-smoke.py BUNDLE_EXECUTABLE UNIQUE_SHORT_/tmp/aster-release-*; no --notifications record (debug only); own file account, one realzsh pane draws nonce, orderly stop, all recorded debug-ps PIDs absent, matching binary hash",
@@ -75,5 +75,6 @@
     "check": "Python AST parse0; no production release smoke claim"
   },
   "local_logs": "scratchpad/terminal-t5-20261026 contains commands/process IDs/logs/results; raw logs and private test account key material must not enter Git",
-  "no_active_own_work": "all owned builds stopped/completed; no own app/load remains; shared ICQ/cache servers must not be stopped"
+  "no_active_own_work": "all owned builds stopped/completed; no own app/load remains; shared ICQ/cache servers must not be stopped",
+  "updated_at": "2026-10-26T21:11:19.592217+00:00"
 }
