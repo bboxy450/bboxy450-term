@@ -178,6 +178,21 @@ impl FrontendLock {
         }
     }
 }
+fn lock_held(file: File) -> Result<bool> {
+    // SAFETY: a nonblocking probe of an already-open private run lock.
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+        // Closing alone can leave the probe locked through a forked FD alias.
+        // Reuse the owner's explicit unlock before releasing our descriptor.
+        let _probe = FrontendLock { _file: file };
+        return Ok(false);
+    }
+    let error = std::io::Error::last_os_error();
+    if error.kind() == std::io::ErrorKind::WouldBlock {
+        Ok(true)
+    } else {
+        Err(error.into())
+    }
+}
 pub(super) fn supervisor_held(config: &Config) -> Result<bool> {
     let mut path = config.socket.as_os_str().to_os_string();
     path.push(".lock");
@@ -191,16 +206,7 @@ pub(super) fn supervisor_held(config: &Config) -> Result<bool> {
         }
         Err(e) => return Err(e),
     };
-    // SAFETY: a nonblocking probe on this run's existing lock; no listener is opened.
-    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
-        return Ok(false);
-    }
-    let error = std::io::Error::last_os_error();
-    if error.kind() == std::io::ErrorKind::WouldBlock {
-        Ok(true)
-    } else {
-        Err(error.into())
-    }
+    lock_held(file)
 }
 
 /// A local child has a wait status. An adopted process has only observed liveness.
@@ -297,16 +303,7 @@ pub(super) fn frontend_running(run: &Path) -> Result<Option<bool>> {
         }
         Err(error) => return Err(error),
     };
-    // SAFETY: a bounded probe of the exact recorded run lock, not a process scan.
-    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
-        return Ok(Some(false));
-    }
-    let error = std::io::Error::last_os_error();
-    if error.kind() == std::io::ErrorKind::WouldBlock {
-        Ok(Some(true))
-    } else {
-        Err(error.into())
-    }
+    lock_held(file).map(Some)
 }
 
 #[cfg(test)]
@@ -336,6 +333,26 @@ mod tests {
         drop(lock);
         assert_eq!(frontend_running(root.path()).unwrap(), Some(false));
         assert!(FrontendLock::claim(&config).unwrap().is_some());
+    }
+
+    // keeps: task #360; a probe is not an owner, including through an FD alias
+    #[test]
+    fn frontend_probe_releases_its_lock_with_a_retained_descriptor_alias() {
+        let root = tempfile::tempdir().unwrap();
+        let config = config(root.path());
+        drop(FrontendLock::claim(&config).unwrap().unwrap());
+        let file = private_file(&root.path().join("app.owner.lock"), false).unwrap();
+        // dup and fork share the open file description that carries flock.
+        // Retain that alias deterministically, without a child or a sleep.
+        let alias = file.try_clone().unwrap();
+        assert!(!lock_held(file).unwrap());
+        let owner = FrontendLock::claim(&config)
+            .unwrap()
+            .expect("a completed probe must release its lock even while its alias is open");
+        assert_eq!(frontend_running(root.path()).unwrap(), Some(true));
+        drop(owner);
+        assert_eq!(frontend_running(root.path()).unwrap(), Some(false));
+        drop(alias);
     }
 
     // keeps: decision #344 rule 3; a forked CLOEXEC alias is not a live owner
