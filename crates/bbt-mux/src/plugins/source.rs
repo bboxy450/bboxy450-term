@@ -118,9 +118,10 @@ impl Registry {
         }
         let parent = Path::new(&record.data_dir).join("roots");
         private_dir(&parent)?;
-        let directory = parent.join(hex::encode(Sha256::digest(
-            root.as_os_str().as_encoded_bytes(),
-        )));
+        let directory = parent.join(format!(
+            "{:x}",
+            Sha256::digest(root.as_os_str().as_encoded_bytes())
+        ));
         private_dir(&directory)?;
         Ok(DataSourceProvider {
             registry: self.clone(),

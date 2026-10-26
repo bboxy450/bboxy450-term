@@ -112,7 +112,7 @@ impl Host {
             .to_str()
             .ok_or_else(|| invalid("knowledge root must be UTF-8"))?
             .to_owned();
-        let id = hex::encode(Sha256::digest(path.as_bytes()));
+        let id = format!("{:x}", Sha256::digest(path.as_bytes()));
         let default = Binding {
             root: path,
             provider: BUNDLED.into(),
