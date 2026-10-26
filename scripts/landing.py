@@ -785,6 +785,7 @@ def recheck_data(data, path):
 
 def presubmit_worker(base, result_path, recheck=None):
     global _timing_path
+    os.environ["SIGNED_RANGE"] = base + "..HEAD"
     _timing_path = result_path.parent / "phases.jsonl"
     root = repository()
     data = recheck_data(affected(base + "..HEAD", root=root), recheck)

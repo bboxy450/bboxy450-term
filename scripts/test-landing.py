@@ -445,6 +445,42 @@ class PresubmitTests(unittest.TestCase):
         self.repo.write(path, "// fixture cut\n")
         self.repo.commit("Fixture candidate")
 
+    def signature_invariant(self):
+        invariant = SOURCE.parent.parent / ".bboxy/invariants/signed-main.md"
+        check = next(line.removeprefix("check: ") for line in invariant.read_text().splitlines()
+                     if line.startswith("check: "))
+        self.repo.write("scripts/invariants.sh", "#!/bin/sh\n" + check + "\n")
+        self.repo.base = self.repo.commit("Fixture signature invariant")
+        self.repo.environment.pop("SIGNED_RANGE", None)
+
+    # keeps: invariant signed-main — every candidate commit must verify.
+    def test_presubmit_rejects_an_unsigned_commit_inside_its_signed_range(self):
+        self.signature_invariant()
+        self.repo.write("crates/c/src/lib.rs", "// unsigned candidate fixture\n")
+        run("git", "add", "crates/c/src/lib.rs", cwd=self.repo.root)
+        run("git", "-c", "commit.gpgsign=false", "commit", "-qm", "Unsigned fixture candidate",
+            cwd=self.repo.root)
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        record = json.loads((self.repo.state / "presubmit.log").read_text().splitlines()[-1])
+        self.assertEqual(record["verdict"], "red")
+
+    # keeps: invariant signed-main — only presubmit narrows the verified history.
+    def test_presubmit_excludes_old_unsigned_history_but_unset_check_does_not(self):
+        self.signature_invariant()
+        self.repo.write("README.md", "unsigned historical fixture\n")
+        run("git", "add", "README.md", cwd=self.repo.root)
+        run("git", "-c", "commit.gpgsign=false", "commit", "-qm", "Unsigned historical fixture",
+            cwd=self.repo.root)
+        self.repo.write("README.md", "signed fixture cutoff\n")
+        self.repo.base = self.repo.commit("Fixture signed cutoff")
+        self.cut("crates/c/src/lib.rs")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        whole_history = subprocess.run(["sh", "scripts/invariants.sh"], cwd=self.repo.root,
+                                       env=self.repo.environment, capture_output=True, text=True, timeout=15)
+        self.assertEqual(whole_history.returncode, 1, whole_history.stdout + whole_history.stderr)
+
     def test_code_targets_the_affected_leaf_and_records_one_verdict(self):
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
