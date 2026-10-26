@@ -17,6 +17,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/e2e'))
 import native_checks as native
+from native_turn import wait_codex_turn
 from ui import App, require
 
 
@@ -76,8 +77,12 @@ def run():
         # Native onboarding is fixture setup, not an operator dependency. Trust
         # only this run's own empty work directory in its isolated harness home.
         home = work.parent / 'home'
-        require(Path(os.environ['HOME']).resolve() == home.resolve() and
-                (home / '.l3-private-home').is_file(), 'private harness home required')
+        # The runner isolates the app's HOME; the script inherits the runner's.
+        # Validate the explicit seed before editing any native-client preference.
+        marker = home / '.l3-private-home'
+        require(home.is_dir() and (home.stat().st_mode & 0o777) == 0o700 and
+                marker.is_file() and marker.read_text() == 'L3 throwaway harness home\n',
+                'private harness home required')
         preferences = home / '.claude/.claude.json'
         private = json.loads(preferences.read_text())
         private.setdefault('projects', {})[str(work)] = {'hasTrustDialogAccepted': True}
@@ -89,8 +94,7 @@ def run():
         app.wait(claude, 'T9_BEFORE')
         codex = app.ctl('seat', 'spawn', 'codex', '--role', 'executor', '--place', 'tab',
                         '--cwd', work, '--name', 'T9 native Codex')['seat']
-        native.approve_codex_hooks(codex, marker='T9_BEFORE', prefix='t9')
-        app.wait(codex, 'T9_BEFORE')
+        wait_codex_turn(app, codex, 'T9_BEFORE', 't9')
         shell = app.spawn('T9 zsh')
         app.line(shell, "printf 'T9_ZSH_BEFORE %s\\n' $$")
         app.wait(shell, '(?m)^T9_ZSH_BEFORE [0-9]+$')
@@ -119,7 +123,7 @@ def run():
             require(after[seat]['record']['id'] == seat, 'seat identity changed')
             require(after[seat]['record']['harness_session_id'] == before[seat]['record']['harness_session_id'],
                     'native session id changed')
-        native.approve_codex_hooks(codex, marker='T9_AFTER', prefix='t9-after')
+        wait_codex_turn(app, codex, 'T9_AFTER', 't9-after')
         for seat in [claude, codex]:
             app.wait(seat, 'T9_AFTER')
         app.line(shell, "printf 'T9_ZSH_AFTER %s\\n' $$")

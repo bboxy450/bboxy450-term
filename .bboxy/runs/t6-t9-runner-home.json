@@ -1,0 +1,246 @@
+{
+  "scope": "T6/T9 fixture-only repairs found by the first full unattended night",
+  "status": "native cases green; author landing pending",
+  "base": "2dc967dbd376200b069f43db4c57b2270997ce20",
+  "mechanisms": [
+    "scripts/e2e/t6_recover.py:99 \u2014 validate explicit private directory, exact marker and 0700 mode; script HOME is not the app HOME",
+    "scripts/e2e/t9_restart.py:82 \u2014 same private-target guard for the explicit native restart fixture",
+    "scripts/e2e/native_turn.py:9 \u2014 watch through the initial ready prompt; use the unchanged exact-hook recipe only on review, once; await the actual marker under the existing 30s bound",
+    "scripts/e2e/test_native_turn.py:15 \u2014 functional regression: initial prompt, late review, duplicate review frame, single real answer; approval occurs once",
+    "scripts/e2e/native_launch.py:21 \u2014 unchanged actual-native-client HOME, CLAUDE_CONFIG_DIR and CODEX_HOME isolation checks",
+    "crates/bboxy450-term/src/e2e_night.rs:586 \u2014 runner script inherits caller HOME; app-only launch HOME override remains unchanged"
+  ],
+  "original_night": {
+    "night": "/Users/feral/.local/state/bboxy450-term/landing/nights/3f924583c434460e81934bea1771afe2",
+    "source": "b61ea30b766a3ec62f1a070610c13e81847c7f7b",
+    "group_log": "/Users/feral/.local/state/bboxy450-term/landing/nights/3f924583c434460e81934bea1771afe2/group-1.log",
+    "group_log_sha256": "f336d5d837e3b7ab434cb721e89f3025df81db68bfaef8c939d037a00dd7ae8f",
+    "runtime": [
+      {
+        "id": "T6",
+        "marker": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enwhed8s/T6/home/.l3-private-home",
+        "marker_sha256": "63585f624de8a40533db8e399f3d8a1d996604e15baa071cce4c5fa61507893e",
+        "seed_sha256": "63585f624de8a40533db8e399f3d8a1d996604e15baa071cce4c5fa61507893e",
+        "home_mode": "0o700",
+        "marker_mode": "0o600",
+        "current_caller_home_matches_fixture": false
+      },
+      {
+        "id": "T9",
+        "marker": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enwhed8s/T9/home/.l3-private-home",
+        "marker_sha256": "63585f624de8a40533db8e399f3d8a1d996604e15baa071cce4c5fa61507893e",
+        "seed_sha256": "63585f624de8a40533db8e399f3d8a1d996604e15baa071cce4c5fa61507893e",
+        "home_mode": "0o700",
+        "marker_mode": "0o600",
+        "current_caller_home_matches_fixture": false
+      }
+    ]
+  },
+  "runtime_inputs": {
+    "scripts": {
+      "scripts/e2e/t6_recover.py": "49756af5f0b58069f7cdf86e0e29267938d4c97878c004d9cf8c28ab85e90490",
+      "scripts/e2e/t9_restart.py": "871815480bd5975c4b7d7314bfbb64d20c6a27e3361464468f96c64b5489df83",
+      "scripts/e2e/native_turn.py": "d2f4b469f5c419da4cdbf1f0733ff21a8a9f71099d42aa76c09b126e07dc4a32",
+      "scripts/e2e/test_native_turn.py": "e25d4945af5187351162a0ce355c977016cf3225ecdc13144c1dc7e4eb1dc469"
+    },
+    "selected": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical-final/scripts/e2e",
+    "native_checks_changed": false
+  },
+  "same_app_binary": {
+    "path": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/land2-wt/target/debug/bboxy450-term",
+    "sha256": "8eeda5f999c97f7e6a4f650b1827a22c19fd40bafc6350603d9dbc4f5e5dd6d7"
+  },
+  "checks": [
+    {
+      "exit": 1,
+      "seconds": 3.212785243988037,
+      "name": "runner-home-native",
+      "argv": [
+        "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/land2-wt/target/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "terminal",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/selected",
+        "--records",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/records"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/runner-home-native.log",
+      "log_sha256": "04eef9cfc0c218d2909ae39d40523c9657afac202e3db69a88a0c851eab88fe6"
+    },
+    {
+      "exit": 1,
+      "seconds": 45.93843102455139,
+      "name": "runner-home-canonical",
+      "argv": [
+        "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/land2-wt/target/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "terminal",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical/scripts/e2e",
+        "--records",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical-records"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/runner-home-canonical.log",
+      "log_sha256": "a86445a3a49e9162d2a6cb1d8f557e9c628304b0990d19f7b510aca7277ab950"
+    },
+    {
+      "exit": 1,
+      "seconds": 66.13866686820984,
+      "name": "runner-home-canonical-fixed",
+      "argv": [
+        "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/land2-wt/target/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "terminal",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical-fixed/scripts/e2e",
+        "--records",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/fixed-records"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/runner-home-canonical-fixed.log",
+      "log_sha256": "e3874266f0bdfb0905f94a90b58834c17c6b8869e6bc6177222b043bd2a96b93"
+    },
+    {
+      "exit": 1,
+      "seconds": 39.85430026054382,
+      "name": "runner-home-canonical-final-run",
+      "argv": [
+        "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/land2-wt/target/debug/bboxy450-term",
+        "e2e",
+        "night",
+        "--group",
+        "terminal",
+        "--scripts",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/canonical-final/scripts/e2e",
+        "--records",
+        "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/t6-t9-runner-home-20261026/final-records"
+      ],
+      "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/runner-home-canonical-final-run.log",
+      "log_sha256": "0df8145458ee492f4d43b331e6ad9f2036ca86dc00f5d4eb5a4418987346eeb0"
+    }
+  ],
+  "unit": {
+    "argv": [
+      "python3",
+      "-I",
+      "-B",
+      "scripts/e2e/test_native_turn.py"
+    ],
+    "exit": 0,
+    "passed": 3,
+    "failed": 0,
+    "cases": [
+      "late review approved once, one answer marker suffices",
+      "unrelated prompt reaches existing bound without approval",
+      "unexpected hook-count refusal propagates"
+    ]
+  },
+  "native_verdicts": [
+    {
+      "coverage": "full",
+      "evidence": "{\"kind\": \"T6\", \"verdict\": \"full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines\", \"seats\": [\"01M5WPHW06MT7WMCMJJGGFM02N\", \"01M5WPHX0CHC9XEAPR6CDC8JCN\", \"01M5WPHYCFTRGJXQ27NN2824MW\"]}",
+      "exit": 0,
+      "function": "T6",
+      "group": "terminal",
+      "kind": "e2e",
+      "missing": [],
+      "verdict": "pass"
+    },
+    {
+      "coverage": "full",
+      "evidence": "{\"kind\": \"T9\", \"verdict\": \"full: explicit ctl restarts preserve 3 seat IDs and native sessions/transcripts, advance generations once, reap old PIDs and retain the shell screen or gap\", \"seats\": [\"01M5WPJPN6NJ76V5RT37GA2NEW\", \"01M5WPJQ7DWPBMW9R9SAZGRC9E\", \"01M5WPJR6MQ2NV2WTW3GYGE63T\"]}",
+      "exit": 0,
+      "function": "T9",
+      "group": "terminal",
+      "kind": "e2e",
+      "missing": [],
+      "verdict": "pass"
+    }
+  ],
+  "apps": [
+    {
+      "custody_backend": "file",
+      "function": "T6",
+      "issued_by": "test-account:01M5WPHVJDCW1GM01N779B6G3W",
+      "kind": "app",
+      "mode": "headless",
+      "pid": 24606,
+      "role": "promise",
+      "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enRARTEQ/T6/run",
+      "windows": 0
+    },
+    {
+      "custody_backend": "file",
+      "function": "T9",
+      "issued_by": "test-account:01M5WPJP9M1Z1MSNFE7FSDQ9JR",
+      "kind": "app",
+      "mode": "headless",
+      "pid": 26260,
+      "role": "promise",
+      "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enRARTEQ/T9/run",
+      "windows": 0
+    },
+    {
+      "custody_backend": "file",
+      "function": null,
+      "issued_by": "test-account:01M5WPK08BPZKA3HVE321DSYFD",
+      "kind": "app",
+      "mode": "headless",
+      "pid": 26597,
+      "role": "records",
+      "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enRARTEQ/records-app/run",
+      "windows": 0
+    }
+  ],
+  "shutdown": {
+    "argv": [
+      "ps",
+      "-p",
+      "24606,26260,26597",
+      "-o",
+      "pid=,lstart=,args="
+    ],
+    "exit": 1,
+    "stdout": "",
+    "all_recorded_app_pids_absent": true
+  },
+  "group_summary": {
+    "group": "terminal",
+    "kept": null,
+    "kind": "summary",
+    "partial": [],
+    "passed": 2,
+    "red": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T7",
+      "T8"
+    ],
+    "state": "red",
+    "total": 9,
+    "tracked": [],
+    "unwritten": []
+  },
+  "failures_disposition": [
+    "Original whole-night T6/T9 both stopped at private-home guard; runtime marker hashes matched source. Wrong script HOME equality, not missing seeds.",
+    "First focused wrapper broke repository-relative imports before fixture execution; reconstructed scripts/e2e hierarchy and its referenced skill resource.",
+    "First proper canonical control: T9 passed; T6 reached a late ten-hook review after initial readiness. New T6/T9 polling helper uses the existing guarded approval recipe once.",
+    "An initially overstrict two-marker predicate rejected an already completed native response because the user prompt says L3_NATIVE_OK. Corrected to the real T6/T9 answer marker; regression includes that exact sequence.",
+    "One final launcher path typo started no process; subsequent command reads the saved binary path instead of repeating the literal."
+  ],
+  "limits": [
+    "The focused group exits1 solely for seven deliberately omitted terminal scripts; T6 and T9 each exit0/full/pass.",
+    "No whole-night green, timing-SLO, renderer, product, identity, runner, L3/L4 or native_checks change.",
+    "The successful runner retired its temporary runtime; retained public JSONL log and input hashes are the evidence. Earlier original/failing runtime remains named in the observation packet.",
+    "Recorded app PIDs independently absent; no exhaustive transient-child claim.",
+    "Native clients still perform real sessions/transcript resumption against scripted loopback model responses; no model-authored verdict or operator credential."
+  ]
+}
