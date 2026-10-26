@@ -25,6 +25,7 @@ fn labels(l: &c::Layout) -> String {
     }
     s
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn settings_accepts_live_link_records_and_legacy_four_field_cloud_records() {
     for cloud in [
@@ -44,6 +45,7 @@ fn settings_accepts_live_link_records_and_legacy_four_field_cloud_records() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn every_link_state_roundtrips_and_renders_in_both_settings_records() {
     for state in [

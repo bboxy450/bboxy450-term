@@ -406,6 +406,7 @@ impl PerfHud {
 mod tests {
     use super::*;
 
+    // keeps: spec runtime §§4–6
     #[test]
     fn lab_records_round_trip_and_idle_frames_stay_stubs() {
         let json = r#"{"hz":120,"interval_ms":8.33,"budget_ms":8.33,"cpu":{"p50":2.4,"p99":3.1},"gpu_ms":2.9,

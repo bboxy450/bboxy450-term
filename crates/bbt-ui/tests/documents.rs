@@ -44,6 +44,7 @@ fn labels(l: &c::Layout) -> String {
     }
     out
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn record_number_shares_the_type_chip_and_absent_numbers_keep_the_old_label() {
     let mut view = DocumentModal {
@@ -66,6 +67,7 @@ fn record_number_shares_the_type_chip_and_absent_numbers_keep_the_old_label() {
         "decision #47"
     );
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn document_metadata_and_unsigned_or_broken_evidence_remain_visible() {
     let mut view = DocumentModal {
@@ -92,6 +94,7 @@ fn document_metadata_and_unsigned_or_broken_evidence_remain_visible() {
     view.document.prov.signed = Some("operator fingerprint".into());
     assert!(labels(&layout(&view, 1218.)).contains("✓ signed · operator fingerprint"));
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn modal_retains_explicit_scroll_and_leaves_actions_as_visual_data() {
     let view = DocumentModal {
@@ -158,6 +161,7 @@ fn graph() -> Diagram {
         ..Default::default()
     }
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn diagram_state_is_serializable_and_drawing_never_scales_to_the_document() {
     let diagram = graph();
@@ -186,6 +190,7 @@ fn diagram_state_is_serializable_and_drawing_never_scales_to_the_document() {
     assert!(find(&layout(&round, 1218.), "block0/source").is_some());
     assert!(find(&layout(&round, 1218.), "block0/canvas").is_none());
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn unsupported_diagram_preserves_source_instead_of_a_partial_drawing() {
     let source = "not-yet-supported syntax";
@@ -207,6 +212,7 @@ fn unsupported_diagram_preserves_source_instead_of_a_partial_drawing() {
     assert!(text.contains("not drawn"));
     assert!(find(&l, "block0/canvas").is_none());
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn short_code_cells_center_within_the_keys_padded_grid_row() {
     let view = DocumentModal {

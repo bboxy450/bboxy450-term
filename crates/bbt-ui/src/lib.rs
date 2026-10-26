@@ -13,16 +13,19 @@ pub use style::*;
 
 // Root-level so the invariants' `cargo test --lib <name> -- --exact` checks name them exactly.
 #[cfg(test)]
+// keeps: invariant rim-never-covers-text
 #[test]
 fn rim_never_covers_text() {
     modules::pane::rim_invariants::rim_never_covers_text();
 }
 #[cfg(test)]
+// keeps: invariant glow-never-moves-layout
 #[test]
 fn glow_never_moves_layout() {
     modules::pane::rim_invariants::glow_never_moves_layout();
 }
 #[cfg(test)]
+// keeps: invariant rim-size-is-layout
 #[test]
 fn rim_size_moves_only_gutter_and_inset() {
     modules::pane::rim_invariants::rim_size_moves_only_gutter_and_inset();

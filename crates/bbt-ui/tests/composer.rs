@@ -17,6 +17,7 @@ fn composer() -> Controller {
     })
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn preedit_does_not_send_or_filter_and_escape_restores_the_selection() {
     let mut c = composer();
@@ -41,6 +42,7 @@ fn preedit_does_not_send_or_filter_and_escape_restores_the_selection() {
     assert_eq!(c.view.to[1].destination, "seats/seat-b/inbox");
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn submission_is_a_snapshot_and_a_stored_reply_does_not_erase_new_typing() {
     let mut c = composer();
@@ -60,6 +62,7 @@ fn submission_is_a_snapshot_and_a_stored_reply_does_not_erase_new_typing() {
     assert_eq!(c.view.to.len(), 1);
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn unresolved_labels_and_invalid_priority_are_named_refusals() {
     let mut c = composer();
@@ -76,6 +79,7 @@ fn unresolved_labels_and_invalid_priority_are_named_refusals() {
     assert_eq!(c.view.priority, 0);
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn kind_chooser_is_local_and_offers_only_the_three_sendable_kinds() {
     let mut c = composer();
@@ -98,6 +102,7 @@ fn kind_chooser_is_local_and_offers_only_the_three_sendable_kinds() {
         Outcome::Refused("message_kind_not_sendable")
     );
 }
+// keeps: spec gui-components §4.1
 #[test]
 fn accepting_a_report_requires_reported_status_and_zero_exit() {
     let mut report = Report {
@@ -116,6 +121,7 @@ fn accepting_a_report_requires_reported_status_and_zero_exit() {
     assert!(!report.can_accept());
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn attachment_query_is_uncommitted_until_pick_and_preedit_never_filters_or_submits() {
     let mut c = composer();
@@ -156,6 +162,7 @@ fn attachment_query_is_uncommitted_until_pick_and_preedit_never_filters_or_submi
     assert_eq!(c.view.attach[0].path, ".bboxy/tasks/a.md");
     assert_eq!(c.view.text, "hello ");
 }
+// keeps: spec gui-components §4.1
 #[test]
 fn reject_reason_requires_committed_nonempty_text_and_survives_refusal() {
     let mut reject = RejectController::default();
@@ -172,6 +179,7 @@ fn reject_reason_requires_committed_nonempty_text_and_survives_refusal() {
     assert_eq!(reject.view.notice.as_ref().unwrap().text, "task changed");
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn task_status_is_canonical_in_graph_records_without_renaming_seat_activity() {
     use bbt_ui::modules::graph_tab::{Seat, Work};

@@ -28,6 +28,7 @@ fn labels(l: &c::Layout) -> String {
     }
     s
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn account_projects_the_pinned_identity_and_recovery_limits_without_actions() {
     let view = Settings {
@@ -56,6 +57,7 @@ fn account_projects_the_pinned_identity_and_recovery_limits_without_actions() {
     assert!(!s.contains("create root"));
     assert!(!s.contains("password"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn custom_role_order_and_defaults_drive_the_changed_marker() {
     let role = Role {
@@ -94,6 +96,7 @@ fn custom_role_order_and_defaults_drive_the_changed_marker() {
     view.defaults = view.values.clone();
     assert!(!labels(&layout(&view)).contains("reset"));
 }
+// keeps: spec attention §3
 #[test]
 fn draft_harness_never_claims_an_inferred_ready_state_can_submit() {
     let mut view = Settings {
@@ -114,6 +117,7 @@ fn draft_harness_never_claims_an_inferred_ready_state_can_submit() {
     assert!(after.contains("types after an idle hook"));
     assert!(!after.contains("never submits on its own"));
 }
+// keeps: spec attention §3
 #[test]
 fn records_roundtrip_with_ordered_custom_harnesses_and_roles() {
     let v = Settings {
@@ -141,6 +145,7 @@ fn records_roundtrip_with_ordered_custom_harnesses_and_roles() {
     assert!(labels(&layout(&round)).contains("private command supplied by the host"));
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
     use controller::{Action, Controller, Field, Focus, Regions};
@@ -248,6 +253,7 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
     );
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace() {
     let plugin: plugins::Plugin = serde_json::from_value(serde_json::json!({
@@ -279,6 +285,7 @@ fn registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace()
     assert!(rendered.contains("decision_model 1.0 ✕ choose"));
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {
     fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
@@ -318,6 +325,7 @@ fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {
     assert!(scroll(control));
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn hosted_settings_search_keeps_retained_control_regions_and_unavailable_fields_honest() {
     use controller::{Action, Controller, Field, Focus, Hit, Patch};
@@ -381,6 +389,7 @@ fn hosted_settings_search_keeps_retained_control_regions_and_unavailable_fields_
     assert!(!text.contains("signed in"));
 }
 
+// keeps: spec attention §3
 #[test]
 fn hosted_notification_master_off_retains_values_and_visible_resets_still_work() {
     use controller::{Action, Controller, Field};
@@ -403,6 +412,7 @@ fn hosted_notification_master_off_retains_values_and_visible_resets_still_work()
     assert!(!values.notifications.enabled);
 }
 
+// keeps: spec attention §3
 #[test]
 fn changed_notification_harness_rows_keep_the_icon_and_inline_label_inside_diff_layers() {
     let mut records = Records::default();

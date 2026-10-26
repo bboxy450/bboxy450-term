@@ -18,6 +18,7 @@ fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
         n.children.iter().find_map(|n| find(n, key))
     }
 }
+// keeps: spec e2e-acceptance §1 T7
 #[test]
 fn t7_grace_pose_keeps_one_row_and_one_undo_target_until_the_deadline() {
     for theme in [ui::Theme::Dark, ui::Theme::Light] {

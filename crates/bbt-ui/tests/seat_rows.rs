@@ -26,6 +26,7 @@ fn context() -> ui::Context {
     ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn shell_role_has_no_seat_or_strip_chip_but_other_roles_keep_theirs() {
     let ctx = context();
@@ -46,6 +47,7 @@ fn shell_role_has_no_seat_or_strip_chip_but_other_roles_keep_theirs() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn waiting_halo_does_not_move_the_row_or_its_glyph_at_any_density() {
     for theme in [ui::Theme::Dark, ui::Theme::Light] {
@@ -113,6 +115,7 @@ fn labels(l: &c::Layout) -> Vec<String> {
     }
     out
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn module_sources_and_legacy_adapter_cannot_hand_draw_rows() {
     fn inspect(dir: &std::path::Path) {
@@ -157,6 +160,7 @@ fn module_sources_and_legacy_adapter_cannot_hand_draw_rows() {
         assert!(!body.contains(forbidden), "legacy hand painter survived");
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn seat_identity_authority_and_activity_stay_independent_when_name_shrinks() {
     let ctx = context();
@@ -194,6 +198,7 @@ fn seat_identity_authority_and_activity_stay_independent_when_name_shrinks() {
     assert!(painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Path{fill:Some(_),..})))));
     assert!(!painted.iter().any(|op|matches!(op,c::Paint::Draw(d) if d.primitives.iter().any(|p|matches!(p,Prim::Path{fill:None,..})))));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn subagents_filter_finished_work_and_overflow_after_seven() {
     let ctx = context();
@@ -231,6 +236,7 @@ fn subagents_filter_finished_work_and_overflow_after_seven() {
     seat.grade = Grade::Inferred; // Parent grade never replaces the hooks' shim grade.
     assert_eq!(seat.subagent_rows(&agents, ctx).len(), 8);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn flex_max_violation_freezes_before_redistributing_remaining_space() {
     let ctx = context();
@@ -268,6 +274,7 @@ fn flex_max_violation_freezes_before_redistributing_remaining_space() {
     assert!((layout.children[0].rect.w - 100.).abs() < 0.001);
     assert!((layout.children[1].rect.w - 50.).abs() < 0.001);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn naturally_sized_text_is_not_truncated_by_float_subtraction() {
     let ctx = context();
@@ -294,6 +301,7 @@ fn naturally_sized_text_is_not_truncated_by_float_subtraction() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn compact_artifact_row_preserves_natural_chip_height_outside_its_flow_slot() {
     use bbt_ui::modules::seat_row::ArtifactRow;

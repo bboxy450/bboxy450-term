@@ -16,6 +16,7 @@ impl c::Measure for Metrics {
         [style.size * 0.8, style.size * 0.2]
     }
 }
+// keeps: spec gui-components §1.5
 #[test]
 fn italic_is_backward_compatible_and_reaches_measurement_and_draw_records() {
     let old = serde_json::to_value(ui::Text::default()).unwrap();

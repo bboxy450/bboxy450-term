@@ -11,6 +11,7 @@ impl c::Measure for Metrics {
         [s.size * 0.8, s.size * 0.2]
     }
 }
+// keeps: spec gui-components §3.2
 #[test]
 fn mask_keeps_layout_and_translates_local_coordinates_only_when_painted() {
     let ctx = Context::new(Theme::Dark, Density::Cozy);

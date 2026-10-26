@@ -48,6 +48,7 @@ fn find<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
 fn count(n: &c::Layout) -> usize {
     1 + n.children.iter().map(count).sum::<usize>()
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_material() {
     let card = card(1000);
@@ -62,6 +63,7 @@ fn collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_materi
         |p| matches!(p,c::Paint::Material{clips,..} if clips.iter().any(|c|c.radii==[bbt_ui_model::STYLE.radius.card as f32;4]))
     ));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper() {
     use bbt_ui_model::draw::Prim;
@@ -93,6 +95,7 @@ fn unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper() {
         ["0", "1"]
     );
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_cards() {
     let mut side = Sidebar {
@@ -127,6 +130,7 @@ fn sidebar_scroll_and_phone_handle_use_the_supplied_viewport_without_reordering_
     assert_eq!(side.cards[0].key, "0");
     assert_eq!(side.cards[9].key, "9");
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink() {
     use bbt_ui_model::layout::Axis;
@@ -163,6 +167,7 @@ fn a_literal_hyphen_is_a_wrap_opportunity_and_min_content_survives_flex_shrink()
     );
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn css_filter_uses_luminance_saturation_and_preserves_layout() {
     use bbt_ui_model::draw::Prim;
@@ -223,6 +228,7 @@ fn css_filter_uses_luminance_saturation_and_preserves_layout() {
     );
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn caption_line_limit_preserves_two_lines_and_marks_truncated_content() {
     let mut text = c::Text::new(

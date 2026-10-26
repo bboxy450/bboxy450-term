@@ -71,6 +71,7 @@ fn labels(l: &c::Layout) -> String {
     }
     s
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
     let mut p = pane();
@@ -156,6 +157,7 @@ fn pane_preserves_history_content_and_capability_actions_while_disconnected() {
     assert!(find(&allowed, "pane/strip/stop").is_some());
     assert!(find(&allowed, "pane/strip/mute").is_some());
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn pane_height_is_content_or_minimum_and_an_unavailable_gap_never_invents_a_range() {
     let mut p = pane();

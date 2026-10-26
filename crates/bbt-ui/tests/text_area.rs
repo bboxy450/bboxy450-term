@@ -26,6 +26,7 @@ fn node<'a>(n: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
         n.children.iter().find_map(|c| node(c, key))
     }
 }
+// keeps: spec gui-components §4.1
 #[test]
 fn editing_never_reflows_the_committed_paragraph_and_uses_shaped_positions() {
     let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
@@ -66,6 +67,7 @@ fn editing_never_reflows_the_committed_paragraph_and_uses_shaped_positions() {
     assert_eq!(caret.y, 16.390625);
     assert_eq!(edited.rect.h, paragraph.rect.h);
 }
+// keeps: spec gui-components §4.1
 #[test]
 fn invalid_surrogate_boundaries_are_rejected_before_layout() {
     let area = TextArea {

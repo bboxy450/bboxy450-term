@@ -18,6 +18,7 @@ fn count(l: &c::Layout) -> usize {
     1 + l.children.iter().map(count).sum::<usize>()
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent() {
     let list = w::List {
@@ -83,6 +84,7 @@ fn list_and_table_allocate_only_visible_rows_and_keep_full_scroll_extent() {
     assert_eq!(offset[1], 12_000.);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn pressed_button_scales_visually_without_changing_its_flow_slot() {
     let mut button = w::Button {
@@ -105,6 +107,7 @@ fn pressed_button_scales_visually_without_changing_its_flow_slot() {
     assert!(l.children[0].rect.h < before.0[1]);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout() {
     let mut style = ui::Style::new(ui::Preset::Card);
@@ -137,6 +140,7 @@ fn side_border_consumes_only_its_edge_and_outline_rings_do_not_consume_layout() 
     assert_eq!(l.children[0].rect.y, 10.);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn empty_input_keeps_its_control_height_and_invalid_input_keeps_its_error_caption() {
     let mut input = w::Input {

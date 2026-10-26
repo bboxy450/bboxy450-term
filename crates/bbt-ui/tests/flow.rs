@@ -26,6 +26,7 @@ fn text(value: &str, size: f32) -> c::Element {
 fn layout(e: c::Element, w: f32) -> c::Layout {
     e.layout(Rect::new(0., 0., w, 0.), ctx(), &Metrics).unwrap()
 }
+// keeps: spec gui-components §2.2
 #[test]
 fn flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines() {
     let flow = c::Flow {
@@ -49,6 +50,7 @@ fn flow_wraps_in_source_order_with_independent_gaps_and_shared_row_baselines() {
     assert_eq!(n[2].rect.x, 37.5);
     assert_eq!(n[2].rect.y, 29.);
 }
+// keeps: spec gui-components §2.2
 #[test]
 fn nowrap_space_between_and_exact_fit_do_not_create_extra_rows() {
     let mut flow = c::Flow::new(vec![
@@ -69,6 +71,7 @@ fn nowrap_space_between_and_exact_fit_do_not_create_extra_rows() {
     let b = layout(c::Element::Flow(flow), 40.);
     assert!(b.children.iter().all(|c| c.rect.y == 0.));
 }
+// keeps: spec gui-components §2.2
 #[test]
 fn text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces() {
     let mut t = c::Text::new(
@@ -93,6 +96,7 @@ fn text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_space
     assert_eq!(runs[0].rect.x, 5.);
     assert_eq!(runs[2].rect.x, 15.);
 }
+// keeps: spec gui-components §2.2
 #[test]
 fn default_text_and_fitting_flow_keep_the_stack_geometry() {
     let children = vec![text("one", 10.).into(), text("two", 10.).into()];

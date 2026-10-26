@@ -27,12 +27,13 @@ fn text(value: &str) -> c::Element {
     c::Element::Text(text)
 }
 
+// keeps: spec gui-components §2.2
 #[test]
 fn nesting_does_not_repeat_leaf_measurement_at_the_same_constraint() {
     let measure = Metrics::default();
     let mut root = text("leaf");
     let bounds = Rect::new(0., 0., 200., 0.);
-    root.layout(bounds, context(), &measure).unwrap();
+    let leaf = root.layout(bounds, context(), &measure).unwrap();
     let leaf_calls = measure.calls.replace(0);
     for _ in 0..32 {
         root = c::Element::Stack(c::Stack {
@@ -42,10 +43,12 @@ fn nesting_does_not_repeat_leaf_measurement_at_the_same_constraint() {
             children: vec![root.into()],
         });
     }
-    root.layout(bounds, context(), &measure).unwrap();
+    let nested = root.layout(bounds, context(), &measure).unwrap();
+    assert_eq!(nested.rect, leaf.rect);
     assert_eq!(measure.calls.get(), leaf_calls);
 }
 
+// keeps: spec gui-components §2.2
 #[test]
 fn independent_passes_observe_changed_measurements_and_nodes() {
     let measure = Metrics::default();
@@ -60,6 +63,7 @@ fn independent_passes_observe_changed_measurements_and_nodes() {
     assert!(root.natural(200., context(), &measure).unwrap().0[0] > after.0[0]);
 }
 
+// keeps: spec gui-components §2.2
 #[test]
 fn flow_keeps_distinct_node_sizes_while_reusing_min_content_queries() {
     let mut flow = c::Flow::new(vec![

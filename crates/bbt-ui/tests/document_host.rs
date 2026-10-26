@@ -17,6 +17,7 @@ impl c::Measure for Metrics {
 fn ctx() -> ui::Context {
     ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn link_hit_regions_follow_the_scroll_clip_and_disable_missing_links() {
     let child = link(
@@ -47,6 +48,7 @@ fn link_hit_regions_follow_the_scroll_clip_and_disable_missing_links() {
         .unwrap();
     assert!(Regions::retained(&layout).hit([2., 2.]).is_none());
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn modal_scroll_clamps_at_both_ends_and_the_footer_closes() {
     let shell = DocumentModal {
@@ -83,6 +85,7 @@ fn modal_scroll_clamps_at_both_ends_and_the_footer_closes() {
         Some(Action::Close)
     );
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn stream_numbered_links_and_attachments_are_measured_actions_without_paint_changes() {
     use ui::modules::{
@@ -130,6 +133,7 @@ fn stream_numbered_links_and_attachments_are_measured_actions_without_paint_chan
     assert!(attachment);
 }
 
+// keeps: spec document-viewer §Markdown
 #[test]
 fn a_host_read_error_is_visible_without_claiming_a_frontmatter_failure() {
     let view = DocumentModal {
@@ -161,6 +165,7 @@ fn a_host_read_error_is_visible_without_claiming_a_frontmatter_failure() {
     assert!(!visible.contains("frontmatter does not parse"));
 }
 
+// keeps: spec document-viewer §Markdown
 #[test]
 fn a_nested_diagram_viewport_never_replaces_the_document_scroll_owner() {
     let shell = DocumentModal {

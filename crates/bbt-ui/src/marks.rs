@@ -310,6 +310,7 @@ impl Draw for StateGlyph {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec gui-components §3.2
     #[test]
     fn glyphs_encode_grade_and_wait_kind_and_clips_balance() {
         let ctx = DrawCtx::new(bbt_ui_model::Theme::Dark, bbt_ui_model::Density::Cozy);

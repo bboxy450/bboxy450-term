@@ -85,6 +85,7 @@ fn tab(states: &[Activity]) -> TabRow {
 fn layout(e: c::Element, w: f32) -> c::Layout {
     e.layout(Rect::new(0., 0., w, 0.), ctx(), &Metrics).unwrap()
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn grid_preserves_ratio_nested_axis_and_big_root_gap() {
     let grid = MiniGrid {
@@ -114,6 +115,7 @@ fn grid_preserves_ratio_nested_axis_and_big_root_gap() {
     let c = find(&l, "grid/mg/cell/text").unwrap().rect;
     assert!((c.x + c.w * 0.5 - (b.x + b.w * 0.5)).abs() < 0.001);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum() {
     let mut tree = cell("end", Activity::Idle);
@@ -151,6 +153,7 @@ fn deeply_nested_grids_shrink_to_zero_but_their_cells_keep_the_two_pixel_minimum
     assert_eq!(find(&l, "grid/cell").unwrap().rect.h, 2.);
     assert_eq!(find(&l, "grid/cell1").unwrap().rect.h, 2.);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper() {
     use bbt_ui_model::draw::{Color, Prim};
@@ -181,6 +184,7 @@ fn state_color_wins_over_focus_and_a_single_cell_keeps_the_grid_wrapper() {
     assert!(fills.contains(&expected));
     assert!(!fills.contains(&Color::hex(ui::Theme::Dark.palette().accent)));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn collapsed_rollup_is_stable_worst_first_and_capped() {
     let t = tab(&[
@@ -228,6 +232,7 @@ fn collapsed_rollup_is_stable_worst_first_and_capped() {
     assert_eq!(labels(find(&l, "header/roll/ellip").unwrap()), ["…"]);
     assert!(find(&l, "body").is_none());
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn single_seat_reduces_to_the_accepted_row_and_keeps_its_children() {
     let mut t = tab(&[Activity::Idle]);
@@ -246,6 +251,7 @@ fn single_seat_reduces_to_the_accepted_row_and_keeps_its_children() {
     assert!(labels(&l).contains(&"⌘3".into()));
     assert!(labels(&l).join(" ").contains("nested task"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn expanded_tab_has_indented_seats_and_only_a_parent_shortcut() {
     let mut t = tab(&[Activity::Idle, Activity::Active, Activity::Idle]);

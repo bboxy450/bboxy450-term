@@ -1,5 +1,6 @@
 use bbt_ui::text_edit::{Command, Editor, Motion};
 
+// keeps: spec gui-components §4.1
 #[test]
 fn ime_replaces_the_original_selection_only_on_commit() {
     let mut value = "a🙂z".to_string();
@@ -49,6 +50,7 @@ fn ime_replaces_the_original_selection_only_on_commit() {
     assert!(!editor.composing());
 }
 
+// keeps: spec gui-components §4.1
 #[test]
 fn unicode_boundaries_cancellation_and_directional_selection_survive() {
     let mut value = "a🙂z".to_string();

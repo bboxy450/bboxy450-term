@@ -29,6 +29,7 @@ fn modal() -> c::Element {
     .element(ctx())
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn overlay_centres_the_panel_and_narrow_bounds_reflow_its_content() {
     let element = c::Element::Overlay(c::Overlay::new(modal()));
@@ -50,6 +51,7 @@ fn overlay_centres_the_panel_and_narrow_bounds_reflow_its_content() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn blur_parameters_round_trip_and_keep_the_backdrop_separate_from_foreground_fill() {
     let mut style = ui::Style::new(ui::Preset::Modal);

@@ -1,6 +1,7 @@
 use bbt_ui::*;
 use bbt_ui_model::STYLE as DESIGN;
 
+// keeps: spec gui-components §1.5
 #[test]
 fn token_references_and_nontrivial_overrides_round_trip_and_resolve_late() {
     let original = Style {
@@ -63,6 +64,7 @@ fn token_references_and_nontrivial_overrides_round_trip_and_resolve_late() {
     );
 }
 
+// keeps: spec gui-components §1.5
 #[test]
 fn presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border() {
     for preset in Preset::ALL {
@@ -121,6 +123,7 @@ fn presets_resolve_across_the_matrix_and_keep_effect_separate_from_fill_border()
     );
 }
 
+// keeps: spec gui-components §1.5
 #[test]
 fn malformed_override_data_fails_instead_of_silently_changing_the_style() {
     assert!(
@@ -145,6 +148,7 @@ fn malformed_override_data_fails_instead_of_silently_changing_the_style() {
     );
 }
 
+// keeps: spec gui-components §1.5
 #[test]
 fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
     let ctx = Context::new(Theme::Dark, Density::Cozy);
@@ -192,6 +196,7 @@ fn glow_state_round_trips_and_rejects_invalid_shader_inputs() {
     });
     assert!(style.resolve(ctx).is_err());
 }
+// keeps: spec gui-components §1.5
 #[test]
 fn positioned_shadow_round_trips_validates_and_preserves_custom_defaults() {
     use bbt_ui::{Context, Density, Preset, Shadow, Style, Theme};

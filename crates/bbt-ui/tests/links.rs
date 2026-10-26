@@ -28,6 +28,7 @@ fn labels(l: &c::Layout) -> String {
     }
     s
 }
+// keeps: spec document-viewer §Markdown
 #[test]
 fn all_link_states_render_and_unavailable_launcher_rows_cannot_activate() {
     for (state, text, down) in [

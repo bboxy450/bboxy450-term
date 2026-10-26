@@ -53,6 +53,7 @@ fn row(key: &str, activity: Activity, focused: bool) -> SeatRow {
     r
 }
 
+// keeps: spec rim-glow §6
 #[test]
 fn the_phase_is_the_labs_hash32_of_the_key() {
     // hash32 (lab/web/components.js:8) % 10000, computed independently.
@@ -62,6 +63,7 @@ fn the_phase_is_the_labs_hash32_of_the_key() {
     assert_eq!(rim_phase("Vesper Greywind"), 9681);
 }
 
+// keeps: spec rim-glow §6
 #[test]
 fn seat_rows_carry_the_rim_edge_to_edge_and_idle_rows_are_bare_at_rest() {
     for (activity, focused, alpha) in [
@@ -93,6 +95,7 @@ fn seat_rows_carry_the_rim_edge_to_edge_and_idle_rows_are_bare_at_rest() {
     assert_eq!((found[0].swell, found[0].attention), (0.7, true));
 }
 
+// keeps: spec rim-glow §6
 #[test]
 fn a_tab_reads_its_worst_seat_and_swells_with_its_seats() {
     let seat = |key: &str, activity| TabSeat {

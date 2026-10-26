@@ -48,6 +48,7 @@ fn messages(rows: Vec<Message>) -> StreamDock {
             .collect(),
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     use bbt_ui::modules::composer::{Report, Verification};
@@ -93,6 +94,7 @@ fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     .unwrap();
     assert_eq!(Regions::dock(&scroll, &view).hit(at), None);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn report_rim_surrounds_the_clipped_card_without_changing_its_geometry() {
     use bbt_ui::modules::composer::Report;
@@ -145,6 +147,7 @@ fn report_rim_surrounds_the_clipped_card_without_changing_its_geometry() {
         assert!(ops[..rim_index].iter().any(|op| matches!(op, c::Paint::Draw(list) if list.primitives.iter().any(|p| matches!(p, bbt_ui_model::draw::Prim::Text { .. })))));
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn chronology_foreign_authority_and_unknown_delivery_remain_independent() {
     let a = Message {
@@ -169,6 +172,7 @@ fn chronology_foreign_authority_and_unknown_delivery_remain_independent() {
     assert!(!text.contains("p0"));
     assert!(!text.contains("failed"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn ended_subagent_holds_the_target_and_hides_the_delivery_ladder() {
     let row = Message {
@@ -186,6 +190,7 @@ fn ended_subagent_holds_the_target_and_hides_the_delivery_ladder() {
     assert!(!text.contains('✓'));
     assert!(!text.contains("via main"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn collapsed_epics_and_bounded_newest_first_external_lane_use_model_state() {
     let view = StreamDock {
@@ -223,6 +228,7 @@ fn collapsed_epics_and_bounded_newest_first_external_lane_use_model_state() {
     assert!(!text.contains("event-1"));
     assert!(text.find("event-6").unwrap() < text.find("event-2").unwrap());
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn message_body_reflows_with_width_without_changing_the_model() {
     let view = messages(vec![Message {
@@ -236,6 +242,7 @@ fn message_body_reflows_with_width_without_changing_the_model() {
     assert!(narrow.rect.h > wide.rect.h);
     assert!(labels(&narrow).contains("many words"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark() {
     let tree = layout(
@@ -261,6 +268,7 @@ fn routed_chips_keep_the_oracle_tint_visible_and_unknown_is_a_dashed_hollow_mark
     assert!(style.dashed);
     assert_eq!(style.fill[3], 0.);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn unread_marks_stay_round_and_compressed_chips_clip_their_text() {
     for dock in [false, true] {
@@ -291,6 +299,7 @@ fn unread_marks_stay_round_and_compressed_chips_clip_their_text() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn incomplete_channel_counts_keep_more_and_explicit_swarm_total() {
     use bbt_ui::modules::stream_dock::UnreadCount;
@@ -303,6 +312,7 @@ fn incomplete_channel_counts_keep_more_and_explicit_swarm_total() {
     assert_eq!(serde_json::to_value(UnreadCount::More).unwrap(), "more");
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation() {
     use bbt_ui::modules::composer::{RejectController, Report};

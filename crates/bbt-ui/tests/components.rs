@@ -20,6 +20,7 @@ fn context() -> Context {
     Context::new(Theme::Dark, Density::Cozy)
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn painted_text_and_shadow_keep_the_resolved_baseline_for_every_line() {
     for size in [10_f32, 11., 12.5, 19.] {
@@ -59,6 +60,7 @@ fn painted_text_and_shadow_keep_the_resolved_baseline_for_every_line() {
     }
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn aligned_scaled_and_editing_text_paint_at_their_layout_baselines() {
     for scale in [0.9, 1., 1.1] {
@@ -146,6 +148,7 @@ fn edit_part<'a>(node: &'a c::Layout, part: &str) -> &'a c::Layout {
         .unwrap_or_else(|| panic!("missing {part}"))
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size() {
     let mut field = c::EditingText {
@@ -234,6 +237,7 @@ fn field_marks_use_utf16_boundaries_and_keep_preedit_out_of_intrinsic_size() {
     );
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn modal_highlight_stays_on_the_fill_inside_its_outside_border() {
     let mut style = Style::new(Preset::Modal);
@@ -264,6 +268,7 @@ fn modal_highlight_stays_on_the_fill_inside_its_outside_border() {
     assert_eq!(highlights, vec![(layout.rect, expected)]);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate() {
     for extra_ring in [false, true] {
@@ -328,6 +333,7 @@ fn floating_shadow_paints_over_outside_hair_without_a_foreground_duplicate() {
     }
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
     let element = c::Element::Rects(c::Rects {
@@ -385,6 +391,7 @@ fn rects_lay_out_as_one_slot_and_paint_box_rects_at_the_node_origin() {
     );
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn rect_tiles_repeat_in_the_assigned_slot_and_clip_the_partial_last_dash() {
     for axis in [Axis::Row, Axis::Column] {
@@ -468,6 +475,7 @@ fn rect_tiles_repeat_in_the_assigned_slot_and_clip_the_partial_last_dash() {
     }
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
     let element = c::Element::Path(c::Path {
@@ -527,6 +535,7 @@ fn path_uses_declared_viewport_and_keeps_its_retained_stroke() {
     );
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero() {
     let mut style = Style::new(Preset::Card);
@@ -558,6 +567,7 @@ fn intrinsic_flow_reserves_a_content_minimum_even_when_natural_width_is_zero() {
     assert_eq!(layout.children[0].rect.w, 2.);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn path_fill_survives_retained_layout_and_theme_resolution() {
     let element = c::Element::Path(c::Path {
@@ -601,6 +611,7 @@ fn path_fill_survives_retained_layout_and_theme_resolution() {
     assert!((fill.0[3] - 0.5).abs() < 1e-6);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps() {
     let mut text = c::Text::new("one two", Default::default());
@@ -617,6 +628,7 @@ fn natural_text_width_survives_float_subtraction_but_a_css_unit_still_wraps() {
     assert!(short[1] > full[1]);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn image_has_square_intrinsics_a_baseline_and_validated_asset_geometry() {
     let make = |asset: &str, size, radius| c::Element::Image {
@@ -653,6 +665,7 @@ fn image_has_square_intrinsics_a_baseline_and_validated_asset_geometry() {
     }
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout() {
     let mut style = Style::new(Preset::Row);
@@ -707,6 +720,7 @@ fn box_opacity_dim_and_forced_isolation_preserve_unfiltered_children_and_layout(
     ));
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_atoms() {
     let leaf = text("grey once per group", bbt_ui::TypeStep::Body);
@@ -762,6 +776,7 @@ fn nested_filters_retain_boundaries_and_ancestor_clips_without_recoloring_the_at
     assert!(list.validate().is_ok());
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn a_retained_box_keeps_its_own_glow_state_until_after_its_content() {
     let state = bbt_ui::Rim {
@@ -810,6 +825,7 @@ fn stack(axis: Axis, gap: f32, align: c::Alignment, children: Vec<c::Item>) -> c
         children,
     })
 }
+// keeps: spec gui-components §2b
 #[test]
 fn column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine() {
     let column = stack(
@@ -840,6 +856,7 @@ fn column_snapshot_and_flex_spacer_are_solved_by_the_shared_engine() {
     assert_eq!(l.children[2].rect.right(), 210.);
     assert_eq!(l.children[1].rect.w, 143.);
 }
+// keeps: spec gui-components §2b
 #[test]
 fn mixed_type_rows_share_a_baseline() {
     let row = stack(
@@ -858,6 +875,7 @@ fn mixed_type_rows_share_a_baseline() {
     assert!((baseline(0) - baseline(1)).abs() < 0.0001);
     assert!(l.children[0].rect.y > l.children[1].rect.y);
 }
+// keeps: spec gui-components §2b
 #[test]
 fn scroll_offset_clamps_and_every_child_draw_is_clipped() {
     let content = stack(
@@ -894,6 +912,7 @@ fn scroll_offset_clamps_and_every_child_draw_is_clipped() {
         }
     }
 }
+// keeps: spec gui-components §2b
 #[test]
 fn wrapping_and_ellipsis_use_the_allocated_width() {
     let t = text("alpha beta gamma", bbt_ui::TypeStep::Small);
@@ -931,6 +950,7 @@ fn wrapping_and_ellipsis_use_the_allocated_width() {
     assert!(ops.iter().any(|op|matches!(op,c::Paint::Draw(list) if list.primitives.iter().any(|p|matches!(p,Prim::Text {max_width:Some(w),..} if *w==30.)))));
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height() {
     let row = stack(
@@ -953,6 +973,7 @@ fn a_shrunk_row_remeasures_wrapped_text_before_choosing_its_height() {
     assert_eq!(l.children[1].rect.h, 40.5);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn mixed_text_runs_align_baselines_and_keep_selection_metadata() {
     let mut t = c::Text::new(
@@ -984,6 +1005,7 @@ fn mixed_text_runs_align_baselines_and_keep_selection_metadata() {
     assert_eq!(l.baseline, 15.);
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn inline_middle_uses_the_parent_x_height_without_moving_the_content_box() {
     struct XHeight;
@@ -1055,6 +1077,7 @@ fn inline_middle_uses_the_parent_x_height_without_moving_the_content_box() {
     );
 }
 
+// keeps: spec gui-components §2b
 #[test]
 fn max_content_text_basis_keeps_left_aligned_glyphs_and_short_inline_width() {
     let mut text = c::Text::new(

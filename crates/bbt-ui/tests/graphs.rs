@@ -28,6 +28,7 @@ fn labels(n: &c::Layout) -> String {
     }
     value
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn graph_projects_live_and_blocked_tasks_without_inferring_authority() {
     let view = GraphTab {
@@ -58,6 +59,7 @@ fn graph_projects_live_and_blocked_tasks_without_inferring_authority() {
     assert!(!out.contains("Provenance"));
     assert!(!out.contains("verified"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves() {
     let view = GraphTab {
@@ -95,6 +97,7 @@ fn work_tree_counts_terminal_items_and_keeps_artifacts_and_invariants_as_leaves(
     assert!(out.contains("violated-by"));
     assert!(!out.contains("responsible"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn subscriptions_wrap_at_available_width_without_changing_patterns() {
     let view = GraphTab {
@@ -119,6 +122,7 @@ fn subscriptions_wrap_at_available_width_without_changing_patterns() {
     assert!(out.contains("AUTO"));
     assert!(out.contains("doc/specs/long-pattern-5"));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn provenance_and_history_respect_signed_flags_and_bounded_reverse_order() {
     let view = GraphTab {
@@ -154,6 +158,7 @@ fn provenance_and_history_respect_signed_flags_and_bounded_reverse_order() {
     assert!(!out.contains("file-2"));
     assert!(out.find("file-14").unwrap() < out.find("file-3").unwrap());
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn annotated_links_preserve_source_identity_display_and_weight() {
     let links = parse_links("see [[source|Display]]{derives:0.6} and [[upright]]{violates:1.0}");
@@ -171,6 +176,7 @@ fn annotated_links_preserve_source_identity_display_and_weight() {
     assert_eq!(escaped[1].display, "decision");
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport() {
     let view = GraphTab {

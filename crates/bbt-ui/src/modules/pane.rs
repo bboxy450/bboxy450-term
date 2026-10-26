@@ -562,6 +562,7 @@ mod tests {
     use crate::modules::seat_row::SeatRow;
     use bbt_ui_model::WaitKind;
 
+    // keeps: spec rim-glow §6
     #[test]
     fn constant_pane_border_keeps_activity_from_changing_height() {
         let mut pane = Pane {
@@ -609,6 +610,7 @@ mod tests {
         );
     }
 
+    // keeps: spec rim-glow §6
     #[test]
     fn gap_marker_fits_one_row_and_centers_its_hairlines_without_a_spacer() {
         use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};

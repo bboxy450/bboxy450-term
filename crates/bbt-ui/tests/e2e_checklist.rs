@@ -5,6 +5,7 @@
 
 use bbt_ui::modules::e2e_checklist::{Checklist, Link, Promise, Record, Status, Task, Tone};
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn the_real_spec_is_the_only_canonical_promise_list() {
     let promises = bbt_ui::modules::e2e_checklist::parse_promises(include_str!(
@@ -42,6 +43,7 @@ fn the_real_spec_is_the_only_canonical_promise_list() {
     assert!(out.rows.iter().all(|r| r.record.is_none()));
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success() {
     use bbt_ui::modules::e2e_checklist::parse_promises;
@@ -88,6 +90,7 @@ fn tracking(view: &mut Checklist, status: &str) {
     });
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn green_keeps_manual_rows_and_run_metadata_visible() {
     let mut view = checklist("pass");
@@ -118,6 +121,7 @@ fn green_keeps_manual_rows_and_run_metadata_visible() {
     );
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn missing_and_duplicate_records_name_the_gap_without_picking_metadata() {
     let mut view = checklist("pass");
@@ -139,6 +143,7 @@ fn missing_and_duplicate_records_name_the_gap_without_picking_metadata() {
     assert!(out.rows[0].record.is_none());
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn tracked_failures_are_amber_only_for_the_specified_open_task_states() {
     for state in ["open", "claimed", "running", "reported", "blocked"] {
@@ -160,6 +165,7 @@ fn tracked_failures_are_amber_only_for_the_specified_open_task_states() {
     }
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn blocked_is_a_failure_and_preserves_its_reason() {
     let mut view = checklist("blocked");
@@ -176,6 +182,7 @@ fn blocked_is_a_failure_and_preserves_its_reason() {
     );
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn only_a_resolved_tracked_by_task_counts_as_tracking() {
     let mut view = checklist("fail");
@@ -195,6 +202,7 @@ fn only_a_resolved_tracked_by_task_counts_as_tracking() {
     assert_eq!(view.project().summary.tone, Tone::Red);
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn tracking_lists_each_resolved_open_task_once() {
     let mut view = checklist("fail");
@@ -206,6 +214,7 @@ fn tracking_lists_each_resolved_open_task_once() {
     assert_eq!(out.rows[0].tracked_by, ["#312"]);
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn tracked_by_wikilink_aliases_preserve_task_identity() {
     for target in ["[[#312|fix]]", r"[[#312\|fix]]"] {
@@ -216,6 +225,7 @@ fn tracked_by_wikilink_aliases_preserve_task_identity() {
     }
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn untested_invalid_or_unknown_input_never_makes_a_green_summary() {
     let view = checklist("untested");
@@ -239,6 +249,7 @@ fn untested_invalid_or_unknown_input_never_makes_a_green_summary() {
     assert_eq!(view.project().summary.tone, Tone::Red);
 }
 
+// keeps: spec e2e-acceptance §1
 #[test]
 fn canonical_order_is_preserved_and_duplicate_promises_are_visible() {
     let mut view = checklist("pass");
@@ -272,6 +283,7 @@ fn canonical_order_is_preserved_and_duplicate_promises_are_visible() {
 /// Decision #316: a pass is green only when it covers its whole promise. A pass without
 /// `coverage: full` is partial (`unstated` when it names no gap): amber while an open task
 /// tracks it, red when none does.
+// keeps: spec e2e-acceptance §1
 #[test]
 fn a_partial_pass_is_amber_when_tracked_and_red_when_not() {
     let mut view = checklist("pass");

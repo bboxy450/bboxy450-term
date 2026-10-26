@@ -32,6 +32,7 @@ fn layout(bar: TitleBar, width: f32) -> c::Layout {
         .layout(Rect::new(3., 7., width, 0.), context(), &Metrics)
         .unwrap()
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls() {
     let make = || TitleBar {
@@ -58,6 +59,7 @@ fn narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls() {
         c::LayoutKind::Text { ellipsis: true, .. }
     ));
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle() {
     let a = layout(TitleBar::default(), 800.);
@@ -106,6 +108,7 @@ fn blur_filters_only_identity_and_dots_while_sidebar_state_changes_its_toggle() 
     assert_eq!(fill(&a)[3], 1.);
     assert_eq!(fill(&b)[3], 0.6);
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn old_titlebar_is_a_component_delegate() {
     let source = include_str!("../../bboxybook/src/modules.rs");

@@ -79,6 +79,7 @@ fn records(n: &c::Layout) -> BTreeMap<String, String> {
     out
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn measurement_is_bounded_by_the_window_with_exact_extent_and_geometry() {
     let ids: Vec<_> = (0..1000).collect();
@@ -111,6 +112,7 @@ fn measurement_is_bounded_by_the_window_with_exact_extent_and_geometry() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking() {
     for invalid_style in [true, false] {
@@ -135,6 +137,7 @@ fn invalid_style_or_gap_keeps_the_fallback_layout_error_instead_of_panicking() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_differently() {
     let ids: Vec<_> = (0..300).collect();
@@ -147,6 +150,7 @@ fn fractional_prefix_keeps_solver_addition_order_even_when_extent_sum_rounds_dif
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn undeclared_content_uses_the_original_full_layout_without_measurement_shortcuts() {
     let mut mixed = view(&(0..50).collect::<Vec<_>>(), 25., 2., 200., false);
@@ -163,6 +167,7 @@ fn undeclared_content_uses_the_original_full_layout_without_measurement_shortcut
     assert_eq!(calls, m.0.get());
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn anchor_survives_insert_remove_and_width_density_changes_by_stable_identity() {
     let old = view(&(0..20).collect::<Vec<_>>(), 24., 0., 125., true);
@@ -190,6 +195,7 @@ fn anchor_survives_insert_remove_and_width_density_changes_by_stable_identity() 
     assert!(!empty.restore_anchor(&anchor, ctx()).unwrap());
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn nested_ancestors_keep_full_material_group_and_clip_rectangles() {
     let mut full = view(&(0..100).collect::<Vec<_>>(), 27., 0., 600., false);
@@ -304,6 +310,7 @@ fn scrolls(n: &c::Layout, out: &mut Vec<(Rect, [f32; 2], [f32; 2])>) {
         scrolls(child, out);
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit() {
     let sidebar = sidebar(1000);
@@ -374,6 +381,7 @@ fn real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bi
     check_visible(&full, clip, &visible);
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn real_sidebar_falls_back_for_a_variable_extra_and_anchors_survive_rebuilds() {
     let mut sidebar = sidebar(30);

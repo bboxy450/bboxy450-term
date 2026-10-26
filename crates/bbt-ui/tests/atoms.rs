@@ -5,6 +5,7 @@ use bbt_ui_model::{
     layout::{Rect, TextMeasure, TextStyle},
 };
 
+// keeps: spec gui-components §3.2
 #[test]
 fn glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once() {
     use bbt_ui::{self as ui, components as c};
@@ -110,6 +111,7 @@ fn glyph_shadow_inherits_kind_grade_and_ancestor_opacity_once() {
     }
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn text_shadow_color_is_independent_of_foreground_alpha_and_flow() {
     use bbt_ui::{self as ui, components as c};
@@ -169,6 +171,7 @@ impl TextMeasure for Metrics {
     }
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloured() {
     for theme in [Theme::Dark, Theme::Light] {
@@ -225,6 +228,7 @@ fn glyph_state_grade_and_wait_kind_are_independent_and_identity_is_not_recoloure
     }
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn hairline_is_one_physical_pixel_and_spinner_phase_is_explicit() {
     for scale in [1., 2., 3.] {
@@ -251,6 +255,7 @@ fn hairline_is_one_physical_pixel_and_spinner_phase_is_explicit() {
     }
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn icons_keep_the_requested_logical_name_bounds_and_tint() {
     let ctx = AtomCtx {
@@ -271,6 +276,7 @@ fn icons_keep_the_requested_logical_name_bounds_and_tint() {
     );
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn a_waiting_kind_background_and_text_receive_dimming_once() {
     let ctx = AtomCtx {
@@ -312,6 +318,7 @@ fn a_waiting_kind_background_and_text_receive_dimming_once() {
     assert_eq!(background, alpha);
 }
 
+// keeps: spec gui-components §3.2
 #[test]
 fn kind_colours_do_not_recolour_state_or_apply_grade_and_dim_twice() {
     use bbt_ui::atoms::KindColors;

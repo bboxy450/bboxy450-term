@@ -12,6 +12,7 @@ fn item(id: &str, label: &str) -> Item {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn enter_picks_is_a_defaulted_public_constructor_input() {
     let ordinary: Item = serde_json::from_str(r#"{"id":"ssh","children":[]}"#).unwrap();
@@ -47,6 +48,7 @@ fn launch() -> Launcher {
         edit: None,
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn typed_virtual_descent_and_explicit_paths_select_the_same_placement_level() {
     let mut a = launch();
@@ -77,6 +79,7 @@ fn typed_virtual_descent_and_explicit_paths_select_the_same_placement_level() {
         "presentation does not mutate navigation state"
     );
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn lexical_tiers_are_stable_and_every_word_must_match() {
     let mut a = launch();
@@ -116,6 +119,7 @@ impl c::Measure for Metrics {
         [s.size * 0.8, s.size * 0.2]
     }
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn cap_keeps_navigation_available_and_dims_completed_launch_row_groups() {
     let mut a = launch();
@@ -150,6 +154,7 @@ fn cap_keeps_navigation_available_and_dims_completed_launch_row_groups() {
             .any(|p| matches!(p, c::Paint::Group { opacity: 0.38, .. }))
     );
 }
+// keeps: spec gui-components §1.3
 #[test]
 fn legacy_launcher_delegates_without_hand_painting() {
     let old = include_str!("../../bboxybook/src/modules.rs");
@@ -166,6 +171,7 @@ fn legacy_launcher_delegates_without_hand_painting() {
     }
 }
 
+// keeps: spec gui-components §1.3
 #[test]
 fn compact_selection_is_twenty_eight_percent_accent_over_surface() {
     use bbt_ui_model::draw::Color;

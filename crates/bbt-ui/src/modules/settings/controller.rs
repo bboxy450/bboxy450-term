@@ -723,6 +723,7 @@ impl Regions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec gui-components §4.1
     #[test]
     fn native_unlock_is_a_consumed_intent_and_never_a_preferences_patch() {
         let mut values = Records::default();
@@ -754,6 +755,7 @@ mod tests {
         );
         assert!(!controller.take_identity_unlock());
     }
+    // keeps: spec gui-components §4.1
     #[test]
     fn notification_master_preserves_subordinates_and_harness_membership() {
         let mut records = Records::default();
@@ -785,6 +787,7 @@ mod tests {
         assert!(!records.notifications.disabled_harnesses.contains("codex"));
         assert!(records.notifications.only_when_not_frontmost);
     }
+    // keeps: spec gui-components §4.1
     #[test]
     fn ime_search_keeps_preedit_out_of_query_and_navigation_resets_scroll() {
         let mut c = Controller::new("Account");
@@ -799,22 +802,24 @@ mod tests {
             &mut records,
             &defaults,
         );
-        assert!(c.query.is_empty());
-        assert!(c.presentation().edit.unwrap().preedit.is_some());
+        let preedit = c.presentation();
+        assert!(preedit.query.is_empty());
+        assert!(preedit.edit.unwrap().preedit.is_some());
         c.handle(
             Action::Search(EditCommand::Commit("通知".into())),
             &mut records,
             &defaults,
         );
-        assert_eq!(c.query, "通知");
+        assert_eq!(c.presentation().query, "通知");
         c.scroll_by(40., 80.);
         c.handle(
             Action::Section("Appearance".into()),
             &mut records,
             &defaults,
         );
-        assert!(c.query.is_empty());
-        assert_eq!(c.scroll, 0.);
+        let presented = c.presentation();
+        assert!(presented.query.is_empty());
+        assert_eq!(presented.scroll, 0.);
         assert!(!c.scroll_by(f32::NAN, 80.));
     }
 }
