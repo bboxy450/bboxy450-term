@@ -2,7 +2,7 @@
   "task": "T2 terminal input and full paste",
   "base": "e61afaef3003a61562e34adabf55666b81e0a441",
   "ruling": "Corvin da57ce56 / ICQ 43a22115-6e6b-49ca-b226-c0a5b645a374: first frame after GUI screen-sequence ingestion draws that sequence or later; no input-admission receipt",
-  "status": "focused functional and frame assertions held; author landing and postsubmit acceptance pending",
+  "status": "code landed via author script; postsubmit and Oracle review remain unverified",
   "mechanisms": [
     "model.rs PreparedScreen pairs the cached PreparedGrid with its exact screen and live View/sequence; historical display has no live cursor claim",
     "frame_observation.rs Frames::ingest observes the GUI-owner publication; produced records only successful frame submissions and retains the first actual drawn source",
@@ -276,12 +276,181 @@
       "command": "python3 -IB scripts/e2e/test_ui.py",
       "exit": 1,
       "result": "4 passed / 1 failed at line83: existing partial-only assertion includes accepted full L1; both files unchanged by T2",
-      "owner_notified": "Sable ICQ e8e08d16-9e65-48bd-98e5-5235df2a9a25"
+      "owner_notified": "Sable ICQ e8e08d16-9e65-48bd-98e5-5235df2a9a25",
+      "resolved_by": "c495ce12e30fd2318c7772ee58fd3885dac7895f",
+      "followup_argv": [
+        "python3",
+        "-IB",
+        "scripts/e2e/test_ui.py"
+      ],
+      "followup_exit": 0,
+      "followup_tests": "5 passed / 0 failed",
+      "followup_log_sha256": "3872f5a85da677f909ec5c55a5821758c34e2394460567a29f8043b480cc1105"
     }
   ],
   "gaps": [
     "No photon/scanout or OS window-presentation claim; this proves the ruled produced-frame source bound headlessly.",
     "No native harness response-time claim; the receiver is a real PTY fixture.",
     "Postsubmit and Oracle review remain unverified."
+  ],
+  "landing": {
+    "sha": "c132879367afb3ac0dc5c922665c3b99e6aac3ea",
+    "signature": "G (verified by git log %G?)",
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "exit": 0,
+    "seconds": 1911.4762649536133,
+    "raw_author_log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t2-20261026/author.log",
+    "raw_author_log_sha256": "a945d7fefcacc0f7a713fac20c6119c08934eb677c49fc69d20e1587afcee40b",
+    "green_checks": [
+      {
+        "sha": "9d8afc1f13c305449dd324864915dfa9aecd385e",
+        "affected": [
+          "bboxy450-term",
+          "bbt-mux",
+          "bbt-proto"
+        ],
+        "exit": 0,
+        "seconds": 684.8337124999962,
+        "compile_seconds": 283.85680395696545,
+        "run_seconds": 400.9766171260271,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/9d8afc1f13c305449dd324864915dfa9aecd385e-6610b34d/commands.log",
+        "log_sha256": "401e36e1a2907508991befa5d0d6a7a7522f7b5ca7b93c3221c463c076f95b6d",
+        "rust_test_executions": {
+          "passed": 746,
+          "failed": 0,
+          "ignored": 80
+        },
+        "invariants": [
+          [
+            "19",
+            "0",
+            "11"
+          ]
+        ],
+        "fixture_tests": [
+          [
+            "129",
+            "0"
+          ]
+        ]
+      },
+      {
+        "sha": "ff298681a2807a474040eb7b9763e4ca61e5fb82",
+        "affected": [
+          "bboxy450-term",
+          "bbt-mux",
+          "bbt-proto"
+        ],
+        "exit": 0,
+        "seconds": 701.9092902079574,
+        "compile_seconds": 301.0582687909482,
+        "run_seconds": 400.85066104202997,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/ff298681a2807a474040eb7b9763e4ca61e5fb82-200cb1b7/commands.log",
+        "log_sha256": "2422aea2ed38760fd909f5905107d6bef0cb6f412fa02cc3d54c35aaa5b06b0f",
+        "rust_test_executions": {
+          "passed": 746,
+          "failed": 0,
+          "ignored": 80
+        },
+        "invariants": [
+          [
+            "19",
+            "0",
+            "11"
+          ]
+        ],
+        "fixture_tests": [
+          [
+            "129",
+            "0"
+          ]
+        ]
+      },
+      {
+        "sha": "c23efcd908f2733275a67624b9b3c94a539d325f",
+        "affected": [
+          "bboxy450-term"
+        ],
+        "exit": 0,
+        "seconds": 497.81971574999625,
+        "compile_seconds": 176.78679633297725,
+        "run_seconds": 321.03259691700805,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/c23efcd908f2733275a67624b9b3c94a539d325f-511d2ede/commands.log",
+        "log_sha256": "fb0c29dfb8fc75a6969ee355319ebe1e3f670aca4ab80eb07c8369ca4879d02b",
+        "rust_test_executions": {
+          "passed": 306,
+          "failed": 0,
+          "ignored": 45
+        },
+        "invariants": [
+          [
+            "14",
+            "0",
+            "11"
+          ]
+        ],
+        "fixture_tests": [
+          [
+            "129",
+            "0"
+          ]
+        ]
+      }
+    ],
+    "rebase_reason": "L4 launcher fixtures landed during the broad check, then the L1 coverage-test fix landed during its recheck; final unrelated evidence-only movement reused the green app check",
+    "own_code_manifest_unchanged_after_rebases": true
+  },
+  "source_refs": [
+    {
+      "source": "crates/bboxy450-term/src/model.rs:1211",
+      "mechanism": "prepared grid source Screen is retained with its View/sequence"
+    },
+    {
+      "source": "crates/bboxy450-term/src/model.rs:1278",
+      "mechanism": "metadata uses the exact cached screen which prepared that grid"
+    },
+    {
+      "source": "crates/bboxy450-term/src/frame_observation.rs:27",
+      "mechanism": "origin is recorded when the GUI takes the prepared publication"
+    },
+    {
+      "source": "crates/bboxy450-term/src/frame_observation.rs:58",
+      "mechanism": "successful submission retains the first actually drawn View/sequence"
+    },
+    {
+      "source": "crates/bboxy450-term/src/frame_observation.rs:99",
+      "mechanism": "complete terminal text is bounded to the remaining shared budget"
+    },
+    {
+      "source": "crates/bboxy450-term/src/main.rs:4016",
+      "mechanism": "native/headless common model drain records ingestion"
+    },
+    {
+      "source": "crates/bboxy450-term/src/headless.rs:454",
+      "mechanism": "offscreen metadata is taken from the submitted grid and published after GPU completion"
+    },
+    {
+      "source": "crates/bbt-proto/src/gui/ui.rs:359",
+      "mechanism": "additive produced-frame source DTO; ordinary screen read is unchanged"
+    },
+    {
+      "source": "scripts/e2e/t2_input.py:26",
+      "mechanism": "real raw-PTY receiver has no expected source contents"
+    },
+    {
+      "source": "scripts/e2e/t2_input.py:94",
+      "mechanism": "full-byte equality refuses excess, missing or altered paste bytes"
+    },
+    {
+      "source": "scripts/e2e/t2_input.py:100",
+      "mechanism": "echo text, generation, source cursor and next-frame counters are asserted"
+    },
+    {
+      "source": "crates/bboxy450-term/tests/headless.rs:132",
+      "mechanism": "real private file-account headless integration invokes the actual T2 script"
+    }
   ]
 }
