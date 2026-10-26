@@ -1,0 +1,19 @@
+Sable Embertail <EXECUTOR> — operator shutdown checkpoint 2026-10-26T21:48:55.307137+00:00
+Authorization: Oracle shutdown brief 63bd298b-d4c9-4957-93bf-f5c000c944fb; preserve signed work on its branch, no new implementation or gate.
+Writing worktree: /Users/feral/mydev/bboxy450-term-exec3; resume branch sable-release-resume-20261026; base main 0efb8522de8e1a3a3a47dd3b1609658591b319cc.
+GitHub resume index: https://github.com/bboxy450/bboxy450-term/issues/62; next Sable issue #40 / local task342.
+DONE #55 layout shortcuts: signed code f47ef1aae3977cd1136ed5bc490d27b003b90f6b and evidence4597c313 on main; .bboxy/runs/layout-shortcuts.log. Do not redo the old brief.
+DONE #42 ctl stdout: signed code77b190beaa40474f37d434bee46bc971267008d2 and evidence0efb8522de8e1a3a3a47dd3b1609658591b319cc on main; .bboxy/runs/ctl-stdout.log.
+#42 author EXIT0:343 passed/0 failed/47 ignored; ctl20/0, strict Clippy0, fast invariants14/0, wire goldens2/0. Final-binary canonical T6 row FULL PASS/exit0; no full-group claim for that focused run.
+#42 raw author commands.log SHA256 ca3b3ae730ae3717dd4fae0872ec2ea2b0af978b55eb4372af8401f6ee176822; full log path is in committed ctl-stdout.log.
+#42 final ICQ handoff2dc7fefe-5693-4761-b575-f4307d6f6bf2 was recipient-stored, not proof of model review. No postsubmit or signed-release app installation claim.
+#42 own target retired after empty lsof:1,283,088,384 allocated bytes. All recorded night apps independently absent; no own build, gate or app remains in flight.
+#40/task342 is READ-ONLY INVESTIGATION ONLY: no source edits, new test, build or claimed fix.
+crates/bboxy450-harness-wake-up/src/native.rs:29-38 runs /bin/ps -o lstart= -p PID once; nonzero status or empty stdout both become InvalidData harness process unavailable, losing PID/status/stderr.
+crates/bbt-mux/tests/adapters.rs:396 unwraps that lookup just after direct Supervisor spawn+attach; the old failed fixture retained neither child exit nor PTY tail.
+Original failure: presubmits/4810620ad93529df2b7d13476656c6f7ca3d48ff-33fa0023/commands.log:1054-1055; original task .bboxy/tasks/2026-10-26-ma-7-wake-ledger.md contains the retained hash and quarantine context.
+ROOT UNPROVEN: child exit vs failed/empty process lookup. The isolated retry passed but supplies no cause; no attribution to MA-7 accounting, retry or tolerance change.
+Proposed next diagnostic cut, NOT IMPLEMENTED: retain original ps PID/status/stderr; on the fixture failure retain one bounded child snapshot and PTY tail, then still fail. Existing SeatInfo.exited/ListOwnedSeats/Event::Exited need no wire change.
+Coordinate before editing: Rook owns release#56; named process_start-only seam in ICQ6cb790c5-6d67-4457-9815-e7ca05af8fb4 and Oracle267a9a94-7a5d-4721-914c-c4e8b56f8b3b, both recipient-stored; no reply observed.
+Private optional scratch: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-zsh-lookup-74m3taqc; all substantive findings are copied above so resume does not depend on scratch surviving.
+No raw transcripts, message contents, credentials or runtime capabilities copied to Git. Stop after branch push and Oracle handoff.
