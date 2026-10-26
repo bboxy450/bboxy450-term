@@ -1,0 +1,226 @@
+{
+  "task": "Production file-account smoke of the Oracle signed release artifact",
+  "status": "PASS; smoke exit 0; no publication or operator installation",
+  "created_at": "2026-10-26T22:33:37.119112+00:00",
+  "brief": "3014d5fd-d7a0-419e-bbd7-8ec7d3edb649",
+  "release_source": {
+    "sha": "d02f6135d734bfe812aa071b4621b203ead360bc",
+    "basis": "Oracle/Nyx source attestation; Git commit signature G and main ancestry verified; this is not a reproducible-build claim"
+  },
+  "artifact": {
+    "source": "d02f6135d734bfe812aa071b4621b203ead360bc (Oracle/Nyx attestation)",
+    "archive": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/out/bboxy450-term-0.1.0-macos-arm64.zip",
+    "archive_sha256": "f241b55e7f55838b812ea4fb57bac980ac63495358595e9743dbb3c470ff7c8c",
+    "checksum": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/out/bboxy450-term-0.1.0-macos-arm64.zip.sha256",
+    "signature": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/out/bboxy450-term-0.1.0-macos-arm64.zip.asc",
+    "gpg_exit": 0,
+    "gpg_fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "codesign_exit": 0,
+    "app": "/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app",
+    "binary": "/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+    "smoke_root": "/tmp/aster-oracle-smoke-77243b981ab1",
+    "extraction": "/tmp/aster-oracle-artifact-7ae5fcbe3917",
+    "smoke_driver": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/release-0.1.0/release-smoke.py",
+    "bundle_version": "0.1.0",
+    "binary_sha256": "e88a6d0fe629aa7ac5df3408585aab97d52248ff97685d6df91c152ab17868bc",
+    "smoke_driver_sha256": "607c76533b5b13d9df2f316fc19e0af579b43f2f568c18a9967ff526f59a38f1"
+  },
+  "command": [
+    "/opt/homebrew/opt/python@3.15/bin/python3.15",
+    "-IB",
+    "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/release-0.1.0/release-smoke.py",
+    "/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+    "/tmp/aster-oracle-smoke-77243b981ab1"
+  ],
+  "result": {
+    "exit": 0,
+    "seconds": 2.2005817890167236
+  },
+  "raw_log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/oracle-release-file-smoke.log",
+  "raw_log_sha256": "6049d9a22dd964351f99bb37e2ab44aef2d7a3e732660928025f9fd87bd02d4a",
+  "smoke_report": "/tmp/aster-oracle-smoke-77243b981ab1/report.json",
+  "smoke_report_sha256": "348dda2d14a38e5385b5734baa0c0cf64f964638dd506eb19957e9df3e798f5b",
+  "observations": {
+    "mode": "headless",
+    "windows": 0,
+    "custody": "file",
+    "panes": 1,
+    "drawn_nonce": true,
+    "frame_seq": 29
+  },
+  "recorded_pids": [
+    52100,
+    52111,
+    52112,
+    52124,
+    52141
+  ],
+  "pid_check": {
+    "argv": [
+      "ps",
+      "-p",
+      "52100,52111,52112,52124,52141",
+      "-o",
+      "pid=,lstart=,comm="
+    ],
+    "exit": 1,
+    "stdout": ""
+  },
+  "calls": [
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "app",
+        "start",
+        "--headless",
+        "--ctl",
+        "--unattended",
+        "--test-account",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "seat",
+        "spawn",
+        "zsh",
+        "--place",
+        "tab",
+        "--cwd",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/repository",
+        "--name",
+        "Release smoke"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "seat",
+        "ls"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "seat",
+        "type",
+        "01M5X5F9Y64SQ18QS929FKPTNC",
+        "printf 'RELEASE_SMOKE_OK\\n'"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "seat",
+        "key",
+        "01M5X5F9Y64SQ18QS929FKPTNC",
+        "enter"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "seat",
+        "wait",
+        "01M5X5F9Y64SQ18QS929FKPTNC",
+        "--text",
+        "(?m)^RELEASE_SMOKE_OK$",
+        "--timeout",
+        "30000"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "ui",
+        "layout"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "debug",
+        "ps"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "app",
+        "status"
+      ],
+      "exit": 0
+    },
+    {
+      "argv": [
+        "/private/tmp/aster-oracle-artifact-7ae5fcbe3917/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+        "ctl",
+        "--run-dir",
+        "/private/tmp/aster-oracle-smoke-77243b981ab1/account/run",
+        "app",
+        "stop"
+      ],
+      "exit": 0
+    }
+  ],
+  "verification": {
+    "archive_sha256_matches": true,
+    "gpg_exit": 0,
+    "gpg_fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+    "gpg_stdout_sha256": "a06e7cd283006e37ced18419a2ba3ca35a4ba9d0c7df44549acc7ebbec791231",
+    "codesign_exit": 0,
+    "codesign_stderr_sha256": "885da7b32a2cfd1b38ed4686946b73cfef7c9c297379dcef8697f876bdd82a8a",
+    "bundle_version": "0.1.0",
+    "binary_unchanged": true,
+    "all_recorded_pids_absent": true
+  },
+  "duplicate_build_disposition": {
+    "result": {
+      "exit": 0,
+      "seconds": 239.55723404884338
+    },
+    "disposition": "Build had already ended when Oracle STOP was read. No duplicate metadata stamp, ZIP or GPG signature was made; smoke used only Oracle archive.",
+    "log_sha256": "b4ad39d10f38e1734b44ffce640e6d6d63496c9a298d8ab291aa57856a36f643"
+  },
+  "limits": [
+    "Headless generated-pane proof; no OS presentation, performance, login-Keychain enrollment or notarization claim.",
+    "Raw ctl logs and private file-account material stay local and are not committed.",
+    "No Cargo operation started after reading the Oracle STOP."
+  ]
+}
