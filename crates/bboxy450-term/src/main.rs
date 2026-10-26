@@ -724,6 +724,7 @@ impl Drop for UiWait {
 fn ui_layout_node(
     layout: &bbt_ui::components::Layout,
     remaining: &mut usize,
+    remaining_text: &mut usize,
 ) -> Result<bbt_proto::gui::UiLayoutNode, String> {
     use bbt_ui::components::LayoutKind as K;
     *remaining = remaining
@@ -743,15 +744,26 @@ fn ui_layout_node(
         K::Path { .. } => "path".into(),
         K::Rects { .. } => "rects".into(),
     };
+    let text = if let K::Text { runs, .. } = &layout.kind {
+        let length = runs
+            .iter()
+            .try_fold(0usize, |length, run| length.checked_add(run.text.len()));
+        length.filter(|length| *length <= *remaining_text).map(|length| {
+            *remaining_text -= length;
+            runs.iter().map(|run| run.text.as_str()).collect()
+        })
+    } else {
+        None
+    };
     Ok(bbt_proto::gui::UiLayoutNode {
         kind,
         rect: rect_array(layout.rect),
         children: layout
             .children
             .iter()
-            .map(|l| ui_layout_node(l, remaining))
+            .map(|l| ui_layout_node(l, remaining, remaining_text))
             .collect::<Result<_, _>>()?,
-        text: None,
+        text,
     })
 }
 fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
@@ -4803,9 +4815,10 @@ impl App {
             roots.push(&document.layout);
         }
         let mut remaining = 4096;
+        let mut remaining_text = 16 * 1024;
         let tree = roots
             .into_iter()
-            .map(|l| ui_layout_node(l, &mut remaining))
+            .map(|l| ui_layout_node(l, &mut remaining, &mut remaining_text))
             .collect::<Result<_, _>>()?;
         let layout = UiLayout {
             frame_seq: 0, // filled only by the actual produced-frame callback
