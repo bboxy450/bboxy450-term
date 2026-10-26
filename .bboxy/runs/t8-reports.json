@@ -1,6 +1,6 @@
 {
   "promise": "T8 OSC reports and grade ink",
-  "status": "native script exit0; author pending",
+  "status": "LANDED; author green; postsubmit/review unverified",
   "fixture": "raw real-PTY reporting stand-in, not native client or model behaviour",
   "source_refs": {
     "scripts/e2e/t8_reports.py": "raw command barrier emits bytes only; verdicts read app state, actual layout and captured glyph pixels",
@@ -79,5 +79,24 @@
       "scripts/e2e/test_ui.py"
     ],
     "raw_log_sha256": "533131dad8973c589ae697ab1dd346cc55caa134cd1e536cedf26f1b057c0f1f"
+  },
+  "landing": {
+    "sha": "4ab9145a8af314ccb9a9097e8342b926e798a3eb",
+    "exit": 0,
+    "verdict": "green",
+    "compile_seconds": 166.660036708985,
+    "run_seconds": 345.2513848330127,
+    "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/4ab9145a8af314ccb9a9097e8342b926e798a3eb-af2daef4/commands.log",
+    "raw_log_sha256": "18e1f7db22893aa22430f1568a08e9dae965e7e0cc035e51686bd13e8f67b48f",
+    "rust_counts": [
+      307,
+      0,
+      45
+    ],
+    "checks": [
+      "129 landing/runner fixture tests passed",
+      "strict clippy exit0",
+      "14 fast invariants, 0 failures; 11 slow and 12 unaffected skipped"
+    ]
   }
 }
