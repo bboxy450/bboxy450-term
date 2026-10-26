@@ -850,6 +850,26 @@ class LandTests(unittest.TestCase):
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
 
+    def test_shared_visual_inputs_keep_the_existing_parity_recheck(self):
+        self.cut('lab/web/components.js')
+        self.repo.movement('lab/web/launcher.html')
+        hook = self.repo.state / 'move-main.sh'
+        original = landing.command
+        calls = []
+        def check(argv, **kwargs):
+            if argv[:2] == ['sh', 'scripts/presubmit.sh']:
+                sha = run('git', 'rev-parse', 'HEAD', cwd=self.repo.root)
+                landing.append_record('presubmit.log', {'sha': sha, 'exit': 0, 'tier': 'lab', 'affected': []})
+                calls.append(argv)
+                if len(calls) == 1:
+                    run('sh', str(hook), cwd=self.repo.root)
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            return original(argv, **kwargs)
+        with patch.dict(os.environ, self.repo.environment), patch.object(landing, 'repository', return_value=self.repo.root), \
+                patch.object(landing, 'command', side_effect=check), patch.object(landing, 'ledger_module', return_value=None):
+            self.assertEqual(landing.land(), 0)
+        self.assertEqual(len(calls), 2)
+
     def test_intersecting_move_checks_only_the_crate_intersection(self):
         self.cut("crates/b/src/lib.rs")
         self.repo.movement("crates/c/src/lib.rs")
@@ -986,6 +1006,7 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.repo.remote_head(), sha)
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertEqual(record["sha"], sha)
+        self.assertEqual(record["author_key"], fixture_identity()[0].upper())
         self.assertEqual(record["affected"], ["c"])
         self.assertFalse(list((self.repo.state / "slots").glob("bboxy450-gate-slot-*")))
         self.assertTrue((self.repo.state / "announced" / (sha + ".json")).exists())

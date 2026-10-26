@@ -1,0 +1,41 @@
+{
+  "failed_author": {
+    "sha": "fd7928515674d7d402b8b5f6531b7362597d528c",
+    "exit": 77,
+    "controller_passed": 102,
+    "controller_failed": 1,
+    "recovery_passed": 46,
+    "log": ".bboxy/runs/landing-incremental-author-failed-fd792.log",
+    "sha256": "55e8936cc6db82941dac07a0c0a7906a3529dd0aa1194407f15579906df646a0"
+  },
+  "root_cause": "command-history dictionary key shadowed the signing fingerprint; author_key became a command array and notification resume could not find the admission",
+  "fix": "separate signing_key and command_key locals; assert the admission fingerprint directly",
+  "checks": [
+    {
+      "log": ".bboxy/runs/landing-incremental-resume-focused.log",
+      "exit": 1,
+      "sha256": "e69dc059526adc0efe7706f27c42c93d5f6c54bebc0db504d0bdd91128a9e0c4"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-signing-key-red.log",
+      "exit": 1,
+      "sha256": "23e5953d448ba2516dd88d9e3a92bf9f683df7024bbfdb3387db98ce6a3bae4a"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-signing-key-green.log",
+      "exit": 0,
+      "sha256": "f4f90b7ddcac457e37ba4d54afcba8410946dbf8f5d1f0eeea7839a15ff0f43d"
+    },
+    {
+      "log": ".bboxy/runs/landing-incremental-visual-compatibility.log",
+      "exit": 0,
+      "sha256": "f426ae0c693c8b943c52f01c6f0619815d6761b9920767c56773b725cdd688d8"
+    }
+  ],
+  "compatibility": "retain existing conservative shared visual-input recheck until the pending derived-page parity cut; Rust/script moves are narrowed",
+  "source_hashes": {
+    "scripts/landing.py": "0df99be65771770965d45fc5fce69ce5dc330c7ef0c3c78b1f603e71d9bc01a9",
+    "scripts/ci-local.sh": "b698eb094b41e9770def54e4c2b39ed8a656b9df6726e1f9bdbde3cf8976abb3",
+    "scripts/test-landing.py": "33588a8f9f5d0d59289da71aced8a1f4dd855036b6ff0bcbbaac484a04546895"
+  }
+}

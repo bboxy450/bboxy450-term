@@ -1,0 +1,14 @@
+F
+======================================================================
+FAIL: test_signed_cut_pushes_once_logs_and_announces_after_slot_release (__main__.LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 989, in test_signed_cut_pushes_once_logs_and_announces_after_slot_release
+    self.assertEqual(record["author_key"], fixture_identity()[0].upper())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ['sh', 'scripts/invariants.sh', '--affected', 'c'] != '9262FC2B9DE826D357B51FEF1B371C5811CBC625'
+
+----------------------------------------------------------------------
+Ran 1 test in 6.242s
+
+FAILED (failures=1)

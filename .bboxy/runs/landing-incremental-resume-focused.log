@@ -1,0 +1,16 @@
+F
+======================================================================
+FAIL: test_notification_failure_can_resume_without_rechecking_or_repush (__main__.LandTests.test_notification_failure_can_resume_without_rechecking_or_repush)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/feral/mydev/bboxy450-term-exec4/scripts/test-landing.py", line 1083, in test_notification_failure_can_resume_without_rechecking_or_repush
+    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 0 : land: slot 1 of 3
+landing: no_own_commits_to_land
+
+
+----------------------------------------------------------------------
+Ran 1 test in 7.893s
+
+FAILED (failures=1)

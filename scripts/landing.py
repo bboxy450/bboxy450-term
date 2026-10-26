@@ -1146,11 +1146,11 @@ def land(gate_log=None):
             git("fetch", "origin", "main", cwd=root)
             base = git("rev-parse", "origin/main", cwd=root)
             main_guard(root, base)
-            commits, email, key = own_signatures(root, base)
+            commits, email, signing_key = own_signatures(root, base)
             if not commits:
                 sha = git("rev-parse", "HEAD", cwd=root)
                 existing = next((r for r in records("landings.log") if r.get("sha") == sha
-                                 and r.get("author_key") == key), None)
+                                 and r.get("author_key") == signing_key), None)
                 if existing:
                     landing = existing
                     break
@@ -1161,6 +1161,12 @@ def land(gate_log=None):
             data = affected(base + "..HEAD", root=root)
             moved = affected(previous_base + ".." + base, root=root) if previous_base else None
             common_paths = moved and set(data["paths"]) & set(moved["paths"])
+            # Keep the existing visual-input guard until the derived page
+            # selector replaces this legacy shared-resource classification.
+            visual_overlap = moved and data["parity"] == "yes" and (
+                any(p.startswith(("lab/", "design/")) for p in moved["shared"])
+                or (moved["parity"] == "yes"
+                    and any(p.startswith(("lab/", "design/")) for p in data["shared"])))
             # Each affected set already includes transitive dependents; their
             # intersection therefore includes those dependents within this cut.
             intersection = sorted(set(data["affected"]) & set(moved["affected"])) if moved else []
@@ -1171,7 +1177,7 @@ def land(gate_log=None):
                       if changed_tools & set(row["tools"])
                       or (scripts_moved and script_cut and row.get("fixtures"))]
             recheck = None
-            if tested is not None and not common_paths and (intersection or replay):
+            if tested is not None and not common_paths and not visual_overlap and (intersection or replay):
                 if incremental_rechecks >= 5:
                     raise Refusal("main_moving: five incremental rechecks exhausted; finding for Oracle", 79)
                 incremental_rechecks += 1
@@ -1179,7 +1185,7 @@ def land(gate_log=None):
                 atomic_write(recheck, json.dumps({"affected": intersection, "commands": replay}) + "\n")
                 print("land: incremental recheck:", " ".join(intersection), flush=True)
             candidate = git("rev-parse", "HEAD", cwd=root)
-            if tested is None or common_paths or recheck is not None:
+            if tested is None or common_paths or visual_overlap or recheck is not None:
                 started = time.monotonic()
                 if data["tier"] == "wide" and recheck is None:
                     proof = wide_check(root, data, gate_log if tested is None else None)
@@ -1204,15 +1210,15 @@ def land(gate_log=None):
                                        "test_seconds", "unclassified_seconds", "timing_basis")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
-                if tested is None or common_paths:
+                if tested is None or common_paths or visual_overlap:
                     executed_commands.clear()
                 for row in proof.get("commands", []):
-                    key = tuple(row["argv"])
-                    prior = executed_commands.get(key, {"tools": []})
-                    executed_commands[key] = {"argv": row["argv"],
+                    command_key = tuple(row["argv"])
+                    prior = executed_commands.get(command_key, {"tools": []})
+                    executed_commands[command_key] = {"argv": row["argv"],
                                               "tools": sorted(set(prior["tools"]) | set(row["tools"]))}
                     if row.get("fixtures") or prior.get("fixtures"):
-                        executed_commands[key]["fixtures"] = True
+                        executed_commands[command_key]["fixtures"] = True
                 tested = git("rev-parse", "HEAD", cwd=root)
             else:
                 print("land: moved changes are disjoint; reusing presubmit", flush=True)
@@ -1233,7 +1239,7 @@ def land(gate_log=None):
                     if git("rev-parse", "origin/main", cwd=root) == base:
                         raise Refusal("push_failed: " + pushed.stderr)
                     continue
-            landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": key, "author": email,
+            landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": signing_key, "author": email,
                        "tier": data["tier"], "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch,

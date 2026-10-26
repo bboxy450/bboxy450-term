@@ -1,0 +1,9 @@
+land: slot 1 of 2
+Current branch fixture-cut is up to date.
+Rebasing (1/1)Successfully rebased and updated refs/heads/fixture-cut.
+LANDED a5c9c30dbdb80f2906b37d3c9ecc7fb210bddd3e Fixture candidate
+.
+----------------------------------------------------------------------
+Ran 1 test in 6.152s
+
+OK
