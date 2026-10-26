@@ -71,20 +71,21 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
     use bbt_ui::modules::settings::plugins::{Contract, Health};
     let state = entry.state();
     let activation = entry.activation.as_ref();
-    let inspection = activation.and_then(|activation| activation.inspection.as_ref());
-    let shape = entry
-        .trust
-        .as_ref()
-        .and_then(|record| record.shape.as_ref());
+    let bound = activation.is_some_and(|activation| {
+        !activation.needs_retrust && entry.candidate.sha256.as_ref() == Some(&activation.sha256)
+    });
+    let approved = entry.trust.as_ref().filter(|_| bound);
+    let inspection = activation
+        .filter(|_| bound)
+        .and_then(|activation| activation.inspection.as_ref());
+    let shape = approved.and_then(|record| record.shape.as_ref());
     let refusal = entry
         .candidate
         .refusal
         .as_ref()
         .or_else(|| inspection.and_then(|i| i.refusal.as_ref()));
     let named = entry.candidate.name.as_ref();
-    let tier = entry
-        .trust
-        .as_ref()
+    let tier = approved
         .map(|t| t.approved_tier)
         .or_else(|| named.map(|n| n.system.tier()));
     let tier = tier
@@ -113,14 +114,14 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         local: true,
         trust: if matches!(state, State::Untrusted | State::NeedsRetrust) {
             "untrusted"
-        } else if entry.trust.is_some() {
+        } else if approved.is_some() {
             "trusted"
         } else {
             "untrusted"
         }
         .into(),
         repo_local: entry.candidate.scope.name() == "repository",
-        grant: entry.trust.as_ref().map(|_| "no additional grants".into()),
+        grant: approved.map(|_| "no additional grants".into()),
         version: shape.map(|s| s.version.clone()),
         auth: shape
             .and_then(|s| s.auth.as_ref())
