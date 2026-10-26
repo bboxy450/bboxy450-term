@@ -23,9 +23,9 @@ Lab.page({ title: 'settings', wide: true, note: 'Opens as a tab (⌘, or Setting
     const nv = s === 'notifications · off' ? { enabled: false, only_when_not_frontmost: true, disabled_harnesses: ['codex'] } : s === 'notifications · one harness off' ? { enabled: true, only_when_not_frontmost: false, disabled_harnesses: ['codex'] } : null;
     // messaging states (messaging-attention §3, MA-8): role defaults, one override with its reset, and the operator's mute over a policy
     const MS = { 'Messaging': C.SET.messaging,
-      'messaging · oracle': { seat: { name: 'Vesper', role: 'oracle' }, policy: null, deferred: null, muted: false },
-      'messaging · overridden': { seat: { name: 'Wren Thistledown', role: 'creativity' }, policy: { channel: { conversation: 'digest' } }, deferred: { n: 3, at: '14:40' }, muted: false },
-      'messaging · muted': { seat: { name: 'Sable Embertail', role: 'executor' }, policy: null, deferred: { n: 7, at: '14:30' }, muted: true } }, mv = MS[s] || null;
+      'messaging · oracle': { seat: { name: 'Vesper', role: 'oracle' }, channels: ['#bboxy450-term'], rules: [], deferred: null, muted: false },
+      'messaging · overridden': { seat: { name: 'Wren Thistledown', role: 'creativity' }, channels: ['#bboxy450-term', '#bboxy450-crates'], rules: [{ destination: '#bboxy450-term', class: 'conversation', mode: 'digest' }], deferred: { n: 3, at: '14:40' }, muted: false },
+      'messaging · muted': { seat: { name: 'Sable Embertail', role: 'executor' }, channels: ['#bboxy450-term', '#bboxy450-crates'], rules: [], deferred: { n: 7, at: '14:30' }, muted: true } }, mv = MS[s] || null;
     // custody states (#280, #315): the native Keychain path; a hold names itself and its two exits, then the outcome of one attempt
     const CUS = { 'custody · held': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' } },
       'custody · unlock pending': { tier: 'keychain', acl: 'legacy', hold: { reason: 'Keychain interaction required' }, attempt: 'pending' },

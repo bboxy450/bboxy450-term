@@ -1551,7 +1551,7 @@
       offered: ['bboxy450-term-data_source-bboxy', 'bboxy450-term-data_source-stub'] },
     // messaging attention (messaging-attention §3, MA-8): per seat, (destination, class) → wake | inbox | digest. policy null means the
     // role default (an omitted policy on the seat record); deferred is the pending digest; muted is the operator's mute, not the policy
-    messaging: { seat: { name: 'Sable Embertail', role: 'executor' }, policy: null, deferred: { n: 7, at: '14:30' }, muted: false },
+    messaging: { seat: { name: 'Sable Embertail', role: 'executor' }, channels: ['#bboxy450-term', '#bboxy450-crates'], rules: [], deferred: { n: 7, at: '14:30' }, muted: false },
     appearance: { theme: 'auto', density: 'cozy', rim: TOKENS.glow.rim, glow: true, subtitle: false, opacity: TOKENS.window.opacity, blur: TOKENS.window.blur, blurRadius: TOKENS.window.blur_radius },
     shortcuts: [['New tab', '⌘T'], ['Split right', '⌘D'], ['Split down', '⌘⇧D'], ['Mute seat', '⌘M'], ['Undo close', '⌘Z'], ['Settings', '⌘,'], ['Focus next pane', 'Tab'], ['Focus previous pane', '⇧Tab']],
   };
@@ -1562,7 +1562,9 @@
   function settingsPage(opts) {
     opts = opts || {};
     const emit = (s, k, v) => { if (opts.onChange) opts.onChange(s, k, v); };
-    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Messaging', 'Shortcuts'];
+    // Messaging joins the nav with MA-8's native cut; until then only the Messaging states show it, so the catalogued settings cases stay
+    // as native ships them (the native cut drops this condition and lands with its parity cases)
+    const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', ...(opts.messaging ? ['Messaging'] : []), 'Shortcuts'];
     const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Messaging: 'tray', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
     const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
@@ -1835,15 +1837,17 @@
           architect: { direct: { conversation: 'wake', event: 'inbox' }, channel: { conversation: 'inbox', event: 'inbox' } },
           executor: { direct: { conversation: 'wake', event: 'inbox' }, channel: { conversation: 'digest', event: 'inbox' } } };
         ATTN.creativity = ATTN.architect;
-        const m = MV, def = ATTN[m.seat.role] || ATTN.executor, pol = m.policy || {};
-        const mode = (d, c) => (pol[d] && pol[d][c]) || def[d][c];
-        const setM = (d, c) => x => { m.policy = { ...pol, [d]: { ...(pol[d] || {}), [c]: x } }; emit('messaging', d + '.' + c, x); draw(); };
-        const line = (d, c, label) => { const ch = mode(d, c) !== def[d][c]; return row(label, null, seg(['wake', 'inbox', 'digest'], mode(d, c), setM(d, c)), ch, () => setM(d, c)(def[d][c])); };
+        // rules as native stores them (registry.rs AttentionRule): one per exact destination and class; no rule means the role default
+        const m = MV, def = ATTN[m.seat.role] || ATTN.executor, kind = d => d === 'direct' ? 'direct' : 'channel';
+        const rule = (d, c) => (m.rules || []).find(r => r.destination === d && r.class === c);
+        const mode = (d, c) => (rule(d, c) || {}).mode || def[kind(d)][c];
+        const setM = (d, c) => x => { m.rules = (m.rules || []).filter(r => !(r.destination === d && r.class === c)); if (x !== def[kind(d)][c]) m.rules.push({ destination: d, class: c, mode: x }); emit('messaging', d + ' ' + c, x); draw(); };
+        const line = (d, c, label) => row(label, null, seg(['wake', 'inbox', 'digest'], mode(d, c), setM(d, c)), !!rule(d, c), () => setM(d, c)(def[kind(d)][c]));
         add('Messaging', card('Messaging', [
           el('div', { class: 'att-seat' }, el('b', {}, m.seat.name), chip(m.seat.role + ' defaults'), m.deferred ? el('span', { class: 'att-def' }, m.deferred.n + ' deferred · digest at ' + m.deferred.at) : null),
           m.muted ? el('div', { class: 'pl-alert att-mute', role: 'status' }, '⚠ muted by the operator: this seat’s traffic is held both ways until unmuted (⌘M); the policy below applies after') : null,
-          group('Direct and by name'), line('direct', 'conversation', 'Conversation'), line('direct', 'event', 'Events'),
-          group('Channels'), line('channel', 'conversation', 'Conversation'), line('channel', 'event', 'Events'),
+          group('Direct and by name', 'this seat’s own inbox'), line('direct', 'conversation', 'Conversation'), line('direct', 'event', 'Events'),
+          ...(m.channels || []).flatMap(ch => [group(ch), line(ch, 'conversation', 'Conversation'), line(ch, 'event', 'Events')]),
           note('Always wakes, for conversation only: a message from the operator, a task delegated to this seat, a reply in a thread it started; a seat cannot set itself to miss its own work. Events never wake by default, whoever sent them. A digest delivers once, at 10 min or 50 messages, listing every message by id: it delays a wake and never holds a message. A change applies to messages stored after it.'),
         ]));
       }
