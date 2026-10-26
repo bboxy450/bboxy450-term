@@ -89,7 +89,7 @@ impl Control {
                     let value = match result {
                         Ok(entries) => {
                             let value = serde_json::to_value(entries)?;
-                            if serde_json::to_vec(&value)?.len() > 768 * 1024 {
+                            if serde_json::to_vec(&value)?.len() > 256 * 1024 {
                                 mcp::error(
                                     call.op_id,
                                     "plugin_inventory_too_large",

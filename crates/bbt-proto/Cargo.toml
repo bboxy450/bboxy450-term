@@ -9,6 +9,7 @@ rust-version.workspace = true
 description = "Terminal viewport and GUI wire types shared by app and logic"
 
 [dependencies]
+bbt-plugin = { path = "../bbt-plugin" }
 bbt-core = { path = "../bbt-core" }
 bbt-ui-model = { path = "../bbt-ui-model" }
 serde = { version = "1", features = ["derive"] }
@@ -16,5 +17,4 @@ serde_json = "1"
 ulid = { version = "1", features = ["serde"] }
 
 [dev-dependencies]
-bbt-plugin = { path = "../bbt-plugin" }
 jsonschema = { version = "=0.60.1", default-features = false }
