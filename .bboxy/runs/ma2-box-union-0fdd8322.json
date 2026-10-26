@@ -1,0 +1,131 @@
+{
+  "source": "0fdd83222f5d98bd7feda6af9e43dd2530c5e761",
+  "contract": "cec8996c783d7308013b63717ca99ef75a1173da",
+  "host_source": "2303be3a3461272eef19da432a20324ee9315993",
+  "base": "a1c8d606b284fe6efe8b3e44e77fc8b4f200fb2f",
+  "m2_fix": "253f0bdbbb0a6f88188381e34d9682551ecd9e3e",
+  "branch": "velvet-ma2-box-union",
+  "checks": [
+    {
+      "name": "strict",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 67.966,
+      "log": "target/ma2-box-union-proof/strict.log",
+      "sha256": "e39f4f48423ed09b2d7fa58587905d45b934d6ad3ac19654ecc3daece77cb38e",
+      "test_results": []
+    },
+    {
+      "name": "contract",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "registry_attention",
+        "--test",
+        "gui_wire_golden"
+      ],
+      "exit": 0,
+      "seconds": 42.895,
+      "log": "target/ma2-box-union-proof/contract.log",
+      "sha256": "d182a7a8f67275c2abca75e28005bdcae75459a503c675a403d53fd06d823745",
+      "test_results": [
+        [
+          "2",
+          "0"
+        ],
+        [
+          "3",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "policy",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "attention_policy"
+      ],
+      "exit": 0,
+      "seconds": 76.98,
+      "log": "target/ma2-box-union-proof/policy.log",
+      "sha256": "adc21c846e2160eb6c8cba78cb1c91e1726d679ea3a8c9165c8f9004506532d3",
+      "test_results": [
+        [
+          "8",
+          "0"
+        ]
+      ]
+    },
+    {
+      "name": "mcp",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "-p",
+        "bbt-mux",
+        "--test",
+        "mcp",
+        "mcp_attention"
+      ],
+      "exit": 0,
+      "seconds": 10.006,
+      "log": "target/ma2-box-union-proof/mcp.log",
+      "sha256": "9c871f5ed38b9a11d514d71177fe529b5ba45b75bcc1f5cfeae2c07bce97a862",
+      "test_results": [
+        [
+          "2",
+          "0"
+        ]
+      ]
+    }
+  ],
+  "patch_comparison": "1:  f89b3c82 = 1:  cec8996c Add optional typed receiver attention policy to seat records\n2:  72486adc = 2:  bdd63a35 Store receiver-owned wake rules with role defaults and own-seat MCP tools\n3:  0295f626 = 3:  2303be3a Acknowledge attention writes from their committed policy\n4:  2324d3de = 4:  0fdd8322 Record MA-2 policy and final M2 noun-union evidence\n",
+  "legacy_golden_bytes_unchanged": 51286,
+  "new_policy_golden_cases": 1,
+  "environment": {
+    "jobs": 2,
+    "opt_level": 1,
+    "debug": 0,
+    "debug_assertions": true,
+    "custody": "memory",
+    "target": "target/m2-reply-box-dev"
+  },
+  "dev_target": "One idle owned O1 target retained only for the immediately queued MA-3 checks. No gate ran here.",
+  "limits": [
+    "No new full MCP51 run on this union; that older result and its3skips stay attributed in ma2-attention-0295f626.json.",
+    "Native policy application, receipts/digests and reply validation remain MA-3/4/5.",
+    "No independent publication, full gate, night, renderer or performance claim."
+  ]
+}

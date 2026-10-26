@@ -1,0 +1,12 @@
+MA-2 boxed-transport union — checked tree0fdd83222f5d98bd7feda6af9e43dd2530c5e761 (G).
+Protocol contractcec8996c is separate and first; host source2303be3a is separate. Base includes M2 fix253f0bdb and its exact strict/golden/CTL evidencea1c8d606. Task#338 already in base; no duplicated task commit.
+All four previous MA-2 patches compare = after the union. The entire prior51286byte wire golden remains an unchanged prefix, plus the one additive policy case.
+
+cargo clippy -p bbt-proto -p bbt-mux -p bboxy450-term --all-targets --locked -- -D warnings: EXIT0/67.966s.
+Protocol registry_attention3/0 plus gui_wire_golden2/0: EXIT0/42.895s.
+Pure attention_policy8/0: EXIT0/76.980s including compilation.
+Own-seat MCP attention2/0: EXIT0/10.006s including compilation; actual test-run0.95s.
+Explicit same target,2jobs,O1/debug0,debug assertions,memory test custody. Actual complete commands and output hashes are in the paired JSON.
+
+The previous full host51/0/3skips is not relabelled as a new run. Its source/byte comparison and the direct committed-result followup remain in ma2-attention-0295f626.json.
+No native policy/digest/thread activation, full gate, night, renderer or independent publication here. Mandatory landing verification stays with the Oracle as agreed. One inactive dev target is retained for immediately queued MA-3 work; no CI target exists in this worktree.
