@@ -1,7 +1,7 @@
 {
   "promise": "T3 resizing PTY and repainting without stale cells",
   "base": "8e2b74b293439952869f050721876ea0267d0ab4",
-  "status": "focused real headless cases, wire and strict lint held; author landing and postsubmit acceptance pending",
+  "status": "code landed via author script; postsubmit and Oracle review remain unverified",
   "source_refs": [
     {
       "source": "crates/bbt-proto/src/gui/ui.rs:367",
@@ -174,7 +174,7 @@
       "t3-window-shrink-before.png": "99c36ee5eb1b7bb466b99e308e81118297e7274bf92d6426bf648dd448aeb012"
     },
     "calls_sha256": "8a12a1c551cd68125833cf9771cf06c359f839bc4dc4a502cc65d720dfb804d4",
-    "visual_inspection": "read the actual white-A-before and pane-split-blue-after captures from the preceding successful run /private/tmp/at3-g7auvm38; final artifact-only rerun used identical program/rendering code"
+    "visual_inspection": "read the actual white-A-before and pane-split-blue-after pair from /private/tmp/at3-g7auvm38, then the final pane-split-after capture from the retained final /private/tmp/at3-v5p2vuas run"
   },
   "fixture_failure_and_fix": {
     "first_exit": 1,
@@ -338,5 +338,70 @@
     "Headless macOS GPU/PTY proof only; no OS window/scanout or cross-platform runtime claim.",
     "Split placement changes the pane independently of window size; divider dragging is not exercised.",
     "Postsubmit and Oracle review remain unverified."
-  ]
+  ],
+  "landing": {
+    "sha": "e26a0581e0c7fe410b9bbfe7984c68e38ec32214",
+    "signature": "G",
+    "argv": [
+      "sh",
+      "scripts/land.sh"
+    ],
+    "exit": 0,
+    "seconds": 1341.4859457015991,
+    "green_checks": [
+      {
+        "sha": "625e6d371135ed7e76b892efaa7389d4dd756e2c",
+        "affected": [
+          "bboxy450-term",
+          "bbt-mux",
+          "bbt-proto"
+        ],
+        "exit": 0,
+        "seconds": 676.6040755420108,
+        "compile_seconds": 284.41591695998795,
+        "run_seconds": 392.1877816240303,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/625e6d371135ed7e76b892efaa7389d4dd756e2c-6a9642d8/commands.log",
+        "log_sha256": "0d48ff7a4d91706fd28d112ff0c648de3db89a411405e05096bdc8780261869f",
+        "rust_test_executions": {
+          "passed": 746,
+          "failed": 0,
+          "ignored": 80
+        },
+        "invariants": [
+          [
+            "19",
+            "0",
+            "11"
+          ]
+        ]
+      },
+      {
+        "sha": "e26a0581e0c7fe410b9bbfe7984c68e38ec32214",
+        "affected": [
+          "bboxy450-term",
+          "bbt-mux"
+        ],
+        "exit": 0,
+        "seconds": 646.4793843340012,
+        "compile_seconds": 214.221119832946,
+        "run_seconds": 432.257622834004,
+        "log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/e26a0581e0c7fe410b9bbfe7984c68e38ec32214-ccdd6004/commands.log",
+        "log_sha256": "da6665f66b8cae34685cc35a1a79663ef33a2b81ad408fe25fde136b137129d8",
+        "rust_test_executions": {
+          "passed": 694,
+          "failed": 0,
+          "ignored": 80
+        },
+        "invariants": [
+          [
+            "19",
+            "0",
+            "11"
+          ]
+        ]
+      }
+    ],
+    "own_code_manifest_unchanged_after_rebase": true,
+    "author_log_sha256": "d5bd154cc249b186f3382260545cb4bf73dd65e108c0f800c2c8b9c828f7a273"
+  }
 }
