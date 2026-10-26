@@ -1,0 +1,9 @@
+{
+  "name": "bboxy450-site",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist" },
+  "routes": [
+    { "pattern": "bboxy450.lol", "custom_domain": true },
+    { "pattern": "www.bboxy450.lol", "custom_domain": true }
+  ]
+}
