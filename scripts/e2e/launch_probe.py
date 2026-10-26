@@ -11,6 +11,7 @@ import shlex
 import socket
 import subprocess
 import sys
+import time
 import tomllib
 import uuid
 
@@ -166,12 +167,42 @@ for event in ("SessionStart", "PreToolUse"):
                           capture_output=True, timeout=30)
     assert shim.returncode == 0, (event, shim.returncode, shim.stderr)
 
+# A hook has a deliberate 50 ms best-effort budget and returns success even
+# when its transport misses that budget. Exercise the installed observation
+# path until the real bridge confirms it, instead of treating process exit or
+# PTY READY as an acknowledgement. Repeating this fixture observation has no
+# tool/effect side effect; real harness input is never retried here.
+deadline = time.monotonic() + 20
+attempts = 0
+while True:
+    attempts += 1
+    command = shlex.split(hooks["PreToolUse"][0]["hooks"][0]["command"])
+    shim = subprocess.run(command, input=json.dumps(dict(
+        hook_event_name="PreToolUse", session_id=session, tool_name="L3-LAUNCH-PROBE")),
+        text=True, capture_output=True, timeout=5)
+    assert shim.returncode == 0, (shim.returncode, shim.stderr)
+    status_frame = {"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                    "params": {"name": "self_status", "arguments": {}}}
+    status = subprocess.run([mcp["command"], *mcp["args"]],
+        input="".join(json.dumps(row) + "\n" for row in [*frames[:2], status_frame]),
+        text=True, capture_output=True, timeout=5)
+    assert status.returncode == 0, (status.returncode, status.stderr)
+    current = next(row for row in map(json.loads, status.stdout.splitlines())
+                   if row.get("id") == 3)["result"]
+    assert not current["isError"], current
+    adapter = current["structuredContent"]["seat"]["adapter"]
+    if adapter["state"] == "active" and adapter["grade"] == "shim":
+        break
+    assert time.monotonic() < deadline, ("shim observation not published", attempts, adapter)
+    time.sleep(.05)
+
 after = snapshot(home)
 assert before == after, "launch probe changed the private harness configs"
 write(work / (seat + ".launch.json"), dict(
     harness="stand-in", kind=kind, seat=seat, generation=generation,
     home=str(home), overlay=str(overlay), mcp=mcp, responses=responses,
     hook_events=sorted(hooks), hook_commands_match=True, session=session,
+    hook_observation_attempts=attempts,
     skill_sha256=digest(skill.encode()), pinned_skill_sha256=digest(expected_skill.encode()),
     before=before, after=after))
 print("L3_LAUNCH_READY " + seat, flush=True)
