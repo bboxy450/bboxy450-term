@@ -4,6 +4,7 @@ use std::{os::unix::fs::PermissionsExt, sync::Arc};
 
 use bboxy450_keychain_file::{Acl, Error, MAX_SECRET_BYTES, Store};
 
+// keeps: spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes
 #[test]
 fn private_slots_reopen_and_only_explicit_removal_changes_them() {
     let temp = tempfile::tempdir().unwrap();
@@ -43,6 +44,7 @@ fn private_slots_reopen_and_only_explicit_removal_changes_them() {
     first.remove("root").unwrap();
 }
 
+// keeps: spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes
 #[test]
 fn relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused() {
     let temp = tempfile::tempdir().unwrap();
@@ -72,6 +74,7 @@ fn relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused() {
     assert!(matches!(store.get("missing"), Err(Error::Permissions)));
 }
 
+// keeps: spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes
 #[test]
 fn writes_and_reads_have_the_same_fixed_size_bound() {
     let temp = tempfile::tempdir().unwrap();
@@ -100,6 +103,7 @@ fn writes_and_reads_have_the_same_fixed_size_bound() {
     assert!(matches!(store.get("largest"), Err(Error::TooLarge)));
 }
 
+// keeps: spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes
 #[test]
 fn independent_store_handles_never_replace_a_concurrent_winner() {
     let temp = tempfile::tempdir().unwrap();

@@ -1,0 +1,22 @@
+#327 bboxy450-keychain-file test sweep
+Brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Own exec5 branch exec5-tests-327-keychain-file, fresh base cd3c6c5323122d24c1da1178d26a80bd41c12f8a.
+Only keeps: tags in existing tests/cfg(test) modules. Production prefixes, public API and test assertions remain byte-identical.
+Before: 4 passed / 0 failed / 0 ignored; summed per-binary test execution 0.070 s. After: 4 passed / 0 failed / 0 ignored; summed per-binary execution 0.070 s. Both are under 30 s, so test-policy §3 applies on coverage alone. Timing improvement is unproven. Outer Cargo wall time (including compilation) is reported separately below.
+Sleep calls removed: 0. No clocks, waits, process probes, native vault calls, Notification Center, authorization or desktop operations introduced. Strict Clippy and selected invariants will run in the combined author presubmit and are not claimed here.
+Overlap scan: no peer in-flight file overlaps; no skipped file.
+
+| Test | Class | Disposition / protected contract |
+|---|---|---|
+| `tests/custody.rs::private_slots_reopen_and_only_explicit_removal_changes_them` | D2 | retain unchanged assertions and tag protected contract; spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes |
+| `tests/custody.rs::relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused` | D2 | retain unchanged assertions and tag protected contract; spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes |
+| `tests/custody.rs::writes_and_reads_have_the_same_fixed_size_bound` | D2 | retain unchanged assertions and tag protected contract; spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes |
+| `tests/custody.rs::independent_store_handles_never_replace_a_concurrent_winner` | D2 | retain unchanged assertions and tag protected contract; spec id1-seat-chain §5 — isolated persistent file custody, owner-only mode, bounded secrets and create-only concurrent writes |
+
+Coverage map: id1-seat-chain §5 and #282 test accounts -> private_slots reopen/explicit removal/0700+0600/redaction; unsafe paths/symlink/non-regular/broad-mode refusal -> relative_paths test; fixed-size read/write symmetry -> writes_and_reads test; independent concurrent handles -> barrier-released writers prove exactly one winner, returned Conflict, exact winning secret and no orphan file. No invariant/spec acceptance test is removed.
+
+Limits: Unix private temporary-directory file IO only; no login Keychain, root/account/device material, native vault, or operator input. Windows DACL behavior is outside this macOS run.
+
+Evidence copies normalize only trailing blank lines; private originals retained:
+- .bboxy/runs/test-policy-keychain-file-inventory.log SHA256 bcffe7ec501114649a19a68724acc6f895310641471f9ec27bc6f0b5adcd5593 — EXIT0; outer Cargo seconds 3.807.
+- .bboxy/runs/test-policy-keychain-file-before.log SHA256 2c6d8e278debde4d5e87ab749e3bb1e9e54556e40054721a1c63cd5561bfd4cc — EXIT0; outer Cargo seconds 0.447.
+- .bboxy/runs/test-policy-keychain-file-after.log SHA256 0e5fcd0d4f2f87ae324426dd35e249fd3f766341f3feda7562a733021e79e11d — EXIT0; outer Cargo seconds 0.990.

@@ -1,0 +1,20 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+   Compiling getrandom v0.4.3
+   Compiling rustix v1.1.5
+   Compiling errno v0.3.14
+   Compiling bitflags v2.13.2
+   Compiling fastrand v2.5.0
+   Compiling tempfile v3.27.0
+   Compiling bboxy450-keychain-file v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bboxy450-keychain-file)
+    Finished `test` profile [optimized] target(s) in 3.16s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bboxy450_keychain_file-82fb984f40ce6372)
+0 tests, 0 benchmarks
+     Running tests/custody.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/custody-90ad33d8563c08da)
+independent_store_handles_never_replace_a_concurrent_winner: test
+private_slots_reopen_and_only_explicit_removal_changes_them: test
+relative_paths_symlinks_non_regular_files_and_broad_modes_are_refused: test
+writes_and_reads_have_the_same_fixed_size_bound: test
+
+4 tests, 0 benchmarks
+   Doc-tests bboxy450_keychain_file
+0 tests, 0 benchmarks
