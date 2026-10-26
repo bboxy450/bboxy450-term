@@ -3962,8 +3962,8 @@ mod plugin_reply_tests {
     fn plugin_completion_does_not_consume_an_ordinary_control_slot() {
         let mut replies = ActionReplies::default();
         let op = Ulid::new();
-        replies.push(&GuiAction::ListSeats);
-        replies.push(&GuiAction::Plugin {
+        replies.sent(&GuiAction::ListSeats);
+        replies.sent(&GuiAction::Plugin {
             id: op,
             request: bbt_proto::gui::PluginRequest::List,
         });
@@ -3978,5 +3978,29 @@ mod plugin_reply_tests {
             replies.take(&GuiReply::Seats(vec![])),
             Some(ActionReply::Seats)
         );
+    }
+}
+
+#[cfg(test)]
+mod plugin_snapshot_tests {
+    use super::*;
+    struct NoWake;
+    impl bbt_rt::Waker for NoWake {
+        fn wake(&self) {}
+    }
+    #[test]
+    fn a_completed_registry_snapshot_survives_metadata_rebuild() {
+        let dirty = bbt_rt::DirtySet::new(1, Arc::new(NoWake));
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let op = Ulid::new();
+        Arc::make_mut(&mut Arc::make_mut(&mut model).operation_results).requested(op);
+        publish_plugins(&mut model, &updates, op, vec![], true);
+        assert!(updates.take().is_some());
+        let rebuilt = model::build(&[], &Default::default(), &model);
+        assert!(Arc::ptr_eq(
+            rebuilt.plugin_registry.as_ref().unwrap(),
+            model.plugin_registry.as_ref().unwrap()
+        ));
     }
 }
