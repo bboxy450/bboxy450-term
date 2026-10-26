@@ -1,0 +1,86 @@
+{
+  "source": "9ca05be49a18a4d880b5f9e8c0d6417d59010071",
+  "base": "c00be7937017c9d03be47d5761539d14bad44bc0",
+  "branch": "velvet-m2-compose-final",
+  "golden_prefix_bytes_unchanged": 50798,
+  "append_count": 3,
+  "dispatch": "ctl/ui.rs run_verb owns UiCompose beside Ui; central noun dispatcher preserved",
+  "checks": [
+    {
+      "name": "golden",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bbt-proto",
+        "--test",
+        "gui_wire_golden",
+        "--test",
+        "ui_compose"
+      ],
+      "exit": 0,
+      "seconds": 11.122,
+      "log": "target/m2-compose-proof/cut2e-union-golden.log",
+      "sha256": "b33ce32a228c3d8e44782570c49404a9b89e40ba4e014e7630aaeba29ccae137"
+    },
+    {
+      "name": "composer",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "messaging_ui"
+      ],
+      "exit": 0,
+      "seconds": 31.274,
+      "log": "target/m2-compose-proof/cut2e-union-composer.log",
+      "sha256": "4159e64b85bea4d045405766ee5923cd4996f7ec77d4190739aff455d543c013"
+    },
+    {
+      "name": "cli-unit",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--lib",
+        "ctl::"
+      ],
+      "exit": 0,
+      "seconds": 31.668,
+      "log": "target/m2-compose-proof/cut2e-union-cli-unit.log",
+      "sha256": "b06d9cc3cfeca67bd71ff4d1b0b8231d3edf3a60d8659d4afd419c7231c99c9f"
+    },
+    {
+      "name": "cli-integration",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--target-dir",
+        "target/m2-compose-dev",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "ctl"
+      ],
+      "exit": 0,
+      "seconds": 47.997,
+      "log": "target/m2-compose-proof/cut2e-union-cli-integration.log",
+      "sha256": "1393e0412e9c84b058cfa24b4cc286280ddfc703be13d83a66112eed6cd8ec8b"
+    }
+  ],
+  "runtime_evidence": ".bboxy/runs/m2-compose-65267bad.json",
+  "runtime_limit": "The prior FULL M2 runtime proof stays attributed to 65267bad. This rebase runs exactly the protocol, composer and CLI union checks; no new night, parity or author presubmit claim."
+}

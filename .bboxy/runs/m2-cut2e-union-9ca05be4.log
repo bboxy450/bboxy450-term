@@ -1,0 +1,6 @@
+M2 final #320 union source 9ca05be49a18a4d880b5f9e8c0d6417d59010071; base c00be7937017c9d03be47d5761539d14bad44bc0.
+UiCompose runs inside ctl/ui.rs::run_verb; central VerbCx noun dispatcher unchanged.
+All eight rebased commits show G signatures. All 50798 existing golden bytes remain an exact prefix; three compose cases follow.
+Protocol/golden: 5/0; composer: 19/0; CLI unit: 23/0; CLI integration: 16/0. Every command and raw SHA256 is in the paired JSON.
+Runtime proof and prior named failures remain in m2-compose-65267bad.json; M2 FULL passed, focused catalogue global red because five other promises were deliberately untested. No new night or extra gate claim.
+Ready for the Oracle landing per 3ab8fd4c. Own dev target inactive; retained binary and runtime evidence remain available.
