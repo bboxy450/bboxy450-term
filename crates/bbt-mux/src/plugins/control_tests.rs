@@ -451,7 +451,7 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
     fs::copy(&other_fixture.path, &other).unwrap();
     let task = tokio::spawn({
         let f = f.clone();
-        let candidate = trusted.candidate.id;
+        let candidate = trusted.candidate.id.clone();
         async move { f.ask(Ulid::new(), PluginRequest::Check { candidate }).await }
     });
     let (mut gate, _) = tokio::time::timeout(std::time::Duration::from_secs(30), listener.accept())
@@ -493,7 +493,7 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
     let entries = f.ask(Ulid::new(), PluginRequest::List).await.unwrap();
     let changed = entries
         .iter()
-        .find(|entry| entry.candidate.source == f.path.to_string_lossy())
+        .find(|entry| entry.candidate.id == trusted.candidate.id)
         .unwrap();
     assert_eq!(changed.state(), State::NeedsRetrust);
     assert!(changed.conformance.is_none());
