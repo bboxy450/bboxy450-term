@@ -12,7 +12,7 @@ links:
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: builds-on }
   - { to: "[[mantras]]", rel: mantra }
 created: "2026-10-25T16:51:40Z"
-updated: "2026-10-25T18:12:11Z"
+updated: "2026-10-26T02:25:00Z"
 ---
 # Test policy
 
@@ -38,7 +38,7 @@ An Executor applies these to one crate's tests, one test at a time, and writes t
 
 ## 3. Dispositions
 
-**Delete** A1 to A4. **Rewrite** B1 to B3 and C1 to C4 on the seam or the contract. **Move to the night** B4 and the one real-boundary test per boundary of B2, tagged for the night tier so the presubmit never runs them. **Keep** D. The sweep's handoff lists, for every deleted test, the test that still covers its behaviour, and for every moved test, its night script; the acceptance of the sweep is that **no invariant check and no spec acceptance line lost its test**, checked by the `keeps:` tags against the invariants' README and the specs' acceptance sections, and that the crate's test-run time fell.
+**Delete** A1 to A4. **Rewrite** B1 to B3 and C1 to C4 on the seam or the contract. **Move to the night** B4 and the one real-boundary test per boundary of B2, tagged for the night tier so the presubmit never runs them. **Keep** D. The sweep's handoff lists, for every deleted test, the test that still covers its behaviour, and for every moved test, its night script; the acceptance of the sweep is that **no invariant check and no spec acceptance line lost its test**, checked by the `keeps:` tags against the invariants' README and the specs' acceptance sections, and that the crate's test-run time fell. **The time half applies only where it can be measured**: a crate whose warm test run is under 30 seconds lands on the coverage half alone, its timing recorded as unproven, never inferred (Nyx's `bbt-yarn` sweep, 2026-10-25: identical warm runs measured 10.6 s and 18.4 s under different load, nothing compiled by the outer cargo either time). **Compile-fail fixtures** (`trybuild` and its kind) are kept contracts of a macro's errors, D in §2, whose cost is compilation inside the test driver: the ledger records it as build, and per-crate selection already keeps it out of every presubmit that does not touch the macro crate.
 
 ## 4. Timeouts and parallelism
 
