@@ -30,7 +30,7 @@ bboxy_cache_env() {
     bboxy_cache_root=$(CDPATH='' cd -- "$bboxy_cache_root" && pwd -P)
     SCCACHE_SERVER_PORT=$(printf '%s' "$bboxy_cache_root" | cksum | awk '{print 4300 + $1 % 1000}')
     SCCACHE_DIR="$HOME/Library/Caches/bboxy450-sccache"
-    SCCACHE_CACHE_SIZE=50G
+    SCCACHE_CACHE_SIZE=20G
     SCCACHE_IGNORE_SERVER_IO_ERROR=1
     # An inherited Unix socket would override the worktree's TCP port.
     unset SCCACHE_SERVER_UDS
