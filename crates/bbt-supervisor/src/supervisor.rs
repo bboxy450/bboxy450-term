@@ -2112,6 +2112,7 @@ struct Seat {
     fd: RawFd,
     token: Token,
     registered: bool,
+    writable_interest: bool,
     read_ready: bool,
     write_ready: bool,
     eof: bool,
@@ -2182,6 +2183,7 @@ impl Seat {
             fd,
             token,
             registered: true,
+            writable_interest: false,
             read_ready: false,
             write_ready: true,
             eof: false,
@@ -2661,14 +2663,12 @@ impl Seat {
                 self.registered = false;
             }
         } else if self.registered {
-            actor.poll.registry().reregister(
-                &mut SourceFd(&self.fd),
+            update_pty_write_interest(
+                actor.poll.registry(),
+                self.fd,
                 self.token,
-                if self.pending_write.is_some() {
-                    Interest::READABLE | Interest::WRITABLE
-                } else {
-                    Interest::READABLE
-                },
+                &mut self.writable_interest,
+                self.pending_write.is_some(),
             )?;
         }
         Ok(())
@@ -2749,6 +2749,31 @@ impl Drop for Seat {
             let _ = self.child.wait();
         }
     }
+}
+
+fn update_pty_write_interest(
+    registry: &mio::Registry,
+    fd: RawFd,
+    token: Token,
+    current: &mut bool,
+    writable: bool,
+) -> io::Result<()> {
+    // Re-registering a kqueue filter re-arms unread bytes. A backpressured
+    // seat retains read_ready until credit returns; it needs no new poll event.
+    if *current == writable {
+        return Ok(());
+    }
+    registry.reregister(
+        &mut SourceFd(&fd),
+        token,
+        if writable {
+            Interest::READABLE | Interest::WRITABLE
+        } else {
+            Interest::READABLE
+        },
+    )?;
+    *current = writable;
+    Ok(())
 }
 
 fn pty_size(size: SeatSize) -> PtySize {
@@ -2880,6 +2905,78 @@ fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), 
 #[cfg(test)]
 mod capture_read_tests {
     use super::*;
+
+    // keeps: invariant seats-967-frame — held output must not manufacture poll turns
+    #[test]
+    fn unchanged_poll_interests_do_not_rearm_a_held_source() {
+        use std::io::{Read, Write};
+        use std::os::fd::AsRawFd;
+        use std::os::unix::net::UnixStream;
+
+        let (mut source, mut peer) = UnixStream::pair().unwrap();
+        source.set_nonblocking(true).unwrap();
+        peer.set_nonblocking(true).unwrap();
+        let mut poll = Poll::new().unwrap();
+        let mut events = Events::with_capacity(8);
+        let token = Token(2);
+        let fd = source.as_raw_fd();
+        poll.registry()
+            .register(&mut SourceFd(&fd), token, Interest::READABLE)
+            .unwrap();
+        let mut writable = false;
+        let poll_now = |poll: &mut Poll, events: &mut Events| loop {
+            match poll.poll(events, Some(Duration::ZERO)) {
+                Ok(()) => break,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+                Err(error) => panic!("poll failed: {error}"),
+            }
+        };
+
+        peer.write_all(b"held").unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(
+            events
+                .iter()
+                .any(|event| event.token() == token && event.is_readable())
+        );
+        // Model capture backpressure: leave the already observed byte unread.
+        update_pty_write_interest(poll.registry(), fd, token, &mut writable, false).unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(
+            events.iter().next().is_none(),
+            "unchanged interest rearmed bytes held under backpressure"
+        );
+        let mut bytes = [0; 4];
+        source.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"held");
+
+        peer.write_all(b"next").unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(events.iter().any(|event| event.is_readable()));
+        source.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"next");
+
+        update_pty_write_interest(poll.registry(), fd, token, &mut writable, true).unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(events.iter().any(|event| event.is_writable()));
+        update_pty_write_interest(poll.registry(), fd, token, &mut writable, true).unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(events.iter().next().is_none());
+
+        update_pty_write_interest(poll.registry(), fd, token, &mut writable, false).unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(events.iter().next().is_none());
+        peer.write_all(b"last").unwrap();
+        poll_now(&mut poll, &mut events);
+        assert!(
+            events
+                .iter()
+                .all(|event| event.is_readable() && !event.is_writable())
+        );
+        assert!(events.iter().next().is_some());
+        source.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"last");
+    }
 
     fn batch_row(id: u128, bytes: Vec<u8>) -> RingReadResult {
         let seat = Ulid::from(id);
