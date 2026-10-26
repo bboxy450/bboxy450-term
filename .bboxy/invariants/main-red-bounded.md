@@ -13,7 +13,7 @@ links:
   - { to: "[[no-chokepoints]]", rel: builds-on }
   - { to: "[[never-block-swarm]]", rel: builds-on }
 created: "2026-10-25T16:18:56Z"
-updated: "2026-10-25T23:26:14Z"
+updated: "2026-10-26T03:02:13Z"
 ---
 # Main is red at most until the next revert
 
@@ -64,6 +64,6 @@ each preceded by the Oracle's serial merged-tree run and followed by two or
 three peer rebases; no postsubmit, so a red main had no definition and no
 bound.
 
-**Active (2026-10-25).** The first full watcher verdict is 5c6d0edc, green, every gate including parity; the check run on live state exits 0, held, no violations, covered through 8b259fb3 (a later infrastructure red closed by a logged `manual-green`). It stays in the **slow tier with `gate: watch`**: the check reads the live landing state, not the tree, so it exits 2 on an empty state directory and must never run in a presubmit's fresh environment (the trap of #318); the watcher and the night run it, where its state lives.
+**Active (2026-10-25).** The first full watcher verdict is 5c6d0edc, green, every gate including parity; the check run on live state exits 0, held, no violations, covered through 8b259fb3 (a later infrastructure red closed by a logged `manual-green`). It stays in the **slow tier with `gate: watch`**: the check reads the live landing state and describes `main`, not the cut under test, so it belongs to the watcher and the night, where that state lives, and never to a presubmit. With no postsubmit history at all it reports `pending`, `covered_through: null`, no violations, exit 0, as the pending rule above says (Nyx, from the landed source and its bootstrap fixture, verified on a new empty state directory; an earlier sentence here said exit 2, from a run of an older build, and was wrong).
 
 Owner: Corvin Duskmantle <ARCHITECT>.
