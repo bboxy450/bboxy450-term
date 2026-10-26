@@ -3,7 +3,7 @@
     "Oracle fe4a93ae",
     "Oracle aa40e0a9"
   ],
-  "status": "fixture5/0 and binary build0; actual Codex/Claude terminal verification pending",
+  "status": "fixture5/0; binary0; actual Codex terminal9/9 green with dummy caller markers; Claude-context proof pending",
   "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
   "mechanisms": [
     "crates/bboxy450-term/src/e2e_night.rs \u2014 isolated_command calls env_clear and copies only PATH/TERM/POSIX locale/TMPDIR before setting private HOME, CLAUDE_CONFIG_DIR and CODEX_HOME",
@@ -67,7 +67,7 @@
     "CODEX_HOME is explicitly replaced with the private path; no other caller CODEX_* key is inherited.",
     "Test-only root/device identity uses file custody, never the operator account.",
     "Original T6/T9 HOME guards, mock-provider fixtures, recovery assertions and deadlines remain.",
-    "No two-context night pass, full all-groups/scale pass, author landing or postsubmit acceptance claimed yet."
+    "Claude-context result, author landing and postsubmit acceptance remain unverified. No full all-groups/scale claim."
   ],
   "priority": {
     "ruling": [
@@ -91,5 +91,252 @@
     "sha256": "87bc547d9ec9c7a81028dcf212d5d0dc674044f915272927857afa2aaac0a610",
     "bytes": 59731728,
     "source_sha256": "ee87e9307985f40e57e1bc6a7b34087b6b8c528cf5a034ba6deb8d2365257199"
+  },
+  "codex_terminal": {
+    "context": "actual Codex Executor shell; known dummy caller harness/messaging/API markers injected",
+    "summary": {
+      "group": "terminal",
+      "kept": null,
+      "kind": "summary",
+      "partial": [],
+      "passed": 9,
+      "red": [],
+      "state": "green",
+      "total": 9,
+      "tracked": [],
+      "unwritten": []
+    },
+    "verdicts": [
+      {
+        "coverage": "full",
+        "evidence": "{\"harness\": \"claude\", \"place\": \"right\", \"seat\": \"01M5WX4KYAX56YEH9RSBQB4BQP\", \"opened_frame\": 129, \"ready_frame\": 133, \"admitted_frame\": 129, \"starting_frame\": 130, \"frames\": 1}\n{\"harness\": \"claude\", \"place\": \"down\", \"seat\": \"01M5WX4MSKAVZ19205J3D961F0\", \"opened_frame\": 152, \"ready_frame\": 159, \"admitted_frame\": 154, \"starting_frame\": 155, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"tab\", \"seat\": \"01M5WX4NR5TFWAF9SHWKXQNG0T\", \"opened_frame\": 177, \"ready_frame\": 183, \"admitted_frame\": 179, \"starting_frame\": 180, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"right\", \"seat\": \"01M5WX4PQZ03Z3K8ZGG7RKCAZA\", \"opened_frame\": 198, \"ready_frame\": 203, \"admitted_frame\": 200, \"starting_frame\": 201, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"down\", \"seat\": \"01M5WX4QP6PK9G8465N1AV5T3C\", \"opened_frame\": 224, \"ready_frame\": 229, \"admitted_frame\": 224, \"starting_frame\": 225, \"frames\": 1}\nT1: launcher rows/placements, real PTYs/input, pool names, captures and one-frame startup held",
+        "exit": 0,
+        "function": "T1",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "T2: real PTY received exact typed bytes and all 100000 paste bytes; the first frame after echo ingestion drew that sequence or a later one",
+        "exit": 0,
+        "function": "T2",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"action\": \"window-shrink\", \"before\": [159, 54], \"after\": [49, 18], \"signals\": 1, \"frame_seq\": 215, \"sentinel_ink_cells\": 8586, \"grid_pixels\": 105840, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"window-grow\", \"before\": [49, 18], \"after\": [79, 34], \"signals\": 1, \"frame_seq\": 229, \"sentinel_ink_cells\": 882, \"grid_pixels\": 322320, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"pane-split\", \"before\": [79, 34], \"after\": [38, 34], \"signals\": 1, \"frame_seq\": 252, \"sentinel_ink_cells\": 2686, \"grid_pixels\": 155040, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\nT3: window and pane resizes deliver SIGWINCH/stty size; every new-grid pixel is repainted",
+        "exit": 0,
+        "function": "T3",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"styles\": {\"normal_mass\": 20585, \"bold_mass\": 27132, \"italic_different_pixels\": 62, \"underline_pixels\": 8, \"underline_rows\": [13]}, \"colours\": [{\"wire\": {\"Named\": \"Red\"}, \"rgb\": [204, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Green\"}, \"rgb\": [78, 154, 6], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Blue\"}, \"rgb\": [52, 101, 164], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Indexed\": 196}, \"rgb\": [255, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Spec\": {\"r\": 17, \"g\": 203, \"b\": 145}}, \"rgb\": [17, 203, 145], \"foreground_pixels\": 120, \"background_pixels\": 120}], \"wide\": {\"automatic_equals_explicit\": true, \"han_cells\": 2, \"emoji_cells\": 2, \"both_halves_have_ink\": true}, \"cursor\": [{\"kind\": \"b\", \"pixels\": 120, \"width\": 8, \"height\": 15}, {\"kind\": \"u\", \"pixels\": 8, \"width\": 8, \"height\": 1}, {\"kind\": \"s\", \"pixels\": 15, \"width\": 1, \"height\": 15}], \"cell\": [8, 15]}",
+        "exit": 0,
+        "function": "T4",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"before\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WX78Y27TDJ7QKS8HEZP1B7\", \"tab\": \"01M5WX78Y23PCXY8WY3WHVRJ8J\", \"focused\": \"01M5WX79TAC7X0ABAD1JRQNHDB\", \"panes\": [{\"seat\": \"01M5WX78YH6BGX9RFMAWJ6KBGC\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WX79C8E7AVHKVF4PGD36YZ\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WX79TAC7X0ABAD1JRQNHDB\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"after\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WX78Y27TDJ7QKS8HEZP1B7\", \"tab\": \"01M5WX78Y23PCXY8WY3WHVRJ8J\", \"focused\": \"01M5WX79TAC7X0ABAD1JRQNHDB\", \"panes\": [{\"seat\": \"01M5WX78YH6BGX9RFMAWJ6KBGC\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WX79C8E7AVHKVF4PGD36YZ\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WX79TAC7X0ABAD1JRQNHDB\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"owners\": {\"logic\": 91736, \"supervisor\": 91735}, \"old_app\": 91732, \"new_app\": 91888, \"ready_frame\": 1, \"first_capture\": \"/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T5/work/t5-first-after.png\", \"pty_pids\": {\"01M5WX78YH6BGX9RFMAWJ6KBGC\": 91777, \"01M5WX79C8E7AVHKVF4PGD36YZ\": 91810, \"01M5WX79TAC7X0ABAD1JRQNHDB\": 91825}, \"verdict\": \"app-only crash keeps real programs, layout, focus and pane scroll\"}",
+        "exit": 0,
+        "function": "T5",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T6\", \"verdict\": \"full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines\", \"seats\": [\"01M5WX7G0DXA0EMBQKFV0WX5E0\", \"01M5WX7JPVNJ6JEXPRG3KZFQG9\", \"01M5WX7N7603GMZ5AB4WM2FH2M\"]}",
+        "exit": 0,
+        "function": "T6",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"phase\": \"before\", \"frame_seq\": 63, \"panes\": {\"01M5WX89SS8DAZVYZAZMY33B5C\": [311.0, 71.0, 628.0, 818.0], \"01M5WX8A4E64QA5B7ZNFAVFG0G\": [961.0, 71.0, 628.0, 387.0], \"01M5WX8ADJT3SVBS2QE7B6DWZP\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WX8A4E64QA5B7ZNFAVFG0G\", \"closed_strips\": 0}\n{\"phase\": \"grace-first\", \"frame_seq\": 79, \"panes\": {\"01M5WX89SS8DAZVYZAZMY33B5C\": [311.0, 71.0, 628.0, 818.0], \"01M5WX8ADJT3SVBS2QE7B6DWZP\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WX89SS8DAZVYZAZMY33B5C\", \"closed_strips\": 1}\n{\"phase\": \"restored\", \"frame_seq\": 93, \"panes\": {\"01M5WX89SS8DAZVYZAZMY33B5C\": [311.0, 71.0, 628.0, 818.0], \"01M5WX8A4E64QA5B7ZNFAVFG0G\": [961.0, 71.0, 628.0, 387.0], \"01M5WX8ADJT3SVBS2QE7B6DWZP\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WX8A4E64QA5B7ZNFAVFG0G\", \"closed_strips\": 0}\n{\"phase\": \"grace-second\", \"frame_seq\": 118, \"panes\": {\"01M5WX89SS8DAZVYZAZMY33B5C\": [311.0, 71.0, 628.0, 818.0], \"01M5WX8ADJT3SVBS2QE7B6DWZP\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WX89SS8DAZVYZAZMY33B5C\", \"closed_strips\": 1}\n{\"phase\": \"gone\", \"frame_seq\": 564, \"panes\": {\"01M5WX89SS8DAZVYZAZMY33B5C\": [311.0, 71.0, 628.0, 818.0], \"01M5WX8ADJT3SVBS2QE7B6DWZP\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WX89SS8DAZVYZAZMY33B5C\", \"closed_strips\": 0}\nnote: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held",
+        "exit": 0,
+        "function": "T7",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"glyph_rect\": [268.0, 107.5, 11.0, 11.0], \"grade_ink\": {\"inferred\": {\"inner\": 4292, \"peak\": 138, \"outer\": 4252}, \"reported\": {\"inner\": 5938, \"peak\": 191, \"outer\": 0}}, \"states\": [{\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"inferred\", \"observed_ms\": 0, \"process\": {\"kind\": \"running\", \"pid\": 98436}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}, {\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"reported\", \"observed_ms\": 1793045384783, \"process\": {\"kind\": \"running\", \"pid\": 98436}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}]}\nT8: real OSC state, silent inferred idle, reported idle/active/child/clear and invalid reports held",
+        "exit": 0,
+        "function": "T8",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T9\", \"verdict\": \"full: explicit ctl restarts preserve 3 seat IDs and native sessions/transcripts, advance generations once, reap old PIDs and retain the shell screen or gap\", \"seats\": [\"01M5WXBCGA5QQ6SPT991WN90J3\", \"01M5WXBHDKJC9Q2DFK2YRQ348W\", \"01M5WXBKKJKEJ24Q5YETQPHQH7\"]}",
+        "exit": 0,
+        "function": "T9",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      }
+    ],
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "T1",
+        "issued_by": "test-account:01M5WX4F3MGYX08S65F3QP39JH",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 87353,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T1/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T2",
+        "issued_by": "test-account:01M5WX4RQAS807B7W0FJX4P4ZV",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 87826,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T3",
+        "issued_by": "test-account:01M5WX4TQ7EDJV5KM3BTQSJSF3",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 87874,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T3/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T4",
+        "issued_by": "test-account:01M5WX5R0W0S2P230NZTX2VG90",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 88961,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T4/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T5",
+        "issued_by": "test-account:01M5WX78HR4D44X0JZ2XFNT7RW",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 91732,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T5/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T6",
+        "issued_by": "test-account:01M5WX7FJ9EG385PE545N3Q357",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 91988,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T7",
+        "issued_by": "test-account:01M5WX89E344X7E0V60S0Z0PDB",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 93020,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T7/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T8",
+        "issued_by": "test-account:01M5WXABYY16FK07CY66QN7PEG",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 98390,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T8/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T9",
+        "issued_by": "test-account:01M5WXBC14SWTP44HCRG5RHH36",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 492,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/T9/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5WXBWNEMABQG15DDXAZH3K9",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 1255,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2engRqgs8/records-app/run",
+        "windows": 0
+      }
+    ],
+    "pid_check": {
+      "argv": [
+        "ps",
+        "-p",
+        "87353,87826,87874,88961,91732,91988,93020,98390,492,1255",
+        "-o",
+        "pid=,lstart=,args="
+      ],
+      "exit": 1,
+      "stdout": ""
+    },
+    "exit": 0,
+    "seconds": 248.25484490394592,
+    "argv": [
+      "env",
+      "BBT=/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-env-20261026/bin/bboxy450-term",
+      "CLAUDE_CODE_CHILD_SESSION=night-caller-sentinel",
+      "CLAUDE_CODE_MESSAGING_SOCKET=night-caller-sentinel",
+      "CLAUDE_CODE_MESSAGING_TOKEN=night-caller-sentinel",
+      "CODEX_THREAD_ID=night-caller-sentinel",
+      "ANTHROPIC_API_KEY=night-caller-sentinel",
+      "OPENAI_API_KEY=night-caller-sentinel",
+      "sh",
+      "scripts/e2e-night.sh",
+      "terminal"
+    ],
+    "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/night-env-codex-terminal.log",
+    "log_sha256": "7d401847d96ebf858f7fdda19ea5b5c42d1548d9fea3203e262426573f6715b8"
   }
 }
