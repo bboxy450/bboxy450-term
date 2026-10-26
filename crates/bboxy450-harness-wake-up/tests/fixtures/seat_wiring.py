@@ -158,7 +158,7 @@ else:
     assert skill.startswith(role_prompt + "\n\n")
     mcp = {"command": overrides["mcp_servers.bboxy.command"], "args": overrides["mcp_servers.bboxy.args"]}
     assert overrides["mcp_servers.bboxy.env_vars"] == [
-        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION",
+        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR",
     ]
     assert overrides["notify"] == [executable, "hook", "--agent", "codex-notify"]
     hooks = overrides["hooks"]

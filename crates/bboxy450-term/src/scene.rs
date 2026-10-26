@@ -1740,12 +1740,7 @@ mod error_hud_tests {
         let scene = Scene::live();
         assert!(scene.error_overlay([800., 600.], 0).is_empty());
         let painted = texts(&scene.error_overlay([800., 600.], 3));
-        assert!(
-            painted
-                .iter()
-                .any(|t| t == "3 unread errors · ctl debug errors"),
-            "{painted:?}"
-        );
+        assert_eq!(painted.concat(), "3 unread errors · ctl debug errors");
     }
 }
 
