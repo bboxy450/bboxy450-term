@@ -16,7 +16,7 @@ links:
   - { to: "[[d285-no-gated-communications]]", rel: builds-on }
   - { to: "[[mcp-control-plane]]", rel: builds-on }
 created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T01:07:01Z"
+updated: "2026-10-26T01:09:42Z"
 ---
 # Messaging attention
 
@@ -65,7 +65,7 @@ For each seat, a **policy** maps (destination, class) to one of three modes, wit
 | `digest` | stored, then delivered natively **once** per window as one summary listing every message by id, when the window closes or the batch reaches its cap |
 | *mute* | the operator's swarm mute of [[messaging]], unchanged: holds the seat's traffic both ways and is set by the operator, never by the seat |
 
-**No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Defaults are keyed by role name** (`oracle`, `architect`, `creativity`, executor roles), not by priority class, since the class distinguishes only oracle from worker; **defaults by role**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `inbox` (the Oracle verifies from the landing log, not from posts; it may set events to `digest` for itself, and that is then its choice, not the default; corrected the same day at Velvet's question, since a digest default contradicted [[notices-never-wake]]). Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
+**No role default wakes on an event**, natively or by digest; events reach a model only by a seat's own choice. **Which default a seat gets** (the Oracle's ruling, same day): the Oracle by its priority class, the Architect and Creativity by `role.name`, every other seat the Executor defaults; an omitted policy on the seat record means that role default, so records written before MA-2 keep their bytes; **defaults by role**, each overridable by the seat for itself and by the operator for any seat: Oracle: conversation `wake`, events `inbox` (the Oracle verifies from the landing log, not from posts; it may set events to `digest` for itself, and that is then its choice, not the default; corrected the same day at Velvet's question, since a digest default contradicted [[notices-never-wake]]). Architect and Creativity: DMs and messages addressed to them by name `wake`, channel conversation `inbox`, events `inbox`. Executors: briefs, delegations and replies in a thread they started `wake`, other conversation `digest`, events `inbox`. Operator principal and the cockpit: everything visible, nothing wakes a model.
 
 **Always wake, whatever the policy**, for **conversation** only: a message from the operator principal, a task delegated to that seat, and a reply in a thread that seat started. A seat cannot set itself to miss its own work. An **event** never wakes by default, whoever authored it, the operator included: an operator's mute notice is status, not a question (Velvet's question, 2026-10-25).
 
