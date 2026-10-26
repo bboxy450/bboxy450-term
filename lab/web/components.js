@@ -1814,7 +1814,8 @@
         add('Knowledge', card('Knowledge roots', [note('A root is a place records live; each names the provider that reads it. Swapping the provider moves no file: the new one reads the same records, or refuses with its reason.'),
           ...KN.roots.map(r => el('div', { class: 'kn-root' + (r.refused ? ' refused' : '') },
             el('div', { class: 'kn-h' }, icon('book'), el('b', {}, r.name), el('code', {}, r.path), el('span', { class: 'pl-sp' }), el('span', { class: 'kn-n' }, r.records + ' records')),
-            row('Provider', r.provider === KN.offered[0] ? 'bundled, in process' : 'a trusted plugin over stdio', select(KN.offered, r.provider, x => { r.provider = x; emit('knowledge', r.name, x); draw(); }), r.provider !== KN.offered[0], () => { r.provider = KN.offered[0]; emit('knowledge', r.name, r.provider); draw(); }),
+            // no optimistic state, as for plugin intents: while a swap is pending the observed provider still answers and the select stays on it
+            row('Provider', r.pending ? 'swapping to ' + r.pending.to + '…' : r.provider === KN.offered[0] ? 'bundled, in process' : 'a trusted plugin over stdio', r.pending ? (() => { const sel = select(KN.offered, r.provider); sel.disabled = true; return sel; })() : select(KN.offered, r.provider, x => { r.provider = x; emit('knowledge', r.name, x); draw(); }), r.provider !== KN.offered[0], () => { r.provider = KN.offered[0]; emit('knowledge', r.name, r.provider); draw(); }),
             el('div', { class: 'kn-ans' }, 'answering: ', el('b', {}, r.answering), r.digests ? el('span', {}, ' · ' + r.digests) : null),
             r.refused ? el('div', { class: 'pl-alert', role: 'status' }, '⚠ ', r.refused) : null)),
           note('A second provider is offered only after it passes bboxy450-term plugin check and the contract’s conformance fixtures.')]));
