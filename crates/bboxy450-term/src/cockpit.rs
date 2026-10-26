@@ -5,7 +5,7 @@
 
 use std::{
     collections::{BTreeMap, VecDeque},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Stdio,
     time::Duration,
 };
@@ -197,6 +197,28 @@ pub struct Config {
     pub test_account: Option<PathBuf>,
 }
 impl Config {
+    /// An explicit repository is never silently replaced with another workspace.
+    pub fn repository_from_args(args: &[String]) -> Result<Option<PathBuf>> {
+        let mut selected = None;
+        for (index, arg) in args.iter().enumerate() {
+            let path = if arg == "--repository" {
+                args.get(index + 1)
+                    .filter(|path| !path.starts_with('-'))
+                    .map(String::as_str)
+                    .ok_or_else(|| invalid("--repository needs a directory"))?
+            } else if let Some(path) = arg.strip_prefix("--repository=") {
+                path
+            } else {
+                continue;
+            };
+            if selected.is_some() || path.is_empty() {
+                return Err(invalid("--repository needs one directory"));
+            }
+            selected = Some(PathBuf::from(path));
+        }
+        Ok(selected)
+    }
+
     /// Parse the selector before any backend opens. Invalid input never falls
     /// through to the real account's native custody.
     pub fn test_account_from_args(args: &[String]) -> Result<Option<PathBuf>> {
@@ -241,8 +263,15 @@ impl Config {
     /// Resolve the executable, repository and local control endpoint on IO.
     pub fn discover(run_dir: Option<PathBuf>) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let test_account =
-            Self::test_account_from_args(&std::env::args().skip(1).collect::<Vec<_>>())?;
+        let args: Vec<_> = std::env::args().skip(1).collect();
+        let test_account = Self::test_account_from_args(&args)?;
+        let selected = Self::repository_from_args(&args)?;
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        let repository = resolve_repository(
+            selected.as_deref(),
+            std::env::current_dir(),
+            home.as_deref(),
+        )?;
         let run_dir = run_dir.or_else(|| test_account.as_ref().map(|root| root.join("run")));
         let socket = match run_dir.as_ref() {
             Some(root) => root.join("mux.sock"),
@@ -256,11 +285,153 @@ impl Config {
             executable: std::env::current_exe()?,
             socket,
             run_dir,
-            repository: std::env::current_dir()?,
+            repository,
             shell_config: std::env::var_os("ZDOTDIR").map(PathBuf::from),
             ctl: false,
             test_account,
         })
+    }
+}
+
+fn checked_repository(path: &Path) -> Result<PathBuf> {
+    let check = || -> std::io::Result<PathBuf> {
+        let path = path.canonicalize()?;
+        if path.parent().is_none() || !path.is_dir() {
+            return Err(std::io::Error::other(
+                "choose a directory other than the filesystem root",
+            ));
+        }
+        // Probe real filesystem permissions (including ACLs), without leaving a
+        // file behind. An existing read-only .bboxy is unusable even if cwd is writable.
+        let _probe = tempfile::Builder::new()
+            .prefix(".bboxy-write-")
+            .tempfile_in(&path)?;
+        let records = path.join(".bboxy");
+        if records.try_exists()? {
+            if !records.is_dir() {
+                return Err(std::io::Error::other(".bboxy is not a directory"));
+            }
+            let _probe = tempfile::Builder::new()
+                .prefix(".bboxy-write-")
+                .tempfile_in(records)?;
+        }
+        Ok(path)
+    };
+    check().map_err(|error| invalid(format!("repository_unavailable: {}: {error}; choose a writable directory with --repository PATH", path.display())))
+}
+
+fn resolve_repository(
+    selected: Option<&Path>,
+    cwd: std::io::Result<PathBuf>,
+    home: Option<&Path>,
+) -> Result<PathBuf> {
+    if let Some(path) = selected {
+        return checked_repository(path);
+    }
+    if let Ok(cwd) = cwd
+        && let Ok(repository) = checked_repository(&cwd)
+    {
+        return Ok(repository);
+    }
+    let home = home.ok_or_else(|| invalid("repository_unavailable: HOME is unavailable for the default workspace; use --repository PATH"))?;
+    let path = home.join("Library/Application Support/bboxy450-term/workspace");
+    use std::os::unix::fs::DirBuilderExt;
+    std::fs::DirBuilder::new()
+        .recursive(true)
+        .mode(0o700)
+        .create(&path)
+        .map_err(|error| {
+            invalid(format!(
+                "repository_unavailable: {}: {error}; use --repository PATH",
+                path.display()
+            ))
+        })?;
+    checked_repository(&path)
+}
+
+#[cfg(test)]
+mod repository_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    // keeps: release #54 (explicit repository parsing never silently falls back).
+    #[test]
+    fn repository_arguments_accept_both_forms_and_reject_missing_or_duplicate_paths() {
+        for args in [
+            vec!["--repository", "somewhere"],
+            vec!["--repository=somewhere"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert_eq!(
+                Config::repository_from_args(&args).unwrap(),
+                Some("somewhere".into())
+            );
+        }
+        for args in [
+            vec!["--repository"],
+            vec!["--repository", "--headless"],
+            vec!["--repository="],
+            vec!["--repository=a", "--repository=b"],
+        ] {
+            let args = args.into_iter().map(str::to_owned).collect::<Vec<_>>();
+            assert!(Config::repository_from_args(&args).is_err());
+        }
+    }
+
+    // keeps: release #54 (Finder cwd and unavailable cwd use a private writable workspace).
+    #[test]
+    fn finder_and_unavailable_working_directories_use_the_app_workspace() {
+        let home = tempfile::tempdir().unwrap();
+        let expected = home
+            .path()
+            .join("Library/Application Support/bboxy450-term/workspace");
+        for cwd in [
+            Ok(PathBuf::from("/")),
+            Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+        ] {
+            let selected = resolve_repository(None, cwd, Some(home.path())).unwrap();
+            assert_eq!(selected, expected.canonicalize().unwrap());
+            assert!(selected.is_dir());
+        }
+        let cwd = tempfile::tempdir().unwrap();
+        assert_eq!(
+            resolve_repository(None, Ok(cwd.path().into()), Some(home.path())).unwrap(),
+            cwd.path().canonicalize().unwrap()
+        );
+    }
+
+    // keeps: release #54 (implicit read-only roots fall back; explicit roots are refused).
+    #[test]
+    fn readonly_repository_or_existing_records_are_never_passed_to_logic() {
+        let home = tempfile::tempdir().unwrap();
+        let root = tempfile::tempdir().unwrap();
+        let records = root.path().join(".bboxy");
+        std::fs::create_dir(&records).unwrap();
+        for readonly in [root.path(), records.as_path()] {
+            std::fs::set_permissions(readonly, std::fs::Permissions::from_mode(0o500)).unwrap();
+            let implicit = resolve_repository(None, Ok(root.path().into()), Some(home.path()));
+            let explicit =
+                resolve_repository(Some(root.path()), Ok(home.path().into()), Some(home.path()));
+            std::fs::set_permissions(readonly, std::fs::Permissions::from_mode(0o700)).unwrap();
+            assert_eq!(
+                implicit.unwrap(),
+                home.path()
+                    .join("Library/Application Support/bboxy450-term/workspace")
+                    .canonicalize()
+                    .unwrap()
+            );
+            assert!(
+                explicit
+                    .unwrap_err()
+                    .to_string()
+                    .starts_with("repository_unavailable:")
+            );
+        }
+        assert_eq!(
+            resolve_repository(Some(root.path()), Ok(PathBuf::from("/")), Some(home.path()))
+                .unwrap(),
+            root.path().canonicalize().unwrap()
+        );
     }
 }
 
@@ -644,8 +815,10 @@ impl Drop for Session {
 }
 impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
-    pub async fn start(config: Config) -> Result<Self> {
+    pub async fn start(mut config: Config) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        // Refuse before any custody or child process opens, including direct callers.
+        config.repository = checked_repository(&config.repository)?;
         if let Some(directory) = &config.test_account {
             bbt_mux::identity::TestAccount::prepare_directory(directory)?;
         }

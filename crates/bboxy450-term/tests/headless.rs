@@ -12,6 +12,57 @@ use std::{
 
 const BIN: &str = env!("CARGO_BIN_EXE_bboxy450-term");
 
+// keeps: release #54 (Finder launches from / keep real logic alive with file custody).
+#[test]
+#[ignore = "night: real headless app and child-process startup boundary"]
+fn finder_root_cwd_starts_logic_in_an_owned_writable_workspace() {
+    let mut fixture = Fixture::new();
+    let home = fixture.root.path().join("home");
+    std::fs::create_dir(&home).unwrap();
+    let out = Command::new(BIN)
+        .args([
+            "ctl",
+            "app",
+            "start",
+            "--headless",
+            "--ctl",
+            "--unattended",
+            "--test-account",
+        ])
+        .arg(fixture.root.path().join("account"))
+        .arg("--run-dir")
+        .arg(&fixture.run)
+        .current_dir("/")
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+        .env("HOME", &home)
+        .env("CODEX_HOME", home.join(".codex"))
+        .env("CLAUDE_CONFIG_DIR", home.join(".claude"))
+        .env("ZDOTDIR", fixture.root.path().join("shell"))
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}; {}",
+        String::from_utf8_lossy(&out.stdout),
+        fixture.log()
+    );
+    let reply: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(reply["ok"], true, "{reply}");
+    fixture.pid = reply["data"]["pid"].as_u64().map(|pid| pid as u32);
+    assert!(fixture.pid.is_some(), "{reply}");
+    let status = fixture.ok(&["app", "status"]);
+    assert_eq!(status["data"]["backend_ready"], true, "{status}");
+    fixture.ok(&["seat", "ls"]); // A real logic RPC, not just frontend readiness.
+    assert!(
+        home.join("Library/Application Support/bboxy450-term/workspace/.bboxy")
+            .is_dir()
+    );
+    fixture.ok(&["app", "stop"]);
+    fixture.wait_stopped();
+}
+
 struct Fixture {
     root: tempfile::TempDir,
     run: PathBuf,

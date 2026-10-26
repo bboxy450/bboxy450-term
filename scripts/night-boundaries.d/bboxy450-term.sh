@@ -43,3 +43,4 @@ cargo test -p bboxy450-term --locked --test recovery recovered_generation_admiss
 cargo test -p bboxy450-term --locked --test recovery shutdown_during_pending_recovery_reaps_children_without_restarting -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test recovery supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test test_account logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority -- --ignored --exact --nocapture
+cargo test -p bboxy450-term --locked --test headless finder_root_cwd_starts_logic_in_an_owned_writable_workspace -- --ignored --exact --nocapture

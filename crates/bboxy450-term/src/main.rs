@@ -3998,6 +3998,24 @@ impl App {
             let _ = proxy.send_event(UiEvent::BeginIdle);
         });
     }
+    fn show_repository_error(&mut self, error: &str) -> bool {
+        if !error.starts_with("repository_unavailable:") {
+            return false;
+        }
+        self.logger.write(error);
+        self.error = Some(error.into());
+        self.backend_lost = true;
+        self.live_commands = None;
+        self.scene.backend_lost();
+        // Use the existing Settings error surface; keep the window open so a
+        // Finder launch cannot turn a repository refusal into a disappearing app.
+        self.open_settings("Account");
+        if let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+            controller.error = Some(error.into());
+        }
+        self.request_redraw();
+        true
+    }
     fn fail(&mut self, error: String, event_loop: &ActiveEventLoop) {
         self.logger.write(format!("app error: {error}"));
         self.error = Some(error);
@@ -6285,7 +6303,11 @@ impl ApplicationHandler<UiEvent> for App {
                 } else {
                     match result {
                         Ok(()) => event_loop.exit(),
-                        Err(error) => self.fail(error, event_loop),
+                        Err(error) => {
+                            if !self.show_repository_error(&error) {
+                                self.fail(error, event_loop);
+                            }
+                        }
                     }
                 }
             }
@@ -7268,6 +7290,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
+  --repository PATH    repository directory (default: cwd, or a writable app workspace)
   --headless           run the app and renderer without opening a window
   --ctl                enable the operator's ctl endpoint
 
@@ -7691,6 +7714,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
+    bboxy450_term::cockpit::Config::repository_from_args(&hook_args)
+        .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
@@ -7858,6 +7883,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(error.into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod repository_error_tests {
+    use super::*;
+
+    // keeps: release #54 (an unusable explicit repository stays visible in the window).
+    #[test]
+    fn repository_refusal_opens_the_existing_settings_error_surface() {
+        if isolated_ui_case(
+            "repository_error_tests::repository_refusal_opens_the_existing_settings_error_surface",
+        ) {
+            return;
+        }
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake {
+            fn wake(&self) {}
+        }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let latest = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
+        let mut app = App::owner(
+            UiProxy::Headless(Arc::new(|_| {})),
+            inbox,
+            log::Logger::new(),
+            latest,
+            &["--headless".into()],
+            Verify::default(),
+        );
+        let reason = "repository_unavailable: /read-only: permission denied; choose a writable directory with --repository PATH";
+        assert!(app.show_repository_error(reason));
+        app.solve_ui([1200., 900.]).unwrap();
+        let layout = &app.local_page_layout.as_ref().unwrap().layout;
+        let node = ui_layout_node(layout, &mut 4096, &mut (16 * 1024)).unwrap();
+        assert!(serde_json::to_string(&node).unwrap().contains(reason));
+        assert!(app.backend_lost);
+        assert_eq!(app.error.as_deref(), Some(reason));
+    }
 }
 
 fn unix_ms(at: Option<std::time::SystemTime>) -> Option<u64> {
