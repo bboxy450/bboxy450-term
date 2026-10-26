@@ -1920,6 +1920,10 @@ mod tests {
                 method: "list".into(),
                 args: json!({}),
             },
+            GuiAction::Plugin {
+                id,
+                request: bbt_proto::gui::PluginRequest::List,
+            },
             GuiAction::RecordWrite {
                 id,
                 args: json!({}),
