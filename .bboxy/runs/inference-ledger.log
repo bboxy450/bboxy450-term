@@ -24,5 +24,7 @@ The natural author window 03:37:13.712738–03:43:42.381800 UTC is bracketed by 
 Cleanup
 Corvin e1bb6480 confirmed the historical sable-hk0-cdibcyqm root and its private alias are already absent, retired earlier. Zero additional bytes deleted. The author driver owns/retired its slot and check tree; no separate dev target was created. Shared cache untouched.
 
+Evidence publication: the first records-push invocation omitted its required message/path and exited 1 before checks or push. Corrected through the existing records-push script with explicit message/path; no source validation rerun. Git comparisons before-to-checked and checked-to-landed both EXIT 0 for all three source paths.
+Raw author commands SHA-256: f5fb34155b6791306fa164df44e82827b918997995ee83f91e20e06faf13f6ca.
 Private evidence root: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-launch-night-iloqd6d6
 inference-source-proof.json, inference-handoff-draft.json, inference-*.command/log/result.json; ledger-inference-gate-cpu-report.json. Raw author commands: /Users/feral/.local/state/bboxy450-term/landing/presubmits/1d074d6fd0c63966f09068b1043a4ab8f3d21cd0-a5dd703f/commands.log (hash in the private final proof). Collector progress and bindings stay in ~/.local/state/bboxy450-term/landing/ledger, never Git.
