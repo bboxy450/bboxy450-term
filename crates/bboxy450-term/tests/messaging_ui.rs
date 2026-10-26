@@ -231,6 +231,11 @@ fn ui_role_compose_uses_one_real_composer_group_and_scoped_targets() {
         text: "one role send".into(),
     };
     let submission = bboxy450_term::messaging::ui_compose_draft(&model, &stage, &request).unwrap();
+    assert_eq!(
+        submission.to[0].n,
+        Some(2),
+        "the role chip keeps its actual membership count"
+    );
     let mut client = Client::default();
     let batch = client.prepare_for(&model, &stage, submission).unwrap();
     let commands = client.admitted(batch);

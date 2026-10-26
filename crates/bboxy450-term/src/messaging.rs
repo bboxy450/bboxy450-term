@@ -533,31 +533,20 @@ pub fn ui_compose_draft(
 ) -> Result<Submission, &'static str> {
     use bbt_proto::gui::UiComposeTarget;
     request.validate()?;
-    let swarm = stage.swarm.ok_or("swarm_required")?;
+    let (_, choices) = catalog(model, stage).ok_or("swarm_required")?;
     let address = match &request.to {
-        UiComposeTarget::Seat(id) => {
-            let seat = model
-                .ui
-                .seats
-                .get(&bbt_ui_model::SeatId::from_u128(id.0))
-                .filter(|seat| {
-                    seat.swarm == swarm && seat.lifecycle == bbt_ui_model::Lifecycle::Open
-                })
-                .ok_or("composer_seat_not_in_swarm")?;
-            Address {
-                kind: "seat".into(),
-                id: id.to_string(),
-                label: seat.name.clone(),
-                destination: format!("seats/{id}/inbox"),
-                ..Default::default()
-            }
-        }
-        UiComposeTarget::Role(role) => Address {
-            kind: "role".into(),
-            role: role.clone(),
-            label: role.clone(),
-            ..Default::default()
-        },
+        UiComposeTarget::Seat(id) => choices
+            .iter()
+            .flat_map(|group| &group.items)
+            .find(|address| address.kind == "seat" && address.id == id.to_string())
+            .cloned()
+            .ok_or("composer_seat_not_in_swarm")?,
+        UiComposeTarget::Role(role) => choices
+            .iter()
+            .flat_map(|group| &group.items)
+            .find(|address| address.kind == "role" && address.role == *role)
+            .cloned()
+            .ok_or("role_has_no_members")?,
         UiComposeTarget::Channel(name) => {
             let name = name.trim_start_matches("channels/");
             Address {
