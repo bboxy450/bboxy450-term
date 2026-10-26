@@ -14,6 +14,7 @@ mod debug;
 mod e2e;
 mod events;
 mod identity;
+mod knowledge;
 mod message;
 mod plugin;
 mod records;
@@ -190,6 +191,7 @@ use debug::debug_commands;
 use e2e::e2e_commands;
 use events::events_commands;
 use identity::identity_commands;
+use knowledge::knowledge_commands;
 use message::message_commands;
 use plugin::plugin_commands;
 use records::record_commands;
@@ -208,6 +210,7 @@ commands! {
         task_commands,
         e2e_commands,
         record_commands,
+        knowledge_commands,
         events_commands,
         debug_commands,
         app_commands,
@@ -226,6 +229,7 @@ const NOUN_VERBS: &[&[Verb]] = &[
     task::VERBS,
     e2e::VERBS,
     records::VERBS,
+    knowledge::VERBS,
     events::VERBS,
     debug::VERBS,
     app::VERBS,
@@ -302,6 +306,7 @@ const NOUN_PARSERS: &[NounParse] = &[
     task::parse,
     e2e::parse,
     records::parse,
+    knowledge::parse,
     events::parse,
     identity::parse,
     app::parse,
@@ -1487,6 +1492,7 @@ const NOUN_VERB_RUNNERS: &[(&str, NounVerbRun)] = &[
     ("plugin", plugin::run_verb),
     ("events", events::run_verb),
     ("record", records::run_verb),
+    ("knowledge", knowledge::run_verb),
     ("ui", ui::run_verb),
     ("seat", seat::run_verb),
     ("app", app::run_verb),
@@ -1933,6 +1939,10 @@ mod tests {
                 id,
                 request: bbt_proto::gui::PluginRequest::List,
             },
+            GuiAction::KnowledgeControl {
+                id,
+                request: bbt_proto::gui::KnowledgeRequest::Status,
+            },
             GuiAction::RecordWrite {
                 id,
                 args: json!({}),
@@ -1969,6 +1979,7 @@ mod tests {
             task::PARSE_SAMPLES,
             e2e::PARSE_SAMPLES,
             records::PARSE_SAMPLES,
+            knowledge::PARSE_SAMPLES,
             events::PARSE_SAMPLES,
             app::PARSE_SAMPLES,
         ]

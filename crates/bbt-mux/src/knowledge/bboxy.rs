@@ -66,7 +66,7 @@ impl<'a> BboxySource<'a> {
                     "resource is outside the knowledge root",
                 )
             })?;
-        let (file, _, _) = self.open_resource(relative)?;
+        let (file, _, _) = Self::open_resource(self.index.knowledge_root(), relative)?;
         let mut bytes = Vec::new();
         file.take(d::MAX_RESOURCE_BYTES + 1)
             .read_to_end(&mut bytes)
@@ -76,7 +76,7 @@ impl<'a> BboxySource<'a> {
         }
         Ok(bytes)
     }
-    fn open_resource(&self, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
+    fn open_resource(root: &Path, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
         use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
         if relative.as_os_str().is_empty()
             || relative
@@ -88,7 +88,6 @@ impl<'a> BboxySource<'a> {
                 "resource path must stay inside the root",
             ));
         }
-        let root = self.index.knowledge_root();
         let mut current = std::fs::OpenOptions::new()
             .read(true)
             .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
@@ -149,6 +148,35 @@ impl<'a> BboxySource<'a> {
         }
         Ok((current, canonical, metadata.len()))
     }
+    pub(crate) fn validate_resource(root: &Path, link: &d::ResourceLink) -> d::Result<()> {
+        if link.uri.len() > 16 * 1024 {
+            return Err(error(
+                "resource_outside_data_dir",
+                "resource URI exceeds bound",
+            ));
+        }
+        let encoded = link.uri.strip_prefix("file://").ok_or_else(|| {
+            error(
+                "resource_outside_data_dir",
+                "resource must be a local file URI",
+            )
+        })?;
+        let path = PathBuf::from(uri_decode(encoded)?);
+        let relative = path.strip_prefix(root).map_err(|_| {
+            error(
+                "resource_outside_data_dir",
+                "resource is outside the provider data directory",
+            )
+        })?;
+        let (_, _, size) = Self::open_resource(root, relative)?;
+        if size != link.size {
+            return Err(error(
+                "resource_changed",
+                "resource size differs from the provider result",
+            ));
+        }
+        Ok(())
+    }
     fn resources(&self, doc: &Document) -> d::Result<Vec<d::ResourceLink>> {
         let source = format!(
             "---\n{}---\n{}",
@@ -194,7 +222,7 @@ impl<'a> BboxySource<'a> {
                     }
                 }
             }
-            let (_, path, size) = self.open_resource(&relative)?;
+            let (_, path, size) = Self::open_resource(self.index.knowledge_root(), &relative)?;
             let name = path
                 .file_name()
                 .and_then(|name| name.to_str())

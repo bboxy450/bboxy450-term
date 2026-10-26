@@ -516,6 +516,7 @@ pub struct Model {
     pub identity: Option<bbt_proto::GuiIdentity>,
     pub custody_reply: Option<Arc<crate::settings::IdentityReply>>,
     pub plugin_registry: Option<Arc<Vec<bbt_proto::gui::PluginEntry>>>,
+    pub knowledge_roots: Option<Arc<bbt_proto::gui::KnowledgeStatus>>,
     /// Latest explicitly selected policy, bounded to one seat; ordinary rows keep small observations.
     pub attention_read: Option<Arc<GuiSeat>>,
     /// Correlation survives Latest replacing an intermediate publication.
@@ -553,6 +554,7 @@ impl Default for Model {
             identity: None,
             custody_reply: None,
             plugin_registry: None,
+            knowledge_roots: None,
             attention_read: None,
             hosts: vec![],
             spawns: BTreeMap::new(),
@@ -1175,6 +1177,7 @@ fn build_with_clock(
         identity: previous.identity.clone(),
         custody_reply: previous.custody_reply.clone(),
         plugin_registry: previous.plugin_registry.clone(),
+        knowledge_roots: previous.knowledge_roots.clone(),
         attention_read: previous.attention_read.clone(),
         spawns: previous.spawns.clone(),
         operation_results: previous.operation_results.clone(),

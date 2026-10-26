@@ -124,6 +124,8 @@ pub struct Records {
     /// The host has a live registry; gallery/reference records never authorize effects.
     #[serde(skip)]
     pub plugin_controls: bool,
+    #[serde(skip)]
+    pub knowledge_controls: bool,
     pub knowledge: knowledge::Knowledge,
     pub messaging: messaging::Messaging,
     pub appearance: Appearance,

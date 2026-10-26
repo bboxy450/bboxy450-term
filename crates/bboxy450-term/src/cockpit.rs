@@ -29,7 +29,7 @@ mod owners;
 pub use owners::{Exit as ProcessExit, Process};
 
 /// A read-only lock observation for ctl's local launcher, not backend discovery.
-pub fn frontend_running(run_dir:&std::path::Path)->Result<Option<bool>> {
+pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
     bbt_rt::assert_not_ui_thread();
     owners::frontend_running(run_dir)
 }
@@ -59,6 +59,10 @@ pub enum UiMsg {
     PluginControl {
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::PluginRequest,
+    },
+    KnowledgeControl {
+        id: bbt_mux::Ulid,
+        request: bbt_proto::gui::KnowledgeRequest,
     },
     IdentityControl {
         id: bbt_mux::Ulid,
@@ -549,11 +553,18 @@ async fn logic_main() -> Result<()> {
     let endpoint = logic.client.gui_endpoint().await?;
     let status = logic.client.identity_status().await?;
     let ready = LogicReady {
-        root: endpoint.path.parent().ok_or_else(|| invalid("GUI endpoint has no root"))?.into(),
+        root: endpoint
+            .path
+            .parent()
+            .ok_or_else(|| invalid("GUI endpoint has no root"))?
+            .into(),
         capability: endpoint.capability,
         identity: logic.client.gui_identity().await?,
         generation: endpoint.generation,
-        custody_backend: serde_json::to_value(status.custody)?.as_str().unwrap_or("unknown").into(),
+        custody_backend: serde_json::to_value(status.custody)?
+            .as_str()
+            .unwrap_or("unknown")
+            .into(),
         account_root: status.root_fingerprint,
         window: None,
     };
@@ -903,8 +914,8 @@ impl Session {
                 }
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
-                GuiReply::WindowSaved {..}
-                | GuiReply::GuiHello {..}
+                GuiReply::WindowSaved { .. }
+                | GuiReply::GuiHello { .. }
                 | GuiReply::Seat(_)
                 | GuiReply::Spawned { .. }
                 | GuiReply::Update { .. }
@@ -938,9 +949,12 @@ impl Session {
                 )
                 .await;
                 if let Some(mut supervisor) = recovered.supervisor {
-                    let _ =
-                        stop_child(&mut Process::Child(supervisor.child), &mut supervisor.control, "supervisor")
-                            .await;
+                    let _ = stop_child(
+                        &mut Process::Child(supervisor.child),
+                        &mut supervisor.control,
+                        "supervisor",
+                    )
+                    .await;
                 }
             }
         }

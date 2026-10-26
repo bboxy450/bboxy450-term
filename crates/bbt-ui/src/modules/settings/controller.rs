@@ -101,6 +101,11 @@ pub enum PluginIntent {
     Trust(String),
     Enabled { candidate: String, enabled: bool },
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum KnowledgeIntent {
+    Select { root: String, provider: String },
+    Reset { root: String },
+}
 #[derive(Debug, Clone)]
 pub struct Controller {
     pub section: String,
@@ -113,6 +118,7 @@ pub struct Controller {
     identity_unlock: bool,
     attention: Option<super::messaging::Rule>,
     plugin: Option<PluginIntent>,
+    knowledge: Option<KnowledgeIntent>,
 }
 impl Default for Controller {
     fn default() -> Self {
@@ -127,6 +133,7 @@ impl Default for Controller {
             identity_unlock: false,
             attention: None,
             plugin: None,
+            knowledge: None,
         }
     }
 }
@@ -190,6 +197,38 @@ impl Controller {
     pub fn take_plugin(&mut self) -> Option<PluginIntent> {
         self.plugin.take()
     }
+    pub fn take_knowledge(&mut self) -> Option<KnowledgeIntent> {
+        self.knowledge.take()
+    }
+    fn knowledge_change(&mut self, root: String, delta: i32, values: &Records) {
+        let field = Field::KnowledgeProvider(root.clone());
+        if !self.editable(&field, values) {
+            self.unavailable(&field, values);
+            return;
+        }
+        let current = values
+            .knowledge
+            .roots
+            .iter()
+            .find(|r| r.name == root)
+            .expect("editable root");
+        let choices: Vec<_> = values
+            .knowledge
+            .offered
+            .iter()
+            .map(String::as_str)
+            .collect();
+        if choices.is_empty() {
+            return;
+        }
+        let provider = cycle(&choices, &current.provider, delta);
+        if provider == current.provider {
+            return;
+        }
+        self.knowledge = Some(KnowledgeIntent::Select { root, provider });
+        self.focus = Focus::Control(field);
+        self.error = None;
+    }
     fn attention_change(
         &mut self,
         destination: String,
@@ -229,7 +268,12 @@ impl Controller {
                         plugin.control_key() == id && plugin.actionable && plugin.root.is_none()
                     })
             }
-            Field::PluginSetup(_) | Field::KnowledgeProvider(_) => false,
+            Field::PluginSetup(_) => false,
+            Field::KnowledgeProvider(root) => {
+                (self.section == "Knowledge" || !self.query.trim().is_empty())
+                    && values.knowledge_controls
+                    && values.knowledge.roots.iter().any(|r| r.name == *root)
+            }
             Field::Attention { destination, class } => {
                 (self.section == "Messaging" || !self.query.trim().is_empty())
                     && !values.messaging.seat.id.is_empty()
@@ -302,14 +346,23 @@ impl Controller {
                 })
                 .filter(|field| self.editable(field, values))
                 .collect(),
+            "Knowledge" => values
+                .knowledge
+                .roots
+                .iter()
+                .map(|root| Field::KnowledgeProvider(root.name.clone()))
+                .filter(|field| self.editable(field, values))
+                .collect(),
             _ => vec![],
         }
     }
     /// G3/G4's current host is a read-only reference. Never optimistically change
     /// a fixture's enable bit or a root's provider when no runtime can do the act.
     fn unavailable(&mut self, field: &Field, values: &Records) -> bool {
-        if matches!(field, Field::PluginEnable(_) | Field::PluginTrust(_))
-            && self.editable(field, values)
+        if matches!(
+            field,
+            Field::PluginEnable(_) | Field::PluginTrust(_) | Field::KnowledgeProvider(_)
+        ) && self.editable(field, values)
         {
             return false;
         }
@@ -412,6 +465,10 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::KnowledgeProvider(root) => {
+                        self.knowledge_change(root, 1, values);
+                        return None;
+                    }
                     Field::PluginTrust(candidate) => {
                         self.plugin = Some(PluginIntent::Trust(candidate));
                         self.error = None;
@@ -463,16 +520,22 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::KnowledgeProvider(root) => {
+                        if self.editable(&Field::KnowledgeProvider(root.clone()), values) {
+                            self.knowledge = Some(KnowledgeIntent::Reset { root });
+                            self.error = None;
+                        }
+                        return None;
+                    }
                     Field::Attention { destination, class } => {
                         self.attention_change(destination, class, "default".into(), values);
                         return None;
                     }
                     Field::Theme => Patch::Theme(defaults.appearance.theme.clone()),
                     Field::IdentityUnlock => return None,
-                    Field::PluginEnable(_)
-                    | Field::PluginTrust(_)
-                    | Field::PluginSetup(_)
-                    | Field::KnowledgeProvider(_) => return None,
+                    Field::PluginEnable(_) | Field::PluginTrust(_) | Field::PluginSetup(_) => {
+                        return None;
+                    }
                     Field::Density => Patch::Density(defaults.appearance.density.clone()),
                     Field::Rim => Patch::Rim(defaults.appearance.rim),
                     Field::Glow => Patch::Glow(defaults.appearance.glow),
@@ -493,6 +556,10 @@ impl Controller {
                 }
             }
             Action::Nudge(delta) => match &self.focus {
+                Focus::Control(Field::KnowledgeProvider(root)) => {
+                    self.knowledge_change(root.clone(), delta, values);
+                    return None;
+                }
                 Focus::Control(Field::Attention { destination, class }) => {
                     let mode = cycle(
                         &["wake", "inbox", "digest"],
@@ -503,10 +570,8 @@ impl Controller {
                     return None;
                 }
                 Focus::Control(
-                    field @ (Field::PluginEnable(_)
-                    | Field::PluginTrust(_)
-                    | Field::PluginSetup(_)
-                    | Field::KnowledgeProvider(_)),
+                    field
+                    @ (Field::PluginEnable(_) | Field::PluginTrust(_) | Field::PluginSetup(_)),
                 ) => {
                     let field = field.clone();
                     self.unavailable(&field, values);
@@ -774,11 +839,18 @@ impl Regions {
             for (i, root) in view.values.knowledge.roots.iter().enumerate() {
                 let field = Field::KnowledgeProvider(root.name.clone());
                 if let Some(node) = find(layout, &format!("card0/root{i}/provider")) {
-                    self.hits
-                        .push((node.rect, Hit::Toggle(field.clone()), true));
+                    self.hits.push((
+                        node.rect,
+                        Hit::Toggle(field.clone()),
+                        !view.values.knowledge_controls,
+                    ));
                 }
                 if let Some(node) = find(layout, &format!("card0/r{i}/diff")) {
-                    self.hits.push((node.rect, Hit::Reset(field), true));
+                    self.hits.push((
+                        node.rect,
+                        Hit::Reset(field),
+                        !view.values.knowledge_controls,
+                    ));
                 }
             }
         }

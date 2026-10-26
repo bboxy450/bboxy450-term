@@ -383,6 +383,11 @@ impl Watch {
             }
         }
     }
+    pub fn source_changed(&mut self) {
+        self.pending = None;
+        self.restart = false;
+        self.loader.reconnect();
+    }
     pub fn changed(&mut self) {
         if self.observing {
             self.loader.changed();

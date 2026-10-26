@@ -342,6 +342,7 @@ pub enum Reply {
     Task(TaskResponse),
     Attention,
     Plugins,
+    KnowledgeControl,
     Refused(String),
     Unknown(String),
 }

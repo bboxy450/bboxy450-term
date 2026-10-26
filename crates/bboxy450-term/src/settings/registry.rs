@@ -18,7 +18,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
             Some(entries) => {
                 out.plugins = entries.iter().map(plugin).collect();
                 out.plugin_controls = true;
-                out.plugin_notice = Some("Production account registry. Trust pins this binary at its minimum tier with no additional grants; enable stays a separate act. Setup, runtime health and business-call measurements are unavailable.".into());
+                out.plugin_notice = Some("Production account registry. Trust pins one binary at its minimum tier with no additional grants; enable is separate. Run ctl plugin check before choosing a Knowledge provider. Setup, hooks and external signed writing remain unavailable.".into());
             }
             None => {
                 out.plugins.clear();
@@ -64,6 +64,13 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
         }],
         offered: vec![provider.into()],
     };
+    if let Some(model) = model {
+        // A pending live snapshot cannot assert which provider is active.
+        out.knowledge = Knowledge::default();
+        if let Some(status) = model.knowledge_roots.as_deref() {
+            super::knowledge::project(out, status);
+        }
+    }
 }
 
 fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
@@ -107,8 +114,16 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
             name: named.map_or("unknown", |n| n.system.name()).into(),
             version: named.map_or("unknown", |n| n.system.version()).into(),
             // Descriptor validation is not a business-method conformance claim.
-            ok: refusal.map(|_| false),
-            failing: refusal.map(|r| r.code.clone()),
+            ok: refusal
+                .map(|_| false)
+                .or_else(|| entry.conformance.as_ref().map(|c| c.ok)),
+            failing: refusal.map(|r| r.code.clone()).or_else(|| {
+                entry
+                    .conformance
+                    .as_ref()
+                    .and_then(|c| c.refusal.as_ref())
+                    .map(|r| r.code.clone())
+            }),
         },
         tier,
         local: true,

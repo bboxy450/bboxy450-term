@@ -208,6 +208,11 @@ async fn data_call(
     let original_args = args.clone();
     let result = client.call(&wire, args.clone(), budget).await?;
     let mut extended = args;
+    // A stateful create cannot be replayed at the same path. Probe additive
+    // fields on a second private record; retain the real path-exists guard.
+    if method == "write" && extended.get("ref").is_none_or(Value::is_null) {
+        extended["path"] = json!("p0-conformance-minor.md");
+    }
     extended["p0_future_minor_field"] = json!({"ignore":true});
     validate(&command.args, &extended, "unknown_field_rejected")?;
     validate(

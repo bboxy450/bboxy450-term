@@ -4,6 +4,7 @@
     reason = "bounded preferences IO owner, guarded against UI-thread calls"
 )]
 use bbt_ui::modules::settings::{Appearance, Notifications, controller::Patch};
+pub mod knowledge;
 pub mod messaging;
 pub mod registry;
 use std::{

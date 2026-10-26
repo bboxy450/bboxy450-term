@@ -34,7 +34,7 @@ use self::record::{record_actions, record_replies};
 use self::seat::{seat_actions, seat_replies};
 use self::task::{task_actions, task_replies};
 use self::ui::{ui_actions, ui_replies};
-pub use self::{app::*, debug::*, events::*, identity::*, plugin::*, seat::*, ui::*};
+pub use self::{app::*, debug::*, events::*, identity::*, plugin::*, record::*, seat::*, ui::*};
 
 pub type Row = Vec<bbt_core::Cell>;
 

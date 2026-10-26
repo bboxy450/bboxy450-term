@@ -693,12 +693,14 @@ impl UiEffect {
             | live::UiMsg::Task { id, .. }
             | live::UiMsg::SetAttention { id, .. }
             | live::UiMsg::GetAttention { id, .. } => Some(Self::Operation(*id)),
-            live::UiMsg::PluginControl { id, .. } => Some(Self::Plugin {
-                op: *id,
-                before: model
-                    .and_then(|m| m.operation_results.rows().find(|row| row.op == *id))
-                    .map_or(0, |row| row.serial),
-            }),
+            live::UiMsg::PluginControl { id, .. } | live::UiMsg::KnowledgeControl { id, .. } => {
+                Some(Self::Plugin {
+                    op: *id,
+                    before: model
+                        .and_then(|m| m.operation_results.rows().find(|row| row.op == *id))
+                        .map_or(0, |row| row.serial),
+                })
+            }
             live::UiMsg::Scroll { seat, request, .. } => {
                 request.op.map(|id| Self::Scroll(id, *seat))
             }
@@ -1781,6 +1783,7 @@ struct App {
     custody: preferences::CustodyControl,
     settings_attention: Option<(bbt_mux::Ulid, bbt_mux::Ulid, bool)>,
     settings_plugins: preferences::registry::Requests,
+    settings_knowledge: preferences::knowledge::Requests,
     settings_attention_target: Option<(bbt_mux::Ulid, u64, bbt_proto::registry::Role)>,
     system_theme: Theme,
     local_tab: Option<LocalTab>,
@@ -1862,7 +1865,7 @@ struct App {
     window_restored: bool,
     window_first_frame: bool,
     window_last: Option<bbt_proto::gui::WindowState>,
-    restored_size: Option<[f32;2]>,
+    restored_size: Option<[f32; 2]>,
     /// The logical size the last solved layout used.
     solved_size: [f32; 2],
     /// When the last frame was presented; a capture of it names this time.
@@ -1939,6 +1942,7 @@ impl App {
             custody: preferences::CustodyControl::default(),
             settings_attention: None,
             settings_plugins: Default::default(),
+            settings_knowledge: Default::default(),
             settings_attention_target: None,
             system_theme: Theme::Dark,
             local_tab: None,
@@ -2167,16 +2171,37 @@ impl App {
             self.settings_attention_target = None;
             return;
         }
-        let target = self.focus.stage.as_ref().and_then(|stage| stage.focused)
-            .and_then(|focused| self.live_state.as_ref()?.gui_seats.iter()
-                .find(|seat| SeatId::from_u128(seat.record.id.0) == focused)
-                .map(|seat| (seat.record.id, seat.record.generation, seat.record.role.clone())));
-        if !force && self.settings_attention_target == target { return; }
+        let target = self
+            .focus
+            .stage
+            .as_ref()
+            .and_then(|stage| stage.focused)
+            .and_then(|focused| {
+                self.live_state
+                    .as_ref()?
+                    .gui_seats
+                    .iter()
+                    .find(|seat| SeatId::from_u128(seat.record.id.0) == focused)
+                    .map(|seat| {
+                        (
+                            seat.record.id,
+                            seat.record.generation,
+                            seat.record.role.clone(),
+                        )
+                    })
+            });
+        if !force && self.settings_attention_target == target {
+            return;
+        }
         self.settings_attention_target = target.clone();
         if let Some((seat, generation, _)) = target {
             let id = bbt_mux::Ulid::new();
             self.settings_attention = Some((id, seat, false));
-            self.queue(live::UiMsg::GetAttention { id, seat, generation });
+            self.queue(live::UiMsg::GetAttention {
+                id,
+                seat,
+                generation,
+            });
         }
     }
     fn plugin_request(&mut self, request: bbt_proto::gui::PluginRequest) -> Result<(), String> {
@@ -2192,7 +2217,26 @@ impl App {
         }
         Ok(())
     }
+    fn knowledge_request(
+        &mut self,
+        request: bbt_proto::gui::KnowledgeRequest,
+    ) -> Result<(), String> {
+        if self.backend_lost || self.live_commands.is_none() || self.closing {
+            return Err("Knowledge connection is unavailable".into());
+        }
+        let model = self
+            .live_state
+            .as_deref()
+            .ok_or("Knowledge snapshot unavailable")?;
+        if let Some(message) = self.settings_knowledge.issue(model, request)? {
+            self.queue(message);
+        }
+        Ok(())
+    }
     fn open_settings(&mut self, section: &str) {
+        if let Err(reason) = self.knowledge_request(bbt_proto::gui::KnowledgeRequest::Status) {
+            self.logger.write(reason);
+        }
         if let Err(reason) = self.plugin_request(bbt_proto::gui::PluginRequest::List) {
             self.logger.write(reason);
         }
@@ -2248,6 +2292,7 @@ impl App {
         };
         if let Some(model) = self.live_state.as_deref() {
             self.settings_plugins.decorate(&mut view.values, model);
+            self.settings_knowledge.decorate(&mut view.values, model);
         }
         view.values.account.custody = Some(self.custody.view());
         view.values.messaging = preferences::messaging::view(
@@ -2263,7 +2308,16 @@ impl App {
                 .as_ref()
                 .and_then(|model| model.operation_results.rows().find(|row| row.op == op))
                 .map_or_else(
-                    || Some(if writing {"Updating messaging policy…"} else {"Reading messaging policy…"}.into()),
+                    || {
+                        Some(
+                            if writing {
+                                "Updating messaging policy…"
+                            } else {
+                                "Reading messaging policy…"
+                            }
+                            .into(),
+                        )
+                    },
                     |row| match &row.reply {
                         bboxy450_term::messaging::Reply::Attention => observation_error,
                         bboxy450_term::messaging::Reply::Refused(reason)
@@ -2325,6 +2379,12 @@ impl App {
                 .ok_or_else(|| "Plugin registry snapshot unavailable".to_owned())
                 .and_then(|model| preferences::registry::request(model, intent))
         });
+        let knowledge = controller.take_knowledge().map(|intent| {
+            self.live_state
+                .as_deref()
+                .ok_or_else(|| "Knowledge snapshot unavailable".to_owned())
+                .and_then(|model| preferences::knowledge::request(model, intent))
+        });
         let unlock = controller.take_identity_unlock();
         let attention = controller.take_attention();
         let attention_message = attention.and_then(|rule| {
@@ -2350,9 +2410,17 @@ impl App {
             }
             self.queue(message);
         }
+        if let Some(request) = knowledge {
+            if let Err(reason) = request.and_then(|r| self.knowledge_request(r))
+                && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab
+            {
+                controller.error = Some(reason);
+            }
+        }
         if let Some(request) = plugin_request {
             if let Err(reason) = request.and_then(|request| self.plugin_request(request))
-                && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+                && let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab
+            {
                 controller.error = Some(reason);
             }
         } else if read_plugins {
@@ -4119,14 +4187,22 @@ impl App {
         drop(latest_measurement);
         let received_at = bbt_rt::diagnostics::now();
         if let Some(state) = state {
-            if !self.window_restored && state.metadata_initialized && let Some(saved)=&state.window_restore {
-                self.window_restored=true;
-                self.window_first_frame=true;
-                self.window_last=Some((**saved).clone());
-                if let Some(window)=&self.window {
-                    self.restored_size=Some(saved.size);
-                    let _=window.request_inner_size(LogicalSize::new(f64::from(saved.size[0]),f64::from(saved.size[1])));
-                } else {self.requested_size=Some(saved.size);}
+            if !self.window_restored
+                && state.metadata_initialized
+                && let Some(saved) = &state.window_restore
+            {
+                self.window_restored = true;
+                self.window_first_frame = true;
+                self.window_last = Some((**saved).clone());
+                if let Some(window) = &self.window {
+                    self.restored_size = Some(saved.size);
+                    let _ = window.request_inner_size(LogicalSize::new(
+                        f64::from(saved.size[0]),
+                        f64::from(saved.size[1]),
+                    ));
+                } else {
+                    self.requested_size = Some(saved.size);
+                }
             }
 
             if self.ui_observe {
@@ -4222,6 +4298,20 @@ impl App {
                 self.launcher_layout = None;
             }
             self.scene_dirty = true;
+            let root_changed = self
+                .live_state
+                .as_ref()
+                .and_then(|m| m.knowledge_roots.as_ref())
+                .and_then(|s| s.roots.first())
+                .map(|r| r.revision)
+                != state
+                    .knowledge_roots
+                    .as_ref()
+                    .and_then(|s| s.roots.first())
+                    .map(|r| r.revision);
+            if root_changed && self.document.open {
+                self.document.show(self.document.target.clone());
+            }
             let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
             if let Some(draft) = completed {
                 if draft.delegate {
@@ -4854,7 +4944,8 @@ impl App {
                 | live::UiMsg::Task { id, .. }
                 | live::UiMsg::SetAttention { id, .. }
                 | live::UiMsg::GetAttention { id, .. }
-                | live::UiMsg::PluginControl { id, .. } => Some(*id),
+                | live::UiMsg::PluginControl { id, .. }
+                | live::UiMsg::KnowledgeControl { id, .. } => Some(*id),
                 _ => None,
             })
             .collect();
@@ -4871,6 +4962,7 @@ impl App {
                     | live::UiMsg::SetAttention { id, .. }
                     | live::UiMsg::GetAttention { id, .. }
                     | live::UiMsg::PluginControl { id, .. }
+                    | live::UiMsg::KnowledgeControl { id, .. }
                         if !previous_ops.contains(id) =>
                     {
                         Some(UiEffect::Operation(*id))
@@ -5364,11 +5456,18 @@ impl App {
         } else {
             self.document_layout = None;
         }
-        if let Some(model)=&self.live_state && model.metadata_initialized {
-            let stage=self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
-            let state=bboxy450_term::window_state::capture(model,stage,logical,self.window_last.as_ref());
-            if self.window_last.as_ref()!=Some(&state) {
-                self.window_last=Some(state.clone());
+        if let Some(model) = &self.live_state
+            && model.metadata_initialized
+        {
+            let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+            let state = bboxy450_term::window_state::capture(
+                model,
+                stage,
+                logical,
+                self.window_last.as_ref(),
+            );
+            if self.window_last.as_ref() != Some(&state) {
+                self.window_last = Some(state.clone());
                 self.queue(live::UiMsg::WindowState(state));
             }
         }
@@ -5409,11 +5508,16 @@ impl App {
         self.updates.complete_drain();
         self.live_updates.complete_drain();
     }
-    fn window_restore_waits(&self)->bool {
-        self.live_state.as_ref().is_some_and(|model|self.pane_bounds.iter().any(|(id,_)|model.window_waiting.contains(id) || (self.window_first_frame && !model.frames.contains_key(id))))
+    fn window_restore_waits(&self) -> bool {
+        self.live_state.as_ref().is_some_and(|model| {
+            self.pane_bounds.iter().any(|(id, _)| {
+                model.window_waiting.contains(id)
+                    || (self.window_first_frame && !model.frames.contains_key(id))
+            })
+        })
     }
     fn complete_paint_sources(&mut self) {
-        self.window_first_frame=false;
+        self.window_first_frame = false;
         self.updates.complete_drain();
         self.live_updates.complete_drain();
     }
@@ -5535,10 +5639,15 @@ impl App {
         self.focus_layout_ready();
         self.fit_verify_grid(&bounds, scale);
         self.watch_panes(&bounds, scale);
-        if self.window_restore_waits() {self.window_data_wait(); return Ok(());}
-        if let Some(target)=self.restored_size {
-            if (logical[0]-target[0]).abs()>1. || (logical[1]-target[1]).abs()>1. {return Ok(());}
-            self.restored_size=None;
+        if self.window_restore_waits() {
+            self.window_data_wait();
+            return Ok(());
+        }
+        if let Some(target) = self.restored_size {
+            if (logical[0] - target[0]).abs() > 1. || (logical[1] - target[1]).abs() > 1. {
+                return Ok(());
+            }
+            self.restored_size = None;
         }
         if let Some(launcher) = &self.launcher_layout {
             let caret = launcher.candidate_area();
@@ -5953,7 +6062,9 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::App(live::AppEvent::Ask { id, request }) => {
-                if request==bbt_proto::gui::AppRequest::Activate && let Some(window)=&self.window {
+                if request == bbt_proto::gui::AppRequest::Activate
+                    && let Some(window) = &self.window
+                {
                     window.set_minimized(false);
                     window.focus_window();
                 }
@@ -6890,6 +7001,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
             | live::UiMsg::Close(_)
             | live::UiMsg::UndoClose { .. }
             | live::UiMsg::PluginControl { .. }
+            | live::UiMsg::KnowledgeControl { .. }
             | live::UiMsg::IdentityControl { .. }
     )
 }
@@ -7876,13 +7988,24 @@ mod lazy_projection_tests {
     // keeps: decision #344; a deferred first frame cannot suppress history-ready wakes
     #[test]
     fn a_restore_wait_rearms_model_wakes_without_claiming_a_frame() {
-        if isolated_ui_case("lazy_projection_tests::a_restore_wait_rearms_model_wakes_without_claiming_a_frame") {return;}
-        let (mut app,latest)=fixture();app.window_first_frame=true;
-        latest.publish(published_model(1));assert!(app.drain().contains(&5));
-        app.window_data_wait();latest.publish(published_model(2));
-        assert!(app.drain().contains(&5),"history-ready data lost its wake");
-        assert!(app.window_first_frame,"a wait must not retire the first-frame gate");
-        assert_eq!(app.meter.total_frames(),0);assert_eq!(app.scene.projections(),0);
+        if isolated_ui_case(
+            "lazy_projection_tests::a_restore_wait_rearms_model_wakes_without_claiming_a_frame",
+        ) {
+            return;
+        }
+        let (mut app, latest) = fixture();
+        app.window_first_frame = true;
+        latest.publish(published_model(1));
+        assert!(app.drain().contains(&5));
+        app.window_data_wait();
+        latest.publish(published_model(2));
+        assert!(app.drain().contains(&5), "history-ready data lost its wake");
+        assert!(
+            app.window_first_frame,
+            "a wait must not retire the first-frame gate"
+        );
+        assert_eq!(app.meter.total_frames(), 0);
+        assert_eq!(app.scene.projections(), 0);
     }
     #[test]
     fn model_publishes_between_frames_do_not_project_during_drain() {
@@ -8565,6 +8688,7 @@ mod input_tests {
                 | live::UiMsg::GetAttention { .. }
                 | live::UiMsg::SetAttention { .. }
                 | live::UiMsg::PluginControl { .. }
+                | live::UiMsg::KnowledgeControl { .. }
                 | live::UiMsg::IdentityControl { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }

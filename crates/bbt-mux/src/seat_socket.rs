@@ -718,7 +718,11 @@ async fn gui_session(
     capability: [u8; 32],
     mut door: crate::mcp::Door,
 ) -> Result<()> {
-    let peer_pid=stream.peer_cred().ok().and_then(|cred|cred.pid()).and_then(|pid|u32::try_from(pid).ok());
+    let peer_pid = stream
+        .peer_cred()
+        .ok()
+        .and_then(|cred| cred.pid())
+        .and_then(|pid| u32::try_from(pid).ok());
     let (read, mut write) = stream.into_split();
     // Absorb simultaneous ACKs, but a waiting pane gets a work turn after
     // one action. Otherwise one fast ACK loop can delay the other panes.
@@ -766,10 +770,12 @@ async fn gui_session(
     let mut issued_by: Option<String> = None;
     // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.
     // Dropping the session aborts these waiters, not a running provider's permit.
-    let mut window_jobs: tokio::task::JoinSet<(Ulid,crate::store::Result<()>)> = tokio::task::JoinSet::new();
+    let mut window_jobs: tokio::task::JoinSet<(Ulid, crate::store::Result<()>)> =
+        tokio::task::JoinSet::new();
     let mut knowledge_reads = tokio::task::JoinSet::new();
     let mut debug_reads = tokio::task::JoinSet::new();
     let mut plugin_jobs = tokio::task::JoinSet::new();
+    let mut root_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
@@ -821,6 +827,16 @@ async fn gui_session(
                             let client = client.clone();
                             let origin = crate::mcp::Origin {door,issued_by:issued_by.clone()};
                             plugin_jobs.spawn(async move { (id,client.gui_plugin(id,query,origin).await) });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::KnowledgeControl {id,request:query} = request.action {
+                        if root_jobs.len() >= 8 {
+                            send(&mut write,&GuiReply::Error {op:id,reason:"knowledge_busy: at most eight root controls per connection".into()}).await?;
+                        } else {
+                            let client=client.clone();
+                            let origin=crate::mcp::Origin {door,issued_by:issued_by.clone()};
+                            root_jobs.spawn(async move { (id,client.gui_knowledge_control(id,query,origin).await) });
                         }
                         continue;
                     }
@@ -979,6 +995,7 @@ async fn gui_session(
                             GuiAction::Task {id,request}=>Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?}),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
                             GuiAction::Plugin {..}=>unreachable!("plugins were dispatched independently"),
+                            GuiAction::KnowledgeControl {..}=>unreachable!("root controls were dispatched independently"),
                             GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
                             GuiAction::RecordWrite {id,args}=>Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write(id,args,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?}),
                             GuiAction::Watch {seat,view}=> {
@@ -1124,6 +1141,14 @@ async fn gui_session(
                     let (op,result)=completed.map_err(|_|invalid("plugin reply task interrupted"))?;
                     let reply=match result {
                         Ok(entries)=>GuiReply::Plugin {op,entries},
+                        Err(error)=>GuiReply::Error {op,reason:error.to_string()},
+                    };
+                    send(&mut write,&reply).await?;
+                }
+                Some(completed)=root_jobs.join_next(),if !root_jobs.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("root control task interrupted"))?;
+                    let reply=match result {
+                        Ok(status)=>GuiReply::KnowledgeControl {op,status},
                         Err(error)=>GuiReply::Error {op,reason:error.to_string()},
                     };
                     send(&mut write,&reply).await?;

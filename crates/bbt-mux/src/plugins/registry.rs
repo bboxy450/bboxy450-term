@@ -37,6 +37,9 @@ const ACTIVATIONS: &str = "plugins/activation/";
 #[path = "conformance.rs"]
 mod conformance;
 pub use conformance::{ConformanceJob, ConformanceResult};
+#[path = "source.rs"]
+mod source;
+pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]
@@ -162,6 +165,9 @@ fn private_dir(path: &Path) -> Result<(), Refusal> {
 }
 
 impl Registry {
+    pub(crate) fn account(&self) -> &SqliteStore {
+        &self.account
+    }
     /// The caller is the logic/account owner, not another account opener.
     pub fn new(account: SqliteStore, roots: DiscoveryRoots) -> Result<Self, Refusal> {
         Self::with_config(account, roots, RegistryConfig::default())
@@ -685,6 +691,9 @@ impl Registry {
                 "stale_plugin_operation",
                 "activation changed before commit",
             ));
+        }
+        if !enabled {
+            crate::knowledge::roots::refuse_mounted_disable(&tx, id)?;
         }
         current.generation = next_generation(current.generation)?;
         current.desired_enabled = enabled;

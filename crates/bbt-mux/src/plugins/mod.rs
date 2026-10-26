@@ -10,10 +10,18 @@ mod trust;
 pub use check::{CheckReport, Measurement, check, measure, run_cli};
 pub use discovery::DiscoveryRoots;
 pub use registry::{
-    ConformanceJob, ConformanceResult, InspectionJob, InspectionResult, Registry, RegistryConfig,
+    ConformanceJob, ConformanceResult, DataSourceProvider, InspectionJob, InspectionResult,
+    ProviderConfig, ProviderObservation, Registry, RegistryConfig,
 };
 
 use bbt_plugin::Refusal;
+
+/// Host-only budgets. Wire callers and plugin shapes cannot widen them.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HostConfig {
+    pub registry: RegistryConfig,
+    pub provider: ProviderConfig,
+}
 
 fn failure(code: &str, error: impl std::fmt::Display) -> Refusal {
     Refusal::new(code, error.to_string())

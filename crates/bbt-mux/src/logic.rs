@@ -178,6 +178,12 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<Vec<bbt_plugin::registry::Entry>>>,
     ),
+    GuiKnowledgeControl(
+        Ulid,
+        bbt_proto::gui::KnowledgeRequest,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<bbt_proto::gui::KnowledgeStatus>>,
+    ),
     GuiDebug(
         Ulid,
         bbt_proto::gui::DebugRequest,
@@ -362,6 +368,7 @@ impl Command {
                 | Self::GuiWatchInterest { .. }
                 | Self::GuiDebug(..)
                 | Self::GuiPlugin(..)
+                | Self::GuiKnowledgeControl(..)
         )
     }
 }
@@ -843,6 +850,21 @@ impl LogicClient {
             self.unavailable("plugin outcome unknown; retain the original operation ID")
         })?
     }
+    pub async fn gui_knowledge_control(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::KnowledgeRequest,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::gui::KnowledgeStatus> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiKnowledgeControl(id, request, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("knowledge outcome unknown; retain the original operation ID")
+        })?
+    }
     pub async fn gui_debug(
         &self,
         id: Ulid,
@@ -880,9 +902,12 @@ impl LogicClient {
         generation: Option<u64>,
     ) -> Result<crate::seat_socket::GuiSeat> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Command::GuiAttention(seat, generation, tx)).await
+        self.tx
+            .send(Command::GuiAttention(seat, generation, tx))
+            .await
             .map_err(|_| self.unavailable("logic stopped"))?;
-        rx.await.map_err(|_| self.unavailable("attention read unavailable"))?
+        rx.await
+            .map_err(|_| self.unavailable("attention read unavailable"))?
     }
     /// Operator-authority policy setter; never impersonates the target seat.
     pub async fn ctl_attention(
@@ -1362,6 +1387,27 @@ impl Logic {
     ) -> Result<Self> {
         Self::start_with_custody(connection, config, Some(store), handle)
     }
+    /// Explicit host deadlines for private IO fixtures; production defaults stay at two seconds.
+    pub fn start_custodied_with_plugin_config(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>,
+        plugins: crate::plugins::HostConfig,
+        handle: &tokio::runtime::Handle,
+    ) -> Result<Self> {
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed)?;
+        let bus_key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Self::start_inner_with_plugins(
+            vec![Box::new(LocalProvider::new(connection))],
+            config,
+            bus_key,
+            IdentityMode::Custodied(Some(store)),
+            handle,
+            plugins,
+        )
+    }
     fn start_with_custody(
         connection: impl SupervisorConnection + 'static,
         config: LogicConfig,
@@ -1418,6 +1464,16 @@ impl Logic {
         identity: IdentityMode,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
+        Self::start_inner_with_plugins(providers, config, key, identity, handle, Default::default())
+    }
+    fn start_inner_with_plugins(
+        providers: Vec<Box<dyn Provider>>,
+        config: LogicConfig,
+        key: SigningKey,
+        identity: IdentityMode,
+        handle: &tokio::runtime::Handle,
+        plugins: crate::plugins::HostConfig,
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let custodied = !matches!(&identity, IdentityMode::Explicit(_));
         let identity = match identity {
@@ -1465,7 +1521,9 @@ impl Logic {
             gui_peers: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
-            window_journal: Some(Arc::new(crate::window_journal::Journal::open(&config.run_dir)?)),
+            window_journal: Some(Arc::new(crate::window_journal::Journal::open(
+                &config.run_dir,
+            )?)),
         };
         let stop = Arc::new(AtomicBool::new(false));
         let stopping = stop.clone();
@@ -1479,7 +1537,7 @@ impl Logic {
                 // Keep the receiver until the exit cause is published. A
                 // blocked caller must not observe channel closure first.
                 let mut rx = rx;
-                let mut worker = match Worker::open(
+                let mut worker = match Worker::open_configured(
                     providers,
                     config,
                     bus,
@@ -1487,6 +1545,7 @@ impl Logic {
                     worker_client,
                     identity,
                     bus_window,
+                    plugins,
                 ) {
                     Ok(worker) => worker,
                     Err(error) => {
@@ -2020,6 +2079,9 @@ struct Worker {
     // Scans and provenance updates use copy-on-write while an older read is active.
     index: Arc<Index>,
     knowledge_reads: Arc<tokio::sync::Semaphore>,
+    knowledge_host: crate::knowledge::roots::Host,
+    knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
+    knowledge_seen: u64,
     debug_reads: Arc<tokio::sync::Semaphore>,
     plugins: crate::plugins::control::Control,
     plugin_jobs: tokio::task::JoinSet<()>,
@@ -2068,6 +2130,7 @@ struct Worker {
     ring_pages: BTreeMap<HostId, BTreeMap<Ulid, RingPage>>,
 }
 impl Worker {
+    #[cfg(test)]
     fn open(
         providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
@@ -2076,6 +2139,31 @@ impl Worker {
         client: LogicClient,
         identity: crate::identity::IdentityRuntime,
         bus_window: Option<Ulid>,
+    ) -> Result<Self> {
+        Self::open_configured(
+            providers,
+            config,
+            bus,
+            handle,
+            client,
+            identity,
+            bus_window,
+            Default::default(),
+        )
+    }
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the IO bootstrap owns the existing worker ports and host-only plugin budgets"
+    )]
+    fn open_configured(
+        providers: Vec<Box<dyn Provider>>,
+        config: LogicConfig,
+        bus: BusHandle,
+        handle: tokio::runtime::Handle,
+        client: LogicClient,
+        identity: crate::identity::IdentityRuntime,
+        bus_window: Option<Ulid>,
+        plugin_config: crate::plugins::HostConfig,
     ) -> Result<Self> {
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
@@ -2088,10 +2176,13 @@ impl Worker {
                 .ok_or_else(|| invalid("run directory has no support parent"))?,
             &config.repository,
         );
-        let plugins = crate::plugins::control::Control::new(
-            crate::plugins::Registry::new(account.clone(), plugin_roots)
-                .map_err(|error| invalid(format!("{}: {}", error.code, error.message)))?,
-        );
+        let plugin_registry = crate::plugins::Registry::with_config(
+            account.clone(),
+            plugin_roots,
+            plugin_config.registry,
+        )
+        .map_err(|error| invalid(format!("{}: {}", error.code, error.message)))?;
+        let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
         let mut index = Index::open(
             &config.repository.join(".bboxy"),
             SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
@@ -2101,6 +2192,13 @@ impl Worker {
         // Markdown is authority even if a crash preceded the mirror update.
         // scan retains its durable outbox; the normal startup scan publishes it.
         let _ = index.scan()?;
+        let knowledge_host = crate::knowledge::roots::Host::with_config(
+            index.knowledge_root(),
+            plugin_registry,
+            handle.clone(),
+            plugin_config.provider,
+        )?;
+        let knowledge_seen = knowledge_host.revision()?;
         let provenance =
             crate::provenance::engine::Engine::open(&index, &config.repository, handle.clone())?;
         let watch = FileWatch::start(&config.repository.join(".bboxy"))?;
@@ -2138,6 +2236,9 @@ impl Worker {
             registry,
             index: Arc::new(index),
             knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
+            knowledge_host,
+            knowledge_jobs: tokio::task::JoinSet::new(),
+            knowledge_seen,
             debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             plugins,
             plugin_jobs: tokio::task::JoinSet::new(),
@@ -2639,7 +2740,7 @@ impl Worker {
             prepared => {
                 let result = match prepared {
                     Err(reason) => Err(reason),
-                    Ok(None) => self.control_read(&actor, &record, &call),
+                    Ok(None) => self.control_read(&actor, &record, &call, None),
                     Ok(Some(_)) => unreachable!(),
                 };
                 let value = match result {
@@ -2687,6 +2788,62 @@ impl Worker {
                 }
             }),
             Err(reason) => journal.checked(actor, call, mcp::error(call.op_id, "rejected", &reason)),
+        }
+    }
+    fn start_knowledge_read(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        let prepared = (|| -> Result<_> {
+            let (actor, record) = self.control_actor(id, generation)?;
+            call.validate()?;
+            self.scan()?;
+            let orient = if call.tool == "orient" {
+                Some(
+                    self.control_read(
+                        &actor,
+                        &record,
+                        &call,
+                        Some(serde_json::json!({"items":[],"truncated":false})),
+                    )
+                    .map_err(invalid)?,
+                )
+            } else {
+                None
+            };
+            let journal = self.control_journal(id)?;
+            let revision = self.knowledge_host.revision()?;
+            let permit = self
+                .knowledge_reads
+                .clone()
+                .try_acquire_owned()
+                .map_err(|_| invalid("provider_busy: knowledge read capacity is occupied"))?;
+            Ok((actor, record, orient, journal, revision, permit))
+        })();
+        match prepared {
+            Err(error) => {
+                let _ = reply.send(Err(error));
+            }
+            Ok((actor, record, orient, journal, revision, permit)) => {
+                let job = crate::knowledge::seat_reads::Job {
+                    host: self.knowledge_host.clone(),
+                    index: self.index.clone(),
+                    registry: self.registry.clone(),
+                    actor,
+                    record,
+                    call,
+                    journal,
+                    orient,
+                    revision,
+                    reply,
+                    permit,
+                };
+                self.knowledge_jobs
+                    .spawn_blocking_on(move || job.run(), &self.handle);
+            }
         }
     }
     fn knowledge_call(
@@ -2744,6 +2901,13 @@ impl Worker {
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
+        if self.knowledge_host.external() {
+            return mcp::error(
+                call.op_id,
+                "signed_writer_unavailable",
+                "Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write until the host signed-writer bridge is available.",
+            );
+        }
         let source = BboxySource::new(&self.index);
         let current = match request.reference.clone() {
             Some(reference) => match source.fetch(d::FetchRequest { reference }) {
@@ -3799,6 +3963,7 @@ impl Worker {
         actor: &crate::mcp::SeatActor,
         record: &SeatRecord,
         call: &crate::mcp::Call,
+        documents: Option<serde_json::Value>,
     ) -> std::result::Result<serde_json::Value, String> {
         use crate::mcp::tools;
         use crate::registry::Class;
@@ -3822,7 +3987,10 @@ impl Worker {
                         now_ms(),
                     )
                     .map_err(|e| e.to_string())?;
-                let tasks = tools::orient_documents(&source, record)?;
+                let tasks = match documents {
+                    Some(tasks) => tasks,
+                    None => tools::orient_documents(&source, record)?,
+                };
                 let empty = tasks["items"].as_array().is_some_and(Vec::is_empty);
                 let tasks = tools::scoped_list(actor, tasks, empty.then_some("nothing_assigned"));
                 let destinations = crate::mcp::messaging::destination_list(
@@ -5944,6 +6112,42 @@ impl Worker {
     }
     fn pump_messages(&mut self) -> Result<()> {
         self.service_identity_jobs()?;
+        if let Ok(revision) = self.knowledge_host.revision()
+            && revision != self.knowledge_seen
+        {
+            // One coalesced view invalidation; root authority lives in the account,
+            // and this notice never enters the messaging wake/delivery path.
+            let event = Draft::new(
+                "activity/knowledge-provider",
+                "logic",
+                serde_json::json!({"kind":"knowledge_provider_changed","revision":revision,"title":"Knowledge provider changed"}),
+            );
+            if self.publish("index", event).is_ok() {
+                self.knowledge_seen = revision;
+            }
+        }
+        while let Some(result) = self.knowledge_jobs.try_join_next() {
+            match result {
+                Ok(done) => {
+                    let current = self
+                        .control_actor(done.actor.seat_id, done.actor.process_generation)
+                        .and_then(|(actor, _)| {
+                            if actor == done.actor {
+                                Ok(())
+                            } else {
+                                Err(invalid("seat authority changed during knowledge read"))
+                            }
+                        })
+                        .and_then(|_| {
+                            self.knowledge_host
+                                .current(done.revision)
+                                .map_err(|e| invalid(e.to_string()))
+                        });
+                    let _ = done.reply.send(current.and(done.result));
+                }
+                Err(_) => eprintln!("knowledge read worker interrupted"),
+            }
+        }
         while let Some(result) = self.plugin_jobs.try_join_next() {
             if result.is_err() {
                 eprintln!("plugin task interrupted; admitted operation remains unknown");
@@ -6587,6 +6791,13 @@ impl Worker {
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
+        if self.knowledge_host.external() {
+            return mcp::error(
+                call.op_id,
+                "signed_writer_unavailable",
+                "Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write until the host signed-writer bridge is available.",
+            );
+        }
         let task = request.frontmatter["type"] == "task";
         if !task && request.frontmatter["type"] != "e2e" {
             return mcp::error(
@@ -7104,7 +7315,9 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::ControlCall(id, generation, call, reply) => {
-                        if call.tool == "seat_interrupt" {
+                        if crate::knowledge::seat_reads::handles(&call) {
+                            self.start_knowledge_read(id, generation, call, reply);
+                        } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
                         } else {
                             let result = self.control_call(id, generation, call);
@@ -7162,6 +7375,47 @@ impl Worker {
                                     async move {
                                         let result =
                                             plugins.request(actor, journal, call, request).await;
+                                        let _ = reply.send(result);
+                                    },
+                                    &self.handle,
+                                );
+                            }
+                        }
+                    }
+                    Command::GuiKnowledgeControl(id, request, origin, reply) => {
+                        let prepared = (|| -> Result<_> {
+                            let origin = self.identity.bind_origin(origin);
+                            let device_id = self.operator_device_for_effect()?;
+                            if request.mutation() {
+                                self.identity.operator_signing()?;
+                            }
+                            let actor = crate::mcp::Actor::Operator {
+                                device_id,
+                                door: origin.door,
+                                issued_by: origin.issued_by,
+                            };
+                            let call = crate::mcp::Call {
+                                op_id: id,
+                                tool: "knowledge_control".into(),
+                                args: serde_json::to_value(&request)?,
+                            };
+                            call.validate()?;
+                            Ok((actor, call))
+                        })();
+                        match prepared {
+                            Err(error) => {
+                                let _ = reply.send(Err(error));
+                            }
+                            Ok((actor, call)) => {
+                                let host = self.knowledge_host.clone();
+                                let index = self.index.clone();
+                                let registry = self.registry.clone();
+                                let journal = self.operator_journal.clone();
+                                self.plugin_jobs.spawn_on(
+                                    async move {
+                                        let result = host
+                                            .request(index, registry, actor, journal, call, request)
+                                            .await;
                                         let _ = reply.send(result);
                                     },
                                     &self.handle,
@@ -7360,6 +7614,7 @@ impl Worker {
                         };
                         let index = self.index.clone();
                         let registry = self.registry.clone();
+                        let host = self.knowledge_host.clone();
                         #[cfg(test)]
                         let fixture = self.knowledge_fixture.clone();
                         self.handle.spawn_blocking(move || {
@@ -7377,9 +7632,9 @@ impl Worker {
                                 ));
                                 return;
                             }
-                            let source =
-                                crate::knowledge::BboxySource::new(&index).with_registry(&registry);
-                            let _ = reply.send(crate::knowledge::read(&source, &method, args));
+                            let _ = reply.send(host.with_source(&index, &registry, |source| {
+                                crate::knowledge::read(source, &method, args)
+                            }));
                         });
                     }
                     #[cfg(test)]
@@ -7441,10 +7696,15 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiHello(reply) => {
-                        let result=self.identity.status().map(|status|bbt_proto::gui::GuiHello {
-                            run_dir:self.config.run_dir.clone(),account_root:status.root_fingerprint, window:None,
-                        });
-                        let _=reply.send(result);
+                        let result =
+                            self.identity
+                                .status()
+                                .map(|status| bbt_proto::gui::GuiHello {
+                                    run_dir: self.config.run_dir.clone(),
+                                    account_root: status.root_fingerprint,
+                                    window: None,
+                                });
+                        let _ = reply.send(result);
                     }
                     Command::GuiEndpoint(reply) => {
                         let _ = reply.send(Ok(self.gui_info.clone()));
@@ -7978,6 +8238,7 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
+        self.knowledge_host.close();
         let roots: BTreeSet<_> = self
             .endpoints
             .values()

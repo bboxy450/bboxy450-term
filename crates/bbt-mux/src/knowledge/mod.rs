@@ -2,6 +2,8 @@
 //! transport, registry/Settings and foreign providers are later checkpoints.
 mod bboxy;
 mod read;
+pub(crate) mod roots;
+pub(crate) mod seat_reads;
 pub use bboxy::BboxySource;
 pub use bbt_plugin::data_source;
 pub use read::read;
