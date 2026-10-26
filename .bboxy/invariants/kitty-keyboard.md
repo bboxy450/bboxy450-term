@@ -4,7 +4,7 @@ number: 149
 type: invariant
 title: every key a pane receives is encoded once, by the kitty keyboard protocol against the seat's live mode
 status: active
-check: cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a key that reaches the PTY by a second path, or encoded against a stale mode, is a terminal that lies to the program inside it
 links:
   - { to: "[[d32-kitty-keyboard]]", rel: decision }
@@ -13,7 +13,7 @@ links:
   - { to: "[[c1-live-seats]]", rel: constrains }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decision }
 created: 2026-10-23T15:54:43Z
-updated: 2026-10-23T17:43:09Z
+updated: 2026-10-26T04:41:03Z
 ---
 # One key encoder, the kitty keyboard protocol
 
@@ -32,11 +32,11 @@ PTY:** paste, operator typing and injected text all pass through the same
 encoder or are bytes the encoder never sees (bracketed paste is wrapped, not
 encoded). bbt-core already keeps the stacks (`C/lib.rs:77` `kitty_keyboard: true`).
 
-**Check.** `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bbt-core --locked --lib kitty_keyboard_invariant -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed' && cargo test -p bboxy450-term --locked --lib keyboard_adapter_uses_neutral_core_and_live_modes -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The pipe is deliberate: a filter that matches no test exits 0 in
 cargo, so the check demands that exactly this named test ran and passed. The exact core-library test covers all 32 flag sets, a real Term's
-push/pop/query and alternate-screen stacks, legacy vectors, and a source guard
-over the app's single adapter/router. The app also tests Term -> Screen.modes ->
+push/pop/query and alternate-screen stacks and legacy vectors. The exact app-library
+test retains the source guard over its single adapter/router. The app also tests Term -> Screen.modes ->
 neutral encoder and keeps Command routing local. This fast check is active in
 the default invariant set. Toolkit types and native lock reads stay in the app;
 the Apache-only sequence builder and neutral model stay in bbt-core ([[d36-apache-code-placement|#36]]).
@@ -47,8 +47,9 @@ a TUI that enabled flag 8 sees a bare byte where it expects an escape, or a
 shell with no flags sees an escape where it expects a byte.
 
 **Evidence.** `crates/bbt-core/src/lib.rs:kitty_keyboard_invariant` calls
-the flag matrix, real core-stack, legacy and source-guard checks in
-`crates/bbt-core/src/keyboard.rs`. `bboxy450-term` tests the thin adapter and its
+the flag matrix, real core-stack and legacy checks in
+`crates/bbt-core/src/keyboard.rs`. `bboxy450-term` retains the source-guard
+assertions in `src/keyboard.rs`, together with the thin adapter and its
 published Screen mode bridge. The adapter reads Caps Lock from macOS
 `NSEvent +modifierFlags`; macOS has no Num Lock toggle, so that bit is off.
 `NumericPad` is not Num Lock; explicit neutral lock vectors test both lock bits.
