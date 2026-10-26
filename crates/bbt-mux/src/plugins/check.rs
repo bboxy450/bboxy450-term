@@ -414,6 +414,7 @@ fn signed_envelope_fixture() -> Result<Value, Refusal> {
         sender_sequence: 1,
         thread_id: id,
         reply_to: None,
+        supersedes: None,
         timestamp: 1,
         priority: 0,
         kind: MessageKind::Text,

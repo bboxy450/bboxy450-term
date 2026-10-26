@@ -390,7 +390,7 @@ fn events_are_stored_and_never_wake_by_default() {
         message.envelope().unwrap().verify_signature().unwrap();
         let receipt = messaging.receipts(receiver.id, notice).unwrap().into_iter().find(|r| r.recipient == receiver.id).unwrap();
         assert_eq!(receipt.evidence, Evidence::RecipientStored);
-        assert_eq!(receipt.wake, Some(ReceiptWake::None), "{} default must not wake on operator status", receiver.role.name);
+        assert_eq!(receipt.wake, Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)}), "{} default must not wake on operator status", receiver.role.name);
         assert_eq!(receipt.held, None, "metadata is not a delivery hold");
         assert!(messaging.prepare(swarm, receiver.id, 1_001).unwrap().is_none());
     }
@@ -558,7 +558,7 @@ fn admission_pins_wake_and_digest_while_inbox_history_leaves_the_native_scan() {
     f.mode(WakeMode::Wake);
     f.reopen();
     for id in archived {
-        assert_eq!(f.receipt(id).wake, Some(ReceiptWake::None));
+        assert_eq!(f.receipt(id).wake, Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)}));
     }
     assert_eq!(f.receipt(deferred).wake, decision.wake);
     let db = f.ledger_store().connection().unwrap();
@@ -654,7 +654,7 @@ fn thread_id_alias_cannot_claim_another_seats_root_exception() {
     let mut reply = SendRequest::text(&destination, "still the sender's thread");
     reply.reply_to = Some(alias.view().id);
     let reply = f.messaging.send(f.sender.id, 1, reply, 2_001).unwrap();
-    assert_eq!(f.receipt(reply.view().id).wake, Some(ReceiptWake::None));
+    assert_eq!(f.receipt(reply.view().id).wake, Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)}));
     f.ledger_store()
         .connection()
         .unwrap()
@@ -664,7 +664,7 @@ fn thread_id_alias_cannot_claim_another_seats_root_exception() {
     let mut another = SendRequest::text(&destination, "legacy chain still belongs to the sender");
     another.reply_to = Some(reply.view().id);
     let another = f.messaging.send(f.sender.id, 1, another, 2_002).unwrap();
-    assert_eq!(f.receipt(another.view().id).wake, Some(ReceiptWake::None));
+    assert_eq!(f.receipt(another.view().id).wake, Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)}));
     assert!(
         f.messaging
             .prepare(f.receiver.swarm, f.receiver.id, 2_002)
@@ -758,7 +758,7 @@ fn legacy_pending_receipts_migrate_without_replaying_completed_work() {
         "completed legacy evidence is historical"
     );
     assert_eq!(f.receipt(pending).wake, Some(ReceiptWake::Now));
-    assert_eq!(f.receipt(notice).wake, Some(ReceiptWake::None));
+    assert_eq!(f.receipt(notice).wake, Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)}));
     assert_eq!(f.receipt(notice).held, None);
     f.messaging
         .set_mute(Actor::Operator, f.sender.id, false, State::Idle, 4_000)

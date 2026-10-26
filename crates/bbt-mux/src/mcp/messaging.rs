@@ -37,7 +37,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let rights =
         json!({"type":"array","maxItems":4,"items":{"enum":["read","write","link","admin"]}});
     let filter = json!({"type":"object","additionalProperties":false,"properties":{
-        "kinds":{"type":"array","maxItems":5,"items":{"enum":["text","chunk","decision","presence","task"]}},
+        "kinds":{"type":"array","maxItems":6,"items":{"enum":["text","chunk","decision","presence","task","withdrawn"]}},
         "classes":{"type":"array","maxItems":2,"items":{"enum":["oracle","worker"]}},
         "priorities":{"type":"array","maxItems":10,"items":{"type":"integer","minimum":0,"maximum":9}}
     }});
@@ -47,9 +47,9 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "message_send",
-            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). A DM is for questions and feedback; work arrives only as a delegated task. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
-            json!({"destination":path,"text":{"type":"string","maxLength":16384},"thread_id":id,"reply_to":id,
-             "priority":{"type":"integer","minimum":0,"maximum":9},"kind":{"enum":["text","chunk","decision"]},
+            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). A DM is for questions and feedback; work arrives only as a delegated task. Set supersedes to one of your own message ids to replace it; kind withdrawn requires empty text/attachments and supersedes. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
+            json!({"destination":path,"text":{"type":"string","maxLength":16384},"thread_id":id,"reply_to":id,"supersedes":id,
+             "priority":{"type":"integer","minimum":0,"maximum":9},"kind":{"enum":["text","chunk","decision","withdrawn"]},
              "attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":512}}}),
             vec!["text"],
         ),
@@ -153,6 +153,7 @@ struct Send {
     text: String,
     thread_id: Option<Ulid>,
     reply_to: Option<Ulid>,
+    supersedes: Option<Ulid>,
     priority: Option<u8>,
     kind: Option<MessageKind>,
     attachments: Option<Vec<String>>,
@@ -302,7 +303,7 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
             let message = SendRequest {
                 id: call.op_id,
                 // No destination: logic routes the reply to its sender (decision #264).
-                destination: match (a.destination, a.reply_to) {
+                destination: match (a.destination, a.reply_to.or(a.supersedes)) {
                     (Some(destination), _) => path(destination, true)?,
                     (None, Some(_)) => String::new(),
                     (None, None) => {
@@ -314,6 +315,7 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
                 },
                 thread_id: a.thread_id,
                 reply_to: a.reply_to,
+                supersedes: a.supersedes,
                 priority: a.priority.unwrap_or(0),
                 kind: a.kind.unwrap_or(MessageKind::Text),
                 text: a.text,

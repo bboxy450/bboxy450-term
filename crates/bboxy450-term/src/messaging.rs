@@ -195,6 +195,7 @@ pub fn message_view(
                 MessageKind::Landed => "landed",
                 MessageKind::GateResult => "gate_result",
                 MessageKind::TaskTransition => "task_transition",
+                MessageKind::Withdrawn => "withdrawn",
             }
             .into(),
         ),

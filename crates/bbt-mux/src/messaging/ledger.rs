@@ -18,6 +18,8 @@ use crate::{
     store::{Result, Store, events::Draft, invalid, sqlint, sqlite::SqliteStore},
 };
 
+mod suppression;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReceiptEvent {
     pub sequence: u64,
@@ -165,6 +167,10 @@ impl Ledger {
             swarm,
             test_label: None,
         };
+        {
+            let db = ledger.store.connection()?;
+            suppression::install(&db)?;
+        }
         ledger.recover()?;
         ledger.classify_legacy()?;
         Ok(ledger)
@@ -408,6 +414,7 @@ impl Ledger {
             held_out: held.map(str::to_string),
             bus: None,
         };
+        suppression::admitted(&tx, &message, sender, now)?;
         if held.is_none() {
             insert_deliveries(&tx, &message, delivery, now, None, device)?;
             publication(&tx, &message)?;
@@ -459,6 +466,7 @@ impl Ledger {
             held_out: held.map(str::to_owned),
             bus: None,
         };
+        suppression::admitted(&tx, &message, sender, now)?;
         tree::queue_event(
             &tx,
             &Draft::new(
@@ -592,7 +600,11 @@ impl Ledger {
                     receipt.received_ms = now;
                     set_rate(&mut receipt);
                     let mode = mode_for(&delivery, receipt.recipient, envelope.kind.class());
-                    pin_wake(&tx, &mut receipt, mode, now, &envelope.context, envelope.kind.class())?;
+                    if let Some(reason) = suppression::reason(&tx, &message, receipt.recipient)? {
+                        receipt.wake = Some(ReceiptWake::None { reason: Some(reason) });
+                    } else {
+                        pin_wake(&tx, &mut receipt, mode, now, &envelope.context, envelope.kind.class())?;
+                    }
                 }
                 save_receipt(&tx, &receipt)?;
                 receipt_event(&tx, &receipt, now)?;
@@ -1006,6 +1018,10 @@ impl Ledger {
             if outcome.evidence == Evidence::RecipientStored {
                 receipt.attempt = None;
                 receipt.eligible_ms = now.saturating_add(250);
+                if let Some(reason) = suppression::reason(&tx, message, receipt.recipient)? {
+                    receipt.wake = Some(ReceiptWake::None { reason: Some(reason) });
+                    retire_digests(&tx, receipt.recipient, receipt.agent.as_deref(), std::iter::once(message.sequence))?;
+                }
             }
             save_receipt(&tx, &receipt)?;
             receipt_event(&tx, &receipt, now)?;
@@ -1422,7 +1438,9 @@ fn pin_wake(
 ) -> Result<()> {
     receipt.wake = Some(match mode {
         WakeMode::Wake => ReceiptWake::Now,
-        WakeMode::Inbox => ReceiptWake::None,
+        WakeMode::Inbox => ReceiptWake::None {
+            reason: Some(bbt_proto::messaging::WakeReason::Policy),
+        },
         WakeMode::Digest => {
             let deadline = admit_digest(tx, receipt, destination, class, now)?;
             let until = tx.query_row(
@@ -1496,14 +1514,20 @@ fn insert_deliveries(
             },
         };
         if !remote_pending {
-            pin_wake(
-                tx,
-                &mut receipt,
-                mode_for(&delivery, route.recipient, envelope.kind.class()),
-                now,
-                envelope.context,
-                envelope.kind.class(),
-            )?;
+            if let Some(reason) = suppression::reason(tx, message, route.recipient)? {
+                receipt.wake = Some(ReceiptWake::None {
+                    reason: Some(reason),
+                });
+            } else {
+                pin_wake(
+                    tx,
+                    &mut receipt,
+                    mode_for(&delivery, route.recipient, envelope.kind.class()),
+                    now,
+                    envelope.context,
+                    envelope.kind.class(),
+                )?;
+            }
         }
         receipt_event(tx, &receipt, now)?;
         if remote_pending {

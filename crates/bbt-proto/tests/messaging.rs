@@ -268,7 +268,7 @@ fn receipt_wake_keeps_legacy_bytes_and_uses_the_pinned_flat_states() {
     let until = "2026-10-26T00:10:00Z";
     for (fields, state) in [
         (json!({"wake":"now"}), ReceiptWake::Now),
-        (json!({"wake":"none"}), ReceiptWake::None),
+        (json!({"wake":"none"}), ReceiptWake::None {reason:None}),
         (
             json!({"wake":"deferred","until":until}),
             ReceiptWake::Deferred {

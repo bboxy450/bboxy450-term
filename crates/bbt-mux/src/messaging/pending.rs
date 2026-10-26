@@ -9,6 +9,11 @@ use crate::store::{Result, digest, invalid};
 /// Bind the full original intent; no signer, sender or delivery is admitted here.
 pub fn binding(intent: &PendingIntent) -> Result<IntentBinding> {
     intent.request.validate()?;
+    if intent.request.kind == bbt_proto::messaging::MessageKind::Withdrawn
+        && intent.body != (bbt_proto::messaging::Body::Withdrawn {})
+    {
+        return Err(invalid("withdrawal intent must have a content-free body"));
+    }
     if intent.version != 1
         || intent.id == Ulid::nil()
         || intent.id != intent.request.id
@@ -106,6 +111,7 @@ pub fn check_upgrade_content(
         || envelope.priority != intent.request.priority
         || envelope.thread_id != intent.request.thread_id.unwrap_or(intent.id)
         || envelope.reply_to != intent.request.reply_to
+        || envelope.supersedes != intent.request.supersedes
         || envelope.attachments != intent.request.attachments
         || envelope.timestamp != intent.admitted_ms / 1000
         || !origin

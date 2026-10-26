@@ -29,6 +29,8 @@ impl SendRequestExt for SendRequest {
         if self.id == Ulid::nil()
             || self.thread_id == Some(Ulid::nil())
             || self.reply_to == Some(Ulid::nil())
+            || self.supersedes == Some(Ulid::nil())
+            || self.supersedes == Some(self.id)
             || self.priority > 9
             || self.text.len() > MAX_TEXT
             || self.attachments.len() > 32
@@ -47,6 +49,11 @@ impl SendRequestExt for SendRequest {
             return Err(invalid(
                 "invalid message bounds, control bytes or wikilink attachment",
             ));
+        }
+        if self.kind == MessageKind::Withdrawn
+            && (self.supersedes.is_none() || !self.text.is_empty() || !self.attachments.is_empty())
+        {
+            return Err(invalid("withdrawal requires supersedes and no content"));
         }
         Ok(())
     }
@@ -96,10 +103,14 @@ impl EnvelopeExt for Envelope {
         );
         // Decision #269: door and issuer are signed when present; an envelope without them
         // keeps the bytes it was signed with before #269.
-        let payload = if self.door.is_none() && self.issued_by.is_none() {
-            serde_json::to_vec(&fields)?
-        } else {
-            serde_json::to_vec(&(fields, (self.door, &self.issued_by)))?
+        let payload = match (
+            self.supersedes,
+            self.door.is_none() && self.issued_by.is_none(),
+        ) {
+            (None, true) => serde_json::to_vec(&fields)?,
+            (None, false) => serde_json::to_vec(&(fields, (self.door, &self.issued_by)))?,
+            (Some(id), true) => serde_json::to_vec(&(fields, id))?,
+            (Some(id), false) => serde_json::to_vec(&(fields, (self.door, &self.issued_by), id))?,
         };
         let mut bytes = b"bboxy450/message/v1\0".to_vec();
         bytes.extend_from_slice(&(payload.len() as u64).to_be_bytes());
@@ -133,6 +144,7 @@ impl EnvelopeExt for Envelope {
             destination: self.context.clone(),
             thread_id: Some(self.thread_id),
             reply_to: self.reply_to,
+            supersedes: self.supersedes,
             priority: self.priority,
             kind: self.kind,
             text: self.body.text().unwrap_or_default().to_string(),
@@ -199,6 +211,7 @@ impl EnvelopeExt for Envelope {
                     && path.len() <= 4096
                     && !event.chars().chain(path.chars()).any(char::is_control)
             }
+            Body::Withdrawn { .. } => self.kind == MessageKind::Withdrawn,
             Body::SlotClaimed { .. }
             | Body::SlotReleased { .. }
             | Body::CutClaimed { .. }

@@ -35,6 +35,7 @@ fn envelope(keys: &LocalSeatKeys, seat: Ulid, swarm: Ulid) -> Envelope {
         sender_sequence: 1,
         thread_id: Ulid::new(),
         reply_to: None,
+        supersedes: None,
         timestamp: 1_792_694_400,
         priority: 0,
         kind: MessageKind::Text,

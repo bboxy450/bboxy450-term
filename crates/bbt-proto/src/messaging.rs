@@ -61,6 +61,7 @@ pub enum MessageKind {
     Landed,
     GateResult,
     TaskTransition,
+    Withdrawn,
 }
 
 /// Derived from the signed kind, never supplied independently by a sender (#334).
@@ -80,7 +81,8 @@ impl MessageKind {
             | Self::CutClaimed
             | Self::Landed
             | Self::GateResult
-            | Self::TaskTransition => MessageClass::Event,
+            | Self::TaskTransition
+            | Self::Withdrawn => MessageClass::Event,
         }
     }
 }
@@ -170,6 +172,7 @@ pub enum Body {
         from: String,
         to: String,
     },
+    Withdrawn {},
 }
 
 impl Body {
@@ -183,7 +186,8 @@ impl Body {
             | Self::CutClaimed { .. }
             | Self::Landed { .. }
             | Self::GateResult { .. }
-            | Self::TaskTransition { .. } => None,
+            | Self::TaskTransition { .. }
+            | Self::Withdrawn { .. } => None,
         }
     }
 }
@@ -195,6 +199,8 @@ pub struct SendRequest {
     pub destination: String,
     pub thread_id: Option<Ulid>,
     pub reply_to: Option<Ulid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supersedes: Option<Ulid>,
     pub priority: u8,
     pub kind: MessageKind,
     pub text: String,
@@ -208,6 +214,7 @@ impl SendRequest {
             destination: destination.into(),
             thread_id: None,
             reply_to: None,
+            supersedes: None,
             priority: 0,
             kind: MessageKind::Text,
             text: text.into(),
@@ -240,6 +247,8 @@ pub struct Envelope {
     pub sender_sequence: u64,
     pub thread_id: Ulid,
     pub reply_to: Option<Ulid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supersedes: Option<Ulid>,
     pub timestamp: u64,
     pub priority: u8,
     pub kind: MessageKind,
@@ -526,6 +535,7 @@ pub struct MessageView<'a> {
     pub priority: u8,
     pub thread_id: Ulid,
     pub reply_to: Option<Ulid>,
+    pub supersedes: Option<Ulid>,
     pub attachments: &'a [String],
     pub timestamp: u64,
     pub issuer_kind: Option<IssuerKind>,
@@ -568,6 +578,7 @@ impl StoredMessage {
                 priority: e.priority,
                 thread_id: e.thread_id,
                 reply_to: e.reply_to,
+                supersedes: e.supersedes,
                 attachments: &e.attachments,
                 timestamp: e.timestamp,
                 issuer_kind: Some(e.issuer_kind),
@@ -599,6 +610,7 @@ impl StoredMessage {
                     priority: i.request.priority,
                     thread_id: i.request.thread_id.unwrap_or(i.id),
                     reply_to: i.request.reply_to,
+                    supersedes: i.request.supersedes,
                     attachments: &i.request.attachments,
                     timestamp: i.admitted_ms / 1000,
                     issuer_kind: None,
@@ -670,8 +682,21 @@ pub struct MessageRow {
 #[serde(tag = "wake", rename_all = "snake_case", deny_unknown_fields)]
 pub enum ReceiptWake {
     Now,
-    None,
-    Deferred { until: String },
+    None {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<WakeReason>,
+    },
+    Deferred {
+        until: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WakeReason {
+    Superseded,
+    Done,
+    Policy,
 }
 
 // Decode the flat fields as one optional state: legacy rows remain absent,
@@ -683,13 +708,18 @@ fn receipt_wake<'de, D: serde::Deserializer<'de>>(
     struct Fields {
         wake: Option<String>,
         until: Option<String>,
+        reason: Option<WakeReason>,
     }
-    let Fields { wake, until } = Fields::deserialize(deserializer)?;
-    match (wake.as_deref(), until) {
-        (None, None) => Ok(None),
-        (Some("now"), None) => Ok(Some(ReceiptWake::Now)),
-        (Some("none"), None) => Ok(Some(ReceiptWake::None)),
-        (Some("deferred"), Some(until)) if !until.trim().is_empty() => {
+    let Fields {
+        wake,
+        until,
+        reason,
+    } = Fields::deserialize(deserializer)?;
+    match (wake.as_deref(), until, reason) {
+        (None, None, None) => Ok(None),
+        (Some("now"), None, None) => Ok(Some(ReceiptWake::Now)),
+        (Some("none"), None, reason) => Ok(Some(ReceiptWake::None { reason })),
+        (Some("deferred"), Some(until), None) if !until.trim().is_empty() => {
             Ok(Some(ReceiptWake::Deferred { until }))
         }
         _ => Err(serde::de::Error::custom(
@@ -697,7 +727,6 @@ fn receipt_wake<'de, D: serde::Deserializer<'de>>(
         )),
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Receipt {
     pub message_sequence: u64,

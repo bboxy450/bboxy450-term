@@ -2188,6 +2188,9 @@ impl Worker {
                 worker.attach(info, false)?;
             }
         }
+        for (task, status) in worker.index.task_states() {
+            worker.messaging.task_state(task, status, now_ms())?;
+        }
         worker.scan()?;
         // Recover audit outboxes after a logic crash, even without a new call.
         for record in worker.registry.list()? {
@@ -3912,6 +3915,15 @@ impl Worker {
     }
     fn scan(&mut self) -> Result<()> {
         for event in Arc::make_mut(&mut self.index).scan()? {
+            if let Some(task) = event
+                .subject
+                .strip_prefix("task/")
+                .and_then(|s| s.strip_suffix("/status"))
+                .and_then(|s| s.parse::<Ulid>().ok())
+                && let Some(status) = event.payload["to"].as_str()
+            {
+                self.messaging.task_state(task, status, now_ms())?;
+            }
             let stream = if event.subject.starts_with("task/") {
                 event.payload["swarm_id"]
                     .as_str()

@@ -233,6 +233,67 @@ pub struct Messaging {
     operator_device_attribution: Option<Ulid>,
 }
 impl Messaging {
+    fn supersedes_target(
+        &mut self,
+        swarm: Ulid,
+        sender: Recipient,
+        request: &mut SendRequest,
+    ) -> Result<Option<MessageRefusal>> {
+        let Some(id) = request.supersedes else {
+            return Ok(None);
+        };
+        let ledger = &self.swarm(swarm)?.ledger;
+        let owner = match ledger.sender(id) {
+            Ok(owner) => Some(owner),
+            Err(error)
+                if error
+                    .downcast_ref::<rusqlite::Error>()
+                    .is_some_and(|e| matches!(e, rusqlite::Error::QueryReturnedNoRows)) =>
+            {
+                None
+            }
+            Err(error) => return Err(error),
+        };
+        if owner != Some(sender) {
+            return Ok(Some(MessageRefusal {
+                kind: "invalid_supersedes".into(),
+                message: "supersedes must name a message from the same sender".into(),
+                hint: "Use one of your own retained message ids.".into(),
+            }));
+        }
+        if request.destination.is_empty() {
+            request.destination = ledger.by_id(id)?.view().context.into();
+        }
+        Ok(None)
+    }
+
+    /// Task authority comes from the existing Index, not a message's prose.
+    pub(crate) fn task_state(&mut self, task: Ulid, status: &str, now: u64) -> Result<()> {
+        let key = format!("messaging/task-state/{task}");
+        if self.account.get(&key)?.as_deref() != Some(status.as_bytes()) {
+            self.account.put(&key, status.as_bytes())?;
+        }
+        for swarm in self.swarms.values() {
+            swarm.ledger.task_state(task, status, now)?;
+        }
+        Ok(())
+    }
+    fn sync_task(&mut self, swarm: Ulid, body: &Body, now: u64) -> Result<()> {
+        if let Body::Task { task_id, event, .. } = body
+            && event == "delegate"
+        {
+            let status = self
+                .account
+                .get(&format!("messaging/task-state/{task_id}"))?;
+            if let Some(status) = status {
+                let status = std::str::from_utf8(&status)?;
+                self.swarm(swarm)?
+                    .ledger
+                    .task_state(*task_id, status, now)?;
+            }
+        }
+        Ok(())
+    }
     fn reply_parent(
         &mut self,
         swarm: Ulid,
@@ -715,12 +776,18 @@ impl Messaging {
             if let Some(reference) = self.operator_reference {
                 tree.set_operator_reference(reference);
             }
+            let ledger = Ledger::open(store, id)?
+                .with_test_context(self.keys.test_account_label().map(str::to_owned));
+            for task in ledger.pending_tasks()? {
+                if let Some(status) = self.account.get(&format!("messaging/task-state/{task}"))? {
+                    ledger.task_state(task, std::str::from_utf8(&status)?, 0)?;
+                }
+            }
             self.swarms.insert(
                 id,
                 Swarm {
                     tree,
-                    ledger: Ledger::open(store, id)?
-                        .with_test_context(self.keys.test_account_label().map(str::to_owned)),
+                    ledger,
                     seen: HashMap::new(),
                     resolved: HashMap::new(),
                     muted: HashMap::new(),
@@ -993,6 +1060,7 @@ impl Messaging {
             super::tree::sink(&request.destination)?;
         }
         self.sync_seat(&record)?;
+        self.sync_task(record.swarm, &body, now)?;
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
             if old.view().body != &body {
                 return Err(invalid("task message ID body conflict"));
@@ -1090,6 +1158,9 @@ impl Messaging {
             .operator_reference
             .expect("operator reference admitted")
             .recipient();
+        if let Some(error) = self.supersedes_target(swarm, sender, &mut request)? {
+            return Ok(super::api::Response::Refused { error });
+        }
         let parent = self.reply_parent(swarm, sender, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
             return Ok(super::api::Response::Refused {
@@ -1123,9 +1194,8 @@ impl Messaging {
         if request.destination == format!("swarms/{swarm}") {
             request.destination.push_str("/*");
         }
-        let body = body.unwrap_or_else(|| Body::Text {
-            text: request.text.clone(),
-        });
+        let body = body.unwrap_or_else(|| request_body(&request));
+        self.sync_task(swarm, &body, now)?;
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
             if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
@@ -1207,6 +1277,9 @@ impl Messaging {
             ));
         }
         let sender = source.reference.recipient();
+        if let Some(error) = self.supersedes_target(swarm, sender, &mut request)? {
+            return Ok(super::api::Response::Refused { error });
+        }
         let parent = self.reply_parent(swarm, sender, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
             return Ok(super::api::Response::Refused {
@@ -1349,9 +1422,7 @@ impl Messaging {
             swarm_id: swarm,
             role: held.role.clone(),
             role_epoch: epoch,
-            body: Body::Text {
-                text: request.text.clone(),
-            },
+            body: request_body(&request),
             request,
             admission_order: tx.last_insert_rowid() as u64,
             admitted_ms: now,
@@ -1383,6 +1454,9 @@ impl Messaging {
         }
         let record = self.record(from, generation)?;
         let reader = Recipient::Seat(from);
+        if let Some(error) = self.supersedes_target(record.swarm, reader, &mut request)? {
+            return Ok(super::api::Response::Refused { error });
+        }
         let parent = self.reply_parent(record.swarm, reader, request.reply_to)?;
         if request.reply_to.is_some() && parent.is_none() {
             return Ok(super::api::Response::Refused {
@@ -1553,9 +1627,7 @@ impl Messaging {
                     swarm_id: record.swarm,
                     role: record.role.clone(),
                     role_epoch: Some(epoch),
-                    body: Body::Text {
-                        text: request.text.clone(),
-                    },
+                    body: request_body(&request),
                     request: request.clone(),
                     admission_order: tx.last_insert_rowid() as u64,
                     admitted_ms: now,
@@ -1576,9 +1648,7 @@ impl Messaging {
             self.keys.as_ref(),
             &record,
             &request,
-            Body::Text {
-                text: request.text.clone(),
-            },
+            request_body(&request),
             Issue {
                 epoch,
                 now,
@@ -2777,6 +2847,7 @@ fn mint_operator(
         sender_sequence: sequence,
         thread_id: request.thread_id.unwrap_or(request.id),
         reply_to: request.reply_to,
+        supersedes: request.supersedes,
         timestamp: now / 1000,
         priority: request.priority,
         kind: request.kind,
@@ -2854,6 +2925,7 @@ fn mint(
         sender_sequence: sequence,
         thread_id: request.thread_id.unwrap_or(request.id),
         reply_to: request.reply_to,
+        supersedes: request.supersedes,
         timestamp: now / 1000,
         priority: request.priority,
         kind: request.kind,
@@ -3235,7 +3307,7 @@ mod native_attention_tests {
             .unwrap();
         assert_eq!(
             messaging.receipts(sender.id, prose.view().id).unwrap()[0].wake,
-            Some(ReceiptWake::None)
+            Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)})
         );
         let mut request = SendRequest::text(&destination, "your task brief");
         request.kind = MessageKind::Task;
@@ -3395,5 +3467,18 @@ mod thread_tests {
         assert_eq!(error.kind, "unknown_thread");
         assert!(error.hint.contains(&visible.to_string()));
         assert!(!error.hint.contains(&private.to_string()));
+    }
+}
+
+#[cfg(test)]
+mod suppression_tests;
+
+fn request_body(request: &SendRequest) -> Body {
+    if request.kind == MessageKind::Withdrawn {
+        Body::Withdrawn {}
+    } else {
+        Body::Text {
+            text: request.text.clone(),
+        }
     }
 }

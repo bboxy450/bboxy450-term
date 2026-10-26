@@ -592,6 +592,22 @@ impl Index {
     pub(crate) fn mirror(&self) -> SqliteStore {
         self.store.clone()
     }
+    /// Already scanned Markdown authority; no additional file read per wake.
+    pub(crate) fn task_states(&self) -> impl Iterator<Item = (Ulid, &str)> {
+        self.documents.values().filter_map(|document| {
+            if !matches!(
+                document.metadata["type"].as_str(),
+                Some("task" | "epic" | "bug")
+            ) || document.error.is_some()
+            {
+                return None;
+            }
+            Some((
+                document.id.parse().ok()?,
+                document.metadata["status"].as_str()?,
+            ))
+        })
+    }
     pub(crate) fn activity(&self) -> &crate::store::events::EventLog {
         &self.activity
     }

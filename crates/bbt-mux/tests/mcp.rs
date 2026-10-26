@@ -5560,3 +5560,93 @@ fn unknown_thread_mcp_refusal_keeps_the_visible_hint_and_replays_without_a_send(
     let replay = f.mutate(f.own.id, op, "message_send", args);
     assert_eq!(replay, refused);
 }
+
+// keeps: #334 a real admitted sender can withdraw through message_send, never another seat.
+#[test]
+fn mcp_withdrawal_uses_the_signed_sender_and_preserves_its_cancelled_receipt() {
+    let f = Fixture::new();
+    let old = Ulid::new();
+    data(f.mutate(
+        f.peer.id,
+        old,
+        "message_send",
+        json!({
+            "destination":format!("seats/{}/inbox",f.own.id),"text":"replace this"
+        }),
+    ));
+    let id = Ulid::new();
+    let args = json!({"kind":"withdrawn","supersedes":old,"text":""});
+    let response = f.mutate(f.peer.id, id, "message_send", args.clone());
+    let message = data(response.clone());
+    assert_eq!(message["message"]["envelope"]["kind"], "withdrawn");
+    assert_eq!(
+        message["message"]["envelope"]["body"],
+        json!({"type":"withdrawn"})
+    );
+    assert_eq!(message["message"]["envelope"]["supersedes"], json!(old));
+    assert_eq!(f.mutate(f.peer.id, id, "message_send", args), response);
+    let receipts = data(f.call(
+        f.peer.id,
+        Ulid::new(),
+        "message_receipts",
+        json!({"message":old}),
+    ));
+    assert_eq!(receipts["page"]["items"][0]["wake"], "none");
+    assert_eq!(receipts["page"]["items"][0]["reason"], "superseded");
+    let denied = f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "message_send",
+        json!({"kind":"withdrawn","supersedes":old,"text":""}),
+    );
+    assert_eq!(denied["isError"], true);
+    assert_eq!(
+        denied["structuredContent"]["error"]["kind"],
+        "invalid_supersedes"
+    );
+}
+
+// keeps: #334 actual task frontmatter transitions cancel a pending delegation across restart.
+#[test]
+fn indexed_task_acceptance_cancels_the_pending_delegation_with_a_done_reason() {
+    let mut f = Fixture::new();
+    let mut own = f.registry().get(f.own.id).unwrap();
+    own.muted = true;
+    f.registry().insert(&own).unwrap();
+    let mut metadata = f.task_metadata();
+    metadata["assignee"] = json!("none");
+    metadata["status"] = json!("open");
+    f.task_file(metadata);
+    let delegated = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_delegate",
+        json!({
+            "task_path":f.task_path(),"seat_id":f.own.id,"role":"executor"
+        }),
+    ));
+    let id = delegated["message_ids"][0].as_str().unwrap().to_owned();
+    data(f.report(verification("true", 0, json!([]))));
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":f.task_path()}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+    for restart in [false, true] {
+        if restart {
+            f.restart();
+        }
+        let receipts = data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":id}),
+        ));
+        let receipt = &receipts["page"]["items"][0];
+        assert_eq!(receipt["evidence"], "recipient-stored");
+        assert_eq!(receipt["wake"], "none");
+        assert_eq!(receipt["reason"], "done");
+    }
+}
