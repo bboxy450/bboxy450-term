@@ -5610,9 +5610,7 @@ fn mcp_withdrawal_uses_the_signed_sender_and_preserves_its_cancelled_receipt() {
 #[test]
 fn indexed_task_acceptance_cancels_the_pending_delegation_with_a_done_reason() {
     let mut f = Fixture::new();
-    let mut own = f.registry().get(f.own.id).unwrap();
-    own.muted = true;
-    f.registry().insert(&own).unwrap();
+    f.registry().update(f.own.id, |own| { own.muted = true; Ok(()) }).unwrap();
     let mut metadata = f.task_metadata();
     metadata["assignee"] = json!("none");
     metadata["status"] = json!("open");

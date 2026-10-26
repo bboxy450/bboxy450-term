@@ -393,9 +393,12 @@ fn the_same_seat_can_withdraw_after_a_generation_and_signing_key_change() {
     );
     let registry =
         Registry::new(SqliteStore::open(&object_dir(f.root.path(), "account").unwrap()).unwrap());
-    let mut current = f.a.clone();
-    current.generation = 2;
-    registry.insert(&current).unwrap();
+    registry
+        .update(f.a.id, |current| {
+            current.generation = 2;
+            Ok(())
+        })
+        .unwrap();
     let mut withdrawal = SendRequest::text("", "");
     withdrawal.kind = MessageKind::Withdrawn;
     withdrawal.supersedes = Some(old.view().id);
