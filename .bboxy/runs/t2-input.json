@@ -452,5 +452,20 @@
       "source": "crates/bboxy450-term/tests/headless.rs:132",
       "mechanism": "real private file-account headless integration invokes the actual T2 script"
     }
-  ]
+  ],
+  "records_helper_correction": {
+    "first_argv": [
+      "sh",
+      "scripts/records-push.sh"
+    ],
+    "exit": 1,
+    "mechanism": "missing required commit-message and path arguments; stopped at line 9 before checks or push",
+    "log_sha256": "eb98df8d7370c86935746f3b87d7d1ed8e43f1fc004e5f91469efa180444c3db",
+    "corrected_argv": [
+      "sh",
+      "scripts/records-push.sh",
+      "Record terminal T2 evidence and command correction",
+      ".bboxy/runs/t2-input.json"
+    ]
+  }
 }
