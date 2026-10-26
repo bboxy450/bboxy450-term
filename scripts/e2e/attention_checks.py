@@ -144,7 +144,7 @@ def check(app, model):
     status_name = "M7 status " + operation()
     status_seat, _ = app.spawn(status_name, swarm=swarm)
     receiver = app.ctl("seat", "spawn", "codex", "--role", "executor", "--place", "tab",
-                       "--cwd", work, "--name", "M7 idle receiver", "--swarm", swarm)["data"]["seat"]
+                       "--cwd", str(work), "--name", "M7 idle receiver", "--swarm", swarm)["data"]["seat"]
     hook_review = approve_codex_hooks(receiver, marker=MARKER, prefix="m7")
     app.ctl("seat", "wait", receiver, "--text", MARKER, "--timeout", "60000")
     initial_idle = idle(app, receiver)
