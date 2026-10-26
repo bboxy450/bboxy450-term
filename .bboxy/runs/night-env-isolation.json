@@ -3,7 +3,7 @@
     "Oracle fe4a93ae",
     "Oracle aa40e0a9"
   ],
-  "status": "fixture5/0; binary0; actual Codex terminal9/9 green with dummy caller markers; Claude-context proof pending",
+  "status": "actual Codex and actual Claude Code terminal9/9 green on matching binary; fixture5/0; author admission pending",
   "base": "6c41ad732232d1d1008281a43fd002aaea9e5dff",
   "mechanisms": [
     "crates/bboxy450-term/src/e2e_night.rs \u2014 isolated_command calls env_clear and copies only PATH/TERM/POSIX locale/TMPDIR before setting private HOME, CLAUDE_CONFIG_DIR and CODEX_HOME",
@@ -67,7 +67,7 @@
     "CODEX_HOME is explicitly replaced with the private path; no other caller CODEX_* key is inherited.",
     "Test-only root/device identity uses file custody, never the operator account.",
     "Original T6/T9 HOME guards, mock-provider fixtures, recovery assertions and deadlines remain.",
-    "Claude-context result, author landing and postsubmit acceptance remain unverified. No full all-groups/scale claim."
+    "Both context nights are verified; no full all-groups/scale run or postsubmit acceptance claim."
   ],
   "priority": {
     "ruling": [
@@ -338,5 +338,253 @@
     ],
     "log": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/terminal-t5-20261026/night-env-codex-terminal.log",
     "log_sha256": "7d401847d96ebf858f7fdda19ea5b5c42d1548d9fea3203e262426573f6715b8"
+  },
+  "claude_terminal": {
+    "context": "Oracle signed attestation e93e8650: actual Claude Code session, inherited caller environment; raw 9 rows inspected directly",
+    "exit_attested": 0,
+    "summary": {
+      "group": "terminal",
+      "kept": null,
+      "kind": "summary",
+      "partial": [],
+      "passed": 9,
+      "red": [],
+      "state": "green",
+      "total": 9,
+      "tracked": [],
+      "unwritten": []
+    },
+    "verdicts": [
+      {
+        "coverage": "full",
+        "evidence": "{\"harness\": \"claude\", \"place\": \"right\", \"seat\": \"01M5WXACCCF57ZW4GZZXJKT8R0\", \"opened_frame\": 117, \"ready_frame\": 123, \"admitted_frame\": 119, \"starting_frame\": 120, \"frames\": 1}\n{\"harness\": \"claude\", \"place\": \"down\", \"seat\": \"01M5WXADA99NCJXSFSRAX7XV64\", \"opened_frame\": 139, \"ready_frame\": 145, \"admitted_frame\": 140, \"starting_frame\": 141, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"tab\", \"seat\": \"01M5WXAE7YWM7ZGXBKSNVG2DS6\", \"opened_frame\": 161, \"ready_frame\": 166, \"admitted_frame\": 164, \"starting_frame\": 165, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"right\", \"seat\": \"01M5WXAFEWTZMRC23P476GZVCR\", \"opened_frame\": 184, \"ready_frame\": 188, \"admitted_frame\": 185, \"starting_frame\": 186, \"frames\": 1}\n{\"harness\": \"codex\", \"place\": \"down\", \"seat\": \"01M5WXAGDDFFMVNPTWXV032CS6\", \"opened_frame\": 204, \"ready_frame\": 209, \"admitted_frame\": 205, \"starting_frame\": 206, \"frames\": 1}\nT1: launcher rows/placements, real PTYs/input, pool names, captures and one-frame startup held",
+        "exit": 0,
+        "function": "T1",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "T2: real PTY received exact typed bytes and all 100000 paste bytes; the first frame after echo ingestion drew that sequence or a later one",
+        "exit": 0,
+        "function": "T2",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"action\": \"window-shrink\", \"before\": [159, 54], \"after\": [49, 18], \"signals\": 1, \"frame_seq\": 198, \"sentinel_ink_cells\": 8586, \"grid_pixels\": 105840, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"window-grow\", \"before\": [49, 18], \"after\": [79, 34], \"signals\": 1, \"frame_seq\": 214, \"sentinel_ink_cells\": 882, \"grid_pixels\": 322320, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\n{\"action\": \"pane-split\", \"before\": [79, 34], \"after\": [38, 34], \"signals\": 1, \"frame_seq\": 238, \"sentinel_ink_cells\": 2686, \"grid_pixels\": 155040, \"wrong_grid_pixels\": 0, \"stale_body_pixels\": 0}\nT3: window and pane resizes deliver SIGWINCH/stty size; every new-grid pixel is repainted",
+        "exit": 0,
+        "function": "T3",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"styles\": {\"normal_mass\": 20585, \"bold_mass\": 27132, \"italic_different_pixels\": 62, \"underline_pixels\": 8, \"underline_rows\": [13]}, \"colours\": [{\"wire\": {\"Named\": \"Red\"}, \"rgb\": [204, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Green\"}, \"rgb\": [78, 154, 6], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Named\": \"Blue\"}, \"rgb\": [52, 101, 164], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Indexed\": 196}, \"rgb\": [255, 0, 0], \"foreground_pixels\": 120, \"background_pixels\": 120}, {\"wire\": {\"Spec\": {\"r\": 17, \"g\": 203, \"b\": 145}}, \"rgb\": [17, 203, 145], \"foreground_pixels\": 120, \"background_pixels\": 120}], \"wide\": {\"automatic_equals_explicit\": true, \"han_cells\": 2, \"emoji_cells\": 2, \"both_halves_have_ink\": true}, \"cursor\": [{\"kind\": \"b\", \"pixels\": 120, \"width\": 8, \"height\": 15}, {\"kind\": \"u\", \"pixels\": 8, \"width\": 8, \"height\": 1}, {\"kind\": \"s\", \"pixels\": 15, \"width\": 1, \"height\": 15}], \"cell\": [8, 15]}",
+        "exit": 0,
+        "function": "T4",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"before\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WXDHAW4Z7FKDM5DGMC2YQ5\", \"tab\": \"01M5WXDHAWCHX1366GQDH6W0K1\", \"focused\": \"01M5WXDJ9J61A0B08F4WA8M0KC\", \"panes\": [{\"seat\": \"01M5WXDHBB2Z2JHBXZP62739NQ\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WXDHTBSV7NPBQP9XGES9S6\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WXDJ9J61A0B08F4WA8M0KC\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"after\": {\"size\": [1280.0, 750.0], \"swarm\": \"01M5WXDHAW4Z7FKDM5DGMC2YQ5\", \"tab\": \"01M5WXDHAWCHX1366GQDH6W0K1\", \"focused\": \"01M5WXDJ9J61A0B08F4WA8M0KC\", \"panes\": [{\"seat\": \"01M5WXDHBB2Z2JHBXZP62739NQ\", \"rect\": [311.0, 71.0, 468.0, 668.0], \"cols\": 58, \"rows\": 44, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 23}}, {\"seat\": \"01M5WXDHTBSV7NPBQP9XGES9S6\", \"rect\": [801.0, 71.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": false, \"scroll\": {\"live\": false, \"top_row\": 61}}, {\"seat\": \"01M5WXDJ9J61A0B08F4WA8M0KC\", \"rect\": [801.0, 427.0, 468.0, 312.0], \"cols\": 58, \"rows\": 20, \"focused\": true, \"scroll\": {\"live\": true, \"top_row\": null}}]}, \"owners\": {\"logic\": 3290, \"supervisor\": 3288}, \"old_app\": 3285, \"new_app\": 3424, \"ready_frame\": 1, \"first_capture\": \"/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T5/work/t5-first-after.png\", \"pty_pids\": {\"01M5WXDHBB2Z2JHBXZP62739NQ\": 3307, \"01M5WXDHTBSV7NPBQP9XGES9S6\": 3325, \"01M5WXDJ9J61A0B08F4WA8M0KC\": 3339}, \"verdict\": \"app-only crash keeps real programs, layout, focus and pane scroll\"}",
+        "exit": 0,
+        "function": "T5",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T6\", \"verdict\": \"full: 3 stable seats, generation+1, old PIDs gone, both native sessions/transcripts resumed, 3 drawn restart notices fade at 4s into single generation stream lines\", \"seats\": [\"01M5WXDPPCDT2QA8WQBKFCW9N8\", \"01M5WXDSSKEH96JZ5RXZW1BRDM\", \"01M5WXDVTXM4ZZCARFPTGZYHMX\"]}",
+        "exit": 0,
+        "function": "T6",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"phase\": \"before\", \"frame_seq\": 65, \"panes\": {\"01M5WXEVHA679W9EPN38BD9QPP\": [311.0, 71.0, 628.0, 818.0], \"01M5WXEVXB6TJM916X2FZ6Z0NM\": [961.0, 71.0, 628.0, 387.0], \"01M5WXEW5BGVNWCHWW2BF8FNBN\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WXEVXB6TJM916X2FZ6Z0NM\", \"closed_strips\": 0}\n{\"phase\": \"grace-first\", \"frame_seq\": 82, \"panes\": {\"01M5WXEVHA679W9EPN38BD9QPP\": [311.0, 71.0, 628.0, 818.0], \"01M5WXEW5BGVNWCHWW2BF8FNBN\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WXEVHA679W9EPN38BD9QPP\", \"closed_strips\": 1}\n{\"phase\": \"restored\", \"frame_seq\": 97, \"panes\": {\"01M5WXEVHA679W9EPN38BD9QPP\": [311.0, 71.0, 628.0, 818.0], \"01M5WXEVXB6TJM916X2FZ6Z0NM\": [961.0, 71.0, 628.0, 387.0], \"01M5WXEW5BGVNWCHWW2BF8FNBN\": [961.0, 502.0, 628.0, 387.0]}, \"focused\": \"01M5WXEVXB6TJM916X2FZ6Z0NM\", \"closed_strips\": 0}\n{\"phase\": \"grace-second\", \"frame_seq\": 122, \"panes\": {\"01M5WXEVHA679W9EPN38BD9QPP\": [311.0, 71.0, 628.0, 818.0], \"01M5WXEW5BGVNWCHWW2BF8FNBN\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WXEVHA679W9EPN38BD9QPP\", \"closed_strips\": 1}\n{\"phase\": \"gone\", \"frame_seq\": 565, \"panes\": {\"01M5WXEVHA679W9EPN38BD9QPP\": [311.0, 71.0, 628.0, 818.0], \"01M5WXEW5BGVNWCHWW2BF8FNBN\": [961.0, 71.0, 628.0, 818.0]}, \"focused\": \"01M5WXEVHA679W9EPN38BD9QPP\", \"closed_strips\": 0}\nnote: T7 same PID/generation, retained history, position, presented extent, sidebar order/grace/notice, and real grace/expiry held",
+        "exit": 0,
+        "function": "T7",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"glyph_rect\": [268.0, 107.5, 11.0, 11.0], \"grade_ink\": {\"inferred\": {\"inner\": 4292, \"peak\": 138, \"outer\": 4252}, \"reported\": {\"inner\": 5938, \"peak\": 191, \"outer\": 0}}, \"states\": [{\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"inferred\", \"observed_ms\": 0, \"process\": {\"kind\": \"running\", \"pid\": 7872}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}, {\"activity\": {\"kind\": \"idle\"}, \"detail\": null, \"generation\": 1, \"grade\": \"reported\", \"observed_ms\": 1793045596627, \"process\": {\"kind\": \"running\", \"pid\": 7872}, \"subagents\": [], \"title\": \"Claude\", \"turn_open\": false}]}\nT8: real OSC state, silent inferred idle, reported idle/active/child/clear and invalid reports held",
+        "exit": 0,
+        "function": "T8",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      },
+      {
+        "coverage": "full",
+        "evidence": "{\"kind\": \"T9\", \"verdict\": \"full: explicit ctl restarts preserve 3 seat IDs and native sessions/transcripts, advance generations once, reap old PIDs and retain the shell screen or gap\", \"seats\": [\"01M5WXHV37KNWQPPQM9KR2JQBC\", \"01M5WXHYQ0C5V00NVVSDRHF69E\", \"01M5WXJ0HE03D8RTFMJ1EA2K37\"]}",
+        "exit": 0,
+        "function": "T9",
+        "group": "terminal",
+        "kind": "e2e",
+        "missing": [],
+        "verdict": "pass"
+      }
+    ],
+    "apps": [
+      {
+        "custody_backend": "file",
+        "function": "T1",
+        "issued_by": "test-account:01M5WXA7EZTE7GYYYWK8288CYV",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 97938,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T1/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T2",
+        "issued_by": "test-account:01M5WXAHTXW03PG4A584C1N0F8",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 98805,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T2/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T3",
+        "issued_by": "test-account:01M5WXAMDCH9FCNMNA4WBT68PG",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 98983,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T3/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T4",
+        "issued_by": "test-account:01M5WXBN2EB9FFZCRBG25RJA4X",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 965,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T4/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T5",
+        "issued_by": "test-account:01M5WXDGVXSVH9JCARYPNV5KPJ",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 3285,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T5/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T6",
+        "issued_by": "test-account:01M5WXDP930KSEPYQK3XH1ETHV",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 3460,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T6/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T7",
+        "issued_by": "test-account:01M5WXEV58YAX3QWS9V21EYQ5Y",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 4646,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T7/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T8",
+        "issued_by": "test-account:01M5WXGXDN6EH1E966DN7S379R",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 7860,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T8/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": "T9",
+        "issued_by": "test-account:01M5WXHTJ9GWXDFG19DYSWYD7Y",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 8559,
+        "role": "promise",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/T9/run",
+        "windows": 0
+      },
+      {
+        "custody_backend": "file",
+        "function": null,
+        "issued_by": "test-account:01M5WXJA416Z0GACH4HYTGGNHM",
+        "kind": "app",
+        "mode": "headless",
+        "pid": 9030,
+        "role": "records",
+        "run_dir": "/private/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/e2enuOhD7W/records-app/run",
+        "windows": 0
+      }
+    ],
+    "pid_check": {
+      "argv": [
+        "ps",
+        "-p",
+        "97938,98805,98983,965,3285,3460,4646,7860,8559,9030",
+        "-o",
+        "pid=,lstart=,comm="
+      ],
+      "exit": 1,
+      "stdout": ""
+    },
+    "binary_sha256": "87bc547d9ec9c7a81028dcf212d5d0dc674044f915272927857afa2aaac0a610",
+    "source": "cde1a81145f70345a5c3d94738b37b98817870cb",
+    "log": "/private/tmp/claude-501/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856/scratchpad/night-T3-claude.log",
+    "log_sha256": "6522750a045c6e754a0304d1649142b475c25b4f81e459fbc258f92ca46fb37c"
+  },
+  "admission_attempts": [
+    {
+      "name": "night-env-author",
+      "exit": 75,
+      "seconds": 1.5327939987182617,
+      "reason": "all2 slots taken; no presubmit"
+    }
+  ],
+  "cache_retirement": {
+    "path": "/Users/feral/mydev/bboxy450-term-exec4/scratchpad/night-env-20261026/target",
+    "lsof_exit": 1,
+    "allocated_bytes_retired": 1384906752
   }
 }
