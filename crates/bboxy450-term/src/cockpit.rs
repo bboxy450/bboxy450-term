@@ -350,6 +350,10 @@ fn resolve_repository(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private filesystem-permission fixtures run outside the UI owner"
+)]
 mod repository_tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
