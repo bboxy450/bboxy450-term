@@ -431,6 +431,7 @@ fn protocol_physical(key: PhysicalKey) -> protocol::PhysicalKey {
 
 #[cfg(test)]
 pub(crate) fn assert_adapter() {
+    source_guard();
     let mut term = bbt_core::Term::new(10, 2, 0);
     let mut input = Input {
         logical_key: Key::Named(NamedKey::Escape),
@@ -520,4 +521,143 @@ pub(crate) fn assert_adapter() {
     assert!(caps.caps && !caps.num);
     let keypad = macos_locks(1 << 21);
     assert!(!keypad.caps && !keypad.num);
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "offline invariant scans app sources; this function is test-only, never a UI callback"
+)]
+pub(crate) fn source_guard() {
+    // KeyEvent/keysym interpretation is confined to the adapter and the
+    // app's local shortcut router. Other modules receive opaque PTY bytes.
+    fn scan(dir: &std::path::Path) {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                scan(&path);
+                continue;
+            }
+            if path.extension().is_none_or(|ext| ext != "rs") {
+                continue;
+            }
+            if matches!(
+                path.file_name().unwrap().to_str().unwrap(),
+                "keyboard.rs" | "main.rs"
+            ) {
+                continue;
+            }
+            let source = std::fs::read_to_string(&path).unwrap();
+            for token in [
+                "KeyEvent",
+                "NamedKey",
+                "PhysicalKey",
+                "logical_key",
+                "KeyboardInput",
+            ] {
+                assert!(
+                    !source.contains(token),
+                    "second key interpretation: {}: {token}",
+                    path.display()
+                );
+            }
+        }
+    }
+    scan(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"));
+    let adapter = include_str!("keyboard.rs");
+    let adapter = adapter.split("#[cfg(test)]").next().unwrap();
+    assert_eq!(adapter.matches("protocol::encode(").count(), 1);
+    for bypass in [
+        "fn build_sequence",
+        "struct SequenceBuilder",
+        "fn legacy_control_or_text",
+        "fn application_key",
+        "as_bytes()",
+        "into_bytes()",
+        "\\x1b",
+    ] {
+        assert!(
+            !adapter.contains(bypass),
+            "app must only adapt keys: {bypass}"
+        );
+    }
+    let source = include_str!("main.rs");
+    assert_eq!(
+        source.matches("WindowEvent::KeyboardInput {").count(),
+        1,
+        "second winit key path introduced"
+    );
+    let route = source
+        .split_once("fn route_key(")
+        .unwrap()
+        .1
+        .split_once("fn preedit_command(")
+        .unwrap()
+        .0;
+    assert_eq!(route.matches("keyboard::encode(input, modes)").count(), 2);
+    for bypass in [
+        "\\x1b",
+        "Vec::",
+        "vec![",
+        "to_vec()",
+        "into_bytes()",
+        "terminal_input(",
+    ] {
+        assert!(!route.contains(bypass), "key-to-bytes bypass: {bypass}");
+    }
+    let input = source
+        .split_once("WindowEvent::KeyboardInput { event, .. } =>")
+        .unwrap()
+        .1
+        .split_once("WindowEvent::RedrawRequested =>")
+        .unwrap()
+        .0;
+    let compact: String = input.chars().filter(|c| !c.is_whitespace()).collect();
+    for required in [
+        "self.keyboard.event(",
+        "route_input(",
+        "screen.modes",
+        "modes.is_some()",
+        "self.queue(live::UiMsg::Input{",
+    ] {
+        assert!(
+            compact.contains(required),
+            "live key route lost: {required}"
+        );
+    }
+    for bypass in [
+        "\\x1b",
+        "as_bytes()",
+        "into_bytes()",
+        "vec![",
+        "extend_from_slice",
+    ] {
+        assert!(
+            !input.contains(bypass),
+            "key callback encodes outside keyboard.rs: {bypass}"
+        );
+    }
+    let local = source
+        .split_once("fn route_input(")
+        .unwrap()
+        .1
+        .split_once("fn preedit_command(")
+        .unwrap()
+        .0;
+    for required in [
+        "state.suppressed(",
+        "route_key(input, modes, query)",
+        "RoutedKey::Terminal(_)",
+        "state.consumed(",
+    ] {
+        assert!(
+            local.contains(required),
+            "local lifecycle route lost: {required}"
+        );
+    }
+    let old = source.split_once("fn terminal_input(").unwrap().0;
+    assert!(
+        old.trim_end().ends_with("#[cfg(test)]"),
+        "legacy encoder reintroduced in production"
+    );
 }
