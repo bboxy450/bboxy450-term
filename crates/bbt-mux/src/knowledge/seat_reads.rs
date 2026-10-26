@@ -36,6 +36,31 @@ pub(crate) struct Job {
     pub reply: oneshot::Sender<Result<Value>>,
     pub permit: OwnedSemaphorePermit,
 }
+struct ReadFailure {
+    code: String,
+    message: String,
+}
+impl From<String> for ReadFailure {
+    fn from(message: String) -> Self {
+        Self {
+            code: "rejected".into(),
+            message,
+        }
+    }
+}
+impl From<d::CommandError> for ReadFailure {
+    fn from(error: d::CommandError) -> Self {
+        Self {
+            code: error.code,
+            message: error.message,
+        }
+    }
+}
+impl From<serde_json::Error> for ReadFailure {
+    fn from(error: serde_json::Error) -> Self {
+        error.to_string().into()
+    }
+}
 impl Job {
     pub(crate) fn run(self) -> Completion {
         let Self {
@@ -54,15 +79,16 @@ impl Job {
         let _permit = permit;
         let result = host
             .with_source(&index, &registry, |source| {
-                let result: std::result::Result<Value, String> = (|| match call.tool.as_str() {
+                let result: std::result::Result<Value, ReadFailure> = (|| match call.tool.as_str() {
                     "knowledge_fetch" => {
                         let mcp::knowledge::Request::Fetch(locator) =
                             mcp::knowledge::prepare(&call)?
                         else {
                             unreachable!()
                         };
-                        serde_json::to_value(mcp::knowledge::fetch(source, locator)?)
-                            .map_err(|e| e.to_string())
+                        Ok(serde_json::to_value(mcp::knowledge::fetch(
+                            source, locator,
+                        )?)?)
                     }
                     "knowledge_search" => {
                         let mcp::knowledge::Request::Search(request) =
@@ -70,7 +96,7 @@ impl Job {
                         else {
                             unreachable!()
                         };
-                        let page = source.search(request).map_err(|e| e.to_string())?;
+                        let page = source.search(request)?;
                         let empty = page.items.is_empty();
                         Ok(tools::scoped_list(
                             &actor,
@@ -86,21 +112,21 @@ impl Job {
                             tools::scoped_list(&actor, tasks, empty.then_some("nothing_assigned"));
                         Ok(base)
                     }
-                    "graph_read" => tools::graph(
+                    "graph_read" => Ok(tools::graph(
                         &index,
                         source,
                         &actor,
                         &record,
                         &tools::parse(&call.args)?,
                         false,
-                    ),
+                    )?),
                     _ => unreachable!("only document reads are scheduled"),
                 })();
                 let mut value = match result {
                     Ok(value) => {
                         mcp::knowledge::bounded(call.op_id, mcp::success(call.op_id, value), false)
                     }
-                    Err(reason) => mcp::error(call.op_id, "provider_read_refused", &reason),
+                    Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
                 };
                 if value["isError"] != true {
                     value["structuredContent"]["knowledge_root_revision"] = json!(revision);

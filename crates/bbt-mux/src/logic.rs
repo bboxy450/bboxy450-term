@@ -2801,50 +2801,77 @@ impl Worker {
             let (actor, record) = self.control_actor(id, generation)?;
             call.validate()?;
             self.scan()?;
-            let orient = if call.tool == "orient" {
-                Some(
-                    self.control_read(
-                        &actor,
-                        &record,
-                        &call,
-                        Some(serde_json::json!({"items":[],"truncated":false})),
-                    )
-                    .map_err(invalid)?,
-                )
-            } else {
-                None
-            };
             let journal = self.control_journal(id)?;
             let revision = self.knowledge_host.revision()?;
-            let permit = self
-                .knowledge_reads
-                .clone()
-                .try_acquire_owned()
-                .map_err(|_| invalid("provider_busy: knowledge read capacity is occupied"))?;
-            Ok((actor, record, orient, journal, revision, permit))
+            Ok((actor, record, journal, revision))
         })();
-        match prepared {
+        let (actor, record, journal, revision) = match prepared {
+            Ok(prepared) => prepared,
             Err(error) => {
                 let _ = reply.send(Err(error));
+                return;
             }
-            Ok((actor, record, orient, journal, revision, permit)) => {
-                let job = crate::knowledge::seat_reads::Job {
-                    host: self.knowledge_host.clone(),
-                    index: self.index.clone(),
-                    registry: self.registry.clone(),
-                    actor,
-                    record,
-                    call,
-                    journal,
-                    orient,
-                    revision,
-                    reply,
-                    permit,
-                };
-                self.knowledge_jobs
-                    .spawn_blocking_on(move || job.run(), &self.handle);
+        };
+        let orient = if call.tool == "orient" {
+            match self.control_read(
+                &actor,
+                &record,
+                &call,
+                Some(serde_json::json!({"items":[],"truncated":false})),
+            ) {
+                Ok(value) => Some(value),
+                Err(reason) => {
+                    let _ = reply.send(journal.checked(
+                        &actor,
+                        &call,
+                        crate::mcp::error(call.op_id, "rejected", &reason),
+                    ));
+                    return;
+                }
             }
+        } else {
+            None
+        };
+        if crate::mcp::knowledge::handles(&call.tool)
+            && let Err(reason) = crate::mcp::knowledge::prepare(&call)
+        {
+            let _ = reply.send(journal.checked(
+                &actor,
+                &call,
+                crate::mcp::error(call.op_id, "rejected", &reason),
+            ));
+            return;
         }
+        let permit = match self.knowledge_reads.clone().try_acquire_owned() {
+            Ok(permit) => permit,
+            Err(_) => {
+                let _ = reply.send(journal.checked(
+                    &actor,
+                    &call,
+                    crate::mcp::error(
+                        call.op_id,
+                        "provider_busy",
+                        "Knowledge read capacity is occupied; retry the read.",
+                    ),
+                ));
+                return;
+            }
+        };
+        let job = crate::knowledge::seat_reads::Job {
+            host: self.knowledge_host.clone(),
+            index: self.index.clone(),
+            registry: self.registry.clone(),
+            actor,
+            record,
+            call,
+            journal,
+            orient,
+            revision,
+            reply,
+            permit,
+        };
+        self.knowledge_jobs
+            .spawn_blocking_on(move || job.run(), &self.handle);
     }
     fn knowledge_call(
         &mut self,
