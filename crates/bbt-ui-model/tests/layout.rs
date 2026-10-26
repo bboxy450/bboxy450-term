@@ -25,6 +25,7 @@ fn fixture_tree(value: &serde_json::Value) -> SplitNode {
     )
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter() {
     let fixture: serde_json::Value =
@@ -87,6 +88,7 @@ fn scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter() {
     );
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn the_same_split_solver_supports_minigrid_and_banner_scales() {
     let tree = SplitNode::split(
@@ -112,6 +114,7 @@ fn the_same_split_solver_supports_minigrid_and_banner_scales() {
     near(banner.panes[1].1.h, 50.5);
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes() {
     let mut tree = SplitNode::split(Axis::Row, 0.5, leaf(1), leaf(2));
@@ -144,6 +147,7 @@ fn text(value: &str) -> Child {
     }
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn row_box_allocates_fixed_measured_fill_and_weighted_flex() {
     let row = Box_ {
@@ -172,6 +176,7 @@ fn row_box_allocates_fixed_measured_fill_and_weighted_flex() {
     near(rects[3].right(), 206.0);
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn text_shrinks_before_flex_and_column_boxes_share_the_policy() {
     let mut column = Box_::new(
@@ -201,6 +206,7 @@ fn text_shrinks_before_flex_and_column_boxes_share_the_policy() {
     near(rects[1].w, 40.0);
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn invalid_lengths_and_zero_flex_weights_stay_finite() {
     let row = Box_ {
@@ -238,6 +244,7 @@ fn chrome() -> CardChrome {
     }
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn sidebar_at_a_thousand_seats_only_allocates_the_visible_rows() {
     let card = SidebarCard {
@@ -271,6 +278,7 @@ fn sidebar_at_a_thousand_seats_only_allocates_the_visible_rows() {
     );
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn sidebar_skips_closed_cards_outside_the_scroll_window() {
     let cards: Vec<_> = (1..=1000)
@@ -292,6 +300,7 @@ fn sidebar_skips_closed_cards_outside_the_scroll_window() {
     assert!(layout.cards.iter().all(|c| c.rows.is_empty()));
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn compact_and_touch_use_their_token_heights_and_scroll_stays_local() {
     let card = SidebarCard {
@@ -330,6 +339,7 @@ fn compact_and_touch_use_their_token_heights_and_scroll_stays_local() {
     assert_eq!(scroll_into_view(100.0, 240.0, 120.0, 24.0, 24000.0), 100.0);
 }
 
+// keeps: spec gui-components §2 and §7.3 — finite layout, visible rows and density geometry
 #[test]
 fn phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame() {
     let window = Rect::new(0.0, 0.0, 320.0, 600.0);
@@ -360,6 +370,7 @@ fn phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame() {
     assert_eq!(rules.transition_ms, 320);
 }
 
+// keeps: spec rim-glow §2 — rim gutter and half-rim stage inset
 #[test]
 fn scene_fifteen_gutters_are_the_rim_size_and_the_inset_half_of_it() {
     // The gutter is the rim size R and the stage inset R/2 (rim-glow §2): neighbouring rims'

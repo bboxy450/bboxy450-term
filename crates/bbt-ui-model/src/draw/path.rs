@@ -129,6 +129,7 @@ pub fn path_geometry(points: &[PathCommand]) -> ([f32; 4], Vec<Pt>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §4.4a — exact vector bounds and endpoints
     #[test]
     fn cubic_bounds_include_interior_extrema_not_control_hull() {
         let (bounds, ends) = path_geometry(&[

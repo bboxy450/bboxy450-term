@@ -1,0 +1,91 @@
+cache: on (port 5279; shared local cache /Users/feral/Library/Caches/bboxy450-sccache; 50G)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling bbt-ui-model v0.0.1 (/Users/feral/mydev/bboxy450-term-exec5/crates/bbt-ui-model)
+    Finished `test` profile [optimized] target(s) in 9.50s
+     Running unittests src/lib.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/bbt_ui_model-50ac56d81e5b8655)
+
+running 8 tests
+test draw::atoms::tests::dim_desaturates_content_and_preserves_identity ... ok
+test draw::path::tests::cubic_bounds_include_interior_extrema_not_control_hull ... ok
+test draw::prim::color_tests::text_shadow_accepts_negative_offsets_but_not_invalid_blur_or_coordinates ... ok
+test draw::prim::color_tests::valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut ... ok
+test draw::list::tests::group_filters_and_clip_scopes_validate_recursively ... ok
+test tokens::tests::density_and_theme_are_views_of_the_constants ... ok
+test model::ids::tests::canonical_ulid_round_trip_and_overflow ... ok
+test tokens::tests::every_exported_web_token_matches_generated_fields ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/input.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/input-12ba9a95796146d6)
+
+running 15 tests
+test a_second_activation_does_not_bypass_the_pending_stage_layout ... ok
+test chrome_can_navigate_plainly_while_fields_and_modal_controls_keep_local_keys ... ok
+test cross_stage_locate_waits_for_the_target_layout_and_fires_once ... ok
+test cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm ... ok
+test daemon_updates_do_not_focus_or_locate_and_cancel_stale_user_intent ... ok
+test directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree_order ... ok
+test directional_score_prefers_alignment_over_the_nearest_centre ... ok
+test dwell_needs_150_ms_on_a_pane_and_never_locates_or_repeats ... ok
+test focus_change_clears_unread_once_without_mutating_the_activity_signal ... ok
+test invalid_activation_preserves_the_model_and_pending_locate ... ok
+test terminal_navigation_needs_command_option_and_keeps_reverse_tree_order_explicit ... ok
+test row_and_pane_activation_locate_the_other_view_without_changing_expansion ... ok
+test layout_changes_rehit_the_pointer_and_leave_cancels_dwell ... ok
+test terminal_plain_keys_and_control_or_alt_keys_never_become_pane_navigation ... ok
+test typing_guard_is_strict_and_a_blocked_dwell_waits_for_reentry ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/layout.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/layout-00b71ce46fd20e29)
+
+running 11 tests
+test invalid_lengths_and_zero_flex_weights_stay_finite ... ok
+test compact_and_touch_use_their_token_heights_and_scroll_stays_local ... ok
+test phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame ... ok
+test row_box_allocates_fixed_measured_fill_and_weighted_flex ... ok
+test sidebar_at_a_thousand_seats_only_allocates_the_visible_rows ... ok
+test sidebar_skips_closed_cards_outside_the_scroll_window ... ok
+test split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes ... ok
+test scene_fifteen_gutters_are_the_rim_size_and_the_inset_half_of_it ... ok
+test text_shrinks_before_flex_and_column_boxes_share_the_policy ... ok
+test scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter ... ok
+test the_same_split_solver_supports_minigrid_and_banner_scales ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/model-e547c334c11a308d)
+
+running 15 tests
+test close_and_undo_restore_the_exact_split_and_ratio ... ok
+test cross_swarm_move_is_an_explicit_error_per_grant_contract ... ok
+test detach_removes_empty_tabs_without_touching_other_seats ... ok
+test duplicate_and_mismatched_tree_ids_are_rejected ... ok
+test move_within_one_split_recomputes_the_target_after_pruning ... ok
+test mux_updates_do_not_locate_or_steal_focus ... ok
+test expired_replaced_and_conflicting_undo_do_not_mutate_the_model ... ok
+test new_tab_uses_caller_id_and_preserves_the_remaining_order ... ok
+test open_harness_role_class_and_color_override_survive_placement ... ok
+test placement_on_all_four_sides_is_half_and_collapses_the_source ... ok
+test prune_parent_and_replacement_match_lab_tree_algebra ... ok
+test settings_closes_directly_without_harness_grace ... ok
+test reverse_undo_restores_multiple_closed_seats ... ok
+test undo_keeps_a_sibling_subtrees_intervening_resize ... ok
+test undo_restores_a_removed_tab_at_its_original_index ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/showcase_overrides.rs (/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-plugins-p1-07u7etkc/sweeps/reassigned-20261025/target/debug/deps/showcase_overrides-475cc8c48d3e4f31)
+
+running 2 tests
+test the_guard_catches_an_override ... ok
+test showcase_sets_no_token_backed_property ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests bbt_ui_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

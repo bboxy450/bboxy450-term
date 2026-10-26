@@ -130,6 +130,7 @@ impl DrawList {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec renderer §1 — valid recursive draw-list and clip scopes
     #[test]
     fn group_filters_and_clip_scopes_validate_recursively() {
         let group = |primitives, opacity, saturation| DrawList {

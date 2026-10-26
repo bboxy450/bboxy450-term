@@ -156,6 +156,7 @@ impl Draw for Pill<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec gui-components §7.4 — dim colour transform preserves identity
     #[test]
     fn dim_desaturates_content_and_preserves_identity() {
         let ctx = DrawCtx::new(crate::Theme::Dark, crate::Density::Cozy).dimmed();

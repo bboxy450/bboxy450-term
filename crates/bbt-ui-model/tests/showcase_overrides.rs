@@ -102,6 +102,7 @@ fn style_blocks(html: &str) -> String {
     css
 }
 
+// keeps: spec ux-prototype §7 — token-backed style has one source
 #[test]
 fn showcase_sets_no_token_backed_property() {
     let web = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../lab/web");
@@ -119,6 +120,7 @@ fn showcase_sets_no_token_backed_property() {
     );
 }
 
+// keeps: spec ux-prototype §7 — token-backed style has one source
 #[test]
 fn the_guard_catches_an_override() {
     let html = "<style>\n  html, body { height: 100%; overflow: hidden; }\n  .space { border-radius: 11px; }\n  .x { height: 40px; --icon: 18px; }\n</style><div style=\"padding: 4px\"></div>";

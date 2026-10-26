@@ -79,6 +79,7 @@ pub enum RowId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // keeps: spec id1-seat-chain §1 — canonical ULID identity
     #[test]
     fn canonical_ulid_round_trip_and_overflow() {
         for value in [0, 1, u64::MAX as u128, u128::MAX] {

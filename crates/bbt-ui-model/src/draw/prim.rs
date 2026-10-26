@@ -284,6 +284,7 @@ pub enum Prim {
 #[cfg(test)]
 mod color_tests {
     use super::Color;
+    // keeps: spec renderer §1 — finite shadow inputs and colour gamut
     #[test]
     fn text_shadow_accepts_negative_offsets_but_not_invalid_blur_or_coordinates() {
         let shadow = super::TextShadow {
@@ -311,6 +312,7 @@ mod color_tests {
             .is_err()
         );
     }
+    // keeps: spec renderer §1 — finite shadow inputs and colour gamut
     #[test]
     fn valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut() {
         for value in [

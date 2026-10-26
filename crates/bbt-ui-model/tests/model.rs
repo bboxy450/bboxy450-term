@@ -46,6 +46,7 @@ fn fixture() -> Model {
     Model::new(swarms, seats).unwrap()
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn prune_parent_and_replacement_match_lab_tree_algebra() {
     let original = tree();
@@ -67,6 +68,7 @@ fn prune_parent_and_replacement_match_lab_tree_algebra() {
     assert!(replace_node(&original, &[Branch::A, Branch::A], leaf(9)).is_none());
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn detach_removes_empty_tabs_without_touching_other_seats() {
     let model = fixture();
@@ -77,6 +79,7 @@ fn detach_removes_empty_tabs_without_touching_other_seats() {
     assert_eq!(model.window.sidebar.swarms[0].tabs.len(), 2);
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn placement_on_all_four_sides_is_half_and_collapses_the_source() {
     for side in [Side::Left, Side::Right, Side::Top, Side::Bottom] {
@@ -102,6 +105,7 @@ fn placement_on_all_four_sides_is_half_and_collapses_the_source() {
     }
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn move_within_one_split_recomputes_the_target_after_pruning() {
     let model = fixture();
@@ -131,6 +135,7 @@ fn move_within_one_split_recomputes_the_target_after_pruning() {
     );
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn new_tab_uses_caller_id_and_preserves_the_remaining_order() {
     let model = fixture();
@@ -153,6 +158,7 @@ fn new_tab_uses_caller_id_and_preserves_the_remaining_order() {
     assert_eq!(next.window.stage.tab, Some(tab(3)));
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn close_and_undo_restore_the_exact_split_and_ratio() {
     let model = fixture();
@@ -172,6 +178,7 @@ fn close_and_undo_restore_the_exact_split_and_ratio() {
     }
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn undo_restores_a_removed_tab_at_its_original_index() {
     let mut model = fixture();
@@ -185,6 +192,7 @@ fn undo_restores_a_removed_tab_at_its_original_index() {
     );
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn reverse_undo_restores_multiple_closed_seats() {
     let model = fixture();
@@ -200,6 +208,7 @@ fn reverse_undo_restores_multiple_closed_seats() {
     assert_eq!(restored.window.sidebar.swarms[0].tabs[0].tree, tree());
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn undo_keeps_a_sibling_subtrees_intervening_resize() {
     let model = fixture();
@@ -220,6 +229,7 @@ fn undo_keeps_a_sibling_subtrees_intervening_resize() {
     );
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn expired_replaced_and_conflicting_undo_do_not_mutate_the_model() {
     let model = fixture();
@@ -270,6 +280,7 @@ fn expired_replaced_and_conflicting_undo_do_not_mutate_the_model() {
     );
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn mux_updates_do_not_locate_or_steal_focus() {
     let mut model = fixture();
@@ -308,6 +319,7 @@ fn mux_updates_do_not_locate_or_steal_focus() {
     );
 }
 
+// keeps: spec ux-prototype §5.3 — exact close/undo restoration and honest refusal
 #[test]
 fn settings_closes_directly_without_harness_grace() {
     let mut model = fixture();
@@ -318,6 +330,7 @@ fn settings_closes_directly_without_harness_grace() {
     assert_eq!(closed.window.sidebar.swarms[0].tabs.len(), 1);
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn cross_swarm_move_is_an_explicit_error_per_grant_contract() {
     let mut model = fixture();
@@ -356,6 +369,7 @@ fn cross_swarm_move_is_an_explicit_error_per_grant_contract() {
     );
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
 fn duplicate_and_mismatched_tree_ids_are_rejected() {
     let duplicate = SplitNode::split(Axis::Row, 0.5, leaf(1), leaf(1));
@@ -374,8 +388,9 @@ fn duplicate_and_mismatched_tree_ids_are_rejected() {
     );
 }
 
+// keeps: spec gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts
 #[test]
-fn open_harness_role_class_and_color_override_are_preserved() {
+fn open_harness_role_class_and_color_override_survive_placement() {
     let mut model = fixture();
     let s = model.seats.get_mut(&seat(1)).unwrap();
     s.harness = HarnessId("my-harness-v2".into());
@@ -393,6 +408,24 @@ fn open_harness_role_class_and_color_override_are_preserved() {
         lightness: 40.0,
     };
     s.color = SeatColor::Override(color);
+    let edited = place(
+        &model,
+        seat(1),
+        Placement::Split {
+            target: seat(3),
+            side: Side::Right,
+        },
+    )
+    .unwrap();
+    let s = &edited.seats[&seat(1)];
+    assert_eq!(s.harness.0, "my-harness-v2");
+    assert_eq!(
+        s.where_,
+        Where::Cloud {
+            provider: "custom".into(),
+            host: "region-1".into()
+        }
+    );
     assert_eq!(s.color.resolve("any-key", Theme::Dark), color);
     assert_eq!(s.color.resolve("any-key", Theme::Light), color);
     assert_eq!(s.role.as_ref().unwrap().class, RoleClass::Oracle);

@@ -85,6 +85,7 @@ fn locate(id: u128, where_: LocateWhere) -> Event {
     }
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn row_and_pane_activation_locate_the_other_view_without_changing_expansion() {
     let mut model = fixture();
@@ -113,6 +114,7 @@ fn row_and_pane_activation_locate_the_other_view_without_changing_expansion() {
     assert_eq!(model.window.sidebar.open, open);
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn cross_stage_locate_waits_for_the_target_layout_and_fires_once() {
     let mut model = fixture();
@@ -137,6 +139,7 @@ fn cross_stage_locate_waits_for_the_target_layout_and_fires_once() {
     assert!(focus.layout_ready(&model, &panes(&model), now).is_empty());
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn a_second_activation_does_not_bypass_the_pending_stage_layout() {
     let mut model = fixture();
@@ -159,6 +162,7 @@ fn a_second_activation_does_not_bypass_the_pending_stage_layout() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm() {
     let mut model = fixture();
@@ -173,6 +177,7 @@ fn cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm() {
     }
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree_order() {
     let mut model = fixture();
@@ -223,6 +228,7 @@ fn directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn directional_score_prefers_alignment_over_the_nearest_centre() {
     let tree = SplitNode::split(
@@ -266,6 +272,7 @@ fn directional_score_prefers_alignment_over_the_nearest_centre() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn dwell_needs_150_ms_on_a_pane_and_never_locates_or_repeats() {
     let mut model = fixture();
@@ -300,6 +307,7 @@ fn dwell_needs_150_ms_on_a_pane_and_never_locates_or_repeats() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn typing_guard_is_strict_and_a_blocked_dwell_waits_for_reentry() {
     let mut model = fixture();
@@ -333,6 +341,7 @@ fn typing_guard_is_strict_and_a_blocked_dwell_waits_for_reentry() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn layout_changes_rehit_the_pointer_and_leave_cancels_dwell() {
     let mut model = fixture();
@@ -367,6 +376,7 @@ fn layout_changes_rehit_the_pointer_and_leave_cancels_dwell() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn daemon_updates_do_not_focus_or_locate_and_cancel_stale_user_intent() {
     let mut model = fixture();
@@ -390,6 +400,7 @@ fn daemon_updates_do_not_focus_or_locate_and_cancel_stale_user_intent() {
     assert!(focus.layout_ready(&model, &panes(&model), now).is_empty());
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn invalid_activation_preserves_the_model_and_pending_locate() {
     let mut model = fixture();
@@ -414,6 +425,7 @@ fn invalid_activation_preserves_the_model_and_pending_locate() {
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn focus_change_clears_unread_once_without_mutating_the_activity_signal() {
     let mut model = fixture();
@@ -472,6 +484,7 @@ fn focus_change_clears_unread_once_without_mutating_the_activity_signal() {
     assert!(model.seats[&seat(2)].unread.is_none());
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn terminal_plain_keys_and_control_or_alt_keys_never_become_pane_navigation() {
     for bits in 0..8 {
@@ -497,6 +510,7 @@ fn terminal_plain_keys_and_control_or_alt_keys_never_become_pane_navigation() {
     }
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn terminal_navigation_needs_command_option_and_keeps_reverse_tree_order_explicit() {
     let mods = Modifiers {
@@ -551,6 +565,7 @@ fn terminal_navigation_needs_command_option_and_keeps_reverse_tree_order_explici
     );
 }
 
+// keeps: spec gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing
 #[test]
 fn chrome_can_navigate_plainly_while_fields_and_modal_controls_keep_local_keys() {
     let plain = Modifiers::default();

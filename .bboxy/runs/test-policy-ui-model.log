@@ -1,0 +1,73 @@
+# #327 bbt-ui-model test sweep
+
+Oracle brief: 46f7fa1e-e63e-40dd-9c26-aa83e9285536. Base 6cd081e6e7154f5cda02af4400515bec09912acf.
+Scope: tests and cfg(test) only; production behavior unchanged. No peer in-flight file excluded: Aster confirmed clear; shared main overlap was an older checkout, not a dirty/in-flight edit.
+
+D2 = protected spec contract; C1 = replace fixture-field assertions with the caller-visible result. Every kept test has a keeps tag. No test deleted or moved, no sleep call present or removed, no real-time deadline or external-process dependency.
+
+Before: 51 passed / 0 failed / 0 ignored. After: 51 passed / 0 failed / 0 ignored. Each of the five test binaries reports 0.00 s in both runs (below reporting resolution), so no runtime reduction is claimed. Cargo command elapsed includes compilation: before 0.826 s; after 10.516 s (changed test rebuilt). Presubmit supplies strict Clippy and affected invariants once for the combined group.
+
+| Test | Class | Disposition / surviving coverage |
+|---|---|---|
+| `src/draw/atoms.rs::dim_desaturates_content_and_preserves_identity` | D2 | keep; tag protected public contract; gui-components §7.4 — dim colour transform preserves identity |
+| `src/draw/list.rs::group_filters_and_clip_scopes_validate_recursively` | D2 | keep; tag protected public contract; renderer §1 — valid recursive draw-list and clip scopes |
+| `src/draw/path.rs::cubic_bounds_include_interior_extrema_not_control_hull` | D2 | keep; tag protected public contract; renderer §4.4a — exact vector bounds and endpoints |
+| `src/draw/prim.rs::text_shadow_accepts_negative_offsets_but_not_invalid_blur_or_coordinates` | D2 | keep; tag protected public contract; renderer §1 — finite shadow inputs and colour gamut |
+| `src/draw/prim.rs::valid_rgb_boundary_colours_round_trip_inside_the_unit_gamut` | D2 | keep; tag protected public contract; renderer §1 — finite shadow inputs and colour gamut |
+| `src/model/ids.rs::canonical_ulid_round_trip_and_overflow` | D2 | keep; tag protected public contract; id1-seat-chain §1 — canonical ULID identity |
+| `src/tokens.rs::every_exported_web_token_matches_generated_fields` | D2 | keep; tag protected public contract; gui-components §1.5 — generated lab/native token equality and index selection |
+| `src/tokens.rs::density_and_theme_are_views_of_the_constants` | D2 | keep; tag protected public contract; gui-components §1.5 — generated lab/native token equality and index selection |
+| `tests/input.rs::row_and_pane_activation_locate_the_other_view_without_changing_expansion` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::cross_stage_locate_waits_for_the_target_layout_and_fires_once` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::a_second_activation_does_not_bypass_the_pending_stage_layout` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree_order` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::directional_score_prefers_alignment_over_the_nearest_centre` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::dwell_needs_150_ms_on_a_pane_and_never_locates_or_repeats` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::typing_guard_is_strict_and_a_blocked_dwell_waits_for_reentry` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::layout_changes_rehit_the_pointer_and_leave_cancels_dwell` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::daemon_updates_do_not_focus_or_locate_and_cancel_stale_user_intent` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::invalid_activation_preserves_the_model_and_pending_locate` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::focus_change_clears_unread_once_without_mutating_the_activity_signal` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::terminal_plain_keys_and_control_or_alt_keys_never_become_pane_navigation` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::terminal_navigation_needs_command_option_and_keeps_reverse_tree_order_explicit` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/input.rs::chrome_can_navigate_plainly_while_fields_and_modal_controls_keep_local_keys` | D2 | keep; tag protected public contract; gui-components §4.2 and §7.8 — caller-visible focus, locate and key routing |
+| `tests/layout.rs::scene_fifteen_matches_the_tagged_lab_ratios_at_the_fixture_gutter` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::the_same_split_solver_supports_minigrid_and_banner_scales` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::split_ratio_clamps_and_tiny_bounds_never_produce_negative_sizes` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::row_box_allocates_fixed_measured_fill_and_weighted_flex` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::text_shrinks_before_flex_and_column_boxes_share_the_policy` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::invalid_lengths_and_zero_flex_weights_stay_finite` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::sidebar_at_a_thousand_seats_only_allocates_the_visible_rows` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::sidebar_skips_closed_cards_outside_the_scroll_window` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::compact_and_touch_use_their_token_heights_and_scroll_stays_local` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::phone_sheet_geometry_snap_and_touch_density_match_the_lab_frame` | D2 | keep; tag protected public contract; gui-components §2 and §7.3 — finite layout, visible rows and density geometry |
+| `tests/layout.rs::scene_fifteen_gutters_are_the_rim_size_and_the_inset_half_of_it` | D2 | keep; tag protected public contract; rim-glow §2 — rim gutter and half-rim stage inset |
+| `tests/model.rs::prune_parent_and_replacement_match_lab_tree_algebra` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::detach_removes_empty_tabs_without_touching_other_seats` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::placement_on_all_four_sides_is_half_and_collapses_the_source` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::move_within_one_split_recomputes_the_target_after_pruning` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::new_tab_uses_caller_id_and_preserves_the_remaining_order` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::close_and_undo_restore_the_exact_split_and_ratio` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::undo_restores_a_removed_tab_at_its_original_index` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::reverse_undo_restores_multiple_closed_seats` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::undo_keeps_a_sibling_subtrees_intervening_resize` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::expired_replaced_and_conflicting_undo_do_not_mutate_the_model` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::mux_updates_do_not_locate_or_steal_focus` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::settings_closes_directly_without_harness_grace` | D2 | keep; tag protected public contract; ux-prototype §5.3 — exact close/undo restoration and honest refusal |
+| `tests/model.rs::cross_swarm_move_is_an_explicit_error_per_grant_contract` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::duplicate_and_mismatched_tree_ids_are_rejected` | D2 | keep; tag protected public contract; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/model.rs::open_harness_role_class_and_color_override_are_preserved` | C1 | rewrite: assert metadata in the returned placed Model, not only assignments to the fixture; retain colour output checks; gui-components §1.4 and §7.2 — model edits preserve tree and lifecycle contracts |
+| `tests/showcase_overrides.rs::showcase_sets_no_token_backed_property` | D2 | keep; tag protected public contract; ux-prototype §7 — token-backed style has one source |
+| `tests/showcase_overrides.rs::the_guard_catches_an_override` | D2 | keep; tag protected public contract; ux-prototype §7 — token-backed style has one source |
+
+Coverage map: gui-components §1.5 / §7.1 -> both token tests (include_str! lab/web/tokens.js untouched); §1.4 / §7.2 -> model tree/lifecycle tests; §2 / §7.3 -> all layout cases; §3 / §7.4 -> draw validation/colour; §4.2 / §7.8 -> synthetic focus and key events. ux-prototype §5.3 -> every close/undo regression; §7 -> both showcase guards. rim-glow §2 -> multi-rim geometry. renderer §4.4a -> cubic extrema; id1-seat-chain -> ULID round trip/overflow. No invariant check command or spec acceptance test removed. All Instant::now uses are anchors followed by supplied offsets, never elapsed-time assertions.
+
+The metadata regression now calls place and inspects its returned model for harness, role, provider location and colour, so loss during editing fails the test. No private production field or fixture-only assignment is the result under test.
+
+Evidence:
+- .bboxy/runs/test-policy-ui-model-inventory.log SHA256 66a18445c8589bcb3f5abb5fafe93e9284cff6b350b75c4554411fa240fb35b6 — EXIT 0.
+- .bboxy/runs/test-policy-ui-model-before.log SHA256 c03c5e809f50fd1ba7139ca72290e1f93d215ddeeddcb85453ecde2d6dcd09bd — EXIT 0.
+- .bboxy/runs/test-policy-ui-model-after.log SHA256 31197a8e3f96f399b5ce6a2228006cdb19ebca3d97bdf499563296c71da1a459 — EXIT 0.
+
+Committed output copies normalize trailing blank lines; private originals are retained.

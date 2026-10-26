@@ -121,6 +121,7 @@ mod tests {
         }
     }
 
+    // keeps: spec gui-components §1.5 — generated lab/native token equality and index selection
     #[test]
     fn every_exported_web_token_matches_generated_fields() {
         let js = include_str!("../../../lab/web/tokens.js");
@@ -145,6 +146,7 @@ mod tests {
         );
     }
 
+    // keeps: spec gui-components §1.5 — generated lab/native token equality and index selection
     #[test]
     fn density_and_theme_are_views_of_the_constants() {
         assert_eq!(Density::Cozy.tokens().row_h, 24.0);
