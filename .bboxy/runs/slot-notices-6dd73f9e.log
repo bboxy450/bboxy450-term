@@ -1,0 +1,10 @@
+Source 6dd73f9eae27943a20ba30d011c041d9e45dbbf6 (G), branch velvet-slot-notices; Oracle brief 2d122ace.
+
+scripts/landing.py:858 — Slot emits its own TAKEN/RELEASED with source SHA, slot and PID; release carries explicit child result or exception code.
+scripts/landing.py:797 — optional icq process has closed stdin, discarded output, one-second bound; missing/nonzero/timeout does not affect capacity or status.
+scripts/test-slot-notices.py:17 — private stub proves exactly one event pair, correct fields, claim exists on TAKEN and is absent on RELEASED; both land and ci-local, failure/missing/timeout paths.
+
+python3 -I scripts/test-slot-notices.py — EXIT 0, 3 passed on this source.
+python3 -I scripts/test-landing.py SlotTests LandTests.test_signed_cut_pushes_once_logs_and_announces_after_slot_release GateReceiptTests — EXIT 0, 5 passed on this source.
+python3 -m py_compile scripts/landing.py scripts/test-slot-notices.py; git diff --check — EXIT 0.
+Raw logs and SHA256: slot-notices-6dd73f9e.json. No presubmit/full-CI claim. Real daemon and real slots were not used by fixtures. Publication remains the Oracle's per this pane's standing fence; code and signed evidence are ready.

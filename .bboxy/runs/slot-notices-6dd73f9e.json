@@ -1,0 +1,31 @@
+{
+  "source": "6dd73f9eae27943a20ba30d011c041d9e45dbbf6",
+  "branch": "velvet-slot-notices",
+  "brief": "2d122ace-b07e-46a7-8814-58f7d5913985",
+  "mechanism": {
+    "claim": "one SLOT n TAKEN pid sha after owned mkdir",
+    "release": "one SLOT n RELEASED pid exit after cleanup",
+    "best_effort": "missing, nonzero and timeout ignored silently; subprocess timeout 1 second",
+    "verdict": "Refusal/SystemExit codes retained; explicit returned ci-local and wide-presubmit results recorded"
+  },
+  "checks": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-current-main.log",
+      "sha256": "3ab970016296fcc8449db90513a8cda5db69b9935e77e87f0b1d34cb2a9521c4",
+      "exit": 0,
+      "passed": 3
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-exec6/target/m2-compose-proof/slot-notices-current-integration.log",
+      "sha256": "519905175668a7fd3e294bba8c323ba99be420715b5dded4a8523a5596a85c8b",
+      "exit": 0,
+      "passed": 5
+    }
+  ],
+  "syntax_and_diff_exit": 0,
+  "limits": [
+    "No author presubmit or full CI run for this scripts-only brief.",
+    "Tests use a private stub icq, fake slot directories and throwaway fixture repositories.",
+    "No real gate slot or peer process was mutated."
+  ]
+}
