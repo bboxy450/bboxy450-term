@@ -249,7 +249,7 @@ def m2(app):
         require(len(actual) == (0 if seat == other else 1), "role inbox leakage")
         if actual:
             app.acknowledge(seat, sorted(actual))
-    capture = app.ctl("seat", "capture", "window", app.work / "m2-sent.png")["data"]
+    capture = app.ctl("seat", "capture", "window", str(app.work / "m2-sent.png"))["data"]
     require(capture["frame_seq"] >= frame["frame_seq"], "capture predates composer receipt")
 
     # The exact cap case uses real registered role members, never a fake count.
