@@ -19,6 +19,7 @@ mod tests;
 pub use self::row::Row;
 use self::storage::Storage;
 
+/// Cell operations required by the generic terminal grid.
 pub trait GridCell: Sized {
     /// Check if the cell contains any content.
     fn is_empty(&self) -> bool;
@@ -26,13 +27,17 @@ pub trait GridCell: Sized {
     /// Perform an opinionated cell reset based on a template cell.
     fn reset(&mut self, template: &Self);
 
+    /// Borrow the cell's terminal attribute and layout flags.
     fn flags(&self) -> &Flags;
+    /// Mutably borrow the cell's terminal attribute and layout flags.
     fn flags_mut(&mut self) -> &mut Flags;
 }
 
+/// Grid cursor position, insertion template, active charsets and wrap state.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cursor<T> {
     /// The location of this cursor.
+    /// Terminal-grid coordinate of this cursor or cell.
     pub point: Point,
 
     /// Template cell when using this cursor.
@@ -52,6 +57,7 @@ pub struct Cursor<T> {
     pub input_needs_wrap: bool,
 }
 
+/// The four designated character sets indexed by their G0-G3 slot.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Charsets([StandardCharset; 4]);
 
@@ -69,12 +75,18 @@ impl IndexMut<CharsetIndex> for Charsets {
     }
 }
 
+/// Motion of the visible viewport through retained grid history.
 #[derive(Debug, Copy, Clone)]
 pub enum Scroll {
+    /// Move by a signed number of rows; positive values move toward older history.
     Delta(i32),
+    /// Move one visible page toward older history.
     PageUp,
+    /// Move one visible page toward the live bottom.
     PageDown,
+    /// Show the oldest retained rows.
     Top,
+    /// Return to the live bottom.
     Bottom,
 }
 
@@ -146,6 +158,7 @@ fn zero_scroll_rows(rows: &u64) -> bool {
 }
 
 impl<T: GridCell + Default + PartialEq> Grid<T> {
+    /// Create a default-filled grid with visible dimensions and an explicit history cap.
     pub fn new(lines: usize, columns: usize, max_scroll_limit: usize) -> Grid<T> {
         Grid {
             raw: Storage::with_capacity(lines, columns),
@@ -185,6 +198,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         self.max_scroll_limit = history_size;
     }
 
+    /// Move the viewport through retained history, clamping to its current boundaries.
     pub fn scroll_display(&mut self, scroll: Scroll) {
         self.display_offset = match scroll {
             Scroll::Delta(count) => min(
@@ -214,6 +228,10 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
     }
 
     #[inline]
+    /// Scroll a visible region downward, resetting inserted rows from the cursor template.
+    ///
+    /// # Panics
+    /// Panics if the supplied region addresses rows outside the grid.
     pub fn scroll_down<D>(&mut self, region: &Range<Line>, positions: usize)
     where
         T: ResetDiscriminant<D>,
@@ -333,6 +351,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         }
     }
 
+    /// Clear the visible viewport while retaining scrollback according to the grid policy.
     pub fn clear_viewport<D>(&mut self)
     where
         T: ResetDiscriminant<D>,
@@ -407,6 +426,7 @@ impl<T> Grid<T> {
     }
 
     #[inline]
+    /// Purge retained scrollback and reset the display offset to the live viewport.
     pub fn clear_history(&mut self) {
         // Explicitly purge all lines from history.
         self.raw.shrink_lines(self.history_size());
@@ -465,11 +485,16 @@ impl<T> Grid<T> {
     }
 
     #[inline]
+    /// Return the viewport's distance in retained rows from the live bottom.
     pub fn display_offset(&self) -> usize {
         self.display_offset
     }
 
     #[inline]
+    /// Mutably borrow the current cursor cell.
+    ///
+    /// # Panics
+    /// Panics if a caller has assigned a cursor outside the grid.
     pub fn cursor_cell(&mut self) -> &mut T {
         let point = self.cursor.point;
         &mut self[point.line][point.column]
@@ -586,9 +611,12 @@ impl Dimensions for (usize, usize) {
     }
 }
 
+/// A cell value paired with its terminal-grid coordinate.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Indexed<T> {
+    /// Terminal-grid coordinate of this cursor or cell.
     pub point: Point,
+    /// Cell value carried by this indexed item.
     pub cell: T,
 }
 
@@ -669,6 +697,7 @@ impl<'a, T> Iterator for GridIterator<'a, T> {
 
 /// Bidirectional iterator.
 pub trait BidirectionalIterator: Iterator {
+    /// Move backward by one item, or return `None` at the beginning.
     fn prev(&mut self) -> Option<Self::Item>;
 }
 

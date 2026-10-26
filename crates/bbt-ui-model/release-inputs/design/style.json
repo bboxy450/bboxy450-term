@@ -1,0 +1,120 @@
+{
+  "name": "bboxy450-term visual style",
+  "version": 1,
+  "sources": {
+    "launcher_and_material": "Raycast launcher screenshot, operator 2026-10-21",
+    "swarm_block": "Range Rover 2023 rear: band set into a rounded body, bumper carries the colour",
+    "sizes": "macOS proportions at a compact footprint (cozy density)"
+  },
+  "rules": [
+    "one material for every surface: translucent, blurred, hairline-edged; no opaque boxes",
+    "hairlines, never borders; the only solid borders are pane borders, which carry identity",
+    "selection is a tint of the foreground, never a colour",
+    "colour means identity only: a seat's colour, a swarm's colour, a role's colour; state is glyph and glow",
+    "numbers live in badges, kinds live in muted text on the right, icons live in tiles",
+    "one radius scale, one type scale, one spacing grid; nothing is sized by eye",
+    "shadows only under floating things; flat things cast none",
+    "motion is one curve and one duration; nothing animates without a cause"
+  ],
+  "material": {
+    "panel_alpha": 0.78,
+    "panel_blur_px": 30,
+    "panel_saturate": 1.4,
+    "card_alpha": 0.72,
+    "backdrop_dim_alpha": 0.35,
+    "backdrop_blur_px": 14,
+    "hairline_alpha": 0.7,
+    "inner_highlight_alpha": 0.08,
+    "hairline_px": 1
+  },
+  "radius": {
+    "panel": 20,
+    "card": 12,
+    "row": 10,
+    "tile": 8,
+    "badge": 6,
+    "pill": 999,
+    "tag": 5,
+    "mark": 2
+  },
+  "shadow": {
+    "floating": "0 40px 120px rgba(0,0,0,.45)",
+    "pill": "0 6px 20px rgba(0,0,0,.18)",
+    "flat": "none"
+  },
+  "type": {
+    "family": "system sans (SF, Inter)",
+    "mono": "ui-monospace",
+    "input": 22,
+    "title": 16,
+    "subtitle": 15,
+    "kind": 14,
+    "body": 13,
+    "row": 12.5,
+    "section": 12,
+    "badge": 12,
+    "caption": 11,
+    "weight_title": 500,
+    "weight_name": 600,
+    "weight_section": 500,
+    "micro": 9,
+    "tiny": 9.5,
+    "small": 10,
+    "note": 10.5,
+    "label": 11.5,
+    "doc_heading": 13.5,
+    "doc_title": 19,
+    "heading": 18,
+    "display": 26
+  },
+  "spacing": {
+    "grid": 8,
+    "panel_pad_x": 24,
+    "row_pad_x": 14,
+    "row_gap": 12,
+    "row_margin_x": 10,
+    "row_height_panel": 46,
+    "row_height_sidebar": 24,
+    "section_pad_top": 12,
+    "section_pad_bottom": 6,
+    "title_bar": 38,
+    "band": 24,
+    "new_swarm": 40,
+    "doc_measure": 576,
+    "empty_measure": 240,
+    "s1": 2,
+    "s2": 4,
+    "s3": 6,
+    "s4": 8,
+    "s5": 10,
+    "s6": 12,
+    "s7": 14,
+    "s8": 16,
+    "s9": 20,
+    "s10": 24
+  },
+  "tint": {
+    "selection_alpha": 0.09,
+    "selection_hover_alpha": 0.06,
+    "badge_alpha": 0.18,
+    "badge_selected_alpha": 0.3,
+    "tile_text": "#ffffff"
+  },
+  "components": {
+    "panel": "frosted surface at panel_alpha with panel_blur, radius.panel, hairline ring, shadow.floating, inner top highlight",
+    "card": "flat surface at card_alpha, radius.card, outside hairline ring (material.hairline_px, hair), no inner highlight, no shadow: the swarm block body (padding s2 s2 0, rows on a body padded s1 0 s2), the new-swarm button and Box card",
+    "row": "radius.row, margin row_margin_x, selection tint on select, hover tint on hover, tile · title · subtitle · kind · badge; inside the swarm card: radius.row, padding 0 s4, margin 0 s1",
+    "tile": "radius.tile square in the harness colour, white glyph inside",
+    "badge": "radius.badge square, badge_alpha tint, mono digits (⌘N, numbers)",
+    "pill": "radius.pill, panel material, shadow.pill; floating actions with kbd hints",
+    "section": "type.section at weight_section, muted, sentence case",
+    "band": "swarm colour gloss band set into the card top: radius.tile, height spacing.band, padding 0 s6, note 600 tracked .16em uppercase",
+    "bumper": "4px strip of swarm colour along the card bottom, 3px when shut",
+    "new_swarm": "card-shaped button under the swarm cards: the card Style at spacing.new_swarm high, row 500 fg-dim",
+    "hud": "the panel Style at instrument size: frosted panel_alpha, radius.card, hairline ring, shadow.floating, padding s5 s6, micro mono; the perf overlay (Cmd+Opt+F)"
+  },
+  "motion": {
+    "appear_ms": 160,
+    "ease": "cubic-bezier(.2,.8,.2,1)"
+  }
+}

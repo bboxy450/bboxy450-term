@@ -9,18 +9,29 @@ pub const MAX_INPUT_BYTES: usize = 64 * 1024;
 /// Transport-independent arbiter facts sampled by the caller.
 #[derive(Debug, Clone)]
 pub struct ArbiterView {
+    /// Exact process, native-session and attachment identity being observed.
     pub binding: Binding,
+    /// Caller input-ownership epoch that must still match at guarded input.
     pub operator_epoch: u64,
+    /// Caller-observed foreground process identity.
     pub foreground_pid: Option<u32>,
+    /// Whether an operator draft currently owns input.
     pub operator_draft: bool,
+    /// Whether an active tool currently owns input.
     pub active_tool: bool,
+    /// Whether synchronized terminal output is pending.
     pub sync_pending: bool,
+    /// Whether a screen transition is pending.
     pub screen_switch_pending: bool,
+    /// Whether canonical terminal input processing was observed.
     pub canonical: bool,
+    /// Whether terminal echo was observed.
     pub echo: bool,
+    /// Whether bracketed-paste input framing is currently enabled.
     pub bracketed_paste: bool,
 }
 #[derive(Debug)]
+/// Single-use positive readiness bound to identity, proof revision, input epoch and expiry.
 pub struct ReadyToken {
     binding: Binding,
     proof_revision: u64,
@@ -29,18 +40,26 @@ pub struct ReadyToken {
     expires_ms: u64,
 }
 #[derive(Debug)]
+/// Current readiness result; activity state alone cannot produce a positive token.
 pub enum Readiness {
+    /// Positive short-lived composer readiness that must be rechecked and consumed.
     Ready(ReadyToken),
+    /// Named current reason automatic literal input cannot be admitted.
     NotReady(&'static str),
+    /// The selected harness has no supported guarded input adapter.
     OperatorHandoff,
 }
 /// A literal paste consumes readiness; Enter is an explicit caller choice.
 #[derive(Clone, Copy)]
 pub struct LiteralInput<'a> {
+    /// Stable caller delivery identity, journaled before the terminal writer is called.
     pub id: Ulid,
+    /// Literal caller text, never interpreted as a shell command by the input encoder.
     pub text: &'a str,
+    /// Whether to append the explicit Enter transition after literal input.
     pub submit: bool,
 }
+/// Validate positive composer proof, foreground identity, input ownership and current transition state.
 pub fn check(session: &Session, view: &ArbiterView, now_ms: u64) -> Readiness {
     if !matches!(session.record.kind.as_str(), "claude" | "codex" | "zsh") {
         return Readiness::OperatorHandoff;
@@ -87,6 +106,9 @@ pub fn check(session: &Session, view: &ArbiterView, now_ms: u64) -> Readiness {
 impl Session {
     /// The caller journals the stable ID before sending these bytes through the
     /// sole supervisor writer lease. A failed/partial write is never replayed.
+    ///
+    /// # Errors
+    /// Returns stale/consumed/ambiguous readiness, unsafe control text or input-bound failures.
     pub fn prepare_input(
         &mut self,
         token: ReadyToken,
@@ -107,6 +129,10 @@ impl Session {
         )
     }
     /// Recheck and consume a positive token before encoding literal text.
+    ///
+    /// # Errors
+    /// Refuses stale/consumed readiness, unresolved native writes, disallowed controls,
+    /// unbracketed multiline/tab input or an encoded paste above 64 KiB.
     pub fn prepare_literal(
         &mut self,
         token: ReadyToken,
@@ -153,12 +179,14 @@ impl Session {
         self.invalidate();
         Ok(bytes)
     }
+    /// Retain ambiguous native outcomes and invalidate terminal readiness for that delivery identity.
     pub fn record_outcome(&mut self, id: Ulid, outcome: &WakeOutcome) {
         if outcome.evidence == Evidence::NativeUnknown {
             self.uncertain.insert(id);
             self.invalidate();
         }
     }
+    /// Return whether this stable delivery identity has no retained ambiguous native mutation.
     pub fn can_attempt_native(&self, id: Ulid) -> bool {
         !self.uncertain.contains(&id)
     }

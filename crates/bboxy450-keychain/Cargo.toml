@@ -1,4 +1,5 @@
 [package]
+readme = "README.md"
 name = "bboxy450-keychain"
 version.workspace = true
 edition.workspace = true
@@ -9,4 +10,4 @@ rust-version.workspace = true
 description = "Explicit identity custody backend selection"
 
 [dependencies]
-bboxy450-keychain-file = { path = "../bboxy450-keychain-file", version = "0.0.1" }
+bboxy450-keychain-file = { package = "bboxy450-keychain-file", version = "0.1.0", path = "../bboxy450-keychain-file" }

@@ -1,8 +1,6 @@
-//! Desktop notification port, independent of any terminal or window toolkit.
-//!
-//! Call [`open`] on the application main thread before running its event loop.
-//! Native completion waits belong on an IO worker; callbacks must forward to
-//! the caller's event loop. A bare macOS binary returns [`Error::NoBundle`].
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 compile_error!("desktop notifications: no backend for this target OS");
@@ -14,35 +12,49 @@ pub struct NotificationId(pub String);
 /// A silent notification with a default click action.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Notification {
+    /// Stable replacement and removal key owned by the caller.
     pub id: NotificationId,
+    /// Displayed notification title.
     pub title: String,
+    /// Displayed notification body.
     pub body: String,
 }
 
 /// A native response; it carries no window or application-specific identity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Response {
+    /// The default action was activated for this stable identifier.
     Clicked(NotificationId),
+    /// The notification with this stable identifier was dismissed.
     Dismissed(NotificationId),
 }
 
 /// The system's authorization state, not an application preference.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Authorization {
+    /// The system permits notifications.
     Granted,
+    /// The system refuses notifications.
     Denied,
+    /// The system has not decided authorization.
     Undetermined,
 }
 
 /// A named unsupported platform or native failure. There is no fallback.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
+    /// The selected platform has no implemented native backend.
     Unsupported {
+        /// The unavailable platform.
         os: &'static str,
+        /// The backend research marker.
         note: &'static str,
     },
+    /// The process has no suitable application-bundle identity.
     NoBundle,
+    /// The system refused authorization or posting.
     Denied,
+    /// The native transport returned a failure.
     Backend(String),
 }
 impl std::fmt::Display for Error {
@@ -61,8 +73,20 @@ impl std::error::Error for Error {}
 
 /// Synchronous completion port. Invoke it from an IO worker, never a UI turn.
 pub trait Notifier: Send + Sync {
+    /// Read or request native authorization.
+    ///
+    /// # Errors
+    /// Returns a named transport or platform failure.
     fn authorize(&self) -> Result<Authorization, Error>;
+    /// Post or replace the silent notification under its stable identifier.
+    ///
+    /// # Errors
+    /// Returns denial, unsupported platform or native transport failure.
     fn post(&self, notification: &Notification) -> Result<(), Error>;
+    /// Withdraw pending and delivered notifications under this identifier.
+    ///
+    /// # Errors
+    /// Returns a named transport or platform failure.
     fn remove(&self, id: &NotificationId) -> Result<(), Error>;
 }
 
@@ -71,6 +95,9 @@ pub trait Notifier: Send + Sync {
 pub mod probe {
     use super::*;
     /// Query actual delivered identifiers, not an in-process post counter.
+    ///
+    /// # Errors
+    /// Returns the named unsupported platform, absent bundle identity or native completion failure.
     pub fn delivered_ids() -> Result<Vec<NotificationId>, Error> {
         #[cfg(target_os = "macos")]
         {
@@ -89,6 +116,9 @@ pub mod probe {
 }
 
 /// Install the response delegate once, before the application finishes launch.
+///
+/// # Errors
+/// Refuses an unsupported backend, absent bundle or main-thread context, or repeated installation.
 pub fn open(
     on_response: Box<dyn Fn(Response) + Send + Sync + 'static>,
 ) -> Result<Box<dyn Notifier>, Error> {

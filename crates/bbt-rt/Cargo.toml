@@ -1,5 +1,6 @@
 [package]
-name = "bbt-rt"
+readme = "README.md"
+name = "bboxy450-rt"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -20,3 +21,6 @@ tokio = { version = "1.54.1", optional = true, features = ["rt-multi-thread", "p
 [[test]]
 name = "runtime"
 required-features = ["runtime"]
+
+[lib]
+name = "bbt_rt"

@@ -4,7 +4,7 @@ number: 148
 type: invariant
 title: every .bboxy Mermaid block has a fixture the engine lays out
 status: active
-check: cargo test -p bbt-mermaid --locked --test fixtures every_bboxy_mermaid_block_has_a_fixture -- --exact
+check: cargo test -p bboxy450-mermaid --locked --test fixtures every_bboxy_mermaid_block_has_a_fixture -- --exact
 cost: a diagram the engine cannot lay out is a blank card in the viewer, and the spec it explains loses its picture
 links:
   - { to: "[[d14-native-document-viewer]]", rel: decision }
@@ -21,7 +21,7 @@ that the engine parses and lays out (decision [[d14-native-document-viewer|#14]]
 supports is what `.bboxy` uses). A diagram edit and its fixture travel in one
 commit.
 
-**Check.** `cargo test -p bbt-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact`
+**Check.** `cargo test -p bboxy450-mermaid --locked every_bboxy_mermaid_block_has_a_fixture -- --exact`
 (`crates/bbt-mermaid/tests/fixtures.rs:123`) — exit 0 held, exit 1 naming the
 block without a fixture. Part of `scripts/invariants.sh`.
 

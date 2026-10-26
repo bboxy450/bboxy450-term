@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) const MAX_PARAMS: usize = 32;
 
+/// Bounded escape-sequence parameters with their colon-separated subparameter grouping.
 #[derive(Default, Clone, Serialize, Deserialize)]
 pub struct Params {
     /// Number of subparameters for each parameter.

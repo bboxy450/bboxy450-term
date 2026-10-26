@@ -1,4 +1,4 @@
-# bbt-rt
+# bboxy450-rt
 
 R1's shared two-worker Tokio IO runtime. Call `init_ui(waker)` once on the app
 thread, with a `Waker` backed by its event-loop proxy. `handle()` returns the
@@ -9,8 +9,8 @@ The default `runtime` feature preserves this API. With
 `default-features = false`, the same UI-thread registry/guards, dirty bits and
 hitch meter compile using only std; Tokio, commands and message queues are
 disabled. The supervisor uses this mode, sharing the registry when linked into
-the app. Verify with `cargo build -p bbt-rt --locked --no-default-features` and
-`cargo test -p bbt-rt --locked --no-default-features`; runtime integration tests
+the app. Verify with `cargo build -p bboxy450-rt --locked --no-default-features` and
+`cargo test -p bboxy450-rt --locked --no-default-features`; runtime integration tests
 require the default feature.
 
 R2 adds the memory-only `HitchMeter`, with 1,024 interval/per-phase samples,
@@ -45,8 +45,8 @@ both pipes before publishing completion. Descendants that deliberately leave
 the group are outside this cancellation guarantee. `CommandRunner` supports
 the same operations with independently configured queue/view capacities.
 
-Run `cargo test -p bbt-rt --locked` and
-`cargo clippy -p bbt-rt --locked --all-targets -- -D warnings`.
+Run `cargo test -p bboxy450-rt --locked` and
+`cargo clippy -p bboxy450-rt --locked --all-targets -- -D warnings`.
 The five brief checks plus queue replacement, argument/environment/error
 handling and early cancellation run in `tests/runtime.rs`.
 
@@ -55,7 +55,7 @@ The root `clippy.toml` uses concrete paths because Clippy does not accept
 three UI libraries with:
 
 ```sh
-cargo clippy -p bbt-ui-model -p bbt-ui -p bbt-render --locked --lib -- -W clippy::disallowed_methods
+cargo clippy -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-render --locked --lib -- -W clippy::disallowed_methods
 ```
 
 Use `-D clippy::disallowed_methods` for a hard gate. Existing violations,
@@ -68,3 +68,11 @@ Not implemented here: parser pools, the GUI/frame drain, hitch meter, display
 link, byte-ring persistence, durable command output, process quotas, or the R5
 stall test. R1 was exercised on macOS/Apple silicon; Linux and power-loss
 behavior were not tested.
+
+## Dependency name
+
+The Rust library name remains `bbt_rt`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-rt = { package = "bboxy450-rt", version = "0.1.0" }
+```

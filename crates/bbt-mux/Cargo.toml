@@ -1,22 +1,23 @@
 [package]
-name = "bbt-mux"
+readme = "README.md"
+name = "bboxy450-mux"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-description = "bboxy450-term: bbt-mux"
+description = "Local terminal sessions, durable messaging and knowledge-provider coordination"
 
 [dependencies]
-bboxy450-keychain = { path = "../bboxy450-keychain" }
+bboxy450-keychain = { package = "bboxy450-keychain", version = "0.1.0", path = "../bboxy450-keychain" }
 bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
-bbt-plugin = { path = "../bbt-plugin" }
-bbt-doc = { path = "../bbt-doc" }
-bbt-proto = { path = "../bbt-proto" }
-bbt-core = { path = "../bbt-core" }
-bbt-rt = { path = "../bbt-rt" }
-bbt-supervisor = { path = "../bbt-supervisor" }
+bbt-plugin = { package = "bboxy450-plugin", version = "0.1.0", path = "../bbt-plugin" }
+bbt-doc = { package = "bboxy450-doc", version = "0.1.0", path = "../bbt-doc" }
+bbt-proto = { package = "bboxy450-proto", version = "0.1.0", path = "../bbt-proto" }
+bbt-core = { package = "bboxy450-term-core", version = "0.1.0", path = "../bbt-core" }
+bbt-rt = { package = "bboxy450-rt", version = "0.1.0", path = "../bbt-rt" }
+bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.0", path = "../bbt-supervisor" }
 base64 = "0.22"
 ed25519-dalek = "3.0"
 getrandom = "0.3"
@@ -46,3 +47,6 @@ futures-util = { version = "0.3", features = ["sink"] }
 tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
 tempfile = "3"
 tokio = { version = "1", features = ["rt-multi-thread", "test-util"] }
+
+[lib]
+name = "bbt_mux"

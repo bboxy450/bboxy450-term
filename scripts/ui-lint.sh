@@ -6,4 +6,4 @@ if [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
 else
     set --
 fi
-exec cargo clippy "$@" -p bbt-ui-model -p bbt-ui -p bbt-render -p bboxy450-term --locked -- -D clippy::disallowed_methods
+exec cargo clippy "$@" -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-render -p bboxy450-term --locked -- -D clippy::disallowed_methods

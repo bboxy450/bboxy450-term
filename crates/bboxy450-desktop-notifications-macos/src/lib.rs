@@ -1,9 +1,7 @@
-//! Native UserNotifications transport; no application or window types.
-//!
-//! The delegate is installed once on the main thread, before the event loop.
-//! Its retained +1 ownership intentionally lasts for the process: the center's
-//! delegate property is weak. Methods construct native objects on the calling
-//! IO thread rather than sending retained Objective-C objects between threads.
+#![doc = include_str!("../README.md")]
+#![warn(rustdoc::broken_intra_doc_links)]
+#![deny(missing_docs)]
+
 #![cfg(target_os = "macos")]
 
 use block2::{DynBlock, RcBlock};
@@ -31,23 +29,31 @@ static OPENED: AtomicBool = AtomicBool::new(false);
 /// Native authorization state mapped by the facade.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Authorization {
+    /// The system permits notifications.
     Granted,
+    /// The system refuses notifications.
     Denied,
+    /// The system has not decided authorization.
     Undetermined,
 }
 
 /// Native callback values contain only an owned identifier.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Response {
+    /// The default action was activated for this stable identifier.
     Clicked(String),
+    /// The notification with this stable identifier was dismissed.
     Dismissed(String),
 }
 
 /// The facade maps these errors without substituting another mechanism.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
+    /// The process has no suitable application-bundle identity.
     NoBundle,
+    /// The system refused authorization or posting.
     Denied,
+    /// The native transport returned a failure.
     Backend(String),
 }
 
@@ -115,6 +121,9 @@ pub struct Handle {
 }
 
 /// Install the process delegate after proving this is an actual app bundle.
+///
+/// # Errors
+/// Refuses absent bundle identity, calls off the main thread or a second installation.
 pub fn open(callback: Callback) -> Result<Handle, Error> {
     let bundle = NSBundle::mainBundle();
     if bundle.bundleIdentifier().is_none() {
@@ -157,6 +166,9 @@ fn completed<T>(receiver: mpsc::Receiver<T>, operation: &str) -> Result<T, Error
 
 impl Handle {
     /// Read permission and, only when undetermined, ask the operator once.
+    ///
+    /// # Errors
+    /// Returns a native error or failure to complete settings or authorization within two seconds.
     pub fn authorize(&self) -> Result<Authorization, Error> {
         let center = UNUserNotificationCenter::currentNotificationCenter();
         let (send, receive) = mpsc::sync_channel(1);
@@ -196,6 +208,9 @@ impl Handle {
     }
 
     /// Schedule a silent notification using the caller's replace identifier.
+    ///
+    /// # Errors
+    /// Returns the native scheduling error or a completion timeout.
     pub fn post(&self, id: &str, title: &str, body: &str) -> Result<(), Error> {
         let center = UNUserNotificationCenter::currentNotificationCenter();
         let content = UNMutableNotificationContent::new();
@@ -215,6 +230,9 @@ impl Handle {
     }
 
     /// Withdraw both scheduled and delivered instances of this identifier.
+    ///
+    /// # Errors
+    /// The current implementation dispatches both removals and returns success without a receipt.
     pub fn remove(&self, id: &str) -> Result<(), Error> {
         let center = UNUserNotificationCenter::currentNotificationCenter();
         let ids = NSArray::from_retained_slice(&[NSString::from_str(id)]);
@@ -225,6 +243,9 @@ impl Handle {
 }
 
 /// Read actual Notification Center delivery state for the opt-in debug probe.
+///
+/// # Errors
+/// Refuses absent bundle identity or a native completion timeout.
 #[cfg(all(feature = "probe", debug_assertions))]
 pub fn delivered_ids() -> Result<Vec<String>, Error> {
     if NSBundle::mainBundle().bundleIdentifier().is_none() {

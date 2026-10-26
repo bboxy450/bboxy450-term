@@ -1,4 +1,4 @@
-# bboxybook
+# bboxy450-book
 
 Native component previews on the same wgpu chrome pass used by headless tests.
 The model's draw list remains std-only. This crate owns fixtures, gallery
@@ -8,7 +8,7 @@ Chrome-text raster probe (macOS):
 
 ```sh
 node crates/bboxybook/chrome-text-probe.mjs target/bboxybook/chrome-text
-cargo run -p bboxybook --example chrome-text-probe --locked -- target/bboxybook/chrome-text
+cargo run -p bboxy450-book --example chrome-text-probe --locked -- target/bboxybook/chrome-text
 ```
 
 The isolated browser captures 192 black/white, 96 token-palette, 64 fractional-origin
@@ -34,10 +34,10 @@ used only when neither lookup finds a true italic. The probe records Chrome
 faces; the native face test prints selected names, angles and matrices.
 
 ```sh
-cargo run -p bboxybook --locked                         # windowed gallery
-cargo run -p bboxybook --locked -- gallery --smoke       # three surface frames, exits
-cargo test -p bboxybook --locked
-cargo run -p bboxybook --locked -- render --all
+cargo run -p bboxy450-book --locked                         # windowed gallery
+cargo run -p bboxy450-book --locked -- gallery --smoke       # three surface frames, exits
+cargo test -p bboxy450-book --locked
+cargo run -p bboxy450-book --locked -- render --all
 scripts/parity.sh
 ```
 
@@ -53,9 +53,9 @@ Without that cache it captures references through local Chromium. An explicit
 `--out` renders only native images, useful for an iteration:
 
 ```sh
-cargo run -p bboxybook --locked -- render --all --component toolbar-icon \
+cargo run -p bboxy450-book --locked -- render --all --component toolbar-icon \
   --manifest target/parity/cases.json --out target/parity/native
-cargo run -p bboxybook --locked -- compare --manifest target/parity/cases.json \
+cargo run -p bboxy450-book --locked -- compare --manifest target/parity/cases.json \
   --out target/parity
 ```
 
@@ -160,7 +160,7 @@ changed. See `.bboxy/runs/w3-2b-clippy-*.log` for actual command results.
 ## L6 controls
 
 ```sh
-cargo run -p bboxybook --locked -- widgets
+cargo run -p bboxy450-book --locked -- widgets
 ```
 
 This writes `target/bboxybook/widgets/index.html`: Button, List, Table and Input
@@ -183,7 +183,7 @@ Settings module rebases remain in their later briefs.
 ## L6 floating surfaces
 
 ```sh
-cargo run -p bboxybook --locked -- overlays
+cargo run -p bboxy450-book --locked -- overlays
 ```
 
 `target/bboxybook/overlays/index.html` pairs 16 complete Overlay/Modal primitive
@@ -208,7 +208,7 @@ an opaque foreground that remains sharp. Keyboard/dismissal/focus behaviour,
 Launcher and DocumentModal bodies, and later module rebases are untouched.
 # L2 materials
 
-`cargo run -p bboxybook --locked -- materials` writes the 32 canonical cases and
+`cargo run -p bboxy450-book --locked -- materials` writes the 32 canonical cases and
 `target/bboxybook/materials/index.html`: flat, gloss, frosted, glow × density × theme, each at radii 0, 6, 12, 20.
 The provider is `bbt_render::chrome::materials::Pass`; it takes the caller's
 device, target and distinct sampled backdrop. Legacy module drawing is unchanged.
@@ -243,7 +243,7 @@ compositing, filtering and glow gaps.
 ## L3 Style
 
 ```sh
-cargo run -p bboxybook --locked -- styles
+cargo run -p bboxy450-book --locked -- styles
 ```
 
 This writes `target/bboxybook/style/index.html`, with 112 canonical pairs:
@@ -300,7 +300,7 @@ random state are fixtures; the web emitter code/design is not rewritten.
 ## L5 atoms (W3.2d.3)
 
 ```sh
-cargo run -p bboxybook --locked -- atoms
+cargo run -p bboxy450-book --locked -- atoms
 ```
 
 `target/bboxybook/atoms/index.html` shows all nine `bbt-ui` atom painters across
@@ -349,7 +349,7 @@ from a neighbouring asset. This pass makes no performance claim.
 
 ## L6 retained components (W3.2d.4)
 
-`cargo run -p bboxybook --locked -- components` renders the Box/Text/Stack web
+`cargo run -p bboxy450-book --locked -- components` renders the Box/Text/Stack web
 references plus a 64-image native gallery of Box materials/radii, ScrollView
 offsets and wrapped/ellipsized Text. Open
 `target/bboxybook/components/index.html`; the gallery and `layouts.json` are
@@ -375,7 +375,7 @@ diagnostic labels shared in an L2 backdrop do not make a material-only case text
 
 ## L7 TabRow and MiniGrid (W3.2d.7.2)
 
-`cargo run -p bboxybook --locked -- tabs` writes
+`cargo run -p bboxy450-book --locked -- tabs` writes
 `target/bboxybook/tabs/index.html`: 104 current lab pairs and the same 104
 legacy pairs from `ux-prototype-v2`. Keys use `tab-row/` and `mini-grid/` for
 current cases; underscore ids retain the legacy registry. Each pair shares
@@ -394,7 +394,7 @@ per-corner radii. Flat, gloss, frosted and glow intersect every mask; a square
 inner clip cannot erase an outer rounded corner. Empty masks preserve the
 destination. Backdrop filtering still samples the original border-box image.
 
-`cargo test -p bboxybook --test clipping --locked` checks both independently
+`cargo test -p bboxy450-book --test clipping --locked` checks both independently
 excluded corners, retained Box-to-material propagation and per-surface ranges
 on Metal, then writes 16 native previews (four materials × theme × 1x/2x) to
 `target/bboxybook/clipping/index.html`. This gallery is a clipping check, not
@@ -402,7 +402,7 @@ a claim of new web module parity.
 
 ## L7 SwarmCard and Sidebar (W3.2d.7.3)
 
-`cargo run -p bboxybook --locked -- swarms` writes
+`cargo run -p bboxy450-book --locked -- swarms` writes
 `target/bboxybook/swarms/index.html`: 72 current header/sidebar pairs and 64
 legacy pairs. Current keys use `space-header/` and `sidebar/`; legacy keys use
 `band/` and `sidebar-v2/`. `capture.json` pins each reference revision.
@@ -453,7 +453,7 @@ which remain labelled and do not gate current lab cases. See
 
 ## L7 TitleBar (W3.2d.7.5)
 
-`cargo run -p bboxybook --locked -- title-bars` writes the current five-state
+`cargo run -p bboxy450-book --locked -- title-bars` writes the current five-state
 matrix (40 cases) plus 24 historical v2 cases to
 `target/bboxybook/title-bars/index.html`. Constructor strings, sidebar/window
 state and parent bounds enter native layout. Child rectangles and baselines
@@ -474,7 +474,7 @@ the deferred L1 raster work is unchanged. See `.bboxy/runs/w3-2d-7-5-summary.log
 
 ## L7 Launcher (W3.2d.7.6)
 
-`cargo run -p bboxybook --locked -- launchers` captures and renders 176 current
+`cargo run -p bboxy450-book --locked -- launchers` captures and renders 176 current
 cases (14 Spotlight states and eight compact picker states, four densities,
 both themes), plus 48 separately named historical v2 cases. Its output is
 `target/bboxybook/launchers/index.html`. The legacy hand painter delegates to
@@ -508,7 +508,7 @@ metadata records the eight recaptured empty-result variants after lab fix
 
 ## L7 StreamDock (W3.2d.7.7)
 
-`cargo run -p bboxybook --locked -- streams` renders 200 current cases: twelve
+`cargo run -p bboxy450-book --locked -- streams` renders 200 current cases: twelve
 stream states and thirteen message-row states, across four densities and both
 themes. Another 80 v2 cases have separate historical names and policy.
 
@@ -611,3 +611,11 @@ DocumentModal entry; no historical reference is invented. Library tests cover
 host-record changes, retained scrolling, signed/unsigned/broken presentation,
 true-size diagrams, Source state and unsupported-source fallback. The later
 `bbt-doc` producer and app input implement file loading and actions.
+
+## Dependency name
+
+The Rust library name remains `bboxybook`. Use the existing import name with a versioned package alias:
+
+```toml
+bboxybook = { package = "bboxy450-book", version = "0.1.0" }
+```

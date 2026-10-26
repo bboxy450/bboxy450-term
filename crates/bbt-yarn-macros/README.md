@@ -1,4 +1,4 @@
-# bbt-yarn-macros
+# bboxy450-yarn-macros
 
 ## What it is
 
@@ -113,3 +113,11 @@ K0 diagnostic identifiers are provisional but semantic anchors are tested.
 
 Compile-fail fixtures under `crates/bbt-yarn/tests/ui` are the executable repair
 reference. Compile-pass negative controls live beside them under `ui-pass`.
+
+## Dependency name
+
+The Rust library name remains `bbt_yarn_macros`. Use the existing import name with a versioned package alias:
+
+```toml
+bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.0" }
+```

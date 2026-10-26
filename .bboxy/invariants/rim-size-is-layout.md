@@ -4,7 +4,7 @@ number: 202
 type: invariant
 title: rim size moves only the gutter and the stage inset
 status: active
-check: cargo test -p bbt-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: a rim slider that moves anything but the gutter and the inset breaks strict geometry parity for every pane case and turns a glow setting into an unbounded layout setting
 links:
   - { to: "[[rim-glow]]", rel: constrains }
@@ -22,7 +22,7 @@ cell grid are unchanged, and the change arrives through relayout, never at
 paint ([[rim-glow]] §2, §3; operator 2026-10-23, "gap grows with the rim, outer
 halves meet").
 
-**Check.** `cargo test -p bbt-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-ui --locked --lib rim_size_moves_only_gutter_and_inset -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The grep demands that exactly this named test ran and passed.
 G3 creates the test; its commit removes `slow` and `gate` from this file so it
 joins the default set.

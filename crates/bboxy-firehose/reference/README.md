@@ -41,8 +41,8 @@ reference is the amended T1 gate authorized by Vesper over ICQ on 2026-10-22.
 ## Headless cells gallery (T2a)
 
 ```sh
-cargo run -p bbt-render --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/before --baseline
-cargo run -p bbt-render --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/native
+cargo run -p bboxy450-render --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/before --baseline
+cargo run -p bboxy450-render --example terminal_gallery -- crates/bboxy-firehose/reference/gallery/native
 for scale in 1 2; do
   for theme in dark light; do
     TERMINAL_GRID=1 TERMINAL_OUT=crates/bboxy-firehose/reference/gallery/web SCALE=$scale THEME=$theme node crates/bboxy-firehose/reference/capture.mjs --strict

@@ -132,7 +132,17 @@ impl Generator {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let root = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap()).join("../..");
+    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let workspace = manifest.join("../..");
+    // Development consumes the canonical workspace inputs. Published crates
+    // carry the same bytes locally and do not read outside their package.
+    let root = if workspace.join("crates/bbt-ui-model/Cargo.toml").canonicalize().ok()
+        == manifest.join("Cargo.toml").canonicalize().ok()
+    {
+        workspace
+    } else {
+        manifest.join("release-inputs")
+    };
     let tokens_path = root.join("design/tokens.toml");
     let style_path = root.join("design/style.json");
     println!("cargo:rerun-if-changed={}", tokens_path.display());

@@ -21,8 +21,17 @@ struct PendingRequest {
 #[cfg(test)]
 mod tests;
 
+/// Blocking control and event port shared by admitted in-process and socket clients.
 pub trait SupervisorConnection: Send {
+    /// Submit one action on its IO owner and return the correlated reply.
+    ///
+    /// # Errors
+    /// Returns named host refusals, framing, disconnection or request-completion failures.
     fn request(&mut self, action: Action) -> Result<Reply>;
+    /// Receive one observed event, returning `None` when the supplied wait expires.
+    ///
+    /// # Errors
+    /// Returns transport, continuity or disconnection failures.
     fn receive(&mut self, timeout: Duration) -> Result<Option<Event>>;
 }
 impl SupervisorConnection for Client {
@@ -74,7 +83,10 @@ pub struct PendingEvents {
     raw_count: usize,
 }
 impl PendingEvents {
-    /// Coalesce captured seat/generation/kind slots; raw prefixes stay FIFO and exits are never replaced.
+    /// Coalesce captured process/generation/kind slots; raw prefixes stay FIFO and exits are never replaced.
+    ///
+    /// # Errors
+    /// Returns a continuity failure when the uncaptured FIFO backlog reaches 1024 events.
     pub fn push(&mut self, event: Event) -> Result<()> {
         let key = event_key(&event);
         let raw = !self
@@ -99,6 +111,9 @@ impl PendingEvents {
     }
 
     /// Promote only the confirmed captured range, preserving FIFO raw prefixes and all exits.
+    ///
+    /// # Errors
+    /// Returns a continuity failure if a retained raw prefix exceeds the bounded backlog.
     pub fn confirm_ring(&mut self, seat: Ulid, generation: u64, first: u64) -> Result<()> {
         self.captured.insert((seat, generation), first);
         // Events and the attach reply can share a socket read. Promote only
@@ -132,13 +147,21 @@ impl PendingEvents {
 /// not drain events, issue a request, or acquire another logic lease.
 #[derive(Clone, Copy, Debug, Default, serde::Serialize)]
 pub struct ClientDiagnostics {
+    /// Number of socket-read attempts made by the serial client.
     pub read_calls: u64,
+    /// Total bytes successfully read from the control socket.
     pub read_bytes: u64,
+    /// Number of asynchronous event frames decoded from the socket.
     pub decoded_event_frames: u64,
+    /// Number of event-receive calls made by the caller.
     pub receive_calls: u64,
+    /// Number of events returned to the caller.
     pub returned_events: u64,
+    /// Number of receive calls that returned without an event.
     pub empty_receives: u64,
+    /// Currently retained event notifications.
     pub queued_events: usize,
+    /// FIFO event prefix not yet covered by confirmed retained capture.
     pub queued_raw_events: usize,
     /// Latest queued Output for the caller's exact seat/generation, if any.
     pub queued_output_sequence: Option<u64>,
@@ -156,6 +179,13 @@ pub struct SocketSupervisor {
     diagnostics: ClientDiagnostics,
 }
 impl SocketSupervisor {
+    /// Connect to the explicit Unix socket and acquire a logic lease with the owner capability.
+    ///
+    /// # Errors
+    /// Returns IO, framing, disconnection or admission failures.
+    ///
+    /// # Panics
+    /// In debug builds, panics when called on the registered UI thread.
     pub fn connect(path: &Path, capability: [u8; 32]) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let stream = std::os::unix::net::UnixStream::connect(path)?;

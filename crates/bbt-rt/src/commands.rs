@@ -16,29 +16,44 @@ use tokio::sync::Notify;
 
 use crate::{COMMANDS, UiMsg, UiSender, ViewRing, assert_not_ui_thread, handle};
 
+/// Maximum bytes in one pipe read before splitting newline-delimited output chunks.
 pub const OUTPUT_CHUNK_BYTES: usize = 16 * 1024;
 static NEXT_TASK: AtomicU64 = AtomicU64::new(1);
 
+/// The child pipe from which an output chunk was read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stream {
+    /// The child standard-output pipe.
     Stdout,
+    /// The child standard-error pipe.
     Stderr,
 }
 
+/// Owned command output from one pipe, bounded by the pipe-read chunk size.
 #[derive(Clone, Debug)]
 pub struct OutputChunk {
+    /// Stable identity of the command that produced these bytes.
     pub task: TaskId,
+    /// Pipe carrying this chunk; inter-pipe ordering is not promised.
     pub stream: Stream,
+    /// Original bytes; no UTF-8 interpretation or line-ending conversion is applied.
     pub bytes: Arc<[u8]>,
 }
 
+/// Final child status together with pipe-drain counts and a possible transport error.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExitStatus {
+    /// Exit code when the operating system reports normal termination.
     pub code: Option<i32>,
+    /// Unix signal number when termination was signal-driven.
     pub signal: Option<i32>,
+    /// Whether cancellation was observed before or during execution.
     pub cancelled: bool,
+    /// Spawn, wait, cancellation or pipe-drain error, when one occurred.
     pub error: Option<String>,
+    /// Total standard-output bytes successfully drained from the pipe.
     pub stdout_bytes: u64,
+    /// Total standard-error bytes successfully drained from the pipe.
     pub stderr_bytes: u64,
 }
 
@@ -57,15 +72,18 @@ struct Task {
 pub struct TaskId(Arc<Task>);
 
 impl TaskId {
+    /// Return the process-local task number, independent of operating-system PID reuse.
     pub fn id(&self) -> u64 {
         self.0.id
     }
+    /// Observe the child PID once assigned; this is not a current-liveness guarantee.
     pub fn pid(&self) -> Option<u32> {
         match self.0.pid.load(Ordering::Acquire) {
             0 => None,
             pid => Some(pid),
         }
     }
+    /// Borrow immutable completion data, or return `None` while completion is pending.
     pub fn status(&self) -> Option<&ExitStatus> {
         self.0.status.get()
     }
@@ -87,6 +105,7 @@ impl PartialEq for TaskId {
 }
 impl Eq for TaskId {}
 
+/// IO-runtime command launcher writing to caller-selected message and output queues.
 #[derive(Clone)]
 pub struct CommandRunner {
     ui: UiSender,
@@ -94,12 +113,17 @@ pub struct CommandRunner {
 }
 
 impl CommandRunner {
+    /// Bind child completion and output to the supplied bounded frontend endpoints.
     pub fn new(ui: UiSender, output: ViewRing<OutputChunk>) -> Self {
         Self { ui, output }
     }
 
     /// The arguments and explicit environment overrides are passed directly to
     /// the child, without shell interpolation. Returns before spawning or IO.
+    /// Spawn and IO errors arrive in `TaskId::status`, not as synchronous errors.
+    ///
+    /// # Panics
+    /// Panics if the process-wide IO runtime cannot start.
     pub fn spawn_command(
         &self,
         argv: Vec<OsString>,
@@ -235,7 +259,10 @@ impl CommandRunner {
     }
 }
 
-/// Uses the app's singleton command runner installed by init_ui.
+/// Uses the app's singleton command runner installed by `init_ui`.
+///
+/// # Panics
+/// Panics when `init_ui` has not run, or the IO runtime cannot start.
 pub fn spawn_command(argv: Vec<OsString>, cwd: PathBuf, env: Vec<(OsString, OsString)>) -> TaskId {
     COMMANDS
         .get()

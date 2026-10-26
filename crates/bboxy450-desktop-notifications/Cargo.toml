@@ -1,4 +1,5 @@
 [package]
+readme = "README.md"
 name = "bboxy450-desktop-notifications"
 version.workspace = true
 edition.workspace = true
@@ -12,10 +13,10 @@ description = "Desktop notifications with stable identifiers and response callba
 probe = ["bboxy450-desktop-notifications-macos/probe"]
 
 [target.'cfg(target_os = "macos")'.dependencies]
-bboxy450-desktop-notifications-macos = { path = "../bboxy450-desktop-notifications-macos", version = "0.0.1" }
+bboxy450-desktop-notifications-macos = { package = "bboxy450-desktop-notifications-macos", version = "0.1.0", path = "../bboxy450-desktop-notifications-macos" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-bboxy450-desktop-notifications-windows = { path = "../bboxy450-desktop-notifications-windows", version = "0.0.1" }
+bboxy450-desktop-notifications-windows = { package = "bboxy450-desktop-notifications-windows", version = "0.1.0", path = "../bboxy450-desktop-notifications-windows" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-bboxy450-desktop-notifications-linux = { path = "../bboxy450-desktop-notifications-linux", version = "0.0.1" }
+bboxy450-desktop-notifications-linux = { package = "bboxy450-desktop-notifications-linux", version = "0.1.0", path = "../bboxy450-desktop-notifications-linux" }

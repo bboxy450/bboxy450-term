@@ -44,8 +44,8 @@ waiting, PNG encoding and writing all run off UI. Capture completion is logged.
 Capture work is verification overhead outside the frame's recorded CPU sample.
 
 ```sh
-cargo test -p bbt-rt --locked
-cargo clippy -p bboxy450-term -p bbt-rt --locked --all-targets --no-deps -- -D warnings
+cargo test -p bboxy450-rt --locked
+cargo clippy -p bboxy450-term -p bboxy450-rt --locked --all-targets --no-deps -- -D warnings
 scripts/ui-lint.sh
 ```
 
