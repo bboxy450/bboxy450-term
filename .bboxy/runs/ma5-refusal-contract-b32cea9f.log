@@ -1,0 +1,7 @@
+MA-5 contract only — signed source b32cea9f171ae4ffd8277b051e81ef4d6f118073 (G), from current maine82e47e2ee98fa2d1242b2e20754dc06bcf3a951.
+MessageRefusal {kind,message,hint} is carried by additive messaging Response::Refused through the existing GuiReply::Messaging. No generic Error reason parsing and no second transport. Required fields are strings and unrelated fields refuse.
+The entire prior52269-byte GUI golden is an unchanged prefix (sha256 d2539e7ffbaf9142f613e89eee364eb8fd77b08ca6dd10a02e258a3186df6f11); one Messaging refusal line appended.
+Wire golden2/0 +refusal schema2/0, EXIT0/105.967s including build.
+Strict Clippy proto+mux+app/all-targets -D warnings EXIT0/79.272s; no mechanical consumer changes needed for this additive variant.
+Full argv/source/log hashes in JSON; private memory custody,2jobs,stable O1/debug0 target,explicit --target-dir/cache-env.
+No runtime handler, thread validation/hint generation, CLI error mapping, full gate/night or independent publication yet. Contract lands alone first through Oracle; backend/ctl implementation follows on its accepted shape per Corvin0073bbae.

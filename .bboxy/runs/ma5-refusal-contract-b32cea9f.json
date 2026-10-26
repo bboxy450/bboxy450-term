@@ -1,0 +1,80 @@
+{
+  "source": "b32cea9f171ae4ffd8277b051e81ef4d6f118073",
+  "checks": [
+    {
+      "name": "contract",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "bbt-proto",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--test",
+        "gui_wire_golden",
+        "--test",
+        "messaging_refusal"
+      ],
+      "exit": 0,
+      "seconds": 105.967,
+      "log": "target/ma5-refusal-proof/contract.log",
+      "sha256": "fb18187d6a0e194eefc3d703c4d3af51a24a50b68a33364221cfbb2a1b30ae5d",
+      "test_results": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "passed": 2,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "strict",
+      "command": [
+        "cargo",
+        "clippy",
+        "-p",
+        "bbt-proto",
+        "-p",
+        "bbt-mux",
+        "-p",
+        "bboxy450-term",
+        "--all-targets",
+        "--locked",
+        "--target-dir",
+        "target/m2-reply-box-dev",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit": 0,
+      "seconds": 79.272,
+      "log": "target/ma5-refusal-proof/strict.log",
+      "sha256": "b53067f4e574d7fd62688294f0d4f99981a7883fbcde426e34e2c4da6f0c5c82",
+      "test_results": []
+    }
+  ],
+  "branch": "velvet-ma5-refusal-contract",
+  "base": "e82e47e2ee98fa2d1242b2e20754dc06bcf3a951",
+  "old_golden": {
+    "bytes": 52269,
+    "sha256": "d2539e7ffbaf9142f613e89eee364eb8fd77b08ca6dd10a02e258a3186df6f11"
+  },
+  "old_golden_prefix_unchanged": true,
+  "new_golden_bytes": 52515,
+  "new_golden_sha256": "1c0487869d8598041012f5fd68ed8e8a315c16f679984495bb8fca2780791b8b",
+  "scope": [
+    "crates/bbt-proto/src/messaging.rs",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv",
+    "crates/bbt-proto/tests/messaging_refusal.rs"
+  ],
+  "limits": [
+    "Contract only; no service reply validation, hints, MCP/ctl refusal mapping or runtime generation yet.",
+    "No independent publication; contract-first landing is with the Oracle as agreed."
+  ]
+}
