@@ -936,7 +936,12 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 
 /* launcher (⌘T): the frosted panel and its banner; shared by the showcase and launcher.html */
 /* --- launcher: the panel --- */
-.spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); backdrop-filter: blur(var(--back-blur)) saturate(1.15); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 9vh; gap: var(--s7); }
+.spot-back { position: fixed; inset: 0; z-index: 10; background: color-mix(in srgb, var(--bg) var(--back-dim), transparent); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 9vh; gap: var(--s7); }
+/* the backdrop blur sits on its own layer, not on .spot-back: a backdrop-filter on an ancestor makes it a backdrop root, and Chrome then
+   composites the panel's own backdrop-filter against it (measured: panel band contrast 15 instead of the ~4 a 30 px blur over the
+   14 px backdrop gives, which native renders); as a sibling layer the panel blurs what is really behind it */
+.spot-back::before { content: ''; position: absolute; inset: 0; border-radius: inherit; backdrop-filter: blur(var(--back-blur)) saturate(1.15); pointer-events: none; }
+.spot-back > * { position: relative; }
 /* split banner: the real layout, large, new cell breathing */
 .spot-banner { width: min(760px, 92vw); display: flex; align-items: center; gap: 22px; padding: var(--s8) 22px; border-radius: var(--r-panel); background: color-mix(in srgb, var(--surface) var(--mat-alpha), transparent); backdrop-filter: blur(var(--mat-blur)) saturate(var(--mat-sat)); box-shadow: var(--sh-float), 0 0 0 var(--hair-w) var(--hair), inset 0 1px 0 var(--hi); animation: spotIn var(--appear-ms) var(--ease); }
 .spot-banner .mg.big { --mg-w: 168px; --mg-h: 104px; gap: 3px; background: var(--hair); border-radius: var(--r-tile); flex: none; }
