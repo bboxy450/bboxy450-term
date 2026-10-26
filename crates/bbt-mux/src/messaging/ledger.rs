@@ -42,6 +42,9 @@ pub struct Work {
     pub class: Class,
     #[serde(default, skip_serializing_if = "is_false")]
     pub digest: bool,
+    /// Metadata-only admission snapshot for advisory wake accounting.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub wake_members: Vec<super::wake_cost::Member>,
 }
 fn is_false(value: &bool) -> bool {
     !*value
@@ -857,6 +860,20 @@ impl Ledger {
             messages.push(message);
         }
         receipts.truncate(messages.len());
+        let wake_members = receipts
+            .iter()
+            .zip(&messages)
+            .map(|(receipt, message)| super::wake_cost::Member {
+                id: message.view().id,
+                destination: message.view().context.to_owned(),
+                class: message.view().kind.class(),
+                mode: receipt.wake.as_ref().map(|mode| match mode {
+                    ReceiptWake::Now => WakeMode::Wake,
+                    ReceiptWake::None => WakeMode::Inbox,
+                    ReceiptWake::Deferred { .. } => WakeMode::Digest,
+                }),
+            })
+            .collect();
         let work = Work {
             id: Ulid::new(),
             recipient,
@@ -864,6 +881,7 @@ impl Ledger {
             messages,
             class,
             digest,
+            wake_members,
         };
         tx.execute(
             "INSERT INTO msg_attempts(id,recipient,data) VALUES(?1,?2,?3)",

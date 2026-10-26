@@ -264,6 +264,184 @@ class InferenceContracts(unittest.TestCase):
         self.record(path, 'event_msg', second, payload=dict(type='token_count',
                     info=dict(total_token_usage=values, last_token_usage=values)))
 
+    def wake(self, attempt='wake-attempt', harness='codex', session='fixture-codex'):
+        row = dict(kind='stage', stage='wake', id='wake:'+attempt, attempt=attempt,
+                   harness=harness, session=session, at='2026-10-25T12:00:00Z',
+                   evidence='native-queued', native_id='queue-id-is-not-a-turn',
+                   seat='fixture-seat', destination='fixture/channel', mode='digest',
+                   members=[dict(id='message-one'), dict(id='message-two')], input_tokens=None)
+        ledger.append(row)
+        return row
+
+    def wake_rows(self):
+        rows = []
+        for path in (self.state/'ledger').glob('*/ledger.jsonl'):
+            if not path.is_file():continue
+            for line in path.read_text().splitlines():
+                try:row=json.loads(line)
+                except ValueError:continue
+                if row.get('kind')=='wake-usage':rows.append(row)
+        return rows
+
+    def codex_turn(self, path, second=1, turn='actual-turn', client='wake-attempt'):
+        self.record(path,'event_msg',second,payload=dict(type='task_started',turn_id=turn))
+        self.record(path,'event_msg',second+1,payload=dict(type='user_message',client_id=client,
+                    message='PRIVATE BODY MUST NOT BE SAVED'))
+
+    def codex_response(self, path, second=3, turn='actual-turn', response='response-one', total=100, cached=80):
+        self.record(path,'token_usage_record',second,payload=dict(thread_id='fixture-codex',
+            turn_id=turn,response_id=response,usage=dict(input_tokens=total,cached_input_tokens=cached),
+            thread_token_usage=dict(input_tokens=900000,cached_input_tokens=0)))
+
+    def test_wake_cost_uses_exact_codex_message_turn_response_ids_once(self):
+        self.wake()
+        path=self.codex/'wake.jsonl'
+        self.codex_start(path)
+        self.codex_turn(path)
+        self.codex_response(path)
+        self.codex_response(path,second=4)  # a second serialized copy is not a second request
+        self.codex_response(path,second=5,response='response-two',total=40,cached=30)
+        self.record(path,'event_msg',6,payload=dict(type='task_complete',turn_id='actual-turn'))
+        result=self.collect()
+        self.assertEqual(result['wake_updates'],1)
+        row=self.wake_rows()[0]
+        self.assertEqual(row['input_tokens'],140)
+        self.assertEqual(row['input_cached_tokens'],110)
+        self.assertEqual(row['input_uncached_tokens'],30)
+        self.assertEqual(row['native_turn'],'actual-turn')
+        self.assertTrue(row['complete'])
+        self.assertEqual(self.collect()['wake_updates'],0)
+        self.assertEqual(len(self.wake_rows()),1)
+        for path in (self.state/'ledger').rglob('*'):
+            if path.is_file():self.assertNotIn('PRIVATE BODY',path.read_text())
+
+    def test_wake_unknown_is_revised_after_later_turn_and_reader_restart(self):
+        self.wake()
+        self.collect()
+        self.assertIsNone(self.wake_rows()[-1]['input_tokens'])
+        path=self.codex/'wake.jsonl'
+        self.codex_start(path)
+        self.codex_turn(path)
+        self.codex_response(path)
+        self.collect()
+        row=self.wake_rows()[-1]
+        self.assertEqual(row['input_tokens'],100)
+        self.assertFalse(row['complete'])
+        # Stable pending rows recover before their progress checkpoint, as inference does.
+        self.record(path,'event_msg',4,payload=dict(type='task_complete',turn_id='actual-turn'))
+        append=inference.ledger.append
+        def wrote_then_crashed(row):
+            append(row)
+            raise OSError('fixture interruption after append')
+        with patch.object(inference.ledger,'append',side_effect=wrote_then_crashed):
+            with self.assertRaises(OSError):self.collect()
+        self.collect()
+        self.assertEqual(len(self.wake_rows()),3)
+        self.assertTrue(self.wake_rows()[-1]['complete'])
+        self.assertEqual(self.collect()['wake_updates'],0)
+
+    def test_wake_added_after_transcript_import_can_still_link_by_identity(self):
+        path=self.codex/'wake.jsonl'
+        self.codex_start(path)
+        self.codex_turn(path)
+        self.codex_response(path)
+        self.collect()
+        self.assertEqual(self.wake_rows(),[])
+        self.wake()
+        self.assertEqual(self.collect()['wake_updates'],1)
+        self.assertEqual(self.wake_rows()[0]['input_tokens'],100)
+
+    def test_wake_never_joins_a_nearby_or_different_session_turn(self):
+        self.wake()
+        self.wake('second-attempt',session='different-session')
+        path=self.codex/'wake.jsonl'
+        self.codex_start(path)
+        self.codex_turn(path,client='different-client')
+        self.codex_response(path)
+        # Even a turn whose ID equals the native queue ID is not the message link.
+        self.codex_response(path,second=5,turn='queue-id-is-not-a-turn')
+        self.collect()
+        self.assertEqual(len(self.wake_rows()),2)
+        self.assertTrue(all(row['input_tokens'] is None for row in self.wake_rows()))
+
+    def test_two_wakes_in_one_turn_and_conflicting_usage_stay_unknown(self):
+        self.wake()
+        self.wake('second-attempt')
+        path=self.codex/'wake.jsonl'
+        self.codex_start(path)
+        self.codex_turn(path)
+        self.record(path,'event_msg',3,payload=dict(type='user_message',client_id='second-attempt'))
+        self.codex_response(path,second=4)
+        self.collect()
+        self.assertTrue(all(row['input_tokens'] is None for row in self.wake_rows()))
+        self.assertTrue(all('multiple' in row['token_attribution'] for row in self.wake_rows()))
+        self.wake('third-attempt')
+        self.codex_turn(path,second=5,turn='third-turn',client='third-attempt')
+        self.codex_response(path,second=7,turn='third-turn')
+        self.codex_response(path,second=8,turn='third-turn',total=101)
+        self.collect()
+        self.assertIsNone(self.wake_rows()[-1]['input_tokens'])
+        self.assertIn('conflicting usage',self.wake_rows()[-1]['token_attribution'])
+
+    def test_claude_wake_uses_uuid_ancestry_and_excludes_bodies_and_tool_results(self):
+        self.wake(harness='claude',session='fixture-claude')
+        path=self.claude/'wake.jsonl'
+        self.record(path,'user',0,sessionId='fixture-claude',cwd=str(self.project),
+                    uuid='wake-attempt',parentUuid='prior-turn',message=dict(content='PRIVATE BODY'))
+        values=dict(input_tokens=3,cache_creation_input_tokens=17,cache_read_input_tokens=80,output_tokens=4)
+        for second in (1,2):
+            self.record(path,'assistant',second,sessionId='fixture-claude',uuid='assistant-one',
+                parentUuid='wake-attempt',requestRef='request-one',message=dict(id='msg-one',usage=values,
+                stop_reason='tool_use',content='PRIVATE BODY'))
+        self.record(path,'user',3,sessionId='fixture-claude',uuid='tool-result',parentUuid='assistant-one',
+                    toolUseResult=dict(secret='PRIVATE TOOL OUTPUT'),message=dict(content='PRIVATE BODY'))
+        self.record(path,'assistant',4,sessionId='fixture-claude',uuid='assistant-two',parentUuid='tool-result',
+            requestRef='request-two',message=dict(id='msg-two',usage=values,stop_reason='end_turn'))
+        self.collect()
+        row=self.wake_rows()[0]
+        self.assertEqual(row['input_tokens'],200)
+        self.assertEqual(row['input_cached_tokens'],160)
+        self.assertEqual(row['input_uncached_tokens'],40)
+        self.assertTrue(row['complete'])
+        # A later ordinary user input breaks the chain, despite its parent UUID.
+        self.record(path,'user',5,sessionId='fixture-claude',uuid='new-human-input',parentUuid='assistant-two')
+        self.record(path,'assistant',6,sessionId='fixture-claude',uuid='later',parentUuid='new-human-input',
+            message=dict(id='later-msg',usage=values,stop_reason='end_turn'))
+        self.assertEqual(self.collect()['wake_updates'],0)
+        for path in (self.state/'ledger').rglob('*'):
+            if path.is_file():self.assertNotIn('PRIVATE',path.read_text())
+
+    def test_missing_claude_parent_or_input_usage_is_unknown_not_zero(self):
+        self.wake(harness='claude',session='fixture-claude')
+        path=self.claude/'wake.jsonl'
+        self.record(path,'user',0,sessionId='fixture-claude',cwd=str(self.project),uuid='wake-attempt')
+        self.record(path,'assistant',1,sessionId='fixture-claude',uuid='unlinked',parentUuid='unrelated',
+                    message=dict(id='response-one',usage=dict(input_tokens=100)))
+        self.collect()
+        self.assertIsNone(self.wake_rows()[-1]['input_tokens'])
+        self.record(path,'assistant',2,sessionId='fixture-claude',uuid='linked',parentUuid='wake-attempt',
+                    message=dict(id='response-two',usage=dict(input_tokens=100),stop_reason='end_turn'))
+        self.collect()
+        self.assertIsNone(self.wake_rows()[-1]['input_tokens'])
+        self.assertIn('missing/conflicting usage',self.wake_rows()[-1]['token_attribution'])
+
+    def test_wake_reader_skips_fifo_symlink_partial_tail_and_duplicate_rows(self):
+        row=self.wake()
+        ledger.append(row)
+        day=self.state/'ledger'/'2026-10-24'
+        day.mkdir(mode=0o700)
+        os.mkfifo(day/'ledger.jsonl',0o600)
+        linked=self.state/'ledger'/'2026-10-23'
+        linked.mkdir(mode=0o700)
+        (linked/'ledger.jsonl').symlink_to(day/'ledger.jsonl')
+        partial=self.state/'ledger'/'2026-10-22'
+        partial.mkdir(mode=0o700)
+        (partial/'ledger.jsonl').write_text('{"kind":"stage"')
+        self.assertEqual(self.collect()['wake_updates'],1)
+        self.assertEqual(len(self.wake_rows()),1)
+        self.assertIsNone(self.wake_rows()[0]['input_tokens'])
+        self.assertEqual(self.collect()['wake_updates'],0)
+
     def test_codex_mirrors_counter_deltas_and_private_incremental_restart(self):
         path = self.codex/'fixture.jsonl'
         self.codex_start(path)

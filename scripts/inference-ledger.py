@@ -22,6 +22,9 @@ sys.dont_write_bytecode = True
 spec = importlib.util.spec_from_file_location('resource_ledger', Path(__file__).with_name('resource-ledger.py'))
 ledger = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ledger)
+spec = importlib.util.spec_from_file_location('wake_ledger', Path(__file__).with_name('wake-ledger.py'))
+wake_ledger = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(wake_ledger)
 TOKENS = ('input_cached_tokens', 'input_uncached_tokens', 'output_reasoning_tokens', 'output_visible_tokens')
 IDLE = 600  # agent_time.py's short-gap rule; an estimate, not server compute time.
 
@@ -42,8 +45,11 @@ def metadata(pairs):
     # The reader never indexes their text or classifies a tool by its arguments.
     excluded = {'content', 'text', 'summary', 'base_instructions', 'instructions',
                 'developer_instructions', 'input', 'arguments', 'output', 'params',
-                'last_agent_message', 'hookAdditionalContext', 'data', 'blob'}
-    return {k: v for k, v in pairs if k not in excluded}
+                'last_agent_message', 'hookAdditionalContext', 'data', 'blob', 'toolUseResult'}
+    result = {k: v for k, v in pairs if k not in excluded and not (k == 'message' and isinstance(v, str))}
+    if any(k == 'toolUseResult' for k, _ in pairs):
+        result['tool_result_present'] = True
+    return result
 
 
 def number(values, key):
@@ -103,10 +109,11 @@ def recover(directory):
 
 
 class Reader:
-    def __init__(self, progress, project, bindings):
+    def __init__(self, progress, project, bindings, wakes=None):
         self.progress, self.project, self.bindings = progress, project, bindings
         self.rows = {}
         self.issues = defaultdict(int)
+        self.wakes = wakes
 
     def belongs(self, cwd):
         if not isinstance(cwd, str):
@@ -184,6 +191,8 @@ class Reader:
             context['cwd'] = p['cwd']
         if not context.get('session') or not self.belongs(context.get('cwd')):
             return
+        if self.wakes:
+            self.wakes.observe_codex(d, context)
         if old_cwd and old_cwd != context.get('cwd'):
             context.pop('previous', None)
             context.pop('open', None)
@@ -241,6 +250,8 @@ class Reader:
         context['session'] = d.get('sessionId') or context.get('session')
         if not context.get('session'):
             return
+        if self.wakes and self.belongs(context.get('cwd')):
+            self.wakes.observe_claude(d, context)
         starts = context.setdefault('requests', {})
         if d.get('type') == 'api-request' and d.get('id'):
             starts[d['id']] = at.isoformat()
@@ -319,8 +330,11 @@ def collect(codex_root, claude_root, project, seconds=120):
         bindings_path = directory / 'inference-bindings.json'
         bindings = json.loads(bindings_path.read_text()) if bindings_path.exists() else []
         before = digest(progress)
-        reader = Reader(progress, project, bindings)
         deadline = time.monotonic() + seconds
+        wakes = wake_ledger.Wakes(progress, directory, digest, ledger.now, deadline)
+        reader = Reader(progress, project, bindings, wakes)
+        if wakes.budget_exhausted:
+            reader.issues['wake_scan_budget_exhausted'] += 1
         sources = [('codex', codex_root.glob('**/*.jsonl')),
                    ('claude', claude_root.glob('**/*.jsonl'))]
         for index, (harness, paths) in enumerate(sources):
@@ -333,6 +347,7 @@ def collect(codex_root, claude_root, project, seconds=120):
                     reader.read(harness, path, harness_deadline)
                 except OSError:
                     reader.issues['source_unavailable'] += 1
+        wake_rows = wakes.rows()
         batch = digest([before, progress])
         rows = []
         for key, row in sorted(reader.rows.items()):
@@ -344,7 +359,8 @@ def collect(codex_root, claude_root, project, seconds=120):
             if row['wall_observations'] == 0:
                 row['wall_seconds'] = None
             rows.append(row)
-        summary = dict(kind='inference-summary', rows=len(rows), files_seen=len(progress['files']),
+        rows.extend(wake_rows)
+        summary = dict(kind='inference-summary', rows=len(rows), wake_updates=len(wake_rows), files_seen=len(progress['files']),
                        issues=reader.issues)
         rows.append(dict(summary, at=ledger.now(), id='inference-import:' + batch))
         private_json(directory / 'inference-pending.json', dict(rows=rows, progress=progress))

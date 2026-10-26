@@ -5905,6 +5905,7 @@ impl Worker {
             match view.adapter.record.wake_method {
                 WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
                     let binding = view.adapter.binding.clone();
+                    let harness = view.adapter.record.kind.clone();
                     let endpoint = view.delivery_endpoint.clone();
                     let delivery_failure = view.delivery_failure.clone();
                     let priority = if work.messages.iter().all(|m| m.view().priority > 0) {
@@ -5918,6 +5919,9 @@ impl Worker {
                                 &binding, &endpoint, work.id, &text, priority, false,
                             )
                             .await;
+                            crate::messaging::wake_cost::note(
+                                &work, &binding, &harness, &outcome, now_ms(),
+                            );
                             if matches!(endpoint, crate::adapters::Endpoint::None)
                                 && outcome.evidence == Evidence::RecipientStored
                                 && let Some(reason) = delivery_failure
@@ -5938,7 +5942,10 @@ impl Worker {
                     );
                 }
                 WakeMethod::Pty => {
+                    let binding = view.adapter.binding.clone();
+                    let harness = view.adapter.record.kind.clone();
                     let outcome = self.deliver_pty(seat, &work, &text)?;
+                    crate::messaging::wake_cost::note(&work, &binding, &harness, &outcome, now_ms());
                     self.messaging
                         .finish(swarm, &work, &outcome, now_ms(), relayed)?;
                 }

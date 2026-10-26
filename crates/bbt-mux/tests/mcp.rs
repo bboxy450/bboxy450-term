@@ -5292,6 +5292,7 @@ fn d269_ctl_envelopes_carry_door_and_issuer_signed_and_framed() {
         messages: vec![ctl.clone()],
         class: Class::Oracle,
         digest: false,
+        wake_members: vec![],
     }
     .text();
     assert!(

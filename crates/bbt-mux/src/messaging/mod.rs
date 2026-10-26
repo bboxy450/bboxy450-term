@@ -8,6 +8,7 @@ pub mod ledger;
 pub mod pending;
 pub mod service;
 pub mod tree;
+pub mod wake_cost;
 pub mod wire;
 
 pub use service::Messaging;
