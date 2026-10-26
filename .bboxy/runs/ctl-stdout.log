@@ -1,0 +1,16 @@
+ctl stdout: release GitHub #42 / task #332; Sable Embertail; 2026-10-26T21:36:58.920238+00:00
+Authorization: Oracle self-service release issues brief 1d7e3c09; own exec3 branch; no GitHub mutations.
+crates/bboxy450-term/src/ctl.rs:1389 — private Write boundary records typed stdout BrokenPipe; noun/legacy output stops and exits 0; sockets are not classified as stdout.
+crates/bboxy450-term/src/ctl.rs:1448 — help, noun errors and legacy errors/timeouts retain open-reader envelopes/exits, with closed-reader normalization.
+crates/bboxy450-term/tests/ctl.rs:1169 — actual CLI small/help, usage+legacy errors, 2 MiB JSON, and non-pipe EIO controls; reader is closed before spawn, no sleep.
+RED: cargo test --locked -p bboxy450-term --target-dir target/ctl-stdout --test ctl ctl_closed_stdout -- --nocapture: EXIT101, 0 passed/2 failed; d11c9c2a239466c4b93792eaa4ea4023bf41170b27e9e3a48b42c28942317abc
+Legacy error controlled RED: ctl --as with reader closed: EXIT101 BrokenPipe; legacy-closed.red.json SHA256 7e29c65503b2570c43452a29f9313787a90afaab0168fd357864047253d79dd9
+GREEN: same target/profile cargo test --locked -p bboxy450-term --test ctl stdout -- --nocapture: EXIT0, 3 passed/0 failed; green-complete.log SHA256 9be4e6a66170b2f4f2f75acf0e16d71db66122308d7110f3d401fe49e1ff1baa
+Controls: help and 2 MiB endpoint JSON succeed when readable; usage exits2, legacy error exits1; disconnected PTY EIO remains nonzero/visible.
+Final binary SHA256 f2c4163c7cd467aa9820dd2d33fe4f1b7158ee21dae8f42e04f1841ab69ec390; canonical T6 row PASS/FULL/exit0 after the legacy error correction.
+Final T6-only night command: bin/bboxy450-term e2e night --group terminal --scripts t6-final-scripts --records t6-final-records; runner EXIT1 only for eight deliberately omitted scripts; no full-group claim.
+T6 raw t6-final.stdout.jsonl SHA256 f5bfa388e899e2104b191c676a6266835137f91186f188b03a3d33077413d02f; stderr empty; two file-custody headless apps independently gone and endpoints absent.
+Broader initial stdout-boundary binary terminal night: EXIT0, GREEN9/9 FULL, 9 records written; terminal.stdout.jsonl SHA256 7d8e7ff37917f295ad2ed68aa92f11d371893d87a487e99eac38247a3076216b; 11 original/relaunched app PIDs independently absent.
+Fixture corrections: readonly /dev/null is ignored by this runtime (use actual EIO); copied helper paths then symlink-home subsets failed setup before harness work; canonical paths/copy seed fixed the private test setup only.
+Author land.sh presubmit pending; no main-watch/postsubmit, release bundle installation or remote provider-model judgement claim.
+Raw private evidence: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/sable-stdout-nvogi4lw

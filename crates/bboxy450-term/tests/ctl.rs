@@ -1141,6 +1141,131 @@ fn ctl_help_prints_its_own_usage() {
     );
 }
 
+/// A real pipe whose reader is gone before the CLI starts: no scheduler race.
+fn stdout_with_closed_reader() -> std::process::Stdio {
+    use std::os::fd::FromRawFd;
+    let mut fds = [-1; 2];
+    // SAFETY: pipe initializes two distinct descriptors on success; each is
+    // transferred exactly once to an owning File below.
+    assert_eq!(unsafe { libc::pipe(fds.as_mut_ptr()) }, 0);
+    let reader = unsafe { std::fs::File::from_raw_fd(fds[0]) };
+    let writer = unsafe { std::fs::File::from_raw_fd(fds[1]) };
+    drop(reader);
+    writer.into()
+}
+
+fn ctl_stdout(args: &[&str], stdout: std::process::Stdio) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .arg("ctl")
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stdout(stdout)
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .unwrap()
+}
+
+// keeps: release #42/task332; Unix filters may close stdout after one match.
+#[test]
+fn ctl_closed_stdout_help_and_usage_exit_quietly() {
+    for args in [&["--help"][..], &["seat", "fly", "x"][..], &["--as"][..]] {
+        let open = ctl_stdout(args, std::process::Stdio::piped());
+        if args[0] == "--help" {
+            assert!(open.status.success());
+            assert!(!open.stdout.is_empty());
+        } else if args[0] == "seat" {
+            assert_eq!(open.status.code(), Some(2));
+            let error: Value = serde_json::from_slice(&open.stdout).unwrap();
+            assert_eq!(error["ok"], false);
+            assert_eq!(error["error"]["kind"], "usage");
+        } else {
+            assert_eq!(open.status.code(), Some(1));
+            let error: Value = serde_json::from_slice(&open.stdout).unwrap();
+            assert_eq!(
+                error,
+                json!({"kind": "error", "reason": "--as needs a value"})
+            );
+        }
+        let closed = ctl_stdout(args, stdout_with_closed_reader());
+        assert_eq!(
+            closed.status.code(),
+            Some(0),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&closed.stderr)
+        );
+        assert!(
+            closed.stderr.is_empty(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&closed.stderr)
+        );
+    }
+}
+
+// keeps: release #42/task332; partial writes must not turn a large reply into a panic.
+#[test]
+fn ctl_closed_stdout_larger_than_pipe_buffer_exits_quietly() {
+    let run = tempfile::tempdir().unwrap();
+    let path = "x".repeat(2 * 1024 * 1024);
+    // app endpoint reads this public metadata without opening a backend or identity.
+    std::fs::write(
+        run.path().join("gui.endpoint"),
+        json!({"path": path, "generation": 7}).to_string(),
+    )
+    .unwrap();
+    let args = ["--run-dir", run.path().to_str().unwrap(), "app", "endpoint"];
+    let open = ctl_stdout(&args, std::process::Stdio::piped());
+    assert!(
+        open.status.success(),
+        "{}",
+        String::from_utf8_lossy(&open.stderr)
+    );
+    assert!(open.stdout.len() > 2 * 1024 * 1024);
+    let reply: Value = serde_json::from_slice(&open.stdout).unwrap();
+    assert_eq!(reply["ok"], true);
+    assert_eq!(reply["data"]["path"], path);
+    assert_eq!(reply["data"]["generation"], 7);
+    let closed = ctl_stdout(&args, stdout_with_closed_reader());
+    assert_eq!(
+        closed.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&closed.stderr)
+    );
+    assert!(
+        closed.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&closed.stderr)
+    );
+}
+
+// keeps: release #42/task332; only a closed reader is a successful output outcome.
+#[test]
+fn ctl_other_stdout_errors_remain_visible() {
+    use std::os::fd::FromRawFd;
+    let (mut master, mut slave) = (-1, -1);
+    // SAFETY: openpty initializes two distinct descriptors on success; each
+    // transfers once to File. No terminal settings or name buffer are supplied.
+    assert_eq!(
+        unsafe {
+            libc::openpty(
+                &mut master,
+                &mut slave,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+            )
+        },
+        0
+    );
+    let master = unsafe { std::fs::File::from_raw_fd(master) };
+    let slave = unsafe { std::fs::File::from_raw_fd(slave) };
+    // A disconnected terminal returns EIO, rather than a pipe's EPIPE.
+    drop(master);
+    let result = ctl_stdout(&["--help"], slave.into());
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains(&format!("os error {}", libc::EIO)));
+}
+
 /// Decision #270: the operator reads and types into a seat from outside the app. A real zsh
 /// seat echoes typed text, a named key reaches the PTY as its exact bytes, the screen shows
 /// both, a wait that never matches names what the screen showed, and each input is journaled

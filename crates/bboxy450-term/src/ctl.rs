@@ -1386,10 +1386,65 @@ fn operation_failure(op: Option<Ulid>, reason: &str) -> (Option<Ulid>, Fail) {
     }
 }
 
+/// Preserve stdout's error kind before noun runners turn I/O errors into strings.
+/// A closed reader ends output; errors from backend sockets remain failures.
+struct CliOutput {
+    inner: std::io::StdoutLock<'static>,
+    closed: bool,
+}
+
+impl CliOutput {
+    fn new() -> Self {
+        Self {
+            inner: std::io::stdout().lock(),
+            closed: false,
+        }
+    }
+
+    fn observe<T>(&mut self, result: std::io::Result<T>) -> std::io::Result<T> {
+        if let Err(error) = &result
+            && error.kind() == std::io::ErrorKind::BrokenPipe
+        {
+            self.closed = true;
+        }
+        result
+    }
+
+    fn finish(&mut self, result: Result<(), String>) -> Result<(), String> {
+        let result = result.and_then(|()| self.flush().map_err(|error| error.to_string()));
+        if self.closed { Ok(()) } else { result }
+    }
+}
+
+impl Write for CliOutput {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        let result = self.inner.write(bytes);
+        self.observe(result)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        let result = self.inner.flush();
+        self.observe(result)
+    }
+}
+
+fn with_stdout(run: impl FnOnce(&mut CliOutput) -> Result<(), String>) -> Result<(), String> {
+    let mut out = CliOutput::new();
+    let result = run(&mut out);
+    out.finish(result)
+}
+
+/// Whether the line reached stdout. A closed reader suppresses semantic error exits.
+fn print_line(line: std::fmt::Arguments<'_>) -> Result<bool, String> {
+    let mut out = CliOutput::new();
+    let result = writeln!(out, "{line}").map_err(|error| error.to_string());
+    out.finish(result)?;
+    Ok(!out.closed)
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{USAGE}");
-        return Ok(());
+        return print_line(format_args!("{USAGE}")).map(|_| ());
     }
     let parsed = parse_full(args);
     // The noun-verb grammar answers in the ctl-cli §2 and §3 shapes; the flat names keep
@@ -1409,14 +1464,25 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
                 let (op, message) = reason[TIMEOUT_PREFIX.len()..]
                     .split_once('\n')
                     .unwrap_or(("", &reason));
-                println!(
+                if print_line(format_args!(
                     "{}",
                     json!({ "ok": false, "op": op, "error": { "kind": "timeout", "message": message,
                         "hint": "raise --timeout, or wait for another --state or --text" } })
-                );
-                std::process::exit(3);
+                ))? {
+                    std::process::exit(3);
+                }
+                Ok(())
             }
-            result => result,
+            Err(reason) => {
+                if print_line(format_args!(
+                    "{}",
+                    json!({"kind": "error", "reason": reason})
+                ))? {
+                    std::process::exit(1);
+                }
+                Ok(())
+            }
+            Ok(()) => Ok(()),
         };
     }
     let mut op = None;
@@ -1460,12 +1526,17 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         if let Some(tail) = tail {
             tail.error(&mut line);
         }
-        let exit = if message_refusal.is_some() { 1 } else { fail.exit };
+        let exit = if message_refusal.is_some() {
+            1
+        } else {
+            fail.exit
+        };
         if let Some(error) = message_refusal {
             line["error"] = json!(error);
         }
-        println!("{line}");
-        std::process::exit(exit);
+        if print_line(format_args!("{line}"))? {
+            std::process::exit(exit);
+        }
     }
     Ok(())
 }
@@ -1481,7 +1552,7 @@ struct VerbCx<'a> {
     tail: &'a mut Option<events::Progress>,
     capture_seat: &'a mut Option<Ulid>,
     message_refusal: &'a mut Option<bbt_proto::messaging::MessageRefusal>,
-    out: &'a mut std::io::StdoutLock<'static>,
+    out: &'a mut CliOutput,
     noun: &'static str,
     verb: &'static str,
 }
@@ -1551,83 +1622,83 @@ fn run_verb(
     capture_seat: &mut Option<Ulid>,
     message_refusal: &mut Option<bbt_proto::messaging::MessageRefusal>,
 ) -> Result<(), String> {
-    let (noun, verb) = parsed.verb.expect("a noun-verb form");
-    let endpoint_file = parsed
-        .endpoint
-        .clone()
-        .unwrap_or_else(|| default_endpoint.to_path_buf());
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
-    if let Command::AppStart {
-        headless,
-        ctl,
-        unattended,
-        test_account,
-        record_notifications,
-    } = &parsed.command
-    {
-        let data = app::start(
-            &endpoint_file,
-            *headless,
-            *ctl,
-            *unattended,
-            test_account.as_deref(),
-            *record_notifications,
-        )?;
-        return print_reply(
-            &mut out,
-            noun,
-            verb,
-            op.unwrap_or_else(fresh),
-            data,
-            parsed.human,
-        );
-    }
-    if let Command::AppEndpoint = parsed.command {
-        // The run directory and the generation, never the capability (#275).
-        let text = std::fs::read_to_string(&endpoint_file)
-            .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
-        let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
-        let id = op.unwrap_or_else(fresh);
-        return print_reply(
-            &mut out,
-            noun,
-            verb,
-            id,
-            json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
-                "generation": value["generation"] }),
-            parsed.human,
-        );
-    }
-    let mut client = connect(args, &endpoint_file).map_err(|reason| {
-        if matches!(&parsed.command, Command::AppStop) {
-            format!("app endpoint unavailable: {reason}")
-        } else {
-            reason
+    with_stdout(|out| {
+        let (noun, verb) = parsed.verb.expect("a noun-verb form");
+        let endpoint_file = parsed
+            .endpoint
+            .clone()
+            .unwrap_or_else(|| default_endpoint.to_path_buf());
+        if let Command::AppStart {
+            headless,
+            ctl,
+            unattended,
+            test_account,
+            record_notifications,
+        } = &parsed.command
+        {
+            let data = app::start(
+                &endpoint_file,
+                *headless,
+                *ctl,
+                *unattended,
+                test_account.as_deref(),
+                *record_notifications,
+            )?;
+            return print_reply(
+                out,
+                noun,
+                verb,
+                op.unwrap_or_else(fresh),
+                data,
+                parsed.human,
+            );
         }
-    })?;
-    client.op = parsed.op;
-    let id = parsed.op.unwrap_or_else(fresh);
-    *op = Some(id);
-    client.op = Some(id);
-    let human = parsed.human;
-    let cx = VerbCx {
-        client,
-        id,
-        human,
-        endpoint_file,
-        tail,
-        capture_seat,
-        message_refusal,
-        out: &mut out,
-        noun,
-        verb,
-    };
-    let noun_of = parsed.command.noun();
-    match NOUN_VERB_RUNNERS.iter().find(|(noun, _)| *noun == noun_of) {
-        Some((_, run)) => run(cx, parsed.command),
-        None => unreachable!("every noun with table verbs has a runner"),
-    }
+        if let Command::AppEndpoint = parsed.command {
+            // The run directory and the generation, never the capability (#275).
+            let text = std::fs::read_to_string(&endpoint_file)
+                .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
+            let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
+            let id = op.unwrap_or_else(fresh);
+            return print_reply(
+                out,
+                noun,
+                verb,
+                id,
+                json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
+                "generation": value["generation"] }),
+                parsed.human,
+            );
+        }
+        let mut client = connect(args, &endpoint_file).map_err(|reason| {
+            if matches!(&parsed.command, Command::AppStop) {
+                format!("app endpoint unavailable: {reason}")
+            } else {
+                reason
+            }
+        })?;
+        client.op = parsed.op;
+        let id = parsed.op.unwrap_or_else(fresh);
+        *op = Some(id);
+        client.op = Some(id);
+        let human = parsed.human;
+        let cx = VerbCx {
+            client,
+            id,
+            human,
+            endpoint_file,
+            tail,
+            capture_seat,
+            message_refusal,
+            out,
+            noun,
+            verb,
+        };
+        let noun_of = parsed.command.noun();
+        match NOUN_VERB_RUNNERS.iter().find(|(noun, _)| *noun == noun_of) {
+            Some((_, run)) => run(cx, parsed.command),
+            None => unreachable!("every noun with table verbs has a runner"),
+        }
+    })
 }
 
 /// Connects and names the issuer (`--as` or `BBOXY_CTL_ISSUER`, #269).
@@ -1646,29 +1717,29 @@ fn connect(args: &[String], endpoint_file: &Path) -> Result<Client, String> {
 }
 
 fn run_main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
-    // --as names the issuer (decision #269); it is not a command flag.
-    let original = args;
-    let mut args = args.to_vec();
-    if let Some(at) = args.iter().position(|arg| arg == "--as") {
-        args.remove(at);
-        if at >= args.len() {
-            return Err("--as needs a value".into());
+    with_stdout(|out| {
+        // --as names the issuer (decision #269); it is not a command flag.
+        let original = args;
+        let mut args = args.to_vec();
+        if let Some(at) = args.iter().position(|arg| arg == "--as") {
+            args.remove(at);
+            if at >= args.len() {
+                return Err("--as needs a value".into());
+            }
+            args.remove(at);
         }
-        args.remove(at);
-    }
-    let (endpoint, command) = parse(&args)?;
-    let mut client = connect(original, endpoint.as_deref().unwrap_or(default_endpoint))?;
-    let stdout = std::io::stdout();
-    let mut out = stdout.lock();
-    for line in run(&mut client, command)? {
-        // `ctl screen` without --json prints the screen's own text, not a JSON string.
-        match line {
-            Value::String(text) => writeln!(out, "{text}"),
-            line => writeln!(out, "{line}"),
+        let (endpoint, command) = parse(&args)?;
+        let mut client = connect(original, endpoint.as_deref().unwrap_or(default_endpoint))?;
+        for line in run(&mut client, command)? {
+            // `ctl screen` without --json prints the screen's own text, not a JSON string.
+            match line {
+                Value::String(text) => writeln!(out, "{text}"),
+                line => writeln!(out, "{line}"),
+            }
+            .map_err(|e| e.to_string())?;
         }
-        .map_err(|e| e.to_string())?;
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 /// The widest `--scrollback` range, in capture sequences: bounded so a reply fits the frame.
