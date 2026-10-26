@@ -154,6 +154,14 @@ pub(super) fn retire(config: &Config, name: &str) -> Result<()> {
 pub(super) struct FrontendLock {
     _file: File,
 }
+impl Drop for FrontendLock {
+    fn drop(&mut self) {
+        // A concurrent fork can retain this open file description until exec,
+        // even with CLOEXEC. Release ownership before closing our descriptor.
+        // SAFETY: the borrowed FD is still owned and open; LOCK_UN never waits.
+        let _ = unsafe { libc::flock(self._file.as_raw_fd(), libc::LOCK_UN) };
+    }
+}
 impl FrontendLock {
     pub(super) fn claim(config: &Config) -> Result<Option<Self>> {
         private_run(config)?;
@@ -328,6 +336,75 @@ mod tests {
         drop(lock);
         assert_eq!(frontend_running(root.path()).unwrap(), Some(false));
         assert!(FrontendLock::claim(&config).unwrap().is_some());
+    }
+
+    // keeps: decision #344 rule 3; a forked CLOEXEC alias is not a live owner
+    #[test]
+    fn frontend_lock_release_does_not_wait_for_a_forked_descriptor() {
+        use std::net::Shutdown;
+        use std::os::unix::net::UnixStream;
+
+        struct ForkedDescriptor {
+            pid: libc::pid_t,
+            control: UnixStream,
+        }
+        impl Drop for ForkedDescriptor {
+            fn drop(&mut self) {
+                // Also runs on assertion failure: EOF releases the child and
+                // waitpid reaps only the exact child this test forked.
+                let _ = self.control.shutdown(Shutdown::Both);
+                loop {
+                    // SAFETY: pid is our unreaped child; no status is needed.
+                    let result = unsafe { libc::waitpid(self.pid, std::ptr::null_mut(), 0) };
+                    if result >= 0
+                        || std::io::Error::last_os_error().kind() != std::io::ErrorKind::Interrupted
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        let root = tempfile::tempdir().unwrap();
+        let config = config(root.path());
+        let lock = FrontendLock::claim(&config).unwrap().unwrap();
+        let (parent, child) = UnixStream::pair().unwrap();
+        let (parent_fd, child_fd, lock_fd) = (
+            parent.as_raw_fd(),
+            child.as_raw_fd(),
+            lock._file.as_raw_fd(),
+        );
+        // SAFETY: after fork the child calls only async-signal-safe libc
+        // functions, with stack data, then _exit; it never enters Rust cleanup.
+        let pid = unsafe { libc::fork() };
+        assert!(pid >= 0, "fork: {}", std::io::Error::last_os_error());
+        if pid == 0 {
+            // SAFETY: inherited descriptors and a one-byte stack buffer; see
+            // the fork contract above. The control EOF is the only release.
+            unsafe {
+                libc::close(parent_fd);
+                let flags = libc::fcntl(lock_fd, libc::F_GETFD);
+                let ready = u8::from(flags >= 0 && flags & libc::FD_CLOEXEC != 0);
+                if libc::write(child_fd, (&ready as *const u8).cast(), 1) != 1 {
+                    libc::_exit(1);
+                }
+                let mut release = 0u8;
+                while libc::read(child_fd, (&mut release as *mut u8).cast(), 1) < 0 {}
+                libc::_exit(0);
+            }
+        }
+        drop(child);
+        let mut child = ForkedDescriptor {
+            pid,
+            control: parent,
+        };
+        let mut ready = [0u8];
+        child.control.read_exact(&mut ready).unwrap();
+        assert_eq!(ready, [1], "child retains the CLOEXEC lock descriptor");
+        drop(lock);
+        assert_eq!(frontend_running(root.path()).unwrap(), Some(false));
+        assert!(FrontendLock::claim(&config).unwrap().is_some());
+        drop(child);
     }
     // keeps: decision #344 rule 1, private same-run/account discovery
     #[test]
