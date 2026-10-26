@@ -22,7 +22,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[ctl-cli]]", rel: builds-on }
 created: "2026-10-25T18:10:21Z"
-updated: "2026-10-25T21:02:47Z"
+updated: "2026-10-26T16:18:37Z"
 ---
 # Runbook: a Rust software factory run by an agent swarm
 
@@ -70,6 +70,10 @@ Rules learned the hard way:
 - **Activation is a landing**: the commit that lands the test renames the check line if needed, removes the flags, and the Oracle flips the status on acceptance. Twice the landing left the status pending with the flags gone, which the gate also refuses; the Architect flipped on the Oracle's landing note with the evidence.
 - **Hard gates and judgement are separate instruments.** Exit codes block; "is this design serialising everything" advises and escalates. Collapsing them turns a gate into theatre. Every judgement call is written as such.
 - **A budget is a promise, not a fit to the machine.** The 120 Hz frame budget stayed at 8.33 ms through five failing measurement runs; the runs were evidence of distance, and the record says so.
+
+### 3a. Systems engineering: interfaces, budgets, the matrix
+
+Added 2026-10-26 after the operator read how large engineering programmes keep out of integration hell. Components were owned; their interactions were not, so most of a day's rulings were boundary questions answered late, one at a time. The fix is the lead-systems-engineer job, held by the Architect: one **interface control document** per boundary (`.bboxy/interfaces/`, nine of them: supervisor and logic, logic and GUI, ctl and app, app and harness, messaging and seats, plugin and host, identity and app, lab and native, night and app), each naming both sides, what crosses, timing, states, failure, versioning and its verification, changed only with both owners; **budgets** that split frame time, memory, disk, build time and inference across subsystems with margins before a cut spends them ([[budgets]]); and a **verification matrix** from each interface to the evidence that proves it. "Integrated and verified" is the deliverable; finished components are progress toward it. Build these on day one of a new factory, before the first cut crosses a boundary.
 
 ### 4. The mantras are the compressed law
 

@@ -1,0 +1,30 @@
+---
+id: 01M5WG2WS0GPS3RPT60P5VXVX2
+type: interface
+number: 349
+title: "ICD: messaging ↔ seats"
+status: baselined
+links:
+  - { to: "[[interfaces]]", rel: index }
+created: "2026-10-26T16:18:20Z"
+updated: "2026-10-26T16:18:20Z"
+---
+# ICD: messaging ↔ seats
+
+| | |
+|---|---|
+| Side A | the messaging service in logic (`bbt-mux`) |
+| Side B | every seat through MCP tools and native delivery |
+| The agreement | [[messaging]]; [[l9-messaging-tasks]]; [[messaging-attention]] |
+| Amended by | #285 no gated communications and operator-local continuity; #334 attention, events and threads |
+| What crosses | signed envelopes; conversation and event classes derived from the kind; receipts with evidence states and the wake decision |
+| Timing | digest windows at most 10 minutes or 50 messages; bus p99 at most 13.3 s at 1 000 seats |
+| States and lifecycle | under a custody hold delivery continues as pending intents; the wake decision is pinned at admission; one GUI consumer per device |
+| Failure | nothing is held but by the operator's mute; superseded and done messages never wake; an unknown thread is refused with the open threads named |
+| Versioning | additive kinds and fields; signatures unchanged when new fields are absent |
+| Verified by | invariants messaging-never-held, notices-never-wake, seats-1000-bus; promises M1 to M6 |
+| Open | MA-5 to MA-9, in work |
+
+A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
+
+Owner: Corvin Duskmantle <ARCHITECT>.

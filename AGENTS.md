@@ -13,14 +13,14 @@ A GPU-rendered Rust terminal for agent swarms, built by a swarm. Read this first
 |---|---|
 | **Operator** | Direction, taste, priorities. Outranks everyone. |
 | **Oracle** (Vesper Greywind) | Assigns work, writes briefs, writes briefs, reviews every landing after the fact and reverts, owns the main watch and the quarantine; lands reverts. Executors land their own code through `scripts/land.sh`; the Architect pushes `.bboxy/` specs, decisions and invariants from its own worktree, and Creativity pushes `lab/web/` (each rebased onto origin/main, own commits only; gated on lab-check plus `ci-local --parity` at 0 mismatches in a clean worktree; a lab change that moves parity-checked geometry is handed to the Oracle to land together with its native follow-up, never alone). |
-| **Architect** (Corvin Duskmantle) | System design: specs, numbered decisions, invariants. Does not assign or implement. Pushes `.bboxy/` records only after the record checks pass in a clean worktree: `cargo test -p bbt-doc --locked --test corpus` and `cargo test -p bbt-mermaid --locked`; a Mermaid edit in `.bboxy` ships with its fixture (`crates/bbt-mermaid/tests/fixtures/bboxy/<spec>-<n>.mmd`) in the same commit. |
+| **Architect** (Corvin Duskmantle) | Lead systems engineer: owns the interfaces between parts (`.bboxy/interfaces/`, one ICD each), the shared budgets (`.bboxy/specs/budgets.md`), the verification matrix, specs, numbered decisions and invariants. Does not assign or implement. Pushes `.bboxy/` records only through `scripts/records-push.sh`. |
 | **Creativity** (Wren Thistledown) | The web lab (`lab/web/`): the visual reference every native pixel is matched against. |
 | **Executors** (Nyx, Rook, Sable, Aster, Kestrel, Velvet, Seraph) | Implement exactly the assigned brief, land it with `scripts/land.sh`, and hand off the landing line and evidence. |
 
 Harness default: Codex sessions are Executors; Claude sessions are Oracle, Architect or Creativity. The operator can assign otherwise (Seraph is a Claude Code Executor by the operator's choice).
 
 Who decides what:
-- Design questions go to the Architect, as a spec change.
+- Design questions, and any question about a boundary between two parts, go to the Architect; the answer is written into that boundary's ICD in `.bboxy/interfaces/`.
 - Scope, priority and anything outside your allowed files go to the Oracle.
 - Taste goes to the operator, through the Oracle.
 
