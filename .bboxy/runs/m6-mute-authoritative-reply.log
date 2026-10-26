@@ -393,3 +393,7 @@ Kit manifest SHA256 b81bf1323cc5107c1e1c69b93835bba017b59f90c229770f0585d1b42e98
 Result packet SHA256 0b4e3921660e2e975bccdf69f15d61aa41eb8facb45dadab2d7f415aa577ef61
 Author presubmit follows this evidence commit through scripts/land.sh; its real exit/verdict is reported separately.
 Coverage remains partial: priority delays, never deletes is still explicitly unproven by M6. The M6-only runner kit intentionally omits other promises; its aggregate group exit is not a full-night verdict.
+
+First author check after current-main rebase
+{"commands_log": "/Users/feral/.local/state/bboxy450-term/landing/presubmits/9b3169e6ec7b60273c416cf505410f3353e557a6-4aaf1770/commands.log", "commands_log_sha256": "96c81213458596b547d42a58e9fe5e009053cb14b6f5e0bac07470b2ad799f44", "land": {"exit": 77, "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/kestrel-m6-authority-it1qlmr2/land-m6.log", "log_sha256": "1f4e73ec7cda00e4f263ef497a32da87ec5541a20d07f3ddbc458fe97531e451", "phase": "finished", "pid": 58563, "seconds": 189.89028525352478}, "result": "compile101 missing new main GuiSeat.attention field in pure test fixture; no push", "source": "9b3169e6ec7b60273c416cf505410f3353e557a6"}
+Disposition: add attention: None to the pure GuiSeat test fixture for MA-6's newly landed optional field. No production change. Repeat author validation on the corrected source; the failure is retained, not marked green.

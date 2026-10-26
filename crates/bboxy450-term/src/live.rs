@@ -1895,6 +1895,7 @@ mod tests {
         record.muted = true;
         let snapshot = GuiReply::Seat(GuiSeat {
             record,
+            attention: None,
             state: bbt_proto::SeatState {
                 generation: 1,
                 process: ProcessStatus::Running { pid: 1 },
