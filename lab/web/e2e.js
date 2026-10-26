@@ -63,7 +63,7 @@ window.E2E_PROMISES = [
  {
   "id": "L4",
   "group": "launcher and placement",
-  "text": "a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task"
+  "text": "a fresh Claude seat and a fresh Codex seat each call orient and task_report on their first turn in a fixture task; proven with the installed native clients against a scripted local model, the app's records showing both calls routed and attributed to the seat; whether a real model chooses to orient is agent behaviour, advisory and never a verdict, since the night holds no provider credentials"
  },
  {
   "id": "S1",
