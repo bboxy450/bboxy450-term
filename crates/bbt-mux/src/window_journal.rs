@@ -64,7 +64,7 @@ impl Journal {
     }
 }
 pub(crate) fn validate(state: &WindowState) -> Result<()> {
-    if state.version != 1
+    if !matches!(state.version, 1 | bbt_proto::gui::WINDOW_STATE_VERSION)
         || state
             .size
             .iter()
@@ -96,6 +96,9 @@ pub(crate) fn validate(state: &WindowState) -> Result<()> {
         }
     }
     for swarm in &state.swarms {
+        if swarm.workdir.as_deref().is_some_and(|path| !bbt_proto::gui::valid_workdir(path)) {
+            return Err(invalid("window_state_invalid_workdir"));
+        }
         if !swarms.insert(swarm.id) {
             return Err(invalid("window_state_duplicate_swarm"));
         }

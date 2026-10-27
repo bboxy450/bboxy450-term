@@ -13,6 +13,7 @@ mod live;
 mod log;
 mod scene;
 mod spawn_gate;
+mod swarm_folder;
 mod stall;
 
 use bboxy450_term::launcher::{
@@ -58,6 +59,7 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    SwarmFolderPicked { swarm: bbt_proto::SwarmId, path: Option<String> },
     UiFor {
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
@@ -653,6 +655,7 @@ impl UiVisible {
 }
 #[derive(Debug)]
 enum UiEffect {
+    SwarmWorkdir(bbt_proto::SwarmId, Option<String>),
     Compose(bbt_proto::gui::UiComposed),
     Spawn(bbt_mux::Ulid),
     Operation(bbt_mux::Ulid),
@@ -683,6 +686,7 @@ impl UiEffect {
         model: Option<&bboxy450_term::model::Model>,
     ) -> Option<Self> {
         match message {
+            live::UiMsg::SwarmWorkdir {swarm,path} => Some(Self::SwarmWorkdir(*swarm,path.clone())),
             live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => {
                 Some(Self::Spawn(*id))
             }
@@ -1033,10 +1037,10 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
     let mods = input.modifiers.state;
     let repeat = input.repeat;
     let command = mods.super_key();
-    if command && shortcut == Some('q') {
+    if command && !mods.shift_key() && !mods.control_key() && shortcut == Some('q') {
         return if repeat {
             RoutedKey::Local
-        } else if mods.shift_key() {
+        } else if mods.alt_key() {
             RoutedKey::HardQuit
         } else {
             RoutedKey::Quit
@@ -1803,6 +1807,8 @@ struct App {
     task_regions: bbt_ui::modules::stream_dock::Regions,
     close_regions: Vec<(SeatId, Rect, bool)>,
     starting_close_regions: Vec<(bbt_mux::Ulid, Rect)>,
+    swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
+    swarm_folder_pending: bool,
     starting: bboxy450_term::starting::Starting,
     spawn_gate: spawn_gate::Gate<live::UiMsg>,
     starting_timers: BTreeMap<bbt_mux::Ulid, tokio::task::AbortHandle>,
@@ -1971,6 +1977,8 @@ impl App {
             task_regions: Default::default(),
             close_regions: vec![],
             starting_close_regions: Vec::new(),
+            swarm_folder_regions: Vec::new(),
+            swarm_folder_pending: false,
             starting: Default::default(),
             spawn_gate: Default::default(),
             starting_timers: BTreeMap::new(),
@@ -4666,6 +4674,9 @@ impl App {
             return Ok(false);
         };
         match effect {
+            UiEffect::SwarmWorkdir(swarm,path) => model.ui.window.sidebar.swarms.iter()
+                .find(|row|row.id==*swarm).map(|row|row.workdir==*path)
+                .ok_or_else(||"swarm_unavailable".into()),
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
             UiEffect::Spawn(id) => {
                 if let Some(launch) = self.starting.get(*id) {
@@ -4816,6 +4827,10 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::SwarmWorkdir(swarm,path)=effect
+                        && layout.swarm_workdirs.get(&bbt_mux::Ulid(swarm.0.0)) != path.as_ref() {
+                        return Err("ui_frame_refused: swarm folder changed before its frame".into());
+                    }
                     if let UiEffect::Compose(sent) = effect {
                         let actual = layout.composed.as_ref().ok_or("ui_frame_refused: sent group is not visible in the produced frame")?;
                         if actual.to != sent.to || actual.messages != sent.messages || actual.text != sent.text || actual.label != sent.label {
@@ -5103,6 +5118,9 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::SwarmWorkdir {swarm,path} => {
+                self.set_swarm_workdir(bbt_proto::SwarmId::from_u128(swarm.0),path)?;
+            },
             UiRequest::Compose(request) => self.compose_ui(request)?,
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
@@ -5328,6 +5346,8 @@ impl App {
             },
         );
         let layout = UiLayout {
+            swarm_workdirs: model.ui.window.sidebar.swarms.iter().filter_map(|row|
+                row.workdir.as_ref().map(|path|(bbt_mux::Ulid(row.id.0.0),path.clone()))).collect(),
             frame_seq: 0, // filled only by the actual produced-frame callback
             layout_revision: Some(self.scene.layout_revision()),
             clock: Some(self.clock_frame.state),
@@ -5471,6 +5491,7 @@ impl App {
         self.task_regions = self.scene.task_regions(&layouts);
         self.close_regions = self.scene.close_regions(&layouts);
         self.starting_close_regions = self.scene.starting_close_regions(&layouts);
+        self.swarm_folder_regions = self.scene.swarm_folder_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         self.pane_bounds = bounds;
         self.launcher_layout = self
@@ -5977,6 +5998,12 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::SwarmFolderPicked {swarm,path} => {
+                self.swarm_folder_pending=false;
+                if let Some(path)=path && let Err(reason)=self.set_swarm_workdir(swarm,Some(path)) {
+                    self.logger.write(reason);
+                }
+            },
             UiEvent::ErrorCount(count) => {
                 if self.unread_errors != count {
                     self.unread_errors = count;
@@ -6841,6 +6868,19 @@ impl ApplicationHandler<UiEvent> for App {
                     self.close_seat(seat, bbt_mux::Ulid::new(), undo);
                     return;
                 }
+                if let Some((swarm,_,reset)) = self.swarm_folder_regions.iter().copied().find(|(_,rect,_)|
+                    self.pointer[0]>=rect.x && self.pointer[0]<rect.right() && self.pointer[1]>=rect.y && self.pointer[1]<rect.bottom()) {
+                    if reset { let _=self.set_swarm_workdir(swarm,None); }
+                    else if !self.swarm_folder_pending {
+                        self.swarm_folder_pending=true;
+                        let directory=self.live_state.as_ref().and_then(|model|model.ui.window.sidebar.swarms.iter().find(|row|row.id==swarm)).and_then(|row|row.workdir.clone());
+                        if let Err(reason)=swarm_folder::choose(swarm,self.proxy.clone(),directory.as_deref()) {
+                            self.swarm_folder_pending=false;
+                            self.logger.write(reason);
+                        }
+                    }
+                    return;
+                }
                 if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
                     self.pointer[0] >= rect.x
                         && self.pointer[0] < rect.right()
@@ -7319,7 +7359,7 @@ fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
 
 const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
-  Cmd-Q / window close keep live sessions; Cmd-Shift-Q hard quits their backends.
+  Cmd-Q / window close keep live sessions; Cmd-Option-Q hard quits their backends.
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
   --repository PATH    repository directory (default: cwd, or a writable app workspace)
@@ -8796,7 +8836,8 @@ mod input_tests {
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
-                live::UiMsg::Close(_)
+                live::UiMsg::SwarmWorkdir { .. }
+                | live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
                 | live::UiMsg::Messaging { .. }
                 | live::UiMsg::GetAttention { .. }
@@ -9090,7 +9131,7 @@ mod layout_shortcut_tests {
     fn quit_and_hard_quit_follow_the_layout_in_every_chrome_context() {
         for (mods, expected) in [
             (ModifiersState::SUPER, RoutedKey::Quit),
-            (ModifiersState::SUPER | ModifiersState::SHIFT, RoutedKey::HardQuit),
+            (ModifiersState::SUPER | ModifiersState::ALT, RoutedKey::HardQuit),
         ] {
             let input = character("Q", "q", KeyCode::KeyX, Some("Q"), mods);
             assert_eq!(route_key(&input, 0, None), expected);
@@ -9099,6 +9140,16 @@ mod layout_shortcut_tests {
             assert_eq!(route_settings(&input, 0, true), expected);
             assert_eq!(route_document(&input, 0), expected);
             assert_eq!(route_composer(&input, 0, ComposeField::Body), expected);
+        }
+        for mods in [ModifiersState::SUPER|ModifiersState::SHIFT,
+            ModifiersState::SUPER|ModifiersState::ALT|ModifiersState::SHIFT,
+            ModifiersState::SUPER|ModifiersState::CONTROL] {
+            let input=character("Q","q",KeyCode::KeyX,Some("Q"),mods);
+            for routed in [route_key(&input,0,None),route_key(&input,0,Some("query")),
+                route_local_page(&input,0),route_settings(&input,0,true),route_document(&input,0),
+                route_composer(&input,0,ComposeField::Body)] {
+                assert!(!matches!(routed,RoutedKey::Quit|RoutedKey::HardQuit),"reserved system shortcut");
+            }
         }
     }
 

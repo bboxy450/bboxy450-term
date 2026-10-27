@@ -298,8 +298,9 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             };
             let pick = UiSpawn {
                 harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
-                cwd: std::path::absolute(flag("cwd").unwrap_or_else(|| ".".into()))
-                    .map_err(|e| format!("{USAGE_PREFIX}--cwd: {e}"))?.to_string_lossy().into_owned(),
+                cwd: flag("cwd").map(|path| std::path::absolute(path)
+                    .map(|path|path.to_string_lossy().into_owned())
+                    .map_err(|e|format!("{USAGE_PREFIX}--cwd: {e}"))).transpose()?.unwrap_or_default(),
             };
             let request = bbt_proto::gui::UiRequest::Spawn(Box::new(pick));
             request.validate().map_err(|e| format!("{USAGE_PREFIX}{e}"))?;

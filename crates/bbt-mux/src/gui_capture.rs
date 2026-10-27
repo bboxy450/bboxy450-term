@@ -359,6 +359,7 @@ mod tests {
             captures.ui_answer(
                 id,
                 Ok(UiLayout {
+                    swarm_workdirs: Default::default(),
                     frame_seq,
                     layout_revision: None,
                     spawned: None,

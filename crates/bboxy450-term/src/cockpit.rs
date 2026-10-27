@@ -42,6 +42,7 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    SwarmWorkdir { swarm: bbt_proto::SwarmId, path: Option<String> },
     /// Latest durable layout intent from a produced GUI frame.
     WindowState(bbt_proto::gui::WindowState),
     UiReply {
@@ -465,6 +466,8 @@ fn fixture_hosts_default() -> bool {
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
+    #[serde(default)]
+    pub gui_state_version: u16,
     /// Private environment compatibility hint; never exports the environment.
     #[serde(default)]
     pub launch_path_fingerprint: Option<String>,
@@ -735,6 +738,7 @@ async fn logic_main() -> Result<()> {
     let endpoint = logic.client.gui_endpoint().await?;
     let status = logic.client.identity_status().await?;
     let ready = LogicReady {
+        gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
         launch_path_fingerprint: std::env::var_os("PATH").as_deref().map(shell_path::fingerprint),
         root: endpoint
             .path
@@ -879,13 +883,14 @@ impl Session {
             };
         let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
         if existing.as_ref().is_some_and(|record|
-            record.ready.launch_path_fingerprint.as_deref() != Some(shell_path::fingerprint(&launch_path).as_str()))
+            record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
+                || record.ready.launch_path_fingerprint.as_deref() != Some(shell_path::fingerprint(&launch_path).as_str()))
         {
             let record = existing.take().unwrap();
             let mut old_logic = Process::adopted(&config, "logic", record);
             // Refresh logic only: the supervisor retains every live PTY and process.
             stop_child(&mut old_logic, &mut None, "logic").await?;
-            eprintln!("login zsh PATH changed; refreshed logic, retained supervisor and seats");
+            eprintln!("launch environment or GUI schema changed; refreshed logic, retained supervisor and seats");
         }
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();

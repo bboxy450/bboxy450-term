@@ -171,3 +171,5 @@ Seventeen implications the other specs place on the UI, recorded by the Oracle o
 | 15 | role and permissions | per seat | BUILT: row menu (right-click, ⌘-click, long-press, ⇧F10): focus, splits, role ▸, permissions ▸, interrupt for steer callers, mute, copy socket path, close |
 | 16 | shadows | global messaging | module kept, deferred |
 | 17 | nested subagent rows | 7501 / hooks | BUILT: running only, under the seat before its tasks, glyph in the seat colour with the source grade; past 8 collapses to +N running |
+
+**Swarm working folder (operator, 2026-10-26):** each native swarm card, including an empty swarm, has a working-folder row. Choose working folder opens the nonblocking native directory picker; the chosen folder name is shown with a Default reset, and reopening the picker starts at its full path. Selecting the folder makes that swarm the next launcher target. New harnesses inherit that folder unless the launch supplies an explicit cwd. Existing harnesses keep running in their original directories. The selection persists across frontend restarts and is independent for every swarm.

@@ -63,6 +63,8 @@ pub struct ClosedStrip {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Swarm {
     pub id: SwarmId,
+    /// Default launch directory; running seats keep their own cwd.
+    pub workdir: Option<String>,
     pub name: String,
     pub color: SeatColor,
     pub tabs: Vec<Tab>,
@@ -75,6 +77,7 @@ impl Swarm {
     pub fn new(id: SwarmId, name: impl Into<String>, tabs: Vec<Tab>) -> Self {
         Self {
             id,
+            workdir: None,
             name: name.into(),
             tabs,
             color: SeatColor::Derived,

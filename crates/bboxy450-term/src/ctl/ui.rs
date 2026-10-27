@@ -11,6 +11,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "clock", "Ui"),
     ("ui", "notification-click", "Ui"),
     ("ui", "compose", "Ui"),
+    ("ui", "swarm-workdir", "Ui"),
 ];
 
 /// This noun's `Command` variants, spliced into the flat enum by `commands` in `ctl.rs`.
@@ -34,6 +35,15 @@ pub(super) use ui_commands;
 /// when the words are not this noun's.
 pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", "swarm-workdir", swarm, path] => {
+            let swarm = swarm.parse::<bbt_mux::Ulid>().map_err(|_| format!("{USAGE_PREFIX}expected swarm ULID"))?;
+            let path = if path == "--default" || path == "default" { None } else {
+                let folder = std::fs::canonicalize(path).map_err(|error|format!("{USAGE_PREFIX}folder: {error}"))?;
+                if !folder.is_dir() { return Err(format!("{USAGE_PREFIX}expected a directory")); }
+                Some(folder.to_string_lossy().into_owned())
+            };
+            Command::Ui(bbt_proto::gui::UiRequest::SwarmWorkdir {swarm,path})
+        },
         ["ui", "compose"] => {
             let to = cx
                 .flags

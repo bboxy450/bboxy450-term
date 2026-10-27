@@ -14,6 +14,8 @@ pub struct FocusFrame {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body", rename_all = "snake_case")]
 pub enum UiRequest {
+    /// Set a swarm's default launch folder; None restores the app default.
+    SwarmWorkdir { swarm: Ulid, path: Option<String> },
     Open(UiTarget),
     Key(Vec<String>),
     Focus {
@@ -51,11 +53,14 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::SwarmWorkdir { swarm, path } if *swarm == Ulid::nil()
+                || path.as_deref().is_some_and(|path| !valid_workdir(path)) => {
+                Err("invalid_swarm_workdir: expected a swarm and an absolute folder path")
+            }
             Self::Compose(compose) => compose.validate(),
             Self::Spawn(pick)
                 if pick.harness.is_empty()
                     || pick.harness.len() > 256
-                    || pick.cwd.is_empty()
                     || pick.cwd.len() > 4096
                     || pick.name.as_ref().is_some_and(|name| name.len() > 1024)
                     || pick.role.as_ref().is_some_and(|role| role.len() > 128)
@@ -95,6 +100,11 @@ impl UiRequest {
             _ => Ok(()),
         }
     }
+}
+
+pub fn valid_workdir(path: &str) -> bool {
+    !path.is_empty() && path.len() <= 4096 && std::path::Path::new(path).is_absolute()
+        && !path.chars().any(char::is_control)
 }
 
 /// Controls only the next admitted launch; it never pauses an IO owner or changes time.
@@ -312,6 +322,8 @@ pub enum UiTarget {
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub swarm_workdirs: std::collections::BTreeMap<Ulid, String>,
     /// The window composition this solved layout describes (not a bus cursor).
     pub frame_seq: u64,
     /// The tree revision encoded in this frame; absent on older hosts.

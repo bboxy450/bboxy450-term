@@ -16,18 +16,23 @@ REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certi
 APP_VERSION = $(shell python3 -c 'import tomllib; a=tomllib.load(open("crates/bboxy450-term/Cargo.toml","rb"))["package"]["version"]; print(a if isinstance(a,str) else tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
 ARCHIVE = $(DIST_DIR)/$(APP)-$(APP_VERSION)-macos-$(shell uname -m).zip
 CI_LOG ?= $(abspath $(TARGET_DIR))/ci-local.log
+CI_ARGS ?=
 export CARGO_PROFILE_DEV_DEBUG ?= 0
 export CARGO_PROFILE_TEST_DEBUG ?= 0
 export CARGO_PROFILE_DEV_OPT_LEVEL ?= 1
 export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
-.PHONY: help build build-release compile test check test-boundaries smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
+.PHONY: help build build-release compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
 
 help:
 	@printf '%s\n' \
 	  'make build / build-release       Build the app (debug / optimized)' \
+	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make test                       Full local CI; no operator input' \
+	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
+	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
+	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make install                    Release app, Apple identity signed, ~/Applications' \
 	  'make install-unsigned            Debug app, ad-hoc only, target/install-unsigned' \
@@ -43,14 +48,34 @@ build:
 build-release:
 	@$(MAKE) compile PROFILE=release
 
+lock:
+	@set -eu; . ./scripts/cache-env.sh; cargo update --offline --workspace
+
 compile:
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)' $$flag
 
 test check:
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
-	BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
+	BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
+
+test-parity:
+	@$(MAKE) test CI_ARGS=--parity
+
+parity-swarm:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	swarm_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="swarms"]; assert selected; print(json.dumps(selected))'); \
+	sh scripts/parity.sh --cases "$$swarm_cases"
+
+test-swarm:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) swarm_workdir; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib window_state; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -133,7 +158,7 @@ package-crate:
 
 publish-release: release
 	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
-	grep -F "ci-local: result $$(git rev-parse HEAD) normal 0" '$(CI_LOG)' >/dev/null; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	tag='v$(APP_VERSION)'; if git rev-parse -q --verify "refs/tags/$$tag" >/dev/null; then \
 	  test "$$(git rev-list -1 "$$tag")" = "$$(git rev-parse HEAD)"; git verify-tag "$$tag"; \
 	else git tag -s "$$tag" -m '$(APP) $(APP_VERSION)'; fi; \
@@ -145,5 +170,5 @@ push:
 	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
 	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
-	grep -F "ci-local: result $$(git rev-parse HEAD) normal 0" '$(CI_LOG)' >/dev/null; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main

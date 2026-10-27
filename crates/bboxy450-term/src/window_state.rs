@@ -38,7 +38,7 @@ pub fn capture(
     prior: Option<&WindowState>,
 ) -> WindowState {
     WindowState {
-        version: 1,
+        version: bbt_proto::gui::WINDOW_STATE_VERSION,
         size,
         sidebar_width: model.ui.window.sidebar.width,
         sidebar_scroll: model.ui.window.sidebar.scroll,
@@ -59,6 +59,7 @@ pub fn capture(
             .iter()
             .map(|swarm| WindowSwarm {
                 id: Ulid(swarm.id.0.0),
+                workdir: swarm.workdir.clone(),
                 tabs: swarm
                     .tabs
                     .iter()
@@ -116,6 +117,7 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
             continue;
         };
         let current = swarm.tabs.clone();
+        swarm.workdir = old.workdir.clone();
         let mut tabs = Vec::new();
         for tab in &old.tabs {
             let mut next = Some(decoded(&tab.tree));
@@ -243,6 +245,7 @@ mod tests {
             ..Default::default()
         };
         model.ui.window.stage.focused = Some(b);
+        model.ui.window.sidebar.swarms[0].workdir=Some("/project with spaces".into());
         let state = capture(&model, &model.ui.window.stage, [1280., 750.], None);
         let bytes = serde_json::to_vec(&state).unwrap();
         let decoded = serde_json::from_slice(&bytes).unwrap();
@@ -263,5 +266,11 @@ mod tests {
             capture(&next, &next.ui.window.stage, [1280., 750.], None),
             state
         );
+        let mut legacy=serde_json::to_value(&state).unwrap();
+        legacy["version"]=1.into();
+        legacy["swarms"][0].as_object_mut().unwrap().remove("workdir");
+        let legacy:WindowState=serde_json::from_value(legacy).unwrap();
+        restore(&mut next,&legacy).unwrap();
+        assert_eq!(next.ui.window.sidebar.swarms[0].workdir,None);
     }
 }

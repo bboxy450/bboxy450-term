@@ -664,6 +664,20 @@ pub struct PendingSpawn {
     pub caption: String,
     pub dismiss: bool,
 }
+
+/// Host-owned launch default, using the card's existing row tokens.
+pub fn workdir_row(key: &str, path: Option<&str>, ctx: ui::Context) -> c::Element {
+    let label=path.map_or_else(||"Choose working folder…".into(), |path| {
+        let name=std::path::Path::new(path).file_name().and_then(|name|name.to_str()).unwrap_or(path);
+        format!("Folder: {name}")
+    });
+    let button=|action:&str,label:String| named(format!("swarm-folder/{key}/{action}"),
+        flow(plain(Some(ctx.density.tokens().tab_h as f32),[0.,STYLE.spacing.s4 as f32,0.,STYLE.spacing.s4 as f32],ui::Color::Transparent,STYLE.radius.row as f32),
+            Axis::Row,0.,c::Alignment::Center,vec![text(label,STYLE.r#type.small as f32,400,false,ui::Color::Foreground).into()]));
+    let mut children=vec![c::Item {element:button("choose",label),extent:c::Extent::Flex(1.)}];
+    if path.is_some() {children.push(button("default","Default".into()).into());}
+    flow(plain(None,[0.;4],ui::Color::Transparent,0.),Axis::Row,0.,c::Alignment::Center,children)
+}
 pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     let d = ctx.density.tokens();
     let card_row = ui::Style::new(ui::Preset::CardRow)

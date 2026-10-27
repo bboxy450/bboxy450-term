@@ -898,7 +898,9 @@ async fn run_with_control(
     let swarm = seats
         .values()
         .next()
-        .map_or_else(Ulid::new, |seat| seat.record.swarm);
+        .map(|seat| seat.record.swarm)
+        .or_else(||session.endpoint.window.as_ref()?.state.as_ref()?.swarms.first().map(|swarm|swarm.id))
+        .unwrap_or_else(Ulid::new);
     let rendering = rendering
         .await
         .map_err(|_| invalid("renderer bootstrap stopped"))?;
@@ -906,7 +908,12 @@ async fn run_with_control(
     options.font.scale = rendering.scale.round().max(1.0) as u32;
     let mut preparer = PanePreparer::with_options(rendering.context, options)?;
     let mut grids = Grids::new();
-    let mut initial = Model::default();
+    let mut initial = Model {launch_directory:cwd.to_string_lossy().into_owned(),..Model::default()};
+    if seats.is_empty() {
+        initial.ui=bbt_ui_model::Model::new(vec![bbt_ui_model::Swarm::new(
+            SwarmId::from_u128(swarm.0),"swarm",vec![])],vec![]).map_err(|error|invalid(error.to_string()))?;
+        initial.ui.window.stage.swarm=Some(SwarmId::from_u128(swarm.0));
+    }
     initial.ui.window.theme = rendering.theme;
     initial.window_restore = session
         .endpoint
@@ -1108,7 +1115,11 @@ async fn run_with_control(
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
                     message @ (UiMsg::Spawn {id,..}|UiMsg::SpawnSpec {id,..})=> {
-                        let spec=spawn_spec(message,swarm,&cwd).expect("spawn intent branch");
+                        let mut spec=spawn_spec(message,swarm,&cwd).expect("spawn intent branch");
+                        if !matches!(message,UiMsg::SpawnSpec {..})
+                            && let Some(path)=model.ui.window.sidebar.swarms.iter().find(|row| row.id.0.0==spec.swarm.0.0).and_then(|row|row.workdir.as_ref()) {
+                            spec.cwd=path.clone();
+                        }
                         match Arc::make_mut(&mut model).request_spawn(*id,spec.clone()) {
                             Ok(true)=> {
                                 queue_action(&mut outgoing,GuiAction::Spawn {id:*id,spec});
@@ -1159,6 +1170,13 @@ async fn run_with_control(
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
+                    UiMsg::SwarmWorkdir {swarm,path}=> {
+                        if path.as_deref().is_none_or(bbt_proto::gui::valid_workdir)
+                            && let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {
+                            row.workdir=path.clone();
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    },
                     UiMsg::WindowState(state)=>window_writes.observe(state.clone()),
                     UiMsg::Focused {id,result}=>if let Some(action)=window_writes.fence(GuiAction::Focused {id:*id,result:result.clone()}) {queue_action(&mut outgoing,action);},
                     UiMsg::UiReply {id,result}=>if let Some(action)=window_writes.fence(GuiAction::UiReply {id:*id,result:result.clone()}) {queue_action(&mut outgoing,action);},

@@ -897,6 +897,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                     .send(GuiAction::UiReply {
                         id: op,
                         result: Box::new(Ok(bbt_proto::gui::UiLayout {
+                swarm_workdirs: Default::default(),
                             clock: None,
                             frame_seq,
                             layout_revision: None,
@@ -1665,6 +1666,7 @@ async fn ctl_gui_seats(
                 .send(GuiAction::UiReply {
                     id: op,
                     result: Box::new(Ok(bbt_proto::gui::UiLayout {
+                swarm_workdirs: Default::default(),
                         frame_seq: 0,
                         layout_revision: None,
                         clock: None,

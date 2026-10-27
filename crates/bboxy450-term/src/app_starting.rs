@@ -237,6 +237,7 @@ impl App {
         self.answer_ui(
             id,
             Ok(bbt_proto::gui::UiLayout {
+                swarm_workdirs: Default::default(),
                 frame_seq: self.submitted_frame,
                 layout_revision: None,
                 clock: None,

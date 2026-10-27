@@ -11,7 +11,9 @@ Read `~/.agents/AGENTS.md` first. Codex is an Executor. A direct operator reques
 | `make build` | Debug app |
 | `make build-release` | Optimized app |
 | `make test` | Full local CI, with exact source/result lines in `target/ci-local.log` |
+| `make test-parity` | Full local CI plus the existing visual parity gate |
 | `make test-boundaries` | Explicit shell PATH and real process/lifecycle regressions |
+| `make test-swarm` | Swarm working folder, override, restart and quit-key regressions |
 | `make smoke` | Private unsigned install, throwaway identity, headless smoke; no operator |
 | `make install` | Release app signed with the approved Apple Development identity, installed in `~/Applications` |
 | `make install-unsigned` | Ad-hoc-only debug app in `target/install-unsigned`, for tests; never replaces the trusted app by default |
@@ -31,7 +33,7 @@ Signed installation never silently falls back to unsigned. `install-unsigned` us
 - Run the Make targets appropriate to the change. Before handoff/push, `make test` must pass on the exact committed source. A real process-boundary change also runs `make test-boundaries`; UI geometry/reference changes require the existing parity check.
 - Report commands and actual exits, paths/lines and mechanisms, what was skipped, the commit and worktree status. An agent report or dashboard label is not proof.
 - Keep raw logs and fixture accounts outside Git. In `.bboxy/runs`, commit only a `.log`/`.json` command/exit/hash summary. Markdown under `.bboxy` is a numbered record and must follow its frontmatter format.
-- Preserve live work: window close/Cmd-Q detach; Cmd-Shift-Q and `ctl app stop` explicitly stop backend owners. Supervisor/PTYS remain independent of ordinary UI restart.
+- Preserve live work: window close/Cmd-Q detach; Cmd-Option-Q and `ctl app stop` explicitly stop backend owners. Cmd-Shift-Q belongs to macOS logout. Supervisor/PTYS remain independent of ordinary UI restart.
 
 ## Unattended operation
 

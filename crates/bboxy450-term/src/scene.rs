@@ -724,6 +724,23 @@ impl Scene {
         }
         out
     }
+    pub fn swarm_folder_regions(&self, layouts: &[c::Layout]) -> Vec<(bbt_proto::SwarmId,Rect,bool)> {
+        fn button(layout:&c::Layout,key:&str)->Option<Rect> {
+            if matches!(&layout.kind,c::LayoutKind::Named(name) if name.ends_with(key)) {return Some(layout.rect);}
+            layout.children.iter().find_map(|child|button(child,key))
+        }
+        let mut out=vec![];
+        if let Some(sidebar)=layouts.get(1) {
+            for swarm in &self.swarms {
+                for (action,reset) in [("choose",false),("default",true)] {
+                    if let Some(rect)=button(sidebar,&format!("swarm-folder/{}/{action}",swarm.id)) {
+                        out.push((swarm.id,rect,reset));
+                    }
+                }
+            }
+        }
+        out
+    }
     pub fn focused(&self) -> Option<SeatId> {
         match self
             .starting
@@ -1068,6 +1085,7 @@ impl Scene {
                         })
                         .collect();
                     view.extra.extend(self.starting_rows(Some(swarm.id), ctx));
+                    view.extra.push(ui::modules::swarm_card::workdir_row(&swarm.id.to_string(),swarm.workdir.as_deref(),ctx));
                     view
                 })
                 .collect()
@@ -2525,6 +2543,23 @@ mod launcher_tests {
         let undos: Vec<_> = hits.iter().filter(|(_, _, undo)| *undo).collect();
         assert_eq!(undos.len(), 1);
         assert_eq!(undos[0].0, victim);
+    }
+
+    #[test]
+    fn swarm_workdir_buttons_use_retained_nonoverlapping_hit_regions() {
+        let records=vec![bbt_proto::SeatRecord::new(bbt_mux::Ulid(1),bbt_mux::Ulid(2),"fixture","zsh")];
+        let mut model=bboxy450_term::model::build_at(&records,&bboxy450_term::grids::Grids::new(),&Default::default(),Instant::now(),1000);
+        let mut scene=Scene::live();scene.set_model(&model,&model.ui.window.stage);
+        let layouts=scene.layout([1000.,640.],false).unwrap();
+        let hits=scene.swarm_folder_regions(&layouts);
+        assert_eq!(hits.len(),1);assert!(!hits[0].2);assert!(hits[0].1.w>0. && hits[0].1.h>0.);
+        model.ui.window.sidebar.swarms[0].workdir=Some("/a long project folder with spaces".into());
+        scene.set_model(&model,&model.ui.window.stage);
+        let layouts=scene.layout([1000.,640.],false).unwrap();
+        let hits=scene.swarm_folder_regions(&layouts);
+        assert_eq!(hits.len(),2);assert!(!hits[0].2 && hits[1].2);
+        assert!(hits.iter().all(|(_,rect,_)|rect.w>0. && rect.h>0.));
+        assert!(hits[0].1.right()<=hits[1].1.x);
     }
 }
 

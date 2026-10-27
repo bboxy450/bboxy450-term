@@ -1,0 +1,16 @@
+ROLE: EXECUTOR — direct operator request, 2026-10-26.
+Worktree: /Users/feral/mydev/bboxy450-term-install-20261026; branch fix/swarm-workdir; base 9308fa78da85c45169fc0b3d5d372773fe9ad232.
+Scope: per-swarm working folder selected from the native sidebar; new harnesses inherit it, explicit launch cwd wins, Default restores app repository; existing harnesses keep running; selection survives frontend restart. Replace reserved macOS Cmd-Shift-Q with Cmd-Option-Q for hard quit. No crate publication.
+Mechanism: UImodel Swarm.workdir; schema-2 WindowSwarm.workdir journal with schema-1 compatibility; IO launch default resolution; explicit UiSpawn cwd wins. Empty swarms retain their folder control. A logic schema upgrade replaces only logic, preserving its supervisor and PTYs.
+UI: card folder row uses existing style tokens; native NSOpenPanel begins asynchronously and emits a bounded UI intent; Default clears only that swarm's override. Folder names distinguish projects; reopening selection starts at its full path. Other swarms' defaults are independent.
+Control: ctl ui swarm-workdir SWARM PATH|default exercises the same setting through the GUI owner and replies only after its produced frame reports the selected map. CLI validates an existing directory. No global chdir. Bare backend spawn remains available without a GUI.
+Make: test-swarm, parity-swarm, test-parity; lock refreshes workspace dependency metadata offline. Existing test/build/install/push rules remain canonical.
+make build — exit 0.
+make test-swarm — exit 0: launcher defaults/override, schema-1/2 roundtrip, actual folder/reset hit geometry, quit routing in all chrome contexts, real private-account headless app/PTY test.
+Real-process assertions: folder can be chosen before first harness; two swarm defaults stay isolated; fake Claude starts in chosen folder; explicit cwd wins; original harness PID/generation retained on folder change; abrupt frontend loss/restart retains supervisor/logic PIDs and both folders; Default restores app cwd; explicit shutdown succeeds. No native dialog, login, Keychain prompt, network/model or operator input.
+Raw log outside Git: /Users/feral/Library/Logs/bboxy450-term/install-20261026/swarm-tests-verified.log
+SHA256: 36c75751dcb3cfaea499cf70652991670694637c54f96eab96e6b1d1aec05aaa
+PARITY_OUT=.../swarm-parity make parity-swarm — exit 0: 72 required/72 measured, 0 unproven, 0 geometry mismatches, 0 pixel reviews. Existing card/sidebar reference cases; new folder row separately verified with real retained hit regions and headless capture.
+Raw log outside Git: /Users/feral/Library/Logs/bboxy450-term/install-20261026/swarm-parity.log
+SHA256: bbab577970f8c3a7306add1eb411c4c2c022f4967dccb60ead9aaea4c7570263
+Exact-commit full CI, final-source regression run and signed local-install evidence follow in GitHub handoff #62. Sidebar navigation/Cmd-D splits remain #67; this does not change those shortcuts.

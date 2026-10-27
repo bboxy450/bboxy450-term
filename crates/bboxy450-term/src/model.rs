@@ -496,6 +496,7 @@ fn cursor_consistent(cursor: &GuiEventCursor) -> bool {
 /// terminal rows are cloned or locked by the UI while taking that Arc.
 #[derive(Clone)]
 pub struct Model {
+    pub launch_directory: String,
     /// Exact public rows retained for GUI-owned listings, without a logic round trip.
     pub gui_seats: Arc<[GuiSeat]>,
     pub messaging_deferred: BTreeMap<SeatId, bbt_ui::modules::seat_row::Deferred>,
@@ -540,6 +541,7 @@ pub struct Model {
 impl Default for Model {
     fn default() -> Self {
         Self {
+            launch_directory: String::new(),
             gui_seats: Arc::default(),
             messaging_deferred: BTreeMap::new(),
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
@@ -983,9 +985,11 @@ fn build_with_clock(
         .collect();
     let mut groups: BTreeMap<ui::SwarmId, Vec<SeatId>> = BTreeMap::new();
     for swarm in &layout_source.window.sidebar.swarms {
-        if !swarm.closed.is_empty() || !swarm.stream.is_empty() {
-            groups.entry(swarm.id).or_default();
-        }
+        groups.entry(swarm.id).or_default();
+    }
+    for swarm in previous.window_restore.iter().flat_map(|saved| &saved.swarms)
+        .filter(|swarm|swarm.workdir.is_some()) {
+        groups.entry(ui::SwarmId::from_u128(swarm.id.0)).or_default();
     }
     for seat in metadata
         .values()
@@ -1037,7 +1041,7 @@ fn build_with_clock(
             ui::Swarm::new(
                 id,
                 "swarm",
-                if bootstrap {
+                if bootstrap && !ids.is_empty() {
                     vec![ui::Tab::new(
                         ui::TabId::from_u128(id.0.0),
                         "seats",
@@ -1159,6 +1163,7 @@ fn build_with_clock(
         })
         .collect();
     let mut next = Model {
+        launch_directory: previous.launch_directory.clone(),
         gui_seats: previous.gui_seats.clone(),
         messaging_deferred: previous.messaging_deferred.clone(),
         hosts: previous.hosts.clone(),

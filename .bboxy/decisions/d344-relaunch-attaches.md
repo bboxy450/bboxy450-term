@@ -35,3 +35,5 @@ Ruled at Aster's T5 gap. One real kill of the app process (8dd48537) left the su
 Owner: Corvin Duskmantle <ARCHITECT>.
 
 **Operator clarification, 2026-10-26:** ordinary window close and Cmd-Q preserve live work by detaching the GUI. Cmd-Shift-Q is explicit hard quit and stops the backend owners and their seats. This supersedes ctl §1b's earlier equivalence between native close and backend shutdown. Retained records/history are not purged by hard quit.
+
+**Operator correction, 2026-10-26:** Cmd-Shift-Q is reserved by macOS for logout. Explicit hard quit is now Cmd-Option-Q; ordinary Cmd-Q/close still detach. Window-state schema 2 adds per-swarm working folders, reads schema 1 without an override, and refreshes older logic without ending its supervisor or PTYs.

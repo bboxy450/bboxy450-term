@@ -98,7 +98,9 @@ macro_rules! app_replies {
 }
 pub(super) use app_replies;
 
-/// Durable GUI layout data only; seat metadata and authority remain in the registry.
+pub const WINDOW_STATE_VERSION: u16 = 2;
+
+/// Durable GUI layout and operator launch defaults; seat authority remains in the registry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WindowState {
@@ -116,6 +118,8 @@ pub struct WindowState {
 #[serde(deny_unknown_fields)]
 pub struct WindowSwarm {
     pub id: Ulid,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workdir: Option<String>,
     pub tabs: Vec<WindowTab>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
