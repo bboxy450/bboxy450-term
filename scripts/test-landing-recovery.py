@@ -799,11 +799,12 @@ class CiPhaseTests(unittest.TestCase):
         self.repo.write("scripts/ci-local.sh", (SOURCE / "ci-local.sh").read_text())
         self.repo.write("scripts/ui-lint.sh", '#!/bin/sh\nprintf "ui-lint\\n" >> "$BBOXY_LANDING_STATE_DIR/phase-calls"\n')
         app = self.repo.state / "app"
-        app.write_text('''#!/usr/bin/env python3
+        app.write_text(f'''#!/usr/bin/env python3
 import os,pathlib,sys
-assert os.environ['BBOXY_TEST_CUSTODY']=='memory'
+account=pathlib.Path(sys.argv[sys.argv.index('--test-account')+1])
+assert account==pathlib.Path(os.environ['HOME']).parent/'account'
 assert sys.argv[1:3]==['--headless','--smoke']
-with (pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])/'phase-calls').open('a') as f:f.write('smoke\\n')
+with (pathlib.Path({str(self.repo.state)!r})/'phase-calls').open('a') as f:f.write('smoke\\n')
 ''')
         app.chmod(0o700)
         cargo = self.repo.bin / "cargo"

@@ -35,6 +35,7 @@ help:
 	  'make test-harness-native         Real Codex shared daemon, local model, warm and cold startup' \
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
+	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
@@ -216,6 +217,10 @@ test-checkpoint-resize:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
+
+.PHONY: test-landing-phases
+test-landing-phases:
+	@python3 -I scripts/test-landing-recovery.py CiPhaseTests
 
 .PHONY: preview-launcher
 preview-launcher:
