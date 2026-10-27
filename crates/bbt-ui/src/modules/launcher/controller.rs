@@ -31,6 +31,10 @@ pub use crate::text_edit::Motion as CaretMove;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
     Changed,
+    /// The host checks filesystem state off the UI thread before accepting it.
+    Directory {
+        value: String,
+    },
     Parameters {
         id: String,
     },
@@ -153,10 +157,17 @@ impl Controller {
             Command::Activate(modifiers) => self.activate(modifiers),
             Command::ActivateAt { index, modifiers } => self.click_at(index, modifiers),
             Command::Digit { digit, modifiers }
-                if self.launcher.params.as_ref().is_some_and(|p|p.editing.is_some()) =>
+                if self
+                    .launcher
+                    .params
+                    .as_ref()
+                    .is_some_and(|p| p.editing.is_some()) =>
             {
-                if modifiers.command || modifiers.control || modifiers.alt { Outcome::Local }
-                else { self.insert(digit.to_string()) }
+                if modifiers.command || modifiers.control || modifiers.alt {
+                    Outcome::Local
+                } else {
+                    self.insert(digit.to_string())
+                }
             }
             Command::Digit { digit, modifiers }
                 if self.launcher.query.is_empty() && (1..=9).contains(&digit) =>
@@ -295,14 +306,13 @@ impl Controller {
         let Some(item) = self.launcher.activation() else {
             return self.unavailable();
         };
-        if item.children.is_none() {
-            return if item.parameters {
-                Outcome::Parameters {
-                    id: item.id.clone(),
-                }
-            } else {
-                Outcome::Local
+        if item.parameters {
+            return Outcome::Parameters {
+                id: item.id.clone(),
             };
+        }
+        if item.children.is_none() {
+            return Outcome::Local;
         }
         // Include virtual ancestors produced by typed descent before committing
         // the explicit path, so "ssh rig cod" then Right retains all three.
@@ -453,6 +463,23 @@ impl Controller {
                 }
             };
         };
+        if params.fields[index].key == FieldKey::Directory {
+            return Outcome::Directory { value };
+        }
+        self.accept_parameter(index, value)
+    }
+    /// Called only after the host has verified that this choice is a directory.
+    pub fn accept_directory(&mut self, value: String) -> Outcome {
+        let Some(index) = self.launcher.params.as_ref().and_then(|p| p.choosing) else {
+            return Outcome::Local;
+        };
+        if self.launcher.params.as_ref().unwrap().fields[index].key != FieldKey::Directory {
+            return Outcome::Local;
+        }
+        self.accept_parameter(index, value)
+    }
+    fn accept_parameter(&mut self, index: usize, value: String) -> Outcome {
+        let params = self.launcher.params.as_mut().expect("parameter level");
         params.fields[index].value = value;
         params.fields[index].source = Source::ThisLaunch;
         params.editing = None;

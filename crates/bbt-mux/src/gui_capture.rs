@@ -365,6 +365,7 @@ mod tests {
             captures.ui_answer(
                 id,
                 Ok(UiLayout {
+                    regions: Default::default(),
                     swarm_workdirs: Default::default(),
                     frame_seq,
                     layout_revision: None,

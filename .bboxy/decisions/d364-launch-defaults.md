@@ -18,16 +18,18 @@ links:
   - { to: "[[c1-live-seats]]", rel: constrains }
   - { to: "[[plugins]]", rel: constrains }
 created: 2026-10-27T03:38:09Z
-updated: 2026-10-27T03:38:09Z
+updated: 2026-10-27T21:54:45Z
 ---
 # Decision 364: launch defaults
 
 Decided 2026-10-26. Spec [[launch-defaults]].
 
-**What.** In the ⌘T launcher, ↵ on a launch row launches it as is. → opens its spawn parameters as one more level of the existing nesting: one row per parameter (role, via, connect, port, key, directory, command, arguments, environment), every row prefilled, the role from Settings and the rest with the last choice, and under them the exact command line it runs. ↵ on any row launches; → or a click changes one. A launch remembers its choices at each parameter's home: swarm (directory, the existing swarm working folder; environment), harness (command, arguments), machine (via, route, port, key, remote directory). The role is a setting, not remembered.
+**What.** In the ⌘T launcher, ↵ on a launch row launches it as is. → opens its spawn parameters as one more level of the existing nesting: one row per parameter (role, via, connect, port, key, directory, command, arguments, environment), every row prefilled, the role from Settings and the rest with the last choice, and under them the configured command line. ↵ on any row launches; → or a click changes one. A launch remembers its choices at each parameter's home: swarm (directory, the existing swarm working folder; environment), harness (command, arguments), machine (via, route, port, key, remote directory). The role is a setting, not remembered.
 
 **Why.** It is the operator's manual process (new shell, ssh, cd, codex) with the typing removed and nothing hidden; remote machines differ by network, so a machine keeps routes; swarms differ by project, so the directory lives on the swarm; the role is a policy, so it comes from Settings.
 
 Rejected: a form of input fields (the operator: "just more options, next to role"; the list style is the launcher's own); a save key (last choice is remembered on launch, less to learn); a separate settings dialog before launch (an extra stop on the common path, where ↵ must stay one key); defaults stored per launcher row (a second copy of Settings records); built-in transports only (mosh, et and future tunnels are exactly what plugins are for).
+
+**Operator clarification, 2026-10-27.** "Show configured command as in web preview". Runs shows directory, environment, command and user arguments. Generated per-seat MCP/hook flags added by the harness adapter stay out of this preview.
 
 Owner: Vesper Greywind <ORACLE>.

@@ -49,11 +49,7 @@ impl App {
                     bbt_ui_model::input::FocusOrigin::Row,
                 ));
             } else {
-                self.focus.stage = Some(bbt_ui_model::Stage {
-                    swarm: Some(swarm),
-                    tab: None,
-                    focused: None,
-                });
+                self.select_empty_swarm(swarm);
             }
         }
         self.request_redraw();

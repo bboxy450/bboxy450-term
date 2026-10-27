@@ -567,3 +567,194 @@ fn rendered_runs(layout: &Value) -> Option<String> {
     }
     layout["tree"].as_array()?.iter().find_map(find)
 }
+
+fn click_region(fixture: &Fixture, key: &str) -> Value {
+    let layout = fixture.ctl(&["ui", "layout"]);
+    let r = layout["regions"][key]
+        .as_array()
+        .unwrap_or_else(|| panic!("missing {key}: {layout}"));
+    let x = (r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.)
+        .round()
+        .to_string();
+    let y = (r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.)
+        .round()
+        .to_string();
+    fixture.ctl(&["ui", "click", &x, &y])
+}
+
+#[test]
+#[ignore = "private ctl pointer/keyboard/PTY fixture; make test-navigation"]
+fn native_navigation_clicks_splits_goto_and_directory_validation() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let swarm = initial["regions"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .find_map(|key| key.strip_prefix("swarm:"))
+        .unwrap()
+        .to_string();
+    let first = fixture.spawn("claude", &swarm, None);
+    let second = fixture.spawn("zsh", &swarm, None);
+    assert_eq!(
+        click_region(&fixture, &format!("seat:{first}"))["focused"],
+        first
+    );
+    assert_eq!(
+        click_region(&fixture, &format!("seat:{second}"))["focused"],
+        second
+    );
+    fixture.ctl(&["ui", "key", "cmd-d"]);
+    capture_navigation(&fixture, "split-right");
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let right = wait_harness(&fixture, "claude", 2);
+    let layout = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(layout["panes"].as_array().unwrap().len(), 2, "{layout}");
+    let panes = layout["panes"].as_array().unwrap();
+    assert_eq!(panes[0]["rect"][1], panes[1]["rect"][1]);
+    fixture.ctl(&["ui", "key", "cmd-shift-d"]);
+    capture_navigation(&fixture, "split-down");
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let below = wait_harness(&fixture, "claude", 3);
+    let layout = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(layout["panes"].as_array().unwrap().len(), 3, "{layout}");
+    let split_tab = layout["tab"].as_str().unwrap().to_owned();
+    assert_eq!(
+        click_region(&fixture, &format!("pane:{below}"))["focused"],
+        below
+    );
+    assert_eq!(
+        click_region(&fixture, &format!("mini:{second}"))["focused"],
+        second
+    );
+    assert_eq!(
+        click_region(&fixture, &format!("seat:{first}"))["focused"],
+        first
+    );
+    assert_eq!(
+        click_region(&fixture, &format!("tab:{split_tab}"))["tab"],
+        split_tab
+    );
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let name = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["record"]["id"] == right)
+        .unwrap()["record"]["name"]
+        .as_str()
+        .unwrap();
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    capture_navigation(&fixture, "new-tab");
+    let bottom = fixture.ctl(&[
+        "ui", "key", "down", "down", "down", "down", "down", "down", "down", "down", "down",
+    ]);
+    assert!(
+        bottom["regions"]["launcher:item:settings"][3]
+            .as_f64()
+            .unwrap()
+            >= 40.,
+        "selected row must be fully visible"
+    );
+    fixture.ctl(&["ui", "launcher-scroll", "-100"]);
+    assert_eq!(
+        click_region(&fixture, "launcher:item:settings")["page"],
+        "settings"
+    );
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, &format!("goto {name}"));
+    let jumped = fixture.ctl(&["ui", "key", "enter"]);
+    assert_eq!(jumped["focused"], right, "{jumped}");
+    assert_eq!(jumped["launcher_open"], false);
+    fixture.ctl(&["ui", "key", "cmd-d"]);
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "right", "down", "right"]);
+    let invalid = fixture.root.join("missing");
+    type_keys(&fixture, invalid.to_str().unwrap());
+    fixture.ctl(&["ui", "key", "enter"]);
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let level = fixture.ctl(&["ui", "layout"]);
+        if level["launcher_params"]["runs"]
+            .as_str()
+            .unwrap()
+            .starts_with("Directory does not exist")
+        {
+            break;
+        }
+        assert!(Instant::now() < until, "{level}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    fixture.ctl(&["ui", "key", "cmd-a"]);
+    type_keys(&fixture, fixture.root.join("override").to_str().unwrap());
+    fixture.ctl(&["ui", "key", "enter"]);
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        let level = fixture.ctl(&["ui", "layout"]);
+        if level["launcher_params"]["choosing"].is_null() {
+            assert_eq!(
+                level["launcher_params"]["fields"][1]["value"],
+                fixture.root.join("override").to_str().unwrap()
+            );
+            break;
+        }
+        assert!(Instant::now() < until, "{level}");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let closed = fixture.ctl(&["ui", "key", "esc", "esc"]);
+    assert_eq!(closed["launcher_open"], false);
+    let empty = click_region(&fixture, "new-swarm");
+    let empty_id = empty["swarm"].as_str().unwrap().to_owned();
+    assert_ne!(
+        empty_id, swarm,
+        "page={} focused={} launcher={}",
+        empty["page"], empty["focused"], empty["launcher_open"]
+    );
+    assert!(empty["focused"].is_null(), "{empty}");
+    assert_eq!(
+        click_region(&fixture, &format!("new-seat:{empty_id}"))["launcher_open"],
+        true
+    );
+    type_keys(&fixture, "claude");
+    let params = fixture.ctl(&["ui", "key", "right"]);
+    assert_eq!(params["launcher_params"]["fields"][0]["label"], "Role");
+    assert_eq!(
+        click_region(&fixture, "launcher:item:param:0")["launcher_params"]["choosing"],
+        "Role"
+    );
+    assert_eq!(
+        click_region(&fixture, "launcher:item:value:1")["launcher_params"]["fields"][0]["value"],
+        "architect"
+    );
+    fixture.ctl(&["ui", "key", "esc", "esc"]);
+    let owners = fixture.owners();
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(fixture.ctl(&["ui", "layout"])["swarm"], empty_id);
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, &format!("goto swarm:{swarm}"));
+    assert_eq!(fixture.ctl(&["ui", "key", "enter"])["swarm"], swarm);
+    let settings = click_region(&fixture, "settings");
+    assert_eq!(settings["page"], "settings");
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+fn capture_navigation(fixture: &Fixture, name: &str) {
+    if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
+        fs::create_dir_all(&directory).unwrap();
+        let path = PathBuf::from(directory).join(format!("{name}.png"));
+        fixture.ctl(&["seat", "capture", "window", path.to_str().unwrap()]);
+        fs::write(
+            path.with_extension("json"),
+            serde_json::to_vec_pretty(&fixture.ctl(&["ui", "layout"])).unwrap(),
+        )
+        .unwrap();
+    }
+}

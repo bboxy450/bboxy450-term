@@ -42,6 +42,7 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    NewSwarm(bbt_proto::SwarmId),
     SwarmWorkdir {
         swarm: bbt_proto::SwarmId,
         path: Option<String>,

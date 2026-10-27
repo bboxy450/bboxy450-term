@@ -1,4 +1,5 @@
 //! Native sidebar metadata and the optional frozen scene-15 smoke fixture.
+mod navigation;
 mod starting;
 use bboxy450_term::starting::Slot;
 use bbt_ui::{
@@ -159,7 +160,10 @@ impl ConversationLayout {
 }
 pub struct LauncherLayout {
     layout: c::Layout,
+    #[cfg(test)]
     pub panel: Rect,
+    pub viewport: Rect,
+    pub max_scroll: f32,
     pub query: Rect,
     pub caret: Option<Rect>,
     query_origin: f32,
@@ -168,17 +172,23 @@ pub struct LauncherLayout {
     pub rows: Vec<Rect>,
 }
 impl LauncherLayout {
+    pub fn rect(&self, name: &str) -> Option<Rect> {
+        named(&self.layout, name).map(|l| l.rect)
+    }
     pub fn solved(&self) -> &c::Layout {
         &self.layout
     }
     pub fn row_at(&self, at: [f32; 2]) -> Option<usize> {
+        if !contains(self.viewport, at) {
+            return None;
+        }
         self.rows.iter().position(|rect| contains(*rect, at))
     }
     pub fn contains(&self, at: [f32; 2]) -> bool {
-        contains(self.panel, at)
+        contains(self.viewport, at)
     }
     pub fn query_contains(&self, at: [f32; 2]) -> bool {
-        contains(self.query, at)
+        contains(self.viewport, at) && contains(self.query, at)
     }
     pub fn candidate_area(&self) -> Rect {
         self.caret.unwrap_or(self.query)
@@ -198,6 +208,8 @@ fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
 }
 
 pub struct Scene {
+    pub sidebar_scroll: f32,
+    selected_swarm: Option<bbt_ui_model::SwarmId>,
     #[cfg(test)]
     projections: usize,
     hosts: Vec<bbt_proto::GuiHost>,
@@ -367,6 +379,8 @@ impl Scene {
         )))
         .expect("embedded scene-15 fixture");
         Self {
+            sidebar_scroll: 0.,
+            selected_swarm: None,
             #[cfg(test)]
             projections: 0,
             seats,
@@ -479,6 +493,8 @@ impl Scene {
     }
     pub fn live() -> Self {
         Self {
+            sidebar_scroll: 0.,
+            selected_swarm: None,
             #[cfg(test)]
             projections: 0,
             seats: vec![],
@@ -538,6 +554,7 @@ impl Scene {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
+        self.selected_swarm = stage.swarm;
         self.restart_generations.retain(|seat, _| {
             model
                 .ui
@@ -1105,18 +1122,32 @@ impl Scene {
         let sidebar = Sidebar {
             cards,
             size: [sidebar_width, sidebar_height],
-            scroll: 0.,
+            scroll: self.sidebar_scroll,
             phone: false,
             new_swarm: true,
         };
         let mut layouts = vec![
             TitleBar {
                 crumb: if !self.live {
-                    "swarm / all fifteen"
+                    "swarm / all fifteen".into()
                 } else {
-                    "swarm / seats"
-                }
-                .into(),
+                    self.swarms
+                        .iter()
+                        .find(|s| Some(s.id) == self.selected_swarm)
+                        .map_or_else(
+                            || "swarm / seats".into(),
+                            |s| {
+                                let tab = s
+                                    .tabs
+                                    .iter()
+                                    .find(|t| self.focused.is_some_and(|id| t.tree.contains(id)));
+                                tab.map_or_else(
+                                    || s.name.clone(),
+                                    |t| format!("{} / {}", s.name, t.name),
+                                )
+                            },
+                        )
+                },
                 ..Default::default()
             }
             .element(ctx)
@@ -1485,15 +1516,54 @@ impl Scene {
             .actions
             .index_at(&layout.layout, id, value, at, &self.metrics)
     }
+    #[cfg(test)]
     pub fn launcher_layout(
         &self,
         size: [f32; 2],
         launcher: &Launcher,
     ) -> Result<LauncherLayout, String> {
+        self.launcher_layout_with_preview(size, launcher, None, 0.)
+    }
+    pub fn launcher_layout_with_preview(
+        &self,
+        size: [f32; 2],
+        launcher: &Launcher,
+        preview: Option<c::Element>,
+        scroll: f32,
+    ) -> Result<LauncherLayout, String> {
         let ctx = self.ui_context();
         let width = 760_f32.min(size[0] * 0.92);
         let side = (size[0] - width) * 0.5;
-        let mut overlay = c::Overlay::new(launcher.element(ctx));
+        let with_preview = preview.is_some();
+        let content = match preview {
+            Some(preview) => c::Element::Stack(c::Stack {
+                direction: Axis::Column,
+                gap: ui::Length::Px(12.),
+                align: c::Alignment::Stretch,
+                children: vec![preview.into(), launcher.element(ctx).into()],
+            }),
+            None => launcher.element(ctx),
+        };
+        let content = if with_preview {
+            let height = content
+                .layout(Rect::new(0., 0., width, 0.), ctx, &self.metrics)
+                .map_err(|e| e.to_string())?
+                .rect
+                .h;
+            let viewport = [width, height.min(size[1] * 0.82)];
+            ui::modules::seat_row::named(
+                "launcher-scroll",
+                c::Element::ScrollView(c::ScrollView {
+                    viewport,
+                    offset: [0., scroll],
+                    content_width: Some(width),
+                    content: Box::new(content),
+                }),
+            )
+        } else {
+            content
+        };
+        let mut overlay = c::Overlay::new(content);
         overlay.horizontal = c::Alignment::Stretch;
         overlay.vertical = c::Alignment::Start;
         overlay.style.overrides.height = Some(ui::Length::Px(size[1]));
@@ -1540,9 +1610,20 @@ impl Scene {
                     .ok_or("launcher row missing")
             })
             .collect::<Result<_, _>>()?;
+        let viewport = named(&layout, "launcher-scroll").map_or(panel, |l| l.rect);
+        fn scroll_extent(layout: &c::Layout) -> f32 {
+            if let c::LayoutKind::ScrollView { content, .. } = &layout.kind {
+                return (content[1] - layout.rect.h).max(0.);
+            }
+            layout.children.iter().map(scroll_extent).fold(0., f32::max)
+        }
+        let max_scroll = scroll_extent(&layout);
         Ok(LauncherLayout {
+            viewport,
+            max_scroll,
             context: ctx,
             layout,
+            #[cfg(test)]
             panel,
             query,
             caret,

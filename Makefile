@@ -38,8 +38,10 @@ help:
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
+	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
+	  'make smoke-installed             Private smoke of the installed signed app' \
 	  'make install                    Release app, Apple identity signed, ~/Applications' \
 	  'make install-unsigned            Debug app, ad-hoc only, target/install-unsigned' \
 	  'make release                    Signed app ZIP, SHA256 and detached GPG signature' \
@@ -138,16 +140,25 @@ install-unsigned: PROFILE=debug
 install-unsigned: bundle-unsigned
 	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
 
-smoke: PROFILE=debug
-smoke: install-unsigned
-	@set -eu; run=$$(mktemp -d "$${TMPDIR:-/tmp}/bboxy-make-smoke.XXXXXX"); \
+define smoke_binary
+set -eu; run=$$(mktemp -d "$${TMPDIR:-/tmp}/bboxy-make-smoke.XXXXXX"); \
 	mkdir "$$run/repository" "$$run/home"; \
 	if env -i PATH="$$PATH" TERM="$${TERM:-xterm-256color}" LANG="$${LANG:-en_US.UTF-8}" TMPDIR="$${TMPDIR:-/tmp}" \
 	  HOME="$$run/home" CODEX_HOME="$$run/home/.codex" CLAUDE_CONFIG_DIR="$$run/home/.claude" ZDOTDIR="$$run/home" \
-	  '$(abspath $(UNSIGNED_INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP)' \
+	  '$(1)' \
 	  --headless --smoke --ctl --unattended --test-account "$$run/account" --run-dir "$$run/run" --repository "$$run/repository" </dev/null; then \
 	  rm -r -- "$$run"; \
 	else code=$$?; printf 'Smoke failed; private evidence retained at %s\n' "$$run" >&2; exit $$code; fi
+endef
+
+smoke: PROFILE=debug
+smoke: install-unsigned
+	@$(call smoke_binary,$(abspath $(UNSIGNED_INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP))
+
+.PHONY: smoke-installed
+smoke-installed:
+	@codesign --verify --strict '$(INSTALL_DIR)/$(APP).app'
+	@$(call smoke_binary,$(abspath $(INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP))
 
 release: bundle
 	@set -eu; mkdir -p '$(DIST_DIR)'; \
@@ -252,3 +263,14 @@ test-spawn-e2e:
 .PHONY: test-spawn-wire
 test-spawn-wire:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) launch_parameters_wire -- --nocapture
+
+.PHONY: test-navigation check-navigation
+test-navigation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin bboxy450-term; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --nocapture
+
+check-navigation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

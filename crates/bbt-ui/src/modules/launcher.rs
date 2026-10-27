@@ -100,7 +100,7 @@ fn tier(it: &Item, w: &str) -> u8 {
 }
 fn hits(it: &Item, w: &str) -> bool {
     tier(it, w) < 4
-        || it.id.starts_with(w)
+        || norm(&it.id).starts_with(w)
         || (w.chars().count() >= 3 && subsequence(&norm(&it.label).replace(' ', ""), w))
 }
 impl Launcher {
@@ -366,8 +366,9 @@ impl Launcher {
     }
     fn row(&self, it: &Item, index: usize, selected: bool, ctx: ui::Context) -> c::Element {
         let spot = self.spotlight;
-        let parent =
-            it.children.is_some() && !it.down && !it.link.as_ref().is_some_and(|link| link.down());
+        let parent = (it.children.is_some() || it.parameters)
+            && !it.down
+            && !it.link.as_ref().is_some_and(|link| link.down());
         let key = format!(
             "picker/div/opt{}",
             if index == 0 {

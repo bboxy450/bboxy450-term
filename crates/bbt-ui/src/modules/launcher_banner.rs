@@ -154,3 +154,83 @@ impl Banner {
         named("banner", c::Element::Box(panel))
     }
 }
+
+/// The same destination preview for a new tab, using the actual swarm's seats.
+#[derive(Debug, Clone)]
+pub struct TabBanner {
+    pub swarm: String,
+    pub seats: Vec<(String, [f32; 4])>,
+}
+impl TabBanner {
+    pub fn element(&self, _ctx: ui::Context) -> c::Element {
+        use super::strip::text;
+        let mut mini_style = ui::Style::new(ui::Preset::Card);
+        mini_style.overrides.width = Some(ui::Length::Px(202.));
+        mini_style.overrides.padding = Some([10., 4., 10., 4.].map(ui::Length::Px));
+        let mut rows = vec![
+            text(
+                self.swarm.to_uppercase(),
+                9.,
+                600,
+                false,
+                ui::Color::Foreground,
+                1.,
+                1.4,
+            )
+            .into(),
+        ];
+        for (name, color) in &self.seats {
+            rows.push(text(name, 11., 500, false, ui::Color::Rgba(*color), 1., 1.4).into());
+        }
+        let mut active = c::Box::new(
+            plain(None, [4., 8., 4., 8.], 4.),
+            vec![
+                text(
+                    "+ new seat · here",
+                    11.,
+                    500,
+                    false,
+                    ui::Color::OnAccent,
+                    1.,
+                    1.4,
+                )
+                .into(),
+            ],
+        );
+        active.style.overrides.fill = Some(ui::Paint::solid(ui::Color::Accent));
+        rows.push(c::Element::Box(active).into());
+        let mut mini = c::Box::new(mini_style, rows);
+        mini.direction = Axis::Column;
+        mini.gap = ui::Length::Px(10.);
+        mini.align = c::Alignment::Stretch;
+        let mut words = c::Box::new(
+            plain(None, [0.; 4], 0.),
+            vec![
+                text("New tab", 26., 600, false, ui::Color::Foreground, 1., 1.1).into(),
+                text(
+                    format!("in {} · the new seat gets a tab of its own", self.swarm),
+                    15.,
+                    400,
+                    false,
+                    ui::Color::Muted,
+                    1.,
+                    1.4,
+                )
+                .into(),
+            ],
+        );
+        words.direction = Axis::Column;
+        words.gap = ui::Length::Px(6.);
+        words.align = c::Alignment::Stretch;
+        let mut panel = c::Box::new(
+            ui::Style::new(ui::Preset::Modal),
+            vec![
+                named("banner/sidebar", c::Element::Box(mini)).into(),
+                c::Element::Box(words).into(),
+            ],
+        );
+        panel.style.overrides.padding = Some([16., 22., 16., 22.].map(ui::Length::Px));
+        panel.gap = ui::Length::Px(22.);
+        named("banner", c::Element::Box(panel))
+    }
+}

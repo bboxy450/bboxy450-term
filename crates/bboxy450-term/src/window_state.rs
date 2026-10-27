@@ -192,9 +192,10 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
     };
     if model.ui.window.sidebar.swarms.iter().any(|s| {
         Some(s.id) == stage.swarm
-            && s.tabs.iter().any(|t| {
-                Some(t.id) == stage.tab && stage.focused.is_none_or(|id| t.tree.contains(id))
-            })
+            && ((s.tabs.is_empty() && stage.tab.is_none() && stage.focused.is_none())
+                || s.tabs.iter().any(|t| {
+                    Some(t.id) == stage.tab && stage.focused.is_none_or(|id| t.tree.contains(id))
+                }))
     }) {
         model.ui.window.stage = stage;
     } else if let Some(swarm) = model

@@ -21,6 +21,18 @@ pub enum UiRequest {
     },
     Open(UiTarget),
     Key(Vec<String>),
+    /// Logical window coordinates through the native pointer handler.
+    Click {
+        x: u32,
+        y: u32,
+    },
+    /// Wheel input in the retained sidebar viewport.
+    SidebarWheel {
+        lines: i32,
+    },
+    LauncherWheel {
+        lines: i32,
+    },
     Focus {
         seat: Ulid,
     },
@@ -56,6 +68,14 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::SidebarWheel { lines } | Self::LauncherWheel { lines }
+                if lines.unsigned_abs() > 1000 =>
+            {
+                Err("invalid_ui_wheel: expected at most 1000 lines")
+            }
+            Self::Click { x, y } if *x > 32768 || *y > 32768 => {
+                Err("invalid_ui_click: coordinates exceed window bounds")
+            }
             Self::SwarmWorkdir { swarm, path }
                 if *swarm == Ulid::nil()
                     || path.as_deref().is_some_and(|path| !valid_workdir(path)) =>
@@ -334,6 +354,9 @@ pub enum UiTarget {
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
+    /// Visible retained input regions in logical window coordinates.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub regions: std::collections::BTreeMap<String, [f32; 4]>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub swarm_workdirs: std::collections::BTreeMap<Ulid, String>,
     /// The window composition this solved layout describes (not a bus cursor).

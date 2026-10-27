@@ -274,7 +274,10 @@ fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
         "architect"
     );
     controller.handle(Command::Query("no parameter matches this".into()));
-    assert_eq!(controller.handle(Command::Activate(Default::default())), Outcome::Local);
+    assert_eq!(
+        controller.handle(Command::Activate(Default::default())),
+        Outcome::Local
+    );
     controller.handle(Command::Query(String::new()));
     assert!(
         matches!(controller.handle(Command::Activate(Default::default())),Outcome::LaunchParams {ref id,..} if id=="claude")
@@ -304,17 +307,42 @@ fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
         modifiers: Default::default(),
     });
     controller.handle(Command::Insert("/typed new folder".into()));
-    controller.handle(Command::Activate(Default::default()));
+    assert_eq!(
+        controller.handle(Command::Activate(Default::default())),
+        Outcome::Directory {
+            value: "/typed new folder".into()
+        }
+    );
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[1].value,
+        "/swarm"
+    );
+    controller.accept_directory("/typed new folder".into());
     assert_eq!(
         controller.launcher.params.as_ref().unwrap().fields[1].value,
         "/typed new folder"
     );
-    controller.handle(Command::ActivateAt { index:2, modifiers:Default::default() });
-    controller.handle(Command::Digit { digit:1, modifiers:Default::default() });
+    controller.handle(Command::ActivateAt {
+        index: 2,
+        modifiers: Default::default(),
+    });
+    controller.handle(Command::Digit {
+        digit: 1,
+        modifiers: Default::default(),
+    });
     controller.handle(Command::Insert("23".into()));
     controller.handle(Command::Activate(Default::default()));
-    assert_eq!(controller.launcher.params.as_ref().unwrap().fields[2].value,"123");
-    assert!(matches!(controller.handle(Command::Digit {digit:1,modifiers:Default::default()}), Outcome::LaunchParams {..}));
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[2].value,
+        "123"
+    );
+    assert!(matches!(
+        controller.handle(Command::Digit {
+            digit: 1,
+            modifiers: Default::default()
+        }),
+        Outcome::LaunchParams { .. }
+    ));
     controller.handle(Command::Escape);
     assert!(controller.launcher.params.is_none());
 }

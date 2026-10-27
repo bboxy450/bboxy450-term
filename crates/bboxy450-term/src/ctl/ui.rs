@@ -5,6 +5,9 @@ use super::*;
 pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "open", "Ui"),
     ("ui", "key", "Ui"),
+    ("ui", "click", "Ui"),
+    ("ui", "sidebar-scroll", "Ui"),
+    ("ui", "launcher-scroll", "Ui"),
     ("ui", "focus", "Ui"),
     ("ui", "scroll", "Ui"),
     ("ui", "layout", "Ui"),
@@ -35,15 +38,56 @@ pub(super) use ui_commands;
 /// when the words are not this noun's.
 pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", "launcher-scroll", lines] => {
+            let request = bbt_proto::gui::UiRequest::LauncherWheel {
+                lines: lines
+                    .parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}launcher-scroll requires signed lines"))?,
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
+        ["ui", "sidebar-scroll", lines] => {
+            let request = bbt_proto::gui::UiRequest::SidebarWheel {
+                lines: lines
+                    .parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}sidebar-scroll requires signed lines"))?,
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
+        ["ui", "click", x, y] => {
+            let request = bbt_proto::gui::UiRequest::Click {
+                x: x.parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}ui click requires unsigned x y"))?,
+                y: y.parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}ui click requires unsigned x y"))?,
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
         ["ui", "swarm-workdir", swarm, path] => {
-            let swarm = swarm.parse::<bbt_mux::Ulid>().map_err(|_| format!("{USAGE_PREFIX}expected swarm ULID"))?;
-            let path = if path == "--default" || path == "default" { None } else {
-                let folder = std::fs::canonicalize(path).map_err(|error|format!("{USAGE_PREFIX}folder: {error}"))?;
-                if !folder.is_dir() { return Err(format!("{USAGE_PREFIX}expected a directory")); }
+            let swarm = swarm
+                .parse::<bbt_mux::Ulid>()
+                .map_err(|_| format!("{USAGE_PREFIX}expected swarm ULID"))?;
+            let path = if path == "--default" || path == "default" {
+                None
+            } else {
+                let folder = std::fs::canonicalize(path)
+                    .map_err(|error| format!("{USAGE_PREFIX}folder: {error}"))?;
+                if !folder.is_dir() {
+                    return Err(format!("{USAGE_PREFIX}expected a directory"));
+                }
                 Some(folder.to_string_lossy().into_owned())
             };
-            Command::Ui(bbt_proto::gui::UiRequest::SwarmWorkdir {swarm,path})
-        },
+            Command::Ui(bbt_proto::gui::UiRequest::SwarmWorkdir { swarm, path })
+        }
         ["ui", "compose"] => {
             let to = cx
                 .flags

@@ -4,7 +4,7 @@ type: "spec"
 number: 363
 title: "Spawn parameters — ↵ launches as is, → shows them, every row prefilled"
 created: "2026-10-27T03:38:09Z"
-updated: "2026-10-27T03:38:09Z"
+updated: "2026-10-27T21:54:45Z"
 ---
 # Spawn parameters — ↵ launches as is, → shows them, every row prefilled
 
@@ -30,7 +30,7 @@ updated: "2026-10-27T03:38:09Z"
 via (local | ssh | mosh | et | cloud | a transport plugin) → connect (route, port, key) → cd (directory) → command (harness, role, arguments, environment)
 ```
 
-Every launch from ⌘T resolves to this chain, and the launcher never hides it: under the parameters it shows **the exact command line it runs** (`ssh -t -i ~/.ssh/id_ed25519 feral@rig.local 'cd ~/src && codex --sandbox workspace-write'`), updated as a parameter changes. What the operator would have typed is what runs.
+Every launch from ⌘T resolves to this chain, and the launcher never hides it: under the parameters it shows **the configured command line** (`ssh -t -i ~/.ssh/id_ed25519 feral@rig.local 'cd ~/src && codex --sandbox workspace-write'`), updated as a parameter changes. What the operator would have typed is what runs. The operator clarified on 2026-10-27: "Show configured command as in web preview". Runs includes the configured executable, user arguments, directory and environment; generated per-seat MCP and hook flags added by the harness adapter are not displayed.
 
 ## 2. The model: one more level of the existing launcher
 
@@ -69,7 +69,7 @@ A transport turns `(fields, inner command)` into argv. `ssh`, `mosh` and `et` ar
 | Requirement | Evidence |
 |---|---|
 | ↵ launches as is; → opens the parameters; → on a parameter changes it; ↵ on a parameter launches; last choices are remembered at their homes, the role is not | e2e row in [[e2e-acceptance]] (launcher group), driven by `ctl ui key`; unit tests on the resolver |
-| The shown command line is what runs | test: compose(fields) equals the spawned argv joined, for local, ssh, mosh, et |
+| The shown command line matches the configured launch | test: compose(fields) equals the directory, environment, executable and user argv supplied to the harness adapter; generated MCP/hook flags are verified separately |
 | Prefill sources and homes | resolver unit test over a table of (harness, local or remote, swarm, machine) cases |
 | Old spawns still decode | `SpawnSpec` without the new fields round-trips (serde default) |
 | Preview | `lab/web` picker: → on a launch row (components.js `launchFields`, `composeLaunch`); scripted flow ⌘D → claude → → → Role › Architect → Directory typed → ↵ |

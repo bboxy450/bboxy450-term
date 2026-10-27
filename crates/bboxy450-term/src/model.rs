@@ -991,7 +991,7 @@ fn build_with_clock(
         .window_restore
         .iter()
         .flat_map(|saved| &saved.swarms)
-        .filter(|swarm| swarm.workdir.is_some())
+        .filter(|swarm| swarm.workdir.is_some() || swarm.tabs.is_empty())
     {
         groups
             .entry(ui::SwarmId::from_u128(swarm.id.0))
@@ -1083,13 +1083,11 @@ fn build_with_clock(
     model.window.sidebar.swarms = next_swarms;
     model.window.stage = fallback_stage;
     let stage = &layout_source.window.stage;
-    if model
-        .window
-        .sidebar
-        .swarms
-        .iter()
-        .any(|s| Some(s.id) == stage.swarm && s.tabs.iter().any(|t| Some(t.id) == stage.tab))
-    {
+    if model.window.sidebar.swarms.iter().any(|s| {
+        Some(s.id) == stage.swarm
+            && ((s.tabs.is_empty() && stage.tab.is_none() && stage.focused.is_none())
+                || s.tabs.iter().any(|t| Some(t.id) == stage.tab))
+    }) {
         model.window.stage = stage.clone();
         if stage.focused.is_none_or(|id| {
             !model

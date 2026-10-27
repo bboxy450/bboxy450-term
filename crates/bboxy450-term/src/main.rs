@@ -11,6 +11,7 @@ mod gpu;
 mod headless;
 mod live;
 mod log;
+mod navigation;
 mod scene;
 mod spawn_gate;
 mod stall;
@@ -59,6 +60,11 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    LaunchDirectoryChecked {
+        token: bbt_mux::Ulid,
+        value: String,
+        valid: bool,
+    },
     SwarmFolderPicked {
         swarm: bbt_proto::SwarmId,
         path: Option<String>,
@@ -513,6 +519,7 @@ struct FocusState {
     controller: Focus,
     stage: Option<Stage>,
     pending_layout: bool,
+    pending_swarm: Option<bbt_ui_model::SwarmId>,
 }
 enum FocusAction {
     Activate(SeatId, FocusOrigin),
@@ -568,14 +575,40 @@ impl FocusState {
         };
         // Metadata never selects a new seat. Only a correlated launch result
         // or an explicit UI focus action changes the focused pane.
+        if self
+            .pending_swarm
+            .is_some_and(|id| next.window.sidebar.swarms.iter().any(|s| s.id == id))
+        {
+            self.pending_swarm = None;
+        }
         self.stage = self
             .stage
             .as_ref()
             .and_then(|s| s.focused)
             .and_then(owner)
+            .or_else(|| {
+                self.stage
+                    .as_ref()
+                    .filter(|s| {
+                        s.focused.is_none()
+                            && s.tab.is_none()
+                            && next
+                                .window
+                                .sidebar
+                                .swarms
+                                .iter()
+                                .any(|row| Some(row.id) == s.swarm && row.tabs.is_empty())
+                            || (s.focused.is_none()
+                                && s.tab.is_none()
+                                && s.swarm.is_some()
+                                && s.swarm == self.pending_swarm)
+                    })
+                    .cloned()
+            })
             .or_else(|| Some(next.window.stage.clone()));
     }
     fn restore(&mut self, stage: Stage, source: &UiModel) {
+        self.pending_swarm = None;
         self.stage = Some(stage);
         self.reconcile(None, source);
     }
@@ -586,6 +619,7 @@ impl FocusState {
         panes: &[(SeatId, Rect)],
         now: Instant,
     ) -> Result<Vec<InputEvent>, bbt_ui_model::EditError> {
+        self.pending_swarm = None;
         // Clone only for an input action, never for a terminal publication or
         // ordinary frame. Focus is the sole writer of explicit Stage changes.
         let mut model = source.clone();
@@ -658,6 +692,8 @@ impl UiVisible {
 }
 #[derive(Debug)]
 enum UiEffect {
+    LaunchDirectory(bbt_mux::Ulid),
+    NewSwarm(bbt_proto::SwarmId),
     SwarmWorkdir(bbt_proto::SwarmId, Option<String>),
     Compose(bbt_proto::gui::UiComposed),
     Spawn(bbt_mux::Ulid),
@@ -689,6 +725,7 @@ impl UiEffect {
         model: Option<&bboxy450_term::model::Model>,
     ) -> Option<Self> {
         match message {
+            live::UiMsg::NewSwarm(id) => Some(Self::NewSwarm(*id)),
             live::UiMsg::SwarmWorkdir { swarm, path } => {
                 Some(Self::SwarmWorkdir(*swarm, path.clone()))
             }
@@ -1574,6 +1611,7 @@ fn launcher_items_for(
                 section: Some(section.into()),
                 aliases: vec![id.into()],
                 enter_picks: true,
+                parameters: true,
                 ..Default::default()
             })
             .collect::<Vec<_>>()
@@ -1614,7 +1652,7 @@ fn launcher_items_for(
         }
     }
     items.extend(providers);
-    let seats = model.map_or_else(Vec::new, |m| {
+    let mut seats = model.map_or_else(Vec::new, |m| {
         m.ui.seats
             .values()
             .filter(|s| s.lifecycle == bbt_ui_model::Lifecycle::Open)
@@ -1629,10 +1667,33 @@ fn launcher_items_for(
             })
             .collect()
     });
+    if let Some(model) = model {
+        for swarm in &model.ui.window.sidebar.swarms {
+            seats.push(Item {
+                id: format!("swarm:{}", swarm.id),
+                label: swarm.name.clone(),
+                harness: "sidebarfoxopen".into(),
+                kind: "Swarm".into(),
+                navigation: true,
+                ..Default::default()
+            });
+            for tab in &swarm.tabs {
+                seats.push(Item {
+                    id: format!("tab:{}", tab.id),
+                    label: tab.name.clone(),
+                    harness: "sidebarfoxopen".into(),
+                    sub: swarm.name.clone(),
+                    kind: "Tab".into(),
+                    navigation: true,
+                    ..Default::default()
+                });
+            }
+        }
+    }
     items.push(Item {
         id: "goto".into(),
         label: "Go to".into(),
-        aliases: vec!["go".into(), "jump".into()],
+        aliases: vec!["go".into(), "goto".into(), "jump".into()],
         harness: "sidebarfoxopen".into(),
         kind: "Navigate".into(),
         section: Some("Navigate".into()),
@@ -1809,6 +1870,8 @@ struct App {
     launcher_parent: Option<TextFocus>,
     launcher_preset: Option<bbt_proto::seat_state::Side>,
     launcher_stage: Option<Stage>,
+    launcher_scroll: f32,
+    launcher_reveal: bool,
     launcher_choices: std::collections::BTreeMap<
         bbt_mux::Ulid,
         (
@@ -1842,6 +1905,11 @@ struct App {
     close_regions: Vec<(SeatId, Rect, bool)>,
     starting_close_regions: Vec<(bbt_mux::Ulid, Rect)>,
     swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
+    navigation_regions: Vec<(String, Rect)>,
+    sidebar_scroll: Option<f32>,
+    sidebar_viewport: Option<(Rect, f32)>,
+    launch_directory_pending: Option<bbt_mux::Ulid>,
+    launch_directory_error: Option<String>,
     swarm_folder_pending: bool,
     starting: bboxy450_term::starting::Starting,
     spawn_gate: spawn_gate::Gate<live::UiMsg>,
@@ -1980,6 +2048,8 @@ impl App {
             launcher_parent: None,
             launcher_preset: None,
             launcher_stage: None,
+            launcher_scroll: 0.,
+            launcher_reveal: true,
             launcher_choices: Default::default(),
             preferences: preferences::State::default(),
             preferences_io: None,
@@ -2015,6 +2085,11 @@ impl App {
             close_regions: vec![],
             starting_close_regions: Vec::new(),
             swarm_folder_regions: Vec::new(),
+            navigation_regions: Vec::new(),
+            sidebar_scroll: None,
+            sidebar_viewport: None,
+            launch_directory_pending: None,
+            launch_directory_error: None,
             swarm_folder_pending: false,
             starting: Default::default(),
             spawn_gate: Default::default(),
@@ -3270,6 +3345,10 @@ impl App {
         }
     }
     fn open_launcher(&mut self) {
+        self.launcher_scroll = 0.;
+        self.launcher_reveal = true;
+        self.launch_directory_pending = None;
+        self.launch_directory_error = None;
         if self.launcher.is_none() {
             self.launcher_parent = if self.reject_focus {
                 self.reject.as_ref().map(|(id, _)| TextFocus::Reject(*id))
@@ -3326,6 +3405,8 @@ impl App {
         }
     }
     fn close_launcher(&mut self) {
+        self.launch_directory_pending = None;
+        self.launch_directory_error = None;
         self.launcher = None;
         self.launcher_layout = None;
         self.query_dragging = false;
@@ -3351,12 +3432,53 @@ impl App {
         self.request_redraw();
     }
     fn launcher_command(&mut self, command: LauncherCommand) {
+        if !matches!(
+            command,
+            LauncherCommand::Hover(_)
+                | LauncherCommand::SetCaret { .. }
+                | LauncherCommand::MoveCaret { .. }
+        ) {
+            self.launch_directory_pending = None;
+        }
         let Some(launcher) = &mut self.launcher else {
             return;
         };
-        let pointer_edit = matches!(command, LauncherCommand::SetCaret { .. });
+        let pointer_edit = matches!(
+            command,
+            LauncherCommand::SetCaret { .. } | LauncherCommand::Hover(_)
+        );
+        self.launcher_reveal = !pointer_edit;
+        let old_query = launcher.launcher.query.clone();
         let outcome = launcher.handle(command);
+        if old_query != launcher.launcher.query {
+            self.launch_directory_error = None;
+        }
         match outcome {
+            LauncherOutcome::Directory { value } => {
+                let token = bbt_mux::Ulid::new();
+                self.launch_directory_pending = Some(token);
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::LaunchDirectory(token));
+                }
+                let proxy = self.proxy.clone();
+                let home = std::env::var("HOME").unwrap_or_default();
+                bbt_rt::handle().spawn_blocking(move || {
+                    let path = if value == "~" {
+                        home
+                    } else if let Some(tail) = value.strip_prefix("~/") {
+                        format!("{home}/{tail}")
+                    } else {
+                        value.clone()
+                    };
+                    let valid = bbt_proto::gui::valid_workdir(&path)
+                        && std::path::Path::new(&path).is_dir();
+                    let _ = proxy.send_event(UiEvent::LaunchDirectoryChecked {
+                        token,
+                        value,
+                        valid,
+                    });
+                });
+            }
             LauncherOutcome::Parameters { id } => {
                 let Some((harness, swarm)) = self.local_launcher_target(&id) else {
                     return;
@@ -3403,6 +3525,11 @@ impl App {
                 self.request_redraw();
             }
             LauncherOutcome::Pick { id, modifiers } => {
+                if id.starts_with("seat:") || id.starts_with("tab:") || id.starts_with("swarm:") {
+                    self.close_launcher();
+                    self.navigate_to(&id);
+                    return;
+                }
                 if id == "graph" {
                     self.open_graph();
                     return;
@@ -3444,8 +3571,10 @@ impl App {
             .and_then(|l| l.launcher.params.as_mut())
         {
             let home = std::env::var("HOME").unwrap_or_default();
-            params.runs = bboxy450_term::spawn_params::Resolved::from_fields(&params.fields, &home)
-                .map_or_else(|error| error, |value| value.runs());
+            params.runs = self.launch_directory_error.clone().unwrap_or_else(|| {
+                bboxy450_term::spawn_params::Resolved::from_fields(&params.fields, &home)
+                    .map_or_else(|error| error, |value| value.runs())
+            });
         }
     }
     fn local_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
@@ -4928,6 +5057,10 @@ impl App {
             return Ok(false);
         };
         match effect {
+            UiEffect::LaunchDirectory(token) => Ok(self.launch_directory_pending != Some(*token)),
+            UiEffect::NewSwarm(id) => {
+                Ok(model.ui.window.sidebar.swarms.iter().any(|s| s.id == *id))
+            }
             UiEffect::SwarmWorkdir(swarm, path) => model
                 .ui
                 .window
@@ -5381,6 +5514,15 @@ impl App {
             UiRequest::SwarmWorkdir { swarm, path } => {
                 self.set_swarm_workdir(bbt_proto::SwarmId::from_u128(swarm.0), path)?;
             }
+            UiRequest::LauncherWheel { lines } => self.scroll_launcher(-(lines as f32) * 28.),
+            UiRequest::SidebarWheel { lines } => {
+                self.scroll_sidebar(-(lines as f32) * 28.);
+            }
+            UiRequest::Click { x, y } => {
+                self.pointer_pressed([x as f32, y as f32]);
+                self.query_dragging = false;
+                self.composer_dragging = false;
+            }
             UiRequest::Compose(request) => self.compose_ui(request)?,
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
@@ -5607,6 +5749,7 @@ impl App {
             },
         );
         let layout = UiLayout {
+            regions: self.interaction_regions(),
             swarm_workdirs: model
                 .ui
                 .window
@@ -5716,6 +5859,11 @@ impl App {
                 .map_or(0., |extent| extent[1]);
         }
         let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
+        self.scene.sidebar_scroll = self.sidebar_scroll.unwrap_or_else(|| {
+            self.live_state
+                .as_ref()
+                .map_or(0., |m| m.ui.window.sidebar.scroll)
+        });
         let layouts = if self.local_tab.is_some() {
             self.scene
                 .local_page_chrome_at(logical, dock, self.clock_frame.now)?
@@ -5784,12 +5932,10 @@ impl App {
         self.starting_close_regions = self.scene.starting_close_regions(&layouts);
         self.swarm_folder_regions = self.scene.swarm_folder_regions(&layouts);
         self.focus_bounds = self.scene.focus_bounds(&layouts);
+        self.navigation_regions = self.scene.navigation_regions(&layouts);
+        self.sidebar_viewport = self.scene.sidebar_extent(&layouts);
         self.pane_bounds = bounds;
-        self.launcher_layout = self
-            .launcher
-            .as_ref()
-            .map(|launcher| self.scene.launcher_layout(logical, &launcher.launcher))
-            .transpose()?;
+        self.solve_launcher(logical)?;
         if self.document.open {
             let context = self.scene.ui_context();
             if self
@@ -5808,12 +5954,13 @@ impl App {
             && model.metadata_initialized
         {
             let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
-            let state = bboxy450_term::window_state::capture(
+            let mut state = bboxy450_term::window_state::capture(
                 model,
                 stage,
                 logical,
                 self.window_last.as_ref(),
             );
+            state.sidebar_scroll = self.scene.sidebar_scroll;
             if self.window_last.as_ref() != Some(&state) {
                 self.window_last = Some(state.clone());
                 self.queue(live::UiMsg::WindowState(state));
@@ -6289,6 +6436,13 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::LaunchDirectoryChecked {
+                token,
+                value,
+                valid,
+            } => {
+                self.launch_directory_checked(token, value, valid);
+            }
             UiEvent::SwarmFolderPicked { swarm, path } => {
                 self.swarm_folder_pending = false;
                 if let Some(path) = path
@@ -6842,6 +6996,15 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
+            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_some() => {
+                let dy = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => {
+                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
+                };
+                self.scroll_launcher(dy);
+            }
             WindowEvent::MouseWheel { delta, .. } if self.document.open => {
                 let [mut dx, mut dy] = match delta {
                     MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
@@ -6871,6 +7034,23 @@ impl ApplicationHandler<UiEvent> for App {
                         self.request_redraw();
                     }
                 }
+            }
+            WindowEvent::MouseWheel { delta, .. }
+                if self.launcher.is_none()
+                    && self.sidebar_viewport.is_some_and(|(r, _)| {
+                        self.pointer[0] >= r.x
+                            && self.pointer[0] < r.right()
+                            && self.pointer[1] >= r.y
+                            && self.pointer[1] < r.bottom()
+                    }) =>
+            {
+                let dy = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => {
+                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
+                };
+                self.scroll_sidebar(dy);
             }
             WindowEvent::MouseWheel { delta, .. }
                 if self.launcher.is_none()
@@ -6963,249 +7143,7 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Left,
                 ..
             } => {
-                if self.document.open {
-                    use bbt_ui::modules::document_modal::controller::Action;
-                    let action = self
-                        .document_layout
-                        .as_ref()
-                        .and_then(|l| l.regions.hit(self.pointer));
-                    match action {
-                        Some(Action::Open(target)) => self.open_document(target),
-                        Some(Action::Close) => self.close_document(),
-                        Some(Action::Unavailable(name)) => {
-                            self.document.notice = Some(format!("{name} is not available yet"));
-                            self.document_layout = None;
-                            self.request_redraw();
-                        }
-                        None => {}
-                    }
-                    return;
-                }
-                if self.launcher.is_some() {
-                    if let Some(layout) = &self.launcher_layout {
-                        if layout.query_contains(self.pointer) {
-                            let at = self.scene.query_index(
-                                layout,
-                                &self.launcher.as_ref().unwrap().launcher.query,
-                                self.pointer[0],
-                            );
-                            self.query_dragging = true;
-                            self.launcher_command(LauncherCommand::SetCaret {
-                                at,
-                                extend: self.modifiers.shift_key(),
-                            });
-                        } else if let Some(index) = layout.row_at(self.pointer) {
-                            self.launcher_command(LauncherCommand::ActivateAt {
-                                index,
-                                modifiers: input_modifiers(self.modifiers),
-                            });
-                        } else if !layout.contains(self.pointer) {
-                            self.close_launcher();
-                        }
-                    }
-                    return;
-                }
-                if let Some(layout) = &self.conversation_layout
-                    && layout.regions.contains(self.pointer)
-                {
-                    use composer::Hit;
-                    let hit = layout.regions.hit(self.pointer);
-                    if hit.is_none()
-                        && let Some(bbt_ui::modules::stream_dock::Action::OpenRecord(target)) =
-                            layout.actions.hit(self.pointer)
-                    {
-                        self.open_document(target);
-                        return;
-                    }
-                    let at = if hit == Some(Hit::AttachQuery) {
-                        self.composer.view.attach_pick.as_ref().map(|p| {
-                            self.scene
-                                .conversation_attachment_index(layout, &p.query, self.pointer)
-                        })
-                    } else if hit == Some(Hit::Body) {
-                        Some(self.scene.conversation_index(
-                            layout,
-                            &self.composer.view.text,
-                            self.pointer,
-                        ))
-                    } else {
-                        None
-                    };
-                    self.blur_reject();
-                    match hit {
-                        Some(Hit::Body) => {
-                            self.composer_command(ComposeCommand::Focus(ComposeField::Body));
-                            self.composer_dragging = true;
-                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
-                                at: at.unwrap(),
-                                extend: self.modifiers.shift_key(),
-                            }));
-                        }
-                        Some(Hit::Address) => {
-                            self.composer_command(ComposeCommand::Focus(ComposeField::Address))
-                        }
-                        Some(Hit::Choose(index)) => {
-                            self.composer_command(ComposeCommand::Choose(index))
-                        }
-                        Some(Hit::Remove(index)) => {
-                            self.composer_command(ComposeCommand::Remove(index))
-                        }
-                        Some(Hit::Priority) => self.composer_command(ComposeCommand::Priority(
-                            (self.composer.view.priority + 1) % 10,
-                        )),
-                        Some(Hit::Kind) => self.composer_command(ComposeCommand::ToggleKindMenu),
-                        Some(Hit::KindChoice(index)) => self.composer_command(
-                            ComposeCommand::Kind(composer::SEND_KINDS[index].into()),
-                        ),
-                        Some(Hit::Send) => self.composer_command(ComposeCommand::Send),
-                        Some(Hit::Attach) => self.composer_command(ComposeCommand::PickAttachments),
-                        Some(Hit::AttachChoice(index)) => {
-                            self.composer_command(ComposeCommand::ChooseAttachment(index))
-                        }
-                        Some(Hit::AttachQuery) => {
-                            self.composer_dragging = true;
-                            self.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
-                                at: at.unwrap(),
-                                extend: self.modifiers.shift_key(),
-                            }));
-                        }
-                        _ => {}
-                    }
-                    return;
-                }
-                if self
-                    .local_page_layout
-                    .as_ref()
-                    .is_some_and(|p| p.closes(self.pointer))
-                {
-                    self.close_local_tab();
-                    return;
-                }
-                if let Some(regions) = self
-                    .local_page_layout
-                    .as_ref()
-                    .and_then(|p| p.settings.as_ref())
-                    && regions.hit(self.pointer).is_some()
-                {
-                    use settings_controller::{Action, Focus, Hit};
-                    let action = match regions.hit(self.pointer).unwrap() {
-                        Hit::Search => Action::Focus(Focus::Search),
-                        Hit::Section(name) => Action::Section(name),
-                        Hit::Set(patch) => Action::Set(patch),
-                        Hit::Attention(rule) => Action::Attention(rule),
-                        Hit::Toggle(field) => Action::Toggle(field),
-                        Hit::Reset(field) => Action::Reset(field),
-                        Hit::Rim => {
-                            Action::Drag(regions.rim_fraction(self.pointer[0]).unwrap_or(0.))
-                        }
-                    };
-                    self.blur_reject();
-                    self.composer.handle(ComposeCommand::Blur);
-                    self.settings_action(action);
-                    return;
-                }
-                if self
-                    .local_page_layout
-                    .as_ref()
-                    .is_some_and(|p| p.focuses(self.pointer))
-                {
-                    self.blur_reject();
-                    self.composer.handle(ComposeCommand::Blur);
-                    self.composer_dragging = false;
-                    if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
-                        self.settings_action(settings_controller::Action::Blur);
-                    }
-                    if let Some(window) = &self.window {
-                        window.set_ime_allowed(false);
-                    }
-                    self.request_redraw();
-                    return;
-                }
-                if let Some(action) = self
-                    .conversation_layout
-                    .as_ref()
-                    .and_then(|layout| layout.actions.hit(self.pointer))
-                    .or_else(|| self.task_regions.hit(self.pointer))
-                {
-                    self.task_action(action);
-                    return;
-                }
-                if self.conversation_layout.as_ref().is_some_and(|layout| {
-                    layout.actions.contains("conversation/rows", self.pointer)
-                }) {
-                    self.conversation_reads(true);
-                    return;
-                }
-                if let Some((op, _)) =
-                    self.starting_close_regions
-                        .iter()
-                        .copied()
-                        .find(|(_, rect)| {
-                            self.pointer[0] >= rect.x
-                                && self.pointer[0] < rect.right()
-                                && self.pointer[1] >= rect.y
-                                && self.pointer[1] < rect.bottom()
-                        })
-                {
-                    self.dismiss_starting(op);
-                    return;
-                }
-                if let Some((seat, _, undo)) =
-                    self.close_regions.iter().copied().find(|(_, rect, _)| {
-                        self.pointer[0] >= rect.x
-                            && self.pointer[0] < rect.right()
-                            && self.pointer[1] >= rect.y
-                            && self.pointer[1] < rect.bottom()
-                    })
-                {
-                    self.close_seat(seat, bbt_mux::Ulid::new(), undo);
-                    return;
-                }
-                if let Some((swarm, _, reset)) =
-                    self.swarm_folder_regions
-                        .iter()
-                        .copied()
-                        .find(|(_, rect, _)| {
-                            self.pointer[0] >= rect.x
-                                && self.pointer[0] < rect.right()
-                                && self.pointer[1] >= rect.y
-                                && self.pointer[1] < rect.bottom()
-                        })
-                {
-                    if reset {
-                        let _ = self.set_swarm_workdir(swarm, None);
-                    } else if !self.swarm_folder_pending {
-                        self.swarm_folder_pending = true;
-                        let directory = self
-                            .live_state
-                            .as_ref()
-                            .and_then(|model| {
-                                model
-                                    .ui
-                                    .window
-                                    .sidebar
-                                    .swarms
-                                    .iter()
-                                    .find(|row| row.id == swarm)
-                            })
-                            .and_then(|row| row.workdir.clone());
-                        if let Err(reason) =
-                            swarm_folder::choose(swarm, self.proxy.clone(), directory.as_deref())
-                        {
-                            self.swarm_folder_pending = false;
-                            self.logger.write(reason);
-                        }
-                    }
-                    return;
-                }
-                if let Some((id, _)) = self.focus_bounds.iter().find(|(_, rect)| {
-                    self.pointer[0] >= rect.x
-                        && self.pointer[0] < rect.right()
-                        && self.pointer[1] >= rect.y
-                        && self.pointer[1] < rect.bottom()
-                }) {
-                    self.focus_action(FocusAction::Activate(*id, FocusOrigin::Pane));
-                }
+                self.pointer_pressed(self.pointer);
             }
             WindowEvent::MouseInput {
                 state: ElementState::Released,
@@ -9155,7 +9093,8 @@ mod input_tests {
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
-                live::UiMsg::SwarmWorkdir { .. }
+                live::UiMsg::NewSwarm(_)
+                | live::UiMsg::SwarmWorkdir { .. }
                 | live::UiMsg::SwarmLaunchDefaults { .. }
                 | live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
@@ -9586,6 +9525,25 @@ mod layout_shortcut_tests {
                 route_settings(&input, 0, true),
                 RoutedKey::SettingsKey(SettingsKey::Edit(EditCommand::Insert(text.into())))
             );
+        }
+    }
+
+    #[test]
+    fn dvorak_split_shortcuts_reach_every_native_focus_context() {
+        for (mods, side) in [
+            (ModifiersState::SUPER, bbt_proto::seat_state::Side::Right),
+            (
+                ModifiersState::SUPER | ModifiersState::SHIFT,
+                bbt_proto::seat_state::Side::Bottom,
+            ),
+        ] {
+            let key = character("D", "d", KeyCode::KeyH, Some("D"), mods);
+            let expected = RoutedKey::SplitLauncher(side);
+            assert_eq!(route_key(&key, 0, None), expected);
+            assert_eq!(route_key(&key, 0, Some("query")), expected);
+            assert_eq!(route_local_page(&key, 0), expected);
+            assert_eq!(route_settings(&key, 0, true), expected);
+            assert_eq!(route_composer(&key, 0, ComposeField::Body), expected);
         }
     }
 
@@ -10084,8 +10042,11 @@ mod launcher_host_tests {
             )
             .is_none()
         );
-        launcher.handle(LauncherCommand::Right);
-        assert_eq!(launcher.launcher.path, ["zsh"]);
+        assert_eq!(
+            launcher.handle(LauncherCommand::Right),
+            LauncherOutcome::Parameters { id: "zsh".into() }
+        );
+        assert!(launcher.open_parameters("zsh", vec![]));
         assert_eq!(
             launcher.handle(LauncherCommand::Escape),
             LauncherOutcome::Changed
@@ -10101,6 +10062,32 @@ mod launcher_host_tests {
             LauncherOutcome::Capped
         );
     }
+    #[test]
+    fn metadata_in_flight_does_not_undo_an_admitted_empty_swarm_selection() {
+        let mut model = fixture();
+        let id = bbt_ui_model::SwarmId::from_u128(999);
+        let selected = Stage {
+            swarm: Some(id),
+            tab: None,
+            focused: None,
+        };
+        let mut focus = FocusState {
+            stage: Some(selected.clone()),
+            pending_swarm: Some(id),
+            ..Default::default()
+        };
+        focus.reconcile(None, &model);
+        assert_eq!(focus.stage.as_ref(), Some(&selected));
+        model
+            .window
+            .sidebar
+            .swarms
+            .push(bbt_ui_model::Swarm::new(id, "empty", vec![]));
+        focus.reconcile(None, &model);
+        assert_eq!(focus.stage.as_ref(), Some(&selected));
+        assert!(focus.pending_swarm.is_none());
+    }
+
     #[test]
     fn published_screens_do_not_undo_local_focus_or_create_locate() {
         let model = fixture();

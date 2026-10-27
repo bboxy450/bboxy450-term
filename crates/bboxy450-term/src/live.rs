@@ -1200,6 +1200,15 @@ async fn run_with_control(
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
                     },
+                    UiMsg::NewSwarm(id) => {
+                        let ui = &mut Arc::make_mut(&mut model).ui;
+                        if !ui.window.sidebar.swarms.iter().any(|s|s.id==*id) {
+                            ui.window.sidebar.swarms.push(bbt_ui_model::Swarm::new(*id,"swarm",vec![]));
+                            ui.window.sidebar.open.insert(*id);
+                            ui.window.stage=bbt_ui_model::Stage{swarm:Some(*id),tab:None,focused:None};
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    },
                     UiMsg::SwarmWorkdir {swarm,path}=> {
                         if path.as_deref().is_none_or(bbt_proto::gui::valid_workdir)
                             && let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {

@@ -174,11 +174,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
         loop {
             if overflow.swap(false, Ordering::AcqRel) && !closing {
                 result = Err("headless event queue full".into());
-                if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                if let Some(commands) = app.live_commands.take() {
+                    commands.shutdown();
+                }
                 closing = true;
             }
             while let Ok(event) = events.try_recv() {
                 match event {
+                    UiEvent::LaunchDirectoryChecked {
+                        token,
+                        value,
+                        valid,
+                    } => app.launch_directory_checked(token, value, valid),
                     UiEvent::ErrorCount(count) => {
                         if app.unread_errors != count {
                             app.unread_errors = count;
@@ -208,7 +215,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         } else {
                             result = Err("headless capture queue full".into());
-                            if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                            if let Some(commands) = app.live_commands.take() {
+                                commands.shutdown();
+                            }
                             closing = true;
                         }
                     }
@@ -291,7 +300,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     UiEvent::App(live::AppEvent::Stop { id }) => {
                         logger.write(format!("headless stop {id}: orderly Session shutdown"));
                         app.pending_commands.clear();
-                        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                        if let Some(commands) = app.live_commands.take() {
+                            commands.shutdown();
+                        }
                         closing = true;
                     }
                     UiEvent::BackendStopped(stopped) => {
@@ -528,12 +539,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
                 if !ready_sent && started.elapsed() >= STARTUP {
                     result = Err("headless render readiness timed out".into());
-                    if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                    if let Some(commands) = app.live_commands.take() {
+                        commands.shutdown();
+                    }
                     closing = true;
                 }
                 if smoke && started.elapsed() >= STARTUP && !closing {
                     result = Err(idle.deadline_error());
-                    if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                    if let Some(commands) = app.live_commands.take() {
+                        commands.shutdown();
+                    }
                     closing = true;
                 }
                 if smoke && Instant::now() >= next_idle && ready_sent {
@@ -551,7 +566,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         if !passed {
                             result = Err("headless idle probe produced work".into());
                         }
-                        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+                        if let Some(commands) = app.live_commands.take() {
+                            commands.shutdown();
+                        }
                         closing = true;
                     } else if idle.ready(
                         true,
@@ -607,7 +624,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
     // Rendering/admission errors also close through the IO owner. Returning
     // directly here would strand the two children after a GUI-side failure.
     if !finished {
-        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
+        if let Some(commands) = app.live_commands.take() {
+            commands.shutdown();
+        }
         let deadline = closing_at.unwrap_or_else(Instant::now) + Duration::from_secs(30);
         loop {
             while let Ok(event) = events.try_recv() {
