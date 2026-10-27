@@ -85,8 +85,11 @@ esac
 smoke_run=$(mktemp -d "${TMPDIR:-/tmp}/bboxy-smoke.XXXXXX")
 # The real GUI has its own fixture inputs, as well as its own identity and sockets.
 # Checkout/build provenance events are work, not an idle fixture.
-mkdir "$smoke_run/repository"
-if (cd "$smoke_run/repository" && BBOXY_TEST_CUSTODY=memory ledger smoke "$smoke_bin" --headless --smoke --run-dir "$smoke_run/run"); then
+mkdir "$smoke_run/repository" "$smoke_run/home"
+if ledger smoke env -i PATH="$PATH" TERM="${TERM:-xterm-256color}" LANG="${LANG:-en_US.UTF-8}" TMPDIR="${TMPDIR:-/tmp}" \
+  HOME="$smoke_run/home" CODEX_HOME="$smoke_run/home/.codex" CLAUDE_CONFIG_DIR="$smoke_run/home/.claude" ZDOTDIR="$smoke_run/home" \
+  "$smoke_bin" --headless --smoke --ctl --unattended --test-account "$smoke_run/account" \
+  --run-dir "$smoke_run/run" --repository "$smoke_run/repository" </dev/null; then
   rm -rf -- "$smoke_run"
 else
   smoke_status=$?

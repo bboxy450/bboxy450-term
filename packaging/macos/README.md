@@ -1,10 +1,15 @@
 # Native notification evidence
 
-`sh scripts/bundle-macos.sh debug` builds the ordinary app bundle. `release`
-packages release code, with production identity custody; never use that for
-fixtures. Bare `cargo run` remains bare and logs the missing bundle once.
+Use the repository Makefile (`make help`) for all build/install/test/release work.
+`make install` builds the release app, stamps its Cargo version/source revision,
+signs with the approved Apple Development identity and installs in `~/Applications`.
+`make install-unsigned` installs an ad-hoc-only debug bundle in `target/install-unsigned`;
+it is for isolated tests, and `make smoke` runs it headless with its own file-custody
+account. `UNSIGNED_INSTALL_DIR` and `INSTALL_DIR` override the destinations.
+`make release` makes the signed app archive, checksum and detached GPG signature.
+The old bundle script forwards to `make bundle`; it contains no signing recipe.
 
-Both recipes require the approved Apple Development identity
+The signed bundle and installation targets require the approved Apple Development identity
 `3943AF130A015B36824B7FBC86AA672E7B25F3C4` (team `UQB3368A84`). They fail if it
 is unavailable. An ad-hoc signature fails notification authorization on this
 machine; the identity-signed bundle works. Developer ID distribution signing

@@ -21,9 +21,12 @@ async fn start(root: &Path) -> Session {
     let binary = env!("CARGO_BIN_EXE_bboxy450-term").replace('\'', "'\\''");
     let custody = root.join("fixture-custody");
     let custody = custody.to_string_lossy().replace('\'', "'\\''");
+    let home = root.join("home");
+    tokio::fs::create_dir_all(&home).await.unwrap();
+    let home = home.to_string_lossy().replace('\'', "'\\''");
     tokio::fs::write(
         &executable,
-        format!("#!/bin/sh\nBBOXY_TEST_CUSTODY='fixture:{custody}' exec '{binary}' \"$@\"\n"),
+        format!("#!/bin/sh\nHOME='{home}' CLAUDE_CONFIG_DIR='{home}/.claude' CODEX_HOME='{home}/.codex' BBOXY_TEST_CUSTODY='fixture:{custody}' exec '{binary}' \"$@\"\n"),
     )
     .await
     .unwrap();
@@ -50,6 +53,9 @@ fn pid(seat: &GuiSeat) -> u32 {
     }
 }
 async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
+    spawn_kind(session, root, swarm, "zsh").await
+}
+async fn spawn_kind(session: &mut Session, root: &Path, swarm: Ulid, kind: &str) -> GuiSeat {
     let known: Vec<_> = session
         .list()
         .await
@@ -63,7 +69,7 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
             id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
                 swarm: SwarmId::from_u128(swarm.0),
-                harness_kind: "zsh".into(),
+                harness_kind: kind.into(),
                 name: Some("test zsh".into()),
                 role: None,
                 cwd: root.to_string_lossy().into_owned(),
@@ -152,6 +158,70 @@ async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
             .args(["-p", &owner.to_string(), "-o", "pid="])
             .output().unwrap().status.success(), "hard quit kept process {owner}");
     }
+}
+
+// keeps: Finder launch PATH and mux-daemon UI independence.
+#[ignore = "night: real zsh/backend/PTY boundary; run explicitly for PATH changes"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(clippy::disallowed_methods, reason = "private launch fixture, never UI")]
+async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supervisor() {
+    async fn file(path: &Path) -> String {
+        tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                if let Ok(text) = tokio::fs::read_to_string(path).await
+                    && !text.is_empty() { return text; }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }).await.unwrap()
+    }
+    let root = tempfile::tempdir().unwrap();
+    let shell = root.path().join("zsh-config");
+    tokio::fs::create_dir_all(&shell).await.unwrap();
+    tokio::fs::write(shell.join(".zshrc"), "export PATH=/usr/bin:/bin\n").await.unwrap();
+    let mut old = start(root.path()).await;
+    let supervisor = old.supervisor.id().unwrap();
+    let logic = old.logic.id().unwrap();
+    let swarm = Ulid::new();
+    let running = spawn(&mut old, root.path(), swarm).await;
+    let cookie = root.path().join("cookie");
+    old.send(GuiAction::Input {
+        seat: bbt_proto::SeatId::from_u128(running.record.id.0),
+        generation: running.record.generation, id: Ulid::new(),
+        bytes: format!("KEEP_PATH_WORK=kept; printf '%s' $$ > '{}'\r", cookie.display()).into_bytes(),
+    }).await.unwrap();
+    assert_eq!(file(&cookie).await, pid(&running).to_string());
+    old.detach(None).await.unwrap();
+
+    let bin = root.path().join("login-only-bin");
+    tokio::fs::create_dir(&bin).await.unwrap();
+    let launched = root.path().join("claude-started");
+    let executable = bin.join("claude");
+    tokio::fs::write(&executable, format!(
+        "#!/bin/sh\nprintf '%s' \"$PATH\" > '{}'\nexec /bin/cat\n", launched.display()
+    )).await.unwrap();
+    tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).await.unwrap();
+    tokio::fs::write(shell.join(".zshrc"), format!(
+        "export PATH='{}:/usr/bin:/bin'\n", bin.display()
+    )).await.unwrap();
+
+    let mut refreshed = start(root.path()).await;
+    assert_eq!(refreshed.supervisor.id(), Some(supervisor));
+    assert_ne!(refreshed.logic.id(), Some(logic));
+    let current = refreshed.list().await.unwrap().into_iter()
+        .find(|row| row.record.id == running.record.id).unwrap();
+    assert_eq!(pid(&current), pid(&running));
+    assert_eq!(current.record.generation, running.record.generation);
+    let new = spawn_kind(&mut refreshed, root.path(), swarm, "claude").await;
+    assert!(pid(&new) > 0);
+    assert_eq!(file(&launched).await, format!("{}:/usr/bin:/bin", bin.display()));
+    let kept = root.path().join("kept");
+    refreshed.send(GuiAction::Input {
+        seat: bbt_proto::SeatId::from_u128(running.record.id.0),
+        generation: running.record.generation, id: Ulid::new(),
+        bytes: format!("printf '%s:%s' \"$KEEP_PATH_WORK\" $$ > '{}'\r", kept.display()).into_bytes(),
+    }).await.unwrap();
+    assert_eq!(file(&kept).await, format!("kept:{}", pid(&running)));
+    refreshed.shutdown().await.unwrap();
 }
 
 // keeps: spec c1-live-seats §4

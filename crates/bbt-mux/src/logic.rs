@@ -4673,6 +4673,16 @@ impl Worker {
             },
         )?;
         record.harness_session_id = plan.harness_session_id;
+        crate::adapters::launch::in_login_shell(
+            &mut plan.spec, &harness.kind, &options.user_home, options.user_zdotdir.as_deref(),
+        );
+        // Explicit PATH also works with a supervisor retained from a Finder launch.
+        if let Ok(path) = std::env::var("PATH") {
+            plan.spec.env.entry("PATH".into()).or_insert_with(|| path.clone());
+            if let Some(companion) = &mut plan.spec.companion {
+                companion.env.entry("PATH".into()).or_insert(path);
+            }
+        }
         let diagnostics_root = self.config.run_dir.to_string_lossy().into_owned();
         plan.spec
             .env

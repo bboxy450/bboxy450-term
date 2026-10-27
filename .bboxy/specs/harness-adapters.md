@@ -349,3 +349,7 @@ Links: [[vision]] [[harness-touchpoints]] [[harness-touchpoints-exec]] [[subagen
 ## Correction 2026-10-22 (W2.3, checked against installed Codex 0.163 and Claude 2.1.304 schemas)
 
 Codex hook keys are launched in CamelCase; the decoder keeps snake_case aliases. Hook child IDs are independent of the parent `session_id` and may be full UUIDs. Implementation: `crates/bbt-mux/src/adapters/`; evidence `.bboxy/runs/w2-3-evidence.log`.
+
+**Login PATH (operator, 2026-10-26):** the cockpit imports only `PATH` from `/bin/zsh -ilc` on IO, so Finder-launched harnesses receive the user's `.zprofile` and `.zshrc` paths. Startup is bounded to 3 seconds with inherited-PATH fallback; startup output is framed and bounded, not treated as environment data. A changed PATH refreshes logic while retaining the supervisor and every running PTY; new launch and companion environments carry PATH explicitly. Test-account probes use their private ZDOTDIR/account directory and do not load the operator's rc files.
+
+**Harness shell (operator, 2026-10-26):** every non-shell harness starts through the user's default interactive login shell, then `exec` replaces the shell with the harness so the supervisor/native binding retains the same PID. Arguments are positional, never interpolated into shell code. Codex's companion/app-server takes the same shell/environment path; its existing parent-session scrub remains inside that wrapper. Integrated zsh seats retain their existing shell hooks.

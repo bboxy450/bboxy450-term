@@ -26,6 +26,7 @@ use tokio::{
 
 mod fixture_hosts;
 mod owners;
+mod shell_path;
 pub use owners::{Exit as ProcessExit, Process};
 use owners::ManagedChild as Child;
 
@@ -464,6 +465,9 @@ fn fixture_hosts_default() -> bool {
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
+    /// Private environment compatibility hint; never exports the environment.
+    #[serde(default)]
+    pub launch_path_fingerprint: Option<String>,
     pub root: PathBuf,
     pub capability: [u8; 32],
     pub identity: GuiIdentity,
@@ -731,6 +735,7 @@ async fn logic_main() -> Result<()> {
     let endpoint = logic.client.gui_endpoint().await?;
     let status = logic.client.identity_status().await?;
     let ready = LogicReady {
+        launch_path_fingerprint: std::env::var_os("PATH").as_deref().map(shell_path::fingerprint),
         root: endpoint
             .path
             .parent()
@@ -772,6 +777,7 @@ pub struct Session {
     _frontend: owners::FrontendLock,
     pub endpoint: LogicReady,
     config: Config,
+    launch_path: std::ffi::OsString,
     supervisor_ready: SupervisorReady,
     // Child::wait closes Child.stdin on its first poll, even when cancelled.
     supervisor_control: Option<tokio::process::ChildStdin>,
@@ -850,6 +856,7 @@ impl Session {
                 ));
             }
         };
+        let launch_path = shell_path::load(&config).await;
         let (mut supervisor, supervisor_control, supervisor_ready, attached) =
             if owners::supervisor_held(&config)? {
                 let record = owners::read::<SupervisorReady>(&config, "supervisor")?
@@ -862,7 +869,7 @@ impl Session {
                     true,
                 )
             } else {
-                let owner = start_supervisor(&config).await?;
+                let owner = start_supervisor(&config, &launch_path).await?;
                 (
                     Process::Child(owner.child),
                     owner.control,
@@ -870,9 +877,17 @@ impl Session {
                     false,
                 )
             };
-        let (mut logic, logic_control, endpoint, io) = if let Some(record) =
-            owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached)
+        let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
+        if existing.as_ref().is_some_and(|record|
+            record.ready.launch_path_fingerprint.as_deref() != Some(shell_path::fingerprint(&launch_path).as_str()))
         {
+            let record = existing.take().unwrap();
+            let mut old_logic = Process::adopted(&config, "logic", record);
+            // Refresh logic only: the supervisor retains every live PTY and process.
+            stop_child(&mut old_logic, &mut None, "logic").await?;
+            eprintln!("login zsh PATH changed; refreshed logic, retained supervisor and seats");
+        }
+        let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();
             let io = attach_gui(&config, &mut endpoint, true).await?;
             (
@@ -882,7 +897,7 @@ impl Session {
                 io,
             )
         } else {
-            let owner = start_logic(&config, &supervisor_ready, false).await?;
+            let owner = start_logic(&config, &supervisor_ready, false, &launch_path).await?;
             (
                 Process::Child(owner.child),
                 owner.control,
@@ -894,6 +909,7 @@ impl Session {
         logic.preserve_on_drop();
         Ok(Self {
             config,
+            launch_path,
             _frontend: frontend,
             supervisor_ready,
             supervisor,
@@ -990,6 +1006,7 @@ impl Session {
             return;
         }
         let config = self.config.clone();
+        let launch_path = self.launch_path.clone();
         let ready = self.supervisor_ready.clone();
         let replace_supervisor = self.supervisor_exited;
         let watches = self.watches.clone();
@@ -997,7 +1014,7 @@ impl Session {
             tokio::time::sleep(Duration::from_millis(100)).await;
             tokio::time::timeout(
                 STARTUP_TIMEOUT,
-                recover(config, ready, replace_supervisor, watches),
+                recover(config, ready, replace_supervisor, watches, launch_path),
             )
             .await
             .map_err(|_| invalid("recovery startup timed out"))?
@@ -1224,8 +1241,8 @@ async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> 
     Ok(io)
 }
 
-async fn start_supervisor(config: &Config) -> Result<StartedSupervisor> {
-    let mut child = child(config, "supervisor")?;
+async fn start_supervisor(config: &Config, launch_path: &std::ffi::OsStr) -> Result<StartedSupervisor> {
+    let mut child = child(config, "supervisor", launch_path)?;
     write_json(child.stdin.as_mut().unwrap(), config).await?;
     let mut output = BufReader::new(child.stdout.take().unwrap());
     let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
@@ -1244,8 +1261,9 @@ async fn start_logic(
     config: &Config,
     ready: &SupervisorReady,
     recover_seats: bool,
+    launch_path: &std::ffi::OsStr,
 ) -> Result<StartedLogic> {
-    let mut child = child(config, "logic")?;
+    let mut child = child(config, "logic", launch_path)?;
     let fixture_hosts = fixture_hosts::enabled(
         std::env::args().any(|arg| arg == "--smoke"),
         config.test_account.is_some(),
@@ -1280,16 +1298,17 @@ async fn recover(
     ready: SupervisorReady,
     replace_supervisor: bool,
     watches: BTreeMap<SeatId, View>,
+    launch_path: std::ffi::OsString,
 ) -> Result<Recovered> {
     let supervisor = if replace_supervisor {
-        Some(start_supervisor(&config).await?)
+        Some(start_supervisor(&config, &launch_path).await?)
     } else {
         None
     };
     let ready = supervisor
         .as_ref()
         .map_or(&ready, |supervisor| &supervisor.ready);
-    let mut logic = start_logic(&config, ready, replace_supervisor).await?;
+    let mut logic = start_logic(&config, ready, replace_supervisor, &launch_path).await?;
     logic.io.try_send(GuiAction::ListSeats)?;
     let seats = loop {
         match logic.io.event().await {
@@ -1349,7 +1368,7 @@ async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>
     clippy::disallowed_methods,
     reason = "child bootstrap opens its private stderr file on IO, guarded off the UI thread"
 )]
-fn child(config: &Config, entry: &str) -> Result<Child> {
+fn child(config: &Config, entry: &str, launch_path: &std::ffi::OsStr) -> Result<Child> {
     bbt_rt::assert_not_ui_thread();
     use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
     std::fs::DirBuilder::new()
@@ -1363,7 +1382,7 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .custom_flags(libc::O_NOFOLLOW)
         .open(config.run_dir.join(format!("{entry}.log")))?;
     let mut command = Command::new(&config.executable);
-    command.env("BBOXY_RUN_DIR", &config.run_dir);
+    command.env("BBOXY_RUN_DIR", &config.run_dir).env("PATH", launch_path);
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
     }

@@ -1,0 +1,14 @@
+Operator scope (2026-10-26): recover Finder PATH from login zsh; run harnesses and companions through the user's default login shell and exec; centralize build/test/install/release workflows in Make; signed local install and authorized push to main.
+Base: 16749f2877828617f4096847715ccf755579fd3b.
+Mechanism: bounded framed PATH probe on cockpit IO; explicit launch PATH; refresh logic when PATH changes while retaining supervisor/PTYS; system account login shell with literal positional arguments and exec for harness and companion.
+Makefile: signed install never falls back; unsigned smoke uses an ad-hoc bundle, private HOME/config/identity, headless renderer and explicit shutdown; app metadata comes from Cargo and Git; local app/crate artifacts are GPG signed. Publishing remains a separate authorized target.
+AGENTS.md: Make is the canonical interface; no duplicate install recipes, operator-dependent tests or retired ICQ commands.
+make test-boundaries — exit 0; 1 harness/companion exec test, 3 PATH tests, 7 cockpit process tests passed.
+Assertions: login and interactive rc exports; literal spaces/quotes/shell syntax; exec preserves PID; changed PATH refreshes only logic; retained supervisor/shell PID and generation; shell variable preserved; new Claude fixture found through new PATH; hard shutdown reaps owners.
+Raw log (outside Git): /Users/feral/Library/Logs/bboxy450-term/install-20261026/path-shell-boundaries-final.log
+SHA256: 94a2c0c5890852c3b640de4384bd33c3a23833c2462df01077539b0fea66130c
+make smoke — private unsigned install reached headless smoke, idle probe reported frames=0/callbacks=0 over 10 seconds, then owners reaped and headless GUI stopped Ok.
+Raw log (outside Git): /Users/feral/Library/Logs/bboxy450-term/install-20261026/make-smoke-final.log
+SHA256: 791908d3c0080e09ba2dafa26c5830620c92eedbe5e67a7cec142d40659a53ea
+Full exact-commit Make gate and signed-install evidence follow in GitHub handoff #62 after this source is committed.
+Unchanged scope: sidebar/split behavior remains GitHub #67; no crate version bump or publication in this task.
