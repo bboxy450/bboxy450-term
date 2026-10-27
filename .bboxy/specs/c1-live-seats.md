@@ -132,6 +132,9 @@ pub struct SpawnSpec {
     pub swarm: SwarmId, pub harness_kind: String, pub name: Option<String>, pub role: Option<String>,
     pub cwd: String, pub location: Where, pub resume: Option<String>,   // harness session id to resume
     #[serde(default)] pub placement: Option<Placement>,                 // decision [[d29-explicit-seat-placement|#29]]; None = the default lane
+    #[serde(default)] pub args: Vec<String>,                            // spawn parameters ([[launch-defaults]] §5), resolved at the pick
+    #[serde(default)] pub env: Vec<(String, String)>,
+    #[serde(default)] pub via: Option<TransportSpec>,                   // kind (ssh | mosh | et | cloud | plugin), route, port, key, plugin fields
 }
 // Captured at the pick, never resolved from focus when the reply arrives.
 pub enum Placement { NewTab { tab: TabId }, Split { tab: TabId, target: SeatId, target_generation: u64, side: Side } }

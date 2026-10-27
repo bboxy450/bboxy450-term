@@ -119,6 +119,9 @@
       { id: 'w11', type: 'task', title: 'W1.1 term-core fork', status: 'done', assignee: 'Nyx Copperwing' },
       { id: 'w12', type: 'task', title: 'W1.2 byte ring', status: 'open' } ] });
   if (REAL.stream) model.spaces[0].stream.push(...REAL.stream);
+  // swarm defaults (launch-defaults §layers): each swarm has its own working directory, changed from the defaults form with ⌘S
+  const SWARM_CWD = { term: '~/mydev/bboxy450-term', winnow: '~/mydev/winnow', swarm: '~/mydev/bboxy450-term' };
+  for (const s of model.spaces) s.defaults = s.defaults || (SWARM_CWD[s.name] ? { cwd: SWARM_CWD[s.name] } : {});
   function space() { const hit = tabOf(focused); return hit ? hit.sp : model.spaces[0]; }   // the cohort of the focused seat
   function tabOf(key) { for (const sp of model.spaces) for (const t of sp.tabs) if ((t.seats || []).some(x => x.key === key)) return { sp, t }; return null; }
   function stageOf() { const sp = space(); const hit = tabOf(focused); const t = hit && hit.sp === sp ? hit.t : sp.tabs[0]; return t ? t.tree : null; }
@@ -351,7 +354,7 @@
     const anchor = focused, anchorSeat = seats.find(x => x.key === anchor);   // ⌘↵ splits right of the focused pane, ⌘⇧↵ below it, ↵ opens a new tab
     const ph = preset && anchorSeat ? 'split ' + (preset === 'right' ? 'right of ' : 'below ') + anchorSeat.name + ' · pick a harness' : 'launch or go to · type to search';
     const actions = preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['New tab instead', '⌥↵'], ['Reroll', '⌘R']] : [['Launch / go', '↵'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵'], ['Reroll', '⌘R']];
-    const items = C.launcherItems({ seats, spaces: model.spaces, sp, anchorSeat, tabOf, retained: sp.retained || [] });
+    const items = C.launcherItems({ seats, spaces: model.spaces, sp, anchorSeat, tabOf, retained: sp.retained || [], preset });
     const acts = p => (p.length && p[p.length - 1].id === 'goto') ? [['Go', '↵'], ['Back', '←']] : (p.length ? [['Place', '↵'], ['Back', '←']] : (preset ? [[preset === 'right' ? 'Split right' : 'Split down', '↵'], ['Placements', '→'], ['New tab instead', '⌥↵']] : [['New tab', '↵'], ['Placements', '→'], ['Split right', '⌘↵'], ['Split down', '⌘⇧↵']]));
     // banner above the panel: the real pane layout, large, with the new cell lit; nothing subtle about it
     if (preset && anchorSeat && stageTree) {
@@ -375,7 +378,18 @@
       strip.append(el('span', { class: 'tcell ghost' }, '+ new seat'));
       back.append(el('div', { class: 'spot-banner' }, strip, el('div', { class: 'txt' }, el('div', { class: 'big' }, 'New tab'), el('div', { class: 'of' }, 'in ', el('b', { style: 'color:' + sp.color }, sp.name), ' · the new seat gets a tab of its own · type goto <name> to go somewhere'))));
     }
-    const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), usedNames: namesIn(sp), onClose: closeSpotlight, onPick: (it, name, mods, path) => {
+    // spawn parameters remember their last choice on launch, each at its home (launch-defaults §3): the directory and environment on
+    // the swarm (with a short recent list), command and arguments on the harness, transport, route, port, key and remote directory on
+    // the machine. The role is not remembered here: its default is a setting.
+    const remember = (it, fields, path) => {
+      const l = it.launch || it, at = [...path, it], host = it.host || (at.find(x => x.host) || {}).host;
+      for (const f of fields) {
+        if (f.home === 'swarm') { sp.defaults = sp.defaults || {}; sp.defaults[f.key] = f.value; if (f.key === 'cwd' && f.value) sp.recent = [f.value, ...(sp.recent || []).filter(x => x !== f.value)].slice(0, 6); }
+        else if (f.home === 'harness' && C.SET.harness[l.harness]) { const h = C.SET.harness[l.harness]; h.defaults = h.defaults || {}; h.defaults[f.key] = f.value; }
+        else if (f.home === 'machine' && host) { const md = C.SET.machineDefaults[host] = C.SET.machineDefaults[host] || {}; const k = f.key === 'rcwd' ? 'cwd' : f.key; md[k] = f.value; if (k === 'target' && !(md.routes || []).includes(f.value)) md.routes = [...(md.routes || []), f.value]; if (k === 'cwd') md.recent = [f.value, ...(md.recent || []).filter(x => x !== f.value)].slice(0, 6); }
+      }
+    };
+    const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), usedNames: namesIn(sp), swarm: sp, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.graphOpen) { closeSpotlight(); openGraph(); return; }
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
       if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
@@ -384,6 +398,8 @@
       const l = it.launch || it;
       const where = it.where || (path.find(x => x.where) || {}).where || 'local', host = it.host || (path.find(x => x.host) || {}).host;
       const seat = { key: 'n' + Date.now().toString(36), name: l.harness === 'zsh' ? 'zsh' : name, harness: l.harness, role: it.role || C.DEFAULT_ROLE[l.harness], title: l.harness === 'zsh' ? '~' : '', state: 'active', pal: (seats.length + 3) % 15, where, host };
+      if (mods && mods.overrides) { const o = mods.overrides; seat.title = o.cwd || o.rcwd || seat.title; seat.launchCommand = mods.command; if (o.role) seat.role = o.role; remember(it, Object.entries(o).map(([key, value]) => ({ key, value, home: { cwd: 'swarm', env: 'swarm', cmd: 'harness', args: 'harness', via: 'machine', target: 'machine', port: 'machine', key: 'machine', rcwd: 'machine' }[key] })), path); }   // launched from its spawn parameters
+      else { const d = C.launchFields(it, path, sp), c = d.find(x => x.key === 'cwd' || x.key === 'rcwd'); if (c && l.harness !== 'zsh') seat.title = c.value; }
       dressSeat(seat);
       seats.push(seat); startReplay(seat, seats.length - 1);
       closeSpotlight();

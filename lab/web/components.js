@@ -1225,7 +1225,7 @@
     const NOTE = oracle ? 'this swarm already has an Oracle: ' + oracle.name : null;
     const PRESETS = [['oracle', 'Oracle', 'supervises, briefs, verifies'], ['architect', 'Architect', 'specs, invariants, decisions'], ['creativity', 'Creativity', 'diverges before the pick'], ['executor', 'Executor', 'implements a scoped brief']];
     const presets = l => PRESETS.map(([role, label, say]) => ({ id: l.id + ':as:' + role, label, sub: role === l.role ? 'default · ' + (NOTE || say) : say, harness: l.harness, tile: l.tile, kind: 'Role', role, roleMark: role, launch: l, enterPicks: true, aliases: [role], children: () => placements(l, role) }));
-    const launchRows = LAUNCH.map(l => ({ ...l, ...(l.harness === 'claude' && NOTE ? { sub: l.sub + ' · ' + NOTE } : {}), enterPicks: true, children: () => l.harness === 'claude' ? presets(l) : placements(l), aliases: [l.harness] }));
+    const launchRows = LAUNCH.map(l => ({ ...l, ...(l.harness === 'claude' && NOTE ? { sub: l.sub + ' · ' + NOTE } : {}), enterPicks: true, children: () => placements(l), aliases: [l.harness] }));   // a Claude seat's role is a spawn parameter now (launch-defaults), Settings' default first
     // remote: SSH ▸ harness ▸ placement, Cloud ▸ harness ▸ placement. 'ssh codex' and 'cloud claude' type straight through.
     // SSH ▸ machine ▸ harness ▸ placement; Cloud ▸ region ▸ harness ▸ placement. Machines come from ~/.ssh/config in the
     // real app; here a demo list. 'ssh rig codex' types straight through all three levels.
@@ -1244,7 +1244,49 @@
     const retained = ctx.retained || [];
     const resumeRow = retained.length ? [{ id: 'resume', label: 'Resume', aliases: ['reopen', 'recent', 'closed'], sub: retained.length + ' closed seat' + (retained.length === 1 ? '' : 's') + ' with history', harness: 'archive', kind: 'Resume', tile: '#6B7190', section: 'Resume',
       children: () => retained.map(r => ({ id: 'resume:' + r.seat.key, label: r.seat.name, sub: 'closed ' + r.closedAt + ' · ' + (RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : 'no resume: a new shell, history replayed above it'), harness: r.seat.harness, tile: tileOf(r.seat.harness), kind: 'Seat', resume: { ...r, cmd: RESUME[r.seat.harness] ? RESUME[r.seat.harness](r.session) : null }, enterPicks: true })) }] : [];
-    return [...launchRows, ...remoteRows, ...resumeRow, goRow, graphRow, settingsRow];
+    // with a placement preset (⌘D, ⌘⇧D) the split is already chosen: placement sublists drop out, so the harness row is the launch
+    // row and → on it opens its defaults (launch-defaults: split → codex → ↵ defaults, → edit)
+    const kidsOf = r => typeof r.children === 'function' ? r.children() : (r.children || []);
+    const strip = r => { if (!r.children) return r; const k = kidsOf(r); if (k.length && k.every(x => x.kind === 'Placement')) { const { children, ...rest } = r; return rest; } return { ...r, children: () => k.map(strip) }; };
+    const out = [...launchRows, ...remoteRows, ...resumeRow, goRow, graphRow, settingsRow];
+    return ctx.preset ? out.map(strip) : out;
+  }
+
+  // Launch defaults (spec launch-defaults): a launch is the operator's manual sequence written down, transport → connect → cd →
+  // command, prefilled in layers (this launch > machine > swarm > harness > built-in). Each field names the layer it came from and
+  // has a home layer that ⌘S writes to. Transports are the extension point: ssh, mosh and et are built in; a plugin adds its own.
+  const TRANSPORTS = {
+    ssh: v => 'ssh -t ' + (v.port && v.port !== '22' ? '-p ' + v.port + ' ' : '') + (v.key ? '-i ' + v.key + ' ' : '') + v.target + " '" + v.inner + "'",
+    mosh: v => 'mosh ' + (v.port && v.port !== '22' ? "--ssh='ssh -p " + v.port + "' " : '') + v.target + " -- sh -c '" + v.inner + "'",
+    et: v => 'et ' + v.target + (v.port && v.port !== '22' ? ':' + v.port : '') + " -c '" + v.inner + "'",
+    cloud: v => 'bboxy450 cloud ' + v.target + " -- sh -c '" + v.inner + "'",
+  };
+  const HOME = { cwd: 'swarm', env: 'swarm', cmd: 'harness', args: 'harness', via: 'machine', target: 'machine', port: 'machine', key: 'machine', rcwd: 'machine' };
+  const ROLE_CHOICES = [['oracle', 'supervises, briefs, verifies'], ['architect', 'specs, invariants, decisions'], ['creativity', 'diverges before the pick'], ['executor', 'implements a scoped brief']];
+  function launchFields(it, path, swarm) {
+    const at = [...(path || []), it], l = it.launch || it, h = l.harness;
+    const where = it.where || (at.find(x => x.where) || {}).where || 'local', host = it.host || (at.find(x => x.host) || {}).host;
+    const hr = SET.harness[h] || {}, hd = hr.defaults || {}, sd = (swarm && swarm.defaults) || {}, md = (host && SET.machineDefaults[host]) || {};
+    const m = host && SET.machines.find(x => x[0] === host), sw = swarm ? 'swarm ' + swarm.name : 'built-in';
+    const f = (key, label, value, from, extra) => Object.assign({ key, label, value: value == null ? '' : String(value), from, home: HOME[key] }, extra || {});
+    const out = [];
+    // role: prefilled from Settings › Harnesses; Claude chooses one, Codex and other harnesses are executors (decision #262)
+    if (h !== 'zsh') out.push(h === 'claude' ? f('role', 'Role', it.role || hr.role, 'Settings', { choices: ROLE_CHOICES.map(([v, say]) => ({ value: v, label: v[0].toUpperCase() + v.slice(1), say })) }) : f('role', 'Role', it.role || hr.role || 'executor', 'Settings', { fixed: true }));
+    if (where !== 'local') {
+      out.push(f('via', 'Via', md.via || (where === 'cloud' ? 'cloud' : 'ssh'), md.via ? host : 'built-in', { options: where === 'cloud' ? ['cloud'] : ['ssh', 'mosh', 'et'] }));
+      out.push(f('target', 'Connect', md.target || (m ? m[1] : host), md.target ? 'last choice' : host, { choices: [...new Set([md.target || (m ? m[1] : host), ...(md.routes || [])])].map(v => ({ value: v, say: 'route' })) }));
+      if (where !== 'cloud') { out.push(f('port', 'Port', md.port || '22', md.port ? host : 'built-in')); out.push(f('key', 'Key', md.key || (m ? m[3] : ''), host)); }
+      out.push(f('rcwd', 'Directory', md.cwd || '~', md.cwd ? 'last choice' : 'built-in', { choices: [...new Set([md.cwd || '~', ...(md.recent || [])])].map(v => ({ value: v })) }));
+    } else out.push(f('cwd', 'Directory', sd.cwd || '~', sd.cwd ? 'last choice · ' + sw : 'built-in', { choices: [...new Set([sd.cwd || '~', ...((swarm && swarm.recent) || []), '~'])].map(v => ({ value: v })) }));
+    out.push(f('cmd', 'Command', hd.cmd || hr.command || h, h));
+    out.push(f('args', 'Arguments', hd.args || '', hd.args ? h : 'built-in'));
+    out.push(f('env', 'Environment', sd.env || '', sd.env ? sw : 'built-in', { hint: 'KEY=value …' }));
+    return out;
+  }
+  function composeLaunch(fields) {
+    const v = Object.fromEntries(fields.map(x => [x.key, x.value.trim()]));
+    v.inner = [v.cwd || v.rcwd ? 'cd ' + (v.cwd || v.rcwd) : '', [v.env, v.cmd, v.args].filter(Boolean).join(' ')].filter(Boolean).join(' && ');
+    return v.via ? (TRANSPORTS[v.via] || TRANSPORTS.ssh)(v) : v.inner;
   }
   // Text-field editing state (Input and the launcher query), deterministic so parity can capture it. Public inputs:
   // edit = { caret: index } | { select: [from, to] } | { caret: index, preedit: { text, caret } }; an edit object means focused.
@@ -1310,13 +1352,33 @@
     const dive = it => { stack = [...path(), it]; q = ''; input.value = ''; sel = 0; draw(); };
     // opts.path: ids to start inside (deep links: launcher.html?state=ssh-rig-harnesses)
     if (opts.path) { let level = items0; for (const id of opts.path) { const hit = level.find(x => x.id === id); if (!hit) break; stack.push(hit); level = kids(hit); } }
-    const climb = () => { if (!stack.length) return; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };
+    const climb = () => { if (!stack.length) return; if (stack[stack.length - 1].params) params = null; stack = stack.slice(0, -1); q = ''; input.value = ''; sel = 0; draw(); };
     // spawn cap (launcher_cap_notice): launch rows dim and refuse; Go to, Graph and Settings keep working
     const isNav = it => !!(it.seat || it.swarm || it.graphOpen || it.settingsOpen || it.section === 'Navigate' || it.section === 'Swarms' || it.kind === 'Navigate' || it.kind === 'Open');
     const capped = it => !!opts.cap && !isNav(it);
     const flashCap = () => { const b = list.querySelector('.capnote'); if (b) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); } };
     // capped: refuse anything that would launch (a leaf, or a parent whose Enter picks); → still dives into a parent
-    const pick = (it, ev) => { if (!it || it.down) return; if (capped(it) && (!it.children || it.enterPicks)) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
+    // Spawn parameters (spec launch-defaults): ↵ on a harness launches it as is; → opens its parameters, one row each, every row
+    // prefilled (role from Settings, the rest with the last choice). ↵ on any parameter launches with all of them; → or a click
+    // changes one: a list when it has choices (roles, recent directories, transports, routes; typing a new value and ↵ takes it),
+    // else typed in place. The last choices are remembered on launch by the page, at each parameter's home.
+    const launchRow = it => !!it && !it.children && !it.down && !isNav(it) && !it.resume && !it.opt && it.val === undefined && !!(it.harness || it.launch) && it.kind !== 'Remote';
+    let params = null, editing = null;
+    const mods = ev => ({ meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) });
+    const paramRows = () => params.fields.map(f => ({ id: 'opt:' + f.key, opt: f, label: f.label, sub: f.value || '—', kind: f.fixed ? 'fixed' : f.from }));
+    const openParams = it => { params = { it, base: path(), fields: (opts.fieldsFor || launchFields)(it, path(), opts.swarm) }; stack = [...path(), { id: it.id + ':params', label: it.label, params: true, children: paramRows }]; q = ''; input.value = ''; sel = 0; draw(); };
+    const editOpt = f => {
+      if (f.fixed) return;
+      const choices = f.choices || (f.options ? f.options.map(v => ({ value: v })) : null);
+      if (choices) return dive({ id: 'vals:' + f.key, label: f.label, valsOf: f, children: () => choices.map(c => ({ id: 'val:' + c.value, val: c.value, field: f, label: c.label || c.value, sub: [c.value === f.value ? 'current' : '', c.say || ''].filter(Boolean).join(' · ') })) });
+      editing = f; input.value = f.value; input.placeholder = f.label + ' · ↵ sets it · esc keeps the old value'; draw(); input.focus(); input.select();
+    };
+    const setVal = (f, v) => { f.value = v; f.from = 'this launch'; };
+    const launchWith = ev => { if (capped(params.it)) return flashCap(); const fs = params.fields; if (opts.onPick) opts.onPick(params.it, nameFor(seed), { ...mods(ev), overrides: Object.fromEntries(fs.map(x => [x.key, x.value])), command: composeLaunch(fs) }, params.base); };
+    const pick = (it, ev) => {
+      if (it && it.val !== undefined) { setVal(it.field, it.val); return climb(); }
+      if (it && it.opt) return launchWith(ev);
+      if (!it || it.down) return; if (capped(it) && (!it.children || it.enterPicks)) return flashCap(); if (it.children && !it.enterPicks) return dive(it); if (opts.onPick) opts.onPick(it, nameFor(seed), { meta: !!(ev && (ev.metaKey || ev.ctrlKey)), shift: !!(ev && ev.shiftKey), alt: !!(ev && ev.altKey) }, path()); };
     function draw() {
       list.innerHTML = ''; crumbs.innerHTML = '';
       for (const c of path()) crumbs.append(el('span', { class: 'crumb' }, c.label));
@@ -1327,27 +1389,34 @@
       let lastSec = null;
       items.forEach((it, i) => {
         if (it.section && it.section !== lastSec) { list.append(el('div', { class: 'sec' }, it.section)); lastSec = it.section; }
-        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : '') + (it.down ? ' down' : ''), onclick: e => pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
+        const o = el('div', { class: 'opt' + (i === sel ? ' sel' : '') + (it.children ? ' parent' : '') + (capped(it) ? ' capped' : '') + (it.down ? ' down' : ''), onclick: e => it.opt ? editOpt(it.opt) : pick(it, e), onpointerenter: () => { if (sel !== i) { sel = i; draw(); } } }, el('span', { class: 'tile', style: 'background:' + (it.tile || 'var(--surface-2)') }, harnessIcon(it.harness)));
         // plain text in every row; the only emphasis is the selection band (operator, Raycast reference)
         const label = el('span', { class: 'lbl' }, it.label);
         o.append(label, el('span', { class: 'sub' }, it.sub || ''), it.link ? el('span', { class: 'kind' }, linkDot(it.link)) : el('span', { class: 'kind' }, it.kind || it.hint || ''));
-        o.append(it.children ? el('span', { class: 'chev', title: '→ opens' }, '›') : el('span', { class: 'num' }, String(i + 1)));
+        o.append(it.children || (it.opt && !it.opt.fixed) ? el('span', { class: 'chev', title: it.opt ? '→ changes it' : '→ opens' }, '›') : el('span', { class: 'num' }, String(i + 1)));
         list.append(o);
       });
+      if (params && stack.length && stack[stack.length - 1].params) list.append(el('div', { class: 'cmdrow' }, el('span', { class: 'k' }, 'Runs'), el('code', { class: 'cmdline' }, composeLaunch(params.fields))));
+      drawFoot(params && stack.length && stack[stack.length - 1].params ? [['Launch', '↵'], ['Change', '→'], ['Back', '←']] : editing ? [['Set', '↵'], ['Keep', 'esc']] : null);
+    }
+    function drawFoot(over) {
       const nm = nameFor(seed);
       foot.innerHTML = '';
-      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), (() => { const pill = el('span', { class: 'pill' }); const acts = (typeof opts.actions === 'function' ? opts.actions(path()) : opts.actions) || [['Open', '↵'], ['Into', '→'], ['Back', '←'], ['Reroll', '⌘R']]; acts.forEach(([l, kb], i) => { if (i) pill.append(el('span', { class: 'sep' })); pill.append(el('span', {}, l), el('kbd', {}, kb)); }); return pill; })());
+      foot.append(el('span', { class: 'sw', style: 'background:' + seatColor({ key: nm }), title: 'seat colour' }), el('span', { class: 'nm' }, nm), el('button', { onclick: () => { seed++; draw(); }, title: 'reroll name' }, '↻'), (() => { const pill = el('span', { class: 'pill' }); const acts = over || (typeof opts.actions === 'function' ? opts.actions(path()) : opts.actions) || [['Open', '↵'], ['Into', '→'], ['Back', '←'], ['Reroll', '⌘R']]; acts.forEach(([l, kb], i) => { if (i) pill.append(el('span', { class: 'sep' })); pill.append(el('span', {}, l), el('kbd', {}, kb)); }); return pill; })());
     }
-    input.addEventListener('input', () => { q = input.value; sel = 0; draw(); });
+    input.addEventListener('input', () => { if (editing) return; q = input.value; sel = 0; draw(); });
     input.addEventListener('keydown', e => {
       const n = matches().length, cur = matches()[sel];
       if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % Math.max(n, 1); draw(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + n - 1) % Math.max(n, 1); draw(); }
-      else if (e.key === 'ArrowRight') { if (cur && cur.children) { e.preventDefault(); dive(cur); } }
+      else if (e.key === 'ArrowRight') { if (editing) return; if (cur && cur.children) { e.preventDefault(); dive(cur); } else if (cur && cur.opt) { e.preventDefault(); editOpt(cur.opt); } else if (launchRow(cur)) { e.preventDefault(); openParams(cur); } }
       else if (e.key === 'ArrowLeft') { if (!q && stack.length) { e.preventDefault(); climb(); } }
       else if (e.key === 'Backspace' && !q && stack.length) { e.preventDefault(); climb(); }
-      else if (e.key === 'Enter') { e.preventDefault(); pick(cur, e); }
-      else if (e.key === 'Escape') { if (stack.length) climb(); else if (opts.onClose) opts.onClose(); }
+      else if (e.key === 'Enter') { e.preventDefault(); const top = stack[stack.length - 1];
+        if (editing) { setVal(editing, input.value); editing = null; input.value = ''; input.placeholder = opts.placeholder || ''; draw(); }
+        else if (!cur && top && top.valsOf && q.trim()) { setVal(top.valsOf, q.trim()); climb(); }
+        else pick(cur, e); }
+      else if (e.key === 'Escape') { if (editing) { editing = null; input.value = ''; input.placeholder = opts.placeholder || ''; draw(); } else if (stack.length) climb(); else if (opts.onClose) opts.onClose(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'r') { e.preventDefault(); seed++; draw(); }
       else if (/^[1-9]$/.test(e.key) && !q) { e.preventDefault(); pick(matches()[+e.key - 1], e); }
       e.stopPropagation();
@@ -1521,9 +1590,11 @@
       architect: { prompt: 'You are the Architect. Design the system and write the specs; decide interfaces and invariants; never implement. Sign Name <ARCHITECT>.', send: 'all channels · all DMs', color: 'var(--role-architect)', mark: '♖', cls: 'oracle' },
     },
     // harnesses: built-ins carry command/tile/icon; custom ones run through the PTY adapter
+    // launch defaults per machine (launch-defaults §layers): transport, one route per network, port, key, remote directory
+    machineDefaults: { rig: { via: 'ssh', routes: ['feral@rig.local', 'feral@rig.tail'], cwd: '~/src/bboxy450-term' }, alpha: { via: 'mosh', routes: ['feral@alpha.tail'], cwd: '~/work' } },
     harness: {
       claude: { role: 'oracle', wake: 'socket', hooks: true, command: 'claude', tile: LT('claude'), icon: 'claude', stateFrom: 'osc7501' },
-      codex: { role: 'executor', wake: 'hook', hooks: true, command: 'codex', tile: LT('codex'), icon: 'codex', stateFrom: 'hooks' },
+      codex: { role: 'executor', wake: 'hook', hooks: true, command: 'codex', defaults: { args: '--sandbox workspace-write' }, tile: LT('codex'), icon: 'codex', stateFrom: 'hooks' },
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
     },
@@ -1863,5 +1934,5 @@
     return root;
   }
 
-  window.C = { poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { launchFields, composeLaunch, TRANSPORTS, poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

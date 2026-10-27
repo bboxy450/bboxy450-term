@@ -70,6 +70,9 @@ pub struct ClosedStrip { seat: SeatId, until: Instant, undo: UndoRecord }   // s
 pub struct UndoRecord  { tab: TabId, tab_index: usize, sibling: Option<SeatId>, side: Side, dir: Option<Axis>, ratio: Option<f32> }
 pub enum  Overlay   { Launcher(Launcher), Purge(PurgeModal) }          // launcher: showcase.js:157; purge: design system modules.purge_modal
 pub struct Launcher { swarm: SwarmId, preset: Option<Side /* Right | Bottom */>, anchor: Option<SeatId>, query: TextField, stack: Vec<RowId>, sel: usize, name_seed: u64 }
+// spawn parameters ([[launch-defaults]]): the open parameter level and the one being typed; rows are prefilled by the resolver
+pub struct SpawnParams { launch: RowId, fields: Vec<SpawnField>, editing: Option<usize> }
+pub struct SpawnField { key: FieldKey, value: String, from: Source /* Settings | LastChoice | BuiltIn | ThisLaunch */, choices: Vec<String>, fixed: bool }
 pub struct StreamDock { items: Vec<StreamItem> /* last 4 */, filter: Option<ShadowId> }   // showcase.js:570
 pub enum  StreamItem { Message { from, role: Option<RoleId>, foreign: bool, text, time, unread: bool, reply_to: Option<String> }, Presence { text, time } }   // components.js:409-423
 pub struct SettingsTab { section: Section, search: TextField, drafts: Drafts }   // components.js:456-636

@@ -127,6 +127,8 @@ Signal semantics: locate is the focus swell, only on click or keyboard focus (th
 **Rule:** ⌘D opens the launcher preset to "split right of <focused seat>", ⌘⇧D to "split below"; the placeholder names the placement, ↵ launches the chosen harness there, ⌥↵ opens a tab instead, and the pill shows the preset actions. ⌘T remains "new tab", with ⌘↵ / ⌘⇧↵ as the split variants. **Why:** iTerm muscle memory. **Where:** `openSpotlight(sp, preset)` in `showcase.js`, `actions` in `picker()`.
 
 ### ⌘T also goes places
+**Rule (spawn parameters):** ↵ on a launch row launches as is; → shows its parameters (role, via, connect, directory, command, arguments, environment), each prefilled, and the command line it runs. **Why:** the operator's manual "new shell, ssh, cd, codex" without the typing, nothing hidden. **Where:** [[launch-defaults]]; `components.js` `launchFields`, `composeLaunch`.
+
 **Rule:** the ⌘T launcher lists, under "Go to", every seat (name, swarm · title, harness tile) and every swarm (name, seat count, swarm colour tile). Typing filters launchables and destinations together; ↵ on a seat focuses it with the locate signal, ↵ on a swarm opens it and jumps to its first seat. ⌘D / ⌘⇧D presets stay launch-only. **Where:** `openSpotlight` items in `showcase.js`; `matches()` in `picker()` matches label prefix, any word, or the subtitle.
 
 ### Mute is a mark on the row and a toggle on the strip
