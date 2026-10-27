@@ -19,7 +19,7 @@ macros = ["dep:bbt-yarn-macros"]
 tokio = ["dep:tokio", "dep:tokio-util"]
 
 [dependencies]
-bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.0", path = "../bbt-yarn-macros", optional = true }
+bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.1", path = "../bbt-yarn-macros", optional = true }
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
 tokio = { version = "=1.54.1", default-features = false, features = ["macros", "rt", "rt-multi-thread", "sync", "time"], optional = true }

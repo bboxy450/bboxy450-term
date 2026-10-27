@@ -2,7 +2,9 @@
 # Brand invariant (.bboxy/invariants/bboxy450-prefix.md, decision #52): every
 # workspace crate is either named bboxy450-* or has a row in the licensing map
 # (.bboxy/specs/licensing.md §1) whose "Publishes as" column names a bboxy450-*
-# crate or says internal. A new crate adds its row in the same commit.
+# crate or says internal. A new crate adds its row in the same commit. An internal
+# crate must also set publish = false: anything that reaches crates.io is bboxy450-*
+# (bboxy-firehose 0.1.0 shipped under the internal exemption).
 set -eu
 cd "$(dirname "$0")/.."
 cargo metadata --no-deps --format-version 1 | python3 -I -c '
@@ -21,7 +23,11 @@ for p in json.load(sys.stdin)["packages"]:
     pub = rows.get(n)
     if pub is None:
         print(n + ": no row in licensing.md §1 (scripts/brand.sh)"); bad += 1; continue
-    if "internal" in pub.lower() or any(t.startswith("bboxy450-") for t in re.findall(r"`([^`]+)`", pub)):
+    if "internal" in pub.lower() and p.get("publish") == []:
+        continue
+    if "internal" in pub.lower():
+        print(n + ": internal but publishable; rename to bboxy450-* or set publish = false (scripts/brand.sh)"); bad += 1; continue
+    if any(t.startswith("bboxy450-") for t in re.findall(r"`([^`]+)`", pub)):
         continue
     print(n + ": publishes as " + pub + ", not bboxy450-* (scripts/brand.sh)"); bad += 1
 print("brand: " + ("VIOLATED" if bad else "held"))

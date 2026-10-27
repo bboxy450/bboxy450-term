@@ -10,14 +10,14 @@ rust-version.workspace = true
 description = "Local terminal sessions, durable messaging and knowledge-provider coordination"
 
 [dependencies]
-bboxy450-keychain = { package = "bboxy450-keychain", version = "0.1.0", path = "../bboxy450-keychain" }
+bboxy450-keychain = { package = "bboxy450-keychain", version = "0.1.1", path = "../bboxy450-keychain" }
 bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
-bbt-plugin = { package = "bboxy450-plugin", version = "0.1.0", path = "../bbt-plugin" }
-bbt-doc = { package = "bboxy450-doc", version = "0.1.0", path = "../bbt-doc" }
-bbt-proto = { package = "bboxy450-proto", version = "0.1.0", path = "../bbt-proto" }
-bbt-core = { package = "bboxy450-term-core", version = "0.1.0", path = "../bbt-core" }
-bbt-rt = { package = "bboxy450-rt", version = "0.1.0", path = "../bbt-rt" }
-bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.0", path = "../bbt-supervisor" }
+bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }
+bbt-doc = { package = "bboxy450-doc", version = "0.1.1", path = "../bbt-doc" }
+bbt-proto = { package = "bboxy450-proto", version = "0.1.1", path = "../bbt-proto" }
+bbt-core = { package = "bboxy450-term-core", version = "0.1.1", path = "../bbt-core" }
+bbt-rt = { package = "bboxy450-rt", version = "0.1.1", path = "../bbt-rt" }
+bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.1", path = "../bbt-supervisor" }
 base64 = "0.22"
 ed25519-dalek = "3.0"
 getrandom = "0.3"

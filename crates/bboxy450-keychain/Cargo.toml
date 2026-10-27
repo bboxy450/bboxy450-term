@@ -10,4 +10,4 @@ rust-version.workspace = true
 description = "Explicit identity custody backend selection"
 
 [dependencies]
-bboxy450-keychain-file = { package = "bboxy450-keychain-file", version = "0.1.0", path = "../bboxy450-keychain-file" }
+bboxy450-keychain-file = { package = "bboxy450-keychain-file", version = "0.1.1", path = "../bboxy450-keychain-file" }

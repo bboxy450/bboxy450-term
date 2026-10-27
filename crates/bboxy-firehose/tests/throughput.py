@@ -6,7 +6,7 @@ import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[3]
-BINARY = ROOT / "target/release/bboxy-firehose"
+BINARY = ROOT / "target/release/bboxy450-term-firehose"
 LOOPS = 200_000_000
 cycle = subprocess.check_output([str(BINARY), "--seed", "42", "--rate", "max"])
 with open("/dev/null", "wb", buffering=0) as sink:

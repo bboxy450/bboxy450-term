@@ -10,7 +10,7 @@ rust-version.workspace = true
 description = "bboxy450-term: token-resolved UI styles and components"
 
 [dependencies]
-bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.0", path = "../bbt-ui-model" }
+bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.1", path = "../bbt-ui-model" }
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

@@ -15,7 +15,7 @@ runtime-assertions = ["dep:bbt-rt"]
 
 [dependencies]
 bbt-core.workspace = true
-bbt-rt = { package = "bboxy450-rt", version = "0.1.0", path = "../bbt-rt", optional = true }
+bbt-rt = { package = "bboxy450-rt", version = "0.1.1", path = "../bbt-rt", optional = true }
 base64 = "0.22"
 futures-util = { version = "0.3", features = ["sink"] }
 libc = "0.2"

@@ -10,7 +10,7 @@ use bboxy_firehose::options::{Options, Rate};
 use bboxy_firehose::{SCENES, ordered_scenes, scene_bytes};
 
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_bboxy-firehose"))
+    Command::new(env!("CARGO_BIN_EXE_bboxy450-term-firehose"))
         .args(args)
         .output()
         .unwrap()
@@ -103,7 +103,7 @@ fn rates_have_explicit_units_and_cumulative_deadlines() {
 // keeps: spec 2026-10-22-t-terminal-fidelity §T1
 #[test]
 fn playback_needs_no_corpus_files_in_its_working_directory() {
-    let output = Command::new(env!("CARGO_BIN_EXE_bboxy-firehose"))
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term-firehose"))
         .args(["--scene", "codex"])
         .current_dir(std::env::temp_dir())
         .output()
@@ -118,7 +118,7 @@ fn playback_needs_no_corpus_files_in_its_working_directory() {
 fn interrupting_slow_playback_restores_modes_without_waiting_for_the_rate() {
     use std::io::Read;
     use std::process::Stdio;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy-firehose"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy450-term-firehose"))
         .args(["--scene", "alternate", "--rate", "1B/s", "--loop"])
         .stdout(Stdio::piped())
         .spawn()
@@ -139,7 +139,7 @@ fn interrupting_slow_playback_restores_modes_without_waiting_for_the_rate() {
 fn a_closed_downstream_pipe_stops_an_infinite_flood_cleanly() {
     use std::io::Read;
     use std::process::Stdio;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy-firehose"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy450-term-firehose"))
         .args(["--loop"])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use bboxy_firehose::options::{Options, Rate};
 use bboxy_firehose::{COLS, ROWS, Rng, SCENES, expected_hash, ordered_scenes, scene_bytes};
 
-const HELP: &str = "bboxy-firehose — embedded synthetic terminal output
+const HELP: &str = "bboxy450-term-firehose — embedded synthetic terminal output
   --list                  List the embedded scenes
   --scene NAME            Play one scene; otherwise shuffle all scenes
   --seed N                Seed for scene order and real pacing (default 1)
@@ -37,14 +37,14 @@ fn main() {
     let result = match Options::parse(std::env::args().skip(1)) {
         Ok(options) => run(options),
         Err(error) => {
-            eprintln!("bboxy-firehose: {error}");
+            eprintln!("bboxy450-term-firehose: {error}");
             std::process::exit(2);
         }
     };
     if let Err(error) = result {
         // A downstream pipe may deliberately stop consuming an infinite stream.
         if error.kind() != io::ErrorKind::BrokenPipe {
-            eprintln!("bboxy-firehose: {error}");
+            eprintln!("bboxy450-term-firehose: {error}");
             std::process::exit(1);
         }
     }

@@ -1,6 +1,6 @@
 [package]
 readme = "README.md"
-name = "bboxy-firehose"
+name = "bboxy450-term-firehose"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,13 @@ rust-version.workspace = true
 description = "Embedded synthetic terminal scenes for PTY throughput and fidelity checks"
 # Reference screenshots stay in the repository; crates.io caps uploads at 10 MiB.
 exclude = ["reference/"]
+
+[lib]
+name = "bboxy_firehose"
+
+[[bin]]
+name = "bboxy450-term-firehose"
+path = "src/main.rs"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

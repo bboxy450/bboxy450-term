@@ -20,8 +20,10 @@ updated: 2026-10-23T23:56:02Z
 published crate (`bboxy450-rt`, `bboxy450-ui`, `bboxy450-frontmatter`, …), the
 app binary, the GitHub organisation `bboxy450/`, the channels `#bboxy450-*`,
 plugin binaries `bboxy450-term-<system>-<provider>` ([[plugins]]), and every
-cross-OS kit ([[desktop-notifications]]). Internal crate names (`bbt-*`) are
-allowed only while a crate is internal; its row in [[licensing]] §1 names the
+cross-OS kit ([[desktop-notifications]]). A crate for one app is named
+`bboxy450-<app>-<package>` and a crate any app can use `bboxy450-<package>`
+([[d362-crate-names-app-then-package]]). Internal crate names (`bbt-*`) are
+allowed only while a crate is internal and sets `publish = false`; its row in [[licensing]] §1 names the
 `bboxy450-*` it publishes as, or says internal (operator, 2026-10-23: "everything
 is branded as bboxy450- prefix, everything!").
 

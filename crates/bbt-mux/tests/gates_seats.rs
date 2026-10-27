@@ -134,10 +134,10 @@ fn firehose() -> PathBuf {
         .unwrap()
         .parent()
         .unwrap()
-        .join("bboxy-firehose");
+        .join("bboxy450-term-firehose");
     assert!(
         path.exists(),
-        "{} missing: cargo build --release -p bboxy-firehose",
+        "{} missing: cargo build --release -p bboxy450-term-firehose",
         path.display()
     );
     path

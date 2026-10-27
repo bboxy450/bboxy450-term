@@ -10,8 +10,8 @@ rust-version.workspace = true
 description = "Local PTY supervisor, fenced clients and capture rings without Tokio"
 
 [dependencies]
-bbt-core = { package = "bboxy450-term-core", version = "0.1.0", path = "../bbt-core" }
-bbt-rt = { package = "bboxy450-rt", version = "0.1.0", path = "../bbt-rt", default-features = false }
+bbt-core = { package = "bboxy450-term-core", version = "0.1.1", path = "../bbt-core" }
+bbt-rt = { package = "bboxy450-rt", version = "0.1.1", path = "../bbt-rt", default-features = false }
 getrandom = "0.3"
 libc = "0.2"
 mio = { version = "1", features = ["os-poll", "os-ext", "net"] }

@@ -14,7 +14,7 @@ All 24 workspace crates are released from the same signed monorepo commit. Crate
 8. `bboxy450-rt` — `crates/bbt-rt`
 9. `bboxy450-ui-core` — `crates/bbt-ui-model`
 10. `bboxy450-yarn-macros` — `crates/bbt-yarn-macros`
-11. `bboxy-firehose` — `crates/bboxy-firehose`
+11. `bboxy450-term-firehose` — `crates/bboxy-firehose`
 12. `bboxy450-desktop-notifications` — `crates/bboxy450-desktop-notifications`
 13. `bboxy450-harness-wake-up` — `crates/bboxy450-harness-wake-up`
 14. `bboxy450-keychain-file` — `crates/bboxy450-keychain-file`

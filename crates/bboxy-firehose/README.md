@@ -1,4 +1,4 @@
-# bboxy-firehose
+# bboxy450-term-firehose
 
 Twelve embedded terminal scenes for PTY, parser and renderer checks. Visible content
 is synthetic. The original Claude OSC 7501 status-only captures are embedded
@@ -6,14 +6,14 @@ unchanged; all ten original Codex capture files are empty. The Codex protocol
 scene labels that gap and emits explicitly synthetic status sequences.
 
 ```sh
-cargo build --release -p bboxy-firehose
-target/release/bboxy-firehose --list
-target/release/bboxy-firehose --scene unicode --seed 42
-target/release/bboxy-firehose --pace real --seed 42 --loop
-target/release/bboxy-firehose --rate 8MiB/s --loop
-target/release/bboxy-firehose --rate 30lines/s --loop
-target/release/bboxy-firehose --rate max --loop 10000000 > /dev/null
-target/release/bboxy-firehose --check --scene palette --seed 42
+cargo build --release -p bboxy450-term-firehose
+target/release/bboxy450-term-firehose --list
+target/release/bboxy450-term-firehose --scene unicode --seed 42
+target/release/bboxy450-term-firehose --pace real --seed 42 --loop
+target/release/bboxy450-term-firehose --rate 8MiB/s --loop
+target/release/bboxy450-term-firehose --rate 30lines/s --loop
+target/release/bboxy450-term-firehose --rate max --loop 10000000 > /dev/null
+target/release/bboxy450-term-firehose --check --scene palette --seed 42
 ```
 
 Playback defaults to one flood-speed pass over all twelve scenes in seeded order.
@@ -78,9 +78,9 @@ are used. These are regression expectations frozen from the current parser;
 independent iTerm2/Ghostty image reads remain the visual gate.
 
 ```sh
-cargo test -p bboxy-firehose
-cargo fmt --check -p bboxy-firehose
-cargo clippy -p bboxy-firehose --all-targets -- -D warnings
+cargo test -p bboxy450-term-firehose
+cargo fmt --check -p bboxy450-term-firehose
+cargo clippy -p bboxy450-term-firehose --all-targets -- -D warnings
 python3 crates/bboxy-firehose/tests/throughput.py
 node crates/bboxy-firehose/reference/capture.mjs --strict
 ```

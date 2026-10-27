@@ -1,7 +1,7 @@
 # Local terminal reference
 
 ```sh
-cargo build --release -p bboxy-firehose
+cargo build --release -p bboxy450-term-firehose
 node crates/bboxy-firehose/reference/capture.mjs --strict
 ```
 
@@ -81,7 +81,7 @@ measurements remain outside this headless checkpoint.
 From the repository root, build a debug app and the release fixture, then:
 
     cargo build -p bboxy450-term --locked
-    cargo build --release -p bboxy-firehose --locked
+    cargo build --release -p bboxy450-term-firehose --locked
     python3 crates/bboxy-firehose/reference/live_capture.py --out target/terminal-live
     python3 crates/bboxy-firehose/reference/live_gallery.py \
       --live target/terminal-live --headless crates/bboxy-firehose/reference/gallery/native \

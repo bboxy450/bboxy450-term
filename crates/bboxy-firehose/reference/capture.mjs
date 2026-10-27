@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../../..');
-const binary = path.join(root, 'target/release/bboxy-firehose');
+const binary = path.join(root, 'target/release/bboxy450-term-firehose');
 const out = process.env.TERMINAL_OUT ? path.resolve(process.env.TERMINAL_OUT) : path.join(here, 'evidence');
 const fixedGrid = process.env.TERMINAL_GRID === '1';
 const chrome = process.env.CHROME || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
@@ -22,7 +22,7 @@ for (const file of ['xterm.js', 'xterm.css', 'LICENSE', 'addon-unicode11.js', 'u
 }
 const sources = JSON.parse(await fs.readFile(path.join(here, 'vendor/provenance.json'), 'utf8'));
 if (JSON.stringify(vendor) !== JSON.stringify(sources.sha256)) throw Error('vendored xterm digest mismatch');
-const core = JSON.parse(execFileSync('cargo', ['run', '--quiet', '-p', 'bboxy-firehose', '--example', 'screen_dump'], {cwd: root, maxBuffer: 8 * 1024 * 1024}));
+const core = JSON.parse(execFileSync('cargo', ['run', '--quiet', '-p', 'bboxy450-term-firehose', '--example', 'screen_dump'], {cwd: root, maxBuffer: 8 * 1024 * 1024}));
 const names = execFileSync(binary, ['--list'], {encoding: 'utf8'}).trim().split('\n').map(line => line.split('\t')[0]);
 await fs.mkdir(out, {recursive: true});
 const profile = await fs.mkdtemp(path.join(here, '.chrome-'));

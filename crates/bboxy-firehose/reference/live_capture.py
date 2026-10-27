@@ -135,7 +135,7 @@ def capture(args, scene, theme):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', type=Path, default=ROOT / 'target/debug/bboxy450-term')
-    parser.add_argument('--firehose', type=Path, default=ROOT / 'target/release/bboxy-firehose')
+    parser.add_argument('--firehose', type=Path, default=ROOT / 'target/release/bboxy450-term-firehose')
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--scene', action='append')
     parser.add_argument('--theme', choices=['dark', 'light', 'both'], default='both')
