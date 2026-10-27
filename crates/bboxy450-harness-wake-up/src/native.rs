@@ -494,6 +494,13 @@ pub async fn codex_proxy(
     program: &str,
 ) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
+    // Match Codex's remote transport, including large plugin/skill catalogs.
+    // Tungstenite's default 16 MiB frame cap otherwise causes a reconnect loop.
+    let transport_config = || {
+        WebSocketConfig::default()
+            .max_message_size(Some(128 << 20))
+            .max_frame_size(Some(128 << 20))
+    };
     fn overlay(into: &mut Value, from: Value) {
         if let (Value::Object(existing), Value::Object(next)) = (&mut *into, &from) {
             for (key, value) in next {
@@ -512,7 +519,7 @@ pub async fn codex_proxy(
         let (stream, _) = listener.accept().await?;
         let accepted = tokio::time::timeout(
             Duration::from_secs(5),
-            tokio_tungstenite::accept_async(stream),
+            tokio_tungstenite::accept_async_with_config(stream, Some(transport_config())),
         )
         .await;
         let Ok(Ok(mut client)) = accepted else {
@@ -521,7 +528,12 @@ pub async fn codex_proxy(
         super::launch::ensure_codex_daemon(backend, program)?;
         own_socket(backend)?;
         let stream = UnixStream::connect(backend).await?;
-        let (mut server, _) = tokio_tungstenite::client_async("ws://localhost/", stream).await?;
+        let (mut server, _) = tokio_tungstenite::client_async_with_config(
+            "ws://localhost/",
+            stream,
+            Some(transport_config()),
+        )
+        .await?;
         let mut pending: Option<(Value, Option<String>)> = None;
         let mut configured = false;
         let mut internal: Option<Value> = None;
@@ -529,9 +541,9 @@ pub async fn codex_proxy(
             tokio::select! {
                 frame = client.next() => {
                     let Some(Ok(mut frame)) = frame else { break; };
-                    if let Message::Text(text) = &frame
+                    if !configured && pending.is_none()
+                        && let Message::Text(text) = &frame
                         && let Ok(mut call) = serde_json::from_str::<Value>(text)
-                        && !configured && pending.is_none()
                         && matches!(call["method"].as_str(), Some("thread/start" | "thread/resume"))
                     {
                         let expected = call["params"]["threadId"].as_str().map(str::to_owned);
@@ -550,7 +562,10 @@ pub async fn codex_proxy(
                 }
                 frame = server.next() => {
                     let Some(Ok(frame)) = frame else { break; };
-                    if let Message::Text(text) = &frame
+                    // Unrelated catalog responses can be tens of MiB. Relay
+                    // them directly instead of allocating a second JSON tree.
+                    if (pending.is_some() || internal.is_some())
+                        && let Message::Text(text) = &frame
                         && let Ok(response) = serde_json::from_str::<Value>(text)
                     {
                         if internal.as_ref().is_some_and(|id| response.get("id") == Some(id)) {

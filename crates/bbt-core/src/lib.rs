@@ -200,6 +200,7 @@ impl Term {
     /// Clone model and parser state without live callbacks or queued output effects.
     pub fn checkpoint(&self) -> Checkpoint {
         let mut model = self.model.clone();
+        model.compact_checkpoint();
         model.replace_event_proxy(Events::default());
         Checkpoint {
             model,

@@ -432,6 +432,12 @@ impl<T> Term<T> {
         self.event_proxy = event_proxy;
     }
 
+    /// Exclude allocation caches from durable state, preserving both screens and history.
+    pub(crate) fn compact_checkpoint(&mut self) {
+        self.grid.truncate();
+        self.inactive_grid.truncate();
+    }
+
     /// Keep both screens viewport-only, including an inactive primary screen.
     pub(crate) fn viewport_only(&mut self) {
         self.config.scrolling_history = 0;

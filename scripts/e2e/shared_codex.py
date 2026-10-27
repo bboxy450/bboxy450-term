@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import signal
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -51,6 +52,7 @@ def objects(value):
 def main():
     binary = Path(sys.argv[1]).resolve()
     cold = "--cold" in sys.argv[2:]
+    render_check = "--render-check" in sys.argv[2:]
     codex = shutil.which("codex")
     assert binary.is_file() and codex, "build the app and install Codex first"
     root = Path(tempfile.mkdtemp(prefix="bbt-shared-codex-", dir="/tmp")).resolve()
@@ -219,6 +221,64 @@ def main():
         assert all(threads) and len(set(threads)) == 2, rows
         wait(lambda: seats(), lambda rows: all(rows[seat]["state"]["grade"] == "reported"
                                               for seat in (a, b)), "shared native binding")
+        def captured_output(seat):
+            chunks = []
+            for path in sorted((run / ("seat-" + seat) / "ring-1").glob("data-*.log")):
+                data, offset = path.read_bytes(), 0
+                while offset + 56 <= len(data) and data[offset:offset + 4] == b"BBR1":
+                    kind, length = struct.unpack_from("<HI", data, offset + 6)
+                    if offset + 56 + length > len(data):
+                        break
+                    if kind == 1:
+                        chunks.append(data[offset + 56:offset + 56 + length])
+                    offset += 56 + length
+            return b"".join(chunks)
+        if render_check:
+            # Let the final first-turn presentation settle before measuring idle.
+            time.sleep(1)
+            baseline = {seat: len(captured_output(seat)) for seat in (a, b)}
+            time.sleep(5)
+            observations = {}
+            for seat in (a, b):
+                output = captured_output(seat)[baseline[seat]:]
+                observations[seat] = dict(reconnects=output.count(b"Reconnecting to server"),
+                                          clears=output.count(b"\x1b[1;1H\x1b[J"))
+            (root / "render-evidence.json").write_text(json.dumps(observations, indent=2) + "\n")
+            print("Rendering observations: " + json.dumps(observations), flush=True)
+            assert all(row["reconnects"] == 0 and row["clears"] == 0
+                       for row in observations.values()), observations
+            for size in ("159x58", "159x59", "159x27", "159x58"):
+                ctl("app", "resize", size)
+            before = seats()
+            owner = run / "logic.owner.json"
+            ownership = json.loads(owner.read_text())
+            assert Path(ownership["run"]).resolve() == run.resolve()
+            assert Path(ownership["account"]).resolve() == (root / "account").resolve()
+            logic_pid = ownership["process"]["pid"]
+            fingerprint = subprocess.check_output(
+                ["/bin/ps", "-ww", "-p", str(logic_pid), "-o", "lstart=,args="], text=True)
+            parent = int(subprocess.check_output(
+                ["/bin/ps", "-p", str(logic_pid), "-o", "ppid="], text=True))
+            assert str(binary) in fingerprint and parent == app.pid, \
+                "fault target is not this fixture's logic"
+            (root / "owned-logic-fault.json").write_text(json.dumps(
+                dict(pid=logic_pid, fingerprint=fingerprint)) + "\n")
+            assert json.loads(owner.read_text()) == ownership
+            assert subprocess.check_output(
+                ["/bin/ps", "-ww", "-p", str(logic_pid), "-o", "lstart=,args="], text=True) == fingerprint
+            os.kill(logic_pid, signal.SIGKILL)
+            def recovered():
+                try:
+                    pid = json.loads(owner.read_text())["process"]["pid"]
+                    status = ctl("app", "status", check=False)
+                    return pid != logic_pid and status.get("data", {}).get("backend_ready") is True
+                except (OSError, ValueError):
+                    return False
+            wait(recovered, bool, "logic recovers resized checkpoints")
+            after = seats()
+            for seat in (a, b):
+                assert before[seat]["state"]["process"] == after[seat]["state"]["process"]
+                assert before[seat]["record"]["generation"] == after[seat]["record"]["generation"]
         sent = ctl("message", "send", a, "WAKE_ONLY_A")
         delivered(sent, a)
         wait(lambda: screen(a), lambda text: "WAKE_ACK_A" in text, "native shared-daemon wake")

@@ -33,6 +33,8 @@ help:
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-harness-native         Real Codex shared daemon, local model, warm and cold startup' \
+	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
+	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
@@ -203,6 +205,17 @@ check-harness-startup:
 test-harness-native: build
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --cold
+
+.PHONY: test-codex-rendering
+test-codex-rendering: build
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --render-check
+
+.PHONY: test-checkpoint-resize
+test-checkpoint-resize:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
 
 .PHONY: preview-launcher
 preview-launcher:
