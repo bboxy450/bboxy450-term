@@ -9,6 +9,7 @@ INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app
 DIST_DIR ?= $(TARGET_DIR)/dist
+RELEASE_REPO := bboxy450/bboxy450-term-releases
 SIGNING_IDENTITY := 3943AF130A015B36824B7FBC86AA672E7B25F3C4
 GPG_KEY := 9B07E849480C68328CA20684844ECC0587DE7AB0
 REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "UQB3368A84"
@@ -136,8 +137,9 @@ publish-release: release
 	tag='v$(APP_VERSION)'; if git rev-parse -q --verify "refs/tags/$$tag" >/dev/null; then \
 	  test "$$(git rev-list -1 "$$tag")" = "$$(git rev-parse HEAD)"; git verify-tag "$$tag"; \
 	else git tag -s "$$tag" -m '$(APP) $(APP_VERSION)'; fi; \
-	git push origin HEAD:main --follow-tags; \
-	gh release create "$$tag" '$(ARCHIVE)' '$(ARCHIVE).sha256' '$(ARCHIVE).asc' --title '$(APP) $(APP_VERSION)' --generate-notes
+	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main --follow-tags; \
+	GIT_TERMINAL_PROMPT=0 git push 'https://github.com/$(RELEASE_REPO).git' "refs/tags/$$tag:refs/tags/$$tag"; \
+	gh release create "$$tag" --repo '$(RELEASE_REPO)' '$(ARCHIVE)' '$(ARCHIVE).sha256' '$(ARCHIVE).asc' --title '$(APP) $(APP_VERSION)' --notes "Source: https://github.com/bboxy450/bboxy450-term/commit/$$(git rev-parse HEAD)"
 
 push:
 	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
