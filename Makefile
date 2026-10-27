@@ -39,6 +39,7 @@ help:
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make smoke-installed             Private smoke of the installed signed app' \
@@ -274,3 +275,20 @@ test-navigation:
 check-navigation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-oracle-control test-oracle-ui check-oracle-control format-oracle-control
+test-oracle-control:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto -p bboxy450-mux --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_oracle -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	$(MAKE) test-oracle-ui
+
+test-oracle-ui:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp -- --ignored --nocapture
+
+check-oracle-control:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+format-oracle-control:
+	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/logic.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/src/mcp/bridge.rs crates/bbt-mux/src/window_journal.rs crates/bbt-proto/src/registry.rs crates/bboxy450-term/src/model.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/live.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/tests/swarm_workdir.rs

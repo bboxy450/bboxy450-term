@@ -758,3 +758,168 @@ fn capture_navigation(fixture: &Fixture, name: &str) {
         .unwrap();
     }
 }
+
+// keeps: spec mcp-control-plane
+#[test]
+#[ignore = "private unattended seat-MCP/GUI/PTY boundary; make test-oracle-control"]
+fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
+    use bbt_mux::mcp::bridge::{Bridge, Config};
+    use serde_json::json;
+    let mut fixture = Fixture::new();
+    // This fake harness receives exactly the normal per-seat launch admission.
+    // It exports that admission only into this disposable fixture's HOME.
+    fs::write(fixture.root.join("bin/claude"),
+        "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '%s' \"$PWD\" > \"$HOME/$BBOXY_SEAT_ID.cwd\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
+    let expect_cwd = |fixture: &Fixture, seat: &str, expected: &Path| {
+        fixture.ctl(&["seat", "wait", seat, "--text", "CWD:", "--timeout", "10000"]);
+        assert_eq!(
+            fs::read_to_string(fixture.root.join(format!("home/{seat}.cwd"))).unwrap(),
+            expected.to_str().unwrap()
+        );
+    };
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let swarm = initial["regions"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .find_map(|k| k.strip_prefix("swarm:"))
+        .unwrap()
+        .to_owned();
+    let oracle = fixture.spawn("claude", &swarm, None);
+    expect_cwd(&fixture, &oracle, &fixture.root.join("repository"));
+    let admission =
+        fs::read_to_string(fixture.root.join(format!("home/{oracle}.admission"))).unwrap();
+    let admission: std::collections::BTreeMap<_, _> = admission
+        .lines()
+        .filter_map(|l| l.split_once('='))
+        .collect();
+    let cap = admission["BBOXY_CAPABILITY"];
+    let capability =
+        std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
+    let mut bridge = Bridge::new(Config {
+        socket: admission["BBOXY_SOCK"].into(),
+        seat: oracle.parse().unwrap(),
+        generation: 1,
+        capability,
+    });
+    let rpc = |bridge: &mut Bridge, method: &str, params: Value| {
+        bridge
+            .handle(
+                &serde_json::to_vec(
+                    &json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+    };
+    let initialized = rpc(
+        &mut bridge,
+        "initialize",
+        json!({"protocolVersion":"2025-11-25","clientInfo":{"name":"oracle-fixture","version":"1"},"capabilities":{}}),
+    );
+    assert!(initialized.get("error").is_none(), "{initialized}");
+    let call = |bridge: &mut Bridge, tool: &str, args: Value| {
+        let reply = rpc(bridge, "tools/call", json!({"name":tool,"arguments":args}));
+        assert!(reply.get("error").is_none(), "{reply}");
+        assert_eq!(reply["result"]["isError"], false, "{reply}");
+        reply["result"]["structuredContent"].clone()
+    };
+    let tab = fixture.ctl(&["ui", "layout"])["tab"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let split = |side: &str| json!({"swarm_id":swarm,"approved_profile":"claude","cwd":fixture.root.join("project with spaces"),"seat_id":oracle,"expected_process_generation":"1","tab_id":tab,"side":side,"role":"architect"});
+    let right = call(
+        &mut bridge,
+        "ctl",
+        json!({"command":"seat_split","arguments":split("right")}),
+    );
+    let right = right["seat_id"].as_str().unwrap().to_owned();
+    expect_cwd(&fixture, &right, &fixture.root.join("project with spaces"));
+    let frame = call(
+        &mut bridge,
+        "seat_focus",
+        json!({"seat_id":right,"expected_process_generation":"1"}),
+    );
+    assert!(frame["frame"]["frame_seq"].as_u64().unwrap() > 0);
+    let layout = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(layout["focused"], right);
+    let panes = layout["panes"].as_array().unwrap();
+    assert_eq!(panes.len(), 2, "{layout}");
+    assert_eq!(panes[0]["rect"][1], panes[1]["rect"][1]);
+    let before = fixture.ctl(&["seat", "ls"]);
+    let owners = fixture.owners();
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let below = call(&mut bridge, "seat_split", split("bottom"));
+    let below = below["seat_id"].as_str().unwrap().to_owned();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    expect_cwd(&fixture, &below, &fixture.root.join("project with spaces"));
+    call(
+        &mut bridge,
+        "ctl",
+        json!({"command":"seat_focus","arguments":{"seat_id":below,"expected_process_generation":"1"}}),
+    );
+    let layout = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(layout["tab"], tab);
+    assert_eq!(layout["panes"].as_array().unwrap().len(), 3, "{layout}");
+    let after = fixture.ctl(&["seat", "ls"]);
+    for old in before.as_array().unwrap() {
+        let current = after
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["record"]["id"] == old["record"]["id"])
+            .unwrap();
+        assert_eq!(current["record"]["generation"], old["record"]["generation"]);
+        assert_eq!(current["state"]["process"], old["state"]["process"]);
+    }
+    let record = after
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == below)
+        .unwrap();
+    assert_eq!(record["record"]["role"]["name"], "architect");
+    // Simulate an installed older control service using only this private
+    // fixture's owner record. The next ordinary UI attach upgrades logic,
+    // preserving the supervisor and every harness PID/generation.
+    let old_owners = fixture.owners();
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let owner_path = fixture.root.join("run/logic.owner.json");
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    owner["ready"]
+        .as_object_mut()
+        .unwrap()
+        .remove("mcp_control_version");
+    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    fixture.start();
+    let upgraded = fixture.owners();
+    assert_eq!(upgraded[0], old_owners[0]);
+    assert_ne!(upgraded[1], old_owners[1]);
+    let upgraded_seats = fixture.ctl(&["seat", "ls"]);
+    for old in after.as_array().unwrap() {
+        let current = upgraded_seats
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["record"]["id"] == old["record"]["id"])
+            .unwrap();
+        assert_eq!(current["record"]["generation"], old["record"]["generation"]);
+        assert_eq!(current["state"]["process"], old["state"]["process"]);
+    }
+    call(
+        &mut bridge,
+        "ctl",
+        json!({"command":"layout_read","arguments":{}}),
+    );
+    println!(
+        "Oracle MCP: right split + completed focus frame; detached bottom split + reattach; control-service upgrade retained all {} process identities",
+        after.as_array().unwrap().len()
+    );
+}

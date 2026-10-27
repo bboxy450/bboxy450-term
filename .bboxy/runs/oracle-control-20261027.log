@@ -1,0 +1,50 @@
+2026-10-27 Oracle MCP orchestration, direct operator request.
+Base: 98f91e5f86565f1dc70cc43e86a5433ba3ce4d76.
+
+make test-oracle-ui: exit 0.
+Log: ~/Library/Logs/bboxy450-term/oracle-control-ui.log.
+Real seat-bound MCP + private headless app + real PTYs:
+- right split and focus acknowledged by a completed frame;
+- bottom split launched while UI detached, restored into the same tab;
+- normal reattach retained supervisor, logic and harness process identities;
+- an older control-service marker triggered logic-only refresh;
+- refresh retained the supervisor and all 3 harness PIDs/generations;
+- original MCP bridge remained usable after that refresh.
+
+Mechanisms:
+crates/bbt-mux/src/mcp/seats.rs: Oracle-filtered seat_split, seat_focus,
+layout_read and typed ctl alias; canonical calls retain SeatActor authority;
+MCP effect IDs preserve the operation ULID timestamp and deterministic entropy.
+crates/bbt-mux/src/logic.rs: own-swarm/generation checks, durable placement,
+new-tab collision rejection, paged layout metadata and bounded async focus.
+crates/bbt-mux/src/window_journal.rs: ordered in-memory saved-layout snapshot;
+no disk operation holds the snapshot mutex.
+crates/bbt-proto/src/registry.rs: optional defaulted initial launch placement.
+crates/bboxy450-term/src/model.rs and src/live.rs: saved window restores first;
+detached launch placements project afterward, once; existing user layout wins.
+crates/bboxy450-term/src/cockpit.rs: MCP service compatibility refresh preserves PTYs.
+
+Scope: local approved-profile launches, binary right/bottom half splits, own-swarm
+focus and existing seat tools through MCP ctl. No operator principal conversion.
+Full future layout-CAS, arbitrary ratios, move/close/restart and host lifecycle
+commands are outside this cut. Running operator GUI/harnesses were not stopped.
+Raw logs and disposable fixture accounts remain outside Git.
+
+make test-oracle-control: exit 0 (final source mechanisms above).
+Log: ~/Library/Logs/bboxy450-term/oracle-control-tests.log.
+Authentication/socket tests, protocol tests, mux tests, app lib/bin tests
+and explicit private MCP/GUI/PTY test all passed. Ordinary ignored night fixtures
+remain ignored; the new real process acceptance runs explicitly from this target.
+make check-oracle-control: exit 0, all targets, -D warnings for proto/mux/term.
+Log: ~/Library/Logs/bboxy450-term/oracle-control-clippy.log.
+make test-boundaries: exit 0.
+Log: ~/Library/Logs/bboxy450-term/oracle-control-boundaries.log.
+Includes isolated shell/launch wiring, ctl and signing fixtures, login PATH,
+real cockpit lifecycle, ordinary detach/reattach and orderly shutdown checks.
+make test-navigation: exit 0.
+Log: ~/Library/Logs/bboxy450-term/oracle-control-navigation.log.
+Four private real-process fixtures passed: launch parameters and remembered
+choices, swarm working folders, clickable native navigation/splits/Go to, and
+Oracle MCP splits/focus/detach/control-service refresh. Existing UI/app unit
+suites passed. Full exact-commit CI and landing receipts are generated after
+this evidence commit, outside Git, by make test and scripts/land.sh.

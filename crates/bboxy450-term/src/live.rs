@@ -299,6 +299,7 @@ fn publish(
         && let Some(saved) = previous.window_restore.as_deref()
     {
         bboxy450_term::window_state::restore(&mut next, saved).map_err(invalid)?;
+        next.place_registry_spawns(&records);
     }
     preparer.prepare(&mut next)?;
     let next = Arc::new(next);

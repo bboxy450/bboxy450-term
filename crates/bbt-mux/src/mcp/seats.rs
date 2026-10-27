@@ -13,12 +13,18 @@ use crate::{
 };
 
 pub(crate) fn handles(name: &str) -> bool {
-    mutation(name) || matches!(name, "screen_read" | "history_read")
+    mutation(name) || matches!(name, "screen_read" | "history_read" | "layout_read" | "ctl")
 }
 pub(crate) fn mutation(name: &str) -> bool {
     matches!(
         name,
-        "seat_input_text" | "seat_spawn" | "seat_mute" | "seat_unmute" | "seat_interrupt"
+        "seat_input_text"
+            | "seat_spawn"
+            | "seat_split"
+            | "seat_focus"
+            | "seat_mute"
+            | "seat_unmute"
+            | "seat_interrupt"
     )
 }
 pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
@@ -42,14 +48,17 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     if actor.role.class == Class::Oracle {
         defs.extend([
             ("seat_input_text","Paste literal text only through the live positive-readiness guard. submit explicitly chooses Enter; rejected input is not queued.",json!({"text":text,"submit":{"type":"boolean"}}),vec!["text","submit"]),
-            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. No arbitrary commands, environment, privilege class, resume or layout.",json!({"swarm_id":id,"approved_profile":{"enum":["zsh","claude","codex"]},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128}}),vec!["swarm_id","approved_profile","cwd"]),
+            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. No arbitrary commands, environment, privilege class or resume.",json!({"swarm_id":id,"approved_profile":{"enum":["zsh","claude","codex"]},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id}),vec!["swarm_id","approved_profile","cwd"]),
+            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab.",json!({"swarm_id":id,"approved_profile":{"enum":["zsh","claude","codex"]},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]}}),vec!["swarm_id","approved_profile","cwd","side"]),
+            ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
+            ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
             ("seat_mute","Set current target mute policy once under the expected policy epoch and process generation.",json!({"expected_policy_epoch":revision}),vec!["expected_policy_epoch"]),
             ("seat_unmute","Clear mute under the current policy epoch; existing eligible held traffic resumes without replaying unknown attempts.",json!({"expected_policy_epoch":revision}),vec!["expected_policy_epoch"]),
             ("seat_interrupt","Send text through a verified native Now/steer endpoint. Unavailable harnesses are named; this never sends a PTY control key.",json!({"text":text}),vec!["text"]),
         ]);
     }
     defs.into_iter().map(|(name,description,mut properties,mut required)| {
-        if name!="seat_spawn" {
+        if !matches!(name,"seat_spawn" | "layout_read") {
             properties["seat_id"]=id.clone();properties["expected_process_generation"]=revision.clone();
             required.extend(["seat_id","expected_process_generation"]);
         }
@@ -58,7 +67,51 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":!mutation(name),"destructiveHint":mutation(name),"idempotentHint":true,"openWorldHint":false}})
-    }).collect()
+    }).chain((actor.role.class == Class::Oracle).then(|| json!({
+        "name":"ctl","description":"Oracle seat control through MCP, under your authenticated seat identity and swarm grants. command is a tool name; arguments use that tool's schema. This never executes a shell or grants device-operator authority.",
+        "inputSchema":{"type":"object","properties":{"command":{"enum":CTL_COMMANDS},"arguments":{"type":"object"}},"required":["command","arguments"],"additionalProperties":false},
+        "annotations":{"readOnlyHint":false,"destructiveHint":true,"idempotentHint":true,"openWorldHint":false}
+    }))).collect()
+}
+const CTL_COMMANDS: &[&str] = &[
+    "orient",
+    "self_status",
+    "seat_list",
+    "seat_get",
+    "layout_read",
+    "screen_read",
+    "history_read",
+    "seat_spawn",
+    "seat_split",
+    "seat_focus",
+    "seat_input_text",
+    "seat_interrupt",
+    "seat_mute",
+    "seat_unmute",
+];
+/// A typed alias, never a process launch or an operator-principal conversion.
+pub(crate) fn canonical(actor: &Actor, call: &Call) -> Result<Call, String> {
+    if call.tool != "ctl" {
+        return Ok(call.clone());
+    }
+    if actor.role.class != Class::Oracle {
+        return Err("tool requires oracle-class authority".into());
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Control {
+        command: String,
+        arguments: Value,
+    }
+    let control: Control = tools::parse(&call.args)?;
+    if !CTL_COMMANDS.contains(&control.command.as_str()) || !control.arguments.is_object() {
+        return Err("unsupported ctl command or arguments".into());
+    }
+    Ok(Call {
+        op_id: call.op_id,
+        tool: control.command,
+        args: control.arguments,
+    })
 }
 
 #[derive(Deserialize)]
@@ -124,6 +177,27 @@ pub(crate) struct Spawn {
     pub approved_profile: String,
     pub cwd: PathBuf,
     pub role: Option<String>,
+    pub name: Option<String>,
+    pub tab_id: Option<Ulid>,
+    seat_id: Option<Ulid>,
+    expected_process_generation: Option<Revision>,
+    pub side: Option<bbt_proto::seat_state::Side>,
+}
+impl Spawn {
+    pub fn target(&self) -> Option<Target> {
+        self.seat_id
+            .zip(self.expected_process_generation.as_ref())
+            .map(|(seat, generation)| Target {
+                seat,
+                generation: generation.0,
+            })
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Focus {
+    seat_id: Ulid,
+    expected_process_generation: Revision,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -141,6 +215,14 @@ struct Interrupt {
 }
 
 pub(crate) enum Request {
+    Layout {
+        swarm: Ulid,
+        after: Option<Ulid>,
+        limit: usize,
+    },
+    Focus {
+        target: Target,
+    },
     Screen {
         target: Target,
         cursor: Option<String>,
@@ -170,20 +252,27 @@ pub(crate) enum Request {
 impl Request {
     pub fn target(&self) -> Option<Target> {
         match self {
-            Self::Screen { target, .. }
+            Self::Focus { target }
+            | Self::Screen { target, .. }
             | Self::History { target, .. }
             | Self::Input { target, .. }
             | Self::Mute { target, .. }
             | Self::Interrupt { target, .. } => Some(*target),
-            Self::Spawn(_) => None,
+            Self::Spawn(args) => args.target(),
+            Self::Layout { .. } => None,
         }
     }
     pub fn is_read(&self) -> bool {
-        matches!(self, Self::Screen { .. } | Self::History { .. })
+        matches!(
+            self,
+            Self::Layout { .. } | Self::Screen { .. } | Self::History { .. }
+        )
     }
 }
 pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
-    if mutation(&call.tool) && actor.role.class != Class::Oracle {
+    if (mutation(&call.tool) || matches!(call.tool.as_str(), "layout_read" | "ctl"))
+        && actor.role.class != Class::Oracle
+    {
         return Err("tool requires oracle-class authority".into());
     }
     Ok(match call.tool.as_str() {
@@ -214,7 +303,27 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                 submit: a.submit,
             }
         }
-        "seat_spawn" => {
+        "layout_read" => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Layout {
+                after: Option<Ulid>,
+                limit: Option<usize>,
+            }
+            let a: Layout = tools::parse(&call.args)?;
+            Request::Layout {
+                swarm: actor.swarm_id,
+                after: a.after,
+                limit: tools::page_limit(a.limit)?,
+            }
+        }
+        "seat_focus" => {
+            let a: Focus = tools::parse(&call.args)?;
+            Request::Focus {
+                target: Target::new(a.seat_id, a.expected_process_generation)?,
+            }
+        }
+        "seat_spawn" | "seat_split" => {
             let a: Spawn = tools::parse(&call.args)?;
             if a.swarm_id != actor.swarm_id || a.swarm_id == Ulid::nil() {
                 return Err("spawn outside caller swarm".into());
@@ -229,6 +338,26 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                 s.trim().is_empty() || s.len() > 128 || s.chars().any(char::is_control)
             }) {
                 return Err("invalid role name".into());
+            }
+            if a.name.as_ref().is_some_and(|name| {
+                name.trim().is_empty() || name.len() > 128 || name.chars().any(char::is_control)
+            }) {
+                return Err("invalid seat name".into());
+            }
+            if a.tab_id == Some(Ulid::nil()) {
+                return Err("tab_id must be nonnil".into());
+            }
+            if call.tool == "seat_split" {
+                if a.target().is_none() || a.seat_id == Some(Ulid::nil()) || a.side.is_none() {
+                    return Err(
+                        "split requires seat_id, expected_process_generation and side".into(),
+                    );
+                }
+            } else if a.seat_id.is_some()
+                || a.expected_process_generation.is_some()
+                || a.side.is_some()
+            {
+                return Err("use seat_split for anchor placement".into());
             }
             Request::Spawn(a)
         }
@@ -247,6 +376,11 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                 target: Target::new(a.seat_id, a.expected_process_generation)?,
                 text: a.text,
             }
+        }
+        "ctl" => {
+            return Err(canonical(actor, call)
+                .err()
+                .unwrap_or_else(|| "invalid ctl dispatch".into()));
         }
         _ => return Err("unknown seat tool".into()),
     })
@@ -314,7 +448,11 @@ pub(crate) fn effect_id(actor: &Actor, call: &Call, target: Option<Target>) -> U
         hash.update(target.seat.to_bytes());
         hash.update(target.generation.to_be_bytes());
     }
-    Ulid::from_bytes(hash.finalize()[..16].try_into().unwrap())
+    // Keep the operation's ULID time, hashing only its entropy. Hashing all 16
+    // bytes produced seats dated centuries away from their actual launch.
+    let mut bytes = call.op_id.to_bytes();
+    bytes[6..].copy_from_slice(&hash.finalize()[6..16]);
+    Ulid::from_bytes(bytes)
 }
 pub(crate) fn failure(op: Ulid, code: &str, reason: &str, ids: Value) -> Value {
     let mut result = super::error(op, code, reason);
@@ -390,6 +528,23 @@ pub(crate) fn revalidate_native(
     target: Target,
     harness: &str,
 ) -> Result<(), String> {
+    revalidate(root, actor, target, harness, false)
+}
+pub(crate) fn revalidate_focus(
+    root: &std::path::Path,
+    actor: &Actor,
+    target: Target,
+    harness: &str,
+) -> Result<(), String> {
+    revalidate(root, actor, target, harness, true)
+}
+fn revalidate(
+    root: &std::path::Path,
+    actor: &Actor,
+    target: Target,
+    harness: &str,
+    focus: bool,
+) -> Result<(), String> {
     // This account already exists. Authority checks do not initialize schemas
     // or acquire a write lease while several native attempts start together.
     let mut account = rusqlite::Connection::open_with_flags(
@@ -432,7 +587,8 @@ pub(crate) fn revalidate_native(
     let record = record(target.seat)?;
     if record.generation != target.generation
         || record.swarm != actor.swarm_id
-        || record.muted
+        || (record.muted && !focus)
+        || (focus && record.lifecycle != crate::registry::Lifecycle::Open)
         || record.harness_kind != harness
     {
         return Err("native target authority changed before attempt".into());

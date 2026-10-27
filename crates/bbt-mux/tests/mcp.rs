@@ -812,6 +812,10 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
     let controls = [
         "seat_input_text",
         "seat_spawn",
+        "seat_split",
+        "seat_focus",
+        "layout_read",
+        "ctl",
         "seat_mute",
         "seat_unmute",
         "seat_interrupt",
@@ -843,7 +847,7 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
             .iter()
             .filter(|event| controls.contains(&event.event.payload["tool"].as_str().unwrap_or("")))
             .count(),
-        5
+        controls.len()
     );
     for tool in ["screen_read", "history_read"] {
         assert_eq!(
@@ -2128,7 +2132,7 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
     assert_eq!(worker["tools"].as_array().unwrap().len(), 23);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 35);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 39);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -3582,6 +3586,162 @@ fn mcp_work_item_signing_hold_keeps_the_original_file_and_terminals() {
     assert_eq!(f.runtime.block_on(f.client().gui_seats()).unwrap().len(), 4);
 }
 
+// keeps: spec mcp-control-plane
+#[test]
+fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
+    let f = Fixture::new();
+    let layout = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ctl",
+        json!({"command":"layout_read","arguments":{}}),
+    ));
+    assert_eq!(layout["ui_attached"], false);
+    let ids: Vec<_> = layout["seats"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["seat_id"].clone())
+        .collect();
+    assert_eq!(ids.len(), 3);
+    assert!(!ids.contains(&json!(f.outside.id)));
+    for (caller, tool, args, reason) in [
+        (
+            f.own.id,
+            "ctl",
+            json!({"command":"seat_list","arguments":{}}),
+            "oracle-class",
+        ),
+        (
+            f.oracle.id,
+            "ctl",
+            json!({"command":"app_stop","arguments":{}}),
+            "unsupported ctl",
+        ),
+        (
+            f.oracle.id,
+            "ctl",
+            json!({"command":"seat_focus","arguments":f.target(f.outside.id)}),
+            "outside caller swarm",
+        ),
+        (
+            f.oracle.id,
+            "seat_focus",
+            json!({"seat_id":f.peer.id,"expected_process_generation":"2"}),
+            "stale target",
+        ),
+    ] {
+        refused(f.mutate(caller, Ulid::new(), tool, args), reason);
+    }
+    let no_window = f.mutate(f.oracle.id, Ulid::new(), "seat_focus", f.target(f.peer.id));
+    assert_eq!(
+        no_window["structuredContent"]["error"]["code"],
+        "unavailable"
+    );
+    // Architect is an Oracle-class preset; the authenticated class, not the
+    // role string provided by a caller, determines control access.
+    f.registry()
+        .update(f.oracle.id, |r| {
+            r.role.name = "architect".into();
+            Ok(())
+        })
+        .unwrap();
+    assert_eq!(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "ctl",
+            json!({"command":"layout_read","arguments":{}})
+        )["isError"],
+        false
+    );
+}
+
+// keeps: spec mcp-control-plane
+#[test]
+fn mcp_oracle_split_runs_without_a_ui_and_replays_after_logic_restart() {
+    isolated_seat_fixture("orchestrate");
+}
+
+fn seat_orchestration_fixture() {
+    use bbt_proto::seat_state::{Placement, Side};
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    std::fs::write(home.join(".zshrc"), "printf 'ORCHESTRATED\\n'\n").unwrap();
+    let mut f = Fixture::real();
+    let baseline = f.registry().list().unwrap().len();
+    let first = data(f.mutate(f.oracle.id,Ulid::new(),"ctl",json!({"command":"seat_spawn","arguments":{"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path(),"name":"Oracle helper"}})));
+    let anchor: Ulid = serde_json::from_value(first["seat_id"].clone()).unwrap();
+    f.wait_screen(anchor, "ORCHESTRATED");
+    let tab = match f.registry().get(anchor).unwrap().launch_placement.unwrap() {
+        Placement::NewTab { tab } => tab,
+        _ => panic!("expected tab"),
+    };
+    refused(f.mutate(f.oracle.id,Ulid::new(),"seat_spawn",json!({"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path(),"tab_id":Ulid::from(tab.0.0)})),"already occupied");
+    let page = data(f.mutate(f.oracle.id, Ulid::new(), "layout_read", json!({"limit":1})));
+    assert_eq!(page["seats"].as_array().unwrap().len(), 1);
+    let next = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "layout_read",
+        json!({"after":page["next"],"limit":1}),
+    ));
+    assert_ne!(page["seats"][0]["seat_id"], next["seats"][0]["seat_id"]);
+
+    let mut receipts = vec![];
+    for (side, label) in [(Side::Right, "right"), (Side::Bottom, "bottom")] {
+        let op = Ulid::new();
+        let args = json!({"swarm_id":f.own.swarm,"approved_profile":"zsh","cwd":f._temp.path(),"seat_id":anchor,"expected_process_generation":"1","side":label,"tab_id":Ulid::from(tab.0.0)});
+        let result = f.mutate(
+            f.oracle.id,
+            op,
+            "ctl",
+            json!({"command":"seat_split","arguments":args}),
+        );
+        let value = data(result.clone());
+        let seat: Ulid = serde_json::from_value(value["seat_id"].clone()).unwrap();
+        assert_eq!(seat.timestamp_ms(), op.timestamp_ms());
+        assert_eq!(
+            f.registry().get(seat).unwrap().launch_placement,
+            Some(Placement::Split {
+                tab,
+                target: bbt_proto::SeatId::from_u128(anchor.0),
+                target_generation: 1,
+                side
+            })
+        );
+        f.wait_screen(seat, "ORCHESTRATED");
+        assert_eq!(
+            f.mutate(f.oracle.id, op, "seat_split", args.clone()),
+            result
+        );
+        receipts.push((op, args, result));
+    }
+    let mut invalid = receipts[0].1.clone();
+    invalid["seat_id"] = json!(f.outside.id);
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_split", invalid),
+        "outside caller swarm",
+    );
+    let mut invalid = receipts[0].1.clone();
+    invalid["expected_process_generation"] = json!("2");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_split", invalid),
+        "stale target",
+    );
+    let mut invalid = receipts[0].1.clone();
+    invalid["tab_id"] = json!(Ulid::new());
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_split", invalid),
+        "tab changed",
+    );
+    assert_eq!(f.registry().list().unwrap().len(), baseline + 3);
+    f.restart();
+    for (op, args, result) in receipts {
+        assert_eq!(f.mutate(f.oracle.id, op, "seat_split", args), result);
+    }
+    assert_eq!(f.registry().list().unwrap().len(), baseline + 3);
+}
+
 fn isolated_seat_fixture(mode: &str) {
     let temp = tempfile::tempdir().unwrap();
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
@@ -3652,6 +3812,7 @@ fn mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed() {
 fn mcp_seat_isolated_process() {
     match std::env::var("BBOXY_MCP_SEAT_FIXTURE").unwrap().as_str() {
         "spawn" => seat_spawn_fixture(),
+        "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
         _ => panic!("unknown fixture mode"),
     }
@@ -5503,7 +5664,10 @@ fn mcp_orient_reports_role_defaults_overrides_and_always_wake_exceptions() {
             .unwrap();
         let orient = data(f.call(f.oracle.id, Ulid::new(), "orient", json!({})));
         assert_eq!(orient["attention"]["defaults"]["conversation"], "inbox");
-        assert_eq!(orient["attention"]["defaults"]["direct_conversation"], "wake");
+        assert_eq!(
+            orient["attention"]["defaults"]["direct_conversation"],
+            "wake"
+        );
         assert_eq!(orient["attention"]["defaults"]["event"], "inbox");
     }
     data(f.mutate(
@@ -5611,7 +5775,12 @@ fn mcp_withdrawal_uses_the_signed_sender_and_preserves_its_cancelled_receipt() {
 #[test]
 fn indexed_task_acceptance_cancels_the_pending_delegation_with_a_done_reason() {
     let mut f = Fixture::new();
-    f.registry().update(f.own.id, |own| { own.muted = true; Ok(()) }).unwrap();
+    f.registry()
+        .update(f.own.id, |own| {
+            own.muted = true;
+            Ok(())
+        })
+        .unwrap();
     let mut metadata = f.task_metadata();
     metadata["assignee"] = json!("none");
     metadata["status"] = json!("open");

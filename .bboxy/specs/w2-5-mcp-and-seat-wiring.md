@@ -19,7 +19,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[c1-live-seats]]", rel: shares-socket }
 created: 2026-10-22T20:09:59Z
-updated: "2026-10-24T19:28:08Z"
+updated: "2026-10-27T23:15:00Z"
 ---
 # W2.5 MCP server and W2.5b seat wiring kit
 
@@ -52,7 +52,7 @@ flowchart LR
 | `seat_list`, `seat_get` | registry; own swarm by default, account scope for Oracle | O E C; cross-swarm O |
 | `screen_read`, `history_read` | logic snapshot `Screen` (`M/streams.rs:30`) and `GetHistory` pages | O; E C own seat |
 | `seat_input_text` | `guard::check` then `submit_pty` (`M/adapters/guard.rs:36-136`, first production caller); operator keystrokes never pass here ([[c1-live-seats]] §2) | O |
-| `seat_spawn` | `Worker::launch` (`M/logic.rs:785`) with role and cwd; no layout arguments in W2.5, the app places the seat when it sees `mux/seat_spawned` | O |
+| `seat_spawn` | `Worker::launch` (`M/logic.rs:785`) with role and cwd; new-tab placement persisted on the seat; optional `name` and `tab_id` (2026-10-27 operator orchestration cut) | O |
 | `message_send`, `message_list`, `message_receipts`, `message_ack` | `messaging::api::Request::{Send, List, Receipts, Acknowledge}` | O E C within grants |
 | `ch_ls`, `ch_subscribe`, `ch_unsubscribe`, `ch_link`, `ch_pause`, `ch_grant` | `Request::{Ls, Subscribe, Unsubscribe, Link, Pause, Grant}` | O; E C for ls, subscribe, unsubscribe |
 | `seat_mute`, `seat_unmute` | `Request::Mute`; **deferred from W2.5c to W2.5e by Oracle ruling (2026-10-23), operator-side controls** | O |
@@ -62,7 +62,45 @@ flowchart LR
 | `artifact_claim` | write `.bboxy/artifacts/<ulid>.md`, link from the task | O E C |
 | `graph_read` | execution, communication, task, markdown from the index projections (`M/index.rs:320-392`) | O; E C task and markdown, own items |
 
-Thirty tools, plus `seat_interrupt` (specs/README S16, Oracle-only native Now/steer with `op_id` and audit) added in W2.5e: thirty-one. **All five parts landed 2026-10-22/23** (W2.5a bridge and read-only tools, b wiring kit 15f9f4e, c messaging and channels 983386a, d tasks and artifacts eed082d, e guarded input, spawn, mute and interrupt e49e4cb). Task events are the strings `delegate`, `release`, `accept`, `reject`, `report` in `Body::Task.event`, kind `Task`; the task file is the record, the message is the wake. Frontmatter fields per [[work-items]]: `assignee`, `delegated_by`, `status`, `updated`. **Deferred, still specified in [[mcp-control-plane]]:** split, focus, move, update, space and tab create, swarm templates, `audit_read`, `find`, `how`, `code_search`, `code_graph`, `artifact_release/list/get`, `graph_set_edge`, `seat_input_key`, `seat_set_role`, `seat_set_permissions` (`ch_grant` covers may-send-to for now).
+Thirty tools, plus `seat_interrupt` (specs/README S16, Oracle-only native Now/steer with `op_id` and audit) added in W2.5e: thirty-one. **All five parts landed 2026-10-22/23** (W2.5a bridge and read-only tools, b wiring kit 15f9f4e, c messaging and channels 983386a, d tasks and artifacts eed082d, e guarded input, spawn, mute and interrupt e49e4cb). Task events are the strings `delegate`, `release`, `accept`, `reject`, `report` in `Body::Task.event`, kind `Task`; the task file is the record, the message is the wake. Frontmatter fields per [[work-items]]: `assignee`, `delegated_by`, `status`, `updated`. **Deferred, still specified in [[mcp-control-plane]]:** move, update, space and tab create, swarm templates, `audit_read`, `find`, `how`, `code_search`, `code_graph`, `artifact_release/list/get`, `graph_set_edge`, `seat_input_key`, `seat_set_role`, `seat_set_permissions` (`ch_grant` covers may-send-to for now).
+
+### Oracle orchestration cut (operator request, 2026-10-27)
+
+The operator requested Oracle access to spawning, splits and ctl through MCP.
+`seat_split` adds `seat_id`, decimal-string `expected_process_generation`,
+`side: right|bottom`, and optional `tab_id` to the existing approved-profile
+spawn arguments. It launches one seat and durably records an equal-half split
+intent in `SeatRecord.launch_placement`. `seat_spawn` records a new tab.
+Both work without a GUI; an attached or reattached window projects the intent
+once, preserving any existing user layout. Missing/replaced anchors fall back
+to a visible new tab. The receipt's `applied` means process launch and durable
+intent, not a completed GUI frame. User layout wins over initial placement.
+
+`layout_read(after?, limit?)` pages at most 128 own-swarm seat IDs, names,
+generations, lifecycle, resolved tab membership and initial placements. Saved
+membership may lag the window and is labelled `saved_window_or_launch_placement`.
+`seat_focus` requires the target generation and acknowledges a completed frame;
+without a GUI it returns `unavailable`. GUI waits use bounded async jobs, never
+the logic worker. A changed binding while producing the frame returns `unknown`.
+
+The Oracle-only `ctl` MCP tool takes `{command, arguments}` with a finite command
+enum: orient/self_status, seat_list/get, layout/screen/history reads,
+seat_spawn/split/focus, guarded input/interrupt and mute/unmute. It aliases the
+corresponding seat tool before dispatch and journals the canonical command.
+The same op ID via alias or direct tool replays the same receipt. It never
+constructs an operator principal, runs shell text, or exposes app stop/config/
+auth operations. Existing workers remain unable to control other seats;
+Oracle-class Architect retains the same grant. Every control target remains
+bound to the caller's swarm and exact process generation.
+
+This cut uses the existing binary half-split interface, not the full future
+layout-CAS API in [[mcp-control-plane]]. Arbitrary ratios, explicit GUI IDs,
+move/close/restart and global layout revisions remain outside this cut.
+A normal UI reattach refreshes an older MCP control service using the private
+`mcp_control_version` compatibility marker; the supervisor and harness processes
+remain alive. Installing alone does not replace an already running GUI/logic.
+MCP-generated seat IDs retain the operation ULID's timestamp, with deterministic
+hashed entropy; durable earlier receipts are not regenerated.
 
 ## 3. W2.5b: the wiring kit, per launch, never user config
 

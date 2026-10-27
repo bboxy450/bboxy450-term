@@ -196,7 +196,7 @@ impl Bridge {
                     "capabilities":{"tools":{"listChanged":false}},
                     "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
                     // Decision #260: a curious agent finding the binary in PATH is the common case.
-                    "instructions":"These tools are your interface to bboxy450-term. `bboxy450-term ctl` is the operator's door, not yours: it refuses seats."}),
+                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
                 )
             }
             "ping" => Ok(json!({})),

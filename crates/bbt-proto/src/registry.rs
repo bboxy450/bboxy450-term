@@ -82,6 +82,9 @@ pub struct SeatRecord {
     pub tasks: Vec<Ulid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attention: Option<AttentionPolicy>,
+    /// Durable initial placement for seats launched while no window is attached.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch_placement: Option<crate::seat_state::Placement>,
 }
 
 impl SeatRecord {
@@ -109,6 +112,7 @@ impl SeatRecord {
             close: None,
             tasks: Vec::new(),
             attention: None,
+            launch_placement: None,
         }
     }
 }

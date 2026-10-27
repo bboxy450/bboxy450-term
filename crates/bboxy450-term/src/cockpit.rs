@@ -472,9 +472,13 @@ struct LogicBootstrap {
 fn fixture_hosts_default() -> bool {
     true
 }
+const MCP_CONTROL_VERSION: u16 = 1;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
+    /// Refresh an older control service on UI reattach without replacing PTYs.
+    #[serde(default)]
+    pub mcp_control_version: u16,
     #[serde(default)]
     pub gui_state_version: u16,
     /// Private environment compatibility hint; never exports the environment.
@@ -747,6 +751,7 @@ async fn logic_main() -> Result<()> {
     let endpoint = logic.client.gui_endpoint().await?;
     let status = logic.client.identity_status().await?;
     let ready = LogicReady {
+        mcp_control_version: MCP_CONTROL_VERSION,
         gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
         launch_path_fingerprint: std::env::var_os("PATH")
             .as_deref()
@@ -894,7 +899,8 @@ impl Session {
             };
         let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
         if existing.as_ref().is_some_and(|record| {
-            record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
+            record.ready.mcp_control_version != MCP_CONTROL_VERSION
+                || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
                 || record.ready.launch_path_fingerprint.as_deref()
                     != Some(shell_path::fingerprint(&launch_path).as_str())
         }) {
@@ -903,7 +909,7 @@ impl Session {
             // Refresh logic only: the supervisor retains every live PTY and process.
             stop_child(&mut old_logic, &mut None, "logic").await?;
             eprintln!(
-                "launch environment or GUI schema changed; refreshed logic, retained supervisor and seats"
+                "control service, launch environment or GUI schema changed; refreshed logic, retained supervisor and seats"
             );
         }
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {

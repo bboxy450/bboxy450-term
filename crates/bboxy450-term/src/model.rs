@@ -750,6 +750,88 @@ impl Model {
         ready.into_iter().map(|(_, op, spec)| (op, spec)).collect()
     }
 
+    /// Reconcile durable placement metadata even when the launch happened
+    /// without a UI. Existing user layout always wins over initial placement.
+    pub fn place_registry_spawns(&mut self, records: &[SeatRecord]) {
+        use bbt_proto::seat_state::{Placement, Side};
+        let placed: std::collections::BTreeSet<_> = self
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .flat_map(|s| &s.tabs)
+            .flat_map(|t| t.seats.iter().copied())
+            .collect();
+        let mut pending: Vec<_> = records
+            .iter()
+            .filter(|r| {
+                r.lifecycle == bbt_mux::registry::Lifecycle::Open
+                    && r.launch_placement.is_some()
+                    && !placed.contains(&SeatId::from_u128(r.id.0))
+            })
+            .collect();
+        // Anchors may arrive in arbitrary registry order. Each successful pass
+        // consumes a seat; a missing/replaced anchor falls back to a visible tab.
+        while !pending.is_empty() {
+            let count = pending.len();
+            pending.retain(|record| {
+                let seat = SeatId::from_u128(record.id.0);
+                let placement = match record.launch_placement.as_ref().unwrap() {
+                    Placement::NewTab { tab } => ui::Placement::Tab {
+                        swarm: ui::SwarmId::from_u128(record.swarm.0),
+                        tab: *tab,
+                    },
+                    Placement::Split {
+                        target,
+                        target_generation,
+                        side,
+                        ..
+                    } => {
+                        if self.ui.tab_of(*target).is_none()
+                            || self
+                                .ui
+                                .seats
+                                .get(target)
+                                .is_none_or(|r| r.process_generation != *target_generation)
+                        {
+                            return true;
+                        }
+                        ui::Placement::Split {
+                            target: *target,
+                            side: match side {
+                                Side::Right => ui::Side::Right,
+                                Side::Bottom => ui::Side::Bottom,
+                            },
+                        }
+                    }
+                };
+                match ui::place(&self.ui, seat, placement) {
+                    Ok(next) => {
+                        self.ui = next;
+                        false
+                    }
+                    Err(_) => true,
+                }
+            });
+            if pending.len() == count {
+                break;
+            }
+        }
+        for record in pending {
+            if let Ok(next) = ui::place(
+                &self.ui,
+                SeatId::from_u128(record.id.0),
+                ui::Placement::Tab {
+                    swarm: ui::SwarmId::from_u128(record.swarm.0),
+                    tab: ui::TabId::from_u128(record.id.0),
+                },
+            ) {
+                self.ui = next;
+            }
+        }
+    }
+
     fn place_ready_spawns(&mut self) {
         let ready: Vec<_> = self
             .spawns
@@ -766,6 +848,12 @@ impl Model {
             .collect();
         for (op, seat, spec) in ready {
             let result = self.captured_placement(seat, &spec).and_then(|placement| {
+                // Durable metadata may precede this request's reply. Applying
+                // it twice must not produce a duplicate-tab failure or move a
+                // seat the user has already placed.
+                if self.ui.tab_of(seat).is_some() {
+                    return Ok(self.ui.clone());
+                }
                 ui::place(&self.ui, seat, placement)
                     .map_err(|error| format!("placement_failed: {error}"))
             });
@@ -1044,6 +1132,15 @@ fn build_with_clock(
                     .collect();
                 return next;
             }
+            let ids: Vec<_> = ids
+                .into_iter()
+                .filter(|id| {
+                    seats
+                        .iter()
+                        .find(|r| r.id.0 == id.0.0)
+                        .is_none_or(|r| r.launch_placement.is_none())
+                })
+                .collect();
             ui::Swarm::new(
                 id,
                 "swarm",
@@ -1211,6 +1308,11 @@ fn build_with_clock(
     );
     next.attention = next.attention_episodes.paint();
     next.place_ready_spawns();
+    // Startup restores the user's saved tree in live::publish before
+    // projecting launches that happened while detached.
+    if previous.metadata_initialized || previous.window_restore.is_none() {
+        next.place_registry_spawns(seats);
+    }
     measurement.finish(seats.len() as u64, 0);
     next
 }
@@ -1519,6 +1621,158 @@ mod tests {
     }
     fn spawn_tree(model: &Model) -> ui::SplitNode {
         model.ui.window.sidebar.swarms[0].tabs[0].tree.clone()
+    }
+
+    // keeps: spec mcp-control-plane
+    #[test]
+    fn durable_split_placements_restore_out_of_order_and_never_override_user_layout() {
+        use bbt_proto::seat_state::{Placement, Side};
+        let grids = Grids::new();
+        let mut anchor = spawn_record(30);
+        anchor.launch_placement = Some(Placement::NewTab {
+            tab: ui::TabId::from_u128(300),
+        });
+        let mut right = spawn_record(20);
+        right.launch_placement = Some(Placement::Split {
+            tab: ui::TabId::from_u128(300),
+            target: SeatId::from_u128(30),
+            target_generation: 1,
+            side: Side::Right,
+        });
+        let mut below = spawn_record(10);
+        below.launch_placement = Some(Placement::Split {
+            tab: ui::TabId::from_u128(300),
+            target: SeatId::from_u128(20),
+            target_generation: 1,
+            side: Side::Bottom,
+        });
+        let records = [below, right, anchor];
+        let model = build(&records, &grids, &Model::default());
+        let leaf = |id| ui::SplitNode::Leaf(SeatId::from_u128(id));
+        assert_eq!(
+            spawn_tree(&model),
+            ui::SplitNode::split(
+                ui::Axis::Row,
+                0.5,
+                leaf(30),
+                ui::SplitNode::split(ui::Axis::Column, 0.5, leaf(20), leaf(10))
+            )
+        );
+        let mut moved = model.clone();
+        moved.ui = ui::place(
+            &moved.ui,
+            SeatId::from_u128(10),
+            ui::Placement::Tab {
+                swarm: ui::SwarmId::from_u128(1),
+                tab: ui::TabId::from_u128(400),
+            },
+        )
+        .unwrap();
+        let next = build(&records, &grids, &moved);
+        assert_eq!(
+            next.ui.window.sidebar.swarms,
+            moved.ui.window.sidebar.swarms
+        );
+        let mut legacy = serde_json::to_value(&records[0]).unwrap();
+        legacy.as_object_mut().unwrap().remove("launch_placement");
+        assert!(
+            serde_json::from_value::<SeatRecord>(legacy)
+                .unwrap()
+                .launch_placement
+                .is_none()
+        );
+    }
+
+    // keeps: spec mcp-control-plane
+    #[test]
+    fn durable_metadata_before_gui_spawn_reply_is_applied_only_once() {
+        let grids = Grids::new();
+        let mut model = build(&[spawn_record(10)], &grids, &Model::default());
+        let placement = bbt_proto::seat_state::Placement::NewTab {
+            tab: ui::TabId::from_u128(400),
+        };
+        model
+            .request_spawn(Ulid(100), spawn_spec(Some(placement.clone())))
+            .unwrap();
+        let mut added = spawn_record(20);
+        added.launch_placement = Some(placement);
+        let records = [spawn_record(10), added];
+        model = build(&records, &grids, &model);
+        let before = model.ui.window.sidebar.swarms.clone();
+        model.spawned(Ulid(100), SeatId::from_u128(20));
+        model = build(&records, &grids, &model);
+        assert!(matches!(
+            model.spawns[&Ulid(100)].outcome,
+            SpawnOutcome::Placed(_)
+        ));
+        assert_eq!(model.ui.window.sidebar.swarms, before);
+    }
+
+    // keeps: spec mcp-control-plane
+    #[test]
+    fn detached_spawn_with_a_missing_or_restarted_anchor_stays_accessible() {
+        for generation in [1, 2] {
+            let mut record = spawn_record(20);
+            record.launch_placement = Some(bbt_proto::seat_state::Placement::Split {
+                tab: ui::TabId::from_u128(1),
+                target: SeatId::from_u128(10),
+                target_generation: generation,
+                side: bbt_proto::seat_state::Side::Right,
+            });
+            let records = if generation == 1 {
+                vec![record]
+            } else {
+                vec![spawn_record(10), record]
+            };
+            let model = build(&records, &Grids::new(), &Model::default());
+            assert!(model.ui.tab_of(SeatId::from_u128(20)).is_some());
+            assert!(
+                model.ui.window.sidebar.swarms[0]
+                    .tabs
+                    .iter()
+                    .any(|t| t.id == ui::TabId::from_u128(20))
+            );
+        }
+    }
+
+    // keeps: spec mcp-control-plane
+    #[test]
+    fn saved_window_restores_before_a_detached_split_is_projected() {
+        use bbt_proto::seat_state::{Placement, Side};
+        let grids = Grids::new();
+        let mut anchor = spawn_record(10);
+        anchor.launch_placement = Some(Placement::NewTab {
+            tab: ui::TabId::from_u128(100),
+        });
+        let old = build(&[anchor.clone()], &grids, &Model::default());
+        let saved = crate::window_state::capture(&old, &old.ui.window.stage, [1280., 720.], None);
+        let mut child = spawn_record(20);
+        child.launch_placement = Some(Placement::Split {
+            tab: ui::TabId::from_u128(100),
+            target: SeatId::from_u128(10),
+            target_generation: 1,
+            side: Side::Bottom,
+        });
+        let records = [anchor, child];
+        let previous = Model {
+            window_restore: Some(Arc::new(saved.clone())),
+            ..Model::default()
+        };
+        let mut restored = build(&records, &grids, &previous);
+        crate::window_state::restore(&mut restored, &saved).unwrap();
+        restored.place_registry_spawns(&records);
+        let tabs = &restored.ui.window.sidebar.swarms[0].tabs;
+        assert_eq!(tabs.len(), 1);
+        assert_eq!(tabs[0].id, ui::TabId::from_u128(100));
+        assert_eq!(
+            tabs[0].tree,
+            ui::SplitNode::split(
+                ui::Axis::Column,
+                0.5,
+                ui::SplitNode::Leaf(SeatId::from_u128(10)),
+                ui::SplitNode::Leaf(SeatId::from_u128(20))
+            )
+        );
     }
 
     // keeps: spec c1-live-seats §2a

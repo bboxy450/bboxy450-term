@@ -1,8 +1,14 @@
 //! Small, bounded GUI-state IO jobs; no job runs on the logic Worker or UI thread.
-use crate::store::{Result, invalid, object_dir, sqlite::SqliteStore};
+use crate::store::{Result, Store, invalid, object_dir, sqlite::SqliteStore};
 use bbt_proto::gui::{WindowSnapshot, WindowState, WindowTree};
 use rusqlite::{OptionalExtension, params};
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::BTreeSet,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 use tokio::sync::Semaphore;
 use ulid::Ulid;
 const STATE: &str = "gui/window/state";
@@ -12,13 +18,31 @@ const MAX_BYTES: usize = 768 * 1024;
 pub(crate) struct Journal {
     store: SqliteStore,
     jobs: Arc<Semaphore>,
+    latest: Arc<Mutex<(u64, Option<Arc<WindowState>>)>>,
+    cache_revision: Arc<AtomicU64>,
 }
 impl Journal {
     pub(crate) fn open(run: &std::path::Path) -> Result<Self> {
+        let store = SqliteStore::open(&object_dir(run, "account")?)?;
+        // A damaged window snapshot must not prevent logic from owning PTYs.
+        // claim() still returns the precise validation error to the window.
+        let state = store
+            .get(STATE)?
+            .and_then(|bytes| serde_json::from_slice::<WindowState>(&bytes).ok())
+            .filter(|state| validate(state).is_ok());
         Ok(Self {
-            store: SqliteStore::open(&object_dir(run, "account")?)?,
+            store,
+            latest: Arc::new(Mutex::new((0, state.map(Arc::new)))),
+            cache_revision: Arc::new(AtomicU64::new(0)),
             jobs: Arc::new(Semaphore::new(2)),
         })
+    }
+    pub(crate) fn latest(&self) -> Option<Arc<WindowState>> {
+        self.latest
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .1
+            .clone()
     }
     pub(crate) async fn claim(&self) -> Result<WindowSnapshot> {
         let permit = self
@@ -27,6 +51,8 @@ impl Journal {
             .try_acquire_owned()
             .map_err(|_| invalid("window_state_busy"))?;
         let store = self.store.clone();
+        let latest = self.latest.clone();
+        let revision = self.cache_revision.clone();
         tokio::task::spawn_blocking(move || {
             let _permit=permit;
             let mut connection=store.connection()?;
@@ -36,7 +62,10 @@ impl Journal {
             if let Some(state)=&state {validate(state)?;}
             let epoch=Ulid::new();
             tx.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",params![EPOCH,epoch.to_string().as_bytes()])?;
+            let revision = revision.fetch_add(1, Ordering::Relaxed) + 1;
             tx.commit()?;
+            let mut cached = latest.lock().unwrap_or_else(|e| e.into_inner());
+            if revision > cached.0 { *cached = (revision, state.clone().map(Arc::new)); }
             Ok(WindowSnapshot {epoch,state})
         }).await.map_err(|e|invalid(format!("window state IO stopped: {e}")))?
     }
@@ -52,6 +81,8 @@ impl Journal {
             .try_acquire_owned()
             .map_err(|_| invalid("window_state_busy"))?;
         let store = self.store.clone();
+        let latest = self.latest.clone();
+        let revision = self.cache_revision.clone();
         tokio::task::spawn_blocking(move || {
             let _permit=permit;
             let mut connection=store.connection()?;
@@ -59,7 +90,11 @@ impl Journal {
             let current:Option<Vec<u8>>=tx.query_row("SELECT value FROM kv WHERE key=?1",[EPOCH],|r|r.get(0)).optional()?;
             if current.as_deref()!=Some(epoch.to_string().as_bytes()) {return Err(invalid("window_state_stale_gui"));}
             tx.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",params![STATE,bytes])?;
-            tx.commit()?;Ok(())
+            let revision = revision.fetch_add(1, Ordering::Relaxed) + 1;
+            tx.commit()?;
+            let mut cached = latest.lock().unwrap_or_else(|e| e.into_inner());
+            if revision > cached.0 { *cached = (revision, Some(Arc::new(state))); }
+            Ok(())
         }).await.map_err(|e|invalid(format!("window state IO stopped: {e}")))?
     }
 }
@@ -183,6 +218,7 @@ mod tests {
         assert!(first.state.is_none());
         let saved = empty();
         journal.save(first.epoch, saved.clone()).await.unwrap();
+        assert_eq!(journal.latest().as_deref(), Some(&saved));
         let reopened = Journal::open(root.path()).unwrap();
         let next = reopened.claim().await.unwrap();
         assert_eq!(next.state, Some(saved.clone()));
@@ -197,6 +233,8 @@ mod tests {
                 .to_string()
                 .contains("stale_gui")
         );
+        assert_eq!(journal.latest().as_deref(), Some(&saved));
+        assert_eq!(reopened.latest().as_deref(), Some(&saved));
         assert_eq!(reopened.claim().await.unwrap().state, Some(saved));
     }
     // keeps: decision #344: malformed UI data cannot replace the last good snapshot

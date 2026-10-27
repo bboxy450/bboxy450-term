@@ -44,3 +44,4 @@ cargo test -p bboxy450-term --locked --test recovery shutdown_during_pending_rec
 cargo test -p bboxy450-term --locked --test recovery supervisor_death_replays_ring_with_gap_same_ids_new_generation_and_native_resume_argv -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test test_account logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test headless finder_root_cwd_starts_logic_in_an_owned_writable_workspace -- --ignored --exact --nocapture
+cargo test -p bboxy450-term --locked --test swarm_workdir oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses -- --ignored --exact --nocapture

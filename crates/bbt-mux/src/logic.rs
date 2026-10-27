@@ -3509,6 +3509,67 @@ impl Worker {
         }
         crate::mcp::success(call.op_id, plan.data)
     }
+    /// Prefer the saved user layout, then follow durable launch anchors. A
+    /// pre-placement legacy seat belongs to its swarm's bootstrap tab.
+    fn seat_tab(&self, id: Ulid) -> Result<Ulid> {
+        let saved = self.client.window_journal.as_ref().and_then(|j| j.latest());
+        let mut current = id;
+        for _ in 0..64 {
+            if let Some(tab) = saved.as_ref().and_then(|state| {
+                state
+                    .swarms
+                    .iter()
+                    .flat_map(|s| &s.tabs)
+                    .find(|tab| tab.seats.contains(&current))
+            }) {
+                return Ok(tab.id);
+            }
+            let record = self.registry.get(current)?;
+            match record.launch_placement {
+                Some(bbt_proto::seat_state::Placement::NewTab { tab }) => {
+                    return Ok(Ulid::from(tab.0.0));
+                }
+                Some(bbt_proto::seat_state::Placement::Split { target, tab, .. }) => {
+                    if self.registry.get(Ulid::from(target.0.0)).is_err() {
+                        return Ok(Ulid::from(tab.0.0));
+                    }
+                    current = Ulid::from(target.0.0);
+                }
+                None => return Ok(record.swarm),
+            }
+        }
+        Err(invalid("placement anchor chain exceeds bound"))
+    }
+    fn control_placement(
+        &self,
+        args: &crate::mcp::seats::Spawn,
+        id: Ulid,
+    ) -> Result<bbt_proto::seat_state::Placement> {
+        use bbt_proto::seat_state::Placement;
+        if let Some(target) = args.target() {
+            let tab = self.seat_tab(target.seat)?;
+            if args.tab_id.is_some_and(|expected| expected != tab) {
+                return Err(invalid("placement anchor tab changed"));
+            }
+            Ok(Placement::Split {
+                tab: bbt_proto::TabId::from_u128(tab.0),
+                target: bbt_proto::SeatId::from_u128(target.seat.0),
+                target_generation: target.generation,
+                side: args.side.ok_or_else(|| invalid("missing split side"))?,
+            })
+        } else {
+            let tab_id = args.tab_id.unwrap_or(id);
+            let occupied = self.client.window_journal.as_ref().and_then(|j| j.latest()).is_some_and(|state| {
+                state.swarms.iter().flat_map(|s| &s.tabs).any(|tab| tab.id == tab_id && !tab.seats.contains(&id))
+            }) || self.registry.list()?.iter().any(|r| r.id != id && matches!(&r.launch_placement, Some(Placement::NewTab { tab }) if tab.0.0 == tab_id.0));
+            if occupied {
+                return Err(invalid("new tab_id is already occupied"));
+            }
+            Ok(Placement::NewTab {
+                tab: bbt_proto::TabId::from_u128(tab_id.0),
+            })
+        }
+    }
     fn prepare_seat_control(
         &self,
         actor: &crate::mcp::SeatActor,
@@ -3538,10 +3599,29 @@ impl Worker {
                 return Err("target process binding changed".into());
             }
         }
+        if matches!(request, crate::mcp::seats::Request::Focus { .. })
+            && target
+                .as_ref()
+                .is_some_and(|r| r.lifecycle != Lifecycle::Open)
+        {
+            return Err("focus target is closed".into());
+        }
         if let crate::mcp::seats::Request::Spawn(args) = &request {
             if !args.cwd.is_dir() {
                 return Err("spawn cwd is not an available directory".into());
             }
+            if args.target().is_some_and(|target| {
+                self.registry
+                    .get(target.seat)
+                    .is_ok_and(|r| r.lifecycle != Lifecycle::Open)
+            }) {
+                return Err("split anchor is closed".into());
+            }
+            self.control_placement(
+                args,
+                crate::mcp::seats::effect_id(actor, call, args.target()),
+            )
+            .map_err(|e| e.to_string())?;
             HarnessRecord::builtin(&args.approved_profile)
                 .and_then(|harness| harness.resolve_role(args.role.as_deref()))
                 .map_err(|error| error.to_string())?;
@@ -3555,6 +3635,30 @@ impl Worker {
         use crate::mcp::seats::{self, Request};
         use serde_json::json;
         match request {
+            Request::Layout {
+                swarm,
+                after,
+                limit,
+            } => {
+                let mut records: Vec<_> = self
+                    .registry
+                    .list()
+                    .map_err(|e| e.to_string())?
+                    .into_iter()
+                    .filter(|r| r.swarm == *swarm && after.is_none_or(|id| r.id > id))
+                    .collect();
+                records.sort_by_key(|r| r.id);
+                let more = records.len() > *limit;
+                records.truncate(*limit);
+                let next = more.then(|| records.last().unwrap().id);
+                let seats: Vec<_> = records.iter().map(|r| json!({
+                    "seat_id":r.id,"name":r.name,"process_generation":r.generation.to_string(),"lifecycle":r.lifecycle,
+                    "tab_id":self.seat_tab(r.id).ok(),"launch_placement":r.launch_placement
+                })).collect();
+                Ok(
+                    json!({"swarm_id":swarm,"ui_attached":self.client.captures.attached(),"layout_source":"saved_window_or_launch_placement","seats":seats,"next":next}),
+                )
+            }
             Request::Screen {
                 target,
                 cursor,
@@ -3739,9 +3843,13 @@ impl Worker {
                     let mut record = SeatRecord::new(
                         id,
                         args.swarm_id,
-                        self.default_seat_name(args.swarm_id)?,
+                        args.name
+                            .clone()
+                            .map(Ok)
+                            .unwrap_or_else(|| self.default_seat_name(args.swarm_id))?,
                         harness.kind.clone(),
                     );
+                    record.launch_placement = Some(self.control_placement(&args, id)?);
                     record.role = harness.resolve_role(args.role.as_deref())?;
                     let role_prompt = if record.role.name == "shell" {
                         String::new()
@@ -3767,7 +3875,7 @@ impl Worker {
                 match result {
                     Ok(info) => crate::mcp::success(
                         call.op_id,
-                        json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid}),
+                        json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid,"placement":self.registry.get(info.seat).ok().and_then(|r| r.launch_placement)}),
                     ),
                     Err(_) => seats::failure(
                         call.op_id,
@@ -3828,6 +3936,84 @@ impl Worker {
                 "rejected",
                 "control requires its native asynchronous path",
             ),
+        }
+    }
+    fn start_control_focus(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        use crate::mcp::seats::{self, Request};
+        let mut reply = Some(reply);
+        let started = (|| -> Result<Option<serde_json::Value>> {
+            let (actor, caller) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let journal = self.control_journal(id)?;
+            let target = match self.prepare_seat_control(&actor, &caller, &call) {
+                Ok(Request::Focus { target }) => target,
+                other => {
+                    let reason = other
+                        .err()
+                        .unwrap_or_else(|| "invalid focus dispatch".into());
+                    return journal
+                        .checked(
+                            &actor,
+                            &call,
+                            crate::mcp::error(call.op_id, "rejected", &reason),
+                        )
+                        .map(Some);
+                }
+            };
+            let (retained, fresh) = journal.admit(&actor, &call)?;
+            if !fresh {
+                return Ok(Some(retained));
+            }
+            if !self.client.captures.attached() || self.control_deliveries.len() >= 8 {
+                return journal
+                    .complete(
+                        &actor,
+                        &call,
+                        crate::mcp::error(
+                            call.op_id,
+                            "unavailable",
+                            "no window attached or focus capacity full",
+                        ),
+                    )
+                    .map(Some);
+            }
+            let captures = self.client.captures.clone();
+            let run_dir = self.config.run_dir.clone();
+            let harness = self.views[&target.seat].adapter.record.kind.clone();
+            let input_id = seats::effect_id(&actor, &call, Some(target));
+            let call = call.clone();
+            let sender = reply.take().unwrap();
+            self.control_deliveries.spawn_on(async move {
+                let check_actor = actor.clone();
+                let checked = tokio::task::spawn_blocking(move || seats::revalidate_focus(&run_dir,&check_actor,target,&harness)).await;
+                let result = match checked {
+                    Ok(Ok(())) => match captures.focus(input_id,bbt_proto::SeatId::from_u128(target.seat.0)).await {
+                        Ok(frame) => crate::mcp::success(call.op_id,serde_json::json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"frame":frame})),
+                        Err(reason) => crate::mcp::error(call.op_id,"unavailable",&reason),
+                    },
+                    Ok(Err(reason)) => crate::mcp::error(call.op_id,"rejected",&reason),
+                    Err(_) => crate::mcp::error(call.op_id,"unknown","focus validation interrupted"),
+                };
+                ControlDelivery { actor,call,journal,reply:sender,target,input_id,outcome:None,result }
+            }, &self.handle);
+            Ok(None)
+        })();
+        match started {
+            Ok(None) => (),
+            Ok(Some(value)) => {
+                let _ = reply.take().unwrap().send(Ok(value));
+            }
+            Err(error) => {
+                if let Some(reply) = reply {
+                    let _ = reply.send(Err(error));
+                }
+            }
         }
     }
     fn start_control_interrupt(
@@ -6386,10 +6572,27 @@ impl Worker {
             {
                 view.adapter.record_outcome(delivery.input_id, outcome);
             }
-            let result =
-                delivery
-                    .journal
-                    .complete(&delivery.actor, &delivery.call, delivery.result);
+            let mut value = delivery.result;
+            if delivery.call.tool == "seat_focus" && value["isError"] == false {
+                let same_actor = self
+                    .control_actor(delivery.actor.seat_id, delivery.actor.process_generation)
+                    .is_ok_and(|(actor, _)| actor == delivery.actor);
+                let same_target = self.registry.get(delivery.target.seat).is_ok_and(|r| {
+                    r.generation == delivery.target.generation
+                        && r.swarm == delivery.actor.swarm_id
+                        && r.lifecycle == Lifecycle::Open
+                });
+                if !same_actor || !same_target {
+                    value = crate::mcp::error(
+                        delivery.call.op_id,
+                        "unknown",
+                        "focus binding changed while producing the frame",
+                    );
+                }
+            }
+            let result = delivery
+                .journal
+                .complete(&delivery.actor, &delivery.call, value);
             let _ = delivery.reply.send(result);
         }
         while let Some(result) = self.deliveries.try_join_next() {
@@ -7258,6 +7461,7 @@ impl Worker {
                 crate::registry::Location::Cloud { provider, host }
             }
         };
+        record.launch_placement = spec.placement;
         record.role = harness.resolve_role(spec.role.as_deref())?;
         let role_prompt = if record.role.name == "shell" {
             String::new()
@@ -7548,8 +7752,24 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::ControlCall(id, generation, call, reply) => {
+                        let call = if call.tool == "ctl" {
+                            match self.control_actor(id, generation).and_then(|(actor, _)| {
+                                crate::mcp::seats::canonical(&actor, &call).map_err(invalid)
+                            }) {
+                                Ok(canonical) => canonical,
+                                Err(_) => {
+                                    let result = self.control_call(id, generation, call);
+                                    let _ = reply.send(result);
+                                    continue;
+                                }
+                            }
+                        } else {
+                            call
+                        };
                         if crate::knowledge::seat_reads::handles(&call) {
                             self.start_knowledge_read(id, generation, call, reply);
+                        } else if call.tool == "seat_focus" {
+                            self.start_control_focus(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
                         } else {
