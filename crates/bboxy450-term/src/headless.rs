@@ -174,7 +174,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         loop {
             if overflow.swap(false, Ordering::AcqRel) && !closing {
                 result = Err("headless event queue full".into());
-                app.live_commands.take();
+                if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                 closing = true;
             }
             while let Ok(event) = events.try_recv() {
@@ -208,7 +208,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         } else {
                             result = Err("headless capture queue full".into());
-                            app.live_commands.take();
+                            if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                             closing = true;
                         }
                     }
@@ -291,7 +291,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     UiEvent::App(live::AppEvent::Stop { id }) => {
                         logger.write(format!("headless stop {id}: orderly Session shutdown"));
                         app.pending_commands.clear();
-                        app.live_commands.take();
+                        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                         closing = true;
                     }
                     UiEvent::BackendStopped(stopped) => {
@@ -528,12 +528,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
                 if !ready_sent && started.elapsed() >= STARTUP {
                     result = Err("headless render readiness timed out".into());
-                    app.live_commands.take();
+                    if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                     closing = true;
                 }
                 if smoke && started.elapsed() >= STARTUP && !closing {
                     result = Err(idle.deadline_error());
-                    app.live_commands.take();
+                    if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                     closing = true;
                 }
                 if smoke && Instant::now() >= next_idle && ready_sent {
@@ -551,7 +551,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         if !passed {
                             result = Err("headless idle probe produced work".into());
                         }
-                        app.live_commands.take();
+                        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
                         closing = true;
                     } else if idle.ready(
                         true,
@@ -607,7 +607,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
     // Rendering/admission errors also close through the IO owner. Returning
     // directly here would strand the two children after a GUI-side failure.
     if !finished {
-        app.live_commands.take();
+        if let Some(commands) = app.live_commands.take() { commands.shutdown(); }
         let deadline = closing_at.unwrap_or_else(Instant::now) + Duration::from_secs(30);
         loop {
             while let Ok(event) = events.try_recv() {

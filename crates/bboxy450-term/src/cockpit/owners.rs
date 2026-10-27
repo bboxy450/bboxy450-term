@@ -233,6 +233,29 @@ impl Exit {
         }
     }
 }
+/// Startup remains guarded; a successfully detached GUI releases its kill policy.
+pub struct ManagedChild {
+    inner: tokio::process::Child,
+    kill_on_drop: bool,
+}
+impl ManagedChild {
+    pub(super) fn new(inner: tokio::process::Child) -> Self {
+        Self { inner, kill_on_drop: true }
+    }
+    fn preserve(&mut self) { self.kill_on_drop = false; }
+}
+impl std::ops::Deref for ManagedChild {
+    type Target = tokio::process::Child;
+    fn deref(&self) -> &Self::Target { &self.inner }
+}
+impl std::ops::DerefMut for ManagedChild {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
+}
+impl Drop for ManagedChild {
+    fn drop(&mut self) {
+        if self.kill_on_drop { let _ = self.inner.start_kill(); }
+    }
+}
 pub enum Process {
     Child(Child),
     Adopted {
@@ -241,6 +264,11 @@ pub enum Process {
     },
 }
 impl Process {
+    pub(super) fn preserve_on_drop(&mut self) {
+        if let Self::Child(child) = self {
+            child.preserve();
+        }
+    }
     pub fn id(&self) -> Option<u32> {
         match self {
             Self::Child(c) => c.id(),

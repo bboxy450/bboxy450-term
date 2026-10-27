@@ -20,13 +20,14 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     io::{AsyncWrite, AsyncWriteExt, BufReader},
     net::{UnixStream, unix::OwnedReadHalf, unix::OwnedWriteHalf},
-    process::{Child, Command},
+    process::Command,
     sync::mpsc,
 };
 
 mod fixture_hosts;
 mod owners;
 pub use owners::{Exit as ProcessExit, Process};
+use owners::ManagedChild as Child;
 
 /// A read-only lock observation for ctl's local launcher, not backend discovery.
 pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
@@ -849,7 +850,7 @@ impl Session {
                 ));
             }
         };
-        let (supervisor, supervisor_control, supervisor_ready, attached) =
+        let (mut supervisor, supervisor_control, supervisor_ready, attached) =
             if owners::supervisor_held(&config)? {
                 let record = owners::read::<SupervisorReady>(&config, "supervisor")?
                 .ok_or_else(|| invalid("live supervisor has no matching private run owner record; no second supervisor started"))?;
@@ -869,7 +870,7 @@ impl Session {
                     false,
                 )
             };
-        let (logic, logic_control, endpoint, io) = if let Some(record) =
+        let (mut logic, logic_control, endpoint, io) = if let Some(record) =
             owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached)
         {
             let mut endpoint = record.ready.clone();
@@ -889,6 +890,8 @@ impl Session {
                 owner.io,
             )
         };
+        supervisor.preserve_on_drop();
+        logic.preserve_on_drop();
         Ok(Self {
             config,
             _frontend: frontend,
@@ -1033,11 +1036,13 @@ impl Session {
                         Ok(recovered) => {
                             if let Some(supervisor) = recovered.supervisor {
                                 self.supervisor = Process::Child(supervisor.child);
+                                self.supervisor.preserve_on_drop();
                                 self.supervisor_control = supervisor.control;
                                 self.supervisor_ready = supervisor.ready;
                             }
                             let logic = recovered.logic;
                             self.logic = Process::Child(logic.child);
+                            self.logic.preserve_on_drop();
                             self.logic_control = logic.control;
                             self.endpoint = logic.endpoint;
                             self.io = logic.io;
@@ -1116,7 +1121,46 @@ impl Session {
             }
         }
     }
-    /// Abort startup before stopping and reaping both installed children.
+    /// Save the last window frame and release only the GUI attachment.
+    /// Backend owners and their PTYs remain available to the next UI.
+    pub async fn detach(mut self, state: Option<bbt_proto::gui::WindowState>) -> Result<()> {
+        self.supervisor.preserve_on_drop();
+        self.logic.preserve_on_drop();
+        let result = tokio::time::timeout(STARTUP_TIMEOUT, async {
+            while self.recovery.is_some() {
+                self.event().await?;
+                self.supervisor.preserve_on_drop();
+                self.logic.preserve_on_drop();
+            }
+            if let Some(state) = state {
+                let epoch = self.endpoint.window.as_ref()
+                    .ok_or_else(|| invalid("GUI detach has no window epoch"))?.epoch;
+                let id = bbt_mux::Ulid::new();
+                let action = GuiAction::WindowSave { id, epoch, state };
+                loop {
+                    match self.send(action.clone()).await {
+                        Ok(()) => break,
+                        Err(error) if error.is::<Busy>() => self.writer_ready().await?,
+                        Err(error) => return Err(error),
+                    }
+                }
+                loop {
+                    if let GuiReply::WindowSaved { op, error } = self.receive().await?
+                        && op == id
+                    {
+                        if let Some(error) = error { return Err(invalid(error)); }
+                        break;
+                    }
+                }
+            }
+            Ok(())
+        }).await.map_err(|_| invalid("GUI detach state-save timed out"))?;
+        self.supervisor.preserve_on_drop();
+        self.logic.preserve_on_drop();
+        result
+    }
+
+    /// Explicit hard quit: stop and reap both backend owners and their seats.
     pub async fn shutdown(mut self) -> Result<()> {
         if let Some(task) = self.recovery.take() {
             task.abort();
@@ -1328,8 +1372,9 @@ fn child(config: &Config, entry: &str) -> Result<Child> {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::from(stderr))
-        .kill_on_drop(true)
+        .kill_on_drop(false)
         .spawn()
+        .map(Child::new)
         .inspect_err(|e| {
             bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("spawn", entry, e));
         })?)

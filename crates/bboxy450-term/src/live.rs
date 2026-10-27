@@ -82,9 +82,13 @@ pub struct CommandSender {
     sender: mpsc::Sender<UiMsg>,
     knowledge: Arc<KnowledgeDemand>,
     context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
-    // Dropping the UI owner wakes shutdown even when the queue and retained
-    // retry slot are full. No polling timer and no UI wait are needed.
-    _stop: oneshot::Sender<()>,
+    // UI loss detaches even when the queue and retained retry slot are full.
+    // Only an explicit hard-quit signal stops the backend owners.
+    _stop: oneshot::Sender<CloseMode>,
+}
+enum CloseMode {
+    Detach(Option<bbt_proto::gui::WindowState>),
+    HardQuit,
 }
 #[derive(Default)]
 struct KnowledgeDemand {
@@ -92,6 +96,12 @@ struct KnowledgeDemand {
     notify: tokio::sync::Notify,
 }
 impl CommandSender {
+    pub fn detach(self, state: Option<bbt_proto::gui::WindowState>) {
+        let _ = self._stop.send(CloseMode::Detach(state));
+    }
+    pub fn shutdown(self) {
+        let _ = self._stop.send(CloseMode::HardQuit);
+    }
     pub fn sender_clone(&self) -> mpsc::Sender<UiMsg> {
         self.sender.clone()
     }
@@ -114,7 +124,7 @@ impl std::ops::Deref for CommandSender {
 }
 struct Commands {
     messages: mpsc::Receiver<UiMsg>,
-    stop: oneshot::Receiver<()>,
+    stop: oneshot::Receiver<CloseMode>,
     knowledge: Arc<KnowledgeDemand>,
     context: tokio::sync::watch::Receiver<Option<bboxy450_term::settings::ContextUpdate>>,
 }
@@ -936,6 +946,7 @@ async fn run_with_control(
     knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
     let mut in_flight = None;
     let mut closing = false;
+    let mut close_mode = CloseMode::Detach(None);
     // Accept one UI command's actions at a time. Watch diffs are finite;
     // the stream allows one unapplied update per watch. Deduplicate Unwatch
     // notifications so a full writer cannot create an unbounded control queue.
@@ -1211,9 +1222,9 @@ async fn run_with_control(
                     }
                     in_flight=None;
                     }
-                    None=>closing=true,
+                    None=>{close_mode=(&mut commands.stop).await.unwrap_or(CloseMode::Detach(None));closing=true;},
                 },
-                _=&mut commands.stop=>closing=true,
+                requested=&mut commands.stop=>{close_mode=requested.unwrap_or(CloseMode::Detach(None));closing=true;},
                 _=tokio::time::sleep_until(tokio::time::Instant::from_std(retry_at.unwrap_or_else(Instant::now))), if retry_at.is_some() && !lost=>{},
                 ready=writer_ready, if writer_blocked && !lost=>{ready?;},
                 _=async {}, if history.has_work() && !lost=> {
@@ -1541,11 +1552,19 @@ async fn run_with_control(
             updates.publish(model.clone());
         }
     }
-    let stopped = session.shutdown().await;
-    if stopped.is_ok() {
-        logger.write("cockpit children reaped after orderly shutdown");
+    if let CloseMode::Detach(state) = close_mode {
+        let detached = session.detach(state).await;
+        if detached.is_ok() {
+            logger.write("cockpit UI detached; backend owners kept alive");
+        }
+        detached
+    } else {
+        let stopped = session.shutdown().await;
+        if stopped.is_ok() {
+            logger.write("cockpit children reaped after orderly shutdown");
+        }
+        stopped
     }
-    stopped
 }
 
 #[cfg(test)]
@@ -3003,7 +3022,7 @@ mod tests {
                 .is_some_and(|e| e.project().summary.tone == Tone::Green)
         })
         .await;
-        drop(sender);
+        sender.shutdown();
         tokio::time::timeout(Duration::from_secs(30), io)
             .await
             .unwrap()
@@ -3534,7 +3553,7 @@ mod tests {
         })
         .await;
         eprintln!("PASS input returns live and unwatch releases historical display");
-        drop(sender);
+        sender.shutdown();
         tokio::time::timeout(Duration::from_secs(30), task)
             .await
             .unwrap()
@@ -4039,7 +4058,7 @@ mod tests {
         }
         assert!(reason.is_some());
         eprintln!("PASS logic SIGKILL: {reason:?}; retained Screen/frame; no restoration claimed");
-        drop(sender);
+        sender.shutdown();
         tokio::time::timeout(Duration::from_secs(30), task)
             .await
             .unwrap()

@@ -1,0 +1,11 @@
+Operator scope: ordinary close/Cmd-Q preserve live work; Cmd-Shift-Q explicitly stops backend owners.
+Base: 29a6b786edda46e0c41ae0605edfb034cb1caa31
+Implementation: separate detach and hard-quit signals; final window-state save acknowledged before detach; successfully started backend owners outlive the UI.
+Scope: app lifecycle and keyboard routing only; sidebar/split issues remain #67.
+Changed paths: crates/bboxy450-term/src/{main.rs,live.rs,headless.rs,cockpit.rs,cockpit/owners.rs}; tests/cockpit.rs; ctl lifecycle spec and decision 344.
+cargo test --locked -p bboxy450-term --test cockpit normal_detach_keeps_work_and_window_state_until_hard_quit -- --exact --ignored --nocapture — exit 0, 1 passed.
+Evidence: same supervisor/logic/shell PIDs, process generation, shell variable, saved layout/focus/scroll; explicit shutdown removes all three PIDs.
+cargo test --locked -p bboxy450-term --bin bboxy450-term — exit 0, 140 passed, 5 ignored.
+Keyboard regression checks logical Dvorak Q vs physical X and both quit modes across launcher, settings, document and composer.
+fix-lifecycle-test.log SHA256 51365224eefdfe6ea62985ed4b0fe4e6ccb48d71f52147cc8c7a9d43119b6bfc
+fix-unit.log SHA256 534f48f0ce969ce9c5e3e01a704de8d36db6998f4be68b6b38b2bc7b57d552e9

@@ -893,6 +893,7 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
 #[derive(Debug, PartialEq, Eq)]
 enum RoutedKey {
     Quit,
+    HardQuit,
     OpenLauncher,
     OpenGraph,
     OpenSettings,
@@ -1035,6 +1036,8 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
     if command && shortcut == Some('q') {
         return if repeat {
             RoutedKey::Local
+        } else if mods.shift_key() {
+            RoutedKey::HardQuit
         } else {
             RoutedKey::Quit
         };
@@ -1232,7 +1235,7 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     let global = route_key(input, modes, None);
     if matches!(
         global,
-        RoutedKey::Quit
+        RoutedKey::Quit | RoutedKey::HardQuit
             | RoutedKey::OpenLauncher
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
@@ -1280,7 +1283,7 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
     if input.state == ElementState::Released
         || matches!(
             global,
-            RoutedKey::Quit
+            RoutedKey::Quit | RoutedKey::HardQuit
                 | RoutedKey::OpenLauncher
                 | RoutedKey::OpenGraph
                 | RoutedKey::OpenSettings
@@ -1332,7 +1335,7 @@ fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     let routed = route_local_page(input, modes);
     if matches!(
         routed,
-        RoutedKey::Quit | RoutedKey::ToggleHud | RoutedKey::LocalPage(_)
+        RoutedKey::Quit | RoutedKey::HardQuit | RoutedKey::ToggleHud | RoutedKey::LocalPage(_)
     ) || input.state == ElementState::Released
     {
         routed
@@ -1347,7 +1350,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     let global = route_key(input, modes, Some(""));
     if matches!(
         global,
-        RoutedKey::Quit
+        RoutedKey::Quit | RoutedKey::HardQuit
             | RoutedKey::OpenLauncher
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
@@ -3935,22 +3938,34 @@ impl App {
         }
     }
     fn request_close(&mut self, event_loop: &ActiveEventLoop) {
+        self.close_app(event_loop, false);
+    }
+    fn request_shutdown(&mut self, event_loop: &ActiveEventLoop) {
+        self.close_app(event_loop, true);
+    }
+    fn close_app(&mut self, event_loop: &ActiveEventLoop, hard: bool) {
         if self.closing {
             return;
         }
         self.closing = true;
         self.command_retry.cancel();
         self.pending_commands.clear();
-        self.logger.write("app close requested; stopping IO owner");
+        self.logger.write(if hard { "app hard quit requested; stopping backend owners" } else { "app close requested; detaching UI" });
         if let Some(stall) = &mut self.stall {
             stall.cancel();
             return;
         }
-        if self.live_commands.take().is_none() {
+        if let Some(commands) = self.live_commands.take() {
+            if hard {
+                commands.shutdown();
+            } else {
+                commands.detach(self.window_last.clone());
+            }
+        } else {
             event_loop.exit();
         }
-        // The IO owner reaps both children, then sends BackendStopped. Never
-        // wait for process shutdown on this thread.
+        // The IO owner saves/detaches or explicitly stops the backends, then
+        // sends BackendStopped. The UI thread never waits on either path.
     }
     fn request_redraw(&self) {
         self.request_redraw_sources(&[stall::DIRECT_REDRAW_SOURCE]);
@@ -5188,7 +5203,7 @@ impl App {
                         RoutedKey::Terminal(_)
                             | RoutedKey::Scroll(_)
                             | RoutedKey::Local
-                            | RoutedKey::Quit
+                            | RoutedKey::Quit | RoutedKey::HardQuit
                     ) {
                         return Err(format!(
                             "ui_key_not_applicable: {key} after {applied} earlier chrome keys; terminal input uses seat key"
@@ -6127,7 +6142,7 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::App(live::AppEvent::Stop { id }) => {
                 self.logger
                     .write(format!("app stop {id}: orderly Session shutdown"));
-                self.request_close(event_loop);
+                self.request_shutdown(event_loop);
             }
             UiEvent::CaptureDeadline(id) => {
                 if let Some(at) = self.ctl_captures.iter().position(|ask| ask.id == id) {
@@ -6974,6 +6989,7 @@ impl ApplicationHandler<UiEvent> for App {
                 match self.dispatch_chrome(routed) {
                     None => {}
                     Some(RoutedKey::Quit) => self.request_close(event_loop),
+                    Some(RoutedKey::HardQuit) => self.request_shutdown(event_loop),
                     Some(RoutedKey::Scroll(motion)) => {
                         if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
                             let page = self
@@ -7303,6 +7319,7 @@ fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
 
 const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
+  Cmd-Q / window close keep live sessions; Cmd-Shift-Q hard quits their backends.
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
   --repository PATH    repository directory (default: cwd, or a writable app workspace)
@@ -9067,6 +9084,22 @@ mod layout_shortcut_tests {
         assert_eq!(route_key(&command_t, 0, None), RoutedKey::OpenLauncher);
         let physical_t = character("y", "y", KeyCode::KeyT, Some("y"), ModifiersState::SUPER);
         assert_eq!(route_key(&physical_t, 0, None), RoutedKey::Local);
+    }
+
+    #[test]
+    fn quit_and_hard_quit_follow_the_layout_in_every_chrome_context() {
+        for (mods, expected) in [
+            (ModifiersState::SUPER, RoutedKey::Quit),
+            (ModifiersState::SUPER | ModifiersState::SHIFT, RoutedKey::HardQuit),
+        ] {
+            let input = character("Q", "q", KeyCode::KeyX, Some("Q"), mods);
+            assert_eq!(route_key(&input, 0, None), expected);
+            assert_eq!(route_key(&input, 0, Some("query")), expected);
+            assert_eq!(route_local_page(&input, 0), expected);
+            assert_eq!(route_settings(&input, 0, true), expected);
+            assert_eq!(route_document(&input, 0), expected);
+            assert_eq!(route_composer(&input, 0, ComposeField::Body), expected);
+        }
     }
 
     #[test]

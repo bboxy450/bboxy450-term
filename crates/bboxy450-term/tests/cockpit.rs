@@ -91,6 +91,69 @@ async fn spawn(session: &mut Session, root: &Path, swarm: Ulid) -> GuiSeat {
     .unwrap()
 }
 
+// keeps: mux-daemon GUI independence; normal close preserves work, hard quit ends it.
+#[ignore = "night: real process boundary; run explicitly for lifecycle changes"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[allow(clippy::disallowed_methods, reason = "private process fixture; no UI thread")]
+async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
+    async fn file(path: &Path) -> String {
+        tokio::time::timeout(Duration::from_secs(20), async {
+            loop {
+                if let Ok(text) = tokio::fs::read_to_string(path).await
+                    && !text.is_empty()
+                {
+                    return text;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        }).await.unwrap()
+    }
+    let root = tempfile::tempdir().unwrap();
+    let mut session = start(root.path()).await;
+    let supervisor = session.supervisor.id().unwrap();
+    let logic = session.logic.id().unwrap();
+    let swarm = Ulid::new();
+    let seat = spawn(&mut session, root.path(), swarm).await;
+    let shell = pid(&seat);
+    let before = root.path().join("before");
+    session.send(GuiAction::Input {
+        seat: bbt_proto::SeatId::from_u128(seat.record.id.0), generation: seat.record.generation, id: Ulid::new(),
+        bytes: format!("KEEP_WORK=575931; printf '%s\\n' $$ > '{}'\r", before.display()).into_bytes(),
+    }).await.unwrap();
+    assert_eq!(file(&before).await.trim(), shell.to_string());
+    let seat_id = seat.record.id;
+    let tab = Ulid::new();
+    let state: bbt_proto::gui::WindowState = serde_json::from_value(serde_json::json!({
+        "version":1, "size":[1440.0,900.0], "sidebar_width":280.0,
+        "sidebar_scroll":12.0, "sidebar_shown":true, "open_swarms":[swarm],
+        "swarms":[{"id":swarm,"tabs":[{"id":tab,"name":"work","shortcut":1,
+            "expanded":true,"seats":[seat_id],"tree":{"kind":"seat","id":seat_id}}]}],
+        "stage":{"swarm":swarm,"tab":tab,"focused":seat_id},
+        "scroll":[{"seat":seat_id,"top_row":23,"live":false}]
+    })).unwrap();
+    session.detach(Some(state.clone())).await.unwrap();
+    let mut reattached = start(root.path()).await;
+    assert_eq!(reattached.supervisor.id(), Some(supervisor));
+    assert_eq!(reattached.logic.id(), Some(logic));
+    assert_eq!(reattached.endpoint.window.as_ref().unwrap().state.as_ref(), Some(&state));
+    let restored = reattached.list().await.unwrap().into_iter()
+        .find(|row| row.record.id == seat.record.id).unwrap();
+    assert_eq!(restored.record.generation, seat.record.generation);
+    assert_eq!(pid(&restored), shell);
+    let after = root.path().join("after");
+    reattached.send(GuiAction::Input {
+        seat: bbt_proto::SeatId::from_u128(seat.record.id.0), generation: seat.record.generation, id: Ulid::new(),
+        bytes: format!("printf '%s %s\\n' \"$KEEP_WORK\" $$ > '{}'\r", after.display()).into_bytes(),
+    }).await.unwrap();
+    assert_eq!(file(&after).await.trim(), format!("575931 {shell}"));
+    reattached.shutdown().await.unwrap();
+    for owner in [supervisor, logic, shell] {
+        assert!(!std::process::Command::new("/bin/ps")
+            .args(["-p", &owner.to_string(), "-o", "pid="])
+            .output().unwrap().status.success(), "hard quit kept process {owner}");
+    }
+}
+
 // keeps: spec c1-live-seats §4
 #[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

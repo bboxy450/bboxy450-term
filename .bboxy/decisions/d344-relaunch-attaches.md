@@ -33,3 +33,5 @@ Ruled at Aster's T5 gap. One real kill of the app process (8dd48537) left the su
 **Order.** One cut owns the launch-time find and attach (rules 1 to 3) in the app's lifecycle; the persistence and restore of window state (rule 4) is the second, and T5 goes full when both land and the night kills and relaunches the real app.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+**Operator clarification, 2026-10-26:** ordinary window close and Cmd-Q preserve live work by detaching the GUI. Cmd-Shift-Q is explicit hard quit and stops the backend owners and their seats. This supersedes ctl §1b's earlier equivalence between native close and backend shutdown. Retained records/history are not purged by hard quit.
