@@ -222,6 +222,9 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 /// One parse sample per verb of this noun's table (the verb gate in ctl.rs's tests).
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
+    "ui click 10 20",
+    "ui sidebar-scroll -3",
+    "ui launcher-scroll -3",
     "ui open graph",
     "ui key cmd-t esc",
     "ui focus s",

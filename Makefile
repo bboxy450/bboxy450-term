@@ -268,7 +268,7 @@ test-spawn-wire:
 test-navigation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin bboxy450-term; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin bboxy450-term; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --nocapture
 
 check-navigation:
