@@ -186,18 +186,8 @@ print("test result: ok. 1 passed; 0 failed; 0 ignored")
 '''.replace("REAL", repr(real_cargo))
         (self.bin / "cargo").write_text(cargo)
         (self.bin / "cargo").chmod(0o755)
-        (self.bin / "icq").write_text('''#!/usr/bin/env python3
-import json,os,pathlib,sys
-state=pathlib.Path(os.environ["BBOXY_LANDING_STATE_DIR"])
-args=sys.argv[1:]
-with (state/"icq.jsonl").open("a") as f:f.write(json.dumps(args)+"\\n")
-if args[0]=="--dry-run":
- print(json.dumps({"operation":"send","arguments":{"name":args[2],"text":args[3]}}))
-else:
- cfg=json.loads((state/"behavior.json").read_text()) if (state/"behavior.json").exists() else {}
- if cfg.get("fail_announce"):raise SystemExit(1)
- print(json.dumps({"id":"fixture-receipt","state":"stored"}))
-''')
+        # A sentinel proves no historical messaging path is reached.
+        (self.bin / "icq").write_text('#!/bin/sh\necho forbidden-messenger >&2\nexit 97\n')
         (self.bin / "icq").chmod(0o755)
         self.environment["PATH"] = str(self.bin) + os.pathsep + os.environ["PATH"]
         self.base = self.commit("Fixture tooling")
@@ -1195,12 +1185,12 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 75, result.stderr)
         self.assertEqual(self.cargo_test_count(), 0)
 
-    def test_notification_failure_can_resume_without_rechecking_or_repush(self):
+    def test_local_receipt_failure_can_resume_without_rechecking_or_repush(self):
         sha = self.cut()
-        (self.repo.state / "behavior.json").write_text('{"fail_announce":true}')
+        (self.repo.state / "announced").write_text("fixture receipt failure")
         self.assertNotEqual(self.repo.land().returncode, 0)
         self.assertEqual(self.repo.remote_head(), sha)
-        (self.repo.state / "behavior.json").write_text('{}')
+        (self.repo.state / "announced").unlink()
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 1)

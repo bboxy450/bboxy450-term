@@ -174,6 +174,7 @@ fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
             record.clone(),
             HarnessRecord::builtin("codex").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                env: vec![],
                 cwd: directory.path().into(),
                 role_prompt: String::new(),
                 executable: "/fixture/bboxy450-term".into(),
@@ -220,9 +221,7 @@ fn adapters_sessions_file_dialog_blocks_every_write_and_rejects_pid_session_reus
             Ulid::new(),
             "peer data",
             &journal,
-            |_| {
-                unreachable!("dialog must never receive a paste")
-            },
+            |_| unreachable!("dialog must never receive a paste"),
         )
         .unwrap();
     assert_eq!(outcome.evidence, Evidence::RecipientStored);
@@ -474,6 +473,7 @@ fn adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallb
             record,
             HarnessRecord::builtin("zsh").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                env: vec![],
                 cwd: temp.path().into(),
                 role_prompt: String::new(),
                 executable: "/tmp/bboxy450-term".into(),

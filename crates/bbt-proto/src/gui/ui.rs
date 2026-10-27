@@ -15,7 +15,10 @@ pub struct FocusFrame {
 #[serde(tag = "kind", content = "body", rename_all = "snake_case")]
 pub enum UiRequest {
     /// Set a swarm's default launch folder; None restores the app default.
-    SwarmWorkdir { swarm: Ulid, path: Option<String> },
+    SwarmWorkdir {
+        swarm: Ulid,
+        path: Option<String>,
+    },
     Open(UiTarget),
     Key(Vec<String>),
     Focus {
@@ -53,8 +56,10 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
-            Self::SwarmWorkdir { swarm, path } if *swarm == Ulid::nil()
-                || path.as_deref().is_some_and(|path| !valid_workdir(path)) => {
+            Self::SwarmWorkdir { swarm, path }
+                if *swarm == Ulid::nil()
+                    || path.as_deref().is_some_and(|path| !valid_workdir(path)) =>
+            {
                 Err("invalid_swarm_workdir: expected a swarm and an absolute folder path")
             }
             Self::Compose(compose) => compose.validate(),
@@ -103,7 +108,9 @@ impl UiRequest {
 }
 
 pub fn valid_workdir(path: &str) -> bool {
-    !path.is_empty() && path.len() <= 4096 && std::path::Path::new(path).is_absolute()
+    !path.is_empty()
+        && path.len() <= 4096
+        && std::path::Path::new(path).is_absolute()
         && !path.chars().any(char::is_control)
 }
 
@@ -271,6 +278,11 @@ impl Default for UiScrollPosition {
 /// Named chrome chords accepted by ctl and independently checked by the window.
 pub const UI_KEYS: &[&str] = &[
     "cmd-t",
+    "cmd-d",
+    "cmd-shift-d",
+    "cmd-a",
+    "cmd-shift-enter",
+    "alt-enter",
     "cmd-g",
     "cmd-m",
     "cmd-w",
@@ -337,6 +349,8 @@ pub struct UiLayout {
     pub tab: Option<Ulid>,
     pub focused: Option<Ulid>,
     pub launcher_open: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launcher_params: Option<UiLauncherParams>,
     pub page: Option<String>,
     pub document: Option<String>,
     pub panes: Vec<UiPane>,
@@ -350,6 +364,23 @@ pub struct UiLayout {
     /// Included only for `UiRequest::Seats`; ordinary layout replies keep it absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seats: Option<Vec<GuiSeat>>,
+}
+
+/// Resolved launcher values, sampled with the produced frame for ctl assertions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiLauncherParams {
+    pub launch: String,
+    pub fields: Vec<UiSpawnField>,
+    pub runs: String,
+    pub editing: Option<String>,
+    pub choosing: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiSpawnField {
+    pub label: String,
+    pub value: String,
+    pub source: String,
+    pub fixed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

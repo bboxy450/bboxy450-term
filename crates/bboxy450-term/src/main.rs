@@ -13,8 +13,8 @@ mod live;
 mod log;
 mod scene;
 mod spawn_gate;
-mod swarm_folder;
 mod stall;
+mod swarm_folder;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -59,7 +59,10 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
-    SwarmFolderPicked { swarm: bbt_proto::SwarmId, path: Option<String> },
+    SwarmFolderPicked {
+        swarm: bbt_proto::SwarmId,
+        path: Option<String>,
+    },
     UiFor {
         id: bbt_mux::Ulid,
         request: bbt_proto::gui::UiRequest,
@@ -686,7 +689,9 @@ impl UiEffect {
         model: Option<&bboxy450_term::model::Model>,
     ) -> Option<Self> {
         match message {
-            live::UiMsg::SwarmWorkdir {swarm,path} => Some(Self::SwarmWorkdir(*swarm,path.clone())),
+            live::UiMsg::SwarmWorkdir { swarm, path } => {
+                Some(Self::SwarmWorkdir(*swarm, path.clone()))
+            }
             live::UiMsg::Spawn { id, .. } | live::UiMsg::SpawnSpec { id, .. } => {
                 Some(Self::Spawn(*id))
             }
@@ -859,6 +864,8 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
     }
     let (logical_key, code) = match name {
         "t" => (Key::Character("t".into()), KeyCode::KeyT),
+        "d" => (Key::Character("d".into()), KeyCode::KeyD),
+        "a" => (Key::Character("a".into()), KeyCode::KeyA),
         "g" => (Key::Character("g".into()), KeyCode::KeyG),
         "m" => (Key::Character("m".into()), KeyCode::KeyM),
         "w" => (Key::Character("w".into()), KeyCode::KeyW),
@@ -899,6 +906,7 @@ enum RoutedKey {
     Quit,
     HardQuit,
     OpenLauncher,
+    SplitLauncher(bbt_proto::seat_state::Side),
     OpenGraph,
     OpenSettings,
     MuteFocused,
@@ -1056,6 +1064,17 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             RoutedKey::Local
         } else {
             RoutedKey::OpenLauncher
+        };
+    }
+    if command && !mods.alt_key() && !mods.control_key() && shortcut == Some('d') {
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::SplitLauncher(if mods.shift_key() {
+                bbt_proto::seat_state::Side::Bottom
+            } else {
+                bbt_proto::seat_state::Side::Right
+            })
         };
     }
     if command && mods.alt_key() && shortcut == Some('f') {
@@ -1239,8 +1258,10 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     let global = route_key(input, modes, None);
     if matches!(
         global,
-        RoutedKey::Quit | RoutedKey::HardQuit
+        RoutedKey::Quit
+            | RoutedKey::HardQuit
             | RoutedKey::OpenLauncher
+            | RoutedKey::SplitLauncher(_)
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
@@ -1287,8 +1308,10 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
     if input.state == ElementState::Released
         || matches!(
             global,
-            RoutedKey::Quit | RoutedKey::HardQuit
+            RoutedKey::Quit
+                | RoutedKey::HardQuit
                 | RoutedKey::OpenLauncher
+                | RoutedKey::SplitLauncher(_)
                 | RoutedKey::OpenGraph
                 | RoutedKey::OpenSettings
                 | RoutedKey::MuteFocused
@@ -1354,8 +1377,10 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     let global = route_key(input, modes, Some(""));
     if matches!(
         global,
-        RoutedKey::Quit | RoutedKey::HardQuit
+        RoutedKey::Quit
+            | RoutedKey::HardQuit
             | RoutedKey::OpenLauncher
+            | RoutedKey::SplitLauncher(_)
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
@@ -1557,32 +1582,16 @@ fn launcher_items_for(
     let note =
         swarm_oracle(model, stage).map(|name| format!("this swarm already has an Oracle: {name}"));
     for item in &mut items {
-        item.children = Some(if item.id == "claude" {
-            if let Some(note) = &note {
-                item.sub.push_str(&format!(" · {note}"));
-            }
-            ROLE_PRESETS
-                .into_iter()
-                .map(|(role, label, say)| Item {
-                    id: format!("{}:as:{role}", item.id),
-                    label: label.into(),
-                    sub: if role == "oracle" {
-                        format!("default · {}", note.as_deref().unwrap_or(say))
-                    } else {
-                        say.into()
-                    },
-                    harness: item.harness.clone(),
-                    role: Some(role.into()),
-                    kind: "Role".into(),
-                    tile: item.tile.clone(),
-                    enter_picks: true,
-                    children: Some(placements(item, role)),
-                    ..Default::default()
-                })
-                .collect()
-        } else {
-            placements(item, item.role.as_deref().expect("launch default role"))
-        });
+        if item.id == "claude"
+            && let Some(note) = &note
+        {
+            item.sub.push_str(&format!(" · {note}"));
+        }
+        let mut children = placements(item, item.role.as_deref().expect("launch default role"));
+        for child in &mut children {
+            child.parameters = true;
+        }
+        item.children = Some(children);
     }
     let mut providers = model.map_or_else(Vec::new, |m| m.provider_launcher_items());
     for root in &mut providers {
@@ -1702,6 +1711,20 @@ fn new_launcher(model: Option<&bboxy450_term::model::Model>, used: usize) -> Lau
     new_launcher_for(model, used, None)
 }
 
+fn preset_launcher_items(
+    mut items: Vec<bbt_ui::modules::launcher::Item>,
+    preset: Option<bbt_proto::seat_state::Side>,
+) -> Vec<bbt_ui::modules::launcher::Item> {
+    if preset.is_some() {
+        items.retain(|it| LAUNCHABLES.iter().any(|(id, _, _, _, _)| *id == it.id));
+        for item in &mut items {
+            item.children = None;
+            item.parameters = true;
+        }
+    }
+    items
+}
+
 fn new_launcher_for(
     model: Option<&bboxy450_term::model::Model>,
     used: usize,
@@ -1731,6 +1754,7 @@ fn new_launcher_for(
             }),
             spotlight: true,
             edit: None,
+            params: None,
         },
         0,
     )
@@ -1783,6 +1807,16 @@ struct App {
     launcher: Option<LauncherController>,
     launcher_layout: Option<scene::LauncherLayout>,
     launcher_parent: Option<TextFocus>,
+    launcher_preset: Option<bbt_proto::seat_state::Side>,
+    launcher_stage: Option<Stage>,
+    launcher_choices: std::collections::BTreeMap<
+        bbt_mux::Ulid,
+        (
+            String,
+            bbt_proto::SwarmId,
+            bboxy450_term::spawn_params::Resolved,
+        ),
+    >,
     preferences: preferences::State,
     preferences_io: Option<preferences::Io>,
     rim_preview: Option<f32>,
@@ -1944,6 +1978,9 @@ impl App {
                 .then(|| new_launcher(None, 0)),
             launcher_layout: None,
             launcher_parent: None,
+            launcher_preset: None,
+            launcher_stage: None,
+            launcher_choices: Default::default(),
             preferences: preferences::State::default(),
             preferences_io: None,
             rim_preview: None,
@@ -3243,6 +3280,8 @@ impl App {
                     .then_some(TextFocus::Composer(self.composer.view.field))
             };
         }
+        self.launcher_preset = None;
+        self.launcher_stage = self.focus.stage.clone();
         self.blur_reject();
         self.composer.handle(ComposeCommand::Blur);
         self.composer_dragging = false;
@@ -3263,6 +3302,28 @@ impl App {
         self.query_dragging = false;
         self.logger.write("launcher open");
         self.request_redraw();
+    }
+    fn split_launcher(&mut self, side: bbt_proto::seat_state::Side) {
+        if self.focus.stage.as_ref().and_then(|s| s.focused).is_none() {
+            return;
+        }
+        self.open_launcher();
+        self.launcher_preset = Some(side);
+        if let Some(controller) = &mut self.launcher {
+            controller.launcher.items =
+                preset_launcher_items(std::mem::take(&mut controller.launcher.items), Some(side));
+            controller.launcher.placeholder = if side == bbt_proto::seat_state::Side::Right {
+                "Split right · pick a harness"
+            } else {
+                "Split down · pick a harness"
+            }
+            .into();
+            controller.launcher.actions = vec![
+                ("Split".into(), "↵".into()),
+                ("Parameters".into(), "→".into()),
+                ("New tab instead".into(), "⌥↵".into()),
+            ];
+        }
     }
     fn close_launcher(&mut self) {
         self.launcher = None;
@@ -3296,6 +3357,41 @@ impl App {
         let pointer_edit = matches!(command, LauncherCommand::SetCaret { .. });
         let outcome = launcher.handle(command);
         match outcome {
+            LauncherOutcome::Parameters { id } => {
+                let Some((harness, swarm)) = self.local_launcher_target(&id) else {
+                    return;
+                };
+                let model = self.live_state.as_deref();
+                let row = model.and_then(|m| {
+                    m.ui.window
+                        .sidebar
+                        .swarms
+                        .iter()
+                        .find(|s| Some(s.id) == swarm)
+                });
+                let fallback = model.map_or("/", |m| m.launch_directory.as_str());
+                let fields = bboxy450_term::spawn_params::resolve(
+                    &harness,
+                    &self.preferences.preferences.harnesses,
+                    row,
+                    fallback,
+                );
+                if let Some(launcher) = &mut self.launcher {
+                    launcher.open_parameters(&id, fields);
+                }
+                self.update_launcher_runs();
+                self.launcher_layout = None;
+                self.request_redraw();
+            }
+            LauncherOutcome::LaunchParams { id, modifiers } => {
+                let fields = self
+                    .launcher
+                    .as_ref()
+                    .and_then(|l| l.launcher.params.as_ref())
+                    .map(|p| p.fields.clone())
+                    .unwrap_or_default();
+                self.launch_local(&id, modifiers, Some(fields));
+            }
             LauncherOutcome::Close => self.close_launcher(),
             LauncherOutcome::Changed => {
                 // Pointer selection changes neither query nor row membership.
@@ -3313,6 +3409,10 @@ impl App {
                 }
                 if id == "settings" || id.starts_with("settings:") {
                     self.open_settings(id.strip_prefix("settings:").unwrap_or("Account"));
+                    return;
+                }
+                if self.local_launcher_target(&id).is_some() {
+                    self.launch_local(&id, modifiers, None);
                     return;
                 }
                 if let Some(message) = spawn_pick(
@@ -3334,6 +3434,151 @@ impl App {
             }
             LauncherOutcome::Local => {}
             other => self.logger.write(format!("launcher outcome: {other:?}")),
+        }
+        self.update_launcher_runs();
+    }
+    fn update_launcher_runs(&mut self) {
+        if let Some(params) = self
+            .launcher
+            .as_mut()
+            .and_then(|l| l.launcher.params.as_mut())
+        {
+            let home = std::env::var("HOME").unwrap_or_default();
+            params.runs = bboxy450_term::spawn_params::Resolved::from_fields(&params.fields, &home)
+                .map_or_else(|error| error, |value| value.runs());
+        }
+    }
+    fn local_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
+        match spawn_pick(
+            id,
+            Default::default(),
+            self.live_state.as_deref(),
+            self.launcher_stage.as_ref(),
+        )? {
+            live::UiMsg::Spawn {
+                harness_kind,
+                swarm,
+                location: bbt_proto::Where::Local,
+                ..
+            } => Some((harness_kind, swarm)),
+            _ => None,
+        }
+    }
+    fn launch_local(
+        &mut self,
+        id: &str,
+        mut modifiers: Modifiers,
+        fields: Option<Vec<bbt_ui::modules::launcher::SpawnField>>,
+    ) {
+        if self.live_commands.is_none() || !self.preferences.loaded {
+            return;
+        }
+        let Some((harness, swarm)) = self.local_launcher_target(id) else {
+            return;
+        };
+        let model = self.live_state.as_deref();
+        let fields = fields.unwrap_or_else(|| {
+            let row = model.and_then(|m| {
+                m.ui.window
+                    .sidebar
+                    .swarms
+                    .iter()
+                    .find(|s| Some(s.id) == swarm)
+            });
+            bboxy450_term::spawn_params::resolve(
+                &harness,
+                &self.preferences.preferences.harnesses,
+                row,
+                model.map_or("/", |m| m.launch_directory.as_str()),
+            )
+        });
+        let resolved = match bboxy450_term::spawn_params::Resolved::from_fields(
+            &fields,
+            &std::env::var("HOME").unwrap_or_default(),
+        ) {
+            Ok(value) => value,
+            Err(reason) => {
+                self.logger.write(format!("launcher refused: {reason}"));
+                return;
+            }
+        };
+        if let Some(side) = self.launcher_preset {
+            modifiers.command = !modifiers.alt;
+            modifiers.shift = side == bbt_proto::seat_state::Side::Bottom;
+        }
+        let Some(live::UiMsg::Spawn {
+            id: op,
+            swarm,
+            placement,
+            ..
+        }) = spawn_pick(id, modifiers, model, self.launcher_stage.as_ref())
+        else {
+            return;
+        };
+        let swarm = swarm.unwrap_or_else(|| bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0));
+        let spec = bbt_proto::SpawnSpec {
+            swarm,
+            harness_kind: harness.clone(),
+            name: None,
+            role: resolved.role.clone(),
+            cwd: resolved.cwd.clone(),
+            location: bbt_proto::Where::Local,
+            resume: None,
+            placement,
+            command: Some(resolved.command.clone()),
+            args: resolved.args.clone(),
+            env: resolved.env.clone(),
+        };
+        self.launcher_choices.insert(op, (harness, swarm, resolved));
+        self.queue(live::UiMsg::SpawnSpec {
+            id: op,
+            spec: Box::new(spec),
+        });
+        self.close_launcher();
+    }
+    fn remember_launcher_choices(&mut self, state: &bboxy450_term::model::Model) {
+        let completed: Vec<_> = self
+            .launcher_choices
+            .keys()
+            .filter_map(|op| {
+                state
+                    .spawns
+                    .get(op)
+                    .filter(|s| s.outcome.is_result())
+                    .map(|s| {
+                        (
+                            *op,
+                            matches!(s.outcome, bboxy450_term::model::SpawnOutcome::Placed(_)),
+                        )
+                    })
+            })
+            .collect();
+        for (op, launched) in completed {
+            let (harness, swarm, values) =
+                self.launcher_choices.remove(&op).expect("captured choice");
+            if !launched {
+                continue;
+            }
+            let patch = settings_controller::Patch::HarnessLaunch {
+                harness,
+                command: values.command,
+                arguments: values.args,
+            };
+            match self.preferences.edit(patch) {
+                Ok(request) => {
+                    if let Some(io) = &self.preferences_io
+                        && let Err(reason) = io.submit(request)
+                    {
+                        self.preferences.refused(reason);
+                    }
+                }
+                Err(reason) => self.preferences.refused(reason),
+            }
+            self.queue(live::UiMsg::SwarmLaunchDefaults {
+                swarm,
+                directory: values.cwd,
+                environment: values.env,
+            });
         }
     }
     fn focus_action(&mut self, action: FocusAction) {
@@ -3958,7 +4203,11 @@ impl App {
         self.closing = true;
         self.command_retry.cancel();
         self.pending_commands.clear();
-        self.logger.write(if hard { "app hard quit requested; stopping backend owners" } else { "app close requested; detaching UI" });
+        self.logger.write(if hard {
+            "app hard quit requested; stopping backend owners"
+        } else {
+            "app close requested; detaching UI"
+        });
         if let Some(stall) = &mut self.stall {
             stall.cancel();
             return;
@@ -4252,6 +4501,7 @@ impl App {
             if self.ui_observe {
                 self.frame_observations.ingest(&state);
             }
+            self.remember_launcher_choices(&state);
             if self.starting.observe(&state) {
                 self.starting_changed();
             }
@@ -4338,7 +4588,10 @@ impl App {
                             != swarm_oracle(Some(&state), self.focus.stage.as_ref()))
             });
             if refresh && let Some(launcher) = &mut self.launcher {
-                launcher.replace_items(launcher_items_for(Some(&state), self.focus.stage.as_ref()));
+                launcher.replace_items(preset_launcher_items(
+                    launcher_items_for(Some(&state), self.focus.stage.as_ref()),
+                    self.launcher_preset,
+                ));
                 self.launcher_layout = None;
             }
             self.scene_dirty = true;
@@ -4508,6 +4761,7 @@ impl App {
     fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
         match routed {
             RoutedKey::OpenLauncher => self.open_launcher(),
+            RoutedKey::SplitLauncher(side) => self.split_launcher(side),
             RoutedKey::OpenGraph => self.open_graph(),
             RoutedKey::OpenSettings => self.open_settings("Account"),
             RoutedKey::SettingsKey(key) => self.settings_key(key),
@@ -4674,9 +4928,15 @@ impl App {
             return Ok(false);
         };
         match effect {
-            UiEffect::SwarmWorkdir(swarm,path) => model.ui.window.sidebar.swarms.iter()
-                .find(|row|row.id==*swarm).map(|row|row.workdir==*path)
-                .ok_or_else(||"swarm_unavailable".into()),
+            UiEffect::SwarmWorkdir(swarm, path) => model
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter()
+                .find(|row| row.id == *swarm)
+                .map(|row| row.workdir == *path)
+                .ok_or_else(|| "swarm_unavailable".into()),
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
             UiEffect::Spawn(id) => {
                 if let Some(launch) = self.starting.get(*id) {
@@ -5118,9 +5378,9 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
-            UiRequest::SwarmWorkdir {swarm,path} => {
-                self.set_swarm_workdir(bbt_proto::SwarmId::from_u128(swarm.0),path)?;
-            },
+            UiRequest::SwarmWorkdir { swarm, path } => {
+                self.set_swarm_workdir(bbt_proto::SwarmId::from_u128(swarm.0), path)?;
+            }
             UiRequest::Compose(request) => self.compose_ui(request)?,
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
@@ -5221,7 +5481,8 @@ impl App {
                         RoutedKey::Terminal(_)
                             | RoutedKey::Scroll(_)
                             | RoutedKey::Local
-                            | RoutedKey::Quit | RoutedKey::HardQuit
+                            | RoutedKey::Quit
+                            | RoutedKey::HardQuit
                     ) {
                         return Err(format!(
                             "ui_key_not_applicable: {key} after {applied} earlier chrome keys; terminal input uses seat key"
@@ -5346,8 +5607,18 @@ impl App {
             },
         );
         let layout = UiLayout {
-            swarm_workdirs: model.ui.window.sidebar.swarms.iter().filter_map(|row|
-                row.workdir.as_ref().map(|path|(bbt_mux::Ulid(row.id.0.0),path.clone()))).collect(),
+            swarm_workdirs: model
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter()
+                .filter_map(|row| {
+                    row.workdir
+                        .as_ref()
+                        .map(|path| (bbt_mux::Ulid(row.id.0.0), path.clone()))
+                })
+                .collect(),
             frame_seq: 0, // filled only by the actual produced-frame callback
             layout_revision: Some(self.scene.layout_revision()),
             clock: Some(self.clock_frame.state),
@@ -5356,6 +5627,26 @@ impl App {
             tab: tab.map(|id| bbt_mux::Ulid::from(id.0.0)),
             focused: focused.map(|id| bbt_mux::Ulid::from(id.0.0)),
             launcher_open: self.launcher.is_some(),
+            launcher_params: self
+                .launcher
+                .as_ref()
+                .and_then(|l| l.launcher.params.as_ref())
+                .map(|p| bbt_proto::gui::UiLauncherParams {
+                    launch: p.launch.id.clone(),
+                    runs: p.runs.clone(),
+                    fields: p
+                        .fields
+                        .iter()
+                        .map(|f| bbt_proto::gui::UiSpawnField {
+                            label: f.key.label().into(),
+                            value: f.value.clone(),
+                            source: f.source.label().into(),
+                            fixed: f.fixed,
+                        })
+                        .collect(),
+                    editing: p.editing.map(|i| p.fields[i].key.label().into()),
+                    choosing: p.choosing.map(|i| p.fields[i].key.label().into()),
+                }),
             page: self.local_tab.as_ref().map(|tab| {
                 match tab {
                     LocalTab::Graph(_) => "graph",
@@ -5998,12 +6289,14 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
-            UiEvent::SwarmFolderPicked {swarm,path} => {
-                self.swarm_folder_pending=false;
-                if let Some(path)=path && let Err(reason)=self.set_swarm_workdir(swarm,Some(path)) {
+            UiEvent::SwarmFolderPicked { swarm, path } => {
+                self.swarm_folder_pending = false;
+                if let Some(path) = path
+                    && let Err(reason) = self.set_swarm_workdir(swarm, Some(path))
+                {
                     self.logger.write(reason);
                 }
-            },
+            }
             UiEvent::ErrorCount(count) => {
                 if self.unread_errors != count {
                     self.unread_errors = count;
@@ -6868,14 +7161,38 @@ impl ApplicationHandler<UiEvent> for App {
                     self.close_seat(seat, bbt_mux::Ulid::new(), undo);
                     return;
                 }
-                if let Some((swarm,_,reset)) = self.swarm_folder_regions.iter().copied().find(|(_,rect,_)|
-                    self.pointer[0]>=rect.x && self.pointer[0]<rect.right() && self.pointer[1]>=rect.y && self.pointer[1]<rect.bottom()) {
-                    if reset { let _=self.set_swarm_workdir(swarm,None); }
-                    else if !self.swarm_folder_pending {
-                        self.swarm_folder_pending=true;
-                        let directory=self.live_state.as_ref().and_then(|model|model.ui.window.sidebar.swarms.iter().find(|row|row.id==swarm)).and_then(|row|row.workdir.clone());
-                        if let Err(reason)=swarm_folder::choose(swarm,self.proxy.clone(),directory.as_deref()) {
-                            self.swarm_folder_pending=false;
+                if let Some((swarm, _, reset)) =
+                    self.swarm_folder_regions
+                        .iter()
+                        .copied()
+                        .find(|(_, rect, _)| {
+                            self.pointer[0] >= rect.x
+                                && self.pointer[0] < rect.right()
+                                && self.pointer[1] >= rect.y
+                                && self.pointer[1] < rect.bottom()
+                        })
+                {
+                    if reset {
+                        let _ = self.set_swarm_workdir(swarm, None);
+                    } else if !self.swarm_folder_pending {
+                        self.swarm_folder_pending = true;
+                        let directory = self
+                            .live_state
+                            .as_ref()
+                            .and_then(|model| {
+                                model
+                                    .ui
+                                    .window
+                                    .sidebar
+                                    .swarms
+                                    .iter()
+                                    .find(|row| row.id == swarm)
+                            })
+                            .and_then(|row| row.workdir.clone());
+                        if let Err(reason) =
+                            swarm_folder::choose(swarm, self.proxy.clone(), directory.as_deref())
+                        {
+                            self.swarm_folder_pending = false;
                             self.logger.write(reason);
                         }
                     }
@@ -7767,7 +8084,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(result) = bboxy450_term::cockpit::private_entry(&hook_args) {
         if let Err(error) = &result {
             bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
-                hook_args.first().map_or("backend", String::as_str), "process_entry", error,
+                hook_args.first().map_or("backend", String::as_str),
+                "process_entry",
+                error,
             ));
         }
         return result.map_err(|error| error as Box<dyn std::error::Error>);
@@ -8837,6 +9156,7 @@ mod input_tests {
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::SwarmWorkdir { .. }
+                | live::UiMsg::SwarmLaunchDefaults { .. }
                 | live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
                 | live::UiMsg::Messaging { .. }
@@ -9131,7 +9451,10 @@ mod layout_shortcut_tests {
     fn quit_and_hard_quit_follow_the_layout_in_every_chrome_context() {
         for (mods, expected) in [
             (ModifiersState::SUPER, RoutedKey::Quit),
-            (ModifiersState::SUPER | ModifiersState::ALT, RoutedKey::HardQuit),
+            (
+                ModifiersState::SUPER | ModifiersState::ALT,
+                RoutedKey::HardQuit,
+            ),
         ] {
             let input = character("Q", "q", KeyCode::KeyX, Some("Q"), mods);
             assert_eq!(route_key(&input, 0, None), expected);
@@ -9141,14 +9464,24 @@ mod layout_shortcut_tests {
             assert_eq!(route_document(&input, 0), expected);
             assert_eq!(route_composer(&input, 0, ComposeField::Body), expected);
         }
-        for mods in [ModifiersState::SUPER|ModifiersState::SHIFT,
-            ModifiersState::SUPER|ModifiersState::ALT|ModifiersState::SHIFT,
-            ModifiersState::SUPER|ModifiersState::CONTROL] {
-            let input=character("Q","q",KeyCode::KeyX,Some("Q"),mods);
-            for routed in [route_key(&input,0,None),route_key(&input,0,Some("query")),
-                route_local_page(&input,0),route_settings(&input,0,true),route_document(&input,0),
-                route_composer(&input,0,ComposeField::Body)] {
-                assert!(!matches!(routed,RoutedKey::Quit|RoutedKey::HardQuit),"reserved system shortcut");
+        for mods in [
+            ModifiersState::SUPER | ModifiersState::SHIFT,
+            ModifiersState::SUPER | ModifiersState::ALT | ModifiersState::SHIFT,
+            ModifiersState::SUPER | ModifiersState::CONTROL,
+        ] {
+            let input = character("Q", "q", KeyCode::KeyX, Some("Q"), mods);
+            for routed in [
+                route_key(&input, 0, None),
+                route_key(&input, 0, Some("query")),
+                route_local_page(&input, 0),
+                route_settings(&input, 0, true),
+                route_document(&input, 0),
+                route_composer(&input, 0, ComposeField::Body),
+            ] {
+                assert!(
+                    !matches!(routed, RoutedKey::Quit | RoutedKey::HardQuit),
+                    "reserved system shortcut"
+                );
             }
         }
     }
@@ -9893,49 +10226,22 @@ mod spawn_admission_tests {
     use super::*;
 
     #[test]
-    fn claude_presets_reach_spawn_and_only_claude_gets_presets() {
+    fn local_launch_rows_offer_placement_then_parameters_with_role_in_the_form() {
         let items = launcher_items(None);
-        let claude = items.iter().find(|item| item.id == "claude").unwrap();
-        assert_eq!(claude.role.as_deref(), Some("oracle"));
-        assert!(claude.enter_picks);
-        for (preset, (role, _, _)) in claude.children.as_ref().unwrap().iter().zip(ROLE_PRESETS) {
-            assert_eq!(preset.id, format!("claude:as:{role}"));
-            assert_eq!(preset.kind, "Role");
-            assert_eq!(preset.role.as_deref(), Some(role));
-            let live::UiMsg::Spawn { role: selected, .. } =
-                spawn_pick(&preset.id, Default::default(), None, None).unwrap()
-            else {
-                panic!("preset must admit a spawn")
-            };
-            assert_eq!(selected.as_deref(), Some(role));
-            for placement in preset.children.as_ref().unwrap() {
-                assert_eq!(placement.role.as_deref(), Some(role));
-                let live::UiMsg::Spawn { role: selected, .. } =
-                    spawn_pick(&placement.id, Default::default(), None, None).unwrap()
-                else {
-                    panic!("placement must admit a spawn")
-                };
-                assert_eq!(selected.as_deref(), (role != "oracle").then_some(role));
-            }
-        }
-        for id in [
-            "codex:as:oracle",
-            "claude:as:shell",
-            "claude:as:director",
-            "ssh:rig:claude:as:architect",
+        for (id, role) in [
+            ("claude", "oracle"),
+            ("codex", "executor"),
+            ("zsh", "shell"),
         ] {
-            assert!(spawn_pick(id, Default::default(), None, None).is_none());
-        }
-        for (id, role) in [("codex", "executor"), ("zsh", "shell")] {
             let item = items.iter().find(|item| item.id == id).unwrap();
-            assert!(
-                item.children
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .all(|child| child.kind == "Placement" && child.role.as_deref() == Some(role))
-            );
+            assert!(item.enter_picks);
+            let children = item.children.as_ref().unwrap();
+            assert_eq!(children.len(), 3);
+            assert!(children.iter().all(|child| child.kind == "Placement"
+                && child.parameters
+                && child.role.as_deref() == Some(role)));
         }
+        assert!(spawn_pick("codex:as:oracle", Default::default(), None, None).is_none());
     }
 
     #[test]
@@ -9968,10 +10274,13 @@ mod spawn_admission_tests {
         assert!(claude.enter_picks);
         assert_eq!(claude.role.as_deref(), Some("oracle"));
         assert!(spawn_pick("claude", Default::default(), Some(&model), Some(&stage)).is_some());
-        let oracle = &claude.children.as_ref().unwrap()[0];
-        assert_eq!(
-            oracle.sub,
-            "default · this swarm already has an Oracle: Existing Oracle"
+        assert!(
+            claude
+                .children
+                .as_ref()
+                .unwrap()
+                .iter()
+                .all(|row| row.kind == "Placement")
         );
         stage.swarm = Some(SwarmId::from_u128(2));
         let items = launcher_items_for(Some(&model), Some(&stage));
@@ -9996,6 +10305,9 @@ mod spawn_admission_tests {
         live::UiMsg::SpawnSpec {
             id: bbt_mux::Ulid::new(),
             spec: Box::new(bbt_proto::SpawnSpec {
+                args: Vec::new(),
+                env: Vec::new(),
+                command: None,
                 swarm: bbt_proto::SwarmId::from_u128(1),
                 harness_kind: "zsh".into(),
                 name: None,

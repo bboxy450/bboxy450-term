@@ -1180,12 +1180,10 @@ def remove_slot(path, root):
 
 
 def slot_notice(text):
-    # An unavailable messenger never owns capacity or changes the command's verdict.
+    # Capacity notices stay local; retired messaging tools are never invoked.
     try:
-        subprocess.run(["icq", "send", "#bboxy450-term", text], stdin=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       timeout=1, check=False)
-    except (OSError, subprocess.TimeoutExpired):
+        append_record("notices.log", {"timestamp": now(), "text": text})
+    except OSError:
         pass
 
 
@@ -1334,11 +1332,7 @@ def announcement(sha, subject):
     if receipt.exists():
         return
     text = f"LANDED {sha} {subject[:180]}"
-    preview = json.loads(command(["icq", "--dry-run", "send", "#bboxy450-term", text]).stdout)
-    if preview.get("operation") != "send" or preview.get("arguments", {}).get("name") != "#bboxy450-term" or preview["arguments"].get("text") != text:
-        raise Refusal("icq_preview_mismatch")
-    sent = command(["icq", "send", "#bboxy450-term", text])
-    atomic_write(receipt, sent.stdout)
+    atomic_write(receipt, json.dumps({"sha": sha, "subject": subject, "timestamp": now()}) + "\n")
     print(text, flush=True)
 
 

@@ -2,7 +2,7 @@ flowchart LR
   F["plugins/ folder<br/>bboxy450-term-&lt;system&gt;-&lt;provider&gt;"] --> R["registry<br/>shape, version, health, timings"]
   R -- "--shape, once at trust,<br/>cached by sha256" --> P["plugin binary<br/>an MCP server over stdio<br/>its tools are the contract methods"]
   R -- "status / login / health" --> P
-  C["system contracts<br/>task_system, event_sink, session,<br/>data_source, repo_graph,<br/>decision_model, provider"] --> R
+  C["system contracts<br/>task_system, event_sink, session,<br/>data_source, repo_graph, transport,<br/>decision_model, provider"] --> R
   P -- "fulfils one or more contracts" --> C
   L["logic"] -- "calls through the contract" --> P
   L -- "hooks: before / after, with budget" --> P

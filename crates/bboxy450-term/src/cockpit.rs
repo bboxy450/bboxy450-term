@@ -27,8 +27,8 @@ use tokio::{
 mod fixture_hosts;
 mod owners;
 mod shell_path;
-pub use owners::{Exit as ProcessExit, Process};
 use owners::ManagedChild as Child;
+pub use owners::{Exit as ProcessExit, Process};
 
 /// A read-only lock observation for ctl's local launcher, not backend discovery.
 pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
@@ -42,7 +42,15 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
-    SwarmWorkdir { swarm: bbt_proto::SwarmId, path: Option<String> },
+    SwarmWorkdir {
+        swarm: bbt_proto::SwarmId,
+        path: Option<String>,
+    },
+    SwarmLaunchDefaults {
+        swarm: bbt_proto::SwarmId,
+        directory: String,
+        environment: Vec<(String, String)>,
+    },
     /// Latest durable layout intent from a produced GUI frame.
     WindowState(bbt_proto::gui::WindowState),
     UiReply {
@@ -739,7 +747,9 @@ async fn logic_main() -> Result<()> {
     let status = logic.client.identity_status().await?;
     let ready = LogicReady {
         gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
-        launch_path_fingerprint: std::env::var_os("PATH").as_deref().map(shell_path::fingerprint),
+        launch_path_fingerprint: std::env::var_os("PATH")
+            .as_deref()
+            .map(shell_path::fingerprint),
         root: endpoint
             .path
             .parent()
@@ -882,15 +892,18 @@ impl Session {
                 )
             };
         let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
-        if existing.as_ref().is_some_and(|record|
+        if existing.as_ref().is_some_and(|record| {
             record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
-                || record.ready.launch_path_fingerprint.as_deref() != Some(shell_path::fingerprint(&launch_path).as_str()))
-        {
+                || record.ready.launch_path_fingerprint.as_deref()
+                    != Some(shell_path::fingerprint(&launch_path).as_str())
+        }) {
             let record = existing.take().unwrap();
             let mut old_logic = Process::adopted(&config, "logic", record);
             // Refresh logic only: the supervisor retains every live PTY and process.
             stop_child(&mut old_logic, &mut None, "logic").await?;
-            eprintln!("launch environment or GUI schema changed; refreshed logic, retained supervisor and seats");
+            eprintln!(
+                "launch environment or GUI schema changed; refreshed logic, retained supervisor and seats"
+            );
         }
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();
@@ -1155,8 +1168,12 @@ impl Session {
                 self.logic.preserve_on_drop();
             }
             if let Some(state) = state {
-                let epoch = self.endpoint.window.as_ref()
-                    .ok_or_else(|| invalid("GUI detach has no window epoch"))?.epoch;
+                let epoch = self
+                    .endpoint
+                    .window
+                    .as_ref()
+                    .ok_or_else(|| invalid("GUI detach has no window epoch"))?
+                    .epoch;
                 let id = bbt_mux::Ulid::new();
                 let action = GuiAction::WindowSave { id, epoch, state };
                 loop {
@@ -1170,13 +1187,17 @@ impl Session {
                     if let GuiReply::WindowSaved { op, error } = self.receive().await?
                         && op == id
                     {
-                        if let Some(error) = error { return Err(invalid(error)); }
+                        if let Some(error) = error {
+                            return Err(invalid(error));
+                        }
                         break;
                     }
                 }
             }
             Ok(())
-        }).await.map_err(|_| invalid("GUI detach state-save timed out"))?;
+        })
+        .await
+        .map_err(|_| invalid("GUI detach state-save timed out"))?;
         self.supervisor.preserve_on_drop();
         self.logic.preserve_on_drop();
         result
@@ -1246,7 +1267,10 @@ async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> 
     Ok(io)
 }
 
-async fn start_supervisor(config: &Config, launch_path: &std::ffi::OsStr) -> Result<StartedSupervisor> {
+async fn start_supervisor(
+    config: &Config,
+    launch_path: &std::ffi::OsStr,
+) -> Result<StartedSupervisor> {
     let mut child = child(config, "supervisor", launch_path)?;
     write_json(child.stdin.as_mut().unwrap(), config).await?;
     let mut output = BufReader::new(child.stdout.take().unwrap());
@@ -1387,7 +1411,9 @@ fn child(config: &Config, entry: &str, launch_path: &std::ffi::OsStr) -> Result<
         .custom_flags(libc::O_NOFOLLOW)
         .open(config.run_dir.join(format!("{entry}.log")))?;
     let mut command = Command::new(&config.executable);
-    command.env("BBOXY_RUN_DIR", &config.run_dir).env("PATH", launch_path);
+    command
+        .env("BBOXY_RUN_DIR", &config.run_dir)
+        .env("PATH", launch_path);
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
     }

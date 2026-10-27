@@ -111,6 +111,7 @@ fn view(f: &Value) -> Result<Launcher> {
         cap: serde_json::from_value(a["cap"].clone())?,
         spotlight: f["spotlight"] == true,
         edit: serde_json::from_value(a["edit"].clone())?,
+        params: None,
     })
 }
 pub fn layout_case(case: &Case) -> Result<c::Layout> {
@@ -393,6 +394,7 @@ pub fn paint_legacy(r: Rect, state: &str, draw: &DrawCtx, out: &mut DrawList) {
         cap: None,
         spotlight: true,
         edit: None,
+        params: None,
     };
     let mut layout = launcher
         .element(ctx)

@@ -441,6 +441,7 @@ dependencies = [
  "resvg",
  "serde",
  "serde_json",
+ "shell-words",
  "tempfile",
  "tokio",
  "toml_edit",

@@ -135,6 +135,9 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
         .send(GuiAction::Spawn {
             id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
+                args: Vec::new(),
+                env: Vec::new(),
+                command: None,
                 swarm: SwarmId::from_u128(57),
                 harness_kind: harness.into(),
                 name: Some(harness.into()),

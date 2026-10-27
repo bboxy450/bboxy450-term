@@ -267,6 +267,7 @@ static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 pub struct Preferences {
     pub appearance: Appearance,
     pub notifications: Notifications,
+    pub harnesses: crate::spawn_params::Harnesses,
 }
 impl Default for Preferences {
     fn default() -> Self {
@@ -282,12 +283,23 @@ impl Default for Preferences {
                 blur_radius: 20.,
             },
             notifications: Notifications::default(),
+            harnesses: Default::default(),
         }
     }
 }
 impl Preferences {
     pub fn apply(&mut self, patch: &Patch) -> Result<(), String> {
         patch.validate()?;
+        if let Patch::HarnessLaunch {
+            harness,
+            command,
+            arguments,
+        } = patch
+        {
+            let defaults = self.harnesses.entry(harness.clone()).or_default();
+            defaults.command = Some(command.clone());
+            defaults.arguments = Some(arguments.clone());
+        }
         patch.apply(&mut self.appearance, &mut self.notifications);
         Ok(())
     }
@@ -416,15 +428,29 @@ pub fn records(
             ));
         }
     }
-    for kind in ["claude", "codex", "zsh"] {
+    for kind in ["claude", "codex", "pi", "omp", "zsh"] {
         if let Ok(h) = bbt_mux::adapters::HarnessRecord::builtin(kind) {
             out.harness.push((
                 kind.into(),
                 Harness {
-                    role: h.default_role.name,
+                    role: preferences
+                        .harnesses
+                        .get(kind)
+                        .and_then(|h| h.role.clone())
+                        .unwrap_or(h.default_role.name),
                     wake: format!("{:?}", h.wake_method),
                     hooks: h.hooks,
-                    command: h.command.join(" "),
+                    command: preferences.harnesses.get(kind).map_or_else(
+                        || h.command.join(" "),
+                        |d| {
+                            let command = d.command.clone().unwrap_or_else(|| h.command[0].clone());
+                            crate::spawn_params::join(
+                                &std::iter::once(command)
+                                    .chain(d.arguments.clone().unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            )
+                        },
+                    ),
                     tile: h.tile,
                     icon: h.icon,
                     state_from: format!("{:?}", h.state_source),
@@ -488,7 +514,7 @@ pub struct State {
     pub loaded: bool,
     pub error: Option<String>,
     pub revision: u64,
-    pending: BTreeMap<&'static str, (u64, Patch)>,
+    pending: BTreeMap<String, (u64, Patch)>,
 }
 impl State {
     /// Do not post with defaults while the persisted policy is still loading.
@@ -506,7 +532,10 @@ impl State {
         }
         self.preferences.apply(&patch)?;
         self.revision += 1;
-        self.pending.insert(key(&patch).1, (self.revision, patch));
+        self.pending.insert(
+            format!("{}:{}", key(&patch).0, key(&patch).1),
+            (self.revision, patch),
+        );
         self.error = None;
         Ok(Request::Save {
             revision: self.revision,
@@ -555,8 +584,9 @@ pub fn default_path() -> Result<PathBuf, String> {
         .map(|home| PathBuf::from(home).join(".config/bboxy/config.toml"))
         .ok_or_else(|| "HOME is unavailable for Settings".into())
 }
-fn key(patch: &Patch) -> (&'static str, &'static str) {
+fn key(patch: &Patch) -> (&str, &str) {
     match patch {
+        Patch::HarnessLaunch { harness, .. } => ("harnesses", harness),
         Patch::Theme(_) => ("appearance", "theme"),
         Patch::Density(_) => ("appearance", "density"),
         Patch::Rim(_) => ("appearance", "rim"),
@@ -569,6 +599,7 @@ fn key(patch: &Patch) -> (&'static str, &'static str) {
 }
 fn value(patch: &Patch) -> Value {
     match patch {
+        Patch::HarnessLaunch { .. } => unreachable!("harness table handled before scalar patches"),
         Patch::Theme(v) | Patch::Density(v) => Value::from(v.clone()),
         Patch::Rim(v) => Value::from(*v as f64),
         Patch::Glow(v)
@@ -663,6 +694,49 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
         };
         preferences.apply(&patch)?;
     }
+    if let Some(harnesses) = doc.get("harnesses") {
+        let harnesses = harnesses
+            .as_table_like()
+            .ok_or("Settings [harnesses] must be a table")?;
+        for (kind, item) in harnesses.iter() {
+            let table = item
+                .as_table_like()
+                .ok_or("Harness settings must be a table")?;
+            let mut defaults = crate::spawn_params::HarnessDefaults::default();
+            if let Some(role) = table.get("role") {
+                let role = role.as_str().ok_or("Harness role must be text")?;
+                if (kind != "claude" && role != "executor" && !(kind == "zsh" && role == "shell"))
+                    || bbt_mux::adapters::role_preset(role).is_err()
+                {
+                    return Err("Invalid harness default role".into());
+                }
+                defaults.role = Some(role.into());
+            }
+            if let Some(command) = table.get("command") {
+                defaults.command = Some(
+                    command
+                        .as_str()
+                        .ok_or("Harness command must be text")?
+                        .into(),
+                );
+            }
+            if let Some(arguments) = table.get("arguments") {
+                defaults.arguments = Some(
+                    arguments
+                        .as_array()
+                        .ok_or("Harness arguments must be an array")?
+                        .iter()
+                        .map(|v| {
+                            v.as_str()
+                                .map(str::to_owned)
+                                .ok_or("Harness argument must be text".to_owned())
+                        })
+                        .collect::<Result<_, _>>()?,
+                );
+            }
+            preferences.harnesses.insert(kind.into(), defaults);
+        }
+    }
     Ok(preferences)
 }
 
@@ -704,7 +778,7 @@ impl Store {
     }
     pub fn save(&self, patches: &[Patch]) -> Result<Preferences, String> {
         bbt_rt::assert_not_ui_thread();
-        if patches.is_empty() || patches.len() > 8 {
+        if patches.is_empty() || patches.len() > 16 {
             return Err("invalid Settings patch batch".into());
         }
         for patch in patches {
@@ -733,6 +807,21 @@ impl Store {
         let mut doc = Self::document(&path)?;
         parse(&doc)?;
         for patch in patches {
+            if let Patch::HarnessLaunch {
+                harness,
+                command,
+                arguments,
+            } = patch
+            {
+                doc["harnesses"][harness]["command"] = toml_edit::value(command);
+                doc["harnesses"][harness]["arguments"] = toml_edit::value(
+                    arguments
+                        .iter()
+                        .map(String::as_str)
+                        .collect::<toml_edit::Array>(),
+                );
+                continue;
+            }
             let (section, key) = key(patch);
             let slot = &mut doc[section][key];
             let mut replacement = match (patch, slot.as_array()) {

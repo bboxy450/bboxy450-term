@@ -38,7 +38,7 @@ pub(crate) enum Notice {
     Spawned {
         op: Ulid,
         seat: bbt_proto::SeatId,
-        spec: bbt_proto::SpawnSpec,
+        spec: Box<bbt_proto::SpawnSpec>,
     },
     Close {
         op: Ulid,
@@ -64,9 +64,11 @@ impl Notice {
                 path: ask.path,
                 seat: ask.seat,
             },
-            Self::Spawned { op, seat, spec } => {
-                bbt_proto::GuiReply::OperatorSpawned { op, seat, spec }
-            }
+            Self::Spawned { op, seat, spec } => bbt_proto::GuiReply::OperatorSpawned {
+                op,
+                seat,
+                spec: *spec,
+            },
             Self::Close { op, seat } => bbt_proto::GuiReply::OperatorClose { op, seat },
             Self::UndoClose { op, seat } => bbt_proto::GuiReply::OperatorUndoClose { op, seat },
             Self::Focus { op, seat } => bbt_proto::GuiReply::OperatorFocus { op, seat },
@@ -207,7 +209,11 @@ impl Captures {
     }
     /// Tells the window about a seat spawned through another door; no window, no notice.
     pub(crate) fn spawned(&self, op: Ulid, seat: bbt_proto::SeatId, spec: bbt_proto::SpawnSpec) {
-        let _ = self.asks.send(Notice::Spawned { op, seat, spec });
+        let _ = self.asks.send(Notice::Spawned {
+            op,
+            seat,
+            spec: Box::new(spec),
+        });
     }
     /// Whether a window's session is listening for relayed asks.
     pub(crate) fn attached(&self) -> bool {
@@ -372,6 +378,7 @@ mod tests {
                     tab: None,
                     focused: None,
                     launcher_open: false,
+                    launcher_params: None,
                     page: None,
                     document: None,
                     panes: Vec::new(),

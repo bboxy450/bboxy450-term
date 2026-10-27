@@ -529,6 +529,9 @@ mod tests {
             .request_spawn(
                 Ulid(100),
                 bbt_proto::SpawnSpec {
+                    args: Vec::new(),
+                    env: Vec::new(),
+                    command: None,
                     swarm: SwarmId::from_u128(1),
                     harness_kind: "claude".into(),
                     name: None,

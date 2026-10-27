@@ -54,6 +54,7 @@ pub struct Launcher {
     pub stack: Vec<RowId>,
     pub selected: usize,
     pub name_seed: u64,
+    pub params: Option<SpawnParams>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PurgeModal {

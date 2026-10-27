@@ -60,6 +60,13 @@ pub struct SpawnSpec {
     /// Captured at the pick. Never resolve an anchor from later GUI focus.
     #[serde(default)]
     pub placement: Option<Placement>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
+    /// Resolved executable override; absence preserves the built-in command.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub env: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,6 +99,9 @@ mod placement_tests {
 
     fn spec() -> SpawnSpec {
         SpawnSpec {
+            args: vec![],
+            env: vec![],
+            command: None,
             swarm: SwarmId::from_u128(1),
             harness_kind: "zsh".into(),
             name: None,
@@ -141,6 +151,22 @@ mod placement_tests {
         let mut invalid = value;
         invalid["placement"]["side"] = serde_json::json!("diagonal");
         assert!(serde_json::from_value::<SpawnSpec>(invalid).is_err());
+    }
+
+    #[test]
+    fn legacy_spawn_without_arguments_and_environment_round_trips() {
+        let mut old = serde_json::to_value(spec()).unwrap();
+        old.as_object_mut().unwrap().remove("args");
+        old.as_object_mut().unwrap().remove("env");
+        old.as_object_mut().unwrap().remove("command");
+        let decoded: SpawnSpec = serde_json::from_value(old).unwrap();
+        assert!(decoded.args.is_empty());
+        assert!(decoded.env.is_empty());
+        assert!(decoded.command.is_none());
+        assert_eq!(
+            serde_json::from_slice::<SpawnSpec>(&serde_json::to_vec(&decoded).unwrap()).unwrap(),
+            decoded
+        );
     }
 
     // keeps: spec ctl-cli §1

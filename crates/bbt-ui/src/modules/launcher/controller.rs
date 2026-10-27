@@ -1,5 +1,5 @@
 //! Pure launcher navigation and editing; the host performs effects.
-use super::{Item, Launcher};
+use super::{FieldKey, Item, Launcher, Source, SpawnField, SpawnParams};
 use crate::text_edit::{Command as EditCommand, Editor};
 use bbt_ui_model::input::Modifiers;
 
@@ -31,6 +31,13 @@ pub use crate::text_edit::Motion as CaretMove;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
     Changed,
+    Parameters {
+        id: String,
+    },
+    LaunchParams {
+        id: String,
+        modifiers: Modifiers,
+    },
     /// The focused query field may handle this key; it never goes to a PTY.
     Local,
     Close,
@@ -52,6 +59,7 @@ pub struct Controller {
     pub launcher: Launcher,
     name_seed: u64,
     editor: Editor,
+    parameter_placeholder: Option<String>,
 }
 
 impl Controller {
@@ -61,6 +69,7 @@ impl Controller {
             launcher,
             name_seed,
             editor,
+            parameter_placeholder: None,
         };
         result.sync_edit();
         result
@@ -116,6 +125,7 @@ impl Controller {
                 self.launcher.selected = Some(index);
                 Outcome::Changed
             }
+            Command::Right if self.launcher.params.is_some() => self.change_parameter(),
             Command::Right => {
                 if self.editor.selection()[0] != self.editor.selection()[1] {
                     return self.move_caret(CaretMove::Right, false);
@@ -130,7 +140,9 @@ impl Controller {
             Command::Left | Command::Backspace if self.launcher.query.is_empty() => self.climb(),
             Command::Left => self.move_caret(CaretMove::Left, false),
             Command::Backspace => self.delete(true),
-            Command::Escape if self.launcher.path.is_empty() => Outcome::Close,
+            Command::Escape if self.launcher.path.is_empty() && self.launcher.params.is_none() => {
+                Outcome::Close
+            }
             Command::Escape => self.climb(),
             Command::Reroll => {
                 self.name_seed = self.name_seed.wrapping_add(1);
@@ -139,7 +151,13 @@ impl Controller {
                 }
             }
             Command::Activate(modifiers) => self.activate(modifiers),
-            Command::ActivateAt { index, modifiers } => self.activate_at(index, modifiers),
+            Command::ActivateAt { index, modifiers } => self.click_at(index, modifiers),
+            Command::Digit { digit, modifiers }
+                if self.launcher.params.as_ref().is_some_and(|p|p.editing.is_some()) =>
+            {
+                if modifiers.command || modifiers.control || modifiers.alt { Outcome::Local }
+                else { self.insert(digit.to_string()) }
+            }
             Command::Digit { digit, modifiers }
                 if self.launcher.query.is_empty() && (1..=9).contains(&digit) =>
             {
@@ -165,7 +183,13 @@ impl Controller {
     }
     fn insert(&mut self, text: String) -> Outcome {
         let result = self.edit(EditCommand::Commit(text));
-        if result == Outcome::Changed {
+        if result == Outcome::Changed
+            && !self
+                .launcher
+                .params
+                .as_ref()
+                .is_some_and(|p| p.editing.is_some())
+        {
             self.launcher.selected = Some(0);
         }
         result
@@ -175,10 +199,29 @@ impl Controller {
     }
     fn delete(&mut self, backwards: bool) -> Outcome {
         let result = self.edit(EditCommand::Delete { backwards });
-        if result == Outcome::Changed {
+        if result == Outcome::Changed
+            && !self
+                .launcher
+                .params
+                .as_ref()
+                .is_some_and(|p| p.editing.is_some())
+        {
             self.launcher.selected = Some(0);
         }
         result
+    }
+
+    fn click_at(&mut self, index: usize, modifiers: Modifiers) -> Outcome {
+        if self
+            .launcher
+            .params
+            .as_ref()
+            .is_some_and(|p| p.choosing.is_none() && p.editing.is_none())
+        {
+            self.launcher.selected = Some(index);
+            return self.change_parameter();
+        }
+        self.activate_at(index, modifiers)
     }
 
     fn activate_at(&mut self, index: usize, modifiers: Modifiers) -> Outcome {
@@ -206,6 +249,9 @@ impl Controller {
     }
 
     fn activate(&mut self, modifiers: Modifiers) -> Outcome {
+        if self.launcher.params.is_some() {
+            return self.activate_parameter(modifiers);
+        }
         let Some(item) = self.launcher.activation() else {
             return self.unavailable();
         };
@@ -223,6 +269,14 @@ impl Controller {
     }
 
     fn move_selection(&mut self, backwards: bool) -> Outcome {
+        if self
+            .launcher
+            .params
+            .as_ref()
+            .is_some_and(|p| p.editing.is_some())
+        {
+            return Outcome::Local;
+        }
         let view = self.launcher.view();
         let count = view.rows.len();
         if count == 0 {
@@ -242,7 +296,13 @@ impl Controller {
             return self.unavailable();
         };
         if item.children.is_none() {
-            return Outcome::Local;
+            return if item.parameters {
+                Outcome::Parameters {
+                    id: item.id.clone(),
+                }
+            } else {
+                Outcome::Local
+            };
         }
         // Include virtual ancestors produced by typed descent before committing
         // the explicit path, so "ssh rig cod" then Right retains all three.
@@ -262,6 +322,23 @@ impl Controller {
     }
 
     fn climb(&mut self) -> Outcome {
+        if let Some(params) = &mut self.launcher.params {
+            if let Some(index) = params.editing.take() {
+                self.launcher.selected = Some(index);
+            } else if let Some(index) = params.choosing.take() {
+                self.launcher.selected = Some(index);
+                params.refresh();
+            } else {
+                self.launcher.params = None;
+                self.launcher.selected = Some(0);
+            }
+            self.launcher.query.clear();
+            if let Some(placeholder) = self.parameter_placeholder.take() {
+                self.launcher.placeholder = placeholder;
+            }
+            self.reset_edit();
+            return Outcome::Changed;
+        }
         if self.launcher.path.pop().is_none() {
             return Outcome::Local;
         }
@@ -271,10 +348,133 @@ impl Controller {
         Outcome::Changed
     }
 
+    /// The host resolves the selected launch once, then hands us only data.
+    pub fn open_parameters(&mut self, id: &str, fields: Vec<SpawnField>) -> bool {
+        let view = self.launcher.view();
+        let Some(item) = view
+            .rows
+            .iter()
+            .find(|item| item.id == id)
+            .cloned()
+            .cloned()
+        else {
+            return false;
+        };
+        let crumbs = view.crumbs.iter().map(|it| (*it).clone()).collect();
+        self.launcher.params = Some(SpawnParams::new(item, fields, crumbs));
+        self.launcher.query.clear();
+        self.launcher.selected = Some(0);
+        self.reset_edit();
+        true
+    }
+    fn change_parameter(&mut self) -> Outcome {
+        if self
+            .launcher
+            .params
+            .as_ref()
+            .is_some_and(|p| p.editing.is_some())
+        {
+            return self.move_caret(CaretMove::Right, false);
+        }
+        let view = self.launcher.view();
+        let Some(id) = view.rows.get(view.selected).map(|it| it.id.clone()) else {
+            return Outcome::Local;
+        };
+        let Some(index) = id
+            .strip_prefix("param:")
+            .and_then(|x| x.parse::<usize>().ok())
+        else {
+            return Outcome::Local;
+        };
+        let params = self.launcher.params.as_mut().expect("parameter level");
+        let field = params.fields[index].clone();
+        if field.fixed {
+            return Outcome::Local;
+        };
+        self.parameter_placeholder
+            .get_or_insert_with(|| self.launcher.placeholder.clone());
+        if field.choices.is_some() {
+            params.choosing = Some(index);
+            self.launcher.query.clear();
+            self.launcher.selected = Some(0);
+            self.launcher.placeholder = if field.key == FieldKey::Directory {
+                "Directory · recent folders or type a path"
+            } else {
+                "Role · choose one"
+            }
+            .into();
+            params.refresh();
+            self.reset_edit();
+        } else {
+            params.editing = Some(index);
+            self.launcher.query = field.value.clone();
+            self.launcher.placeholder = format!(
+                "{} · ↵ sets it · esc keeps the old value",
+                field.key.label()
+            );
+            self.reset_edit();
+            self.edit(EditCommand::SelectAll);
+        }
+        Outcome::Changed
+    }
+    fn activate_parameter(&mut self, modifiers: Modifiers) -> Outcome {
+        let view = self.launcher.view();
+        let selected = view.rows.get(view.selected).map(|it| it.id.clone());
+        let params = self.launcher.params.as_mut().expect("parameter level");
+        let (index, value) = if let Some(index) = params.editing {
+            (index, self.launcher.query.clone())
+        } else if let Some(index) = params.choosing {
+            let choices = params.fields[index].choices.as_ref().expect("value list");
+            let value = selected
+                .as_deref()
+                .and_then(|id| id.strip_prefix("value:"))
+                .and_then(|x| x.parse::<usize>().ok())
+                .and_then(|i| choices.get(i))
+                .map(|c| c.value.clone());
+            match value {
+                Some(value) => (index, value),
+                None if params.fields[index].key == FieldKey::Directory
+                    && !self.launcher.query.trim().is_empty() =>
+                {
+                    (index, self.launcher.query.trim().into())
+                }
+                _ => return Outcome::Local,
+            }
+        } else {
+            if selected.is_none() {
+                return Outcome::Local;
+            }
+            return if self.launcher.cap.is_some() {
+                Outcome::Capped
+            } else {
+                Outcome::LaunchParams {
+                    id: params.launch.id.clone(),
+                    modifiers,
+                }
+            };
+        };
+        params.fields[index].value = value;
+        params.fields[index].source = Source::ThisLaunch;
+        params.editing = None;
+        params.choosing = None;
+        params.refresh();
+        self.launcher.query.clear();
+        self.launcher.selected = Some(index);
+        if let Some(placeholder) = self.parameter_placeholder.take() {
+            self.launcher.placeholder = placeholder;
+        }
+        self.reset_edit();
+        Outcome::Changed
+    }
+
     /// Reconcile a new provider/catalog snapshot without a second item model.
     /// Keep the selected id if it survives; stop an explicit path before any
     /// parent that disappeared or no longer has children (e.g. a down host).
     pub fn replace_items(&mut self, items: Vec<Item>) {
+        if self.launcher.params.is_some() {
+            self.launcher.items = items;
+            return;
+        }
         let view = self.launcher.view();
         let old_index = view.selected;
         let selected = view.rows.get(old_index).map(|it| it.id.clone());

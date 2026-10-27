@@ -58,8 +58,14 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
     config_fixture(&before);
     // Login shells run the system path_helper first. Keep the fixture's Python
     // (tomllib) ahead of the macOS system Python without reading operator rc files.
-    fs::write(home.join(".zprofile"), format!("export PATH='{}'\n",
-        std::env::var("PATH").unwrap().replace('\'', "'\\''"))).unwrap();
+    fs::write(
+        home.join(".zprofile"),
+        format!(
+            "export PATH='{}'\n",
+            std::env::var("PATH").unwrap().replace('\'', "'\\''")
+        ),
+    )
+    .unwrap();
     let cwd_config = temp.path().join(".mcp.json");
     fs::write(&cwd_config, "operator cwd MCP").unwrap();
     let repository = temp.path().join(".bboxy");
@@ -109,6 +115,7 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
                 record,
                 harness,
                 LaunchOptions {
+                    env: vec![],
                     cwd: temp.path().into(),
                     role_prompt: PROMPT.into(),
                     executable: shim.clone(),

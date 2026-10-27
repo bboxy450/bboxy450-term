@@ -177,6 +177,9 @@ mod tests {
     }
     fn accept(model: &mut Model, op: Ulid) {
         let spec = bbt_proto::SpawnSpec {
+            args: Vec::new(),
+            env: Vec::new(),
+            command: None,
             swarm: ui::SwarmId::from_u128(4),
             harness_kind: "zsh".into(),
             name: None,

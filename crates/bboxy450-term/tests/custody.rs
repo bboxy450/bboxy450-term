@@ -182,6 +182,9 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
 
     let spawn_id = Ulid::new();
     let spawn_spec = bbt_proto::SpawnSpec {
+        args: Vec::new(),
+        env: Vec::new(),
+        command: None,
         swarm: bbt_proto::SwarmId::from_u128(71),
         harness_kind: "zsh".into(),
         name: Some("held operator spawn".into()),
@@ -292,7 +295,10 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
         };
         assert_eq!(Some(&message.view().id), ids.last());
         assert!(message.envelope().is_none());
-        assert_eq!(message.view().signature, bbt_proto::messaging::SignatureState::Pending);
+        assert_eq!(
+            message.view().signature,
+            bbt_proto::messaging::SignatureState::Pending
+        );
         assert!(message.view().signature_reason.is_some());
     }
     store.unavailable.store(false, Ordering::Release);
@@ -362,7 +368,10 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
     assert_eq!(
         page.items
             .iter()
-            .map(|message| message.envelope().expect("signed fixture envelope").sender_sequence)
+            .map(|message| message
+                .envelope()
+                .expect("signed fixture envelope")
+                .sender_sequence)
             .collect::<Vec<_>>(),
         vec![1, 2]
     );

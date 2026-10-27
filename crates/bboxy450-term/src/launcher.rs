@@ -93,14 +93,26 @@ pub fn operator_placement(
     };
     Ok(CapturedSpawn {
         spec: bbt_proto::SpawnSpec {
+            args: Vec::new(),
+            env: Vec::new(),
+            command: None,
             swarm,
             harness_kind: pick.harness,
             name: pick.name,
             role: pick.role,
             cwd: if pick.cwd.is_empty() {
-                model.ui.window.sidebar.swarms.iter().find(|row| row.id == swarm)
-                    .and_then(|row| row.workdir.clone()).unwrap_or_else(|| model.launch_directory.clone())
-            } else { pick.cwd },
+                model
+                    .ui
+                    .window
+                    .sidebar
+                    .swarms
+                    .iter()
+                    .find(|row| row.id == swarm)
+                    .and_then(|row| row.workdir.clone())
+                    .unwrap_or_else(|| model.launch_directory.clone())
+            } else {
+                pick.cwd
+            },
             location: bbt_proto::Where::Local,
             resume: None,
             placement: Some(placement),
@@ -303,16 +315,42 @@ mod operator_tests {
 
     #[test]
     fn swarm_workdir_is_a_default_and_never_overrides_an_explicit_launch_directory() {
-        let mut model=model();
-        model.launch_directory="/app default".into();
-        model.ui.window.sidebar.swarms[0].workdir=Some("/swarm project".into());
-        let mut inherit=pick(SpawnPlace::Tab);inherit.cwd.clear();
-        assert_eq!(operator_placement(inherit.clone(),&model,&model.ui.window.stage,1).unwrap().spec.cwd,"/swarm project");
-        let explicit=pick(SpawnPlace::Tab);
-        assert_eq!(operator_placement(explicit,&model,&model.ui.window.stage,1).unwrap().spec.cwd,"/chosen cwd");
-        inherit.swarm=Some(bbt_mux::Ulid(99));
-        assert_eq!(operator_placement(inherit.clone(),&model,&model.ui.window.stage,1).unwrap().spec.cwd,"/app default");
-        inherit.swarm=None;model.ui.window.sidebar.swarms[0].workdir=None;
-        assert_eq!(operator_placement(inherit,&model,&model.ui.window.stage,1).unwrap().spec.cwd,"/app default");
+        let mut model = model();
+        model.launch_directory = "/app default".into();
+        model.ui.window.sidebar.swarms[0].workdir = Some("/swarm project".into());
+        let mut inherit = pick(SpawnPlace::Tab);
+        inherit.cwd.clear();
+        assert_eq!(
+            operator_placement(inherit.clone(), &model, &model.ui.window.stage, 1)
+                .unwrap()
+                .spec
+                .cwd,
+            "/swarm project"
+        );
+        let explicit = pick(SpawnPlace::Tab);
+        assert_eq!(
+            operator_placement(explicit, &model, &model.ui.window.stage, 1)
+                .unwrap()
+                .spec
+                .cwd,
+            "/chosen cwd"
+        );
+        inherit.swarm = Some(bbt_mux::Ulid(99));
+        assert_eq!(
+            operator_placement(inherit.clone(), &model, &model.ui.window.stage, 1)
+                .unwrap()
+                .spec
+                .cwd,
+            "/app default"
+        );
+        inherit.swarm = None;
+        model.ui.window.sidebar.swarms[0].workdir = None;
+        assert_eq!(
+            operator_placement(inherit, &model, &model.ui.window.stage, 1)
+                .unwrap()
+                .spec
+                .cwd,
+            "/app default"
+        );
     }
 }

@@ -46,6 +46,7 @@ fn launch() -> Launcher {
         cap: None,
         spotlight: true,
         edit: None,
+        params: None,
     }
 }
 // keeps: spec gui-components §1.3
@@ -198,4 +199,122 @@ fn compact_selection_is_twenty_eight_percent_accent_over_surface() {
             assert!((style.fill[i] - (surface[i] * 0.72 + accent[i] * 0.28)).abs() < 0.000001);
         }
     }
+}
+
+#[test]
+fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
+    use bbt_ui::modules::launcher::{
+        FieldKey, Source, SpawnField, ValueChoice,
+        controller::{Command, Controller, Outcome},
+    };
+    let mut presentation = launch();
+    let mut claude = item("claude", "Claude");
+    claude.parameters = true;
+    presentation.items = vec![claude];
+    let mut controller = Controller::new(presentation, 0);
+    assert!(
+        matches!(controller.handle(Command::Activate(Default::default())),Outcome::Pick {ref id,..} if id=="claude")
+    );
+    assert_eq!(
+        controller.handle(Command::Right),
+        Outcome::Parameters {
+            id: "claude".into()
+        }
+    );
+    assert!(controller.open_parameters(
+        "claude",
+        vec![
+            SpawnField {
+                key: FieldKey::Role,
+                value: "oracle".into(),
+                source: Source::Settings,
+                fixed: false,
+                choices: Some(vec![
+                    ValueChoice {
+                        value: "oracle".into(),
+                        label: "Oracle".into(),
+                        purpose: "supervises".into()
+                    },
+                    ValueChoice {
+                        value: "architect".into(),
+                        label: "Architect".into(),
+                        purpose: "specs, invariants, decisions".into()
+                    },
+                ])
+            },
+            SpawnField {
+                key: FieldKey::Directory,
+                value: "/swarm".into(),
+                source: Source::LastChoice,
+                fixed: false,
+                choices: Some(vec![])
+            },
+            SpawnField {
+                key: FieldKey::Arguments,
+                value: "--old".into(),
+                source: Source::LastChoice,
+                fixed: false,
+                choices: None
+            },
+        ]
+    ));
+    assert_eq!(
+        controller.launcher.view().crumbs.last().unwrap().label,
+        "Claude"
+    );
+    assert_eq!(controller.handle(Command::Right), Outcome::Changed);
+    assert_eq!(
+        controller.launcher.view().crumbs.last().unwrap().label,
+        "Role"
+    );
+    controller.handle(Command::Down);
+    controller.handle(Command::Activate(Default::default()));
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[0].value,
+        "architect"
+    );
+    controller.handle(Command::Query("no parameter matches this".into()));
+    assert_eq!(controller.handle(Command::Activate(Default::default())), Outcome::Local);
+    controller.handle(Command::Query(String::new()));
+    assert!(
+        matches!(controller.handle(Command::Activate(Default::default())),Outcome::LaunchParams {ref id,..} if id=="claude")
+    );
+    controller.handle(Command::ActivateAt {
+        index: 2,
+        modifiers: Default::default(),
+    });
+    controller.handle(Command::Insert("--new 'two words'".into()));
+    controller.handle(Command::Escape);
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[2].value,
+        "--old"
+    );
+    controller.handle(Command::ActivateAt {
+        index: 2,
+        modifiers: Default::default(),
+    });
+    controller.handle(Command::Insert("--new 'two words'".into()));
+    controller.handle(Command::Activate(Default::default()));
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[2].value,
+        "--new 'two words'"
+    );
+    controller.handle(Command::ActivateAt {
+        index: 1,
+        modifiers: Default::default(),
+    });
+    controller.handle(Command::Insert("/typed new folder".into()));
+    controller.handle(Command::Activate(Default::default()));
+    assert_eq!(
+        controller.launcher.params.as_ref().unwrap().fields[1].value,
+        "/typed new folder"
+    );
+    controller.handle(Command::ActivateAt { index:2, modifiers:Default::default() });
+    controller.handle(Command::Digit { digit:1, modifiers:Default::default() });
+    controller.handle(Command::Insert("23".into()));
+    controller.handle(Command::Activate(Default::default()));
+    assert_eq!(controller.launcher.params.as_ref().unwrap().fields[2].value,"123");
+    assert!(matches!(controller.handle(Command::Digit {digit:1,modifiers:Default::default()}), Outcome::LaunchParams {..}));
+    controller.handle(Command::Escape);
+    assert!(controller.launcher.params.is_none());
 }

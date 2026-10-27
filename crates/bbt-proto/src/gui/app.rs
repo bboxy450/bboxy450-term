@@ -98,7 +98,7 @@ macro_rules! app_replies {
 }
 pub(super) use app_replies;
 
-pub const WINDOW_STATE_VERSION: u16 = 2;
+pub const WINDOW_STATE_VERSION: u16 = 3;
 
 /// Durable GUI layout and operator launch defaults; seat authority remains in the registry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -120,6 +120,10 @@ pub struct WindowSwarm {
     pub id: Ulid,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workdir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch_environment: Option<Vec<(String, String)>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub recent_directories: Vec<String>,
     pub tabs: Vec<WindowTab>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

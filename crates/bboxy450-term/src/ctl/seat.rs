@@ -348,6 +348,9 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 None => std::env::current_dir().map_err(|e| e.to_string())?,
             };
             let seat = client.spawn(SpawnSpec {
+                args: Vec::new(),
+                env: Vec::new(),
+                command: None,
                 swarm: SwarmId::from_u128(swarm.0),
                 harness_kind: harness.clone(),
                 name,
@@ -856,12 +859,17 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(with_issuer.op, Some(Ulid::from(8u128)));
-        for (mode, expected) in [("wake", Some(bbt_proto::messaging::WakeMode::Wake)),
+        for (mode, expected) in [
+            ("wake", Some(bbt_proto::messaging::WakeMode::Wake)),
             ("inbox", Some(bbt_proto::messaging::WakeMode::Inbox)),
-            ("digest", Some(bbt_proto::messaging::WakeMode::Digest)), ("default", None)] {
+            ("digest", Some(bbt_proto::messaging::WakeMode::Digest)),
+            ("default", None),
+        ] {
             let args = ["seat", "attention", "Receiver", "#room", "event", mode].map(str::to_owned);
             let parsed = super::super::parse_full(&args).unwrap();
-            assert!(matches!(parsed.command, Command::AttentionSet { mode, .. } if mode == expected));
+            assert!(
+                matches!(parsed.command, Command::AttentionSet { mode, .. } if mode == expected)
+            );
         }
     }
 

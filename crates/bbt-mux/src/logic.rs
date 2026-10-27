@@ -3738,6 +3738,7 @@ impl Worker {
                         record,
                         harness,
                         crate::adapters::launch::LaunchOptions {
+                            env: vec![],
                             cwd: args.cwd.canonicalize()?,
                             role_prompt,
                             executable: std::env::current_exe()?,
@@ -4672,13 +4673,20 @@ impl Worker {
                 resume: options.resume,
             },
         )?;
+        crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
         record.harness_session_id = plan.harness_session_id;
         crate::adapters::launch::in_login_shell(
-            &mut plan.spec, &harness.kind, &options.user_home, options.user_zdotdir.as_deref(),
+            &mut plan.spec,
+            &harness.kind,
+            &options.user_home,
+            options.user_zdotdir.as_deref(),
         );
         // Explicit PATH also works with a supervisor retained from a Finder launch.
         if let Ok(path) = std::env::var("PATH") {
-            plan.spec.env.entry("PATH".into()).or_insert_with(|| path.clone());
+            plan.spec
+                .env
+                .entry("PATH".into())
+                .or_insert_with(|| path.clone());
             if let Some(companion) = &mut plan.spec.companion {
                 companion.env.entry("PATH".into()).or_insert(path);
             }
@@ -4859,6 +4867,7 @@ impl Worker {
                 record,
                 harness,
                 crate::adapters::launch::LaunchOptions {
+                    env: vec![],
                     cwd,
                     role_prompt: context.role_prompt,
                     executable: std::env::current_exe()?,
@@ -7151,7 +7160,23 @@ impl Worker {
                 state: host.state,
             }));
         }
-        let harness = HarnessRecord::builtin(&spec.harness_kind)?;
+        let mut harness = HarnessRecord::builtin(&spec.harness_kind)?;
+        if let Some(command) = spec.command {
+            if command.is_empty() || command.contains('\0') {
+                return Err(invalid("invalid_spawn_command"));
+            }
+            harness.command = vec![command];
+        }
+        harness.command.extend(spec.args);
+        if spec.env.iter().any(|(key, value)| {
+            key.starts_with("BBOXY_")
+                || key.is_empty()
+                || key.starts_with(|c: char| c.is_ascii_digit())
+                || !key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                || value.contains('\0')
+        }) {
+            return Err(invalid("reserved_spawn_environment"));
+        }
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
             Some(name) => name,
@@ -7177,6 +7202,7 @@ impl Worker {
             record,
             harness,
             crate::adapters::launch::LaunchOptions {
+                env: spec.env,
                 cwd: spec.cwd.into(),
                 role_prompt,
                 executable: std::env::current_exe()?,

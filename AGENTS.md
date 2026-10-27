@@ -43,6 +43,6 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 
 ## Coordination
 
-Use repository-local task records and GitHub handoffs. **GitKB, ATC and ICQ are retired; never invoke them, including through historical scripts.** The old `scripts/land.sh` still invokes ICQ and is not the current path. Use the Make targets above and the explicit operator/Oracle authorization. Do not recruit, assign, merge or publish outside that brief.
+Use repository-local task records and GitHub handoffs. **GitKB, ATC and ICQ are retired; never invoke them, including through historical scripts.** `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
 The Oracle verifies landed code and logs; the Architect owns interface/spec consistency; Creativity owns the reference lab. Design gaps are written into the relevant spec/interface, not answered only in a message. Operator instructions outrank defaults.

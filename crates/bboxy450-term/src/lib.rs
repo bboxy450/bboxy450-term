@@ -18,6 +18,7 @@ pub mod model;
 pub mod notifications;
 pub mod scrollback;
 pub mod settings;
+pub mod spawn_params;
 
 #[cfg(test)]
 // keeps: invariant kitty-keyboard

@@ -10,6 +10,11 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Patch {
+    HarnessLaunch {
+        harness: String,
+        command: String,
+        arguments: Vec<String>,
+    },
     Theme(String),
     Density(String),
     Rim(f32),
@@ -22,6 +27,20 @@ pub enum Patch {
 impl Patch {
     pub fn validate(&self) -> Result<(), String> {
         let valid = match self {
+            Self::HarnessLaunch {
+                harness,
+                command,
+                arguments,
+            } => {
+                ["claude", "codex", "pi", "omp", "zsh"].contains(&harness.as_str())
+                    && !command.is_empty()
+                    && command.len() <= 4096
+                    && !command.contains('\0')
+                    && arguments.len() <= 256
+                    && arguments
+                        .iter()
+                        .all(|a| a.len() <= 16 * 1024 && !a.contains('\0'))
+            }
             Self::Theme(s) => ["auto", "dark", "light"].contains(&s.as_str()),
             Self::Density(s) => ["touch", "comfortable", "cozy", "compact"].contains(&s.as_str()),
             Self::Rim(v) => {
@@ -45,6 +64,7 @@ impl Patch {
     }
     pub fn apply(&self, appearance: &mut Appearance, notifications: &mut Notifications) {
         match self {
+            Self::HarnessLaunch { .. } => {}
             Self::Theme(v) => appearance.theme = v.clone(),
             Self::Density(v) => appearance.density = v.clone(),
             Self::Rim(v) => appearance.rim = *v,
@@ -636,6 +656,7 @@ impl Controller {
             }
         };
         let field = match &patch {
+            Patch::HarnessLaunch { .. } => return None,
             Patch::Theme(_) => Field::Theme,
             Patch::Density(_) => Field::Density,
             Patch::Rim(_) => Field::Rim,

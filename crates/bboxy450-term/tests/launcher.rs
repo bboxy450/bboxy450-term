@@ -77,6 +77,7 @@ fn controller() -> Controller {
             cap: None,
             spotlight: true,
             edit: None,
+            params: None,
         },
         1,
     )

@@ -987,9 +987,15 @@ fn build_with_clock(
     for swarm in &layout_source.window.sidebar.swarms {
         groups.entry(swarm.id).or_default();
     }
-    for swarm in previous.window_restore.iter().flat_map(|saved| &saved.swarms)
-        .filter(|swarm|swarm.workdir.is_some()) {
-        groups.entry(ui::SwarmId::from_u128(swarm.id.0)).or_default();
+    for swarm in previous
+        .window_restore
+        .iter()
+        .flat_map(|saved| &saved.swarms)
+        .filter(|swarm| swarm.workdir.is_some())
+    {
+        groups
+            .entry(ui::SwarmId::from_u128(swarm.id.0))
+            .or_default();
     }
     for seat in metadata
         .values()
@@ -1492,6 +1498,9 @@ mod tests {
     }
     fn spawn_spec(placement: Option<bbt_proto::seat_state::Placement>) -> bbt_proto::SpawnSpec {
         bbt_proto::SpawnSpec {
+            args: Vec::new(),
+            env: Vec::new(),
+            command: None,
             swarm: ui::SwarmId::from_u128(1),
             harness_kind: "zsh".into(),
             name: None,

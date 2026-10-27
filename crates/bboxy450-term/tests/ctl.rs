@@ -136,8 +136,15 @@ fn fixture_login(root: &Path, bin: &Path) {
     let home = root.join("home");
     std::fs::create_dir_all(&home).unwrap();
     let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
-    std::fs::write(root.join("zsh-config/.zprofile"), format!(
-        "export HOME={}\nexport PATH='{}'\n", quote(&home), path.replace('\'', "'\\''"))).unwrap();
+    std::fs::write(
+        root.join("zsh-config/.zprofile"),
+        format!(
+            "export HOME={}\nexport PATH='{}'\n",
+            quote(&home),
+            path.replace('\'', "'\\''")
+        ),
+    )
+    .unwrap();
 }
 
 /// Runs `bboxy450-term ctl ARGS` as an outside process; returns its JSON lines.
@@ -897,7 +904,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                     .send(GuiAction::UiReply {
                         id: op,
                         result: Box::new(Ok(bbt_proto::gui::UiLayout {
-                swarm_workdirs: Default::default(),
+                            swarm_workdirs: Default::default(),
                             clock: None,
                             frame_seq,
                             layout_revision: None,
@@ -910,6 +917,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                             tab: None,
                             focused: None,
                             launcher_open: false,
+                            launcher_params: None,
                             page: None,
                             document: None,
                             panes: Vec::new(),
@@ -1666,7 +1674,7 @@ async fn ctl_gui_seats(
                 .send(GuiAction::UiReply {
                     id: op,
                     result: Box::new(Ok(bbt_proto::gui::UiLayout {
-                swarm_workdirs: Default::default(),
+                        swarm_workdirs: Default::default(),
                         frame_seq: 0,
                         layout_revision: None,
                         clock: None,
@@ -1675,6 +1683,7 @@ async fn ctl_gui_seats(
                         tab: None,
                         focused: None,
                         launcher_open: false,
+                        launcher_params: None,
                         page: None,
                         document: None,
                         panes: Vec::new(),

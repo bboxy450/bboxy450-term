@@ -27,6 +27,9 @@ async fn spawn(session: &mut Session, cwd: &Path) -> GuiSeat {
         .send(GuiAction::Spawn {
             id: operation,
             spec: SpawnSpec {
+                args: Vec::new(),
+                env: Vec::new(),
+                command: None,
                 swarm: SwarmId::from_u128(57),
                 harness_kind: "zsh".into(),
                 name: Some("test file identity".into()),

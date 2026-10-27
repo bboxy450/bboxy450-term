@@ -516,6 +516,9 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
             .contains("Busy")
     );
     let spawn = bbt_proto::SpawnSpec {
+        args: Vec::new(),
+        env: Vec::new(),
+        command: None,
         swarm: bbt_proto::SwarmId::from_u128(Ulid::new().0),
         harness_kind: "zsh".into(),
         name: None,

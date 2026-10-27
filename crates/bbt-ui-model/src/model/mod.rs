@@ -11,3 +11,6 @@ pub use split::*;
 pub use swarm::*;
 pub use tab::*;
 pub use window::*;
+
+mod spawn;
+pub use spawn::{FieldKey, Source, SpawnField, SpawnParams, ValueChoice};

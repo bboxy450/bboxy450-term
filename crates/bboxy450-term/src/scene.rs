@@ -724,17 +724,24 @@ impl Scene {
         }
         out
     }
-    pub fn swarm_folder_regions(&self, layouts: &[c::Layout]) -> Vec<(bbt_proto::SwarmId,Rect,bool)> {
-        fn button(layout:&c::Layout,key:&str)->Option<Rect> {
-            if matches!(&layout.kind,c::LayoutKind::Named(name) if name.ends_with(key)) {return Some(layout.rect);}
-            layout.children.iter().find_map(|child|button(child,key))
+    pub fn swarm_folder_regions(
+        &self,
+        layouts: &[c::Layout],
+    ) -> Vec<(bbt_proto::SwarmId, Rect, bool)> {
+        fn button(layout: &c::Layout, key: &str) -> Option<Rect> {
+            if matches!(&layout.kind,c::LayoutKind::Named(name) if name.ends_with(key)) {
+                return Some(layout.rect);
+            }
+            layout.children.iter().find_map(|child| button(child, key))
         }
-        let mut out=vec![];
-        if let Some(sidebar)=layouts.get(1) {
+        let mut out = vec![];
+        if let Some(sidebar) = layouts.get(1) {
             for swarm in &self.swarms {
-                for (action,reset) in [("choose",false),("default",true)] {
-                    if let Some(rect)=button(sidebar,&format!("swarm-folder/{}/{action}",swarm.id)) {
-                        out.push((swarm.id,rect,reset));
+                for (action, reset) in [("choose", false), ("default", true)] {
+                    if let Some(rect) =
+                        button(sidebar, &format!("swarm-folder/{}/{action}", swarm.id))
+                    {
+                        out.push((swarm.id, rect, reset));
                     }
                 }
             }
@@ -1085,7 +1092,11 @@ impl Scene {
                         })
                         .collect();
                     view.extra.extend(self.starting_rows(Some(swarm.id), ctx));
-                    view.extra.push(ui::modules::swarm_card::workdir_row(&swarm.id.to_string(),swarm.workdir.as_deref(),ctx));
+                    view.extra.push(ui::modules::swarm_card::workdir_row(
+                        &swarm.id.to_string(),
+                        swarm.workdir.as_deref(),
+                        ctx,
+                    ));
                     view
                 })
                 .collect()
@@ -2212,6 +2223,47 @@ mod depth_tests {
 mod launcher_tests {
     use super::*;
 
+    #[test]
+    fn launch_parameters_wire_round_trips_the_native_retained_layout() {
+        let scene = Scene::new();
+        let mut controller = crate::new_launcher(None, 0);
+        controller.launcher.items[0].children = None;
+        let fields = bboxy450_term::spawn_params::resolve(
+            "claude",
+            &Default::default(),
+            None,
+            "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmppAx8ea/project with spaces",
+        );
+        assert!(controller.open_parameters("claude", fields));
+        controller.launcher.params.as_mut().unwrap().runs="cd '/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/.tmppAx8ea/project with spaces' && claude".into();
+        let solved = scene
+            .launcher_layout([1280., 720.], &controller.launcher)
+            .unwrap();
+        let sub = named(solved.solved(), "picker/div/opt1/sub").unwrap().rect;
+        let source = named(solved.solved(), "picker/div/opt1/kind").unwrap().rect;
+        assert!(
+            sub.right() <= source.x,
+            "long directories must not overlap their source: {sub:?} {source:?}"
+        );
+        let node = crate::ui_layout_node(solved.solved(), &mut 4096, &mut (16 * 1024)).unwrap();
+        let layout: bbt_proto::gui::UiLayout = serde_json::from_value(serde_json::json!({
+            "frame_seq":1,"size":[1280,720],"swarm":null,"tab":null,"focused":null,
+            "launcher_open":true,"page":null,"document":null,"panes":[],"tree":[node]
+        }))
+        .unwrap();
+        let request = bbt_proto::gui::GuiRequest {
+            version: bbt_proto::gui::VERSION,
+            capability: [0; 32],
+            action: bbt_proto::gui::GuiAction::UiReply {
+                id: bbt_mux::Ulid::new(),
+                result: Box::new(Ok(layout)),
+            },
+        };
+        let encoded = serde_json::to_vec(&request).unwrap();
+        serde_json::from_slice::<bbt_proto::gui::GuiRequest>(&encoded)
+            .expect("native parameter layout must fit the admitted frame decoder");
+    }
+
     // keeps: spec ux-prototype §5
     #[test]
     fn ime_candidate_area_follows_the_retained_caret_and_pointer_uses_utf16() {
@@ -2547,19 +2599,35 @@ mod launcher_tests {
 
     #[test]
     fn swarm_workdir_buttons_use_retained_nonoverlapping_hit_regions() {
-        let records=vec![bbt_proto::SeatRecord::new(bbt_mux::Ulid(1),bbt_mux::Ulid(2),"fixture","zsh")];
-        let mut model=bboxy450_term::model::build_at(&records,&bboxy450_term::grids::Grids::new(),&Default::default(),Instant::now(),1000);
-        let mut scene=Scene::live();scene.set_model(&model,&model.ui.window.stage);
-        let layouts=scene.layout([1000.,640.],false).unwrap();
-        let hits=scene.swarm_folder_regions(&layouts);
-        assert_eq!(hits.len(),1);assert!(!hits[0].2);assert!(hits[0].1.w>0. && hits[0].1.h>0.);
-        model.ui.window.sidebar.swarms[0].workdir=Some("/a long project folder with spaces".into());
-        scene.set_model(&model,&model.ui.window.stage);
-        let layouts=scene.layout([1000.,640.],false).unwrap();
-        let hits=scene.swarm_folder_regions(&layouts);
-        assert_eq!(hits.len(),2);assert!(!hits[0].2 && hits[1].2);
-        assert!(hits.iter().all(|(_,rect,_)|rect.w>0. && rect.h>0.));
-        assert!(hits[0].1.right()<=hits[1].1.x);
+        let records = vec![bbt_proto::SeatRecord::new(
+            bbt_mux::Ulid(1),
+            bbt_mux::Ulid(2),
+            "fixture",
+            "zsh",
+        )];
+        let mut model = bboxy450_term::model::build_at(
+            &records,
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        let mut scene = Scene::live();
+        scene.set_model(&model, &model.ui.window.stage);
+        let layouts = scene.layout([1000., 640.], false).unwrap();
+        let hits = scene.swarm_folder_regions(&layouts);
+        assert_eq!(hits.len(), 1);
+        assert!(!hits[0].2);
+        assert!(hits[0].1.w > 0. && hits[0].1.h > 0.);
+        model.ui.window.sidebar.swarms[0].workdir =
+            Some("/a long project folder with spaces".into());
+        scene.set_model(&model, &model.ui.window.stage);
+        let layouts = scene.layout([1000., 640.], false).unwrap();
+        let hits = scene.swarm_folder_regions(&layouts);
+        assert_eq!(hits.len(), 2);
+        assert!(!hits[0].2 && hits[1].2);
+        assert!(hits.iter().all(|(_, rect, _)| rect.w > 0. && rect.h > 0.));
+        assert!(hits[0].1.right() <= hits[1].1.x);
     }
 }
 

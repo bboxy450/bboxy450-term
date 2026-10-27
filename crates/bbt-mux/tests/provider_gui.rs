@@ -388,6 +388,9 @@ fn gui_spawn_roles_case() {
     .unwrap();
     let mut gui = runtime.block_on(Gui::open(&logic));
     let mut spec = bbt_proto::SpawnSpec {
+        args: Vec::new(),
+        env: Vec::new(),
+        command: None,
         swarm: bbt_proto::SwarmId::from_u128(7),
         harness_kind: "codex".into(),
         name: Some("role fixture".into()),
@@ -511,6 +514,9 @@ fn operator_spawn_replays_case() {
         .device_id
         .unwrap();
     let spec = bbt_proto::SpawnSpec {
+        args: Vec::new(),
+        env: Vec::new(),
+        command: None,
         swarm: bbt_proto::SwarmId::from_u128(77),
         harness_kind: "zsh".into(),
         name: None,
@@ -692,6 +698,9 @@ fn host_routing_case() {
     let spawn = |name: &str, location| GuiAction::Spawn {
         id: bbt_mux::Ulid::new(),
         spec: bbt_proto::SpawnSpec {
+            args: Vec::new(),
+            env: Vec::new(),
+            command: None,
             swarm: bbt_proto::SwarmId::from_u128(7),
             harness_kind: "zsh".into(),
             name: Some(name.into()),

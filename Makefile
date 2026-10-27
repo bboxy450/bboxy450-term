@@ -173,3 +173,43 @@ push:
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+
+.PHONY: test-spawn-unit test-spawn check-spawn parity-launcher
+test-spawn-unit:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test launchers; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib spawn_params
+
+check-spawn:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mermaid -p bboxy450-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: preview-launcher
+preview-launcher:
+	@node crates/bboxybook/capture-launch-params.mjs '$(TARGET_DIR)/launch-preview'
+
+test-spawn: test-spawn-unit
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' legacy_spawn_without_arguments_and_environment_round_trips; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir spawn_parameters_ctl_flow -- --ignored --nocapture
+
+parity-launcher:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	launcher_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="launchers"]; assert selected; print(json.dumps(selected))'); \
+	sh scripts/parity.sh --cases "$$launcher_cases"
+
+.PHONY: fmt-spawn test-spawn-dependents
+fmt-spawn:
+	@set -eu; . ./scripts/cache-env.sh; { git diff HEAD --name-only --diff-filter=AM -- '*.rs'; git ls-files --others --exclude-standard -- '*.rs'; } | sort -u | while IFS= read -r source; do rustfmt --edition 2024 --config skip_children=true "$$source"; done
+
+test-spawn-dependents:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mermaid -p bboxy450-ui-core -p bboxy450-proto -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-spawn-e2e
+test-spawn-e2e:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir spawn_parameters_ctl_flow -- --ignored --nocapture
+
+.PHONY: test-spawn-wire
+test-spawn-wire:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) launch_parameters_wire -- --nocapture

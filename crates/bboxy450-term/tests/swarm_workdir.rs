@@ -34,7 +34,7 @@ impl Fixture {
         fs::write(
             root.join("home/.zprofile"),
             format!(
-                "export PATH='{}:/usr/bin:/bin'\n",
+                "export PATH='{}:/usr/bin:/bin'\nexport LAUNCH_VALUE=from-profile\n",
                 root.join("bin").display()
             ),
         )
@@ -158,6 +158,10 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
+        if std::thread::panicking() {
+            let old = std::mem::replace(&mut self.directory, tempfile::tempdir().unwrap());
+            eprintln!("failed private fixture retained: {}", old.keep().display());
+        }
         let _keep_alive = &self.directory;
         let owners: Vec<u32> = ["supervisor", "logic"]
             .into_iter()
@@ -175,6 +179,9 @@ impl Drop for Fixture {
             .arg(self.root.join("run"))
             .output();
         if let Some(mut child) = self.app.take() {
+            if std::thread::panicking() {
+                eprintln!("private UI exit before cleanup: {:?}", child.try_wait());
+            }
             if child.try_wait().ok().flatten().is_none() {
                 let _ = child.kill();
             }
@@ -281,4 +288,282 @@ fn swarm_workdir_is_inherited_overridden_and_retained_without_restarting_seats()
     fixture.expect_cwd(&default, &fixture.root.join("repository"));
     fixture.ctl(&["app", "stop"]);
     assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
+#[ignore = "night: private ctl-driven launcher/PTY/restart boundary; make test-spawn runs it"]
+fn spawn_parameters_ctl_flow_runs_the_architect_and_remembers_at_each_home() {
+    let mut fixture = Fixture::new();
+    let script = r#"#!/bin/sh
+printf '%s\000' "$0" "$@" > "$HOME/$BBOXY_SEAT_ID.argv"
+printf '%s\000' "$PWD" "${LAUNCH_VALUE-}" > "$HOME/$BBOXY_SEAT_ID.context"
+printf '\nCWD:%s\n' "$PWD"
+exec /bin/cat
+"#;
+    for name in ["claude", "custom-claude"] {
+        fs::write(fixture.root.join("bin").join(name), script).unwrap();
+        fs::set_permissions(
+            fixture.root.join("bin").join(name),
+            fs::Permissions::from_mode(0o700),
+        )
+        .unwrap();
+    }
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let encoded = serde_json::to_string(&initial).unwrap();
+    let swarm = regex::Regex::new(r"swarm-folder/([0-9A-Z]{26})/choose")
+        .unwrap()
+        .captures(&encoded)
+        .unwrap()[1]
+        .to_owned();
+    let folder = fixture.root.join("project with spaces");
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, folder.to_str().unwrap()]);
+    let first = fixture.spawn("zsh", &swarm, None);
+    fixture.ctl(&["ui", "focus", &first]);
+    fixture.ctl(&["ui", "key", "cmd-d"]);
+    fixture.ctl(&["ui", "key", "c", "l", "a", "u", "d", "e"]);
+    let level = fixture.ctl(&["ui", "key", "right"]);
+    assert_eq!(level["launcher_params"]["fields"][0]["value"], "oracle");
+    assert_eq!(
+        level["launcher_params"]["fields"][1]["value"],
+        folder.to_str().unwrap()
+    );
+    let edited = fixture.ctl(&["ui", "key", "right", "down", "enter"]);
+    assert_eq!(edited["launcher_params"]["fields"][0]["value"], "architect");
+    let shown = edited["launcher_params"]["runs"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(rendered_runs(&edited).as_deref(), Some(shown.as_str()));
+    fixture.ctl(&["ui", "key", "enter"]);
+    let architect = wait_harness(&fixture, "claude", 1);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &architect,
+        "--text",
+        "CWD:",
+        "--timeout",
+        "10000",
+    ]);
+    assert_eq!(
+        read_nul(fixture.root.join(format!("home/{architect}.context")))[0],
+        folder.to_str().unwrap()
+    );
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let seat = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == architect)
+        .unwrap();
+    assert_eq!(seat["record"]["role"]["name"], "architect");
+    assert_eq!(seat["record"]["swarm"], swarm);
+    let argv = read_nul(fixture.root.join(format!("home/{architect}.argv")));
+    assert!(
+        argv.iter().any(|v| v.contains("ROLE: ARCHITECT")),
+        "{argv:?}"
+    );
+    // The executable and user argv shown by Runs are the exact prefix supplied
+    // to the harness adapter; runtime MCP/hook arguments follow that prefix.
+    let command = Path::new(&argv[0]).file_name().unwrap().to_str().unwrap();
+    let actual = bboxy450_term::spawn_params::Resolved {
+        role: Some("architect".into()),
+        cwd: folder.to_string_lossy().into(),
+        command: command.into(),
+        args: vec![],
+        env: vec![],
+    };
+    assert_eq!(shown, actual.runs());
+    // Same parameter level edits command/arguments/env inline, Directory as a
+    // typed value list. Enter accepts an edit; the next Enter launches.
+    fixture.ctl(&[
+        "ui",
+        "key",
+        "cmd-shift-d",
+        "c",
+        "l",
+        "a",
+        "u",
+        "d",
+        "e",
+        "right",
+    ]);
+    set_parameter(&fixture, 2, "custom-claude");
+    set_parameter(&fixture, 3, "--literal 'two words' '$HOME' ''");
+    set_parameter(&fixture, 4, "LAUNCH_VALUE='two words'");
+    fixture.ctl(&["ui", "key", "up", "up", "up", "right"]); // Environment -> Directory
+    type_keys(&fixture, fixture.root.join("override").to_str().unwrap());
+    fixture.ctl(&["ui", "key", "enter"]);
+    let custom = fixture.ctl(&["ui", "layout"]);
+    let runs = custom["launcher_params"]["runs"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_eq!(rendered_runs(&custom).as_deref(), Some(runs.as_str()));
+    if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
+        fs::create_dir_all(&directory).unwrap();
+        let capture = PathBuf::from(directory).join("spawn-parameters.png");
+        fixture.ctl(&["seat", "capture", "window", capture.to_str().unwrap()]);
+    }
+    fixture.ctl(&["ui", "key", "enter"]);
+    let second = wait_harness(&fixture, "claude", 2);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &second,
+        "--text",
+        "CWD:",
+        "--timeout",
+        "10000",
+    ]);
+    let argv = read_nul(fixture.root.join(format!("home/{second}.argv")));
+    assert_eq!(Path::new(&argv[0]).file_name().unwrap(), "custom-claude");
+    assert_eq!(&argv[1..5], ["--literal", "two words", "$HOME", ""]);
+    let context = read_nul(fixture.root.join(format!("home/{second}.context")));
+    assert_eq!(
+        context,
+        [
+            fixture.root.join("override").to_string_lossy().to_string(),
+            "two words".into()
+        ]
+    );
+    let actual = bboxy450_term::spawn_params::Resolved {
+        role: None,
+        cwd: context[0].clone(),
+        command: "custom-claude".into(),
+        args: argv[1..5].to_vec(),
+        env: vec![("LAUNCH_VALUE".into(), context[1].clone())],
+    };
+    assert_eq!(runs, actual.runs());
+    // A successful launch, and only that launch, updates the shared homes.
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let text = fs::read_to_string(fixture.root.join("account/config.toml")).unwrap_or_default();
+        let layout = fixture.ctl(&["ui", "layout"]);
+        if text.contains("custom-claude")
+            && layout["swarm_workdirs"][&swarm] == fixture.root.join("override").to_str().unwrap()
+        {
+            break;
+        }
+        assert!(Instant::now() < until, "choices were not persisted");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    // The ctl layout reply fences the latest durable window state. Kill only
+    // this fixture's UI; the exact backend owners survive the abrupt loss.
+    let owners = fixture.owners();
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    fixture.ctl(&["ui", "focus", &second]);
+    let next = fixture.ctl(&["ui", "key", "cmd-d", "c", "l", "a", "u", "d", "e", "right"]);
+    let fields = next["launcher_params"]["fields"].as_array().unwrap();
+    assert_eq!(
+        fields[0]["value"], "oracle",
+        "Role is a setting, not the last launch"
+    );
+    assert_eq!(
+        fields[1]["value"],
+        fixture.root.join("override").to_str().unwrap()
+    );
+    assert_eq!(fields[2]["value"], "custom-claude");
+    assert_eq!(fields[3]["value"], "--literal 'two words' '$HOME' ''");
+    assert_eq!(fields[4]["value"], "'LAUNCH_VALUE=two words'");
+    assert!(fields[1..].iter().all(|f| f["source"] == "last choice"));
+    fixture.ctl(&["ui", "key", "esc", "esc"]);
+    // The common Enter path uses these same defaults without opening the form.
+    fixture.ctl(&["ui", "key", "cmd-t", "c", "l", "a", "u", "d", "e", "enter"]);
+    let third = wait_harness(&fixture, "claude", 3);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &third,
+        "--text",
+        "CWD:",
+        "--timeout",
+        "10000",
+    ]);
+    assert_eq!(
+        read_nul(fixture.root.join(format!("home/{third}.context"))),
+        context
+    );
+    let argv = read_nul(fixture.root.join(format!("home/{third}.argv")));
+    assert_eq!(&argv[1..5], ["--literal", "two words", "$HOME", ""]);
+    assert!(argv.iter().any(|v| v.contains("ROLE: ORACLE")));
+}
+fn read_nul(path: PathBuf) -> Vec<String> {
+    let mut fields: Vec<_> = fs::read(path)
+        .unwrap()
+        .split(|b| *b == 0)
+        .map(|b| String::from_utf8(b.to_vec()).unwrap())
+        .collect();
+    assert_eq!(fields.pop().as_deref(), Some(""));
+    fields
+}
+fn wait_harness(fixture: &Fixture, kind: &str, count: usize) -> String {
+    let until = Instant::now() + Duration::from_secs(15);
+    loop {
+        let seats = fixture.ctl(&["seat", "ls"]);
+        let rows: Vec<_> = seats
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["record"]["harness_kind"] == kind)
+            .collect();
+        if rows.len() == count {
+            return rows.last().unwrap()["record"]["id"]
+                .as_str()
+                .unwrap()
+                .into();
+        }
+        assert!(
+            Instant::now() < until,
+            "spawn missing: {seats}\n{}",
+            fixture.log()
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+fn type_keys(fixture: &Fixture, text: &str) {
+    // Bounded ctl chrome keys, never PTY input or OS key injection.
+    let chars: Vec<_> = text.chars().map(|c| c.to_string()).collect();
+    for chunk in chars.chunks(32) {
+        let mut args = vec!["ui", "key"];
+        args.extend(chunk.iter().map(String::as_str));
+        fixture.ctl(&args);
+    }
+}
+fn set_parameter(fixture: &Fixture, index: usize, text: &str) {
+    // Return to a known row using a unique typed label, then edit its selected value.
+    fixture.ctl(&["ui", "key", "cmd-a"]);
+    let label = ["Role", "Directory", "Command", "Arguments", "Environment"][index];
+    type_keys(fixture, label);
+    fixture.ctl(&["ui", "key", "right"]);
+    type_keys(fixture, text);
+    fixture.ctl(&["ui", "key", "enter"]);
+}
+
+fn rendered_runs(layout: &Value) -> Option<String> {
+    fn text(node: &Value) -> String {
+        node["text"].as_str().map(str::to_owned).unwrap_or_else(|| {
+            node["children"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(text)
+                .collect()
+        })
+    }
+    fn find(node: &Value) -> Option<String> {
+        if node["kind"]
+            .as_str()
+            .is_some_and(|kind| kind.ends_with("picker/div/cmdrow/cmdline"))
+        {
+            return Some(text(node));
+        }
+        node["children"].as_array()?.iter().find_map(find)
+    }
+    layout["tree"].as_array()?.iter().find_map(find)
 }

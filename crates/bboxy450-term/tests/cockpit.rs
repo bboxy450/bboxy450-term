@@ -68,6 +68,9 @@ async fn spawn_kind(session: &mut Session, root: &Path, swarm: Ulid, kind: &str)
         .send(GuiAction::Spawn {
             id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
+                args: Vec::new(),
+                env: Vec::new(),
+                command: None,
                 swarm: SwarmId::from_u128(swarm.0),
                 harness_kind: kind.into(),
                 name: Some("test zsh".into()),
@@ -100,7 +103,10 @@ async fn spawn_kind(session: &mut Session, root: &Path, swarm: Ulid, kind: &str)
 // keeps: mux-daemon GUI independence; normal close preserves work, hard quit ends it.
 #[ignore = "night: real process boundary; run explicitly for lifecycle changes"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(clippy::disallowed_methods, reason = "private process fixture; no UI thread")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private process fixture; no UI thread"
+)]
 async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
     async fn file(path: &Path) -> String {
         tokio::time::timeout(Duration::from_secs(20), async {
@@ -112,7 +118,9 @@ async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
                 }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
     let root = tempfile::tempdir().unwrap();
     let mut session = start(root.path()).await;
@@ -122,10 +130,19 @@ async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
     let seat = spawn(&mut session, root.path(), swarm).await;
     let shell = pid(&seat);
     let before = root.path().join("before");
-    session.send(GuiAction::Input {
-        seat: bbt_proto::SeatId::from_u128(seat.record.id.0), generation: seat.record.generation, id: Ulid::new(),
-        bytes: format!("KEEP_WORK=575931; printf '%s\\n' $$ > '{}'\r", before.display()).into_bytes(),
-    }).await.unwrap();
+    session
+        .send(GuiAction::Input {
+            seat: bbt_proto::SeatId::from_u128(seat.record.id.0),
+            generation: seat.record.generation,
+            id: Ulid::new(),
+            bytes: format!(
+                "KEEP_WORK=575931; printf '%s\\n' $$ > '{}'\r",
+                before.display()
+            )
+            .into_bytes(),
+        })
+        .await
+        .unwrap();
     assert_eq!(file(&before).await.trim(), shell.to_string());
     let seat_id = seat.record.id;
     let tab = Ulid::new();
@@ -136,48 +153,82 @@ async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
             "expanded":true,"seats":[seat_id],"tree":{"kind":"seat","id":seat_id}}]}],
         "stage":{"swarm":swarm,"tab":tab,"focused":seat_id},
         "scroll":[{"seat":seat_id,"top_row":23,"live":false}]
-    })).unwrap();
+    }))
+    .unwrap();
     session.detach(Some(state.clone())).await.unwrap();
     let mut reattached = start(root.path()).await;
     assert_eq!(reattached.supervisor.id(), Some(supervisor));
     assert_eq!(reattached.logic.id(), Some(logic));
-    assert_eq!(reattached.endpoint.window.as_ref().unwrap().state.as_ref(), Some(&state));
-    let restored = reattached.list().await.unwrap().into_iter()
-        .find(|row| row.record.id == seat.record.id).unwrap();
+    assert_eq!(
+        reattached.endpoint.window.as_ref().unwrap().state.as_ref(),
+        Some(&state)
+    );
+    let restored = reattached
+        .list()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|row| row.record.id == seat.record.id)
+        .unwrap();
     assert_eq!(restored.record.generation, seat.record.generation);
     assert_eq!(pid(&restored), shell);
     let after = root.path().join("after");
-    reattached.send(GuiAction::Input {
-        seat: bbt_proto::SeatId::from_u128(seat.record.id.0), generation: seat.record.generation, id: Ulid::new(),
-        bytes: format!("printf '%s %s\\n' \"$KEEP_WORK\" $$ > '{}'\r", after.display()).into_bytes(),
-    }).await.unwrap();
+    reattached
+        .send(GuiAction::Input {
+            seat: bbt_proto::SeatId::from_u128(seat.record.id.0),
+            generation: seat.record.generation,
+            id: Ulid::new(),
+            bytes: format!(
+                "printf '%s %s\\n' \"$KEEP_WORK\" $$ > '{}'\r",
+                after.display()
+            )
+            .into_bytes(),
+        })
+        .await
+        .unwrap();
     assert_eq!(file(&after).await.trim(), format!("575931 {shell}"));
     reattached.shutdown().await.unwrap();
     for owner in [supervisor, logic, shell] {
-        assert!(!std::process::Command::new("/bin/ps")
-            .args(["-p", &owner.to_string(), "-o", "pid="])
-            .output().unwrap().status.success(), "hard quit kept process {owner}");
+        assert!(
+            !std::process::Command::new("/bin/ps")
+                .args(["-p", &owner.to_string(), "-o", "pid="])
+                .output()
+                .unwrap()
+                .status
+                .success(),
+            "hard quit kept process {owner}"
+        );
     }
 }
 
 // keeps: Finder launch PATH and mux-daemon UI independence.
 #[ignore = "night: real zsh/backend/PTY boundary; run explicitly for PATH changes"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[allow(clippy::disallowed_methods, reason = "private launch fixture, never UI")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private launch fixture, never UI"
+)]
 async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supervisor() {
     async fn file(path: &Path) -> String {
         tokio::time::timeout(Duration::from_secs(20), async {
             loop {
                 if let Ok(text) = tokio::fs::read_to_string(path).await
-                    && !text.is_empty() { return text; }
+                    && !text.is_empty()
+                {
+                    return text;
+                }
                 tokio::time::sleep(Duration::from_millis(10)).await;
             }
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     }
     let root = tempfile::tempdir().unwrap();
     let shell = root.path().join("zsh-config");
     tokio::fs::create_dir_all(&shell).await.unwrap();
-    tokio::fs::write(shell.join(".zshrc"), "export PATH=/usr/bin:/bin\n").await.unwrap();
+    tokio::fs::write(shell.join(".zshrc"), "export PATH=/usr/bin:/bin\n")
+        .await
+        .unwrap();
     let mut old = start(root.path()).await;
     let supervisor = old.supervisor.id().unwrap();
     let logic = old.logic.id().unwrap();
@@ -186,9 +237,16 @@ async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supe
     let cookie = root.path().join("cookie");
     old.send(GuiAction::Input {
         seat: bbt_proto::SeatId::from_u128(running.record.id.0),
-        generation: running.record.generation, id: Ulid::new(),
-        bytes: format!("KEEP_PATH_WORK=kept; printf '%s' $$ > '{}'\r", cookie.display()).into_bytes(),
-    }).await.unwrap();
+        generation: running.record.generation,
+        id: Ulid::new(),
+        bytes: format!(
+            "KEEP_PATH_WORK=kept; printf '%s' $$ > '{}'\r",
+            cookie.display()
+        )
+        .into_bytes(),
+    })
+    .await
+    .unwrap();
     assert_eq!(file(&cookie).await, pid(&running).to_string());
     old.detach(None).await.unwrap();
 
@@ -196,30 +254,57 @@ async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supe
     tokio::fs::create_dir(&bin).await.unwrap();
     let launched = root.path().join("claude-started");
     let executable = bin.join("claude");
-    tokio::fs::write(&executable, format!(
-        "#!/bin/sh\nprintf '%s' \"$PATH\" > '{}'\nexec /bin/cat\n", launched.display()
-    )).await.unwrap();
-    tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700)).await.unwrap();
-    tokio::fs::write(shell.join(".zshrc"), format!(
-        "export PATH='{}:/usr/bin:/bin'\n", bin.display()
-    )).await.unwrap();
+    tokio::fs::write(
+        &executable,
+        format!(
+            "#!/bin/sh\nprintf '%s' \"$PATH\" > '{}'\nexec /bin/cat\n",
+            launched.display()
+        ),
+    )
+    .await
+    .unwrap();
+    tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700))
+        .await
+        .unwrap();
+    tokio::fs::write(
+        shell.join(".zshrc"),
+        format!("export PATH='{}:/usr/bin:/bin'\n", bin.display()),
+    )
+    .await
+    .unwrap();
 
     let mut refreshed = start(root.path()).await;
     assert_eq!(refreshed.supervisor.id(), Some(supervisor));
     assert_ne!(refreshed.logic.id(), Some(logic));
-    let current = refreshed.list().await.unwrap().into_iter()
-        .find(|row| row.record.id == running.record.id).unwrap();
+    let current = refreshed
+        .list()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|row| row.record.id == running.record.id)
+        .unwrap();
     assert_eq!(pid(&current), pid(&running));
     assert_eq!(current.record.generation, running.record.generation);
     let new = spawn_kind(&mut refreshed, root.path(), swarm, "claude").await;
     assert!(pid(&new) > 0);
-    assert_eq!(file(&launched).await, format!("{}:/usr/bin:/bin", bin.display()));
+    assert_eq!(
+        file(&launched).await,
+        format!("{}:/usr/bin:/bin", bin.display())
+    );
     let kept = root.path().join("kept");
-    refreshed.send(GuiAction::Input {
-        seat: bbt_proto::SeatId::from_u128(running.record.id.0),
-        generation: running.record.generation, id: Ulid::new(),
-        bytes: format!("printf '%s:%s' \"$KEEP_PATH_WORK\" $$ > '{}'\r", kept.display()).into_bytes(),
-    }).await.unwrap();
+    refreshed
+        .send(GuiAction::Input {
+            seat: bbt_proto::SeatId::from_u128(running.record.id.0),
+            generation: running.record.generation,
+            id: Ulid::new(),
+            bytes: format!(
+                "printf '%s:%s' \"$KEEP_PATH_WORK\" $$ > '{}'\r",
+                kept.display()
+            )
+            .into_bytes(),
+        })
+        .await
+        .unwrap();
     assert_eq!(file(&kept).await, format!("kept:{}", pid(&running)));
     refreshed.shutdown().await.unwrap();
 }

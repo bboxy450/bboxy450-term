@@ -67,6 +67,9 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
         _ => return None,
     };
     Some(SpawnSpec {
+        args: Vec::new(),
+        env: Vec::new(),
+        command: None,
         swarm: selected_swarm.unwrap_or_else(|| SwarmId::from_u128(swarm.0)),
         harness_kind: harness_kind.into(),
         name,
@@ -899,7 +902,17 @@ async fn run_with_control(
         .values()
         .next()
         .map(|seat| seat.record.swarm)
-        .or_else(||session.endpoint.window.as_ref()?.state.as_ref()?.swarms.first().map(|swarm|swarm.id))
+        .or_else(|| {
+            session
+                .endpoint
+                .window
+                .as_ref()?
+                .state
+                .as_ref()?
+                .swarms
+                .first()
+                .map(|swarm| swarm.id)
+        })
         .unwrap_or_else(Ulid::new);
     let rendering = rendering
         .await
@@ -908,11 +921,21 @@ async fn run_with_control(
     options.font.scale = rendering.scale.round().max(1.0) as u32;
     let mut preparer = PanePreparer::with_options(rendering.context, options)?;
     let mut grids = Grids::new();
-    let mut initial = Model {launch_directory:cwd.to_string_lossy().into_owned(),..Model::default()};
+    let mut initial = Model {
+        launch_directory: cwd.to_string_lossy().into_owned(),
+        ..Model::default()
+    };
     if seats.is_empty() {
-        initial.ui=bbt_ui_model::Model::new(vec![bbt_ui_model::Swarm::new(
-            SwarmId::from_u128(swarm.0),"swarm",vec![])],vec![]).map_err(|error|invalid(error.to_string()))?;
-        initial.ui.window.stage.swarm=Some(SwarmId::from_u128(swarm.0));
+        initial.ui = bbt_ui_model::Model::new(
+            vec![bbt_ui_model::Swarm::new(
+                SwarmId::from_u128(swarm.0),
+                "swarm",
+                vec![],
+            )],
+            vec![],
+        )
+        .map_err(|error| invalid(error.to_string()))?;
+        initial.ui.window.stage.swarm = Some(SwarmId::from_u128(swarm.0));
     }
     initial.ui.window.theme = rendering.theme;
     initial.window_restore = session
@@ -1170,6 +1193,13 @@ async fn run_with_control(
                     UiMsg::EventPage {stream,after,limit}=>queue_action(&mut outgoing,GuiAction::GetEvents {stream:stream.clone(),after:*after,limit:*limit}),
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
+                    UiMsg::SwarmLaunchDefaults {swarm,directory,environment}=> {
+                        if let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {
+                            row.workdir=Some(directory.clone()); row.launch_environment=Some(environment.clone());
+                            row.recent_directories.retain(|p|p!=directory); row.recent_directories.insert(0,directory.clone()); row.recent_directories.truncate(6);
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    },
                     UiMsg::SwarmWorkdir {swarm,path}=> {
                         if path.as_deref().is_none_or(bbt_proto::gui::valid_workdir)
                             && let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {

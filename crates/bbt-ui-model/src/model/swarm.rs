@@ -65,6 +65,8 @@ pub struct Swarm {
     pub id: SwarmId,
     /// Default launch directory; running seats keep their own cwd.
     pub workdir: Option<String>,
+    pub launch_environment: Option<Vec<(String, String)>>,
+    pub recent_directories: Vec<String>,
     pub name: String,
     pub color: SeatColor,
     pub tabs: Vec<Tab>,
@@ -78,6 +80,8 @@ impl Swarm {
         Self {
             id,
             workdir: None,
+            launch_environment: None,
+            recent_directories: vec![],
             name: name.into(),
             tabs,
             color: SeatColor::Derived,

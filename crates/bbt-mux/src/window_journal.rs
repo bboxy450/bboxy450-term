@@ -64,7 +64,7 @@ impl Journal {
     }
 }
 pub(crate) fn validate(state: &WindowState) -> Result<()> {
-    if !matches!(state.version, 1 | bbt_proto::gui::WINDOW_STATE_VERSION)
+    if !matches!(state.version, 1 | 2 | bbt_proto::gui::WINDOW_STATE_VERSION)
         || state
             .size
             .iter()
@@ -96,8 +96,30 @@ pub(crate) fn validate(state: &WindowState) -> Result<()> {
         }
     }
     for swarm in &state.swarms {
-        if swarm.workdir.as_deref().is_some_and(|path| !bbt_proto::gui::valid_workdir(path)) {
+        if swarm
+            .workdir
+            .as_deref()
+            .is_some_and(|path| !bbt_proto::gui::valid_workdir(path))
+        {
             return Err(invalid("window_state_invalid_workdir"));
+        }
+        if swarm.recent_directories.len() > 6
+            || swarm
+                .recent_directories
+                .iter()
+                .any(|p| !bbt_proto::gui::valid_workdir(p))
+            || swarm.launch_environment.as_ref().is_some_and(|env| {
+                env.len() > 256
+                    || env.iter().any(|(k, v)| {
+                        k.is_empty()
+                            || k.len() > 256
+                            || v.len() > 16 * 1024
+                            || k.contains('\0')
+                            || v.contains('\0')
+                    })
+            })
+        {
+            return Err(invalid("window_state_invalid_launch_defaults"));
         }
         if !swarms.insert(swarm.id) {
             return Err(invalid("window_state_duplicate_swarm"));

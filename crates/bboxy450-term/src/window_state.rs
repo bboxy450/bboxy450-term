@@ -60,6 +60,8 @@ pub fn capture(
             .map(|swarm| WindowSwarm {
                 id: Ulid(swarm.id.0.0),
                 workdir: swarm.workdir.clone(),
+                launch_environment: swarm.launch_environment.clone(),
+                recent_directories: swarm.recent_directories.clone(),
                 tabs: swarm
                     .tabs
                     .iter()
@@ -118,6 +120,8 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
         };
         let current = swarm.tabs.clone();
         swarm.workdir = old.workdir.clone();
+        swarm.launch_environment = old.launch_environment.clone();
+        swarm.recent_directories = old.recent_directories.clone();
         let mut tabs = Vec::new();
         for tab in &old.tabs {
             let mut next = Some(decoded(&tab.tree));
@@ -245,7 +249,11 @@ mod tests {
             ..Default::default()
         };
         model.ui.window.stage.focused = Some(b);
-        model.ui.window.sidebar.swarms[0].workdir=Some("/project with spaces".into());
+        model.ui.window.sidebar.swarms[0].workdir = Some("/project with spaces".into());
+        model.ui.window.sidebar.swarms[0].launch_environment =
+            Some(vec![("TEST".into(), "two words".into())]);
+        model.ui.window.sidebar.swarms[0].recent_directories =
+            vec!["/project with spaces".into(), "/older".into()];
         let state = capture(&model, &model.ui.window.stage, [1280., 750.], None);
         let bytes = serde_json::to_vec(&state).unwrap();
         let decoded = serde_json::from_slice(&bytes).unwrap();
@@ -266,11 +274,28 @@ mod tests {
             capture(&next, &next.ui.window.stage, [1280., 750.], None),
             state
         );
-        let mut legacy=serde_json::to_value(&state).unwrap();
-        legacy["version"]=1.into();
-        legacy["swarms"][0].as_object_mut().unwrap().remove("workdir");
-        let legacy:WindowState=serde_json::from_value(legacy).unwrap();
-        restore(&mut next,&legacy).unwrap();
-        assert_eq!(next.ui.window.sidebar.swarms[0].workdir,None);
+        let mut legacy = serde_json::to_value(&state).unwrap();
+        legacy["version"] = 1.into();
+        legacy["swarms"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("workdir");
+        legacy["swarms"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("launch_environment");
+        legacy["swarms"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("recent_directories");
+        let legacy: WindowState = serde_json::from_value(legacy).unwrap();
+        restore(&mut next, &legacy).unwrap();
+        assert_eq!(next.ui.window.sidebar.swarms[0].workdir, None);
+        assert_eq!(next.ui.window.sidebar.swarms[0].launch_environment, None);
+        assert!(
+            next.ui.window.sidebar.swarms[0]
+                .recent_directories
+                .is_empty()
+        );
     }
 }

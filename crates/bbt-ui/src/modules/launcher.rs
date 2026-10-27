@@ -1,9 +1,11 @@
 //! Launcher presentation and pure tree/filter projection. The app owns input,
 //! launching and name generation. Its pure controller owns navigation and editing.
 pub mod controller;
+pub mod params;
 use super::{seat_row::named, strip::plain};
 use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, draw::Color as Rgba, layout::Axis};
+pub use params::{FieldKey, Source, SpawnField, SpawnParams, ValueChoice};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -15,6 +17,8 @@ pub struct Item {
     pub harness: String,
     /// Declarative spawn preset; the backend resolves its authority class.
     pub role: Option<String>,
+    /// A local launch leaf may open the caller-resolved parameter level.
+    pub parameters: bool,
     pub kind: String,
     pub tile: Option<String>,
     pub section: Option<String>,
@@ -51,6 +55,7 @@ pub struct Launcher {
     pub cap: Option<Cap>,
     pub spotlight: bool,
     pub edit: Option<c::Edit>,
+    pub params: Option<SpawnParams>,
 }
 pub struct View<'a> {
     pub crumbs: Vec<&'a Item>,
@@ -108,6 +113,9 @@ impl Launcher {
             .filter(|item| !item.down && !item.link.as_ref().is_some_and(|link| link.down()))
     }
     pub fn view(&self) -> View<'_> {
+        if let Some(params) = &self.params {
+            return params.view(&self.query, self.selected);
+        }
         let mut level = self.items.as_slice();
         let mut crumbs = vec![];
         for id in &self.path {
@@ -423,7 +431,7 @@ impl Launcher {
             false,
             true,
         );
-        let sub = text(
+        let mut sub = text(
             &format!("{key}/sub"),
             &it.sub,
             if spot {
@@ -436,11 +444,26 @@ impl Launcher {
             false,
             true,
         );
+        let parameters = self.params.is_some();
+        if parameters
+            && let c::Element::Named { content, .. } = &mut sub
+            && let c::Element::Text(text) = content.as_mut()
+        {
+            text.wrap = false;
+            text.ellipsis = true;
+        }
         let sub = if spot {
             boxed(
                 "",
                 plain(None, [0., 0., 0., 2.], 0.),
-                vec![shrink(sub)],
+                vec![c::Item {
+                    element: sub,
+                    extent: if parameters {
+                        c::Extent::Fill
+                    } else {
+                        c::Extent::MinContent
+                    },
+                }],
                 Axis::Row,
                 0.,
             )
@@ -450,7 +473,18 @@ impl Launcher {
         let left = boxed(
             "",
             plain(None, [0., gap, 0., 0.], 0.),
-            vec![tile.into(), shrink(label), shrink(sub)],
+            vec![
+                tile.into(),
+                shrink(label),
+                c::Item {
+                    element: sub,
+                    extent: if parameters {
+                        c::Extent::Fill
+                    } else {
+                        c::Extent::MinContent
+                    },
+                },
+            ],
             Axis::Row,
             gap,
         );
@@ -465,7 +499,7 @@ impl Launcher {
             400,
             ui::Color::Muted,
             false,
-            true,
+            !parameters,
         );
         let kind = it.link.as_ref().map_or(kind, |link| {
             let size = if spot {
@@ -601,9 +635,15 @@ impl Launcher {
                 ))
             });
         }
-        let row = boxed(
-            &key,
-            s,
+        let children = if parameters {
+            vec![
+                c::Item {
+                    element: left,
+                    extent: c::Extent::Fill,
+                },
+                shrink(right),
+            ]
+        } else {
             vec![
                 shrink(left),
                 c::Item {
@@ -611,10 +651,9 @@ impl Launcher {
                     extent: c::Extent::Fill,
                 },
                 shrink(right),
-            ],
-            Axis::Row,
-            0.,
-        );
+            ]
+        };
+        let row = boxed(&key, s, children, Axis::Row, 0.);
         let row = if it.down || it.link.as_ref().is_some_and(|link| link.down()) {
             c::Element::Filter {
                 content: Box::new(row),
@@ -746,7 +785,24 @@ impl Launcher {
             gap,
         );
         let mut acts = vec![];
-        for (i, (label, kbd)) in self.actions.iter().enumerate() {
+        let parameter_actions: Vec<(String, String)> =
+            if self.params.as_ref().is_some_and(|p| p.editing.is_some()) {
+                vec![("Set".into(), "↵".into()), ("Keep".into(), "esc".into())]
+            } else if self.params.as_ref().is_some_and(|p| p.choosing.is_none()) {
+                vec![
+                    ("Launch".into(), "↵".into()),
+                    ("Change".into(), "→".into()),
+                    ("Back".into(), "←".into()),
+                ]
+            } else {
+                vec![]
+            };
+        let actions = if parameter_actions.is_empty() {
+            &self.actions
+        } else {
+            &parameter_actions
+        };
+        for (i, (label, kbd)) in actions.iter().enumerate() {
             if i > 0 {
                 let key = format!(
                     "picker/foot/pill/sep{}",
@@ -1054,6 +1110,55 @@ impl Launcher {
             }
             let row = self.row(it, i, i == view.selected, ctx);
             list.push(row.into());
+        }
+        if let Some(params) = &self.params
+            && params.choosing.is_none()
+        {
+            let mut style = plain(
+                None,
+                [
+                    STYLE.spacing.s4 as f32,
+                    STYLE.spacing.s6 as f32,
+                    STYLE.spacing.s4 as f32,
+                    STYLE.spacing.s6 as f32,
+                ],
+                0.,
+            );
+            style.overrides.border = Some(ui::Border {
+                width: ui::Length::Hairline,
+                paint: ui::Paint::solid(ui::Color::Line),
+                outside: false,
+            });
+            style.overrides.border_sides = Some([true, false, false, false]);
+            let mut row = c::Box::new(
+                style,
+                vec![
+                    text(
+                        "picker/div/cmdrow/k",
+                        "Runs",
+                        STYLE.r#type.caption as f32,
+                        400,
+                        ui::Color::Muted,
+                        false,
+                        false,
+                    )
+                    .into(),
+                    text(
+                        "picker/div/cmdrow/cmdline",
+                        &params.runs,
+                        STYLE.r#type.caption as f32,
+                        400,
+                        ui::Color::Accent,
+                        true,
+                        true,
+                    )
+                    .into(),
+                ],
+            );
+            row.direction = Axis::Row;
+            row.gap = ui::Length::Px(STYLE.spacing.s5 as f32);
+            row.align = c::Alignment::Baseline;
+            list.push(named("picker/div/cmdrow", c::Element::Box(row)).into());
         }
         let mut style = if self.spotlight {
             ui::Style::new(ui::Preset::Modal)

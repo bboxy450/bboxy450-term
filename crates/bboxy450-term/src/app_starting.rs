@@ -246,6 +246,7 @@ impl App {
                 tab: None,
                 focused: None,
                 launcher_open: false,
+                launcher_params: None,
                 page: None,
                 document: None,
                 panes: Vec::new(),
