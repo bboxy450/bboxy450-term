@@ -1611,7 +1611,6 @@ fn launcher_items_for(
                 section: Some(section.into()),
                 aliases: vec![id.into()],
                 enter_picks: true,
-                parameters: true,
                 ..Default::default()
             })
             .collect::<Vec<_>>()
@@ -1620,6 +1619,7 @@ fn launcher_items_for(
     let note =
         swarm_oracle(model, stage).map(|name| format!("this swarm already has an Oracle: {name}"));
     for item in &mut items {
+        item.parameters = true; // Cut 1 belongs to local launch rows.
         if item.id == "claude"
             && let Some(note) = &note
         {
@@ -10259,6 +10259,7 @@ mod spawn_admission_tests {
                 .ends_with("this swarm already has an Oracle: Existing Oracle")
         );
         assert!(claude.enter_picks);
+        assert!(claude.parameters);
         assert_eq!(claude.role.as_deref(), Some("oracle"));
         assert!(spawn_pick("claude", Default::default(), Some(&model), Some(&stage)).is_some());
         assert!(
@@ -10434,6 +10435,16 @@ mod default_spawn_tests {
                 .find(|row| row.id == id)
                 .unwrap();
             assert!(codex.enter_picks);
+            assert!(!codex.parameters);
+            let mut controller = new_launcher(Some(&model), 0);
+            controller.launcher.path = vec![root.into(), host.clone()];
+            controller.handle(LauncherCommand::Query("codex".into()));
+            assert_eq!(
+                controller.handle(LauncherCommand::Right),
+                LauncherOutcome::Changed
+            );
+            assert_eq!(controller.launcher.path.last(), Some(&id));
+            assert!(controller.launcher.params.is_none());
             assert!(
                 codex
                     .children
