@@ -103,18 +103,18 @@ if kind == "claude":
 else:
     assert kind == "codex", kind
     values = overrides(args)
-    endpoint = option(args, "--remote").removeprefix("unix://")
-    overlay = Path(endpoint).resolve().parent
-    runtime = json.loads((work / (seat + ".runtime.json")).read_text())
-    assert runtime["endpoint"] == endpoint and runtime["seat"] == seat
-    assert runtime["generation"] == generation
+    wrapper = values["mcp_servers.bboxy.command"]
+    assert Path(wrapper).name == "bboxy-seat"
+    overlay = Path(wrapper).parent
+    assert Path(option(args, "--remote").removeprefix("unix://")).resolve().parent == overlay.resolve()
+    assert "--no-daemon" not in args
     hooks = values["hooks"]
     expected_events = {"SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse",
                        "PostToolUse", "Stop", "SubagentStart", "SubagentStop",
                        "PreCompact", "PostCompact"}
-    assert values["notify"] == [executable, "hook", "--agent", "codex-notify"]
+    assert values["notify"] == [wrapper, "hook", "--agent", "codex-notify"]
     assert values["mcp_servers.bboxy.env_vars"] == [
-        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION"]
+        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR"]
     assert values["mcp_servers.bboxy.default_tools_approval_mode"] == "approve"
     assert values["check_for_update_on_startup"] is False
     mcp = {"command": values["mcp_servers.bboxy.command"],
@@ -126,13 +126,14 @@ else:
 
 assert overlay.is_dir() and overlay.name.startswith("launch-")
 assert overlay.stat().st_mode & 0o777 == 0o700
-assert mcp == {"command": executable, "args": ["mcp"]}, mcp
+expected_command = executable if kind == "claude" else wrapper
+assert mcp == {"command": expected_command, "args": ["mcp"]}, mcp
 assert set(hooks) == expected_events, hooks.keys()
 for event, entries in hooks.items():
     assert len(entries) == 1 and len(entries[0]["hooks"]) == 1, event
     hook = entries[0]["hooks"][0]
     assert hook["type"] == "command", event
-    assert shlex.split(hook["command"]) == [executable, "hook", "--agent", kind], event
+    assert shlex.split(hook["command"]) == [expected_command, "hook", "--agent", kind], event
 assert skill == expected_skill, "installed skill differs from pinned template"
 
 # Use the MCP command from the launch artifact, with its original inherited env.

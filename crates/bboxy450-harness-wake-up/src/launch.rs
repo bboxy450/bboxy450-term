@@ -80,6 +80,8 @@ pub struct LaunchPlan {
     pub notes: Vec<&'static str>,
     /// A seat-owned service the caller starts before the PTY command.
     pub runtime: Option<RuntimePlan>,
+    /// Borrowed Codex daemon endpoint. The host must never stop or clean it up.
+    pub shared_runtime: Option<PathBuf>,
 }
 
 /// Neutral process/socket plan; the caller owns the service for the seat lifetime.
@@ -93,6 +95,49 @@ pub struct RuntimePlan {
     pub env: BTreeMap<String, String>,
     /// Explicit endpoint of the caller-owned native runtime.
     pub endpoint: PathBuf,
+}
+
+/// Per-thread configuration prepared by the launch owner for a shared daemon.
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct CodexLaunch {
+    /// Seat name used for the native thread title and its durable handoff.
+    pub name: String,
+    /// Explicit working directory of the new or resumed thread.
+    pub cwd: PathBuf,
+    /// CLI-compatible, typed configuration overrides; never global daemon settings.
+    pub config: BTreeMap<String, serde_json::Value>,
+    /// Exact native thread to resume, or a new thread when absent.
+    pub resume: Option<String>,
+    /// Host hook entry point used to register the server-returned thread identity.
+    pub host: PathBuf,
+}
+
+fn codex_config(args: &[String]) -> Result<BTreeMap<String, serde_json::Value>> {
+    fn merge(into: &mut toml::Table, next: toml::Table) {
+        for (key, value) in next {
+            if let (Some(toml::Value::Table(existing)), toml::Value::Table(table)) =
+                (into.get_mut(&key), &value)
+            {
+                merge(existing, table.clone());
+            } else {
+                into.insert(key, value);
+            }
+        }
+    }
+    let mut config = toml::Table::new();
+    for pair in args.windows(2) {
+        if pair[0] != "-c" && pair[0] != "--config" {
+            continue;
+        }
+        let (key, raw) = pair[1]
+            .split_once('=')
+            .ok_or_else(|| invalid("Codex config override needs key=value"))?;
+        let literal = serde_json::to_string(raw)?;
+        let parsed = toml::from_str::<toml::Table>(&format!("{key}={raw}"))
+            .or_else(|_| toml::from_str(&format!("{key}={literal}")))?;
+        merge(&mut config, parsed);
+    }
+    Ok(serde_json::from_value(serde_json::to_value(config)?)?)
 }
 
 /// Release a launch overlay and its optional owned short socket alias.
@@ -196,7 +241,7 @@ impl LaunchPlan {
     }
 }
 /// The lifecycle events a Codex seat's inline hook overlay installs, one hook each, all
-/// running `<this binary> hook --agent codex`. The Codex hook-review recipe (#270) matches
+/// running the private seat wrapper's `hook --agent codex`. The hook-review recipe (#270) matches
 /// Codex's count against this list and never a typed number.
 pub const CODEX_HOOK_EVENTS: [&str; 10] = [
     "SessionStart",
@@ -230,6 +275,17 @@ pub fn render_skill(template: &str, role_name: &str, role_class: &str) -> String
     template
         .replace("{{ROLE_NAME}}", role_name)
         .replace("{{ROLE_CLASS}}", role_class)
+}
+
+fn startup_prompt(context: &LaunchContext<'_>) -> Result<String> {
+    Ok(format!(
+        "{}\n\nNAME: {}\nROLE: {}\nYour name is the NAME above. You are running in a bboxy450-term terminal seat on {} with working directory {}. First call the bboxy MCP `orient` tool, before other work, to read your authenticated identity, role, grants and assignments.",
+        context.role_prompt,
+        serde_json::to_string(context.name)?,
+        context.role_name.to_ascii_uppercase(),
+        std::env::consts::OS,
+        serde_json::to_string(context.cwd)?,
+    ))
 }
 fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
     write(
@@ -293,6 +349,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
         harness_session_id: None,
         notes: Vec::new(),
         runtime: None,
+        shared_runtime: None,
     };
     spec.env
         .insert("BBOXY_SEAT_ID".into(), context.id.to_string());
@@ -358,7 +415,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             let plugin = claude_wiring(&overlay, context)?;
             spec.args.extend([
                 "--append-system-prompt".into(),
-                context.role_prompt.into(),
+                startup_prompt(context)?,
                 "--settings".into(),
                 settings.to_string_lossy().into(),
                 "--mcp-config".into(),
@@ -397,14 +454,35 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             }
         }
         "codex" => {
+            // A managed daemon does not inherit this TUI's admission environment.
+            // A private executable gives each thread its own MCP configuration,
+            // without putting the capability in CLI flags or changing user config.
+            let mcp = overlay.join("bboxy-seat");
+            let mut script = String::from("#!/bin/sh\n");
+            for key in [
+                "BBOXY_SOCK",
+                "BBOXY_CAPABILITY",
+                "BBOXY_SEAT_ID",
+                "BBOXY_GENERATION",
+                "BBOXY_ROLE",
+            ] {
+                script.push_str(&format!("export {key}={}\n", quote(&spec.env[key])));
+            }
+            script.push_str(&format!(
+                "export BBOXY_HOOK_SOCKET_ONLY=1\nexec {} \"$@\"\n",
+                quote(&context.executable.to_string_lossy())
+            ));
+            write(&mcp, script.as_bytes())?;
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&mcp, std::fs::Permissions::from_mode(0o700))?;
             spec.args.extend([
                 "-c".into(),
                 format!(
                     "developer_instructions={}",
-                    serde_json::to_string(&format!("{}\n\n{}", context.role_prompt, context.skill))?
+                    serde_json::to_string(&format!("{}\n\n{}", startup_prompt(context)?, context.skill))?
                 ),
                 "-c".into(),
-                format!("mcp_servers.bboxy.command={}", serde_json::to_string(context.executable)?),
+                format!("mcp_servers.bboxy.command={}", serde_json::to_string(&mcp)?),
                 "-c".into(),
                 "mcp_servers.bboxy.args=[\"mcp\"]".into(),
                 "-c".into(),
@@ -416,19 +494,12 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             ]);
             notes.push("Codex skill text is in per-launch developer_instructions; a per-session skill path remains unverified");
             if record.hooks {
-                let notify = serde_json::json!([
-                    context.executable.to_string_lossy(),
-                    "hook",
-                    "--agent",
-                    "codex-notify"
-                ]);
+                let notify =
+                    serde_json::json!([mcp.to_string_lossy(), "hook", "--agent", "codex-notify"]);
                 spec.args.extend(["-c".into(), format!("notify={notify}")]);
                 // Inline overlay, never ~/.codex/hooks.json or trusted_hash. If
                 // Codex asks to trust it, the operator handles its native chooser.
-                let cmd = format!(
-                    "{} hook --agent codex",
-                    quote(&context.executable.to_string_lossy())
-                );
+                let cmd = format!("{} hook --agent codex", quote(&mcp.to_string_lossy()));
                 let mut entries = Vec::new();
                 for ev in CODEX_HOOK_EVENTS {
                     entries.push(format!(
@@ -446,52 +517,75 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     .ok_or_else(|| invalid("Codex resume requires thread ID"))?;
                 spec.args.extend(["resume".into(), id.clone()]);
             }
-            let endpoint = runtime_endpoint(&overlay)?;
-            let url = format!("unix://{}", endpoint.display());
-            let inherited = record.command.len() - 1;
-            let mut args = spec.args[..inherited].to_vec();
-            args.extend(["app-server".into(), "--listen".into(), url.clone()]);
-            for pair in spec.args[inherited..].windows(2) {
-                if pair[0] == "-c" || pair[0] == "--config" {
-                    args.extend([pair[0].clone(), pair[1].clone()]);
-                }
+            // Remote TUIs do not forward arbitrary -c settings. A seat-owned
+            // connection proxy adds them only to this TUI's start/resume calls.
+            let codex_home = std::env::var_os("CODEX_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| context.user_home.join(".codex"));
+            if !spec
+                .args
+                .iter()
+                .any(|arg| arg == "--no-daemon" || arg == "--remote")
+            {
+                let endpoint = codex_home.join("app-server-control/app-server-control.sock");
+                let proxy = runtime_endpoint(&overlay)?;
+                let launch = overlay.join("codex-launch.json");
+                write(
+                    &launch,
+                    &serde_json::to_vec(&CodexLaunch {
+                        name: context.name.to_owned(),
+                        cwd: context.cwd.to_owned(),
+                        config: codex_config(&spec.args)?,
+                        resume: context.resume.then(|| session.clone()).flatten(),
+                        host: context.executable.to_owned(),
+                    })?,
+                )?;
+                spec.args.splice(
+                    record.command.len() - 1..record.command.len() - 1,
+                    ["--remote".into(), format!("unix://{}", proxy.display())],
+                );
+                let mut proxy_env = spec.env.clone();
+                proxy_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
+                spec.runtime = Some(RuntimePlan {
+                    program: context.executable.to_string_lossy().into_owned(),
+                    args: vec![
+                        "harness-exec".into(),
+                        "--codex-proxy".into(),
+                        proxy.to_string_lossy().into_owned(),
+                        endpoint.to_string_lossy().into_owned(),
+                        launch.to_string_lossy().into_owned(),
+                        spec.program.clone(),
+                    ],
+                    env: proxy_env,
+                    endpoint: proxy.clone(),
+                });
+                let mut args = vec![
+                    "harness-exec".into(),
+                    proxy.to_string_lossy().into_owned(),
+                    spec.program.clone(),
+                ];
+                args.append(&mut spec.args);
+                spec.args = args;
+                spec.program = context.executable.to_string_lossy().into_owned();
+                spec.shared_runtime = Some(endpoint);
+            } else {
+                let (program, args) =
+                    isolated_runtime(&spec.program, std::mem::take(&mut spec.args));
+                spec.program = program;
+                spec.args = args;
             }
-            let mut runtime_env = spec.env.clone();
-            // The caller may give this service a private controlling tty solely
-            // for lifetime hangup. Its hooks must use the authenticated sink.
-            runtime_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
-            let (program, args) = isolated_runtime(&spec.program, args);
-            spec.runtime = Some(RuntimePlan {
-                program,
-                args,
-                env: runtime_env,
-                endpoint,
-            });
-            spec.args
-                .splice(inherited..inherited, ["--remote".into(), url]);
-            // Only this seat's PTY waits for its runtime. exec preserves its PID;
-            // neither the supervisor actor nor the caller's serial RPC waits.
-            let mut args = vec![
-                "harness-exec".into(),
-                spec.runtime
-                    .as_ref()
-                    .unwrap()
-                    .endpoint
-                    .to_string_lossy()
-                    .into(),
-                spec.program.clone(),
-            ];
-            args.append(&mut spec.args);
-            spec.program = context.executable.to_string_lossy().into();
-            spec.args = args;
         }
         "zsh" => {
-            let user = context.user_zdotdir.unwrap_or(context.user_home);
-            spec.env
-                .insert("BBOXY_USER_ZDOTDIR".into(), user.to_string_lossy().into());
+            spec.env.insert(
+                "BBOXY_USER_ZDOTDIR".into(),
+                context
+                    .user_zdotdir
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .unwrap_or_default(),
+            );
             spec.env
                 .insert("ZDOTDIR".into(), overlay.to_string_lossy().into());
-            write(&overlay.join(".zshenv"),b"typeset -g _bbt_overlay=$ZDOTDIR\ntypeset -g _bbt_user_zdotdir=$BBOXY_USER_ZDOTDIR\nZDOTDIR=$_bbt_user_zdotdir\n[[ -r $ZDOTDIR/.zshenv ]] && source $ZDOTDIR/.zshenv\nZDOTDIR=$_bbt_overlay\n")?;
+            write(&overlay.join(".zshenv"),b"typeset -g _bbt_overlay=$ZDOTDIR\ntypeset -g _bbt_user_zdotdir=${BBOXY_USER_ZDOTDIR:-$HOME}\nif [[ -n $BBOXY_USER_ZDOTDIR ]]; then\n  ZDOTDIR=$BBOXY_USER_ZDOTDIR\nelse\n  unset ZDOTDIR\nfi\n[[ -r $_bbt_user_zdotdir/.zshenv ]] && source $_bbt_user_zdotdir/.zshenv\n_bbt_user_zdotdir=${ZDOTDIR:-$HOME}\nZDOTDIR=$_bbt_overlay\n")?;
             for file in [".zprofile", ".zlogin", ".zlogout"] {
                 write(&overlay.join(file),format!("ZDOTDIR=$_bbt_user_zdotdir\n[[ -r $ZDOTDIR/{file} ]] && source $ZDOTDIR/{file}\nZDOTDIR=$_bbt_overlay\n").as_bytes())?;
             }
@@ -539,6 +633,9 @@ fn wait_for_runtime(
 /// With runtime assertions enabled, panics on the registered UI thread.
 pub fn exec_when_ready(args: &[String]) -> Result<()> {
     crate::assert_not_ui_thread();
+    if args.first().is_some_and(|arg| arg == "--codex-proxy") {
+        return serve_shared_codex(&args[1..]);
+    }
     use std::os::unix::process::CommandExt;
     let [endpoint, program, rest @ ..] = args else {
         return Err(invalid("harness-exec needs socket and command"));
@@ -559,6 +656,70 @@ pub fn exec_when_ready(args: &[String]) -> Result<()> {
         command.env_remove(key);
     }
     Err(command.exec().into())
+}
+
+fn serve_shared_codex(args: &[String]) -> Result<()> {
+    let [proxy, backend, settings, program] = args else {
+        return Err(invalid(
+            "Codex proxy needs frontend, backend, settings and command",
+        ));
+    };
+    if [proxy, backend, settings]
+        .iter()
+        .any(|path| !Path::new(path).is_absolute())
+        || program.is_empty()
+    {
+        return Err(invalid("Codex proxy paths must be absolute"));
+    }
+    let launch: CodexLaunch = serde_json::from_slice(&std::fs::read(settings)?)?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(crate::native::codex_proxy(
+        Path::new(proxy),
+        Path::new(backend),
+        &launch,
+        program,
+    ))
+}
+
+pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+    if runtime_ready(endpoint) {
+        return Ok(());
+    }
+    // Codex owns idempotent startup. Never give a shared daemon seat admission.
+    let mut start = Command::new(program);
+    start
+        .args(["app-server", "daemon", "start"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null());
+    for (key, _) in std::env::vars_os() {
+        if key.as_encoded_bytes().starts_with(b"BBOXY_") {
+            start.env_remove(key);
+        }
+    }
+    for key in PARENT_SESSION_ENV {
+        start.env_remove(key);
+    }
+    let mut child = start.spawn()?;
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return if status.success() {
+                Ok(())
+            } else {
+                Err(invalid("Codex daemon startup failed"))
+            };
+        }
+        if Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(invalid("Codex daemon startup deadline elapsed"));
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
 
 const ZSH_RC: &str = r#"ZDOTDIR=$_bbt_user_zdotdir

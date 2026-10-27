@@ -31,6 +31,9 @@ help:
 	  'make test                       Full local CI; no operator input' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
+	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
+	  'make test-harness-native         Real Codex shared daemon, local model, warm and cold startup' \
+	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
@@ -182,6 +185,24 @@ test-spawn-unit:
 
 check-spawn:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mermaid -p bboxy450-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-harness-startup check-harness-startup fmt-harness-startup
+fmt-harness-startup:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bbt-mux/src/adapters/launch.rs crates/bbt-mux/src/adapters/mapping.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ring_batch_tests.rs
+
+test-harness-startup:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
+
+check-harness-startup:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-harness-native
+test-harness-native: build
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)'
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --cold
 
 .PHONY: preview-launcher
 preview-launcher:

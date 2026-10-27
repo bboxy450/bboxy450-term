@@ -17,7 +17,7 @@ import time
 # Isolated Python excludes the script directory; load only our committed helpers.
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from native_checks import approve_codex_hooks, until
+from native_checks import approve_codex_hooks, configure_codex_provider, until
 from task_checks import ctl, operation, seats, status
 
 
@@ -221,6 +221,7 @@ def case(kind):
 
 def main():
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
+    configure_codex_provider(server.server_port)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     config = WORK / "l3-native-provider.json"

@@ -208,6 +208,15 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
         0o600
     );
     assert!(plan.args.contains(&"--append-system-prompt".into()));
+    let prompt = &plan
+        .args
+        .windows(2)
+        .find(|pair| pair[0] == "--append-system-prompt")
+        .unwrap()[1];
+    assert!(prompt.contains("NAME: \"fixture\""));
+    assert!(prompt.contains("ROLE: EXECUTOR"));
+    assert!(prompt.contains("First call the bboxy MCP `orient` tool, before other work"));
+    assert!(prompt.contains(&serde_json::to_string(temp.path()).unwrap()));
     assert!(!plan.args.iter().any(|s| s.contains("bypass")));
     assert_eq!(std::fs::read(settings).unwrap(), b"operator-config");
     let mut codex_record = HarnessRecord::builtin("codex").unwrap();
@@ -247,31 +256,40 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
             .filter(|a| !a.starts_with("developer_instructions="))
             .any(|a| a.contains("bypass") || a.contains("trusted_hash"))
     );
-    let service = codex.runtime.as_ref().unwrap();
-    let url = format!("unix://{}", service.endpoint.display());
-    assert!(codex.args.windows(2).any(|p| p == ["--remote", &url]));
+    let proxy = codex.runtime.as_ref().unwrap();
+    assert_eq!(proxy.program, context.executable.to_string_lossy());
+    assert!(proxy.args.contains(&"--codex-proxy".into()));
+    assert!(!proxy.args.contains(&"app-server".into()));
     assert!(
-        service
-            .args
-            .windows(3)
-            .any(|p| p == ["app-server", "--listen", &url])
+        codex
+            .shared_runtime
+            .as_ref()
+            .unwrap()
+            .ends_with("app-server-control/app-server-control.sock")
     );
-    let mut server_env = codex.env.clone();
-    server_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
-    assert_eq!(service.env, server_env);
+    let url = format!("unix://{}", proxy.endpoint.display());
+    assert!(codex.args.windows(2).any(|pair| pair == ["--remote", &url]));
+    assert!(
+        !codex
+            .args
+            .iter()
+            .any(|arg| ["--no-daemon", "app-server"].contains(&arg.as_str()))
+    );
     assert!(!codex.env.contains_key("BBOXY_HOOK_SOCKET_ONLY"));
-    assert!(
-        service
-            .args
-            .contains(&"mcp_servers.bboxy.default_tools_approval_mode=\"approve\"".into())
-    );
-    assert!(service.args.contains(&other_approval.into()));
-    let alias = service.endpoint.parent().unwrap().to_owned();
-    let aliased = alias != codex.overlay;
+    let instructions = codex
+        .args
+        .iter()
+        .find_map(|arg| arg.strip_prefix("developer_instructions="))
+        .unwrap();
+    let instructions: String = serde_json::from_str(instructions).unwrap();
+    assert!(instructions.starts_with(prompt));
+    assert!(instructions.ends_with(context.skill));
+    assert!(hooks.contains("bboxy-seat"));
+    let wrapper = std::fs::read_to_string(codex.overlay.join("bboxy-seat")).unwrap();
+    assert!(wrapper.contains(&format!("export BBOXY_SEAT_ID='{}'", context.id)));
+    assert!(wrapper.contains("BBOXY_HOOK_SOCKET_ONLY=1"));
+    assert!(!codex.args.iter().any(|arg| arg.contains(&"07".repeat(32))));
     codex.cleanup().unwrap();
-    if aliased {
-        assert!(alias.symlink_metadata().is_err());
-    }
     let raw = json!({"hook_event_name":"PreToolUse","tool_input":{"description":"x:y\nraw value"},"tool_use_id":"join-me","token":"do-not-export"});
     let event = hook::prepare(raw.clone(), "claude").unwrap();
     assert_eq!(event.raw["tool_input"], raw["tool_input"]);
@@ -379,6 +397,71 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
             assert_eq!(outcome.evidence,if disconnect||malformed{Evidence::NativeUnknown}else{Evidence::NativeQueued});
         });
     }
+}
+
+#[test]
+fn shared_codex_daemon_pins_exact_threads_and_wakes_without_touching_peers() {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("shared.sock");
+    runtime().block_on(async {
+        let listener = tokio::net::UnixListener::bind(&path).unwrap();
+        let server = tokio::spawn(async move {
+            let mut queued = std::collections::BTreeMap::<String, Vec<String>>::from([
+                ("seat-one".into(), vec![]), ("seat-two".into(), vec![]),
+                ("operator-unrelated".into(), vec!["leave this alone".into()]),
+            ]);
+            let mut methods = Vec::new();
+            for _ in 0..5 {
+                let (stream, _) = listener.accept().await.unwrap();
+                let mut socket = tokio_tungstenite::accept_async(stream).await.unwrap();
+                while let Some(Ok(Message::Text(frame))) = socket.next().await {
+                    let request: serde_json::Value = serde_json::from_str(&frame).unwrap();
+                    let method = request["method"].as_str().unwrap();
+                    methods.push(method.to_owned());
+                    let result = match method {
+                        "initialized" => continue,
+                        "initialize" => json!({}),
+                        "thread/read" => {
+                            let id = request["params"]["threadId"].as_str().unwrap();
+                            json!({"thread":{"id":id,"status":{"type":if queued.contains_key(id) {"idle"} else {"notLoaded"}}}})
+                        }
+                        "thread/queue/add" => {
+                            let id = request["params"]["threadId"].as_str().unwrap();
+                            let input = request["params"]["input"].clone();
+                            queued.get_mut(id).unwrap().push(input[0]["text"].as_str().unwrap().into());
+                            json!({"threadId":id,"queuedSubmission":{"id":"queued-fixture","clientUserMessageId":request["params"]["clientUserMessageId"],"input":input}})
+                        }
+                        other => panic!("unexpected shared-daemon operation: {other}"),
+                    };
+                    socket.send(Message::Text(json!({"id":request["id"],"result":result}).to_string().into())).await.unwrap();
+                }
+            }
+            (queued, methods)
+        });
+        for thread in ["seat-one", "seat-two"] {
+            let mut bound = binding();
+            bound.session = thread.into();
+            bound.runtime = Some(native::shared_codex_runtime(&bound, &path).await.unwrap());
+            assert_eq!(bound.runtime.as_ref().unwrap().pid, std::process::id());
+            let endpoint = bboxy450_harness_wake_up::Endpoint::Codex { path: path.clone(), thread: thread.into(), turn: None };
+            let outcome = native::wake(&bound, &endpoint, Ulid::new(), thread, Priority::Next, false).await;
+            assert_eq!(outcome.evidence, Evidence::NativeQueued);
+            let wrong = bboxy450_harness_wake_up::Endpoint::Codex { path: path.clone(), thread: "operator-unrelated".into(), turn: None };
+            assert_eq!(native::wake(&bound, &wrong, Ulid::new(), "must not send", Priority::Next, false).await.evidence, Evidence::RecipientStored);
+        }
+        let mut unknown = binding();
+        unknown.session = "unloaded".into();
+        assert!(native::shared_codex_runtime(&unknown, &path).await.is_err());
+        let (queued, methods) = tokio::time::timeout(std::time::Duration::from_secs(5), server).await.unwrap().unwrap();
+        assert_eq!(queued["seat-one"], ["seat-one"]);
+        assert_eq!(queued["seat-two"], ["seat-two"]);
+        assert_eq!(queued["operator-unrelated"], ["leave this alone"]);
+        assert_eq!(methods.iter().filter(|method| method.as_str() == "thread/queue/add").count(), 2);
+        assert!(!methods.iter().any(|method| matches!(method.as_str(), "thread/loaded/list" | "thread/resume" | "thread/start")));
+        assert!(path.exists());
+    });
 }
 
 // keeps: spec harness-kits §2 — honest-specific-failure public-note contract

@@ -70,6 +70,8 @@ if kind == "claude":
     args += ["--permission-mode", "dontAsk", "--allowedTools", *allowed, "--", prompt]
 else:
     assert kind == "codex", kind
+    if args[:2] == ["app-server", "daemon"]:
+        os.execve(executable, [executable, *args], env)
     runtime = args[:2] == ["app-server", "--listen"]
     for value in [
         'model_provider="l3_fixture"', 'model="fixture-model"',

@@ -1,0 +1,15 @@
+role = Executor; direct operator request after #71
+scope = startup NAME, ROLE, host/cwd and orient-first instructions for Claude/Codex; shared Codex daemon wake-up; zsh configuration discovery
+launch = crates/bboxy450-harness-wake-up/src/launch.rs; Claude append-system-prompt, Codex typed per-thread configuration, private MCP/hook admission wrapper, CLI-owned daemon startup, owned connection proxy
+native = crates/bboxy450-harness-wake-up/src/native.rs; proxy forwards the TUI first start/resume with seat settings; kernel peer and exact authenticated thread pin native wake-up
+integration = crates/bbt-mux/src/logic.rs and src/adapters/{launch,mapping}.rs; owned proxy is distinct from borrowed daemon; shared status is read-only; discovery/reader bindings fenced; changed daemon may be re-pinned
+shell = no implicit ZDOTDIR=HOME; allow user .zshenv to choose its configuration root, retaining it behind the zsh overlay; explicit ZDOTDIR remains authoritative
+agreement = .bboxy/interfaces/app-harness.md and .bboxy/specs/harness-kits.md; operator's shared-daemon instruction amends #279
+unit = make test-harness-startup; exit 0; kit launch/process/socket regressions, shared thread isolation and unloaded refusal; mux adapter tests and login-shell boundary
+lint = make check-harness-startup; exit 0; all targets, -D warnings, wake-up/mux/app crates
+native_e2e = make test-harness-native; exit 0; installed codex-cli 0.164.0; warm and cold private managed daemons, two TUI seats each; NAME/ROLE/cwd in model request; real orient first; native-queued receipts and model-fixture wake responses; no cross-thread wake; daemon survives seat close and app stop
+native_fixture = scripts/e2e/shared_codex.py; local model only, private HOME and identity, ctl only, scripted private hook review; owned updater PID/start stamp recorded for cleanup
+compatibility = existing supervisor-owned private runtimes remain readable; no global harness config or operator daemon stop/restart
+limits = native fixtures prove client/tool/protocol integration, not a free model's judgement; shared hook-completed error subscription is not added (shared status is read-only)
+raw_evidence = /Users/feral/Library/Logs/bboxy450-term/startup-20261027/{focused-final,clippy,native-final2,ci,boundaries,land,install}.log
+final_gate = exact committed SHA/result and log hash are recorded by ci-local and land.sh; this file maps mechanisms/checks, not a substitute for those outputs

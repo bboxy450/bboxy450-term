@@ -122,6 +122,10 @@ struct CodexDiscovery {
     binding: Binding,
     result: std::result::Result<(String, serde_json::Value), String>,
 }
+struct SharedCodexDiscovery {
+    binding: Binding,
+    result: std::result::Result<bboxy450_harness_wake_up::RuntimeBinding, String>,
+}
 
 struct UiAdmission {
     retained: serde_json::Value,
@@ -312,6 +316,7 @@ enum Command {
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
     CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
+    SharedCodexDiscovery(Box<SharedCodexDiscovery>, oneshot::Sender<Result<bool>>),
     NativeHookFailure(
         Box<(
             crate::adapters::Binding,
@@ -1210,6 +1215,14 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
+    async fn shared_codex_discovery(&self, discovery: SharedCodexDiscovery) -> Result<bool> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::SharedCodexDiscovery(Box::new(discovery), tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
     fn native_hook_failure(
         &self,
         binding: crate::adapters::Binding,
@@ -1666,6 +1679,7 @@ struct ViewState {
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
+    shared_codex_runtime: Option<PathBuf>,
     state: Playback,
     view_generation: Ulid,
     checkpoint_bytes: u64,
@@ -4359,6 +4373,12 @@ impl Worker {
                 hooks: false,
             })
         };
+        let shared_codex_runtime = SqliteStore::open(&directory)?
+            .get("adapter_shared_runtime_endpoint")?
+            .filter(|bytes| !bytes.is_empty())
+            .map(|bytes| serde_json::from_slice::<Option<PathBuf>>(&bytes))
+            .transpose()?
+            .flatten();
         let mut adapter = Session::new(
             harness,
             Binding {
@@ -4372,14 +4392,16 @@ impl Worker {
                     .and_then(|r| r.harness_session_id.clone())
                     .unwrap_or_else(|| format!("process-{}", info.pid)),
                 attachment_generation: 1,
-                runtime: info.companion.as_ref().map(|c| {
-                    bboxy450_harness_wake_up::RuntimeBinding {
+                runtime: info
+                    .companion
+                    .as_ref()
+                    .filter(|_| shared_codex_runtime.is_none())
+                    .map(|c| bboxy450_harness_wake_up::RuntimeBinding {
                         endpoint: c.ready_socket.clone(),
                         pid: c.pid,
                         process_start: crate::adapters::native::process_start(c.pid)
                             .unwrap_or_else(|_| "exited".into()),
-                    }
-                }),
+                    }),
             },
         )?;
         for (sequence, params) in live_frames {
@@ -4433,6 +4455,7 @@ impl Worker {
                 tap,
                 replies,
                 native_reader: None,
+                shared_codex_runtime,
                 state,
                 view_generation: Ulid::new(),
                 checkpoint_bytes,
@@ -4730,6 +4753,10 @@ impl Worker {
         store.put(
             "adapter_runtime_endpoint",
             &serde_json::to_vec(&plan.spec.companion.as_ref().map(|c| &c.ready_socket))?,
+        )?;
+        store.put(
+            "adapter_shared_runtime_endpoint",
+            &serde_json::to_vec(&plan.shared_runtime)?,
         )?;
         // On an ambiguous spawn keep the overlay; deleting it could break a child
         // that actually started. Reconciliation uses the original durable seat ID.
@@ -6153,6 +6180,46 @@ impl Worker {
                         }
                     }
                 }
+                if view.shared_codex_runtime.is_some()
+                    && view.adapter.binding.runtime.is_some()
+                    && view.native_reader.as_ref().is_some_and(|reader| {
+                        reader.binding == view.adapter.binding && reader.task.is_finished()
+                    })
+                {
+                    // The daemon owns its lifecycle. Re-pin a replacement peer
+                    // through the same exact thread; never restart/stop it here.
+                    let mut binding = view.adapter.binding.clone();
+                    binding.runtime = None;
+                    binding.attachment_generation = binding
+                        .attachment_generation
+                        .checked_add(1)
+                        .ok_or_else(|| invalid("native attachment generation exhausted"))?;
+                    view.adapter.rebind(binding)?;
+                    view.delivery_endpoint = crate::adapters::Endpoint::None;
+                }
+                if view.adapter.record.kind == "codex"
+                    && !view.adapter.binding.session.starts_with("process-")
+                    && view.adapter.binding.runtime.is_none()
+                    && view.native_reader.as_ref().is_none_or(|reader| {
+                        reader.binding != view.adapter.binding || reader.task.is_finished()
+                    })
+                    && let Some(path) = view.shared_codex_runtime.clone()
+                {
+                    let binding = view.adapter.binding.clone();
+                    let reader_binding = binding.clone();
+                    let client = self.client.clone();
+                    let task = self.handle.spawn(async move {
+                        let result = crate::adapters::native::shared_codex_runtime(&binding, &path)
+                            .await.map_err(|error| crate::adapters::observe::short(
+                                &format!("shared Codex runtime binding failed: {error}; no mutation attempted"), 512));
+                        if result.is_err() { tokio::time::sleep(Duration::from_millis(200)).await; }
+                        let _ = client.shared_codex_discovery(SharedCodexDiscovery { binding, result }).await;
+                    });
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
+                }
                 if view.adapter.record.kind == "codex"
                     && view.adapter.binding.session.starts_with("process-")
                     && view.native_reader.is_none()
@@ -6203,14 +6270,15 @@ impl Worker {
                     let binding = view.adapter.binding.clone();
                     let reader_binding = binding.clone();
                     let diagnostics_root = self.config.run_dir.clone();
+                    let observe_hooks = view.shared_codex_runtime.is_none();
                     let task = self.handle.spawn(async move {
-                        let mut observer = match crate::adapters::native::codex_hook_observer(&binding).await {
+                        let mut observer = if !observe_hooks { None } else { match crate::adapters::native::codex_hook_observer(&binding).await {
                             Ok(observer) => Some(observer),
                             Err(error) => {
                                 bbt_rt::error_journal::report_to(&diagnostics_root, bbt_rt::error_journal::Failure::new("native", "hook_observer", error).seat(id).harness("codex"));
                                 None
                             }
-                        };
+                        }};
                         let mut recent = VecDeque::<String>::new();
                         let mut tick = tokio::time::interval(Duration::from_millis(200));
                         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
@@ -6240,7 +6308,7 @@ impl Worker {
                             if let Ok(status) = crate::adapters::native::codex_owned_status(&binding).await {
                                 let event = serde_json::json!({"source":"snapshot","method":"thread/status/changed","params":{"threadId":thread,"status":status}});
                                 if client.native_event(id, generation, event).await.is_err() { break; }
-                            }
+                            } else if !observe_hooks { break; }
                         }
                     });
                     view.native_reader = Some(NativeReader {
@@ -7962,6 +8030,19 @@ impl Worker {
                                 ) {
                                     view.adapter.apply(obs);
                                 }
+                                if event.raw["bboxy_proxy"] == true
+                                    && view.shared_codex_runtime.is_some()
+                                    && view.adapter.binding.runtime.is_some()
+                                {
+                                    let mut binding = view.adapter.binding.clone();
+                                    binding.runtime = None;
+                                    binding.attachment_generation =
+                                        binding.attachment_generation.checked_add(1).ok_or_else(
+                                            || invalid("native attachment generation exhausted"),
+                                        )?;
+                                    view.adapter.rebind(binding)?;
+                                    view.delivery_endpoint = crate::adapters::Endpoint::None;
+                                }
                                 Ok(view.adapter.status.clone())
                             });
                         let result = result.and_then(|status| {
@@ -8014,6 +8095,36 @@ impl Worker {
                             self.persist_native_session(id)?;
                             self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                         }
+                        let _ = reply.send(result);
+                    }
+                    Command::SharedCodexDiscovery(discovery, reply) => {
+                        let id = discovery.binding.seat;
+                        let result = (|| {
+                            let Some(view) = self.views.get_mut(&id) else {
+                                return Ok(false);
+                            };
+                            if view.adapter.binding != discovery.binding
+                                || view.adapter.status.source == "exit"
+                            {
+                                return Ok(false);
+                            }
+                            let runtime = match discovery.result {
+                                Ok(runtime) => runtime,
+                                Err(reason) => {
+                                    view.delivery_failure = Some(reason);
+                                    return Ok(false);
+                                }
+                            };
+                            let mut binding = discovery.binding;
+                            binding.runtime = Some(runtime);
+                            binding.attachment_generation = binding
+                                .attachment_generation
+                                .checked_add(1)
+                                .ok_or_else(|| invalid("native attachment generation exhausted"))?;
+                            view.adapter.rebind(binding)?;
+                            view.delivery_failure = None;
+                            Ok(true)
+                        })();
                         let _ = reply.send(result);
                     }
                     Command::NativeHookFailure(payload) => {

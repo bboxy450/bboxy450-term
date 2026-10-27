@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
-
 // The extracted module was covered by mux's same IO-owner allowance. Callers
 // run it on IO threads; the optional runtime assertion retains the app's guard.
 #![allow(
@@ -146,10 +145,10 @@ pub struct Binding {
     pub runtime: Option<RuntimeBinding>,
 }
 
-/// Identity of a seat-owned runtime; no user-global discovery is permitted.
+/// Identity of the selected runtime, owned by the seat or borrowed from Codex.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RuntimeBinding {
-    /// Explicit endpoint of the caller-owned native runtime.
+    /// Explicit endpoint of the selected native runtime; conveys no ownership.
     pub endpoint: std::path::PathBuf,
     /// Bound operating-system process identifier.
     pub pid: u32,

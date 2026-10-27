@@ -13,7 +13,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from messaging import App, operation, require
-from native_checks import approve_codex_hooks
+from native_checks import approve_codex_hooks, configure_codex_provider
 
 
 MARKER = "M7_NATIVE_OK"
@@ -138,6 +138,7 @@ def admitted(app, message, receiver):
 
 def check(app, model):
     work = app.work
+    configure_codex_provider(model.server_port)
     require((work.parent / "home/.l3-private-home").is_file(), "no private harness home")
     (work / "l3-native-provider.json").write_text(json.dumps({"port": model.server_port}) + "\n")
     sender, swarm = app.spawn("M7 routing fixture", "architect")

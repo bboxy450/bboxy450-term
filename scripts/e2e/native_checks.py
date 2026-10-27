@@ -230,6 +230,8 @@ def native_writes(before, after, config_before, codex):
         elif key.startswith((".codex/thread-writer-locks/", ".codex/tui-thread-reference-capabilities/",
                              ".codex/app-server-control/")):
             cause = "Codex native runtime locks and handles"
+        elif key.startswith((".codex/packages/app-server-daemon/", ".codex/app-server-daemon/")):
+            cause = "Codex's own managed shared daemon package, lifecycle and logs"
         elif key.startswith(".codex/") and (".sqlite" in key or
                 key in (".codex/installation_id", ".codex/.sandbox_migration")):
             cause = "Codex native runtime database and initialization metadata"
@@ -277,10 +279,21 @@ printf '%s\\n' "$ZDOTDIR" "$BBOXY_USER_ZDOTDIR" "$BBOXY_SEAT_ID" "$L3_ZSH_USER_C
     print(json.dumps(dict(kind="L3-shell", **proof)), flush=True)
 
 
+def configure_codex_provider(port):
+    # Test preparation, before the native-write baseline. A shared daemon reads
+    # its provider from this throwaway home, independently of the TUI's flags.
+    assert (HOME / ".l3-private-home").is_file()
+    path = HOME / ".codex/config.toml"
+    text = path.read_text()
+    assert 'http://127.0.0.1:9/v1' in text
+    path.write_text(text.replace('http://127.0.0.1:9/v1', 'http://127.0.0.1:' + str(port) + '/v1'))
+
+
 def run():
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
+    configure_codex_provider(server.server_port)
     before = snapshot()
     config_before = tomllib.loads((HOME / ".codex/config.toml").read_text())
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Provider)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
     config = WORK / "l3-native-provider.json"

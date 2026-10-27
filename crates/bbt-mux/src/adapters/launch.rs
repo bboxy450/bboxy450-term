@@ -29,6 +29,7 @@ pub struct LaunchPlan {
     pub overlay: PathBuf,
     pub harness_session_id: Option<String>,
     pub notes: Vec<&'static str>,
+    pub shared_runtime: Option<PathBuf>,
 }
 
 /// Apply the operator's assignments at exec, after login startup has loaded the
@@ -146,8 +147,10 @@ pub(crate) fn in_login_shell(
     ) {
         env.entry("HOME".into())
             .or_insert_with(|| home.to_string_lossy().into_owned());
-        env.entry("ZDOTDIR".into())
-            .or_insert_with(|| zdotdir.unwrap_or(home).to_string_lossy().into_owned());
+        if let Some(zdotdir) = zdotdir {
+            env.entry("ZDOTDIR".into())
+                .or_insert_with(|| zdotdir.to_string_lossy().into_owned());
+        }
         env.entry("SHELL".into()).or_insert_with(|| shell.into());
     }
     wrap(&mut spec.program, &mut spec.args, &shell);

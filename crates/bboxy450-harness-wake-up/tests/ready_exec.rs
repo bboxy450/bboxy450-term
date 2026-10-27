@@ -6,6 +6,79 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::time::Instant;
 
+#[test]
+fn zsh_overlay_lets_user_zshenv_select_its_config_and_respects_explicit_zdotdir() {
+    use bboxy450_harness_wake_up::{
+        HarnessRecord, Ulid,
+        launch::{LaunchContext, plan},
+    };
+    for explicit in [false, true] {
+        let root = tempfile::tempdir().unwrap();
+        let home = root.path().join("home");
+        let config = home.join("zsh-config");
+        std::fs::create_dir_all(config.join("config")).unwrap();
+        std::fs::write(
+            home.join(".zshrc"),
+            "# another program's home startup stub\n",
+        )
+        .unwrap();
+        let init = "if [[ -z ${ZDOTDIR:-} || ! -r $ZDOTDIR/.zshrc ]]; then\n  export ZDOTDIR=$HOME/zsh-config\nfi\nsource $ZDOTDIR/config/environment.zsh\n";
+        std::fs::write(home.join(".zshenv"), init).unwrap();
+        std::fs::write(config.join(".zshenv"), init).unwrap();
+        std::fs::write(
+            config.join("config/environment.zsh"),
+            "export FIXTURE_ENV=loaded\n",
+        )
+        .unwrap();
+        std::fs::write(config.join(".zshrc"), "export FIXTURE_RC=loaded\n").unwrap();
+        let plan = plan(
+            &HarnessRecord::builtin("zsh").unwrap(),
+            &LaunchContext {
+                id: Ulid::new(),
+                generation: 1,
+                name: "shell",
+                role_name: "shell",
+                harness_session_id: None,
+                skill: "",
+                role_prompt: "",
+                cwd: root.path(),
+                executable: Path::new("/bin/true"),
+                overlay_parent: root.path(),
+                user_home: &home,
+                user_zdotdir: explicit.then_some(config.as_path()),
+                socket: Path::new("/tmp/fixture.sock"),
+                capability: [1; 32],
+                resume: false,
+            },
+        )
+        .unwrap();
+        let output = Command::new(&plan.program)
+            .args(&plan.args)
+            .args([
+                "-c",
+                "printf '%s\\n' $FIXTURE_ENV $FIXTURE_RC $_bbt_user_zdotdir",
+            ])
+            .env_clear()
+            .env("HOME", &home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("TERM", "xterm-256color")
+            .envs(&plan.env)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            format!("loaded\nloaded\n{}\n", config.display())
+        );
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("no such file"));
+        plan.cleanup().unwrap();
+    }
+}
+
 // keeps: decision #279
 #[test]
 #[ignore = "private hook subprocess, invoked by its parent"]

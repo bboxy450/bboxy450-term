@@ -1,2 +1,10 @@
 # L3 private Codex configuration
 check_for_update_on_startup = false
+model = "fixture-model"
+model_provider = "l3_fixture"
+[model_providers.l3_fixture]
+name = "L3 local fixture"
+base_url = "http://127.0.0.1:9/v1"
+wire_api = "responses"
+requires_openai_auth = false
+supports_websockets = false

@@ -1,5 +1,5 @@
 //! Installed native protocol contracts; no thread creation, user config changes
-//! or model calls. Diagnostics may rejoin only a verified loaded private thread
+//! or model calls. Diagnostics may rejoin only a verified loaded bound thread
 //! without overrides; ambiguous control mutations are never automatically retried.
 use super::{
     Binding, Endpoint, Evidence, Grade, Observation, Priority, Session, State, WaitingKind,
@@ -410,16 +410,16 @@ async fn reply(socket: &mut Socket, id: u64) -> Result<Value> {
     }
     Err(invalid("native notification bound exceeded"))
 }
-async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
+async fn open_codex_peer(path: &Path, owner: Option<u32>) -> Result<(Socket, Option<u32>)> {
     crate::assert_not_ui_thread();
     own_socket(path)?;
     let stream = UnixStream::connect(path).await?;
+    let peer = stream
+        .peer_cred()?
+        .pid()
+        .and_then(|pid| u32::try_from(pid).ok());
     if let Some(owner) = owner
-        && stream
-            .peer_cred()?
-            .pid()
-            .and_then(|pid| u32::try_from(pid).ok())
-            != Some(owner)
+        && peer != Some(owner)
     {
         return Err(invalid(
             "native socket peer does not match the launch-selected runtime",
@@ -434,7 +434,10 @@ async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
     send(&mut socket,json!({"id":1,"method":"initialize","params":{"clientInfo":{"name":"bboxy450-term","version":env!("CARGO_PKG_VERSION")},"capabilities":{"experimentalApi":true}}})).await?;
     reply(&mut socket, 1).await?;
     send(&mut socket, json!({"method":"initialized"})).await?;
-    Ok(socket)
+    Ok((socket, peer))
+}
+async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
+    Ok(open_codex_peer(path, owner).await?.0)
 }
 async fn read_codex_thread(
     socket: &mut Socket,
@@ -477,6 +480,137 @@ async fn codex_handshake(path: &Path, thread: &str, owner: Option<u32>) -> Resul
     let mut socket = open_codex(path, owner).await?;
     let identity = read_codex_thread(&mut socket, path, thread, 2).await?;
     Ok((socket, identity))
+}
+
+/// Relay a seat's TUI to Codex's shared daemon, adding startup configuration to
+/// that connection's first thread start/resume only. Never owns the daemon.
+///
+/// # Errors
+/// Returns private listener, daemon startup, protocol or admission failures.
+pub async fn codex_proxy(
+    frontend: &Path,
+    backend: &Path,
+    launch: &super::launch::CodexLaunch,
+    program: &str,
+) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    fn overlay(into: &mut Value, from: Value) {
+        if let (Value::Object(existing), Value::Object(next)) = (&mut *into, &from) {
+            for (key, value) in next {
+                overlay(
+                    existing.entry(key.clone()).or_insert(Value::Null),
+                    value.clone(),
+                );
+            }
+        } else {
+            *into = from;
+        }
+    }
+    let listener = tokio::net::UnixListener::bind(frontend)?;
+    std::fs::set_permissions(frontend, std::fs::Permissions::from_mode(0o600))?;
+    loop {
+        let (stream, _) = listener.accept().await?;
+        let accepted = tokio::time::timeout(
+            Duration::from_secs(5),
+            tokio_tungstenite::accept_async(stream),
+        )
+        .await;
+        let Ok(Ok(mut client)) = accepted else {
+            continue;
+        }; // readiness probes are not WebSockets
+        super::launch::ensure_codex_daemon(backend, program)?;
+        own_socket(backend)?;
+        let stream = UnixStream::connect(backend).await?;
+        let (mut server, _) = tokio_tungstenite::client_async("ws://localhost/", stream).await?;
+        let mut pending: Option<(Value, Option<String>)> = None;
+        let mut configured = false;
+        let mut internal: Option<Value> = None;
+        loop {
+            tokio::select! {
+                frame = client.next() => {
+                    let Some(Ok(mut frame)) = frame else { break; };
+                    if let Message::Text(text) = &frame
+                        && let Ok(mut call) = serde_json::from_str::<Value>(text)
+                        && !configured && pending.is_none()
+                        && matches!(call["method"].as_str(), Some("thread/start" | "thread/resume"))
+                    {
+                        let expected = call["params"]["threadId"].as_str().map(str::to_owned);
+                        if launch.resume.as_ref().is_some_and(|id| expected.as_ref() != Some(id)) {
+                            return Err(invalid("Codex TUI resumed a different thread"));
+                        }
+                        overlay(&mut call["params"]["config"], serde_json::to_value(&launch.config)?);
+                        if let Some(instructions) = launch.config.get("developer_instructions") {
+                            call["params"]["developerInstructions"] = instructions.clone();
+                        }
+                        call["params"]["cwd"] = json!(launch.cwd);
+                        pending = Some((call["id"].clone(), expected));
+                        frame = Message::Text(serde_json::to_string(&call)?.into());
+                    }
+                    if server.send(frame).await.is_err() { break; }
+                }
+                frame = server.next() => {
+                    let Some(Ok(frame)) = frame else { break; };
+                    if let Message::Text(text) = &frame
+                        && let Ok(response) = serde_json::from_str::<Value>(text)
+                    {
+                        if internal.as_ref().is_some_and(|id| response.get("id") == Some(id)) {
+                            internal = None;
+                            continue;
+                        }
+                        if let Some((id, expected)) = &pending
+                            && response.get("id") == Some(id)
+                        {
+                            if let Some(thread) = response["result"]["thread"]["id"].as_str() {
+                                if expected.as_ref().is_some_and(|id| id != thread) {
+                                    return Err(invalid("Codex returned a different thread"));
+                                }
+                                let registration = std::process::Command::new(&launch.host)
+                                    .args(["hook", "--agent", "codex", &json!({"hook_event_name":"SessionStart","session_id":thread,"bboxy_proxy":true}).to_string()])
+                                    .env("BBOXY_HOOK_SOCKET_ONLY", "1").status()?;
+                                if !registration.success() { return Err(invalid("Codex thread registration failed")); }
+                                let name_id = json!(format!("bboxy-name-{}", Ulid::new()));
+                                server.send(Message::Text(json!({"id":name_id,"method":"thread/name/set","params":{"threadId":thread,"name":launch.name}}).to_string().into())).await?;
+                                internal = Some(name_id);
+                                configured = true;
+                            }
+                            pending = None;
+                        }
+                    }
+                    if client.send(frame).await.is_err() { break; }
+                }
+            }
+        }
+    }
+}
+
+/// Pin a borrowed daemon to its kernel peer and this already authenticated thread.
+/// Never enumerate, load, resume or select another thread during discovery.
+///
+/// # Errors
+/// Refuses an unbound thread, replaced TUI/daemon, unavailable socket, unknown or
+/// unloaded thread, identity mismatch or a bounded read-only handshake timeout.
+pub async fn shared_codex_runtime(binding: &Binding, path: &Path) -> Result<super::RuntimeBinding> {
+    verify_process(binding)?;
+    if binding.session.starts_with("process-") {
+        return Err(Box::new(UnknownRuntime));
+    }
+    let runtime = tokio::time::timeout(DEADLINE, async {
+        let (mut socket, pid) = open_codex_peer(path, None).await?;
+        let pid = pid.ok_or_else(|| invalid("native daemon peer PID unavailable"))?;
+        let runtime = super::RuntimeBinding {
+            endpoint: path.to_owned(),
+            pid,
+            process_start: process_start(pid)?,
+        };
+        read_codex_thread(&mut socket, path, &binding.session, 2).await?;
+        Ok::<_, crate::Error>(runtime)
+    })
+    .await??;
+    verify_process(binding)?;
+    let mut pinned = binding.clone();
+    pinned.runtime = Some(runtime.clone());
+    verify_runtime_process(&pinned, path)?;
+    Ok(runtime)
 }
 
 /// Read only the threads loaded in the launch-selected runtime. A fresh TUI can

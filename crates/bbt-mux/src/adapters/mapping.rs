@@ -116,6 +116,7 @@ pub fn launch_plan(plan: kit::LaunchPlan, seat: Ulid, generation: u64) -> super:
         overlay: plan.overlay,
         harness_session_id: plan.harness_session_id,
         notes: plan.notes,
+        shared_runtime: plan.shared_runtime,
     }
 }
 pub fn native_launch_plan(plan: super::LaunchPlan) -> kit::LaunchPlan {
@@ -133,6 +134,7 @@ pub fn native_launch_plan(plan: super::LaunchPlan) -> kit::LaunchPlan {
         overlay: plan.overlay,
         harness_session_id: plan.harness_session_id,
         notes: plan.notes,
+        shared_runtime: plan.shared_runtime,
     }
 }
 
@@ -282,6 +284,7 @@ mod tests {
             overlay: "/tmp/fixture-overlay".into(),
             harness_session_id: Some("session".into()),
             notes: vec!["same note"],
+            shared_runtime: Some("/tmp/borrowed-daemon.sock".into()),
             runtime: Some(kit::launch::RuntimePlan {
                 program: "/bin/sleep".into(),
                 args: vec!["600".into()],
@@ -290,6 +293,7 @@ mod tests {
             }),
         };
         let expected_runtime = native.runtime.clone();
+        let expected_shared = native.shared_runtime.clone();
         let expected = serde_json::json!({"program":native.program,"args":native.args,"cwd":native.cwd,"env":native.env,
             "overlay":native.overlay,"session":native.harness_session_id,"notes":native.notes});
         let host = launch_plan(native, id, 7);
@@ -299,6 +303,7 @@ mod tests {
         host.spec.validate().unwrap();
         let back = native_launch_plan(host);
         assert_eq!(back.runtime, expected_runtime);
+        assert_eq!(back.shared_runtime, expected_shared);
         assert_eq!(
             serde_json::json!({"program":back.program,"args":back.args,"cwd":back.cwd,"env":back.env,
             "overlay":back.overlay,"session":back.harness_session_id,"notes":back.notes}),

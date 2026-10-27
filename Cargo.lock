@@ -253,15 +253,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bboxy450-term-firehose"
-version = "0.1.1"
-dependencies = [
- "bboxy450-term-core",
- "libc",
- "serde_json",
-]
-
-[[package]]
 name = "bboxy450-harness-host"
 version = "0.1.1"
 dependencies = [
@@ -295,6 +286,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "toml 0.9.12+spec-1.1.0",
  "ulid",
 ]
 
@@ -390,8 +382,8 @@ dependencies = [
 name = "bboxy450-render"
 version = "0.1.1"
 dependencies = [
- "bboxy450-term-firehose",
  "bboxy450-term-core",
+ "bboxy450-term-firehose",
  "bboxy450-ui-core",
  "bytemuck",
  "lyon_tessellation",
@@ -464,6 +456,15 @@ dependencies = [
  "serde-big-array",
  "serde_json",
  "unicode-width",
+]
+
+[[package]]
+name = "bboxy450-term-firehose"
+version = "0.1.1"
+dependencies = [
+ "bboxy450-term-core",
+ "libc",
+ "serde_json",
 ]
 
 [[package]]

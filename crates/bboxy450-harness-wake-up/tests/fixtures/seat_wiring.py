@@ -71,6 +71,15 @@ def wait_for_file(path, publish=lambda: None):
 
 
 if sys.argv[1] == "harness-exec":
+    if sys.argv[2] == "--codex-proxy":
+        endpoint = sys.argv[3]
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+            listener.bind(endpoint)
+            listener.listen()
+            Path(endpoint + ".ready").write_bytes(b"ready")
+            while True:
+                stream, _ = listener.accept()
+                stream.close()
     endpoint, program = sys.argv[2:4]
     wait_for_file(Path(endpoint + ".ready"))
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
@@ -135,7 +144,10 @@ if kind == "claude":
     manifest = json.loads((plugin / ".claude-plugin/plugin.json").read_text())
     assert manifest["name"] == "bboxy450"
     skill = (plugin / "skills/bboxy450/SKILL.md").read_text()
-    assert option("--append-system-prompt") == role_prompt
+    prompt = option("--append-system-prompt")
+    assert prompt.startswith(role_prompt)
+    assert "NAME: " in prompt and "ROLE: EXECUTOR" in prompt
+    assert "First call the bboxy MCP `orient` tool, before other work" in prompt
     mcp = json.loads(mcp_path.read_text())["mcpServers"]["bboxy"]
     hooks = settings["hooks"]
     assert set(hooks) == {
@@ -160,7 +172,7 @@ else:
     assert overrides["mcp_servers.bboxy.env_vars"] == [
         "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR",
     ]
-    assert overrides["notify"] == [executable, "hook", "--agent", "codex-notify"]
+    assert overrides["notify"] == [mcp["command"], "hook", "--agent", "codex-notify"]
     hooks = overrides["hooks"]
     assert set(hooks) == {
         "SessionStart", "SessionEnd", "UserPromptSubmit", "PreToolUse", "PostToolUse",
@@ -170,17 +182,29 @@ else:
     hook_agent = "codex"
     overlay = None
 
-assert mcp == {"command": executable, "args": ["mcp"]}
+assert mcp["args"] == ["mcp"]
+expected_command = executable if kind == "claude" else mcp["command"]
+if kind == "codex":
+    assert Path(expected_command).name == "bboxy-seat"
+    assert stat.S_IMODE(Path(expected_command).stat().st_mode) == 0o700
+    assert "NAME: " in skill and "ROLE: EXECUTOR" in skill
+    assert "First call the bboxy MCP `orient` tool, before other work" in skill
 for command in hook_commands:
-    assert shlex.split(command) == [executable, "hook", "--agent", hook_agent]
+    assert shlex.split(command) == [expected_command, "hook", "--agent", hook_agent]
 assert "{{ROLE_" not in skill
 assert json.dumps(os.environ["BBOXY_ROLE"], ensure_ascii=False) in skill
 assert skill.index("1. **Orient.") < skill.index("2. **Tasks.") < skill.index("3. **Messages.") < skill.index("4. **Artifacts.")
 assert "Storage does not prove model receipt" in skill
 assert os.environ["BBOXY_CAPABILITY"] not in skill
 
+if kind == "codex":
+    # Model the shared daemon's unrelated environment. The per-seat wrapper
+    # must restore this thread's admission for both MCP and hooks.
+    saved = {key: os.environ.pop(key) for key in list(os.environ) if key.startswith("BBOXY_")}
 mcp_result = run([mcp["command"], *mcp["args"]])
 hook_result = run(shlex.split(hook_commands[0]))
+if kind == "codex":
+    os.environ.update(saved)
 assert mcp_result["identity"] == identity() == hook_result["identity"]
 if kind == "codex":
     assert run(overrides["notify"])["argv"] == ["hook", "--agent", "codex-notify"]
