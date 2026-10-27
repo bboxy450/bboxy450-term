@@ -72,6 +72,7 @@ parity-swarm:
 
 test-swarm:
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib every_verb_maps_to_exactly_one_window_action; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) swarm_workdir; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib window_state; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \

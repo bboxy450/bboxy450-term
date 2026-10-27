@@ -186,6 +186,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui clock freeze",
     "ui notification-click s",
     "ui compose --to s --text hi",
+    "ui swarm-workdir 00000000000000000000000001 default",
 ];
 
 /// Resolve the explicit target and send it through the admitted window composer.

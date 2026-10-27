@@ -14,3 +14,4 @@ PARITY_OUT=.../swarm-parity make parity-swarm — exit 0: 72 required/72 measure
 Raw log outside Git: /Users/feral/Library/Logs/bboxy450-term/install-20261026/swarm-parity.log
 SHA256: bbab577970f8c3a7306add1eb411c4c2c022f4967dccb60ead9aaea4c7570263
 Exact-commit full CI, final-source regression run and signed local-install evidence follow in GitHub handoff #62. Sidebar navigation/Cmd-D splits remain #67; this does not change those shortcuts.
+Initial full CI at 0c70649b caught one missing PARSE_SAMPLES entry for the new UI verb (68 verbs, 67 examples); the verb's sample and its grammar check are now included in test-swarm. No assertion was removed or failure quarantined.
