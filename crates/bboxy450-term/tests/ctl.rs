@@ -132,6 +132,14 @@ fn executable(path: &Path, body: &str) {
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
 }
 
+fn fixture_login(root: &Path, bin: &Path) {
+    let home = root.join("home");
+    std::fs::create_dir_all(&home).unwrap();
+    let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
+    std::fs::write(root.join("zsh-config/.zprofile"), format!(
+        "export HOME={}\nexport PATH='{}'\n", quote(&home), path.replace('\'', "'\\''"))).unwrap();
+}
+
 /// Runs `bboxy450-term ctl ARGS` as an outside process; returns its JSON lines.
 fn ctl(run: &Path, args: &[&str]) -> Vec<Value> {
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
@@ -181,6 +189,7 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     ] {
         std::fs::create_dir_all(dir).unwrap();
     }
+    fixture_login(&root, &bin);
     let task = "01K00000000000000000000A1C";
     let task_path = format!(".bboxy/tasks/{task}.md");
     std::fs::write(
@@ -205,7 +214,9 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     executable(
         &app,
         &format!(
-            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory PATH={}:\"$PATH\" exec {} \"$@\"\n",
+            "#!/bin/sh\nHOME={} CLAUDE_CONFIG_DIR={} BBOXY_TEST_CUSTODY=memory PATH={}:\"$PATH\" exec {} \"$@\"\n",
+            quote(&root.join("home")),
+            quote(&root.join("home/.claude")),
             quote(&bin),
             quote(&binary)
         ),
@@ -445,6 +456,7 @@ async fn first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_
     ] {
         std::fs::create_dir_all(dir).unwrap();
     }
+    fixture_login(&root, &bin);
     let binary = PathBuf::from(env!("CARGO_BIN_EXE_bboxy450-term"));
     std::fs::write(bin.join("agent.py"), AGENT).unwrap();
     executable(
@@ -462,7 +474,8 @@ async fn first_contact_uses_the_authenticated_hook_socket_and_restores_it_after_
     executable(
         &app,
         &format!(
-            "#!/bin/sh\nBBOXY_TEST_CUSTODY={} CLAUDE_CONFIG_DIR={} PATH={}:\"$PATH\" exec {} \"$@\"\n",
+            "#!/bin/sh\nHOME={} BBOXY_TEST_CUSTODY={} CLAUDE_CONFIG_DIR={} PATH={}:\"$PATH\" exec {} \"$@\"\n",
+            quote(&root.join("home")),
             quote(&PathBuf::from(format!(
                 "fixture:{}",
                 root.join("custody").display()

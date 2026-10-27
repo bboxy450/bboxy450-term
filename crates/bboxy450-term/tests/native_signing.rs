@@ -93,9 +93,12 @@ elif '--force' in args:
 fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     let root = tempfile::tempdir().unwrap();
     let p = root.path();
-    for dir in ["scripts", "packaging/macos", "target/debug", "tools"] {
+    for dir in ["scripts", "packaging/macos", "crates/bboxy450-term", "target/debug", "tools"] {
         fs::create_dir_all(p.join(dir)).unwrap();
     }
+    fs::write(p.join("Makefile"), include_str!("../../../Makefile")).unwrap();
+    fs::write(p.join("scripts/cache-env.sh"), "# isolated fake build tools\n").unwrap();
+    fs::write(p.join("crates/bboxy450-term/Cargo.toml"), "[package]\nversion='0.1.0'\n").unwrap();
     fs::write(
         p.join("scripts/bundle-macos.sh"),
         include_str!("../../../scripts/bundle-macos.sh"),
@@ -110,9 +113,10 @@ fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
     for (name, body) in [
         ("uname", "printf 'Darwin\\n'".to_string()),
-        ("security", format!("printf '%s\\n' {IDENTITY}")),
+        ("security", format!("printf 'lookup\\n' >> \"$FIXTURE_ROOT/lookups\"; test -z \"${{FIXTURE_NO_IDENTITY:-}}\" || exit 0; printf '%s\\n' {IDENTITY}")),
         ("cargo", "exit 0".into()),
         ("plutil", "exit 0".into()),
+        ("git", "case \"$1\" in rev-list) printf '17\\n' ;; rev-parse) printf 'fixture-revision\\n' ;; diff) exit 0 ;; *) exit 2 ;; esac".into()),
     ] {
         executable(&p.join("tools").join(name), &format!("#!/bin/sh\n{body}\n"));
     }
@@ -159,4 +163,22 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-term")
             .is_file()
     );
+    let path = format!("{}:{}", p.join("tools").display(), std::env::var("PATH").unwrap());
+    let refused = Command::new("make").arg("bundle").arg("PROFILE=debug")
+        .current_dir(p).env("PATH", &path).env("FIXTURE_ROOT", p)
+        .env("FIXTURE_NO_IDENTITY", "1").output().unwrap();
+    assert!(!refused.status.success(), "signed bundle must fail without the approved identity");
+    assert_eq!(fs::read_to_string(p.join("calls")).unwrap().lines().count(), 2,
+        "failed signed build must not fall back to ad-hoc signing");
+    let lookups = fs::read_to_string(p.join("lookups")).unwrap();
+    let unsigned = Command::new("make").arg("bundle-unsigned")
+        .current_dir(p).env("PATH", &path).env("FIXTURE_ROOT", p)
+        .env("FIXTURE_NO_IDENTITY", "1").output().unwrap();
+    assert!(unsigned.status.success(), "{}", String::from_utf8_lossy(&unsigned.stderr));
+    assert_eq!(fs::read_to_string(p.join("lookups")).unwrap(), lookups,
+        "unsigned tests never look up the private signing identity");
+    let calls: Vec<Vec<String>> = fs::read_to_string(p.join("calls")).unwrap().lines()
+        .map(|line| serde_json::from_str(line).unwrap()).collect();
+    let at = calls[2].iter().position(|arg| arg == "--sign").unwrap();
+    assert_eq!(calls[2][at + 1], "-");
 }

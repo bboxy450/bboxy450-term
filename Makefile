@@ -53,6 +53,8 @@ test check:
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test seat_wiring; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl --test native_signing; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::shell_path::tests -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1

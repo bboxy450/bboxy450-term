@@ -12,3 +12,6 @@ Raw log (outside Git): /Users/feral/Library/Logs/bboxy450-term/install-20261026/
 SHA256: 791908d3c0080e09ba2dafa26c5830620c92eedbe5e67a7cec142d40659a53ea
 Full exact-commit Make gate and signed-install evidence follow in GitHub handoff #62 after this source is committed.
 Unchanged scope: sidebar/split behavior remains GitHub #67; no crate version bump or publication in this task.
+Initial make test at d13d68a7 — exit 2 (Cargo 101): seat_wiring and two ctl fixtures depended on inherited PATH precedence; native_signing copied only the old script. Fixed private login profiles/HOME and copied the canonical Makefile plus fake build tools. No failures were quarantined or assertions removed.
+Expanded make test-boundaries — exit 0; 35 tests passed, including both harness wiring clients, ctl/native-hook flows, signing requirement, missing-identity refusal with no ad-hoc fallback, and unsigned signing with no private-key lookup.
+The exact final-source Make gate reruns these fast fixture tests; process/exec behavior is unchanged by the fixture correction.
