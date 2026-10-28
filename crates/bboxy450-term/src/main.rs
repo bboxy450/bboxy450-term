@@ -6247,38 +6247,28 @@ impl App {
         });
         let start = Instant::now();
         let live = self.live_state.is_some();
-        let mut ops = self.scene.paint(&layouts, logical, None, None);
+        let (mut ops, rims) =
+            bbt_ui::components::split_rims(self.scene.paint(&layouts, logical, None, None));
         if let Some(page) = &self.local_page_layout {
             ops.extend(page.paint());
         }
-        if !live {
-            ops.extend(self.scene.foreground_with_document(
-                logical,
-                self.launcher_layout.as_ref(),
-                overlay.as_ref(),
-                self.conversation_layout.as_ref(),
-                self.document_layout.as_ref(),
-            ));
-        }
         let mut pane_overlay = if let Some(model) = &self.live_state {
-            let mut ops = self
-                .scene
-                .history_foreground(model, &self.pane_bounds, scale)?;
-            ops.extend(self.scene.foreground_with_document(
-                logical,
-                self.launcher_layout.as_ref(),
-                overlay.as_ref(),
-                self.conversation_layout.as_ref(),
-                self.document_layout.as_ref(),
-            ));
-            ops
+            self.scene
+                .history_foreground(model, &self.pane_bounds, scale)?
         } else {
             vec![]
         };
-        if live {
-            pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
-        } else {
-            ops.extend(self.scene.error_overlay(logical, self.unread_errors));
+        pane_overlay.extend(self.scene.foreground_with_document(
+            logical,
+            self.launcher_layout.as_ref(),
+            overlay.as_ref(),
+            self.conversation_layout.as_ref(),
+            self.document_layout.as_ref(),
+            rims,
+        ));
+        pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
+        if !live {
+            ops.append(&mut pane_overlay);
         }
         phases.draw = start.elapsed();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(

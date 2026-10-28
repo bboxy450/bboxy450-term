@@ -1,0 +1,10 @@
+Pane glow over sidebar dock — operator bug 2026-10-27
+Cause: conversation/log/composer foreground painted after scene rims; opaque dock hid the pane swell.
+Fix: native/headless defer original rim ops until after terminal/history and conversation; launcher/document/HUD follow the rims. Rim clips and geometry are unchanged.
+Regression: frozen same-clock pane-peak versus row-zero captures must differ inside conversation/rows and composer at pane.x-32..pane.x-8.
+Paint-order unit: actual dock ops precede unchanged retained rims; launcher/document/HUD ops follow them.
+make test-cross-focus (new regression before fix) — exit2; SHA256 aa90a1dbf14d0226ce536bbcffd417d58c1a8a29e2de63e03b61090be3c36d18
+make test-cross-focus — exit0; SHA256 b3135830547609884642bdc86845962d0658ca1d542e5a03c7c7e3d0ec60f4cf
+make check-cross-focus — exit0; SHA256 6a209e4d8dcbab44d99a8a36616697935f60e583cc3983ed15245672e0c49896
+GPU capture inspected: target/cross-focus/clock-pane-peak.png; glow continuous across swarm list, log and composer edge.
+Subsequent ship checks: signed install, private installed smoke, exact-HEAD make test, parity-swarm, scripts/land.sh; raw logs outside Git.

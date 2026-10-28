@@ -1370,6 +1370,22 @@ fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
     );
     assert_eq!(geometry(&row_zero), geometry(&focus));
     let row_zero_pixels = capture("clock-row-zero.png", &row_zero);
+    // Compare at exactly the same clock/focus/geometry: only the pane swell
+    // changed. Both opaque dock surfaces must let that outer glow paint above
+    // them, just as the swarm list does (rim-glow §7).
+    for name in ["named:conversation/rows", "named:composer"] {
+        let rect = node_rect(name);
+        let top = rect[1].as_f64().unwrap() + 12.;
+        let bottom = rect[1].as_f64().unwrap() + rect[3].as_f64().unwrap() - 12.;
+        assert!(bottom > top, "{name} needs an interior test band");
+        let changed = changed_pixels(
+            &peak,
+            &row_zero_pixels,
+            x0..x1,
+            top.ceil() as usize..bottom.floor() as usize,
+        );
+        assert!(changed > 0, "{name} covered the pane's outer focus swell");
+    }
     assert!(
         pane_gap_changes(&peak, &row_zero_pixels) > 0,
         "pane click must cancel the old pane swell"

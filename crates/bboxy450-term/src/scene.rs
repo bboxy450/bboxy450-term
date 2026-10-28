@@ -1845,8 +1845,9 @@ impl Scene {
         hud: Option<&PerfHud>,
         conversation: Option<&ConversationLayout>,
         document: Option<&DocumentLayout>,
+        rims: Vec<c::Paint>,
     ) -> Vec<c::Paint> {
-        let mut ops = self.foreground_with_conversation(size, launcher, None, conversation);
+        let mut ops = self.foreground_with_conversation(size, launcher, None, conversation, rims);
         if let Some(document) = document {
             ops.extend(document.paint());
         }
@@ -1859,8 +1860,12 @@ impl Scene {
         launcher: Option<&LauncherLayout>,
         hud: Option<&PerfHud>,
         conversation: Option<&ConversationLayout>,
+        rims: Vec<c::Paint>,
     ) -> Vec<c::Paint> {
         let mut ops = conversation.map_or_else(Vec::new, ConversationLayout::paint);
+        // The dock is ordinary window content: the seat's outer swell must
+        // cover it too. Retain the original rim clips; true overlays stay above.
+        ops.extend(rims);
         ops.extend(self.foreground(size, launcher, hud));
         ops
     }
@@ -2683,6 +2688,52 @@ mod launcher_tests {
 
     // keeps: spec ux-prototype §5
     #[test]
+    fn dock_precedes_retained_rims_and_launcher_document_and_hud_stay_above() {
+        let scene = Scene::new();
+        let size = [1600., 960.];
+        let conversation = scene
+            .conversation_layout(size, &ui::modules::composer::Conversation::default())
+            .unwrap();
+        let layouts = scene
+            .layout_with_dock(size, true, conversation.height)
+            .unwrap();
+        let (_, rims) = c::split_rims(scene.paint(&layouts, size, None, None));
+        assert!(!rims.is_empty());
+        let launcher = scene
+            .launcher_layout(size, &crate::new_launcher(None, 0).launcher)
+            .unwrap();
+        let mut host = bboxy450_term::documents::Host::default();
+        host.show("#44".into());
+        let document = scene.document_layout(size, &host).unwrap();
+        let hud = crate::perf_hud(
+            bbt_rt::HitchMeter::new(120.).perf_record(std::time::Instant::now(), 0.),
+        );
+        let expected = [
+            conversation.paint(),
+            rims.clone(),
+            launcher.paint(),
+            document.paint(),
+            scene.overlay(size, Some(&hud)),
+        ];
+        let actual = scene.foreground_with_document(
+            size,
+            Some(&launcher),
+            Some(&hud),
+            Some(&conversation),
+            Some(&document),
+            rims,
+        );
+        let mut start = 0;
+        for layer in expected {
+            let end = start + layer.len();
+            assert_eq!(format!("{:?}", &actual[start..end]), format!("{layer:?}"));
+            start = end;
+        }
+        assert_eq!(actual.len(), start);
+    }
+
+    // keeps: spec ux-prototype §5
+    #[test]
     fn document_uses_effective_context_without_moving_panes_and_keeps_hud_last() {
         let mut scene = Scene::new();
         let mut preferences = bboxy450_term::settings::Preferences::default();
@@ -2703,7 +2754,7 @@ mod launcher_tests {
         let document_ops = document.paint();
         let hud_ops = scene.overlay(size, Some(&hud));
         let foreground =
-            scene.foreground_with_document(size, None, Some(&hud), None, Some(&document));
+            scene.foreground_with_document(size, None, Some(&hud), None, Some(&document), vec![]);
         assert_eq!(foreground.len(), document_ops.len() + hud_ops.len());
         assert_eq!(
             format!("{:?}", &foreground[..document_ops.len()]),

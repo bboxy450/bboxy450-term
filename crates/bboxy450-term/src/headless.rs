@@ -1,5 +1,7 @@
 //! The real GUI consumer and renderer without winit, AppKit or an NSWindow.
 //! Only a model change, app request or GPU completion wakes this owner.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{UiEvent, gpu::VerificationFrame, live, log::Logger};
 use bboxy450_term::model::Model;
 use bbt_rt::Latest;
@@ -461,7 +463,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         submitted += 1;
                         let wake = thread.clone();
                         let callbacks = callbacks.clone();
-                        let mut base = app.scene.paint(&layouts, size, None, None);
+                        let (mut base, rims) = bbt_ui::components::split_rims(
+                            app.scene.paint(&layouts, size, None, None),
+                        );
                         if let Some(page) = &app.local_page_layout {
                             base.extend(page.paint());
                         }
@@ -471,6 +475,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             None,
                             app.conversation_layout.as_ref(),
                             app.document_layout.as_ref(),
+                            rims,
                         );
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         gpu.draw_layers_notifying(
