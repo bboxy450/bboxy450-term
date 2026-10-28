@@ -484,7 +484,9 @@ Rules: a layer's gallery exists before its code is used by the layer above; a di
 
 ### Native desktop integration (operator, 2026-10-28)
 
-`bboxy450-term-desktop` owns portable action/menu models and platform backends.
+`bboxy450-term-desktop` is the app-facing facade. `bboxy450-term-desktop-core`
+owns portable action/menu models and the stop port; `bboxy450-term-desktop-macos`
+owns AppKit bindings and the native probe, following decision46.
 macOS supplies native application menus, an accessory status item, and window
 operations; other platforms explicitly report unsupported until their adapters
 arrive. AppKit objects remain on each process's main thread. Native callbacks
