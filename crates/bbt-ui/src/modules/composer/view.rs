@@ -537,8 +537,7 @@ impl Composer {
         };
         let mut style = text_style(t.caption as f32, 400, false, ui::Color::Foreground);
         style.line_height = 1.45;
-        children.push(
-            TextArea {
+        let body = TextArea {
                 value: self.text.clone(),
                 placeholder: ph,
                 style,
@@ -547,9 +546,32 @@ impl Composer {
                 wrap: true,
                 name: "composer/text".into(),
             }
-            .element(inner, ctx, m)?
-            .into(),
-        );
+            .element(inner, ctx, m)?;
+        let body = if let Some(height) = self.body_height {
+            let height = height.max(0.);
+            let measured = body.layout(Rect::new(0., 0., inner, 0.), ctx, m)?;
+            let caret = self.edit.as_ref().and_then(|edit| edit.caret)
+                .unwrap_or_else(|| self.text.encode_utf16().count());
+            let position = TextArea::position_at(&self.text, &measured, caret, m);
+            fn caret_rect(n: &c::Layout) -> Option<Rect> {
+                if matches!(&n.kind, c::LayoutKind::Named(key) if key == "composer/text/caret") {
+                    return Some(n.rect);
+                }
+                n.children.iter().find_map(caret_rect)
+            }
+            // The painted caret includes preedit wrapping; committed-text indices
+            // alone cannot place a candidate which crosses the viewport edge.
+            let bottom = caret_rect(&measured).map_or(position[1] + (t.caption as f32 * 1.45).ceil(), |r| r.bottom());
+            let offset = self.body_scroll.unwrap_or((bottom - height).max(0.))
+                .clamp(0., (measured.rect.h - height).max(0.));
+            named("composer/body-viewport", c::Element::ScrollView(c::ScrollView {
+                viewport: [inner, height],
+                offset: [0., offset],
+                content_width: Some(inner),
+                content: Box::new(body),
+            }))
+        } else { body };
+        children.push(body.into());
         let icon = row(
             "composer/attach",
             plain(None, [3.; 4], STYLE.radius.tag as f32),

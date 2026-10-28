@@ -19,6 +19,10 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Patch {
+    SidebarLayout {
+        conversation_fraction: f32,
+        composer_body_height: Option<f32>,
+    },
     DestinationAvailable {
         id: String,
         available: bool,
@@ -53,6 +57,9 @@ pub enum Patch {
 impl Patch {
     pub fn validate(&self) -> Result<(), String> {
         let valid = match self {
+            Self::SidebarLayout { conversation_fraction, composer_body_height } =>
+                crate::modules::composer::SidebarLayout { conversation_fraction: *conversation_fraction,
+                    composer_body_height: *composer_body_height }.valid(),
             Self::DestinationAvailable { id, .. } => super::valid_destination_id(id),
             Self::RoleUpsert { name, role } => roles::valid_role(name, role),
             Self::RoleDelete(name) => roles::valid_name(name) && !roles::builtin(name),
@@ -105,7 +112,8 @@ impl Patch {
     }
     pub fn apply(&self, appearance: &mut Appearance, notifications: &mut Notifications) {
         match self {
-            Self::HarnessLaunch { .. }
+            Self::SidebarLayout { .. }
+            | Self::HarnessLaunch { .. }
             | Self::DestinationAvailable { .. }
             | Self::RoleUpsert { .. }
             | Self::RoleDelete(_)

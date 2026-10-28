@@ -28,13 +28,13 @@ impl App {
             return false;
         }
         let Some(handle) = self.sidebar_resize_region else {
-            return false;
+            return self.begin_sidebar_vertical(at);
         };
         if !self
             .sidebar_drag
             .begin(at, handle, self.scene.sidebar_width_for(self.solved_size))
         {
-            return false;
+            return self.begin_sidebar_vertical(at);
         }
         self.pointer = at;
         self.query_dragging = false;
@@ -46,6 +46,7 @@ impl App {
         true
     }
     pub(super) fn move_sidebar_resize(&mut self, at: [f32; 2]) -> bool {
+        if self.sidebar_vertical_drag.is_some() { return self.move_sidebar_vertical(at); }
         if self.sidebar_drag.active() && (self.document.open || self.launcher.is_some()) {
             self.end_sidebar_resize();
             return false;
@@ -60,14 +61,16 @@ impl App {
     }
     pub(super) fn end_sidebar_resize(&mut self) {
         self.sidebar_drag.finish();
+        self.end_sidebar_vertical();
         self.update_cursor();
     }
-    pub(super) fn drag_sidebar(&mut self, from: [f32; 2], to: [f32; 2]) -> Result<(), String> {
+    pub(super) fn drag_sidebar(&mut self, from: [f32; 2], to: [f32; 2]) -> Result<bool, String> {
         if !self.begin_sidebar_resize(from) {
-            return Err("ui_drag_refused: start on the sidebar resize handle".into());
+            return Err("ui_drag_refused: start on a retained sidebar resize handle".into());
         }
+        let vertical = self.sidebar_vertical_drag.is_some();
         self.move_sidebar_resize(to);
         self.end_sidebar_resize();
-        Ok(())
+        Ok(vertical)
     }
 }

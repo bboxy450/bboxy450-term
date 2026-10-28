@@ -443,6 +443,11 @@ impl App {
         if let Some(r) = self.sidebar_resize_region {
             regions.insert("sidebar-resize".into(), [r.x, r.y, r.w, r.h]);
         }
+        if let Some(layout) = &self.conversation_layout {
+            for (name, r) in ["sidebar-conversation-resize", "sidebar-composer-resize"].into_iter().zip(layout.splitters) {
+                regions.insert(name.into(), [r.x, r.y, r.w, r.h]);
+            }
+        }
         if let Some(settings) = self
             .local_page_layout
             .as_ref()

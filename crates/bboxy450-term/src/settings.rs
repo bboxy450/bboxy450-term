@@ -273,6 +273,7 @@ const MAX_CONFIG: u64 = 1024 * 1024;
 static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 #[derive(Debug, Clone, PartialEq)]
 pub struct Preferences {
+    pub sidebar: bbt_ui::modules::composer::SidebarLayout,
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub harnesses: crate::spawn_params::Harnesses,
@@ -282,6 +283,7 @@ pub struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            sidebar: Default::default(),
             appearance: Appearance {
                 theme: "auto".into(),
                 density: "cozy".into(),
@@ -309,6 +311,11 @@ impl Preferences {
         Ok(())
     }
     fn apply_inner(&mut self, patch: &Patch) -> Result<(), String> {
+        if let Patch::SidebarLayout { conversation_fraction, composer_body_height } = patch {
+            self.sidebar = bbt_ui::modules::composer::SidebarLayout {
+                conversation_fraction: *conversation_fraction, composer_body_height: *composer_body_height,
+            };
+        }
         self.apply_role_patch(patch)?;
         self.apply_destination_patch(patch)?;
         if let Patch::HarnessLaunch {
@@ -625,6 +632,7 @@ pub fn default_path() -> Result<PathBuf, String> {
 }
 fn key(patch: &Patch) -> (&str, &str) {
     match patch {
+        Patch::SidebarLayout { .. } => ("sidebar", "layout"),
         Patch::HarnessLaunch { harness, .. } => ("harness-launch", harness),
         Patch::HarnessRole { harness, .. } => ("harness-role", harness),
         Patch::HarnessAvailableRoles { harness, .. } => ("harness-roles", harness),
@@ -642,7 +650,8 @@ fn key(patch: &Patch) -> (&str, &str) {
 }
 fn value(patch: &Patch) -> Value {
     match patch {
-        Patch::HarnessLaunch { .. }
+        Patch::SidebarLayout { .. }
+        | Patch::HarnessLaunch { .. }
         | Patch::HarnessRole { .. }
         | Patch::HarnessAvailableRoles { .. }
         | Patch::RoleUpsert { .. }
@@ -700,7 +709,7 @@ fn harness_array(
 }
 fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
     let mut preferences = Preferences::default();
-    for section in ["appearance", "notifications"] {
+    for section in ["appearance", "notifications", "sidebar"] {
         if doc
             .get(section)
             .is_some_and(|item| item.as_table_like().is_none())
@@ -708,6 +717,16 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
             return Err(format!("Settings [{section}] must be a table"));
         }
     }
+    let read_number = |name: &str| -> Result<Option<f32>, String> {
+        doc.get("sidebar").and_then(|section| section.get(name)).map(|item| {
+            item.as_float().or_else(|| item.as_integer().map(|v| v as f64))
+                .map(|v| v as f32).ok_or_else(|| format!("invalid Settings sidebar.{name}; file was not changed"))
+        }).transpose()
+    };
+    preferences.apply(&Patch::SidebarLayout {
+        conversation_fraction: read_number("conversation_fraction")?.unwrap_or(0.45),
+        composer_body_height: read_number("composer_body_height")?,
+    })?;
     for field in ["theme", "density", "rim", "glow", "subtitle"] {
         let Some(item) = doc.get("appearance").and_then(|s| s.get(field)) else {
             continue;
@@ -869,6 +888,15 @@ impl Store {
         let mut doc = Self::document(&path)?;
         parse(&doc)?;
         for patch in patches {
+            if let Patch::SidebarLayout { conversation_fraction, composer_body_height } = patch {
+                roles::replace(&mut doc["sidebar"]["conversation_fraction"], Value::from(*conversation_fraction as f64));
+                if let Some(height) = composer_body_height {
+                    roles::replace(&mut doc["sidebar"]["composer_body_height"], Value::from(*height as f64));
+                } else if let Some(table) = doc.get_mut("sidebar").and_then(Item::as_table_like_mut) {
+                    table.remove("composer_body_height");
+                }
+                continue;
+            }
             if roles::write(&mut doc, patch)? || destinations::write(&mut doc, patch)? {
                 continue;
             }
@@ -1193,6 +1221,24 @@ mod tests {
         let prefs = Store::new(path).load().unwrap();
         assert_eq!(prefs.appearance.theme, "light");
         assert!(!prefs.notifications.enabled);
+    }
+    #[test]
+    fn sidebar_split_preferences_survive_reload_and_preserve_unmanaged_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        fs::write(&path, "# keep layout note\n[sidebar]\ncustom = 42\n").unwrap();
+        let store = Store::new(path.clone());
+        let patch = Patch::SidebarLayout { conversation_fraction: 0.7, composer_body_height: Some(125.) };
+        let saved = store.save(&[patch]).unwrap();
+        assert_eq!(saved.sidebar, store.load().unwrap().sidebar);
+        assert_eq!(saved.sidebar.composer_body_height, Some(125.));
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains("# keep layout note") && text.contains("custom = 42"));
+        store.save(&[Patch::SidebarLayout { conversation_fraction: 0.45, composer_body_height: None }]).unwrap();
+        assert_eq!(store.load().unwrap().sidebar, Default::default());
+        let before = fs::read(&path).unwrap();
+        assert!(store.save(&[Patch::SidebarLayout { conversation_fraction: f32::NAN, composer_body_height: None }]).is_err());
+        assert_eq!(fs::read(&path).unwrap(), before);
     }
     // keeps: spec e2e-acceptance §1 G1/G2
     #[test]

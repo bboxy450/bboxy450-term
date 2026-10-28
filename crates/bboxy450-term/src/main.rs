@@ -23,6 +23,7 @@ mod scene;
 mod settings_destinations;
 mod settings_roles;
 mod sidebar;
+mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
 mod swarm_folder;
@@ -730,6 +731,7 @@ enum UiEffect {
     /// The window has solved a layout at this logical size (`ctl app resize`).
     Size([f32; 2]),
     SidebarWidth(f32),
+    SidebarLayout(bbt_ui::modules::composer::SidebarLayout),
     SidebarSection {
         key: String,
         open: bool,
@@ -1952,6 +1954,8 @@ struct App {
     sidebar_width: Option<f32>,
     sidebar_accordion_overrides: BTreeMap<String, bool>,
     sidebar_drag: bbt_ui_model::input::SidebarResize,
+    sidebar_vertical_drag: Option<sidebar_vertical::VerticalDrag>,
+    sidebar_layout_preview: Option<bbt_ui::modules::composer::SidebarLayout>,
     sidebar_resize_region: Option<Rect>,
     sidebar_reveal: Option<bbt_proto::SwarmId>,
     sidebar_viewport: Option<(Rect, f32)>,
@@ -2140,6 +2144,8 @@ impl App {
             sidebar_width: None,
             sidebar_accordion_overrides: BTreeMap::new(),
             sidebar_drag: Default::default(),
+            sidebar_vertical_drag: None,
+            sidebar_layout_preview: None,
             sidebar_resize_region: None,
             sidebar_reveal: None,
             sidebar_viewport: None,
@@ -5327,6 +5333,13 @@ impl App {
                     )
                 }
             }
+            UiEffect::SidebarLayout(layout) => {
+                if let Some(error) = &self.preferences.error {
+                    Err(format!("ui_resize_refused: sidebar layout was not saved: {error}"))
+                } else if self.preferences.preferences.sidebar != *layout {
+                    Err("ui_frame_refused: a newer vertical sidebar resize superseded this request".into())
+                } else { Ok(self.scene.sidebar_layout == *layout) }
+            }
             UiEffect::SidebarWidth(width) => {
                 if self.sidebar_width != Some(*width) {
                     Err("ui_frame_refused: a newer sidebar resize superseded this request".into())
@@ -5738,11 +5751,14 @@ impl App {
                 self.scroll_sidebar(-(lines as f32) * 28.);
             }
             UiRequest::Drag { from, to } => {
-                self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
+                let vertical = self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
                 if let Some(effects) = &mut self.ui_collect {
-                    effects.push(UiEffect::SidebarWidth(
-                        self.sidebar_width.expect("completed resize"),
-                    ));
+                    if vertical {
+                        effects.push(UiEffect::SidebarLayout(self.preferences.preferences.sidebar));
+                        effects.push(UiEffect::Preferences { saved: true });
+                    } else {
+                        effects.push(UiEffect::SidebarWidth(self.sidebar_width.expect("completed resize")));
+                    }
                 }
             }
             UiRequest::Click { x, y } => {
@@ -6053,6 +6069,7 @@ impl App {
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
         self.clock_frame = self.clock.frame();
+        self.scene.sidebar_layout = self.effective_sidebar_layout();
         self.solved_size = logical;
         if let Some(width) = self.sidebar_width {
             self.scene.sidebar_width = width;
@@ -7345,6 +7362,21 @@ impl ApplicationHandler<UiEvent> for App {
                         .local_page_layout
                         .as_ref()
                         .is_some_and(|p| p.focuses(self.pointer)) => {}
+            WindowEvent::MouseWheel { delta, .. }
+                if self.launcher.is_none()
+                    && self.conversation_layout.as_ref().is_some_and(|layout| {
+                        let r = layout.regions.body;
+                        self.pointer[0] >= r.x && self.pointer[0] < r.right()
+                            && self.pointer[1] >= r.y && self.pointer[1] < r.bottom()
+                    }) =>
+            {
+                let dy = match delta {
+                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
+                    MouseScrollDelta::PixelDelta(p) => -p.y as f32
+                        / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32),
+                };
+                self.scroll_composer_body(dy);
+            }
             WindowEvent::MouseWheel { delta, .. }
                 if self.launcher.is_none()
                     && self.conversation_layout.as_ref().is_some_and(|layout| {

@@ -100,6 +100,8 @@ pub struct ConversationLayout {
     pub layout: c::Layout,
     pub regions: ui::modules::composer::Regions,
     pub height: f32,
+    pub splitters: [Rect; 2],
+    pub available_height: f32,
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
 }
@@ -227,6 +229,7 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 pub struct Scene {
     pub sidebar_scroll: f32,
     pub sidebar_width: f32,
+    pub sidebar_layout: ui::modules::composer::SidebarLayout,
     pub open_swarms: BTreeSet<bbt_ui_model::SwarmId>,
     pub sidebar_sections_closed: BTreeSet<String>,
     selected_swarm: Option<bbt_ui_model::SwarmId>,
@@ -401,6 +404,7 @@ impl Scene {
         Self {
             sidebar_scroll: 0.,
             sidebar_width: TOKENS.sidebar.width as f32,
+            sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
             selected_swarm: None,
@@ -523,6 +527,7 @@ impl Scene {
         Self {
             sidebar_scroll: 0.,
             sidebar_width: TOKENS.sidebar.width as f32,
+            sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
             selected_swarm: None,
@@ -1602,14 +1607,12 @@ impl Scene {
         let width = self.sidebar_width_for(size);
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
-        let height = (available * 0.45).max(200.).min(available);
+        let minimum = view.minimum_height(ctx, width, &self.metrics)?.min(available);
+        let maximum = (available - 96.).max(minimum);
+        let height = (available * self.sidebar_layout.conversation_fraction).clamp(minimum, maximum);
         let element = view
-            .element(ctx, [width, height], &self.metrics)
+            .element_bounded(ctx, [width, height], &self.metrics, self.sidebar_layout.composer_body_height)
             .map_err(|e| e.to_string())?;
-        let measured = element
-            .layout(Rect::new(0., 0., width, 0.), ctx, &self.metrics)
-            .map_err(|e| e.to_string())?;
-        let height = measured.rect.h;
         let layout = element
             .layout(
                 Rect::new(0., size[1] - footer - height, width, height),
@@ -1618,6 +1621,10 @@ impl Scene {
             )
             .map_err(|e| e.to_string())?;
         let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
+        let body_top = named(&layout, "composer-margin").ok_or("composer boundary missing")?.rect.y;
+        let handle = |y: f32| Rect::new(0., (y - 4.).max(STYLE.spacing.title_bar as f32),
+            (width - 4.).max(0.), 8_f32.min((size[1] - footer - y + 4.).max(0.)));
+        let splitters = [handle(layout.rect.y), handle(body_top)];
         let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
         actions.record_text_links(&layout, &self.metrics);
         actions.attachments("composer/attachments", &view.composer.attach);
@@ -1626,6 +1633,8 @@ impl Scene {
             layout,
             regions,
             height,
+            splitters,
+            available_height: available,
             actions,
         })
     }

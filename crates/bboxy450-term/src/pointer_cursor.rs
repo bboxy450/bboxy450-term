@@ -61,6 +61,7 @@ impl App {
                     }
                 });
         }
+        if self.sidebar_vertical_drag.is_some() { return Cursor::NsResize; }
         if self.sidebar_drag.active() {
             return Cursor::EwResize;
         }
@@ -77,6 +78,7 @@ impl App {
         {
             return Cursor::EwResize;
         }
+        if self.sidebar_vertical_handle(at).is_some() { return Cursor::NsResize; }
         let child_control = self
             .close_regions
             .iter()
@@ -269,6 +271,9 @@ mod tests {
         assert_eq!(app.cursor_at(center(choose)), Cursor::Default);
         app.swarm_folder_pending = false;
 
+        for handle in app.conversation_layout.as_ref().unwrap().splitters {
+            assert_eq!(app.cursor_at(center(handle)), Cursor::NsResize);
+        }
         let resize = center(app.sidebar_resize_region.unwrap());
         assert_eq!(app.cursor_at(resize), Cursor::EwResize);
         app.composer_dragging = true;

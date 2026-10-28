@@ -18,7 +18,7 @@ pub use report::{Criterion, Reject, RejectController, Report, Verification};
 mod attachments;
 pub use attachments::AttachmentPicker;
 mod conversation;
-pub use conversation::Conversation;
+pub use conversation::{Conversation, SidebarLayout};
 use serde::{Deserialize, Serialize};
 pub const SEND_KINDS: [&str; 3] = ["text", "chunk", "decision"];
 
@@ -86,6 +86,10 @@ pub struct Composer {
     pub field: Field,
     pub pick: Vec<PickGroup>,
     pub notice: Option<Notice>,
+    /// Host-fitted body viewport. None retains the standalone automatic size.
+    pub body_height: Option<f32>,
+    /// Manual viewport offset; an edit returns to caret-following mode.
+    pub body_scroll: Option<f32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -205,6 +209,7 @@ impl Controller {
         None
     }
     pub fn handle(&mut self, command: Command) -> Outcome {
+        if matches!(&command, Command::Edit(_) | Command::Focus(_)) { self.view.body_scroll = None; }
         if let Some(outcome) = self.attachment_command(&command) {
             return outcome;
         }

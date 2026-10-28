@@ -25,6 +25,8 @@ pub enum Hit {
 pub struct Regions {
     pub panel: Rect,
     pub body: Rect,
+    pub body_offset: f32,
+    pub body_max_scroll: f32,
     pub caret: Option<Rect>,
     pub address: Rect,
     picker: Option<Rect>,
@@ -86,9 +88,17 @@ impl Regions {
         }
         let mut attachment_choices = vec![];
         attachment_regions(layout, &mut attachment_choices);
+        let body_viewport = find(layout, "composer/body-viewport");
+        let (body_offset, body_max_scroll) = body_viewport
+            .and_then(|n| n.children.first())
+            .and_then(|n| if let c::LayoutKind::ScrollView { content, offset } = &n.kind {
+                Some((offset[1], (content[1] - n.rect.h).max(0.)))
+            } else { None }).unwrap_or((0., 0.));
         Ok(Self {
+            body_offset,
+            body_max_scroll,
             panel: rect("composer")?,
-            body: rect("composer/text")?,
+            body: find(layout, "composer/body-viewport").map_or(rect("composer/text")?, |n| n.rect),
             caret: find(layout, "composer/text/caret").map(|n| n.rect),
             address: rect("composer/address")?,
             picker: find(layout, "composer/pick").map(|n| n.rect),
@@ -197,12 +207,10 @@ impl Regions {
                 .attachment_caret
                 .unwrap_or(Rect::new(query.x, query.y, 2., query.h));
         }
-        self.caret.unwrap_or(Rect::new(
-            self.body.x,
-            self.body.y,
-            2.,
-            self.body.h.min(20.),
-        ))
+        let caret = self.caret.unwrap_or(Rect::new(self.body.x, self.body.y, 2., self.body.h.min(20.)));
+        Rect::new(caret.x.clamp(self.body.x, (self.body.right() - caret.w).max(self.body.x)),
+            caret.y.clamp(self.body.y, (self.body.bottom() - caret.h).max(self.body.y)),
+            caret.w.min(self.body.w), caret.h.min(self.body.h))
     }
     pub fn attachment_index_at(
         &self,
@@ -232,6 +240,8 @@ impl Regions {
         at: [f32; 2],
         m: &dyn c::Measure,
     ) -> usize {
+        let at = [at[0].clamp(self.body.x, self.body.right()),
+            at[1].clamp(self.body.y, (self.body.bottom() - 0.01).max(self.body.y))];
         find(layout, "composer/text/text").map_or(0, |n| TextArea::index_at(value, n, at, m))
     }
 }
