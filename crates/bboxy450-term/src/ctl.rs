@@ -1457,15 +1457,49 @@ fn print_line(line: std::fmt::Arguments<'_>) -> Result<bool, String> {
     Ok(!out.closed)
 }
 
+/// Preserve the selected diagnostics destination even when another CLI argument
+/// fails parsing. Consume flag values so an issuer/value named `--run-dir` is
+/// not mistaken for an actual routing selector.
+fn diagnostic_endpoint(args: &[String]) -> Option<PathBuf> {
+    let mut endpoint = None;
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        if !arg.starts_with("--")
+            || matches!(
+                arg.as_str(),
+                "--json"
+                    | "--human"
+                    | "--unassigned"
+                    | "--on-screen"
+                    | "--cells"
+                    | "--headless"
+                    | "--ctl"
+                    | "--unattended"
+            )
+        {
+            continue;
+        }
+        let Some(value) = args.next() else { break };
+        match arg.as_str() {
+            "--endpoint" => endpoint = Some(PathBuf::from(value)),
+            "--run-dir" => endpoint = Some(PathBuf::from(value).join(bbt_mux::ctl_door::ENDPOINT)),
+            _ => {}
+        }
+    }
+    endpoint
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         return print_line(format_args!("{USAGE}")).map(|_| ());
     }
     let parsed = parse_full(args);
+    let diagnostic_endpoint = diagnostic_endpoint(args);
     let failure_root = parsed
         .as_ref()
         .ok()
         .and_then(|p| p.endpoint.as_deref())
+        .or(diagnostic_endpoint.as_deref())
         .unwrap_or(default_endpoint)
         .parent()
         .map(Path::to_path_buf);

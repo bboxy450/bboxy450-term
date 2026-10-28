@@ -44,6 +44,99 @@ fn errors(root: &Path, extra: &[&str]) -> Value {
     value["data"].clone()
 }
 
+// keeps: #56 — malformed private commands must not report to another run's
+// journal, including failures before the endpoint-bearing command can be parsed.
+#[test]
+fn malformed_cli_keeps_its_explicit_journal_and_default_errors_remain_visible() {
+    let root = tempfile::Builder::new()
+        .prefix("bbt-diagnostic-routing-")
+        .tempdir_in("/tmp")
+        .unwrap();
+    let fallback = root.path().join("fallback");
+    let selected = root.path().join("selected");
+    std::fs::create_dir(&fallback).unwrap();
+    std::fs::create_dir(&selected).unwrap();
+    let servers: Vec<_> = [&fallback, &selected]
+        .into_iter()
+        .map(|path| {
+            let server = Server::start(path.clone(), |_| {}).unwrap();
+            server
+                .ready()
+                .recv_timeout(Duration::from_secs(60))
+                .unwrap()
+                .unwrap();
+            server
+        })
+        .collect();
+    let endpoint = selected.join("gui.endpoint");
+    let cases = [
+        vec![
+            "--human",
+            "seat",
+            "fly",
+            "x",
+            "--run-dir",
+            selected.to_str().unwrap(),
+        ],
+        vec!["--run-dir", selected.to_str().unwrap(), "--as"],
+        vec!["seat", "fly", "x", "--endpoint", endpoint.to_str().unwrap()],
+    ];
+    for args in cases {
+        let output = command(&fallback).arg("ctl").args(&args).output().unwrap();
+        assert!(
+            !output.status.success(),
+            "{args:?} should remain a CLI refusal"
+        );
+    }
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let selected_rows = error_journal::read(&selected, None, None, false).unwrap();
+        if selected_rows["rows"].as_array().unwrap().len() == 3 {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "private parse failures were not retained: {selected_rows}"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let untouched = error_journal::read(&fallback, None, None, false).unwrap();
+    assert!(
+        untouched["rows"].as_array().unwrap().is_empty(),
+        "{untouched}"
+    );
+
+    // An actual bad command without a routing override still belongs in the
+    // caller's default journal; isolation must never suppress that diagnostic.
+    for args in [
+        vec!["ctl", "seat", "fly", "x"],
+        vec!["ctl", "--as", "--run-dir", "seat", "fly", "x"],
+    ] {
+        let output = command(&fallback).args(args).output().unwrap();
+        assert_eq!(output.status.code(), Some(2));
+    }
+    let deadline = Instant::now() + Duration::from_secs(60);
+    loop {
+        let rows = error_journal::read(&fallback, None, None, false).unwrap();
+        if rows["rows"].as_array().unwrap().len() == 2 {
+            assert_eq!(rows["rows"][0]["source"], "ctl");
+            assert!(
+                rows["rows"][0]["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("seat verbs")
+            );
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "default diagnostic was suppressed: {rows}"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    drop(servers);
+}
+
 // keeps: #56 — actual child CLI failures enter one bounded journal without an app,
 // endpoint, account, network or operator; reading it never depends on logic.
 #[test]

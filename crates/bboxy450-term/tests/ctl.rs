@@ -1185,9 +1185,14 @@ fn stdout_with_closed_reader() -> std::process::Stdio {
 }
 
 fn ctl_stdout(args: &[&str], stdout: std::process::Stdio) -> std::process::Output {
+    // These malformed commands may fail before --run-dir can be parsed. Even
+    // their default diagnostics destination must belong to this fixture.
+    let root = tempfile::tempdir().unwrap();
     Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .arg("ctl")
         .args(args)
+        .env("HOME", root.path())
+        .env("BBOXY_RUN_DIR", root.path())
         .stdin(std::process::Stdio::null())
         .stdout(stdout)
         .stderr(std::process::Stdio::piped())

@@ -1,0 +1,12 @@
+Scope: preserve malformed ctl command diagnostics in the selected private run, and isolate the negative stdout fixtures from operator state.
+Worktree: /Users/feral/mydev/bboxy450-term-error-journal-isolation; branch fix/test-error-journal-isolation; base b60284b8.
+Cause: ctl::main derived failure_root only from a successful parse_full. Invalid verbs or trailing missing flag values discarded explicit --run-dir/--endpoint and fell back to the default operator endpoint's journal.
+Before-proof: installed b60284b8 binary, two private /tmp Unix datagram sockets, private HOME and BBOXY_RUN_DIR; ctl seat fly x --run-dir SELECTED exited2, fallback socket received ctl usage, explicit selected socket received nothing. No production endpoint was used by the proof.
+Fixture cause: tests/ctl.rs ctl_stdout ran seat fly and --as failures with inherited HOME/default run. tests/headless.rs notification-recording refusal supplied private --run-dir, which was lost by the production parse-error path.
+Fix: best-effort diagnostics selector consumes the same flag/value shape and preserves the last --run-dir/--endpoint even when the command parser refuses the rest. Genuine default-run errors are still reported.
+Fix: ctl_stdout uses its own temporary HOME and BBOXY_RUN_DIR for all help/invalid/closed-pipe cases.
+Regression added: two private journal sinks, malformed verb with a boolean switch, trailing --as after --run-dir, explicit --endpoint, plus normal default errors and a --run-dir-looking issuer value. Selected errors stay selected; default errors remain visible.
+git diff --check — exit0.
+python3 -I scripts/source-notices.py — exit0; existing notices retained, no new ownership claims.
+rustfmt parsing/formatting of only new function and test chunks — exit0.
+Cargo/build/runtime regression checks not run in this worktree by parent instruction; root performs them after integration. No GUI actions, global configuration edits, publishing, landing or operator-error deletion performed.
