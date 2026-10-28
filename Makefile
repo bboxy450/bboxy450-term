@@ -118,7 +118,7 @@ parity-chat:
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
 	chat_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("compose","stream","message-row")]; assert selected; print(json.dumps(selected))'); \
-	BBOXY_PARITY_CASES_JSON="$$chat_cases" sh scripts/parity.sh
+	PARITY_OUT='$(TARGET_DIR)/parity-chat' sh scripts/parity.sh --cases "$$chat_cases"
 
 .PHONY: test-settings-window
 test-settings-window:

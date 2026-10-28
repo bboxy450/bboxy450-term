@@ -715,8 +715,9 @@ impl Composer {
         let fixed_width = foot.iter().try_fold(
             sp.s3 as f32 * foot.len().saturating_sub(1) as f32,
             |width, item| -> ui::style::Result<f32> {
-                let flexible = matches!(item.extent, c::Extent::Fill | c::Extent::Flex(_))
-                    || matches!(item.extent, c::Extent::Content { shrink, .. } if shrink > 0.);
+                // Match wrapping flex layout: choose the line from each item's
+                // natural width before applying shrink within that line.
+                let flexible = matches!(item.extent, c::Extent::Fill | c::Extent::Flex(_));
                 Ok(width
                     + if flexible {
                         0.
