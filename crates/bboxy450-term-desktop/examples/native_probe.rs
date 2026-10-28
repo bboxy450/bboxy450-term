@@ -49,7 +49,7 @@ fn main() {
         stop.stop();
     })
     .unwrap();
-    println!("native menu15/tray4 callbacks, disposal and runloop stop: pass");
+    println!("native menu11/tray4 callbacks, disposal and runloop stop: pass");
 }
 #[cfg(not(target_os = "macos"))]
 fn main() {

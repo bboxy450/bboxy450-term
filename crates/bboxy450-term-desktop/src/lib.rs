@@ -30,13 +30,9 @@ pub enum Action {
     ToggleFullscreen,
     Minimize,
     Zoom,
-    Copy,
-    Cut,
-    Paste,
-    SelectAll,
 }
 impl Action {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 11] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -48,10 +44,6 @@ impl Action {
         Self::ToggleFullscreen,
         Self::Minimize,
         Self::Zoom,
-        Self::Copy,
-        Self::Cut,
-        Self::Paste,
-        Self::SelectAll,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -66,10 +58,6 @@ impl Action {
             Self::ToggleFullscreen => "toggle_fullscreen",
             Self::Minimize => "minimize",
             Self::Zoom => "zoom",
-            Self::Copy => "copy",
-            Self::Cut => "cut",
-            Self::Paste => "paste",
-            Self::SelectAll => "select_all",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -166,10 +154,10 @@ pub fn app_menu() -> Vec<MenuGroup> {
                     ..MenuItem::responder("Redo", "redo:", "z")
                 },
                 MenuItem::separator(),
-                MenuItem::action("Cut", Cut, "x"),
-                MenuItem::action("Copy", Copy, "c"),
-                MenuItem::action("Paste", Paste, "v"),
-                MenuItem::action("Select All", SelectAll, "a"),
+                MenuItem::responder("Cut", "cut:", "x"),
+                MenuItem::responder("Copy", "copy:", "c"),
+                MenuItem::responder("Paste", "paste:", "v"),
+                MenuItem::responder("Select All", "selectAll:", "a"),
             ],
         },
         MenuGroup {
@@ -428,11 +416,11 @@ mod tests {
                 .iter()
                 .any(|item| item.command == MenuCommand::Action(Action::ShowWindow))
         );
-        for action in [Action::Cut, Action::Copy, Action::Paste, Action::SelectAll] {
+        for selector in ["cut:", "copy:", "paste:", "selectAll:"] {
             assert!(
                 items
                     .iter()
-                    .any(|item| item.command == MenuCommand::Action(action))
+                    .any(|item| item.command == MenuCommand::Responder(selector))
             );
         }
     }
