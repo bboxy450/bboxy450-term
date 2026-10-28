@@ -1477,7 +1477,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     }
     let edit = match &input.logical_key {
         Key::Named(NamedKey::Enter)
-            if command
+            if (command || field == ComposeField::Body)
                 && !mods.alt_key()
                 && !mods.control_key()
                 && !mods.shift_key()
@@ -1489,9 +1489,15 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
         Key::Named(NamedKey::Enter) if field == ComposeField::Address && !input.repeat => {
             return RoutedKey::Composer(ComposeCommand::ChooseSelected);
         }
-        Key::Named(NamedKey::Enter) if field == ComposeField::Body => {
+        Key::Named(NamedKey::Enter)
+            if field == ComposeField::Body
+                && mods.shift_key()
+                && !mods.alt_key()
+                && !mods.control_key() =>
+        {
             EditCommand::Insert("\n".into())
         }
+        Key::Named(NamedKey::Enter) => return RoutedKey::Local,
         Key::Named(NamedKey::Tab) => {
             return RoutedKey::Composer(ComposeCommand::Focus(if field == ComposeField::Body {
                 ComposeField::Address
@@ -3188,14 +3194,9 @@ impl App {
                 kind: "pending".into(),
                 text: "sending".into(),
             }),
-            messaging::Status::Stored { id, sends } => Some(composer::Notice {
-                kind: "sent".into(),
-                text: if *sends > 1 {
-                    format!("stored · {sends} recipients · {id}")
-                } else {
-                    format!("stored · {id}")
-                },
-            }),
+            // The posted message is the success acknowledgement. Keep storage
+            // receipts in the control plane, rather than above the next draft.
+            messaging::Status::Stored { .. } => None,
             messaging::Status::Held(reason) => Some(composer::Notice {
                 kind: "held".into(),
                 text: reason.clone(),
@@ -8669,6 +8670,36 @@ mod lazy_projection_tests {
         assert!(app.backend_lost);
         assert_eq!(app.error.as_deref(), Some(reason));
     }
+
+    #[test]
+    fn composer_storage_success_is_quiet_but_failure_states_stay_visible() {
+        if isolated_ui_case(
+            "lazy_projection_tests::composer_storage_success_is_quiet_but_failure_states_stay_visible",
+        ) {
+            return;
+        }
+        let (mut app, _) = fixture();
+        app.composer_client.status = messaging::Status::Stored {
+            id: bbt_mux::Ulid(7),
+            sends: 2,
+        };
+        app.composer_notice();
+        assert!(app.composer.view.notice.is_none());
+        for status in [
+            messaging::Status::Pending,
+            messaging::Status::Held("held".into()),
+            messaging::Status::Refused("refused".into()),
+            messaging::Status::Unknown("unknown".into()),
+            messaging::Status::Partial {
+                stored: 1,
+                reason: "partial".into(),
+            },
+        ] {
+            app.composer_client.status = status;
+            app.composer_notice();
+            assert!(app.composer.view.notice.is_some());
+        }
+    }
     // keeps: decision #344; a deferred first frame cannot suppress history-ready wakes
     #[test]
     fn a_restore_wait_rearms_model_wakes_without_claiming_a_frame() {
@@ -10856,7 +10887,7 @@ mod placement_tests {
 mod composer_host_tests {
     use super::*;
     #[test]
-    fn composer_submit_is_focus_local_and_newline_tab_navigation_remain_local() {
+    fn composer_enter_sends_shift_enter_adds_a_line_and_terminal_keys_remain_local() {
         let enter = Key::Named(NamedKey::Enter);
         let input = test_key(
             &enter,
@@ -10882,7 +10913,28 @@ mod composer_host_tests {
         );
         assert_eq!(
             route_composer(&plain, 0, ComposeField::Body),
+            RoutedKey::Composer(ComposeCommand::Send)
+        );
+        assert_eq!(
+            route_composer(&plain, 0, ComposeField::Address),
+            RoutedKey::Composer(ComposeCommand::ChooseSelected)
+        );
+        let shifted = test_key(
+            &enter,
+            PhysicalKey::Code(KeyCode::Enter),
+            None,
+            ModifiersState::SHIFT,
+            false,
+        );
+        assert_eq!(
+            route_composer(&shifted, 0, ComposeField::Body),
             RoutedKey::Composer(ComposeCommand::Edit(EditCommand::Insert("\n".into())))
+        );
+        let mut repeat = plain.clone();
+        repeat.repeat = true;
+        assert_eq!(
+            route_composer(&repeat, 0, ComposeField::Body),
+            RoutedKey::Local
         );
         assert_eq!(
             route_key(&plain, 0, None),

@@ -311,11 +311,7 @@ impl State {
                         swarm.stream.push(ui::StreamItem::Presence {
                             kind: ui::PresenceKind::Presence,
                             text: format!("{} closed; its history is kept", record.name),
-                            time: format!(
-                                "{:02}:{:02}",
-                                (now_ms / 3_600_000) % 24,
-                                (now_ms / 60_000) % 60
-                            ),
+                            time: crate::local_time::hm(now_ms),
                         });
                         if swarm.stream.len() > 512 {
                             swarm.stream.remove(0);

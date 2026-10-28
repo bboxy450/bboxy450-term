@@ -366,6 +366,29 @@ winit on macOS, Windows, X11 and Wayland, with no platform-specific cursor asset
 Document/launcher overlays block underlying controls, active drags retain their
 cursor, and movement, layout changes, pointer exit and focus loss refresh/reset it.
 
+Sidebar conversation (operator, 2026-10-28): its two horizontal handles resize
+navigation versus chat (`sidebar-conversation-resize`) and history versus draft
+(`sidebar-composer-resize`). Both use the vertical resize cursor and the same
+retained geometry for native and `ctl ui drag` input. Save requested
+`[sidebar].conversation_fraction` (default 0.45) and optional
+`composer_body_height` in host preferences on release; previews and persistence
+never restart a harness or require a protocol change. Fit the saved requests to
+short windows without overwriting them, keep panels nonnegative and address/send
+controls visible, and scroll a bounded draft body with caret and hit coordinates
+kept in that viewport. Overlay input and captured drag precedence still apply.
+
+Chat presentation (same operator pass): Enter sends a focused draft, Shift+Enter
+adds a line, address-picker Enter chooses its recipient, and repeated Enter or
+IME preedit never sends extra messages. Send advertises ↵; the priority control
+is a separate, plainly labelled control. Routine successful storage IDs and
+projection-window bookkeeping do not occupy the conversation/draft; meaningful
+pending, held, refused, partial or unknown outcomes stay visible, and original
+records, receipt evidence and read coverage remain intact. Message surfaces have
+clear author/body hierarchy and spacing, with repeated local issuer/role/default
+priority/transport badges omitted. Chat timestamps use the machine's local time
+zone and the timestamp's daylight-saving rules, retaining the raw UTC instant
+for evidence; timezone discovery runs off the UI thread.
+
 Rules the model enforces: `Locate` is emitted only from click and keyboard paths and after a stage switch once the new layout exists (showcase.js:367); `Update`s from the mux never emit it. On a light theme the fx pass multiplies toward the seat colour instead of adding (showcase.js:493-497); the model only supplies `theme` and `bg`. Waiting pulses at `motion.pulse_ms`, active breathes at `glow.active_pulse_ms`; both read `now_ms` so rows and panes share one clock (components.js:140-146).
 
 ---

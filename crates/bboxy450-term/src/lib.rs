@@ -19,6 +19,7 @@ pub mod hosts;
 pub mod keyboard;
 pub mod knowledge;
 pub mod launcher;
+pub mod local_time;
 pub mod messaging;
 pub mod model;
 pub mod notifications;

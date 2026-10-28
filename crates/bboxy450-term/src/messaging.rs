@@ -234,6 +234,7 @@ pub fn message_view(
         ),
         text: row.text.clone(),
         ts: Some(row.ts),
+        time: crate::local_time::hm(row.ts),
         role,
         // v0.1 has one operator per account; other rows' receipt aggregates are
         // not displayed as the operator's own delivery evidence.

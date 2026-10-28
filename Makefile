@@ -75,6 +75,10 @@ build-release:
 lock:
 	@set -eu; . ./scripts/cache-env.sh; cargo update --offline --workspace
 
+.PHONY: lock-online
+lock-online:
+	@set -eu; . ./scripts/cache-env.sh; cargo update --workspace
+
 compile:
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)' $$flag

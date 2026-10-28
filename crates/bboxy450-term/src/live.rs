@@ -888,6 +888,9 @@ async fn run_with_control(
     capture: impl Fn(OperatorAsk),
     app: impl Fn(AppEvent),
 ) -> Result<()> {
+    // System-zone discovery may read OS data; complete it on the blocking IO
+    // pool before the first model publication, never from a render callback.
+    let _ = bbt_rt::handle().spawn_blocking(bboxy450_term::local_time::initialize).await;
     logger.write(format!(
         "cockpit ready: supervisor={} logic={}",
         session.supervisor.id().unwrap_or(0),

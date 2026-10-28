@@ -19,6 +19,7 @@ pub enum HistoryAction {
     Page { stream: String, after: u64 },
     Read { stream: String, sequence: u64 },
 }
+
 impl From<HistoryAction> for UiMsg {
     fn from(action: HistoryAction) -> Self {
         match action {
@@ -553,17 +554,8 @@ impl History {
             &attachments,
         );
         out.extend(messages);
-        let missing = self
-            .listed
-            .iter()
-            .filter(|(id, bus, _, _)| {
-                bus.is_none()
-                    || !self
-                        .rows
-                        .iter()
-                        .any(|r| r.row.id == *id && r.row.bus.as_ref() == bus.as_ref())
-            })
-            .count();
+        // Bounded cache/pagination bookkeeping belongs to the host, not the
+        // conversation. Read coverage still uses complete(); failures stay visible.
         let note = if let Some(issue) = self
             .lane_issue
             .as_ref()
@@ -571,14 +563,8 @@ impl History {
             .or(self.issue.as_ref())
         {
             Some(issue.clone())
-        } else if missing > 0 {
-            Some(format!(
-                "more · {missing} inbox rows outside the projection window · originals retained"
-            ))
-        } else if self.cursor.is_none() {
-            Some("stream cursor pending".into())
-        } else if self.page_next.is_some() || self.list_next.is_some() || self.omitted > 0 {
-            Some("more · retained pages beyond this window".into())
+        } else if self.cursor.is_none() && self.rows.is_empty() {
+            Some("Loading messages…".into())
         } else {
             None
         };
@@ -589,5 +575,54 @@ impl History {
             });
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod quiet_history_tests {
+    use super::*;
+
+    #[test]
+    fn normal_window_bookkeeping_is_quiet_while_real_failures_and_read_gaps_remain() {
+        let mut history = History {
+            scope: Some(SwarmId::from_u128(17)),
+            selected: "all".into(),
+            cursor: Some((0, 4, 4)),
+            listed: (1..=4)
+                .map(|id| {
+                    (
+                        Ulid(id),
+                        None,
+                        "operator/inbox".into(),
+                        MessageAttachments::default(),
+                    )
+                })
+                .collect(),
+            list_next: Some(128),
+            page_next: Some(128),
+            omitted: 10,
+            ..Default::default()
+        };
+        let entries = history.entries(&Default::default(), &Default::default(), &[]);
+        assert!(
+            !entries
+                .iter()
+                .any(|entry| matches!(entry, Entry::Note { .. }))
+        );
+        assert!(matches!(history.seat_unread("a seat"), UnreadCount::More));
+        assert_eq!(
+            history.listed.len(),
+            4,
+            "presentation never removes originals or coverage evidence"
+        );
+        history.issue = Some("inbox read failed · retry available".into());
+        assert!(
+            history
+                .entries(&Default::default(), &Default::default(), &[])
+                .iter()
+                .any(
+                    |entry| matches!(entry, Entry::Note {text,..} if text.contains("read failed"))
+                )
+        );
     }
 }

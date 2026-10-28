@@ -577,10 +577,8 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
         .unwrap();
     let text = labels(&frame);
     assert!(text.contains("signature: pending · inferred · fixture custody unavailable"));
-    assert!(
-        text.contains("1 delivered"),
-        "delivery and signing are separate evidence"
-    );
+    assert_eq!(data.receipts.as_ref().unwrap().delivered, 1, "delivery and signing remain separate evidence");
+    assert!(!text.contains("1 delivered"), "routine receipt counts stay in retained data, not message chrome");
     assert!(
         !text.contains("local-dev"),
         "pending has no placeholder issuer"
@@ -601,7 +599,7 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
     history.row(&pending, None, 102); // A later stale projection cannot either.
     let entries = history.entries(&model, &Default::default(), &[]);
     assert!(
-        entries
+        !entries
             .iter()
             .any(|entry| matches!(entry,Entry::Note {text,..} if text=="stream cursor pending"))
     );
@@ -619,7 +617,7 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
         .element(ctx, "signed", true, false, &Metrics)
         .layout(Rect::new(0., 0., 900., 0.), ctx, &Metrics)
         .unwrap();
-    assert!(labels(&frame).contains("signature: signed"));
+    assert!(!labels(&frame).contains("signature: signed"), "successful signing does not add another routine status line");
     let Entry::Message { data, .. } = &entries[1] else {
         panic!("later message");
     };
