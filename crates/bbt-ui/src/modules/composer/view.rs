@@ -688,16 +688,30 @@ impl Composer {
                 .into(),
             ],
         );
-        foot.push(
-            row(
-                "composer/actions",
-                plain(None, [0.; 4], 0.),
-                sp.s3 as f32,
-                c::Alignment::Center,
-                vec![priority.into(), send.into()],
-            )
-            .into(),
-        );
+        // Account for the composer's two hairline borders when fitting the
+        // action pair; moving one indivisible row cannot fix a narrow sidebar.
+        let actions_width = (inner - 2. * ui::Length::Hairline.resolve(ctx.density)?).max(0.);
+        let stack_actions = priority.natural(actions_width, ctx, m)?.0[0]
+            + send.natural(actions_width, ctx, m)?.0[0]
+            + sp.s3 as f32
+            > actions_width;
+        let mut actions = c::Box::new(plain(None, [0.; 4], 0.), vec![priority.into(), send.into()]);
+        actions.direction = if stack_actions {
+            Axis::Column
+        } else {
+            Axis::Row
+        };
+        actions.gap = ui::Length::Px(if stack_actions {
+            sp.s2 as f32
+        } else {
+            sp.s3 as f32
+        });
+        actions.align = if stack_actions {
+            c::Alignment::End
+        } else {
+            c::Alignment::Center
+        };
+        foot.push(named("composer/actions", c::Element::Box(actions)).into());
         let fixed_width = foot.iter().try_fold(
             sp.s3 as f32 * foot.len().saturating_sub(1) as f32,
             |width, item| -> ui::style::Result<f32> {

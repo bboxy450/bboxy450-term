@@ -44,7 +44,18 @@ fn sidebar_footer_keeps_send_delegate_and_kind_controls_inside_its_width() {
                     .unwrap();
                 let send = find(&layout, "composer/send").unwrap().rect;
                 let priority = find(&layout, "composer/priority").unwrap().rect;
-                assert!(priority.right() <= send.x, "priority is a separate control");
+                assert!(
+                    priority.right() <= send.x || priority.bottom() <= send.y,
+                    "{mode}/{kind}/{width}: priority and Send must never overlap"
+                );
+                if width >= 400 {
+                    assert!(priority.right() <= send.x, "wide action pair stays in one row");
+                }
+                if [160, 180].contains(&width) {
+                    let inner_right = width as f32 - bbt_ui_model::STYLE.spacing.s4 as f32;
+                    assert!(priority.right() <= inner_right && send.right() <= inner_right,
+                        "{mode}/{kind}/{width}: actions stay inside composer padding");
+                }
                 let keycap = find(&layout, "composer/send/kbd/text").unwrap();
                 assert!(matches!(&keycap.children[0].kind, c::LayoutKind::Text { runs, .. } if runs.iter().map(|r| r.text.as_str()).collect::<String>() == "↵"));
                 for key in ["composer/send", "composer/priority", "composer/kpick"] {

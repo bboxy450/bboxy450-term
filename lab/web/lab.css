@@ -1397,7 +1397,7 @@ body.live .pane.focused .term .cur { animation: curBlink 1s steps(1) infinite; }
 .composer .spacer { flex: 1; }
 .composer .send { display: inline-flex; align-items: center; gap: var(--s2); font: inherit; font-weight: 600; padding: 3px var(--s4); border: 0; border-radius: var(--r-round); background: var(--accent); color: var(--on-accent); cursor: pointer; white-space: nowrap; }
 .composer.delegate .send { background: var(--role-executor); }
-.composer .cactions { display: inline-flex; align-items: center; gap: var(--s3); margin-left: auto; flex: none; }
+.composer .cactions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--s3); row-gap: var(--s2); margin-left: auto; max-width: 100%; flex: none; }
 .composer .pip { font-family: var(--font-mono); font-size: var(--t-micro); font-weight: 500; padding: 3px var(--s2); border: 0; border-radius: var(--r-round); background: var(--badge); color: var(--fg-dim); cursor: pointer; white-space: nowrap; }
 .composer .send .kbd { color: inherit; opacity: .75; font-size: var(--t-micro); }
 /* the address picker opens above the bar: grouped seats, roles, channels, subagents; seats show their load in delegate mode */
