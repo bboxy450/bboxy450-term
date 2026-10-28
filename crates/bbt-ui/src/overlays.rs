@@ -59,3 +59,53 @@ impl Modal {
         c::Element::Box(panel)
     }
 }
+
+pub mod context_menu;
+pub mod dialog;
+
+/// Pure interaction results. Hosts own effects, validation and overlay lifetime.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Outcome {
+    Local,
+    Changed,
+    Invoke(String),
+    Dismiss,
+}
+
+pub(crate) fn contains(rect: bbt_ui_model::layout::Rect, at: [f32; 2]) -> bool {
+    at[0] >= rect.x && at[0] < rect.right() && at[1] >= rect.y && at[1] < rect.bottom()
+}
+
+/// Retain only visible named geometry, respecting scroll and box clipping.
+pub(crate) fn named_regions(layout: &c::Layout) -> Vec<(String, bbt_ui_model::layout::Rect)> {
+    use bbt_ui_model::layout::Rect;
+    fn intersection(a: Rect, b: Rect) -> Rect {
+        let x = a.x.max(b.x);
+        let y = a.y.max(b.y);
+        Rect::new(
+            x,
+            y,
+            (a.right().min(b.right()) - x).max(0.),
+            (a.bottom().min(b.bottom()) - y).max(0.),
+        )
+    }
+    fn visit(node: &c::Layout, clip: Rect, out: &mut Vec<(String, Rect)>) {
+        let visible = intersection(node.rect, clip);
+        if visible.w <= 0. || visible.h <= 0. {
+            return;
+        }
+        if let c::LayoutKind::Named(name) = &node.kind {
+            out.push((name.clone(), visible));
+        }
+        let clip = match &node.kind {
+            c::LayoutKind::Box { clip: true, .. } | c::LayoutKind::ScrollView { .. } => visible,
+            _ => clip,
+        };
+        for child in &node.children {
+            visit(child, clip, out);
+        }
+    }
+    let mut result = vec![];
+    visit(layout, layout.rect, &mut result);
+    result
+}

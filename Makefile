@@ -49,6 +49,7 @@ help:
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
+	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
 	  'make test-desktop-lifecycle     Owned daemon/UI detach and same-harness reopen boundary' \
@@ -514,3 +515,9 @@ test-desktop-app:
 test-desktop-lifecycle:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test desktop daemon_survives_ui_detach_and_reopens_the_same_running_harness -- --ignored --exact --nocapture
+
+.PHONY: test-ui-overlays
+test-ui-overlays:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test overlays_interaction; \
+	cargo clippy --locked -p bboxy450-ui --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

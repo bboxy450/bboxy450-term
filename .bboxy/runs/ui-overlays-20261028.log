@@ -1,0 +1,23 @@
+ROLE: EXECUTOR
+scope: toolkit-only context menus and body-agnostic dialogs
+worktree: /Users/feral/mydev/bboxy450-term-ui-dialogs
+branch: feature/ui-overlays-20261028
+base: eb1c8aaa5284fccabe5b85ade66e9ecd5a8cf6a6
+verified_utc: 2026-10-28T23:49:47Z
+
+crates/bbt-ui/src/overlays.rs: existing Modal API remains intact; shared pure outcomes and visible named-region retention respect scroll/box clips.
+crates/bbt-ui/src/overlays/context_menu.rs: arbitrary component bodies, enabled action IDs, wrapping keyboard selection, pointer activation/dismissal, viewport clamp and selected-row reveal.
+crates/bbt-ui/src/overlays/dialog.rs: host-owned arbitrary Modal body/editors; enabled Field/Action focus trap, explicit/default submit, IME/repeat suppression, retained pointer/cursor regions and cancellation.
+crates/bbt-ui/tests/overlays_interaction.rs: 5 unattended tests cover disabled controls, keyboard wrapping, outside dismissal, viewport clipping, Tab/ShiftTab, IME/repeat handling, validation and nested toolkit Input/Button/Icon components.
+Makefile: test-ui-overlays runs focused interaction tests and strict shared UI Clippy.
+
+rustfmt --edition 2024 crates/bbt-ui/src/overlays.rs crates/bbt-ui/src/overlays/context_menu.rs crates/bbt-ui/src/overlays/dialog.rs crates/bbt-ui/tests/overlays_interaction.rs: exit 0
+git diff --check: exit 0
+make -n test-ui-overlays: exit 0 (dry run only)
+make test-ui-overlays: exit 0
+  cargo test --locked -p bboxy450-ui --target-dir target --test overlays_interaction: exit 0; 5 passed, 0 failed
+  cargo clippy --locked -p bboxy450-ui --all-targets --target-dir target -- -D warnings: exit 0
+raw_log: /Users/feral/Library/Logs/bboxy450-term/ui-overlays-20261028-tests.log
+raw_log_sha256: 1db58efbdf42a237a6919b80c3611837ac7158e957992efbc00b77a52f663fac
+
+No app/native/protocol edits or builds; app wiring, full source CI, visual parity and landing remain with the parent integration task. No operator input, GUI injection, credentials, publication or merge.
