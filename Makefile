@@ -1,4 +1,6 @@
 # Canonical build/test/install/release interface. See `make help`.
+# Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+# https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
 
@@ -39,6 +41,7 @@ help:
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
@@ -268,6 +271,19 @@ test-spawn-wire:
 
 .PHONY: test-navigation check-navigation
 .PHONY: test-new-swarm format-new-swarm
+.PHONY: test-cross-focus format-cross-focus check-cross-focus
+format-cross-focus: fmt-spawn
+
+test-cross-focus:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui-core --target-dir '$(TARGET_DIR)' --test input; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test documents; \
+	BBOXY_FOCUS_EVIDENCE='$(abspath $(TARGET_DIR))/cross-focus' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time -- --ignored --exact
+	@node --check lab/web/showcase.js
+
+check-cross-focus:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 test-new-swarm:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) new_swarm_workdir; \

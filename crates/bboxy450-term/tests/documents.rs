@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bboxy450_term::documents::{Host, Read, Reader, Reply, Response};
 use bbt_mux::{Ulid, knowledge::data_source as d};
 use serde_json::json;
@@ -183,7 +185,10 @@ fn metadata_publications_retain_an_unconsumed_document_reply() {
     let grids = bboxy450_term::grids::Grids::new();
     let mut model =
         bboxy450_term::model::build(std::slice::from_ref(&record), &grids, &Default::default());
-    let landed = Instant::now();
+    let landed = bboxy450_term::model::FocusSwell {
+        at: Instant::now(),
+        where_: bbt_ui_model::event::LocateWhere::Pane,
+    };
     assert!(model.attention_focus(seat, generation, None, Some(landed)));
     let mut model = Arc::new(model);
     for _ in 0..3 {

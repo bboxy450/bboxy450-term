@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! App-owned child processes and the single, admitted GUI connection.
 //!
 //! Everything in this module runs on bbt-io or in a private non-UI process.
@@ -152,7 +154,7 @@ pub enum UiMsg {
         seat: SeatId,
         generation: u64,
         episode: Option<crate::attention::EpisodeKey>,
-        landed: Option<std::time::Instant>,
+        landed: Option<crate::model::FocusSwell>,
     },
     DocumentRead {
         id: bbt_mux::Ulid,

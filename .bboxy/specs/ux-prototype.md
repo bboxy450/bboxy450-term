@@ -81,14 +81,14 @@ Focus brightens every state (×1.6). On a light ground the halo multiplies the b
 ### 5.1 Focus
 - Click a row or a pane: focus. If the seat lives in another tab or swarm, the stage switches to it; no block opens or shuts because of it.
 - Hover a pane for 150 ms: focus (brightness only), blocked for one second after typing. Hover a sidebar row: highlight only, never focus.
-- Tab / Shift+Tab: next or previous pane. Arrow keys: the nearest pane in that direction (⌘⌥ arrows while a field has focus, plain arrows otherwise). Keyboard moves fire locate on both sides.
+- Tab / Shift+Tab: next or previous pane. Arrow keys: the nearest pane in that direction (⌘⌥ arrows while a field has focus, plain arrows otherwise). Keyboard moves locate the pane.
 - Open/shut of a swarm and focus are two separate actions; neither triggers the other.
 
 ### 5.2 Locate (directional)
-The ripple says where the thing you did not click is.
-- Click a row → a ring expands from the centre of its pane, in the seat colour.
-- Click a pane → its row bounces: a 520 ms scale-and-border pulse in the seat colour, no ring.
-- Keyboard focus → both. A stage switch fires locate after the new screen renders. Clicking the already-focused row still locates. An off-screen row scrolls into view inside the sidebar, never the window.
+The focus swell says where the thing you did not click is (rim-glow §7): one 40 px, 900 ms cue, paint only.
+- Click a sidebar row/tab → only its pane swells in the seat colour.
+- Click a pane → only its sidebar row/tab swells in the seat colour.
+- Keyboard, notification and programmatic focus → pane only. Only waiting attention pulses both sides. A new focus cue replaces the previous cue. A stage switch preserves the direction and fires locate after the new screen renders. Clicking the already-focused row still locates. An off-screen row scrolls into view inside the sidebar, never the window.
 - Never on hover, timers, messages or state changes.
 
 ### 5.3 Close (reversible)

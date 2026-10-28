@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Waiting episodes derived from current typed state, never terminal text or
 //! read-through history. This module changes no layout, focus or bus cursor.
 use std::{
@@ -338,7 +340,10 @@ mod tests {
         let id = SeatId::from_u128(1);
         let key = model.attention_key(id);
         assert_eq!(model.attention.len(), 1);
-        let landed = Instant::now();
+        let landed = crate::model::FocusSwell {
+            at: Instant::now(),
+            where_: bbt_ui_model::event::LocateWhere::Pane,
+        };
         assert!(model.attention_focus(id, 1, key, Some(landed)));
         model = crate::model::build(std::slice::from_ref(&seat.record), &grids, &model);
         model.apply_seat_states(&[seat]);

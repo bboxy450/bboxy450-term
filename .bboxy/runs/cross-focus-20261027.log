@@ -1,0 +1,21 @@
+ROLE: EXECUTOR — directional focus glow, 2026-10-27
+Brief: sidebar click pulses pane only; pane click pulses sidebar only; only waiting attention pulses both.
+Specs read: rim-glow 7-9, attention 1-5, ux-prototype 5, ux-flow directional locate, gui-components input.
+Mechanism: FocusSwell retains Instant + LocateWhere through UI event, Latest model and clock frame fence;
+Scene routes envelope separately to sidebar and pane and replaces the previous global one-shot cue.
+Waiting attention remains independent, shared-phase, repeating on both surfaces.
+Policy: keyboard/notification/programmatic focus now locates Pane, following the operator never-both rule;
+optional keyboard preference was asked, no answer received before implementation; assumption stated in commentary.
+Web showcase and current UI specs use the same routing and latest-cue replacement.
+make test-cross-focus — exit 0: input15; app lib120/bin147; documents12; actual ctl/GPU clock regression1;
+node syntax check0. Frozen-time A-B: pane-gap changed, distant-sidebar exactly0 changed pixels;
+C-D: sidebar changed, pane-gap exactly0 changed pixels; rapid same-time reversal; geometry unchanged.
+make check-cross-focus — exit 0: strict all-target Clippy on bboxy450-ui-core and bboxy450-term.
+Visual review: actual pane-peak and row-peak GPU PNGs inspected. No operator input, OS key injection or credentials.
+Full exact-HEAD CI, signed installation and land.sh evidence are retained outside Git and reported at handoff.
+/Users/feral/Library/Logs/bboxy450-term/cross-focus-focused.log sha256=0c3018404a376eecbd815c9c983769e75002593be3ae43317925cf8e2142f90b
+/Users/feral/Library/Logs/bboxy450-term/cross-focus-clippy.log sha256=f8c6772b2078b762f10c49198f275d14e156e46f605310beadab68efbf67e1d9
+/Users/feral/mydev/bboxy450-term-spawn-params/target/cross-focus/clock-pane-peak.png sha256=42b4e3ba6d8b7012b28f44a5b5a92fdac7d2201001b9e65ba2240c268d485f15
+/Users/feral/mydev/bboxy450-term-spawn-params/target/cross-focus/clock-pane-zero.png sha256=51deb2039bde898f585086af269a2ee840aa87e70fc4b86fafc295d26e24c758
+/Users/feral/mydev/bboxy450-term-spawn-params/target/cross-focus/clock-row-peak.png sha256=61fc494de41f20d49276c25d21c256f8b94201a4298e618efd0ce0d97e030284
+/Users/feral/mydev/bboxy450-term-spawn-params/target/cross-focus/clock-row-zero.png sha256=b38465ece8f9d215d9fc6a714dcdeaa9b3ae03320fe8c6f32d72919f5cae9c0d

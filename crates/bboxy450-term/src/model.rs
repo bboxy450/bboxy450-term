@@ -1,4 +1,6 @@
 //! Back-model assembly and terminal pane preparation. Socket ownership is C1a's.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
@@ -18,7 +20,7 @@ use bbt_render::{
     },
     device::DeviceContext,
 };
-use bbt_ui_model::{self as ui, layout::Rect, tokens::Theme};
+use bbt_ui_model::{self as ui, event::LocateWhere, layout::Rect, tokens::Theme};
 
 use crate::grids::Grids;
 
@@ -530,13 +532,20 @@ pub struct Model {
     pub e2e: Option<Arc<bbt_ui::modules::e2e_checklist::Checklist>>,
     /// G5 paint state only; neither map changes layout or selects a seat.
     pub attention: BTreeMap<SeatId, crate::attention::Attention>,
-    pub focus_swell: Option<(SeatId, Instant)>,
+    pub focus_swell: Option<(SeatId, FocusSwell)>,
     /// IO bookkeeping; episode internals are private to the attention module.
     #[doc(hidden)]
     pub attention_episodes: crate::attention::Episodes,
     pub settings: Option<Arc<crate::settings::Snapshot>>,
     pub document_reply: Option<Arc<crate::documents::Reply>>,
     pub closes: crate::close::State,
+}
+
+/// A focus cue retains its destination across IO publication and frame fences.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FocusSwell {
+    pub at: Instant,
+    pub where_: LocateWhere,
 }
 impl Default for Model {
     fn default() -> Self {
@@ -616,7 +625,7 @@ impl Model {
         seat: SeatId,
         generation: u64,
         episode: Option<crate::attention::EpisodeKey>,
-        landed: Option<Instant>,
+        landed: Option<FocusSwell>,
     ) -> bool {
         if !self.ui.seats.get(&seat).is_some_and(|row| {
             row.process_generation == generation && row.lifecycle == ui::Lifecycle::Open
@@ -626,8 +635,8 @@ impl Model {
         let mut changed = episode.is_some_and(|key| {
             key.generation == generation && self.attention_episodes.handle(seat, key)
         });
-        if let Some(at) = landed {
-            self.focus_swell = Some((seat, at));
+        if let Some(pulse) = landed {
+            self.focus_swell = Some((seat, pulse));
             changed = true;
         }
         if changed {

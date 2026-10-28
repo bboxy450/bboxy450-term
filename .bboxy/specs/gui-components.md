@@ -296,7 +296,7 @@ Two focuses, never blurred:
 - **Dwell focus** on panes only: `Move` into a pane arms a 150 ms timer; `Tick` past it moves keyboard focus **without** `Locate` if the last key press is more than 1 s old (showcase.js:406-410). Rows never focus on hover; they only tint (:311).
 - **Text focus**: at most one `TextField` (swarm rename, launcher query, settings search, purge name) holds `Input::Text`. While a field holds focus, plain arrows go to the field and pane navigation needs ⌘⌥ arrows (showcase.js:399-400); Enter commits, Escape cancels (components.js:225).
 
-Arrow navigation (showcase.js:383-396): among pane rects, keep those strictly ahead in the direction, score `along + 2·across` from centre to centre, pick the minimum. Tab cycles the stage's leaves in tree order (showcase.js:562). Keyboard moves emit `Locate { Both }`.
+Arrow navigation (showcase.js:383-396): among pane rects, keep those strictly ahead in the direction, score `along + 2·across` from centre to centre, pick the minimum. Tab cycles the stage's leaves in tree order (showcase.js:562). Keyboard moves emit `Locate { Pane }`.
 
 ### 4.3 Drag and drop
 
@@ -324,7 +324,7 @@ From the lab's settings table (components.js:451) and handlers (showcase.js:131,
 | ⌘M | mute / unmute the focused seat | showcase.js:131 |
 | ⌘Z | undo the most recent closed seat in grace | showcase.js:257 |
 | ⌘, | settings tab, Account | showcase.js:152 |
-| Tab / ⇧Tab | next / previous pane, locate both | showcase.js:562 |
+| Tab / ⇧Tab | next / previous pane, locate pane | showcase.js:562 |
 | ← → ↑ ↓ (⌘⌥ while a field has focus) | nearest pane in that direction | showcase.js:397-403 |
 | Escape | close the launcher (climb first if nested) | showcase.js:230, components.js:396 |
 | *launcher* ↑↓ → ← ⌫ ↵ ⌥↵ ⌘↵ ⌘⇧↵ ⌘R 1–9 | move · dive · climb · climb · pick · new tab instead · split right · split down · reroll · nth row | components.js:388-400, showcase.js:219-221 |
@@ -349,8 +349,8 @@ pub struct Ripple  { at: Pt, t0_ms: f32, color: [f32;3] }   // ≤ 6 live, 900 m
 | border glow | seat activity | `Seat::activity` on every on-screen pane and row | `activity`, `radius` (pane 14 / row 4), `particles` (pane active 40, idle 12; row active 4, else 0), `mul` (row 0.3; idle row 0; inferred ×0.5) — showcase.js:529-532 | focus, hover, messages |
 | focus brightness | keyboard focus is here | `FocusChanged` | `focus = 1` → alpha ×1.6 | hover |
 | state glyph | seat activity | `Seat::activity`, `grade`, `WaitKind` | chrome, not fx | anything else |
-| locate ring | "that one, over there" (row click) | `Locate { Pane \| Both }` | push `Ripple` at the pane centre in the seat colour | hover, timers, messages, state |
-| row bounce | same, pane click | `Locate { Row \| Both }` | chrome: 520 ms scale 1.045 + outline pulse on the row (showcase.html:13-14), driven by `Tick` | same |
+| pane focus swell | "that one, over there" (row click) | `Locate { Pane }` | 900 ms silk swell on the pane only, in the seat colour | hover, timers, messages, state |
+| sidebar focus swell | same, pane click | `Locate { Row }` | 900 ms silk swell on the sidebar only, driven by the shared animation clock | same |
 | dim | not focused | `Stage::focused` vs pane / swarm | chrome colour transform (§3.3); fx keeps the seat colour on the glow | — |
 | unread dot | a message is unread | `Seat::unread` | chrome badge in the highest-priority unread role colour; cleared by `UnreadCleared` | ripple |
 | shadow pulse | a shadow spoke | `Pulse { 700 }` | `focus` ramps 1 → 0 over 700 ms through the brightness channel (showcase.js:527) | ripple |

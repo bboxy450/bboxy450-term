@@ -3,6 +3,8 @@
     reason = "isolated CLI integration fixture, never the UI thread"
 )]
 //! U-1: plain-shell lifecycle and real PTY input/capture without an NSWindow.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use serde_json::Value;
 use std::{
     path::PathBuf,
@@ -1237,22 +1239,39 @@ fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
         ]);
         seats.push(seat);
     }
-    // Settle the launch swells before beginning the new focus episode.
+    // Settle the launch and tab-switch swells, then click the already focused
+    // seat so its focus brightness and geometry stay fixed throughout.
     f.ok(&["ui", "focus", &seats[1]]);
     f.ok(&["ui", "clock", "advance", "900"]);
-    let focus = f.ok(&["ui", "focus", &seats[0]]);
+    let focused = f.ok(&["ui", "focus", &seats[0]]);
+    f.ok(&["ui", "clock", "advance", "900"]);
+    let click = |frame: &Value, key: &str| {
+        let rect = frame["data"]["regions"][key]
+            .as_array()
+            .unwrap_or_else(|| panic!("missing retained click region {key}"));
+        let x = (rect[0].as_f64().unwrap() + rect[2].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        let y = (rect[1].as_f64().unwrap() + rect[3].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        f.ok(&["ui", "click", &x, &y])
+    };
+    let row_key = format!("seat:{}", seats[0]);
+    let pane_key = format!("pane:{}", seats[0]);
+    let focus = click(&focused, &row_key);
     let before_step = f.ok(&["ui", "clock", "freeze"]);
-    let capture = |name: &str| {
+    let capture = |name: &str, frame: &Value| {
         let path = f.root.path().join(name);
         let reply = f.ok(&["seat", "capture", "window", path.to_str().unwrap()]);
         assert!(
             reply["data"]["frame_seq"].as_u64().unwrap()
-                >= before_step["data"]["frame_seq"].as_u64().unwrap()
+                >= frame["data"]["frame_seq"].as_u64().unwrap()
         );
         png_pixels(&path)
     };
-    let first = capture("clock-first.png");
-    let second = capture("clock-second.png");
+    let first = capture("clock-first.png", &before_step);
+    let second = capture("clock-second.png", &before_step);
     assert_eq!(
         first, second,
         "wall time and capture work cannot advance a frozen animation"
@@ -1276,7 +1295,7 @@ fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
         geometry(&focus),
         "the swell is paint only"
     );
-    let peak = capture("clock-peak.png");
+    let peak = capture("clock-pane-peak.png", &stepped);
     assert_eq!((first.0, first.1), (peak.0, peak.1));
     assert_ne!(
         first.2, peak.2,
@@ -1312,11 +1331,95 @@ fn test_account_ui_clock_freezes_pixels_steps_focus_and_resumes_live_time() {
         swell_pixels > 0,
         "the 450 ms frame has no swell beyond the resting rim"
     );
+
+    let changed_pixels = |a: &(u32, u32, Vec<u8>),
+                          b: &(u32, u32, Vec<u8>),
+                          xs: std::ops::Range<usize>,
+                          ys: std::ops::Range<usize>| {
+        assert_eq!((a.0, a.1), (b.0, b.1));
+        assert!(xs.end <= a.0 as usize && ys.end <= a.1 as usize);
+        let mut changed = 0;
+        for y in ys {
+            for x in xs.clone() {
+                let at = (y * a.0 as usize + x) * 4;
+                changed += usize::from(a.2[at..at + 4] != b.2[at..at + 4]);
+            }
+        }
+        changed
+    };
+    // A pane reaches at most 40 px beyond its rim. The sidebar region beyond
+    // 45 px therefore cannot change merely because the pane swell changes.
+    let sidebar_x1 = (pane[0].as_f64().unwrap() - 45.).ceil() as usize;
+    assert!(sidebar_x1 > 0 && sidebar_x1 < peak.0 as usize);
+    let pane_gap_changes =
+        |a: &(u32, u32, Vec<u8>), b: &(u32, u32, Vec<u8>)| changed_pixels(a, b, x0..x1, y0..y1);
+    let sidebar_changes = |a: &(u32, u32, Vec<u8>), b: &(u32, u32, Vec<u8>)| {
+        changed_pixels(a, b, 0..sidebar_x1, 0..a.1 as usize)
+    };
+
+    // A -> B: replace the pane peak with a zero-phase row cue at the same
+    // logical time. Reset the row-origin cue first, then reverse it without
+    // advancing: seat + landing instant match, so the frame fence must retain
+    // the direction as well. No brightness, layout, wave or particle changed.
+    click(&stepped, &row_key);
+    click(&stepped, &pane_key);
+    let row_zero = f.ok(&["ui", "clock", "freeze"]);
+    assert_eq!(
+        row_zero["data"]["clock"]["time_ms"],
+        stepped["data"]["clock"]["time_ms"]
+    );
+    assert_eq!(geometry(&row_zero), geometry(&focus));
+    let row_zero_pixels = capture("clock-row-zero.png", &row_zero);
+    assert!(
+        pane_gap_changes(&peak, &row_zero_pixels) > 0,
+        "pane click must cancel the old pane swell"
+    );
+    assert_eq!(
+        sidebar_changes(&peak, &row_zero_pixels),
+        0,
+        "sidebar click must not have swelled the sidebar"
+    );
+
+    // C -> D: the row now reaches its peak. Replace it with a zero-phase pane
+    // cue, again reversing twice at one frozen time to exercise the fence.
+    let row_peak = f.ok(&["ui", "clock", "advance", "450"]);
+    assert_eq!(geometry(&row_peak), geometry(&focus));
+    let row_peak_pixels = capture("clock-row-peak.png", &row_peak);
+    click(&row_peak, &pane_key);
+    click(&row_peak, &row_key);
+    let pane_zero = f.ok(&["ui", "clock", "freeze"]);
+    assert_eq!(
+        pane_zero["data"]["clock"]["time_ms"],
+        row_peak["data"]["clock"]["time_ms"]
+    );
+    assert_eq!(geometry(&pane_zero), geometry(&focus));
+    let pane_zero_pixels = capture("clock-pane-zero.png", &pane_zero);
+    assert!(
+        sidebar_changes(&row_peak_pixels, &pane_zero_pixels) > 0,
+        "row click must cancel the old row swell"
+    );
+    assert_eq!(
+        pane_gap_changes(&row_peak_pixels, &pane_zero_pixels),
+        0,
+        "pane click must not have swelled the pane"
+    );
+    if let Some(directory) = std::env::var_os("BBOXY_FOCUS_EVIDENCE") {
+        let directory = std::path::PathBuf::from(directory);
+        std::fs::create_dir_all(&directory).unwrap();
+        for name in [
+            "clock-pane-peak.png",
+            "clock-row-zero.png",
+            "clock-row-peak.png",
+            "clock-pane-zero.png",
+        ] {
+            std::fs::copy(f.root.path().join(name), directory.join(name)).unwrap();
+        }
+    }
     let resumed = f.ok(&["ui", "clock", "resume"]);
     assert_eq!(resumed["data"]["clock"]["frozen"], false);
     assert!(
         resumed["data"]["clock"]["time_ms"].as_u64().unwrap()
-            >= stepped["data"]["clock"]["time_ms"].as_u64().unwrap()
+            >= pane_zero["data"]["clock"]["time_ms"].as_u64().unwrap()
     );
     let (code, rows) = f.ctl(&["ui", "clock", "advance", "1"]);
     assert_eq!(code, 1);

@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use std::time::{Duration, Instant};
 
 use bbt_ui_model::{
@@ -171,7 +173,7 @@ fn cycle_uses_tree_order_wraps_and_never_switches_a_tab_or_swarm() {
     for (to, from, back) in [(2, 1, false), (3, 2, false), (1, 3, false), (3, 1, true)] {
         assert_eq!(
             focus.cycle(&mut model, back, now).unwrap(),
-            vec![changed(to, from, false), locate(to, LocateWhere::Both)]
+            vec![changed(to, from, false), locate(to, LocateWhere::Pane)]
         );
         assert_eq!(model.window.stage.tab, Some(tab(1)));
     }
@@ -192,25 +194,25 @@ fn directional_navigation_scores_along_plus_twice_across_and_breaks_ties_in_tree
         focus
             .navigate(&mut model, &rects, Direction::Right, now)
             .unwrap(),
-        vec![changed(2, 1, false), locate(2, LocateWhere::Both)]
+        vec![changed(2, 1, false), locate(2, LocateWhere::Pane)]
     );
     assert_eq!(
         focus
             .navigate(&mut model, &rects, Direction::Down, now)
             .unwrap(),
-        vec![changed(3, 2, false), locate(3, LocateWhere::Both)]
+        vec![changed(3, 2, false), locate(3, LocateWhere::Pane)]
     );
     assert_eq!(
         focus
             .navigate(&mut model, &rects, Direction::Up, now)
             .unwrap(),
-        vec![changed(2, 3, false), locate(2, LocateWhere::Both)]
+        vec![changed(2, 3, false), locate(2, LocateWhere::Pane)]
     );
     assert_eq!(
         focus
             .navigate(&mut model, &rects, Direction::Left, now)
             .unwrap(),
-        vec![changed(1, 2, false), locate(1, LocateWhere::Both)]
+        vec![changed(1, 2, false), locate(1, LocateWhere::Pane)]
     );
     assert!(
         focus
@@ -268,7 +270,7 @@ fn directional_score_prefers_alignment_over_the_nearest_centre() {
         Focus::default()
             .navigate(&mut model, &rects, Direction::Right, Instant::now())
             .unwrap(),
-        vec![changed(4, 1, false), locate(4, LocateWhere::Both)]
+        vec![changed(4, 1, false), locate(4, LocateWhere::Pane)]
     );
 }
 
@@ -421,7 +423,7 @@ fn invalid_activation_preserves_the_model_and_pending_locate() {
     assert_eq!(model, before);
     assert_eq!(
         focus.layout_ready(&model, &panes(&model), now),
-        vec![locate(4, LocateWhere::Both)]
+        vec![locate(4, LocateWhere::Pane)]
     );
 }
 

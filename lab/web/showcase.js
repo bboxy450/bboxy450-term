@@ -1,3 +1,5 @@
+// Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 // Showcase: full-window mock. Sidebar + a split tree of panes in the DOM; the border glow is a WebGL2 fragment
 // shader on a full-window canvas over the DOM. Per block (pane or sidebar row): rect, colour, state, focus. Each carries the
 // alive rim; on focus its silk swells glow.swell px out and back (rim-glow §7); a waiting seat loops that swell in amber,
@@ -156,7 +158,7 @@
       const node = { dir, ratio: 0.5, a: first ? seat : target, b: first ? target : seat };
       tab.tree = replaceNode(tab.tree, target, node); tab.seats.push(seat); open.add(hit2.sp.key);
     }
-    focused = seat.key; render(); locate(seat.key, 'both');
+    focused = seat.key; render(); locate(seat.key, 'pane');
   }
   // Mute (operator, vision 'Cohort scope and mute'): a muted seat leaves the swarm stream and works 1:1 with the operator;
   // its row stays where it is with a muted mark; mute and unmute each post a presence notice to the whole swarm.
@@ -181,7 +183,7 @@
     closeRowMenu();
     rmenu = C.rowMenu(seat, { steer: true, roles: Object.keys(C.SET.roles), onClose: closeRowMenu, onAction: (a, sd, v) => {
       const sp = (tabOf(sd.key) || {}).sp || space();
-      if (a === 'focus') setFocus(sd.key, { locate: 'both' });
+      if (a === 'focus') setFocus(sd.key, { locate: 'pane' });
       else if (a === 'split-right' || a === 'split-down') { setFocus(sd.key); openSpotlight(null, a === 'split-right' ? 'right' : 'bottom'); }
       else if (a === 'role') { sd.role = v; streamLine(sp, 'operator assigned ' + v + ' to ' + sd.name); render(); }
       else if (a === 'sends') { sd.sends = v; streamLine(sp, sd.name + ' may send to ' + v); render(); }
@@ -211,7 +213,7 @@
     closeRowMenu();
     rmenu = C.rowMenu(sd, { agent: ag, addressable: false, onClose: closeRowMenu, onAction: (a) => {
       const sp = (tabOf(sd.key) || {}).sp || space();
-      if (a === 'focus') return setFocus(sd.key, { locate: 'both' });
+      if (a === 'focus') return setFocus(sd.key, { locate: 'pane' });
       if (a !== 'message-agent' && a !== 'message-main') return;
       const toAgent = a === 'message-agent', msg = { author: { kind: 'operator', id: 'operator:dev', name: 'operator' }, issuer_kind: 'gpg-root', kind: 'text', priority_class: 'oracle', priority: 0, ts: Date.now(), text: toAgent ? 'how far along is this?' : 'when you are free, summarise the subagents', to: toAgent ? ag.description : 'main', via: toAgent ? 'main' : null, evidence: 'sender-stored' };
       sp.stream.push(msg); render();
@@ -392,7 +394,7 @@
     const pk = C.picker({ placeholder: ph, actions: acts, items, cap: capOf(sp), usedNames: namesIn(sp), swarm: sp, onClose: closeSpotlight, onPick: (it, name, mods, path) => {
       if (it.graphOpen) { closeSpotlight(); openGraph(); return; }
       if (it.settingsOpen) { closeSpotlight(); openSettings(it.section); return; }
-      if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'both' }); return; }
+      if (it.seat) { closeSpotlight(); const t = tabOf(it.seat.key); if (t) open.add(t.sp.key); setFocus(it.seat.key, { locate: 'pane' }); return; }
       if (it.swarm) { closeSpotlight(); jumpSpace(it.swarm); return; }
       if (it.resume) { closeSpotlight(); resumeSeat(sp, it.resume); return; }
       const l = it.launch || it;
@@ -444,7 +446,7 @@
     const seat = dressSeat(r.seat); seat.generation = (seat.generation || 1) + 1; seat.resumed = { gen: seat.generation, cmd: r.cmd }; seat.state = 'active';
     seats.push(seat); startReplay(seat, seats.length - 1); placeSeat(seat, 'tab');
     streamLine(sp, 'operator resumed ' + seat.name + ' · ' + (r.cmd || 'new shell') + ' · generation ' + seat.generation);
-    setFocus(seat.key, { locate: 'both' }); render();
+    setFocus(seat.key, { locate: 'pane' }); render();
   }
   function undoClose(rec) {
     clearTimeout(rec.timer); rec.sp.closed = rec.sp.closed.filter(r => r !== rec);
@@ -553,12 +555,13 @@
   // Focus change touches classes only: no re-render, no re-measure (rows never move).
   // Locate is the focus swell (rim-glow §7, decision #42; it replaced the ripple): the block's silk swells glow.swell px past
   // its rim and back over glow.swell_ms, paint only. Directional (operator): a row click swells the pane, a pane click the row;
-  // keyboard does both.
+  // keyboard and programmatic focus locate the pane; only attention pulses both.
   const swellT0 = {};
   function locate(key, where) {
     const now = performance.now();
-    if (where === 'pane' || where === 'both') swellT0[key + '|pane'] = now;
-    if (where === 'row' || where === 'both') swellT0[key + '|row'] = now;
+    // One cue at a time, including rapid reversals on the same seat.
+    for (const prior of Object.keys(swellT0)) delete swellT0[prior];
+    swellT0[key + (where === 'row' ? '|row' : '|pane')] = now;
   }
   // Attention (attention §2-3): a waiting seat, not muted and not yet focused, loops the swell in amber with its row name
   // pulsing, and posts one notification (keyed by the seat, so a repeat replaces it) whose click focuses it. Focusing the seat
@@ -570,7 +573,7 @@
     for (const n of [...notifs.children]) { const s = seats.find(x => x.key === n.dataset.key); if (!s || !needs(s)) n.remove(); }
     for (const s of seats) if (needs(s) && !notifs.querySelector('[data-key="' + s.key + '"]')) {
       // the body is the first line of the seat's detail (here the replay line that stopped it), else by wait kind, as attention.rs
-      const n = C.notification(s, s.waitLine, () => setFocus(s.key, { locate: 'both' }));
+      const n = C.notification(s, s.waitLine, () => setFocus(s.key, { locate: 'pane' }));
       n.dataset.key = s.key; notifs.append(n);
     }
   }
@@ -587,7 +590,7 @@
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
     const f = seats.find(s => s.key === key);
     document.getElementById('crumb').textContent = '· ' + space().name + ' · ' + f.name;
-    // locate (DECIDED): every focus change swells the row and the pane in the seat colour, both directions;
+    // Locate points to the counterpart: row click → pane; pane click → row;
     // an off-screen row scrolls into view inside the sidebar (never the window), then rects are re-measured once.
     const row = main.querySelector('.seat-row[data-key="' + key + '"]'), sc = main.querySelector('.sb-scroll');
     if (row && sc) {
@@ -617,7 +620,7 @@
     const typing = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
     if (typing && !(e.metaKey && e.altKey)) return;
     const next = neighbour(e.key); if (!next) return;
-    e.preventDefault(); setFocus(next, { locate: 'both' });
+    e.preventDefault(); setFocus(next, { locate: 'pane' });
   });
   // Hover focus on panes only (operator): a 150 ms dwell moves focus brightness, no ring; typing blocks it for a second.
   // Sidebar rows never focus on hover: click changes what you see.
@@ -653,7 +656,7 @@
       if (!s.unreadRole || ROLE_RANK[role] < ROLE_RANK[s.unreadRole]) s.unreadRole = role;
       render();
     }
-    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: 'both' }); }
+    else if (e.key === 'Tab') { e.preventDefault(); const i = stageKeys.indexOf(focused); setFocus(stageKeys[(i + (e.shiftKey ? -1 : 1) + stageKeys.length) % stageKeys.length], { locate: 'pane' }); }
   });
 
   // ---------- stream dock: messages land here; clicking a phantom filters to that participant ----------

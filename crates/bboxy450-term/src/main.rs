@@ -23,6 +23,7 @@ use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
     Outcome as LauncherOutcome,
 };
+use bboxy450_term::model::FocusSwell;
 use bboxy450_term::scrollback::Request as ScrollRequest;
 use bboxy450_term::{documents, keyboard, messaging};
 use bbt_proto::{SeatId, View};
@@ -714,7 +715,7 @@ enum UiEffect {
     },
     Clock {
         state: bbt_proto::gui::UiClockState,
-        landed: Option<(SeatId, Instant)>,
+        landed: Option<(SeatId, FocusSwell)>,
     },
     /// The window has solved a layout at this logical size (`ctl app resize`).
     Size([f32; 2]),
@@ -1942,7 +1943,7 @@ struct App {
     pacing: Mode,
     clock: animation_clock::Clock,
     clock_frame: animation_clock::Frame,
-    animation_landing: Option<(SeatId, Instant)>,
+    animation_landing: Option<(SeatId, FocusSwell)>,
     test_account: bool,
     occluded: bool,
     maximum_hz: f64,
@@ -3764,13 +3765,19 @@ impl App {
             return;
         };
         let now = self.clock.now();
-        let mut landed: BTreeMap<SeatId, Option<Instant>> = BTreeMap::new();
+        let mut landed: BTreeMap<SeatId, Option<FocusSwell>> = BTreeMap::new();
         if explicit && let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) {
             landed.insert(seat, None);
         }
         for event in events {
-            if let InputEvent::Locate { seat, .. } = event {
-                landed.insert(*seat, Some(now));
+            if let InputEvent::Locate { seat, where_ } = event {
+                landed.insert(
+                    *seat,
+                    Some(FocusSwell {
+                        at: now,
+                        where_: *where_,
+                    }),
+                );
             }
         }
         let actions: Vec<_> = landed
@@ -3788,11 +3795,11 @@ impl App {
         for action in actions {
             if let live::UiMsg::AttentionFocus {
                 seat,
-                landed: Some(at),
+                landed: Some(pulse),
                 ..
             } = &action
             {
-                self.animation_landing = Some((*seat, *at));
+                self.animation_landing = Some((*seat, *pulse));
             }
             self.queue(action);
         }

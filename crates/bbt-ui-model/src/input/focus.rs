@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use std::time::{Duration, Instant};
 
 use crate::{
@@ -72,7 +74,7 @@ impl Focus {
         let where_ = match origin {
             FocusOrigin::Row => LocateWhere::Pane,
             FocusOrigin::Pane => LocateWhere::Row,
-            FocusOrigin::Keyboard => LocateWhere::Both,
+            FocusOrigin::Keyboard => LocateWhere::Pane,
         };
         let events = self.change(model, seat, Some(where_))?;
         self.dwell_since = None;

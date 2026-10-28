@@ -3,6 +3,7 @@
 //! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 mod navigation;
 mod starting;
+use bboxy450_term::model::FocusSwell;
 use bboxy450_term::starting::Slot;
 use bbt_ui::{
     self as ui, components as c,
@@ -19,6 +20,7 @@ use bbt_ui::{
         title_bar::TitleBar,
     },
 };
+use bbt_ui_model::event::LocateWhere;
 use bbt_ui_model::{
     Activity, STYLE, SeatId, SplitNode, Stage, TOKENS, WaitKind,
     draw::{Color, DrawList, TextStyle, TypeScale},
@@ -244,7 +246,7 @@ pub struct Scene {
     glow: bool,
     subtitle: bool,
     /// When each seat's focus swell started (rim-glow §7); it runs glow.swell_ms.
-    swells: HashMap<SeatId, Instant>,
+    swells: HashMap<SeatId, FocusSwell>,
     /// Seats waiting for the operator (attention §2): since when, and whether muted.
     attention: HashMap<SeatId, (Instant, bool)>,
     attention_origins: HashMap<SeatId, Instant>,
@@ -450,10 +452,10 @@ impl Scene {
     pub fn set_rim(&mut self, px: f32) {
         self.rim = px.clamp(RIM_MIN, RIM_MAX);
     }
-    /// Plays the focus swell on a seat's blocks from `at` (rim-glow §7): it replaces the
-    /// locate ripple and is paint only.
-    pub fn swell(&mut self, seat: SeatId, at: Instant) {
-        self.swells.insert(seat, at);
+    /// One directional focus cue replaces the previous cue, without touching attention.
+    pub fn swell(&mut self, seat: SeatId, pulse: FocusSwell) {
+        self.swells.clear();
+        self.swells.insert(seat, pulse);
     }
     /// A seat waiting for the operator loops the swell in its waiting amber until handled
     /// (attention §2); muted, it keeps the ordinary waiting rim. None: handled.
@@ -487,17 +489,22 @@ impl Scene {
             || self
                 .swells
                 .values()
-                .any(|at| (now.saturating_duration_since(*at).as_secs_f32() * 1000.) < ms)
+                .any(|pulse| (now.saturating_duration_since(pulse.at).as_secs_f32() * 1000.) < ms)
     }
     /// The seat's swell envelope at `now` and whether it is the attention loop: |sin| for
     /// attention, one half sine over glow.swell_ms for a focus swell, else 0.
-    fn envelope(&self, seat: SeatId, now: Instant) -> (f32, bool) {
+    fn envelope(&self, seat: SeatId, now: Instant, surface: LocateWhere) -> (f32, bool) {
         let ms = TOKENS.glow.swell_ms as f32;
         let t = |at: &Instant| now.saturating_duration_since(*at).as_secs_f32() * 1000.;
         if let Some((since, false)) = self.attention.get(&seat) {
             return ((std::f32::consts::PI * t(since) / ms).sin().abs(), true);
         }
-        match self.swells.get(&seat).map(t) {
+        match self
+            .swells
+            .get(&seat)
+            .filter(|pulse| pulse.where_ == surface || pulse.where_ == LocateWhere::Both)
+            .map(|pulse| t(&pulse.at))
+        {
             Some(t) if t < ms => ((std::f32::consts::PI * t / ms).sin(), false),
             _ => (0., false),
         }
@@ -604,10 +611,10 @@ impl Scene {
         }
         self.swells
             .retain(|seat, _| model.ui.seats.contains_key(seat));
-        if let Some((seat, at)) = model.focus_swell
+        if let Some((seat, pulse)) = model.focus_swell
             && model.ui.seats.contains_key(&seat)
         {
-            self.swell(seat, at);
+            self.swell(seat, pulse);
         }
         let tab = model
             .ui
@@ -1002,7 +1009,8 @@ impl Scene {
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
         let mut seats = self.seats.clone();
         for (id, index) in &self.seat_index {
-            (seats[*index].swell, seats[*index].attention) = self.envelope(*id, now);
+            (seats[*index].swell, seats[*index].attention) =
+                self.envelope(*id, now, LocateWhere::Row);
             if let Some((_, Some(at), _)) = self.restart_generations.get(id) {
                 let elapsed = now.saturating_duration_since(*at).as_secs_f32();
                 seats[*index].restarted = elapsed < 4.;
@@ -1203,7 +1211,10 @@ impl Scene {
         // The gutter between panes is the rim size and the stage inset half of it (rim-glow
         // §2): neighbouring rims' outer halves meet; depth never reaches the layout.
         for (slot, rect) in self.pane_rects(bounds, panes) {
-            let seat = self.slot_row(slot, &seats);
+            let mut seat = self.slot_row(slot, &seats);
+            if let Slot::Seat(id) = slot {
+                (seat.swell, seat.attention) = self.envelope(id, now, LocateWhere::Pane);
+            }
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
                 focused: seat.focused,
@@ -2032,10 +2043,31 @@ mod depth_tests {
     /// Every rim the scene paints for one seat, its row (phase from the key) and its pane
     /// (seeded by the seat id), as (swell, attention).
     pub(super) fn rims_of(scene: &Scene, seat: SeatId, now: Instant) -> Vec<(f32, bool)> {
+        [LocateWhere::Row, LocateWhere::Pane]
+            .into_iter()
+            .flat_map(|surface| rims_on(scene, seat, now, surface))
+            .collect()
+    }
+    pub(super) fn rims_on(
+        scene: &Scene,
+        seat: SeatId,
+        now: Instant,
+        surface: LocateWhere,
+    ) -> Vec<(f32, bool)> {
         let key = &scene.seats[scene.seat_index[&seat]].key;
         let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
         let mut out = vec![];
-        for layout in scene.layout_at([1600., 960.], true, now).unwrap() {
+        for (index, layout) in scene
+            .layout_at([1600., 960.], true, now)
+            .unwrap()
+            .into_iter()
+            .enumerate()
+        {
+            if (surface == LocateWhere::Row && index != 1)
+                || (surface == LocateWhere::Pane && index < 2)
+            {
+                continue;
+            }
             for op in c::paint(&layout, ctx) {
                 if let c::Paint::Material {
                     kind: ui::Material::Rim,
@@ -2060,9 +2092,20 @@ mod depth_tests {
         let seat = SeatId::from_u128(3);
         assert!(!scene.animating(t0));
         assert!(rims_of(&scene, seat, t0).iter().all(|r| *r == (0., false)));
-        scene.swell(seat, t0);
-        let peak = rims_of(&scene, seat, ms(TOKENS.glow.swell_ms as u64 / 2));
-        assert!(peak.len() >= 2, "the row and the pane swell: {peak:?}");
+        scene.swell(
+            seat,
+            FocusSwell {
+                at: t0,
+                where_: LocateWhere::Pane,
+            },
+        );
+        let peak = rims_on(
+            &scene,
+            seat,
+            ms(TOKENS.glow.swell_ms as u64 / 2),
+            LocateWhere::Pane,
+        );
+        assert!(!peak.is_empty(), "pane must swell: {peak:?}");
         assert!(
             peak.iter().all(|(e, a)| (*e - 1.).abs() < 1e-3 && !a),
             "{peak:?}"
@@ -2091,7 +2134,13 @@ mod depth_tests {
         let frozen = clock.apply(UiClockCommand::Freeze).unwrap();
         let mut scene = Scene::new();
         let seat = SeatId::from_u128(3);
-        scene.swell(seat, frozen.now);
+        scene.swell(
+            seat,
+            FocusSwell {
+                at: frozen.now,
+                where_: LocateWhere::Pane,
+            },
+        );
         let bounds = |now| {
             scene
                 .layout_at([1600., 960.], true, now)
@@ -2107,18 +2156,65 @@ mod depth_tests {
                 .all(|rim| rim.0 == 0.)
         );
         let peak = clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
-        let rims = rims_of(&scene, seat, peak.now);
-        assert!(rims.len() >= 2, "pane and row must both carry the swell");
+        let rims = rims_on(&scene, seat, peak.now, LocateWhere::Pane);
+        assert!(!rims.is_empty(), "pane must carry the swell");
         assert!(
             rims.iter()
                 .all(|(envelope, attention)| (*envelope - 1.).abs() < 1e-6 && !attention)
         );
         assert_eq!(bounds(peak.now), before);
+        assert!(
+            rims_on(&scene, seat, peak.now, LocateWhere::Row)
+                .iter()
+                .all(|rim| *rim == (0., false))
+        );
         let settled = clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
         assert!(
             rims_of(&scene, seat, settled.now)
                 .iter()
                 .all(|rim| rim.0.abs() < 1e-6)
+        );
+    }
+
+    #[test]
+    fn focus_swell_targets_one_surface_and_replaces_rapid_reversals() {
+        let mut scene = Scene::new();
+        let seat = SeatId::from_u128(3);
+        let other = SeatId::from_u128(4);
+        let at = Instant::now();
+        let peak = at + std::time::Duration::from_millis(450);
+        for target in [LocateWhere::Pane, LocateWhere::Row, LocateWhere::Pane] {
+            scene.swell(seat, FocusSwell { at, where_: target });
+            for surface in [LocateWhere::Row, LocateWhere::Pane] {
+                let rims = rims_on(&scene, seat, peak, surface);
+                assert!(!rims.is_empty());
+                let expected = if surface == target { 1. } else { 0. };
+                assert!(
+                    rims.iter()
+                        .all(|(e, attention)| !attention && (*e - expected).abs() < 1e-3),
+                    "{target:?} on {surface:?}: {rims:?}"
+                );
+            }
+        }
+        scene.swell(
+            other,
+            FocusSwell {
+                at,
+                where_: LocateWhere::Row,
+            },
+        );
+        assert!(
+            rims_of(&scene, seat, peak)
+                .iter()
+                .all(|rim| *rim == (0., false)),
+            "a newer seat focus cancels the old one-shot cue"
+        );
+        scene.set_attention(seat, Some((at, false)));
+        assert!(
+            rims_of(&scene, seat, peak)
+                .iter()
+                .all(|(e, attention)| *attention && (*e - 1.).abs() < 1e-3),
+            "waiting attention still pulses both surfaces"
         );
     }
 
@@ -2147,17 +2243,23 @@ mod depth_tests {
         );
         let mut scene = Scene::live();
         scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
-        assert_eq!(scene.envelope(seat, clock.now()), (0., true));
+        assert_eq!(
+            scene.envelope(seat, clock.now(), LocateWhere::Pane),
+            (0., true)
+        );
         clock.apply(UiClockCommand::Advance { ms: 450 }).unwrap();
         for _ in 0..3 {
             scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
-            let (phase, attention) = scene.envelope(seat, clock.now());
+            let (phase, attention) = scene.envelope(seat, clock.now(), LocateWhere::Pane);
             assert!((phase - 1.).abs() < 1e-6 && attention);
             assert_eq!(model.attention[&seat].since, source);
         }
         model.attention.get_mut(&seat).unwrap().muted = true;
         scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
-        assert_eq!(scene.envelope(seat, clock.now()), (0., false));
+        assert_eq!(
+            scene.envelope(seat, clock.now(), LocateWhere::Pane),
+            (0., false)
+        );
         model.attention.clear();
         scene.set_model_with_clock(&model, &model.ui.window.stage, &clock);
         assert!(
@@ -2249,7 +2351,15 @@ mod depth_tests {
         );
 
         let key = model.attention_key(seat);
-        assert!(model.attention_focus(seat, 1, key, Some(peak)));
+        assert!(model.attention_focus(
+            seat,
+            1,
+            key,
+            Some(FocusSwell {
+                at: peak,
+                where_: LocateWhere::Pane
+            })
+        ));
         scene.set_model(&model, &stage);
         assert!(
             rims_of(&scene, seat, peak)
@@ -2595,7 +2705,15 @@ mod launcher_tests {
             &Default::default(),
         );
         let landed = Instant::now();
-        assert!(model.attention_focus(seat, generation, None, Some(landed)));
+        assert!(model.attention_focus(
+            seat,
+            generation,
+            None,
+            Some(FocusSwell {
+                at: landed,
+                where_: LocateWhere::Pane
+            })
+        ));
         let mut scene = Scene::live();
         for _ in 0..3 {
             model.document_reply = Some(std::sync::Arc::new(bboxy450_term::documents::Reply {
@@ -2604,8 +2722,8 @@ mod launcher_tests {
             }));
             scene.set_model(&model, &model.ui.window.stage);
             let peak = landed + std::time::Duration::from_millis(450);
-            let rims = depth_tests::rims_of(&scene, seat, peak);
-            assert!(rims.len() >= 2);
+            let rims = depth_tests::rims_on(&scene, seat, peak, LocateWhere::Pane);
+            assert!(!rims.is_empty());
             assert!(
                 rims.iter()
                     .all(|(phase, attention)| (*phase - 1.).abs() < 1e-6 && !attention)
