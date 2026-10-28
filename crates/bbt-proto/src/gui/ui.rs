@@ -1,4 +1,6 @@
 //! Window chrome relayed to the GUI owner: `ctl ui …` and the frame fence's layouts.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 
 /// The completed frame which acknowledged a focus command.
@@ -25,6 +27,11 @@ pub enum UiRequest {
     Click {
         x: u32,
         y: u32,
+    },
+    /// Logical pointer drag through a retained supported resize handle.
+    Drag {
+        from: [u32; 2],
+        to: [u32; 2],
     },
     /// Wheel input in the retained sidebar viewport.
     SidebarWheel {
@@ -75,6 +82,9 @@ impl UiRequest {
             }
             Self::Click { x, y } if *x > 32768 || *y > 32768 => {
                 Err("invalid_ui_click: coordinates exceed window bounds")
+            }
+            Self::Drag { from, to } if from.iter().chain(to).any(|v| *v > 32768) => {
+                Err("invalid_ui_drag: coordinates exceed window bounds")
             }
             Self::SwarmWorkdir { swarm, path }
                 if *swarm == Ulid::nil()

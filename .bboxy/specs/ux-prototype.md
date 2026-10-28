@@ -24,6 +24,7 @@ The window is a cockpit for swarms of agents. The left sidebar is the map; the r
 - **Title bar** (36 px): three window dots on the left (the only window controls anywhere), sidebar-toggle icon, the identity portrait as the mark (18 px, circle-cropped `bboxy.png`), app name, a crumb `· swarm · seat` naming what is focused, the theme icon and the settings gear on the right.
 - **Every pixel is precious.** No outer padding. Panes sit 2 px apart (`layout.gutter`, 4 is the alternative). The glow paints over gutters and edges and takes no layout space.
 - **Everything resizes by drag.** The sidebar's right edge drags between 160 and 520 px and persists. Every gutter between panes is a divider with an 8 px grab zone; dragging changes the split ratio (10% to 90%), the split tree keeps it, the sidebar mini-grid follows on release.
+- The native sidebar uses an invisible 8 px grab zone and a horizontal resize cursor. The dock, identity footer, pane stage and local pages share its width. Narrow windows leave a usable stage and retain the requested width for enlargement; restarting the window restores the choice without restarting harnesses.
 
 ## 3. Sidebar: the map
 

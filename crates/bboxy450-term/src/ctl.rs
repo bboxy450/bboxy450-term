@@ -42,6 +42,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui open <graph|settings|launcher|docs <path>>
   ui key <named-key>...                  cmd-t cmd-d cmd-shift-d cmd-g cmd-m cmd-comma esc enter tab arrows
   ui click <x> <y>                       Logical window pixels; use regions in ui layout
+  ui drag <x0> <y0> <x1> <y1>            Drag a retained sidebar resize handle
   ui sidebar-scroll <lines>              Wheel input; positive scrolls toward the top
   ui launcher-scroll <lines>             Scroll the launcher; same wheel convention
   ui focus <seat>                        select its pane through the GUI owner

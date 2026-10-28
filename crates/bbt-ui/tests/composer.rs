@@ -1,4 +1,54 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_ui::{modules::composer::*, text_edit::Command as Edit};
+
+// keeps: spec ux-prototype — 160–520px resizable sidebar
+#[test]
+fn sidebar_footer_keeps_send_delegate_and_kind_controls_inside_its_width() {
+    use bbt_ui::{self as ui, components as c};
+    use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
+    struct Metrics;
+    impl TextMeasure for Metrics {
+        fn width(&self, text: &str, style: &TextStyle) -> f32 {
+            text.chars().count() as f32 * style.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
+            [style.size * 0.8, style.size * 0.2]
+        }
+    }
+    fn find<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&layout.kind, c::LayoutKind::Named(name) if name == key) {
+            return Some(layout);
+        }
+        layout.children.iter().find_map(|child| find(child, key))
+    }
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    for mode in ["", "delegate"] {
+        for kind in ["text", "decision"] {
+            for width in (160..=520).step_by(4) {
+                let view = Composer {
+                    mode: mode.into(),
+                    kind: kind.into(),
+                    ..Default::default()
+                };
+                let layout = view
+                    .element(ctx, width as f32, &Metrics)
+                    .unwrap()
+                    .layout(Rect::new(0., 0., width as f32, 0.), ctx, &Metrics)
+                    .unwrap();
+                for key in ["composer/send", "composer/priority", "composer/kpick"] {
+                    let rect = find(&layout, key).unwrap().rect;
+                    assert!(
+                        rect.x >= 0. && rect.x + rect.w <= width as f32 + 0.01,
+                        "{mode}/{kind}/{width}/{key}: {rect:?}"
+                    );
+                }
+            }
+        }
+    }
+}
 
 fn address(id: &str) -> Address {
     Address {

@@ -15,6 +15,7 @@ mod live;
 mod log;
 mod navigation;
 mod scene;
+mod sidebar;
 mod spawn_gate;
 mod stall;
 mod swarm_folder;
@@ -719,6 +720,7 @@ enum UiEffect {
     },
     /// The window has solved a layout at this logical size (`ctl app resize`).
     Size([f32; 2]),
+    SidebarWidth(f32),
     Refused(String),
     StartingDismissed(bbt_mux::Ulid),
 }
@@ -1910,6 +1912,9 @@ struct App {
     swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
     navigation_regions: Vec<(String, Rect)>,
     sidebar_scroll: Option<f32>,
+    sidebar_width: Option<f32>,
+    sidebar_drag: bbt_ui_model::input::SidebarResize,
+    sidebar_resize_region: Option<Rect>,
     sidebar_reveal: Option<bbt_proto::SwarmId>,
     sidebar_viewport: Option<(Rect, f32)>,
     launch_directory_pending: Option<bbt_mux::Ulid>,
@@ -2091,6 +2096,9 @@ impl App {
             swarm_folder_regions: Vec::new(),
             navigation_regions: Vec::new(),
             sidebar_scroll: None,
+            sidebar_width: None,
+            sidebar_drag: Default::default(),
+            sidebar_resize_region: None,
             sidebar_reveal: None,
             sidebar_viewport: None,
             launch_directory_pending: None,
@@ -5146,6 +5154,13 @@ impl App {
                     )
                 }
             }
+            UiEffect::SidebarWidth(width) => {
+                if self.sidebar_width != Some(*width) {
+                    Err("ui_frame_refused: a newer sidebar resize superseded this request".into())
+                } else {
+                    Ok(self.scene.sidebar_width == *width)
+                }
+            }
             UiEffect::Size([w, h]) => {
                 Ok((self.solved_size[0] - w).abs() < 1. && (self.solved_size[1] - h).abs() < 1.)
             }
@@ -5231,6 +5246,13 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::SidebarWidth(width) = effect {
+                        let expected = scene::Scene::fitted_sidebar_width(*width, layout.size);
+                        if self.sidebar_width != Some(*width)
+                            || layout.tree.get(1).is_none_or(|node| node.rect[2] != expected) {
+                            return Err("ui_frame_refused: sidebar width changed before its frame".into());
+                        }
+                    }
                     if let UiEffect::SwarmWorkdir(swarm,path)=effect
                         && layout.swarm_workdirs.get(&bbt_mux::Ulid(swarm.0.0)) != path.as_ref() {
                         return Err("ui_frame_refused: swarm folder changed before its frame".into());
@@ -5529,8 +5551,17 @@ impl App {
             UiRequest::SidebarWheel { lines } => {
                 self.scroll_sidebar(-(lines as f32) * 28.);
             }
+            UiRequest::Drag { from, to } => {
+                self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::SidebarWidth(
+                        self.sidebar_width.expect("completed resize"),
+                    ));
+                }
+            }
             UiRequest::Click { x, y } => {
                 self.pointer_pressed([x as f32, y as f32]);
+                self.end_sidebar_resize();
                 self.query_dragging = false;
                 self.composer_dragging = false;
             }
@@ -5836,6 +5867,9 @@ impl App {
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
         self.clock_frame = self.clock.frame();
         self.solved_size = logical;
+        if let Some(width) = self.sidebar_width {
+            self.scene.sidebar_width = width;
+        }
         let sending = self.ui_wait.as_ref().is_some_and(|wait| {
             wait.effects
                 .iter()
@@ -5955,6 +5989,7 @@ impl App {
         self.focus_bounds = self.scene.focus_bounds(&layouts);
         self.navigation_regions = self.scene.navigation_regions(&layouts);
         self.sidebar_viewport = self.scene.sidebar_extent(&layouts);
+        self.sidebar_resize_region = self.scene.sidebar_resize_region(&layouts, logical);
         self.pane_bounds = bounds;
         self.solve_launcher(logical)?;
         if self.document.open {
@@ -5982,6 +6017,7 @@ impl App {
                 self.window_last.as_ref(),
             );
             state.sidebar_scroll = self.scene.sidebar_scroll;
+            state.sidebar_width = self.scene.sidebar_width;
             if self.window_last.as_ref() != Some(&state) {
                 self.window_last = Some(state.clone());
                 self.queue(live::UiMsg::WindowState(state));
@@ -6885,6 +6921,9 @@ impl ApplicationHandler<UiEvent> for App {
         }
         match event {
             WindowEvent::Focused(focused) => {
+                if !focused {
+                    self.end_sidebar_resize();
+                }
                 self.frontmost = focused;
                 if !focused {
                     if self.rim_preview.take().is_some() {
@@ -6946,6 +6985,10 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                self.sidebar_cursor();
+                if self.move_sidebar_resize(self.pointer) {
+                    return;
+                }
                 if self.document.open {
                     return;
                 }
@@ -7171,6 +7214,7 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Left,
                 ..
             } => {
+                self.end_sidebar_resize();
                 self.query_dragging = false;
                 self.composer_dragging = false;
                 if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {

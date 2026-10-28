@@ -42,6 +42,7 @@ help:
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
+	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
@@ -271,6 +272,17 @@ test-spawn-wire:
 
 .PHONY: test-navigation check-navigation
 .PHONY: test-new-swarm format-new-swarm
+.PHONY: test-sidebar-resize check-sidebar-resize
+test-sidebar-resize:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui-core --target-dir '$(TARGET_DIR)' --lib input::sidebar; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test composer sidebar; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) sidebar; \
+	BBOXY_SIDEBAR_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-resize' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir sidebar_drag_reflows_and_persists_without_restarting_harnesses -- --ignored --exact
+
+check-sidebar-resize:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 .PHONY: test-cross-focus format-cross-focus check-cross-focus
 format-cross-focus: fmt-spawn
 

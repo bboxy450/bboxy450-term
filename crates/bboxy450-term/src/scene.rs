@@ -222,6 +222,7 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 
 pub struct Scene {
     pub sidebar_scroll: f32,
+    pub sidebar_width: f32,
     selected_swarm: Option<bbt_ui_model::SwarmId>,
     #[cfg(test)]
     projections: usize,
@@ -393,6 +394,7 @@ impl Scene {
         .expect("embedded scene-15 fixture");
         Self {
             sidebar_scroll: 0.,
+            sidebar_width: TOKENS.sidebar.width as f32,
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -512,6 +514,7 @@ impl Scene {
     pub fn live() -> Self {
         Self {
             sidebar_scroll: 0.,
+            sidebar_width: TOKENS.sidebar.width as f32,
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -572,6 +575,10 @@ impl Scene {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
+        self.sidebar_width = model.ui.window.sidebar.width.clamp(
+            bbt_ui_model::input::MIN_WIDTH,
+            bbt_ui_model::input::MAX_WIDTH,
+        );
         self.selected_swarm = stage.swarm;
         self.restart_generations.retain(|seat, _| {
             model
@@ -731,6 +738,26 @@ impl Scene {
     }
     pub fn layout_revision(&self) -> u64 {
         self.layout_revision
+    }
+    pub fn sidebar_width_for(&self, size: [f32; 2]) -> f32 {
+        Self::fitted_sidebar_width(self.sidebar_width, size)
+    }
+    pub fn fitted_sidebar_width(width: f32, size: [f32; 2]) -> f32 {
+        // Keep a usable stage when the window cannot fit the saved preference.
+        width
+            .clamp(
+                bbt_ui_model::input::MIN_WIDTH,
+                bbt_ui_model::input::MAX_WIDTH,
+            )
+            .min((size[0] - 160.).max(1.))
+    }
+    /// The invisible eight-pixel grab zone follows the solved sidebar border.
+    pub fn sidebar_resize_region(&self, layouts: &[c::Layout], size: [f32; 2]) -> Option<Rect> {
+        let sidebar = layouts.get(1)?.rect;
+        let x = (sidebar.right() - 4.).max(0.);
+        let right = (sidebar.right() + 4.).min(size[0]);
+        (right > x && size[1] > sidebar.y)
+            .then(|| Rect::new(x, sidebar.y, right - x, size[1] - sidebar.y))
     }
     /// Retained hit boxes: never a guessed strip/pane coordinate.
     pub fn close_regions(&self, layouts: &[c::Layout]) -> Vec<(SeatId, Rect, bool)> {
@@ -1018,7 +1045,7 @@ impl Scene {
             }
         }
         let title = STYLE.spacing.title_bar as f32;
-        let sidebar_width = 300_f32.min(size[0] * 0.35);
+        let sidebar_width = self.sidebar_width_for(size);
         let footer_height = if self.identity.is_some() { 24. } else { 0. };
         let sidebar_height = (size[1] - title - footer_height - dock_height).max(1.);
         let bounds = Rect::new(
@@ -1265,7 +1292,7 @@ impl Scene {
         bounded: bool,
     ) -> Result<LocalPageLayout, String> {
         let ctx = self.ui_context();
-        let sidebar = 300_f32.min(size[0] * 0.35);
+        let sidebar = self.sidebar_width_for(size);
         let rect = Rect::new(
             sidebar,
             STYLE.spacing.title_bar as f32,
@@ -1392,7 +1419,7 @@ impl Scene {
         state: &ui::modules::settings::controller::Presentation,
         status: &str,
     ) -> Result<LocalPageLayout, String> {
-        let width = (size[0] - 300_f32.min(size[0] * 0.35)).max(1.);
+        let width = (size[0] - self.sidebar_width_for(size)).max(1.);
         let height = (size[1] - STYLE.spacing.title_bar as f32 - dock - 44.).max(1.);
         let body = view.element_with(self.ui_context(), &self.metrics, width, height, state);
         let mut page = self.local_page_frame(
@@ -1427,7 +1454,7 @@ impl Scene {
         scroll: f32,
     ) -> Result<LocalPageLayout, String> {
         let ctx = self.ui_context();
-        let width = (size[0] - 300_f32.min(size[0] * 0.35)).max(1.);
+        let width = (size[0] - self.sidebar_width_for(size)).max(1.);
         let graph = ui::modules::graph_tab::GraphTab {
             e2e: Some(checklist.clone()),
             only: Some(vec!["e2e".into()]),
@@ -1473,7 +1500,7 @@ impl Scene {
                 Rect::new(
                     12.,
                     size[1] - 20.,
-                    (300_f32.min(size[0] * 0.35) - 24.).max(1.),
+                    (self.sidebar_width_for(size) - 24.).max(1.),
                     16.,
                 ),
                 note,
@@ -1494,7 +1521,7 @@ impl Scene {
         view: &ui::modules::composer::Conversation,
     ) -> Result<ConversationLayout, String> {
         let ctx = self.ui_context();
-        let width = 300_f32.min(size[0] * 0.35);
+        let width = self.sidebar_width_for(size);
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
         let height = (available * 0.45).max(200.).min(available);
@@ -1941,7 +1968,7 @@ mod depth_tests {
         let page = scene
             .graph_page_layout([1500., 900.], 240., &graph.checklist, 100.)
             .unwrap();
-        assert_eq!(page.viewport.x, 300.);
+        assert_eq!(page.viewport.x, scene.sidebar_width);
         assert_eq!(page.viewport.y, STYLE.spacing.title_bar as f32 + 44.);
         assert_eq!(page.viewport.y + page.viewport.h, 900. - 240.);
         assert!(page.max_scroll > 0.);
@@ -1986,7 +2013,7 @@ mod depth_tests {
     #[test]
     fn the_rim_size_moves_the_gutter_and_inset_and_never_the_sidebar() {
         let mut scene = Scene::new();
-        let sidebar_edge = 300_f32.min(1600. * 0.35);
+        let sidebar_edge = scene.sidebar_width;
         let chrome = |scene: &Scene| {
             scene.layout([1600., 960.], true).unwrap()[..2]
                 .iter()
@@ -2775,7 +2802,7 @@ mod launcher_tests {
             .map(|pane| pane.rect.x)
             .fold(f32::MAX, f32::min);
         assert!(
-            (left - 304.).abs() < 0.01,
+            (left - (scene.sidebar_width + 4.)).abs() < 0.01,
             "saved rim must produce its 4 px stage inset"
         );
         assert!(page.viewport.bottom() <= 780.);
@@ -2865,6 +2892,42 @@ mod launcher_tests {
         assert!(!hits[0].2 && hits[1].2);
         assert!(hits.iter().all(|(_, rect, _)| rect.w > 0. && rect.h > 0.));
         assert!(hits[0].1.right() <= hits[1].1.x);
+    }
+
+    #[test]
+    fn sidebar_width_drives_stage_and_grab_region_and_survives_narrow_layout() {
+        let mut scene = Scene::new();
+        for width in [160., 300., 420., 520.] {
+            scene.sidebar_width = width;
+            let layouts = scene.layout([1000., 700.], false).unwrap();
+            assert_eq!(layouts[1].rect.w, width);
+            let handle = scene
+                .sidebar_resize_region(&layouts, [1000., 700.])
+                .unwrap();
+            assert_eq!(handle.x + handle.w / 2., width);
+            assert_eq!(handle.w, 8.);
+            assert_eq!(handle.bottom(), 700.);
+            assert!(
+                scene
+                    .pane_bounds(&layouts)
+                    .iter()
+                    .all(|(_, rect)| rect.x >= width)
+            );
+        }
+        scene.sidebar_width = 520.;
+        assert_eq!(scene.sidebar_width_for([320., 700.]), 160.);
+        let narrow = scene.layout([320., 700.], false).unwrap();
+        assert!(
+            scene
+                .pane_bounds(&narrow)
+                .iter()
+                .all(|(_, r)| r.x >= 160. && r.right() <= 320.)
+        );
+        assert_eq!(
+            scene.sidebar_width, 520.,
+            "window constraints do not overwrite the saved preference"
+        );
+        assert_eq!(scene.sidebar_width_for([1000., 700.]), 520.);
     }
 
     #[test]

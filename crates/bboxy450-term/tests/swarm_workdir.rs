@@ -585,6 +585,200 @@ fn click_region(fixture: &Fixture, key: &str) -> Value {
 }
 
 #[test]
+#[ignore = "night: private ctl sidebar-drag/PTY/restart fixture; make test-sidebar-resize"]
+fn sidebar_drag_reflows_and_persists_without_restarting_harnesses() {
+    fn rect(node: &Value) -> [f64; 4] {
+        let rect = node["rect"].as_array().unwrap();
+        std::array::from_fn(|i| rect[i].as_f64().unwrap())
+    }
+    fn named<'a>(node: &'a Value, key: &str) -> Option<&'a Value> {
+        if node["kind"].as_str() == Some(key) {
+            return Some(node);
+        }
+        node["children"]
+            .as_array()?
+            .iter()
+            .find_map(|child| named(child, key))
+    }
+    fn named_rect(frame: &Value, key: &str) -> [f64; 4] {
+        rect(
+            frame["tree"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find_map(|node| named(node, key))
+                .unwrap_or_else(|| panic!("missing solved node {key}")),
+        )
+    }
+    fn handle(frame: &Value) -> [f64; 4] {
+        let region = frame["regions"]["sidebar-resize"]
+            .as_array()
+            .expect("sidebar exposes its retained resize handle");
+        let region = std::array::from_fn(|i| region[i].as_f64().unwrap());
+        assert_eq!(region[2], 8.);
+        region
+    }
+    fn edge(frame: &Value) -> f64 {
+        let h = handle(frame);
+        h[0] + h[2] / 2.
+    }
+    fn drag(fixture: &Fixture, width: f64) -> Value {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        let h = handle(&frame);
+        // Grip two pixels left of the edge. The result must not jump by two.
+        let from = h[0] + 2.;
+        let to = width + from - edge(&frame);
+        let y = (h[1] + h[3] / 2.).round().to_string();
+        fixture.ctl(&[
+            "ui",
+            "drag",
+            &from.round().to_string(),
+            &y,
+            &to.round().to_string(),
+            &y,
+        ])
+    }
+    fn process(fixture: &Fixture, seat: &str) -> (Value, Value) {
+        let rows = fixture.ctl(&["seat", "ls"]);
+        let row = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap();
+        (
+            row["state"]["process"].clone(),
+            row["record"]["generation"].clone(),
+        )
+    }
+    fn aligned(frame: &Value, seat: &str, inset: f64) {
+        let width = edge(frame);
+        let dock = named_rect(frame, "named:conversation");
+        assert_eq!(dock[0], 0.);
+        assert_eq!(dock[2], width, "dock follows the sidebar edge");
+        for key in [
+            "named:composer/send",
+            "named:composer/priority",
+            "named:composer/kpick",
+        ] {
+            let control = named_rect(frame, key);
+            assert!(
+                control[0] >= 0. && control[0] + control[2] <= width,
+                "{key} must fit inside the sidebar"
+            );
+        }
+        let h = handle(frame);
+        assert!(h[1] <= dock[1] && h[1] + h[3] >= dock[1] + dock[3]);
+        let pane = frame["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|pane| pane["seat"] == seat)
+            .unwrap();
+        let pane = rect(pane);
+        assert_eq!(pane[0], width + inset, "stage follows the same edge");
+        assert!(pane[2] > 0. && pane[0] + pane[2] <= frame["size"][0].as_f64().unwrap());
+        assert_eq!(frame["focused"], seat, "drag does not move focus");
+    }
+    fn capture(fixture: &Fixture, name: &str) {
+        if let Some(directory) = std::env::var_os("BBOXY_SIDEBAR_EVIDENCE") {
+            fs::create_dir_all(&directory).unwrap();
+            let path = PathBuf::from(directory).join(name);
+            fixture.ctl(&["seat", "capture", "window", path.to_str().unwrap()]);
+        }
+    }
+
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
+    let seat = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&seat, &fixture.root.join("repository"));
+    let initial = fixture.ctl(&["ui", "focus", &seat]);
+    let before = process(&fixture, &seat);
+    let pane = initial["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|pane| pane["seat"] == seat)
+        .unwrap();
+    let inset = rect(pane)[0] - edge(&initial);
+    for (requested, expected, name) in [
+        (420., 420., "sidebar-420.png"),
+        (20., 160., "sidebar-160.png"),
+        (900., 520., "sidebar-520.png"),
+    ] {
+        let frame = drag(&fixture, requested);
+        assert_eq!(edge(&frame), expected);
+        aligned(&frame, &seat, inset);
+        capture(&fixture, name);
+    }
+
+    // Unsupported drags must not fall through to the ordinary settings click.
+    let before_refusal = fixture.ctl(&["ui", "layout"]);
+    let gear = before_refusal["regions"]["settings"].as_array().unwrap();
+    let x = (gear[0].as_f64().unwrap() + gear[2].as_f64().unwrap() / 2.)
+        .round()
+        .to_string();
+    let y = (gear[1].as_f64().unwrap() + gear[3].as_f64().unwrap() / 2.)
+        .round()
+        .to_string();
+    let refused = fixture
+        .command()
+        .args(["ctl", "ui", "drag", &x, &y, "700", &y, "--run-dir"])
+        .arg(fixture.root.join("run"))
+        .output()
+        .unwrap();
+    assert!(!refused.status.success(), "off-handle drag must be refused");
+    let reply: Value = serde_json::from_slice(&refused.stdout).unwrap();
+    assert_eq!(reply["ok"], false);
+    let unchanged = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(edge(&unchanged), 520.);
+    assert_eq!(unchanged["page"], before_refusal["page"]);
+    assert_eq!(unchanged["focused"], before_refusal["focused"]);
+
+    let settings = click_region(&fixture, "settings");
+    assert_eq!(settings["page"], "settings");
+    let page = settings["tree"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|node| named(node, "named:local/close").is_some())
+        .unwrap();
+    assert_eq!(rect(page)[0], 520.);
+    assert_eq!(rect(page)[2], settings["size"][0].as_f64().unwrap() - 520.);
+    assert_eq!(named_rect(&settings, "named:conversation")[2], 520.);
+    capture(&fixture, "sidebar-settings-520.png");
+    click_region(&fixture, &format!("seat:{seat}"));
+    let narrow = fixture.ctl(&["app", "resize", "2x24"]);
+    assert_eq!(narrow["size"][0], 320.);
+    assert_eq!(edge(&narrow), 160.);
+    aligned(&narrow, &seat, inset);
+    let resized = fixture.ctl(&["app", "resize", "120x40"]);
+    assert_eq!(edge(&resized), 520.);
+    aligned(&resized, &seat, inset);
+    fixture.ctl(&["app", "resize", "180x60"]);
+    let final_width = drag(&fixture, 420.);
+    assert_eq!(edge(&final_width), 420.);
+    aligned(&final_width, &seat, inset);
+    assert_eq!(process(&fixture, &seat), before);
+    std::thread::sleep(Duration::from_millis(500));
+    let owners = fixture.owners();
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(process(&fixture, &seat), before);
+    let restored = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(edge(&restored), 420., "the chosen width survives UI loss");
+    aligned(&restored, &seat, inset);
+    capture(&fixture, "sidebar-restored.png");
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
 #[ignore = "night: private ctl new-swarm/cwd/PTY/restart fixture; make test-new-swarm"]
 fn new_swarm_cwd_controls_stay_visible_and_launch_in_the_saved_folder() {
     let mut fixture = Fixture::new();

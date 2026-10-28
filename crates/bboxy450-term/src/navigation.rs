@@ -118,6 +118,9 @@ impl App {
             }
             return;
         }
+        if self.begin_sidebar_resize(at) {
+            return;
+        }
         let hit =
             |r: &Rect| at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom();
         let child_control = self.close_regions.iter().any(|(_, r, _)| hit(r))
@@ -425,6 +428,9 @@ impl App {
             .iter()
             .map(|(id, r)| (id.clone(), [r.x, r.y, r.w, r.h]))
             .collect();
+        if let Some(r) = self.sidebar_resize_region {
+            regions.insert("sidebar-resize".into(), [r.x, r.y, r.w, r.h]);
+        }
         for (seat, r) in &self.focus_bounds {
             regions.insert(format!("pane:{seat}"), [r.x, r.y, r.w, r.h]);
         }

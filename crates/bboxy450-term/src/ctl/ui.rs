@@ -1,4 +1,6 @@
 //! Window chrome through the GUI owner: `ctl ui …`.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 
 /// This noun's rows of [`super::VERBS`], in parse order.
@@ -6,6 +8,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "open", "Ui"),
     ("ui", "key", "Ui"),
     ("ui", "click", "Ui"),
+    ("ui", "drag", "Ui"),
     ("ui", "sidebar-scroll", "Ui"),
     ("ui", "launcher-scroll", "Ui"),
     ("ui", "focus", "Ui"),
@@ -38,6 +41,21 @@ pub(super) use ui_commands;
 /// when the words are not this noun's.
 pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", "drag", x0, y0, x1, y1] => {
+            let values: Result<Vec<u32>, _> =
+                [x0, y0, x1, y1].into_iter().map(str::parse).collect();
+            let v = values.map_err(|_| {
+                format!("{USAGE_PREFIX}ui drag requires unsigned from-x from-y to-x to-y")
+            })?;
+            let request = bbt_proto::gui::UiRequest::Drag {
+                from: [v[0], v[1]],
+                to: [v[2], v[3]],
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
         ["ui", "launcher-scroll", lines] => {
             let request = bbt_proto::gui::UiRequest::LauncherWheel {
                 lines: lines
@@ -223,6 +241,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui click 10 20",
+    "ui drag 258 100 418 100",
     "ui sidebar-scroll -3",
     "ui launcher-scroll -3",
     "ui open graph",

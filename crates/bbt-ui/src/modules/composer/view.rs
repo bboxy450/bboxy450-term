@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 use crate::modules::{
     seat_row::{named, role_color},
@@ -655,7 +657,47 @@ impl Composer {
             )
             .into(),
         );
-        children.push(
+        let fixed_width = foot.iter().try_fold(
+            sp.s3 as f32 * foot.len().saturating_sub(1) as f32,
+            |width, item| -> ui::style::Result<f32> {
+                let flexible = matches!(item.extent, c::Extent::Fill | c::Extent::Flex(_))
+                    || matches!(item.extent, c::Extent::Content { shrink, .. } if shrink > 0.);
+                Ok(width
+                    + if flexible {
+                        0.
+                    } else {
+                        item.element.natural(inner, ctx, m)?.0[0]
+                    })
+            },
+        )?;
+        let footer = if fixed_width > inner {
+            // Keep every action reachable in a minimum-width sidebar.
+            let send = foot.pop().expect("footer has its send action");
+            stack(
+                "composer/foot",
+                plain(None, [0.; 4], 0.),
+                Axis::Column,
+                sp.s2 as f32,
+                vec![
+                    row(
+                        "composer/foot/options",
+                        plain(None, [0.; 4], 0.),
+                        sp.s3 as f32,
+                        c::Alignment::Center,
+                        foot,
+                    )
+                    .into(),
+                    row(
+                        "composer/foot/actions",
+                        plain(None, [0.; 4], 0.),
+                        0.,
+                        c::Alignment::Center,
+                        vec![spacer(), send],
+                    )
+                    .into(),
+                ],
+            )
+        } else {
             row(
                 "composer/foot",
                 plain(None, [0.; 4], 0.),
@@ -663,8 +705,8 @@ impl Composer {
                 c::Alignment::Center,
                 foot,
             )
-            .into(),
-        );
+        };
+        children.push(footer.into());
         let mut s = plain(
             None,
             [sp.s3 as f32, sp.s4 as f32, sp.s3 as f32, sp.s4 as f32],
