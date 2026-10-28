@@ -1,0 +1,60 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+//! Native callbacks dispatch the same application actions as keyboard and ctl.
+use crate::*;
+use bboxy450_term_desktop::Action;
+
+impl App {
+    pub(super) fn install_desktop_menu(&mut self) {
+        if self.desktop_menu.is_some() {
+            return;
+        }
+        let proxy = self.proxy.clone();
+        match bboxy450_term_desktop::MenuBar::install(Box::new(move |action| {
+            let _ = proxy.send_event(UiEvent::DesktopAction(action));
+        })) {
+            Ok(menu) => self.desktop_menu = Some(menu),
+            Err(reason) => self
+                .logger
+                .write(format!("desktop menu unavailable: {reason}")),
+        }
+    }
+    /// Closing is completed by the native/headless event owner using its existing lifecycle.
+    pub(super) fn desktop_action(&mut self, action: Action) -> Option<bool> {
+        match action {
+            Action::CloseWindow => return Some(false),
+            Action::HardQuit => return Some(true),
+            Action::NewTab => self.open_launcher(),
+            Action::SplitRight => self.split_launcher(bbt_proto::seat_state::Side::Right),
+            Action::SplitDown => self.split_launcher(bbt_proto::seat_state::Side::Bottom),
+            Action::Settings => self.open_settings("Account"),
+            Action::ShowWindow
+            | Action::HideWindow
+            | Action::ToggleFullscreen
+            | Action::Minimize
+            | Action::Zoom => {
+                if let Some(window) = &self.window
+                    && let Err(reason) = bboxy450_term_desktop::apply_window_action(window.as_ref(), action)
+                {
+                    self.logger.write(format!("desktop window: {reason}"));
+                }
+            }
+        }
+        self.request_redraw();
+        None
+    }
+    pub(super) fn titlebar_double_click(&mut self) {
+        if let Some(window) = &self.window {
+            let action = bboxy450_term_desktop::titlebar_action();
+            if let Err(reason) =
+                bboxy450_term_desktop::apply_titlebar_action(window.as_ref(), action)
+            {
+                self.logger.write(format!("desktop titlebar: {reason}"));
+            }
+        }
+    }
+}

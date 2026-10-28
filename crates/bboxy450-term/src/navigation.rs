@@ -122,6 +122,7 @@ impl App {
             }
             return;
         }
+        if self.titlebar_pressed(at, false) { return; }
         if self.begin_sidebar_resize(at) {
             return;
         }

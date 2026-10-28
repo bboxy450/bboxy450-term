@@ -32,6 +32,7 @@ use tokio::{
 
 mod fixture_hosts;
 mod owners;
+pub mod desktop;
 mod shell_path;
 use owners::ManagedChild as Child;
 pub use owners::{Exit as ProcessExit, Process};
@@ -644,6 +645,7 @@ async fn write_requests(
 )]
 pub fn private_entry(args: &[String]) -> Option<Result<()>> {
     match args.first().map(String::as_str) {
+        Some("desktop") => Some(desktop::run()),
         Some("supervisor") => Some(bbt_rt::handle().block_on(supervisor_main())),
         Some("logic") => Some(bbt_rt::handle().block_on(logic_main())),
         _ => None,
@@ -804,6 +806,7 @@ async fn logic_main() -> Result<()> {
 /// The IO owner, never stored on or dropped from the UI thread.
 pub struct Session {
     pub supervisor: Process,
+    pub desktop_supervisor: std::sync::Arc<std::sync::atomic::AtomicU32>,
     pub logic: Process,
     _frontend: owners::FrontendLock,
     pub endpoint: LogicReady,
@@ -892,7 +895,8 @@ impl Session {
             if owners::supervisor_held(&config)? {
                 let record = owners::read::<SupervisorReady>(&config, "supervisor")?
                 .ok_or_else(|| invalid("live supervisor has no matching private run owner record; no second supervisor started"))?;
-                let ready = record.ready.clone();
+                let mut ready = record.ready.clone();
+                ready.pid = record.process.pid();
                 (
                     Process::adopted(&config, "supervisor", record),
                     None,
@@ -958,6 +962,7 @@ impl Session {
             config,
             launch_path,
             _frontend: frontend,
+            desktop_supervisor: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(supervisor_ready.pid)),
             supervisor_ready,
             supervisor,
             supervisor_control,
@@ -1103,6 +1108,8 @@ impl Session {
                                 self.supervisor.preserve_on_drop();
                                 self.supervisor_control = supervisor.control;
                                 self.supervisor_ready = supervisor.ready;
+                                self.desktop_supervisor.store(self.supervisor_ready.pid, std::sync::atomic::Ordering::Release);
+                                desktop::refresh(self.config.clone());
                             }
                             let logic = recovered.logic;
                             self.logic = Process::Child(logic.child);

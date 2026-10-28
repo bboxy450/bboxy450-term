@@ -47,6 +47,9 @@ help:
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
+	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
+	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
+	  'make test-desktop-lifecycle     Owned daemon/UI detach and same-harness reopen boundary' \
 	  'make test-chat-ux                Chat controls, local times, quiet status and saved vertical splits' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
@@ -472,3 +475,22 @@ test-large-gui-frame:
 
 format-large-gui-frame:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/gui/mod.rs crates/bbt-mux/src/seat_socket.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+.PHONY: test-desktop
+test-desktop:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-desktop --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-term-desktop --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo run --locked -p bboxy450-term-desktop --example native_probe --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-desktop-app
+test-desktop-app:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::desktop; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) desktop_window; \
+	cargo clippy --locked -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-desktop-lifecycle
+test-desktop-lifecycle:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test desktop daemon_survives_ui_detach_and_reopens_the_same_running_harness -- --ignored --exact --nocapture

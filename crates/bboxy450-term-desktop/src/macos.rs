@@ -8,12 +8,13 @@ use super::*;
 use objc2::{
     DefinedClass, MainThreadOnly, define_class, msg_send,
     rc::Retained,
-    runtime::{AnyObject, Sel},
+    runtime::{AnyObject, ProtocolObject, Sel},
     sel,
 };
 use objc2_app_kit::{
-    NSApplication, NSApplicationActivationPolicy, NSEvent, NSEventModifierFlags, NSEventType,
-    NSImage, NSMenu, NSMenuItem, NSStatusBar, NSStatusItem, NSView, NSWindow,
+    NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate, NSEvent,
+    NSEventModifierFlags, NSEventType, NSImage, NSMenu, NSMenuItem, NSStatusBar, NSStatusItem,
+    NSView, NSWindow,
 };
 use objc2_foundation::{
     MainThreadMarker, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString,
@@ -31,6 +32,16 @@ define_class!(
     #[ivars = Ivars]
     struct Target;
     unsafe impl NSObjectProtocol for Target {}
+    unsafe impl NSApplicationDelegate for Target {
+        #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
+        fn reopen(&self, _app: &NSApplication, _visible: bool) -> bool {
+            // Finder/Dock may address the surviving accessory process after
+            // the UI quits. Reopen the same run through its desktop action.
+            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                (self.ivars().callback)(Action::ShowWindow)));
+            false
+        }
+    }
     impl Target {
         #[unsafe(method(activate:))]
         fn activate(&self, sender: &NSMenuItem) {
@@ -219,6 +230,7 @@ pub(super) fn run_daemon(
         Ok(tray) => tray,
         Err(error) => return super::run_without_native(worker, error),
     };
+    app.setDelegate(Some(ProtocolObject::from_ref(&*tray.native._target)));
     let stop = StopHandle::new(true, None);
     let worker = std::thread::spawn({
         let stop = stop.clone();
@@ -234,6 +246,7 @@ pub(super) fn run_daemon(
         .join()
         .map_err(|_| Error::Native("daemon worker panicked".into()))?
         .map_err(|_| Error::Native("daemon worker panicked".into()))?;
+    app.setDelegate(None);
     drop(tray);
     Ok(())
 }
@@ -294,14 +307,23 @@ pub(super) fn apply_window_action(
         Action::ShowWindow => {
             let app = NSApplication::sharedApplication(MainThreadMarker::from(&*window));
             app.unhide(None);
-            window.deminiaturize(None);
+            // AppKit can complete a deminiaturization asynchronously even for
+            // an already-visible window; a redundant request can undo a later
+            // Minimize. Match the actual native state before issuing it.
+            if window.isMiniaturized() {
+                window.deminiaturize(None);
+            }
             window.makeKeyAndOrderFront(None);
             app.activate();
         }
         Action::HideWindow => {
             NSApplication::sharedApplication(MainThreadMarker::from(&*window)).hide(None)
         }
-        Action::Minimize => window.miniaturize(None),
+        Action::Minimize => {
+            if !window.isMiniaturized() {
+                window.miniaturize(None);
+            }
+        }
         Action::Zoom => window.zoom(None),
         Action::ToggleFullscreen => window.toggleFullScreen(None),
         _ => return Err(Error::InvalidAction(action.as_str().into())),

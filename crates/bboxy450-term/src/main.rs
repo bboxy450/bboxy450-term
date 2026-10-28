@@ -19,6 +19,8 @@ mod live;
 mod log;
 mod navigation;
 mod pointer_cursor;
+mod desktop_window;
+mod desktop_menu;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -128,6 +130,8 @@ pub enum UiEvent {
     NotificationError(String),
     ErrorCount(u64),
     LocalTimeReady,
+    DesktopAction(bboxy450_term_desktop::Action),
+    TitlebarDoubleClick,
 }
 const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
 
@@ -1955,6 +1959,8 @@ struct App {
     sidebar_width: Option<f32>,
     sidebar_accordion_overrides: BTreeMap<String, bool>,
     sidebar_drag: bbt_ui_model::input::SidebarResize,
+    titlebar: desktop_window::Titlebar,
+    desktop_menu: Option<bboxy450_term_desktop::MenuBar>,
     sidebar_vertical_drag: Option<sidebar_vertical::VerticalDrag>,
     sidebar_layout_preview: Option<bbt_ui::modules::composer::SidebarLayout>,
     sidebar_resize_region: Option<Rect>,
@@ -2152,6 +2158,8 @@ impl App {
             sidebar_width: None,
             sidebar_accordion_overrides: BTreeMap::new(),
             sidebar_drag: Default::default(),
+            titlebar: Default::default(),
+            desktop_menu: None,
             sidebar_vertical_drag: None,
             sidebar_layout_preview: None,
             sidebar_resize_region: None,
@@ -4635,6 +4643,7 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
+        self.install_desktop_menu();
         if !self.document.open
             && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
         {
@@ -6254,6 +6263,7 @@ impl App {
                 self.queue(live::UiMsg::WindowState(state));
             }
         }
+        self.titlebar.retain(&layouts);
         self.update_cursor();
         Ok(layouts)
     }
@@ -6717,6 +6727,12 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::DesktopAction(action) => {
+                if let Some(hard) = self.desktop_action(action) {
+                    if hard { self.request_shutdown(event_loop); } else { self.request_close(event_loop); }
+                }
+            }
+            UiEvent::TitlebarDoubleClick => self.titlebar_double_click(),
             UiEvent::LocalTimeReady => {
                 self.refresh_conversation();
                 self.request_redraw();
@@ -7221,6 +7237,7 @@ impl ApplicationHandler<UiEvent> for App {
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                self.titlebar.moved(self.pointer);
                 self.pointer_inside = true;
                 self.update_cursor();
                 if self.move_sidebar_resize(self.pointer) {
@@ -7459,6 +7476,9 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Left,
                 ..
             } => {
+                if !self.document.open && self.launcher.is_none() && self.titlebar_pressed(self.pointer, true) {
+                    return;
+                }
                 self.pointer_pressed(self.pointer);
             }
             WindowEvent::MouseInput {
@@ -8301,6 +8321,10 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args.iter().any(|a| a == "--desktop-fixture")
+        && (!cfg!(debug_assertions) || bboxy450_term::cockpit::Config::test_account_from_args(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)?.is_none()) {
+        return Err("--desktop-fixture requires a debug build and --test-account".into());
+    }
     let diagnostics_root = diagnostic_root(&hook_args).ok();
     if let Some(root) = &diagnostics_root {
         bbt_rt::error_journal::configure(root);

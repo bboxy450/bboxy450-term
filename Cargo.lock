@@ -418,6 +418,7 @@ dependencies = [
  "bboxy450-render",
  "bboxy450-rt",
  "bboxy450-term-core",
+ "bboxy450-term-desktop",
  "bboxy450-ui",
  "bboxy450-ui-core",
  "block2 0.6.2",
@@ -457,6 +458,19 @@ dependencies = [
  "serde-big-array",
  "serde_json",
  "unicode-width",
+]
+
+[[package]]
+name = "bboxy450-term-desktop"
+version = "0.1.1"
+dependencies = [
+ "dispatch2",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "raw-window-handle",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1280,6 +1294,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
 dependencies = [
  "bitflags 2.13.2",
+ "block2 0.6.2",
+ "libc",
  "objc2 0.6.5",
 ]
 
@@ -2662,6 +2678,7 @@ dependencies = [
  "bitflags 2.13.2",
  "block2 0.6.2",
  "objc2 0.6.5",
+ "objc2-core-foundation",
  "objc2-foundation 0.3.2",
 ]
 

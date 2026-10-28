@@ -61,6 +61,7 @@ impl App {
                     }
                 });
         }
+        if self.titlebar.actionable(at) { return Cursor::Pointer; }
         if self.sidebar_vertical_drag.is_some() { return Cursor::NsResize; }
         if self.sidebar_drag.active() {
             return Cursor::EwResize;

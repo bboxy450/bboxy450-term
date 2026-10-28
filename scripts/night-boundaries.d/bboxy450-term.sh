@@ -2,6 +2,7 @@
 # Exact real boundaries for bboxy450-term; append new selectors here.
 # Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 set -eu
+cargo test -p bboxy450-term --locked --test desktop daemon_survives_ui_detach_and_reopens_the_same_running_harness -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test swarm_workdir sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test swarm_workdir settings_uses_full_window_height_after_resizes -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test lifecycle lifecycle_real_process_boundary -- --ignored --exact --nocapture

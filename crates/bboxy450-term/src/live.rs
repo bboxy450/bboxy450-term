@@ -194,7 +194,14 @@ pub fn start_with_sink(
             let mut config = cockpit::Config::discover(run_dir)?;
             config.ctl = ctl;
             let cwd = config.repository.clone();
+            let desktop_config = config.clone();
             let session = Session::start(config).await?;
+            // Desktop setup is best effort and runs beside the IO owner. It
+            // never gates backend readiness, messaging or the frame loop.
+            let desktop_events = events.clone();
+            let _desktop = cockpit::desktop::attach(desktop_config, session.desktop_supervisor.clone(), move |action| {
+                desktop_events(UiEvent::DesktopAction(action));
+            });
             events(UiEvent::BackendInfo {
                 generation: session.endpoint.generation,
                 custody_backend: session.endpoint.custody_backend.clone(),

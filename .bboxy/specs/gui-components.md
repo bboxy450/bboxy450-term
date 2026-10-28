@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: 2026-10-28T20:21:50Z
+updated: "2026-10-28T22:09:11Z"
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }
@@ -481,3 +481,38 @@ Every layer is visible on its own in bboxybook and verified before the layer abo
 | L9 app | window, input, focus, drag, shortcuts, state-stream client | manual and synthetic-event tests |
 
 Rules: a layer's gallery exists before its code is used by the layer above; a diff at layer N is fixed at layer N, never papered over above it; briefs are one layer, one or two components, one verification each.
+
+### Native desktop integration (operator, 2026-10-28)
+
+`bboxy450-term-desktop` owns portable action/menu models and platform backends.
+macOS supplies native application menus, an accessory status item, and window
+operations; other platforms explicitly report unsupported until their adapters
+arrive. AppKit objects remain on each process's main thread. Native callbacks
+only enqueue owned actions; the UI and desktop event loops never wait for IO.
+
+The terminal starts a small `desktop` daemon beside its PTY supervisor. It owns
+the status item and follows that supervisor's PID and birth identity, including
+when the UI detaches. This also attaches desktop support to an older live
+supervisor without restarting any harness. A private per-run lock prevents two
+status items. macOS process-exit notification ends the host without polling.
+Show/New Tab/Settings activate the UI or start it with the same run/repository.
+Native initialization failure is reported and does not block terminal startup.
+
+The UI's private mode0600 `desktop-ui.sock` admits only the kernel peer PID of
+the recorded desktop process for that run/account; seat descendants of the supervisor are
+refused, while the owned GUI branch keeps its operator authority. One bounded action line has a one-second deadline, with sixteen
+independent receive slots. This does not open the optional operator ctl door.
+Ordinary headless/test-account fixtures do not create a status item.
+
+CmdQ and the red window control detach the UI and preserve sessions. The
+explicit CmdOptionQ / Quit and Stop All Sessions action stops backend owners
+through the existing orderly shutdown path, with a birth-checked fallback when
+no responsive UI remains. macOS-reserved CmdShiftQ is never installed.
+
+The painted title bar's retained bounds route close/minimize/fullscreen and
+native dragging; interactive controls and modal overlays are excluded. A
+background double-click follows the machine's Fill/Zoom/Minimize/No Action
+preference and system click interval. Fill restores the prior frame on the
+next invocation. Native dragging consumes only a physical NSEvent; ctl clicks
+never inject an operating-system drag. Menus, keyboard shortcuts and title-bar
+controls share the application's action dispatcher.

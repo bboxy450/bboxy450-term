@@ -26,6 +26,7 @@ pub struct ProcessIdentity {
     birth: (u64, u64),
 }
 impl ProcessIdentity {
+    pub(super) fn pid(&self) -> u32 { self.pid }
     pub(super) fn read(pid: u32) -> Result<Self> {
         birth(pid)
             .map(|birth| Self { pid, birth })

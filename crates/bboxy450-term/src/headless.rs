@@ -187,6 +187,16 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
+                    UiEvent::DesktopAction(action) => {
+                        if let Some(hard) = app.desktop_action(action) {
+                            if let Some(commands) = app.live_commands.take() {
+                                if hard { commands.shutdown(); } else { commands.detach(app.window_last.clone()); }
+                            }
+                            closing = true;
+                        }
+                        dirty = true;
+                    }
+                    UiEvent::TitlebarDoubleClick => app.titlebar_double_click(),
                     UiEvent::LocalTimeReady => {
                         app.refresh_conversation();
                         dirty = true;

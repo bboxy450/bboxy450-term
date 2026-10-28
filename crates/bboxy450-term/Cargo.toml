@@ -17,6 +17,7 @@ name = "notification_probe"
 required-features = ["notification-probe"]
 
 [dependencies]
+bboxy450-term-desktop = { version = "0.1.1", path = "../bboxy450-term-desktop" }
 shell-words = "1.1.0"
 jiff = "0.2.38"
 bboxy450-desktop-notifications = { package = "bboxy450-desktop-notifications", version = "0.1.1", path = "../bboxy450-desktop-notifications" }
