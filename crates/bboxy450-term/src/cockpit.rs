@@ -483,7 +483,7 @@ fn fixture_hosts_default() -> bool {
     true
 }
 // Includes GUI control verbs: older logic cannot decode UiRequest::Drag.
-const MCP_CONTROL_VERSION: u16 = 5;
+const MCP_CONTROL_VERSION: u16 = 6;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {

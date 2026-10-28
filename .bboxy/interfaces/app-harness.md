@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-28T15:30:00Z"
+updated: "2026-10-28T15:52:20Z"
 ---
 # ICD: app ↔ harness
 

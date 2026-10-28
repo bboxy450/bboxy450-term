@@ -56,6 +56,9 @@ fn malformed_cli_keeps_its_explicit_journal_and_default_errors_remain_visible() 
     let selected = root.path().join("selected");
     std::fs::create_dir(&fallback).unwrap();
     std::fs::create_dir(&selected).unwrap();
+    for path in [&fallback, &selected] {
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+    }
     let servers: Vec<_> = [&fallback, &selected]
         .into_iter()
         .map(|path| {

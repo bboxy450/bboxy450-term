@@ -10,3 +10,6 @@ git diff --check — exit0.
 python3 -I scripts/source-notices.py — exit0; existing notices retained, no new ownership claims.
 rustfmt parsing/formatting of only new function and test chunks — exit0.
 Cargo/build/runtime regression checks not run in this worktree by parent instruction; root performs them after integration. No GUI actions, global configuration edits, publishing, landing or operator-error deletion performed.
+
+Root verification: make test-cli-error-isolation — exit0; private routing2tests, ctl suite and notification preflight passed. Initial fixture refused0755 childdirectories; fixed childfixtures to0700, keeping production private-directory check intact.
+make check-harness-startup — exit0; strictall-target clippy. make test-boundaries — exit0.

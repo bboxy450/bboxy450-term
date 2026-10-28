@@ -1,0 +1,11 @@
+Operator request: bboxy Claude always bypasses permission prompts; bboxy Codex always uses --yolo.
+Installed Claude CLI documents --dangerously-skip-permissions (valid spelling); generated fresh/resumed/custom-executable launches include it. Codex includes --yolo and per-seat never/danger-full-access config; first bound TUI thread/start or thread/resume receives matching typed policy fields. Passive observation and later unrelated requests are untouched.
+Conflicting approval/sandbox selectors/config and -- are explicit pre-overlay refusals; managed policy cannot silently lose to an opposite caller setting. Global user/shared-daemon config is never written.
+make test-harness-startup — exit0; kit and mux adapter tests, including fresh/resumed argv and private start/resume WebSocket policy regression.
+make test-cli-error-isolation — exit0; malformed explicit-private CLI errors stay in selected journal and default caller errors remain visible.
+make check-harness-startup — exit0; strictclippy/alltargets kit,mux,app. make test-boundaries — exit0; real process/lifecycle, private signing and CLI boundaries.
+make test-codex-rendering — exit0; actual installed Codex private shared daemon: two distinct named/role-bound threads orient and wake, zero idle reconnects/clears, resize/recovery preserves identities, daemon survives fixture stop; external_model_calls=0, operator_input=0.
+MCP control compatibility6 causes old launch-planning logic to refresh while retaining supervisor/PTYS; existing running harnesses are not restarted for startupflag changes.
+Flashing remains unproven and open as https://github.com/bboxy450/bboxy450-term/issues/72. Operator clarified right-side vertical strip blank/visible and allowed moving on. No speculative renderer modification. Idle composition captures and balanced BSU/ESU do not prove active finalpresentedpixels.
+Live errors read:101unread; newest101 retained rows sourcectl100 andmcp1(Method notfound). Test parse failure routing torealjournal confirmed independently withtwo private sinks; old records retained, reading acknowledged them.
+Raw logs/sessioncaptures remain private outsideGit under ~/Library/Logs/bboxy450-term/codex-right-edge-20261028. Final exactsourceCI and signed install/landing receipts are recorded byMake/scripts/land.sh.
