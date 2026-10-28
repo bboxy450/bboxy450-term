@@ -4,7 +4,13 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-use super::*;
+#![doc = include_str!("../README.md")]
+#![cfg(target_os = "macos")]
+
+use bboxy450_term_desktop_core::{
+    Action, Callback, Error, MenuCommand, MenuItem, StopHandle, TitlebarAction, app_menu,
+    run_without_native, tray_menu,
+};
 use objc2::{
     DefinedClass, MainThreadOnly, define_class, msg_send,
     rc::Retained,
@@ -20,7 +26,8 @@ use objc2_foundation::{
     MainThreadMarker, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString,
     NSUserDefaults, NSValue, ns_string,
 };
-use raw_window_handle::RawWindowHandle;
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+use std::time::Duration;
 
 struct Ivars {
     callback: Callback,
@@ -217,21 +224,21 @@ impl Drop for Tray {
     }
 }
 
-pub(super) fn run_daemon(
+pub fn run_daemon(
     callback: Callback,
     worker: impl FnOnce(StopHandle) + Send + 'static,
 ) -> Result<(), Error> {
     let Some(mtm) = MainThreadMarker::new() else {
-        return super::run_without_native(worker, Error::MainThreadRequired);
+        return run_without_native(worker, Error::MainThreadRequired);
     };
     let app = NSApplication::sharedApplication(mtm);
     app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
     let tray = match Tray::install(callback) {
         Ok(tray) => tray,
-        Err(error) => return super::run_without_native(worker, error),
+        Err(error) => return run_without_native(worker, error),
     };
     app.setDelegate(Some(ProtocolObject::from_ref(&*tray.native._target)));
-    let stop = StopHandle::new(true, None);
+    let stop = StopHandle::new(Some(stop_main_loop), None);
     let worker = std::thread::spawn({
         let stop = stop.clone();
         move || {
@@ -251,7 +258,7 @@ pub(super) fn run_daemon(
     Ok(())
 }
 
-pub(super) fn stop_main_loop() {
+pub fn stop_main_loop() {
     dispatch2::DispatchQueue::main().exec_async(|| {
         let Some(mtm) = MainThreadMarker::new() else { return; };
         let app = NSApplication::sharedApplication(mtm);
@@ -266,7 +273,7 @@ pub(super) fn stop_main_loop() {
     });
 }
 
-pub(super) fn titlebar_action() -> TitlebarAction {
+pub fn titlebar_action() -> TitlebarAction {
     let value =
         NSUserDefaults::standardUserDefaults().stringForKey(ns_string!("AppleActionOnDoubleClick"));
     match value.as_ref().map(|s| s.to_string()).as_deref() {
@@ -276,7 +283,7 @@ pub(super) fn titlebar_action() -> TitlebarAction {
         _ => TitlebarAction::Zoom,
     }
 }
-pub(super) fn double_click_interval() -> Duration {
+pub fn double_click_interval() -> Duration {
     let seconds = NSEvent::doubleClickInterval();
     if seconds.is_finite() && seconds > 0. {
         Duration::from_secs_f64(seconds)
@@ -298,10 +305,7 @@ fn native_window(window: &impl HasWindowHandle) -> Result<Retained<NSWindow>, Er
     view.window()
         .ok_or_else(|| Error::Native("view has no window".into()))
 }
-pub(super) fn apply_window_action(
-    window: &impl HasWindowHandle,
-    action: Action,
-) -> Result<(), Error> {
+pub fn apply_window_action(window: &impl HasWindowHandle, action: Action) -> Result<(), Error> {
     let window = native_window(window)?;
     match action {
         Action::ShowWindow => {
@@ -377,7 +381,7 @@ fn fill(window: &NSWindow) -> Result<(), Error> {
     }
     Ok(())
 }
-pub(super) fn apply_titlebar_action(
+pub fn apply_titlebar_action(
     window: &impl HasWindowHandle,
     action: TitlebarAction,
 ) -> Result<(), Error> {

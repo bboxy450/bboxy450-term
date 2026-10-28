@@ -1,0 +1,16 @@
+[package]
+name = "bboxy450-term-desktop-core"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+description = "Platform-free desktop action and lifecycle contracts for bboxy450-term"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

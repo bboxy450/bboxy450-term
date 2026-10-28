@@ -479,9 +479,9 @@ format-large-gui-frame:
 .PHONY: test-desktop
 test-desktop:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-term-desktop --target-dir '$(TARGET_DIR)'; \
-	cargo clippy --locked -p bboxy450-term-desktop --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
-	cargo run --locked -p bboxy450-term-desktop --example native_probe --target-dir '$(TARGET_DIR)'
+	cargo test --locked -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	if [ "$$(uname -s)" = Darwin ]; then cargo run --locked -p bboxy450-term-desktop-macos --example native_probe --target-dir '$(TARGET_DIR)'; fi
 
 .PHONY: test-desktop-app
 test-desktop-app:

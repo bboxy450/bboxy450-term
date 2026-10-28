@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bboxy450-term-desktop-core",
+  "crates/bboxy450-term-desktop-macos",
   "crates/bboxy450-term-desktop",
   "crates/bboxy450-keychain-windows",
   "crates/bboxy450-keychain-file",

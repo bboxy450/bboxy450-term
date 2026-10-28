@@ -11,7 +11,8 @@
     reason = "private fixture collector is main-thread-only; the verdict wait runs on the daemon worker, never its native main loop"
 )]
 fn main() {
-    use bboxy450_term_desktop::{Action, MenuBar, Tray, run_daemon};
+    use bboxy450_term_desktop_core::Action;
+    use bboxy450_term_desktop_macos::{MenuBar, Tray, run_daemon};
     use std::sync::{Arc, Mutex};
     let actions = Arc::new(Mutex::new(Vec::new()));
     let bar = MenuBar::install({
@@ -67,9 +68,8 @@ fn main() {
 
 #[cfg(target_os = "macos")]
 mod native {
-    use bboxy450_term_desktop::{
-        Action, StopHandle, TitlebarAction, apply_titlebar_action, apply_window_action,
-    };
+    use bboxy450_term_desktop_core::{Action, StopHandle, TitlebarAction};
+    use bboxy450_term_desktop_macos::{apply_titlebar_action, apply_window_action};
     use dispatch2::{DispatchQueue, DispatchTime};
     use objc2::{MainThreadOnly, define_class, msg_send, rc::Retained};
     use objc2_app_kit::{

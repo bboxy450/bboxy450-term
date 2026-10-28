@@ -16,7 +16,7 @@ links:
   - { to: "[[yarn]]", rel: spec }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
 created: 2026-10-23T16:26:37Z
-updated: "2026-10-28T08:20:00Z"
+updated: "2026-10-28T22:15:55Z"
 ---
 # Licensing
 
@@ -63,7 +63,9 @@ the scope within that package.
 | `bbt-mux` | internal until decision [[d8-open-source\|#8]]'s plateau | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy-firehose` | `bboxy450-term-firehose` (was `bboxy-firehose` 0.1.0, to be yanked) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | xterm.js MIT reference assets in reference/vendor, excluded from Cargo package |
 | `bboxy450-keychain`, `bboxy450-keychain-macos`, `bboxy450-keychain-linux`, `bboxy450-keychain-windows`, `bboxy450-keychain-file` | themselves ([[id1-seat-chain]] §5, decision #281) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
-| `bboxy450-term-desktop` | itself ([[d362-crate-names-app-then-package]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Terminal desktop actions and native OS adapters | none |
+| `bboxy450-term-desktop-core` | itself ([[d362-crate-names-app-then-package]], [[d46-cross-os-facades]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned platform-free desktop actions, menus and stop ports use LICENSE; retained upstream material keeps its own terms | none |
+| `bboxy450-term-desktop-macos` | itself ([[d362-crate-names-app-then-package]], [[d46-cross-os-facades]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned AppKit adapter and native probe use LICENSE; retained upstream material keeps its own terms | none |
+| `bboxy450-term-desktop` | itself ([[d362-crate-names-app-then-package]], [[d46-cross-os-facades]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned OS-agnostic facade over desktop-core and per-OS adapters uses LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | themselves ([[desktop-notifications]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-term` (the app) | the distributed binary | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; linked code retains its own terms | Linked upstream notices ship in the bundle; identity and logos retain their respective rights |
 

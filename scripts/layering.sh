@@ -5,7 +5,7 @@
 # HK-0: the wake-up kit follows core; its optional runtime assertion is below core.
 set -eu
 cd "$(dirname "$0")/.."
-ORDER="bboxy450-keychain-macos bboxy450-keychain-linux bboxy450-keychain-windows bboxy450-keychain-file bboxy450-keychain bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bboxy450-yarn-macros bboxy450-yarn bboxy450-rt bboxy450-term-core bboxy450-harness-wake-up bboxy450-mermaid bboxy450-term-firehose bboxy450-ui-core bboxy450-render bboxy450-ui bboxy450-doc bboxy450-book bboxy450-harness-host bboxy450-plugin bboxy450-proto bboxy450-mux bboxy450-term"
+ORDER="bboxy450-keychain-macos bboxy450-keychain-linux bboxy450-keychain-windows bboxy450-keychain-file bboxy450-keychain bboxy450-desktop-notifications-macos bboxy450-desktop-notifications-windows bboxy450-desktop-notifications-linux bboxy450-desktop-notifications bboxy450-yarn-macros bboxy450-yarn bboxy450-rt bboxy450-term-core bboxy450-harness-wake-up bboxy450-mermaid bboxy450-term-firehose bboxy450-ui-core bboxy450-render bboxy450-ui bboxy450-doc bboxy450-book bboxy450-harness-host bboxy450-plugin bboxy450-proto bboxy450-mux bboxy450-term-desktop-core bboxy450-term-desktop-macos bboxy450-term-desktop bboxy450-term"
 cargo metadata --no-deps --format-version 1 | ORDER="$ORDER" python3 -I -c '
 import json, os, sys
 rank = {n: i for i, n in enumerate(os.environ["ORDER"].split())}
