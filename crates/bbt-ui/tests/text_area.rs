@@ -91,3 +91,110 @@ fn invalid_surrogate_boundaries_are_rejected_before_layout() {
     let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
     assert!(area.element(200., ctx, &Metrics).is_err());
 }
+
+#[test]
+fn trailing_newlines_and_blank_lines_keep_caret_paint_and_hit_boundaries_together() {
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let style = ui::Text {
+        size: Some(12.),
+        line_height: 1.45,
+        ..Default::default()
+    };
+    for value in ["a\n", "a\n\n", "🙂\n", "a\r\n"] {
+        let end = value.encode_utf16().count();
+        let area = TextArea {
+            value: value.into(),
+            placeholder: String::new(),
+            style,
+            edit: Some(c::Edit {
+                caret: Some(end),
+                ..Default::default()
+            }),
+            min_lines: 1,
+            wrap: true,
+            name: "body".into(),
+        };
+        let layout = area
+            .element(120., ctx, &Metrics)
+            .unwrap()
+            .layout(Rect::new(0., 0., 120., 0.), ctx, &Metrics)
+            .unwrap();
+        let caret = node(&layout, "body/caret").unwrap().rect;
+        assert!(caret.y > 12., "{value:?}: {caret:?}");
+        assert!(caret.bottom() <= layout.rect.bottom());
+        let position = TextArea::position_at(value, &layout, end, &Metrics);
+        assert!(position[1] > caret.y && position[1] < caret.bottom());
+        assert_eq!(TextArea::index_at(value, &layout, position, &Metrics), end);
+        if value == "a\n\n" {
+            let middle = TextArea::position_at(value, &layout, 2, &Metrics);
+            assert!(middle[1] < position[1]);
+            assert_eq!(TextArea::index_at(value, &layout, middle, &Metrics), 2);
+        }
+    }
+    let area = TextArea {
+        value: "a".into(),
+        placeholder: String::new(),
+        style,
+        edit: Some(c::Edit {
+            caret: Some(1),
+            preedit: Some(c::Preedit {
+                text: "\n".into(),
+                caret: Some(1),
+            }),
+            ..Default::default()
+        }),
+        min_lines: 1,
+        wrap: true,
+        name: "body".into(),
+    };
+    let layout = area
+        .element(120., ctx, &Metrics)
+        .unwrap()
+        .layout(Rect::new(0., 0., 120., 0.), ctx, &Metrics)
+        .unwrap();
+    assert!(
+        node(&layout, "body/caret").unwrap().rect.y > 12.,
+        "marked newline has its own empty line too"
+    );
+}
+
+#[test]
+fn caret_paint_agrees_with_pointer_positions_on_each_explicit_line_boundary() {
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let style = ui::Text {
+        size: Some(12.),
+        line_height: 1.45,
+        ..Default::default()
+    };
+    for value in ["a\nb", "a\n\n", "🙂\n"] {
+        for at in 0..=value.encode_utf16().count() {
+            if c::utf16_byte_index(value, at).is_none() {
+                continue;
+            }
+            let area = TextArea {
+                value: value.into(),
+                placeholder: String::new(),
+                style,
+                edit: Some(c::Edit {
+                    caret: Some(at),
+                    ..Default::default()
+                }),
+                min_lines: 1,
+                wrap: true,
+                name: "body".into(),
+            };
+            let layout = area
+                .element(120., ctx, &Metrics)
+                .unwrap()
+                .layout(Rect::new(0., 0., 120., 0.), ctx, &Metrics)
+                .unwrap();
+            let point = TextArea::position_at(value, &layout, at, &Metrics);
+            let caret = node(&layout, "body/caret").unwrap().rect;
+            assert!(
+                point[1] >= caret.y && point[1] <= caret.bottom(),
+                "{value:?}/{at}: {point:?}, {caret:?}"
+            );
+            assert_eq!(TextArea::index_at(value, &layout, point, &Metrics), at);
+        }
+    }
+}

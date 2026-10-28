@@ -33,6 +33,7 @@ help:
 	@printf '%s\n' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make lock                       Refresh workspace lock metadata offline' \
+	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
@@ -46,6 +47,7 @@ help:
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
+	  'make test-chat-ux                Chat controls, local times, quiet status and saved vertical splits' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
@@ -97,6 +99,26 @@ test-cursors:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
+
+.PHONY: test-chat-ux parity-chat
+test-chat-ux:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib local_time; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib sidebar_split_preferences; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) composer_host_tests; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) composer_storage_success; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
+	BBOXY_VERTICAL_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-vertical' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses -- --ignored --exact --nocapture
+
+parity-chat:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	chat_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("compose","stream","message-row")]; assert selected; print(json.dumps(selected))'); \
+	BBOXY_PARITY_CASES_JSON="$$chat_cases" sh scripts/parity.sh
 
 .PHONY: test-settings-window
 test-settings-window:

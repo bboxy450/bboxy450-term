@@ -1486,8 +1486,8 @@
     const mode = st.mode || 'message', to = st.to || [], att = st.attach || [], priority = st.priority != null ? st.priority : 0, kind = st.kind || 'text';
     const c = el('div', { class: 'composer ' + mode + (st.focus ? ' focus' : '') });
     // the last send's outcome, one line (st.notice { kind: pending | sent | held | refused, text }): pending keeps the text, sent and
-    // held clear it, refused keeps it so the operator can fix and resend; held and refused name their reason, sent names the stored id
-    if (st.notice) c.append(noticeLine(st.notice));
+    // held clear it, refused keeps it so the operator can fix and resend. Routine success stays out of the next draft.
+    if (st.notice && st.notice.kind !== 'sent') c.append(noticeLine(st.notice));
     if (st.attachPick) c.append(attachPicker(st.attachPick));
     if (st.pick) c.append(el('div', { class: 'cpick', role: 'listbox' }, ...st.pick.map(g => el('div', { class: 'cgroup' }, el('div', { class: 'cgh' }, g.title),
       ...g.items.map((it, i) => el('div', { class: 'copt' + (it.sel ? ' sel' : '') }, it.kind === 'seat' ? el('i', { class: 'dot', style: 'background:' + it.color }) : el('span', { class: 'ok' }, it.kind === 'role' ? ROLE_MARK[it.role] : it.kind === 'channel' ? '#' : '↳'),
@@ -1501,7 +1501,7 @@
       el('span', { class: 'kpick' }, st.kindMenu ? el('div', { class: 'kmenu', role: 'menu' }, ...['text', 'chunk', 'decision'].map(k => el('div', { class: 'kopt' + (k === kind ? ' on' : ''), role: 'menuitemradio', 'aria-checked': String(k === kind) },
           el('span', { class: 'kck' }, k === kind ? '✓' : ''), el('span', { class: 'kchip ' + k }, k), el('small', {}, { text: 'a message', chunk: 'progress on the stream', decision: 'a decision on the stream' }[k])))) : null,
         el('button', { class: 'kchip kind ' + kind + (st.kindMenu ? ' open' : ''), title: 'message kind', 'aria-haspopup': 'menu' }, kind, el('span', { class: 'kdn' }, '▾'))),
-      el('button', { class: 'send p0', title: 'priority ' + priority + ' (0-9) · the operator is Oracle class, p0 · ⌘↵' }, el('span', { class: 'pip' }, String(priority)), mode === 'delegate' ? 'Delegate' : 'Send', el('span', { class: 'kbd' }, '⌘↵'))));
+      el('span', { class: 'cactions' }, el('button', { class: 'pip', title: 'message priority from 0 to 9' }, 'Priority ' + priority), el('button', { class: 'send', title: 'Enter to send · Shift+Enter for a new line' }, mode === 'delegate' ? 'Delegate' : 'Send', el('span', { class: 'kbd' }, '↵')))));
     return c;
   }
   // the desktop notification (attention §3), the lab's picture of the macOS banner. v1 is title + body only, as attention.rs
@@ -1536,34 +1536,32 @@
   }
   function messageRow(m, opts) {
     opts = opts || {};
+    const time = m.time || hhmm(m.ts);
     // MessageRow (decision #38): author { kind, id, name }, issuer_kind, kind, priority_class + priority, text, ts, receipts. role is not
     // in the row: the GUI looks it up from the seat registry by author.id (lab: m.role); an operator author reads OPERATOR.
-    if (m.kind === 'presence') return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, hhmm(m.ts)));
+    if (m.kind === 'presence') return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, time));
     // audit line (a projection of the Oracle audit log, swarm-member scope): the Oracle's effects in the open, centred like presence
     // routing discipline (messaging.md): a worker's progress note to the stream is rejected with a hint; only chunk, decision, presence land
-    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.author.name), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, hhmm(m.ts)));
+    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.author.name), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, time));
     if (m.audit) { const a = m.audit; return el('div', { class: 'msg presence audit ' + (a.outcome || 'applied'), title: 'audit · op ' + (a.op || '') + ' · ' + (a.outcome || 'applied') + (a.reason ? ' · ' + a.reason : '') },
       el('div', { class: 'aline' }, el('span', { class: 'amark' }, ROLE_MARK.oracle + ' '), el('b', {}, a.actor || 'Oracle'), ' ' + a.verb + ' ', el('b', {}, a.target || '')),
-      el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, hhmm(m.ts)))); }
+      el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, time))); }
     // a mark only when something real says it: the operator and observers by author kind, a seat by its registry role; never invented
-    const op = m.author.kind === 'operator', role = op ? 'oracle' : m.role || null, chip = prioChip(m);
-    const mark = op ? 'OPERATOR' : m.author.kind === 'observer' ? 'OBSERVER' : role ? role.toUpperCase() : null;
+    const op = m.author.kind === 'operator', role = op ? 'oracle' : m.role || null;
     const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: role ? '--role:var(--role-' + role + ')' : null });
-    const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.author.name), mark ? el('span', { class: 'role' }, '<' + mark + '>') : null);
-    // the chip is the receiver's own (priority_class, priority): a foreign Oracle arrives as worker class here, so it carries none
-    if (chip === 'p0') head.append(el('span', { class: 'p0', title: 'Oracle class' }, 'p0'));
-    else if (chip === 'p1') head.append(el('span', { class: 'prio p1', title: 'worker class · priority ' + m.priority + ' of 9' }, 'p1'));
-    if (m.issuer_kind === 'local-dev') head.append(el('span', { class: 'kchip issuer', title: 'signed under the local-dev issuer, not the GPG root (decision #4)' }, 'local-dev'));
+    const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.author.name));
+    // The role rail carries identity; only exceptional numeric priority needs a label.
+    if ((m.priority || 0) >= 7) head.append(el('span', { class: 'prio p1', title: 'priority ' + m.priority + ' of 9' }, 'Priority ' + m.priority));
     if (m.ch && opts.showCh !== false) head.append(el('span', { class: 'chchip', title: 'arrived by bboxy450://channels/bboxy450-term/' + m.ch + '/' }, '#' + m.ch));
-    if (m.kind && m.kind !== 'text') head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
+    if (m.kind && !['text', 'message', 'chunk'].includes(m.kind)) head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
     if (m.group) head.append(el('span', { class: 'agchip grp', title: 'to subgroup ' + m.group.name + ': fanned out as DMs to ' + (m.group.n || '') + ' members, one thread' }, '⧉ ' + m.group.name + (m.group.n ? ' · ' + m.group.n : '')));
     // subagent addressing (messaging.md): to main or to a subagent; from a subagent, or relayed via main; held when the agent ended
     if (m.fromAgent) head.append(el('span', { class: 'agchip from', title: 'from subagent ' + m.fromAgent }, '↳ ' + m.fromAgent));
     if (m.via === 'main') head.append(el('span', { class: 'agchip via', title: 'the harness relayed it; the subagent is not addressable directly' }, 'via main'));
     if (m.to) head.append(el('span', { class: 'agchip to' + (m.to === 'main' ? ' main' : ''), title: m.to === 'main' ? 'to the main agent' : 'to subagent ' + m.to }, '→ ' + (m.to === 'main' ? 'main' : '↳ ' + m.to)));
-    head.append(el('span', { class: 'time' }, hhmm(m.ts)));
+    head.append(el('span', { class: 'time' }, time));
     if (m.held === 'agent_ended') head.append(el('span', { class: 'agchip held', title: 'held: the subagent ended before delivery; never redirected to main on its own' }, 'held · agent ended'));
-    else if (m.receipts) { const r = m.receipts; head.append(el('span', { class: 'rcpt' + (r.held ? ' held' : ''), title: 'receipts on this send: delivered, acked by the harness, held' }, r.delivered + ' delivered · ' + r.acked + ' acked' + (r.held ? ' · ' + r.held + ' held' : ''))); }
+    else if (m.receipts) { if (m.receipts.held) head.append(el('span', { class: 'rcpt held' }, m.receipts.held + ' held')); }
     else if (m.evidence) head.append(tickLadder(m.evidence));
     const body = el('div', { class: 'body' }, head);
     if (m.replyTo) body.append(el('div', { class: 'reply' }, '↩ ' + m.replyTo));

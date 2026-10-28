@@ -55,7 +55,7 @@ fn bounded_sidebar_drafts_keep_controls_and_history_visible_and_follow_the_caret
                 .unwrap();
             let regions = Regions::new(&layout).unwrap();
             assert!(regions.body_max_scroll > 0.);
-            assert!(regions.body_offset > 0.);
+            assert!(regions.body_offset > 0., "{width}/{height}: body={:?}, max={}, caret={:?}", regions.body, regions.body_max_scroll, named(&layout, "composer/text/caret").rect);
             assert!(regions.body.h <= 96.);
             assert!((layout.rect.h - height).abs() < 0.01);
             for key in [

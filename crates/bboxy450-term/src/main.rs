@@ -127,6 +127,7 @@ pub enum UiEvent {
     NotificationReady,
     NotificationError(String),
     ErrorCount(u64),
+    LocalTimeReady,
 }
 const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
 
@@ -2066,6 +2067,13 @@ impl App {
             .map(|v| std::path::PathBuf::from(&v[1]));
         let clock = animation_clock::Clock::default();
         let clock_frame = clock.frame();
+        // Timezone discovery is optional metadata: never hold startup or
+        // message publication on an OS read. Refresh labels when it completes.
+        let time_proxy = proxy.clone();
+        drop(bbt_rt::handle().spawn_blocking(move || {
+            bboxy450_term::local_time::initialize();
+            let _ = time_proxy.send_event(UiEvent::LocalTimeReady);
+        }));
         Self {
             proxy,
             inbox,
@@ -6709,6 +6717,10 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::LocalTimeReady => {
+                self.refresh_conversation();
+                self.request_redraw();
+            }
             UiEvent::LaunchDirectoryChecked {
                 token,
                 value,

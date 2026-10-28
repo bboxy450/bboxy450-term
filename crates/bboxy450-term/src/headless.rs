@@ -187,6 +187,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
+                    UiEvent::LocalTimeReady => {
+                        app.refresh_conversation();
+                        dirty = true;
+                    }
                     UiEvent::LaunchDirectoryChecked {
                         token,
                         value,

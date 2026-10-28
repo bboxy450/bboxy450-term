@@ -883,7 +883,7 @@ impl Message {
             )
             .into(),
         ];
-        if let Some(signature) = &self.signature {
+        if let Some(signature) = self.signature.as_ref().filter(|grade| grade.as_str() != "signed") {
             let pending = signature == "pending";
             let grade = if pending {
                 "pending · inferred"

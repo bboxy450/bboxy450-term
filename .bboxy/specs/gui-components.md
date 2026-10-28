@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: 2026-10-28T16:56:12Z
+updated: 2026-10-28T20:21:50Z
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }

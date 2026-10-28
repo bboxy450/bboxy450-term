@@ -10,7 +10,7 @@ use std::sync::OnceLock;
 
 static SYSTEM: OnceLock<TimeZone> = OnceLock::new();
 
-/// Call from the IO startup owner, before publishing messages to the UI.
+/// Call from the IO startup worker; completion refreshes existing UI labels.
 pub fn initialize() {
     SYSTEM.get_or_init(TimeZone::system);
 }

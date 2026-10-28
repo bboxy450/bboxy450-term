@@ -388,6 +388,7 @@ fn ordinary_messages_are_quiet_cards_and_explicit_local_times_win() {
         }),
         role: "oracle".into(),
         issuer_kind: Some("local-dev".into()),
+        signature: Some("signed".into()),
         priority_class: Some("oracle".into()),
         kind: Some("chunk".into()),
         time: "11:06".into(),
@@ -422,6 +423,7 @@ fn ordinary_messages_are_quiet_cards_and_explicit_local_times_win() {
         "chunk",
         "delivered",
         "acked",
+        "signature: signed",
     ] {
         assert!(!text.contains(noise), "{noise}");
     }
@@ -439,7 +441,7 @@ fn ordinary_messages_are_quiet_cards_and_explicit_local_times_win() {
     let exceptional = labels(node(&tree, "e1").unwrap());
     assert!(
         exceptional.contains("Priority 8")
-            && exceptional.contains("decision")
+            && exceptional.contains("DECISION")
             && exceptional.contains("1 held")
     );
 }

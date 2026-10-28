@@ -790,7 +790,8 @@ impl Controller {
         };
         let field = match &patch {
             Patch::DestinationAvailable { id, .. } => Field::DestinationAvailable(id.clone()),
-            Patch::HarnessLaunch { .. }
+            Patch::SidebarLayout { .. }
+            | Patch::HarnessLaunch { .. }
             | Patch::RoleUpsert { .. }
             | Patch::RoleDelete(_)
             | Patch::HarnessRole { .. }

@@ -136,15 +136,23 @@ impl TextArea {
         };
         let size = self.style.size.unwrap_or(self.style.step.pixels());
         let line = (size * self.style.line_height * 64.).floor() / 64.;
-        let height = layout
-            .rect
-            .h
+        // Paragraphs omit the empty run after a final newline. An editor must
+        // retain that line for its caret, scrolling and pointer boundaries.
+        let trailing_line = !empty && display.ends_with('\n');
+        let height = (layout.rect.h + if trailing_line { line } else { 0. })
             .max((size * self.style.line_height * self.min_lines as f32 * 64.).floor() / 64.);
         let (mut behind, mut ahead) = (vec![], vec![]);
         let mut byte = 0;
         let mut caret_point = [0., 0.];
         let mut found_caret = false;
         for (i, run) in runs.iter().enumerate() {
+            if i > 0 && run.rect.y > runs[i - 1].rect.y {
+                if shown[byte..].starts_with("\r\n") {
+                    byte += 2;
+                } else if shown[byte..].starts_with('\n') {
+                    byte += 1;
+                }
+            }
             let found = shown[byte..].find(&run.text).map_or(byte, |n| byte + n);
             let first = shown[..found].encode_utf16().count();
             let last = first + run.text.encode_utf16().count();
@@ -205,15 +213,18 @@ impl TextArea {
             if !empty
                 && !found_caret
                 && caret >= first
-                && (caret < last || i + 1 == runs.len() && caret == last)
+                && (caret < last
+                    || caret == last
+                        && (i + 1 == runs.len()
+                            || shown[found + run.text.len()..].starts_with(['\r', '\n'])))
             {
                 caret_point = [x_at(caret), run.rect.y];
                 found_caret = true;
             }
             byte = found + run.text.len();
-            if run.text.is_empty() && shown[byte..].starts_with('\n') {
-                byte += 1;
-            }
+        }
+        if trailing_line && !found_caret && caret == display.encode_utf16().count() {
+            caret_point = [0., layout.rect.h];
         }
         if let Some(edit) = &self.edit
             && selected.is_none()
@@ -279,7 +290,17 @@ fn positions(value: &str, layout: &c::Layout, m: &dyn c::Measure) -> Vec<(usize,
     collect(layout, &mut runs);
     let mut byte = 0;
     let mut result = vec![];
+    let last = runs.last().copied();
+    let mut previous_y = None;
     for run in runs {
+        if previous_y.is_some_and(|y| run.rect.y > y) {
+            if value[byte..].starts_with("\r\n") {
+                byte += 2;
+            } else if value[byte..].starts_with('\n') {
+                byte += 1;
+            }
+        }
+        previous_y = Some(run.rect.y);
         let Some(skip) = value[byte..].find(&run.text) else {
             continue;
         };
@@ -302,6 +323,12 @@ fn positions(value: &str, layout: &c::Layout, m: &dyn c::Measure) -> Vec<(usize,
             result.push((units, Rect::new(x, run.rect.y, 0., run.line_height)));
         }
         byte = start + run.text.len();
+    }
+    if value.ends_with('\n') && let Some(last) = last {
+        result.push((
+            value.encode_utf16().count(),
+            Rect::new(layout.rect.x, last.rect.y + last.line_height, 0., last.line_height),
+        ));
     }
     result
 }

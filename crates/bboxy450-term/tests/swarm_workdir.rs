@@ -2014,33 +2014,79 @@ exec /bin/cat
 #[test]
 #[ignore = "private ctl vertical sidebar split/PTY/restart fixture"]
 fn sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses() {
+    fn capture(f: &Fixture, name: &str, frame: &Value) {
+        if let Some(directory) = std::env::var_os("BBOXY_VERTICAL_EVIDENCE") {
+            let directory = PathBuf::from(directory);
+            fs::create_dir_all(&directory).unwrap();
+            let path = directory.join(format!("{name}.png"));
+            f.ctl(&["seat", "capture", "window", path.to_str().unwrap()]);
+            fs::write(
+                directory.join(format!("{name}.json")),
+                serde_json::to_vec_pretty(frame).unwrap(),
+            )
+            .unwrap();
+        }
+    }
     fn find<'a>(n: &'a Value, key: &str) -> Option<&'a Value> {
-        if n["kind"].as_str() == Some(key) { return Some(n); }
+        if n["kind"].as_str() == Some(key) {
+            return Some(n);
+        }
         n["children"].as_array()?.iter().find_map(|n| find(n, key))
     }
     fn rect(frame: &Value, key: &str) -> [f64; 4] {
-        let n = frame["tree"].as_array().unwrap().iter().find_map(|n| find(n, key)).unwrap();
+        let n = frame["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|n| find(n, key))
+            .unwrap();
         std::array::from_fn(|i| n["rect"][i].as_f64().unwrap())
     }
     fn drag(f: &Fixture, key: &str, delta: f64) -> Value {
         let frame = f.ctl(&["ui", "layout"]);
         let handle = &frame["regions"][key];
-        let x = (handle[0].as_f64().unwrap() + handle[2].as_f64().unwrap() * 0.5).round().to_string();
+        let x = (handle[0].as_f64().unwrap() + handle[2].as_f64().unwrap() * 0.5)
+            .round()
+            .to_string();
         let y = (handle[1].as_f64().unwrap() + handle[3].as_f64().unwrap() * 0.5).round();
-        f.ctl(&["ui", "drag", &x, &y.to_string(), &x, &(y + delta).max(0.).to_string()])
+        f.ctl(&[
+            "ui",
+            "drag",
+            &x,
+            &y.to_string(),
+            &x,
+            &(y + delta).max(0.).to_string(),
+        ])
     }
     fn process(f: &Fixture, seat: &str) -> (Value, Value) {
         let rows = f.ctl(&["seat", "ls"]);
-        let seat = rows.as_array().unwrap().iter().find(|r| r["record"]["id"] == seat).unwrap();
-        (seat["state"]["process"].clone(), seat["record"]["generation"].clone())
+        let seat = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["record"]["id"] == seat)
+            .unwrap();
+        (
+            seat["state"]["process"].clone(),
+            seat["record"]["generation"].clone(),
+        )
     }
     fn fitted(frame: &Value) {
         let height = frame["size"][1].as_f64().unwrap();
         let conversation = rect(frame, "named:conversation");
         assert!(conversation[1] >= 0. && conversation[1] + conversation[3] <= height + 0.01);
-        for key in ["named:conversation/rows", "named:composer/body-viewport", "named:composer/address", "named:composer/send", "named:composer/foot"] {
+        for key in [
+            "named:conversation/rows",
+            "named:composer/body-viewport",
+            "named:composer/address",
+            "named:composer/send",
+            "named:composer/foot",
+        ] {
             let r = rect(frame, key);
-            assert!(r[1] >= conversation[1] && r[1] + r[3] <= conversation[1] + conversation[3] + 0.01, "{key}: {r:?}");
+            assert!(
+                r[1] >= conversation[1] && r[1] + r[3] <= conversation[1] + conversation[3] + 0.01,
+                "{key}: {r:?}"
+            );
         }
     }
     let mut f = Fixture::new();
@@ -2049,17 +2095,86 @@ fn sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses(
     let swarm = initial["swarm"].as_str().unwrap().to_owned();
     let seat = f.spawn("claude", &swarm, None);
     f.expect_cwd(&seat, &f.root.join("repository"));
+    f.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        &seat,
+        "--text",
+        "Readable messages keep their full body, with a clear author and local time.",
+    ]);
+    // Read/ack only this fixture's startup diagnostics before normal-flow captures.
+    f.ctl(&["debug", "errors"]);
     let before_process = process(&f, &seat);
     let initial = f.ctl(&["app", "resize", "180x64"]);
+    let priority = rect(&initial, "named:composer/priority");
+    let clicked = f.ctl(&[
+        "ui",
+        "click",
+        &(priority[0] + priority[2] * 0.5).round().to_string(),
+        &(priority[1] + priority[3] * 0.5).round().to_string(),
+    ]);
+    assert!(clicked.to_string().contains("Priority 1"));
+    let body = rect(&clicked, "named:composer/body-viewport");
+    f.ctl(&[
+        "ui",
+        "click",
+        &(body[0] + body[2] * 0.5).round().to_string(),
+        &(body[1] + body[3] * 0.5).round().to_string(),
+    ]);
+    let characters: Vec<_> = "Enter sends this message."
+        .chars()
+        .map(|c| c.to_string())
+        .collect();
+    let mut keys = vec!["ui", "key"];
+    keys.extend(characters.iter().map(String::as_str));
+    f.ctl(&keys);
+    f.ctl(&["ui", "key", "enter"]);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let sent = loop {
+        let frame = f.ctl(&["ui", "layout"]);
+        let rows = frame["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|node| find(node, "named:conversation/rows"))
+            .unwrap();
+        if rows.to_string().contains("Enter sends this message.") {
+            break frame;
+        }
+        if Instant::now() >= deadline {
+            fs::write(
+                f.root.join("enter-send-last.json"),
+                serde_json::to_vec_pretty(&frame).unwrap(),
+            )
+            .unwrap();
+            panic!(
+                "Enter did not publish the message to retained chat history; frame retained in {}",
+                f.root.display()
+            );
+        }
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert!(
+        !sent.to_string().contains("stored ·"),
+        "storage acknowledgements stay out of the next draft"
+    );
+    let initial = sent;
+    capture(&f, "initial", &initial);
     let history_before = rect(&initial, "named:conversation/rows")[3];
     let larger_chat = drag(&f, "sidebar-conversation-resize", -160.);
     fitted(&larger_chat);
+    capture(&f, "chat-expanded", &larger_chat);
     assert!(rect(&larger_chat, "named:conversation/rows")[3] > history_before + 120.);
     let body_before = rect(&larger_chat, "named:composer/body-viewport")[3];
     let taller_editor = drag(&f, "sidebar-composer-resize", -60.);
     fitted(&taller_editor);
+    capture(&f, "composer-expanded", &taller_editor);
     assert!(rect(&taller_editor, "named:composer/body-viewport")[3] > body_before + 40.);
-    assert!(rect(&taller_editor, "named:conversation/rows")[3] < rect(&larger_chat, "named:conversation/rows")[3] - 40.);
+    assert!(
+        rect(&taller_editor, "named:conversation/rows")[3]
+            < rect(&larger_chat, "named:conversation/rows")[3] - 40.
+    );
     let config = f.root.join("account/config.toml");
     let saved = fs::read_to_string(&config).unwrap();
     let doc: toml_edit::DocumentMut = saved.parse().unwrap();
@@ -2067,22 +2182,37 @@ fn sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses(
     assert!(doc["sidebar"]["composer_body_height"].as_float().unwrap() > 60.);
     let short = f.ctl(&["app", "resize", "40x24"]);
     fitted(&short);
-    assert_eq!(fs::read_to_string(&config).unwrap(), saved, "window fitting must not save compressed values");
+    capture(&f, "short-window", &short);
+    assert_eq!(
+        fs::read_to_string(&config).unwrap(),
+        saved,
+        "window fitting must not save compressed values"
+    );
     let enlarged = f.ctl(&["app", "resize", "180x64"]);
     fitted(&enlarged);
-    assert_eq!(rect(&enlarged, "named:composer/body-viewport"), rect(&taller_editor, "named:composer/body-viewport"));
+    assert_eq!(
+        rect(&enlarged, "named:composer/body-viewport"),
+        rect(&taller_editor, "named:composer/body-viewport")
+    );
     assert_eq!(process(&f, &seat), before_process);
     let owners = f.owners();
-    let mut old = f.app.take().unwrap(); old.kill().unwrap(); old.wait().unwrap();
+    let mut old = f.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
     f.start();
     let until = Instant::now() + Duration::from_secs(10);
     let restored = loop {
         let frame = f.ctl(&["app", "resize", "180x64"]);
-        if rect(&frame, "named:composer/body-viewport") == rect(&taller_editor, "named:composer/body-viewport") { break frame; }
+        if rect(&frame, "named:composer/body-viewport")
+            == rect(&taller_editor, "named:composer/body-viewport")
+        {
+            break frame;
+        }
         assert!(Instant::now() < until, "sidebar splits did not restore");
         std::thread::sleep(Duration::from_millis(20));
     };
     fitted(&restored);
+    capture(&f, "restored", &restored);
     assert_eq!(f.owners(), owners);
     assert_eq!(process(&f, &seat), before_process);
     assert_eq!(fs::read_to_string(&config).unwrap(), saved);
