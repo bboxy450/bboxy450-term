@@ -922,6 +922,7 @@ pub struct Regions {
     pub max_scroll: f32,
     pub rim: Option<Rect>,
     hits: Vec<(Rect, Hit, bool)>,
+    inactive: Vec<Field>,
     section: String,
     theme: String,
     density: String,
@@ -958,6 +959,7 @@ impl Regions {
             max_scroll,
             rim: None,
             hits: vec![],
+            inactive: vec![],
             section: view.section.clone(),
             theme: view.values.appearance.theme.clone(),
             density: view.values.appearance.density.clone(),
@@ -989,6 +991,45 @@ impl Regions {
             node.children.iter().find_map(role_caret)
         }
         out.caret = role_caret(layout).or(out.caret);
+        // Some reference controls still handle a click by explaining why the
+        // action is unavailable. Preserve that behavior without advertising an
+        // enabled control through the pointer cursor.
+        for (_, hit, _) in &out.hits {
+            let field = match hit {
+                Hit::Reset(field) => Some(field.clone()),
+                _ => Self::field(hit),
+            };
+            let Some(field) = field else { continue };
+            let available = match &field {
+                Field::PluginEnable(id) | Field::PluginTrust(id) => {
+                    view.values.plugin_controls
+                        && view.values.plugins.iter().any(|plugin| {
+                            plugin.control_key() == id && plugin.actionable && plugin.root.is_none()
+                        })
+                }
+                Field::PluginSetup(_) => false,
+                Field::KnowledgeProvider(root) => {
+                    view.values.knowledge_controls
+                        && view
+                            .values
+                            .knowledge
+                            .roots
+                            .iter()
+                            .any(|r| r.name == *root && r.pending.is_none())
+                }
+                Field::Attention { destination, class } => {
+                    !view.values.messaging.seat.id.is_empty()
+                        && view.values.messaging.seat.generation != 0
+                        && ["conversation", "event"].contains(&class.as_str())
+                        && (destination == "direct"
+                            || view.values.messaging.channels.contains(destination))
+                }
+                _ => true,
+            };
+            if !available && !out.inactive.contains(&field) {
+                out.inactive.push(field);
+            }
+        }
         Some(out)
     }
     fn controls(&mut self, layout: &c::Layout, section: &str, view: &super::Settings) {
@@ -1180,6 +1221,27 @@ impl Regions {
             .rev()
             .find(|(rect, _, main)| (!*main || contains(self.viewport, at)) && contains(*rect, at))
             .map(|(_, hit, _)| hit.clone())
+    }
+    pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
+        use crate::cursor::Cursor;
+        let Some(hit) = self.hit(at) else {
+            return Cursor::Default;
+        };
+        let field = match &hit {
+            Hit::Reset(field) => Some(field.clone()),
+            _ => Self::field(&hit),
+        };
+        if field.is_some_and(|field| self.inactive.contains(&field)) {
+            return Cursor::Default;
+        }
+        match hit {
+            Hit::Search
+            | Hit::Toggle(Field::RolePrompt(_) | Field::RoleDraftName | Field::RoleDraftPrompt) => {
+                Cursor::Text
+            }
+            Hit::Rim => Cursor::EwResize,
+            _ => Cursor::Pointer,
+        }
     }
     pub fn rim_fraction(&self, x: f32) -> Option<f32> {
         self.rim.map(|r| ((x - r.x) / r.w.max(1.)).clamp(0., 1.))

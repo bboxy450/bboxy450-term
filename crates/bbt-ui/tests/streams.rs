@@ -81,6 +81,10 @@ fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     let accept = node(&tree, "e0/accept").unwrap().rect;
     let at = [accept.x + accept.w / 2., accept.y + accept.h / 2.];
     assert_eq!(Regions::dock(&tree, &view).hit(at), None);
+    assert_eq!(
+        Regions::dock(&tree, &view).cursor(at),
+        ui::cursor::Cursor::Default
+    );
     let Entry::Report { data, .. } = &mut view.entries[0] else {
         unreachable!();
     };
@@ -89,6 +93,10 @@ fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     assert_eq!(
         Regions::dock(&tree, &view).hit(at),
         Some(Action::Accept("actual-task-id".into()))
+    );
+    assert_eq!(
+        Regions::dock(&tree, &view).cursor(at),
+        ui::cursor::Cursor::Pointer
     );
     let scroll = c::Element::ScrollView(c::ScrollView {
         viewport: [300., 12.],
@@ -99,6 +107,10 @@ fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {
     .layout(Rect::new(0., 0., 300., 12.), ctx, &Metrics)
     .unwrap();
     assert_eq!(Regions::dock(&scroll, &view).hit(at), None);
+    assert_eq!(
+        Regions::dock(&scroll, &view).cursor(at),
+        ui::cursor::Cursor::Default
+    );
 }
 // keeps: spec gui-components §1.3
 #[test]
@@ -345,9 +357,22 @@ fn a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation() {
         Regions::dock(&tree, &view).hit([submit.x + submit.w / 2., submit.y + submit.h / 2.]),
         None
     );
+    assert_eq!(
+        Regions::dock(&tree, &view).cursor([submit.x + submit.w / 2., submit.y + submit.h / 2.]),
+        ui::cursor::Cursor::Default
+    );
+    let input = node(&tree, "e0/reject/input").unwrap().rect;
+    assert_eq!(
+        Regions::dock(&tree, &view).cursor([input.x + input.w / 2., input.y + input.h / 2.]),
+        ui::cursor::Cursor::Text
+    );
     let cancel = node(&tree, "e0/reject/cancel").unwrap().rect;
     assert_eq!(
         Regions::dock(&tree, &view).hit([cancel.x + cancel.w / 2., cancel.y + cancel.h / 2.]),
         Some(Action::CancelReject("actual-task".into()))
+    );
+    assert_eq!(
+        Regions::dock(&tree, &view).cursor([cancel.x + cancel.w / 2., cancel.y + cancel.h / 2.]),
+        ui::cursor::Cursor::Pointer
     );
 }

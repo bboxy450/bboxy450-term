@@ -153,6 +153,44 @@ impl Regions {
         }
         contains(self.body, at).then_some(Hit::Body)
     }
+    pub fn cursor(&self, at: [f32; 2], controller: &super::Controller) -> crate::cursor::Cursor {
+        use crate::cursor::Cursor;
+        match self.hit(at) {
+            Some(Hit::Body | Hit::Address | Hit::AttachQuery) => Cursor::Text,
+            Some(Hit::Send) if !controller.send_enabled() => Cursor::Default,
+            Some(Hit::Choose(index)) => {
+                let available = !controller.composing()
+                    && controller
+                        .view
+                        .pick
+                        .iter()
+                        .flat_map(|g| &g.items)
+                        .nth(index)
+                        .is_some_and(|a| {
+                            !a.destination.is_empty() || a.kind == "role" && !a.role.is_empty()
+                        });
+                if available {
+                    Cursor::Pointer
+                } else {
+                    Cursor::Default
+                }
+            }
+            Some(Hit::AttachChoice(index)) => {
+                let available =
+                    !controller.composing()
+                        && controller.view.attach_pick.as_ref().is_some_and(|p| {
+                            p.rows().get(index).is_some_and(|a| !a.path.is_empty())
+                        });
+                if available {
+                    Cursor::Pointer
+                } else {
+                    Cursor::Default
+                }
+            }
+            Some(_) => Cursor::Pointer,
+            None => Cursor::Default,
+        }
+    }
     pub fn candidate_area(&self) -> Rect {
         if let Some(query) = self.attachment_query {
             return self

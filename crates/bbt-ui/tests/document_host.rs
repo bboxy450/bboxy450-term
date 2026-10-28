@@ -42,8 +42,11 @@ fn link_hit_regions_follow_the_scroll_clip_and_disable_missing_links() {
         .unwrap();
     let regions = Regions::retained(&layout);
     assert_eq!(regions.hit([22., 31.]), Some(Action::Open("#44".into())));
+    assert_eq!(regions.cursor([22., 31.]), ui::cursor::Cursor::Pointer);
     assert_eq!(regions.hit([22., 29.]), None);
+    assert_eq!(regions.cursor([22., 29.]), ui::cursor::Cursor::Default);
     assert_eq!(regions.hit([22., 41.]), None);
+    assert_eq!(regions.cursor([22., 41.]), ui::cursor::Cursor::Default);
     let missing = link(
         c::Element::Text(c::Text::new("#999 · no record", ui::Text::default())),
         "#999",
@@ -53,6 +56,10 @@ fn link_hit_regions_follow_the_scroll_clip_and_disable_missing_links() {
         .layout(Rect::new(0., 0., 200., 30.), ctx(), &Metrics)
         .unwrap();
     assert!(Regions::retained(&layout).hit([2., 2.]).is_none());
+    assert_eq!(
+        Regions::retained(&layout).cursor([2., 2.]),
+        ui::cursor::Cursor::Default
+    );
 }
 // keeps: spec document-viewer §Markdown
 #[test]
@@ -89,6 +96,26 @@ fn modal_scroll_clamps_at_both_ends_and_the_footer_closes() {
     assert_eq!(
         regions.hit([r.x + r.w / 2., r.y + r.h / 2.]),
         Some(Action::Close)
+    );
+    assert_eq!(
+        regions.cursor([r.x + r.w / 2., r.y + r.h / 2.]),
+        ui::cursor::Cursor::Pointer
+    );
+    fn unavailable(n: &c::Layout) -> Option<Rect> {
+        if matches!(&n.kind, c::LayoutKind::Named(s) if s == "action0") {
+            Some(n.rect)
+        } else {
+            n.children.iter().find_map(unavailable)
+        }
+    }
+    let r = unavailable(&layout).unwrap();
+    assert!(matches!(
+        regions.hit([r.x + r.w / 2., r.y + r.h / 2.]),
+        Some(Action::Unavailable(_))
+    ));
+    assert_eq!(
+        regions.cursor([r.x + r.w / 2., r.y + r.h / 2.]),
+        ui::cursor::Cursor::Default
     );
 }
 // keeps: spec document-viewer §Markdown

@@ -186,6 +186,14 @@ impl Regions {
             .find(|(r, _)| at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom())
             .map(|(_, a)| a.clone())
     }
+    /// Missing links, unavailable commands and clipped content keep the arrow.
+    pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
+        use crate::cursor::Cursor;
+        match self.hit(at) {
+            Some(Action::Open(_) | Action::Close) => Cursor::Pointer,
+            Some(Action::Unavailable(_)) | None => Cursor::Default,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]

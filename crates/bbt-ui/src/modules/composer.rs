@@ -177,6 +177,33 @@ impl Controller {
             Field::Body => self.body.composing(),
         }
     }
+    /// The same draft requirements used by Send, without admitting an effect.
+    pub fn send_enabled(&self) -> bool {
+        !self.composing() && (self.view.kind_menu || self.send_refusal().is_none())
+    }
+    fn send_refusal(&self) -> Option<&'static str> {
+        if self.view.to.is_empty()
+            || self
+                .view
+                .to
+                .iter()
+                .any(|a| a.destination.is_empty() && (a.kind != "role" || a.role.is_empty()))
+        {
+            return Some("destination_required");
+        }
+        if self.view.mode == "delegate"
+            && (self.view.to.len() != 1
+                || self.view.to[0].kind != "seat"
+                || self.view.attach.len() != 1
+                || self.view.attach[0].kind != "task")
+        {
+            return Some("task_and_assignee_required");
+        }
+        if self.view.mode != "delegate" && self.view.text.trim().is_empty() {
+            return Some("message_required");
+        }
+        None
+    }
     pub fn handle(&mut self, command: Command) -> Outcome {
         if let Some(outcome) = self.attachment_command(&command) {
             return outcome;
@@ -376,25 +403,10 @@ impl Controller {
                 if self.composing() {
                     return Outcome::Local;
                 }
-                if self.view.to.is_empty()
-                    || self.view.to.iter().any(|a| {
-                        a.destination.is_empty() && (a.kind != "role" || a.role.is_empty())
-                    })
-                {
-                    return Outcome::Refused("destination_required");
+                if let Some(reason) = self.send_refusal() {
+                    return Outcome::Refused(reason);
                 }
                 let delegate = self.view.mode == "delegate";
-                if delegate
-                    && (self.view.to.len() != 1
-                        || self.view.to[0].kind != "seat"
-                        || self.view.attach.len() != 1
-                        || self.view.attach[0].kind != "task")
-                {
-                    return Outcome::Refused("task_and_assignee_required");
-                }
-                if !delegate && self.view.text.trim().is_empty() {
-                    return Outcome::Refused("message_required");
-                }
                 return Outcome::Submit(Submission {
                     delegate,
                     to: self.view.to.clone(),

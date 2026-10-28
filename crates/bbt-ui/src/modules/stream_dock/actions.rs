@@ -274,6 +274,14 @@ impl Regions {
             .find(|(_, r)| contains(*r, at))
             .map(|(action, _)| action.clone())
     }
+    pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
+        use crate::cursor::Cursor;
+        match self.hit(at) {
+            Some(Action::RejectInput(_)) => Cursor::Text,
+            Some(_) => Cursor::Pointer,
+            None => Cursor::Default,
+        }
+    }
     pub fn contains(&self, key: &str, at: [f32; 2]) -> bool {
         self.rects.get(key).is_some_and(|rect| contains(*rect, at))
     }
