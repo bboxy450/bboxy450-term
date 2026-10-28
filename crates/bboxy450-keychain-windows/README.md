@@ -26,3 +26,11 @@ Mechanisms: [security descriptor conversion](https://learn.microsoft.com/en-us/w
 and [ACE inspection](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getace).
 Cross-compilation checks its API; native Windows behaviour requires a Windows
 test run and is not proven by a macOS run.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

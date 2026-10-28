@@ -59,3 +59,11 @@ R2 does not deliver terminal input, parser shards, window actions, display-link
 pacing, 120 Hz animation or the R5 stall test. CPU timings remain above the R5
 4 ms goal and are reported as measured. This step is the app shell and its
 instrumentation, not a performance pass.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

@@ -19,3 +19,11 @@ This crate returns `Unsupported` and has no dependencies. Research retrieved
   [history removal](https://learn.microsoft.com/en-us/uwp/api/windows.ui.notifications.toastnotificationhistory.remove).
 
 No app identity, shortcut, COM registration or notification is created here.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

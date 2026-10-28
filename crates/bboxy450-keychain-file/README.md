@@ -20,3 +20,11 @@ startup selection belong to the identity owner. Tests generate their own keys
 and directories. They never open the operator's account or native credential
 store. Windows runtime behaviour needs native Windows tests; cross-compilation
 does not prove it.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

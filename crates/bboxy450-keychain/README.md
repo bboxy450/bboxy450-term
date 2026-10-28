@@ -11,3 +11,11 @@ automation device or unlock the operator's Keychain.
 
 The caller owns IO scheduling. No selected backend error opens a different
 store or generates a replacement identity.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

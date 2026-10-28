@@ -60,4 +60,12 @@ Default: no features. `runtime-assertions` enables the optional runtime's off-UI
 
 ## License
 
-MIT OR Apache-2.0, at your option. Both licence texts ship in this package.
+Project-owned contributions use the [Respectful Slop License 1.0-Draft](LICENSE). Upstream terms and prior grants remain intact; see [ATTRIBUTION.md](ATTRIBUTION.md) and [NOTICE](NOTICE).
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

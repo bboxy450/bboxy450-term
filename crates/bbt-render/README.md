@@ -29,7 +29,7 @@ No font is installed into the user's library: registration is process-local.
   `19371302b95d218af43299bce79ddbddd0bc364d`; SHA-256
   `e6fd0d7e91550b3ed2b735d4312474362c4716edc4fc0577a0f61ed782d5aed1`.
   Source: <https://github.com/JetBrains/JetBrainsMono>. The font retains its own
-  license; the Rust crate remains MIT OR Apache-2.0.
+  license; project-owned Rust contributions use the [Respectful Slop License 1.0-Draft](LICENSE), with prior grants preserved.
 - SF Mono uses the existing macOS Terminal.app `SFMono-Terminal.ttf` when present
   (effective name `SFMonoTerminal-Regular`); no Apple font is redistributed.
 - Menlo comes from the operating system.
@@ -66,3 +66,11 @@ The Rust library name remains `bbt_render`. Use the existing import name with a 
 ```toml
 bbt-render = { package = "bboxy450-render", version = "0.1.0" }
 ```
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

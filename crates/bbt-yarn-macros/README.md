@@ -78,7 +78,7 @@ identity are Boxy <bboxy450@gmail.com> (bboxy450).
 
 The pinned source contains `LICENSE-MIT`, `LICENSE-APACHE`, and the workspace
 license expression `MIT OR Apache-2.0`.
-Both crates are licensed `MIT OR Apache-2.0`, as confirmed by the operator for
+The pinned pre-adoption code remains `MIT OR Apache-2.0`, as confirmed by the operator for
 vendoring on 2026-10-23 (decision #33). `LICENSE-MIT` and `LICENSE-APACHE` retain
 the pinned upstream texts and copyright, including `Copyright (c) 2026 Kittens
 contributors`. No publication is part of this change.
@@ -121,3 +121,11 @@ The Rust library name remains `bbt_yarn_macros`. Use the existing import name wi
 ```toml
 bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.0" }
 ```
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

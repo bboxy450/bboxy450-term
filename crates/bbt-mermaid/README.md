@@ -42,3 +42,11 @@ The Rust library name remains `bbt_mermaid`. Use the existing import name with a
 ```toml
 bbt-mermaid = { package = "bboxy450-mermaid", version = "0.1.0" }
 ```
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

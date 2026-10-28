@@ -50,7 +50,10 @@ No package feature switches.
 
 ## License
 
-Apache-2.0. The vendored parser also retains its MIT option; see NOTICE and the original licence files.
+Pre-adoption fork code retains Apache-2.0. The vendored parser also retains its
+MIT option; see [NOTICE](NOTICE) and the original licence files. Separately
+identified new bboxy450-owned contributions use [LICENSE](LICENSE); the scope
+and preserved prior grants are in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## Dependency name
 
@@ -59,3 +62,11 @@ The Rust library name remains `bbt_core`. Use the existing import name with a ve
 ```toml
 bbt-core = { package = "bboxy450-term-core", version = "0.1.0" }
 ```
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

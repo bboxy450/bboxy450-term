@@ -11,22 +11,26 @@ links:
   - { to: "[[d34-licensing]]", rel: decision }
   - { to: "[[licensing]]", rel: constrains }
 created: 2026-10-23T17:28:19Z
-updated: 2026-10-23T17:28:19Z
+updated: 2026-10-28T08:20:00Z
 ---
 # Every workspace crate carries its declared licence files
 
-**Property.** The workspace follows [[licensing]] (decision [[d34-licensing|#34]]): `bbt-core`
-is Apache-2.0 with `LICENSE-APACHE` and `NOTICE`; other members carry
-`LICENSE-MIT` and `LICENSE-APACHE` under MIT OR Apache-2.0. The root carries both
-licence files and `NOTICE`. Vendored Alacritty and vte keep their upstream
-licence copies in their own source directories. Files are nonempty regular
-copies, not symlinks.
-Manifests use SPDX expressions rather than `license-file`.
+**Property.** Every actual workspace member follows [[licensing]]: local
+`license-file = "LICENSE"`, the complete Respectful Slop License 1.0-Draft,
+byte-identical `NOTICE` and `ATTRIBUTION.md` copies, and retained original
+MIT/Apache texts. The map explicitly preserves upstream terms and prior grants.
+Alacritty/vte, Yarn, Mermaid fixtures, xterm reference assets and the JetBrains
+Mono font retain their original licenses and notices. Required documents are
+nonempty regular files, never symlinks. New source excerpts retain project
+identity and an absolute policy reference without overwriting upstream headers.
 
-**Check.** `sh scripts/licenses.sh` reads the actual Cargo workspace members.
-Exit 0 means held; any other exit names the missing file or conflicting
-manifest. Absent Yarn crates are not required; when present they follow the
-same dual-file rule. This fast check is in the default invariant set.
+**Check.** `sh scripts/licenses.sh` reads actual Cargo workspace members and the
+map, checks declarations and canonical copies, and preserves upstream file
+requirements. Exit 0 means held; any other exit names the missing or conflicting
+material. `make test-licenses` also exercises negative fixtures and source
+coverage. `make check-license-packages` verifies Cargo's selected package files.
+The fast check remains in the default invariant set; no credentials or operator
+interaction is required.
 
 **Cost of a violation.** A published crate omits or misstates its terms, and
-the source-to-distribution provenance is incomplete.
+source excerpts or binary distributions lose their origin and required notices.

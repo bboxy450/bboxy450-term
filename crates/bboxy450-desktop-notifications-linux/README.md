@@ -18,3 +18,11 @@ This crate returns `Unsupported` and has no dependencies. Research retrieved
 [basic design and default action](https://specifications.freedesktop.org/notification/latest/basic-design.html).
 
 No D-Bus call or shell fallback is made here.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

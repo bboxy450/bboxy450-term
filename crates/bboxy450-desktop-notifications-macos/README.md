@@ -19,3 +19,11 @@ References used for the mechanism, with no copied implementation:
 Ad-hoc bundle delivery, replacement of an already-delivered notification and
 cold-launch clicks remain empirical acceptance checks, not assumptions based
 on those declarations. The app's logged bundle probe supplies that evidence.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.

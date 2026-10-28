@@ -2,6 +2,21 @@
 
 Read `~/.agents/AGENTS.md` first. Codex is an Executor. A direct operator request is the brief; implement its scope in your own worktree.
 
+## Respectful slopping — keep attribution attached
+
+Read [ATTRIBUTION.md](ATTRIBUTION.md) before copying, adapting, translating or
+deliberately borrowing a project-specific idea. Project-owned code uses the
+[Respectful Slop License 1.0-Draft](LICENSE), with upstream terms and prior
+grants preserved. Keep an accurate “Copied from”, “Adapted from” or “Translated
+from” comment beside reused protected material, naming its project, canonical
+URL and affected source. Known independent inspiration gets an “Inspired by”
+reference as a project norm, not a new condition on unprotected ideas.
+Do not invent sources, remove upstream notices, imply endorsement or label an
+adaptation as independent. Use compact source headers and adjacent origin
+comments so extracts carry their credit. Formats without comments use a
+companion attribution map. Run `make test-licenses` and preserve license/notice
+documents in source and binary packages. Slop respectfully. Keep the credit attached.
+
 ## Use the Makefile
 
 **The Makefile is the canonical interface for building, tests, installation and release work. Run `make help`. Do not invent Cargo/codesign/copy/publish sequences or keep a second installation recipe in a script or handoff. Add a missing workflow to Make.**

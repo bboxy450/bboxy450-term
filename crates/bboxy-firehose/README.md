@@ -95,3 +95,11 @@ The pinned local xterm.js reference and its capture instructions are in
 PNGs, two intermediate-state PNGs, input/image digests and a cell-by-cell
 cross-check. The run logs under `.bboxy/runs/t1-*.log` record actual validation
 and the deferred iTerm2/Ghostty checkpoint.
+
+## Respectful slopping
+
+Project-owned contributions use [Respectful Slop License 1.0-Draft](LICENSE).
+Retained upstream material keeps its original terms; earlier grants are not
+withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
+examples; [NOTICE](NOTICE) preserves factual upstream notices.
+Slop respectfully. Keep the credit attached.
