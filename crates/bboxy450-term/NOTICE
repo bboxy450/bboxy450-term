@@ -1,8 +1,20 @@
 bboxy450-term — notices
+https://github.com/bboxy450/bboxy450-term
 Copyright (c) 2026 Boxy (bboxy450)
 
-Original bboxy450 code is offered under MIT OR Apache-2.0; see LICENSE-MIT and
-LICENSE-APACHE. bbt-core is Apache-2.0 and retains its upstream notices below.
+Project-owned contributions are offered under Respectful Slop License
+1.0-Draft as adopted 2026-10-28; the complete terms appear in LICENSE.
+Source attribution and material scope:
+https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Slop respectfully. Keep the credit attached.
+
+Earlier MIT OR Apache-2.0 grants are not withdrawn for material/revisions to
+which they applied. Retained upstream code keeps its own terms. The original
+LICENSE-MIT and LICENSE-APACHE copies remain with their respective material;
+their presence does not license all later contributions under those terms.
+Pre-adoption bbt-core fork code retains Apache-2.0; pre-adoption Yarn and macro
+code retains MIT OR Apache-2.0. This repository-wide inventory is also included
+with each crate; entries apply only to material present in that distribution.
 
 Alacritty
 Source: https://github.com/alacritty/alacritty/tree/542147067dd016fc5f49120ef0ba605a98a4e3a7
@@ -28,3 +40,27 @@ README as provenance. Its upstream notices apply when those crates are present.
 
 The bboxy.png identity image is the operator's own image. Bundled fonts or icon
 sets retain their own notices alongside the assets when added to a distribution.
+
+JetBrains Mono test font
+Source: https://github.com/JetBrains/JetBrainsMono
+Copyright 2020 The JetBrains Mono Project Authors
+Licensed under the SIL Open Font License 1.1; retained text:
+crates/bbt-render/tests/fonts/OFL.txt. The font fixture is included in that
+crate's source package; it is not relicensed with project Rust source.
+
+Mermaid documentation examples
+Source: https://github.com/mermaid-js/mermaid
+Copyright (c) 2014 - 2022 Knut Sveidqvist
+Licensed under MIT; see crates/bbt-mermaid/tests/fixtures/LICENSE-MIT and README.md.
+The docs/ and state/ fixture directories are identified as copied examples by
+the crate README. Their original import revision was not recorded.
+
+xterm.js reference assets
+Source: https://github.com/xtermjs/xterm.js
+MIT notices for xterm.js authors, SourceLair and Christopher Jeffrey are retained
+in crates/bboxy-firehose/reference/vendor/LICENSE and unicode11-LICENSE.
+Exact asset versions and hashes are in that directory's provenance.json.
+These reference assets are excluded from the Cargo package.
+
+Harness/provider logos remain the marks of their respective owners. This
+inventory asserts no ownership of upstream logos and implies no endorsement.

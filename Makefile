@@ -1,5 +1,8 @@
 # Canonical build/test/install/release interface. See `make help`.
-# Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Retain accurate source credit on reuse:
 # https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 SHELL := /bin/sh
 .DEFAULT_GOAL := help
@@ -54,6 +57,10 @@ help:
 	  'make release                    Signed app ZIP, SHA256 and detached GPG signature' \
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
 	  'make sync-release-inputs         Refresh packaged copies of canonical build inputs' \
+	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies' \
+	  'make sync-source-notices         Attach scoped source comments; preserve upstream files' \
+	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
+	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=...'
@@ -111,13 +118,13 @@ test-boundaries:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib refresh_replaces_a_confirmed_failed_process -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
 
-bundle-files: compile
+bundle-files: check-licenses compile
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
-	cp NOTICE LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
+	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
 	revision=$$(git rev-parse HEAD); git diff --quiet HEAD -- || revision="$$revision-dirty"; \
@@ -188,8 +195,28 @@ release: bundle
 sync-release-inputs:
 	@python3 -I scripts/release-inputs.py --sync
 
-package-crate:
+.PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures check-license-packages
+sync-licenses:
+	@python3 -I scripts/license-packages.py --sync
+
+sync-source-notices:
+	@python3 -I scripts/source-notices.py --sync
+
+check-licenses:
+	@sh scripts/licenses.sh
+
+test-licenses-fixtures:
+	@python3 -I scripts/test-licenses.py
+
+test-licenses: test-licenses-fixtures check-licenses
+	@python3 -I scripts/test-source-notices.py
+
+check-license-packages:
+	@python3 -I scripts/license-packages.py --packages
+
+package-crate: check-licenses
 	@set -eu; test -n '$(CRATE)' || { echo 'Usage: make package-crate CRATE=package-name' >&2; exit 2; }; \
+	python3 -I scripts/license-packages.py --packages --package '$(CRATE)'; \
 	. ./scripts/cache-env.sh; cargo package --locked -p '$(CRATE)' --target-dir '$(TARGET_DIR)'; \
 	version=$$(cargo pkgid -p '$(CRATE)' --locked | sed 's/.*[@#]//'); \
 	file='$(TARGET_DIR)/package/$(CRATE)-'"$$version"'.crate'; \

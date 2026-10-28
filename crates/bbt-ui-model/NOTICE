@@ -1,0 +1,66 @@
+bboxy450-term — notices
+https://github.com/bboxy450/bboxy450-term
+Copyright (c) 2026 Boxy (bboxy450)
+
+Project-owned contributions are offered under Respectful Slop License
+1.0-Draft as adopted 2026-10-28; the complete terms appear in LICENSE.
+Source attribution and material scope:
+https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Slop respectfully. Keep the credit attached.
+
+Earlier MIT OR Apache-2.0 grants are not withdrawn for material/revisions to
+which they applied. Retained upstream code keeps its own terms. The original
+LICENSE-MIT and LICENSE-APACHE copies remain with their respective material;
+their presence does not license all later contributions under those terms.
+Pre-adoption bbt-core fork code retains Apache-2.0; pre-adoption Yarn and macro
+code retains MIT OR Apache-2.0. This repository-wide inventory is also included
+with each crate; entries apply only to material present in that distribution.
+
+Alacritty
+Source: https://github.com/alacritty/alacritty/tree/542147067dd016fc5f49120ef0ba605a98a4e3a7
+Copyright 2020 The Alacritty Project
+Licensed under Apache-2.0; see crates/bbt-core/src/vendor/alacritty/LICENSE-APACHE.
+See crates/bbt-core/VENDOR.md and source headers for retained modules and local adaptations.
+
+vte 0.15.0
+Source: https://github.com/alacritty/vte/tree/3b3da71c34cc1256c7e20981cf03f8eb95e08ffc
+Copyright (c) 2016 Joe Wilm
+Licensed under MIT OR Apache-2.0; see crates/bbt-core/src/vendor/vte/LICENSE-MIT and crates/bbt-core/src/vendor/vte/LICENSE-APACHE.
+Retained sources: crates/bbt-core/src/vendor/vte. Local modifications are marked in the files.
+
+The upstream distributions contain no separate NOTICE file. Original licence
+texts and source notices are retained. New fork code is by Boxy (bboxy450).
+This inventory does not change the applicable licence terms.
+
+kittens-old / Yarn runtime and macro
+Source: https://github.com/Gonzih/kittens-old/tree/293e134526bb2deee96f1197d6268aee64495482
+Copyright (c) 2026 Kittens contributors
+Licensed under MIT OR Apache-2.0. Yarn retains its upstream licence files and
+README as provenance. Its upstream notices apply when those crates are present.
+
+The bboxy.png identity image is the operator's own image. Bundled fonts or icon
+sets retain their own notices alongside the assets when added to a distribution.
+
+JetBrains Mono test font
+Source: https://github.com/JetBrains/JetBrainsMono
+Copyright 2020 The JetBrains Mono Project Authors
+Licensed under the SIL Open Font License 1.1; retained text:
+crates/bbt-render/tests/fonts/OFL.txt. The font fixture is included in that
+crate's source package; it is not relicensed with project Rust source.
+
+Mermaid documentation examples
+Source: https://github.com/mermaid-js/mermaid
+Copyright (c) 2014 - 2022 Knut Sveidqvist
+Licensed under MIT; see crates/bbt-mermaid/tests/fixtures/LICENSE-MIT and README.md.
+The docs/ and state/ fixture directories are identified as copied examples by
+the crate README. Their original import revision was not recorded.
+
+xterm.js reference assets
+Source: https://github.com/xtermjs/xterm.js
+MIT notices for xterm.js authors, SourceLair and Christopher Jeffrey are retained
+in crates/bboxy-firehose/reference/vendor/LICENSE and unicode11-LICENSE.
+Exact asset versions and hashes are in that directory's provenance.json.
+These reference assets are excluded from the Cargo package.
+
+Harness/provider logos remain the marks of their respective owners. This
+inventory asserts no ownership of upstream logos and implies no endorsement.

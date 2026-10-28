@@ -1,0 +1,12 @@
+Scope: operator-supplied Respectful Slop License 1.0-Draft; bboxy450-owned contributions across all24 workspace crates. Prior grants/upstream material retained.
+LICENSE: complete supplied draft with sections1–10 and explanatory appendix; root ATTRIBUTION/NOTICE and every member identify scope and canonical source.
+Source:593 owned files;5 core and16 Yarn scoped integration notices;19 upstream sources,18 line-sensitive fixtures,4 generatedoutputs and2 mirrors explicitly classified. Generated Rust token output includes origin comments.
+make sync-licenses — exit0; all24 LICENSE/NOTICE/ATTRIBUTION regular canonical copies; original MIT/Apache/upstream texts hash-preserved.
+make sync-release-inputs — exit0;10 identical mirrored inputs, including both packaged components.js copies.
+make test-licenses — exit0;6 package-gate fixture tests,9 source-notice fixture tests, metadata/copies/sourcecoverage held.
+make check-license-packages — exit0;24 actual cargo package --list selections contain policy, notices and applicable upstream assets.
+git diff --exit-code cf280bab -- exact protected Alacritty/vte/core-keyboard/xterm/font/Mermaid-doc/state prefixes — exit0; byte-identical. Core's owned vendor/mod.rs wrapper adds scoped comments only.
+Initial integration check refused absent Mermaid license and an omitted app map row; both prerequisites were integrated/fixed before successful combined checks.
+No publishing or version bump. App bundle and future crate/release workflows include LICENSE/NOTICE/ATTRIBUTION alongside preserved upstream texts.
+Gap: Mermaid original fixture-import revision/per-file source URLs were not recorded; companionREADME labels unknown rather than inventing provenance. Current upstream MIT license is pinned by exact blob/hash.
+Final signed-source CI, signed installation, artifact-signature and landing receipts are recorded by Make/scripts/land.sh in their normal local logs.

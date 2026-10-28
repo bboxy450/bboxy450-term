@@ -1,6 +1,8 @@
 """Check/synchronize crate terms and inspect Cargo's packaged file lists."""
-# Origin: bboxy450-term. Respectful Slop License 1.0-Draft; upstream terms retained.
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
 # Copyright (c) 2026 Boxy (bboxy450). Retain credit on reuse:
+# https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 # https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 import argparse
 import hashlib
@@ -26,6 +28,9 @@ UPSTREAM = {
     "bbt-render": {
         "tests/fonts/OFL.txt": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697",
         "tests/fonts/JetBrainsMono-Regular.ttf": "e6fd0d7e91550b3ed2b735d4312474362c4716edc4fc0577a0f61ed782d5aed1",
+    },
+    "bbt-mermaid": {
+        "tests/fixtures/LICENSE-MIT": "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80",
     },
     "bboxy-firehose": {
         "reference/vendor/LICENSE": "b569f629d00f2626a8100df2a1798210535621e42164dfd426a6fe5aac7b0ccd",
@@ -109,7 +114,8 @@ def check(data, synchronize=False, package_lists=False, only=None):
     root, packages = packages_from(data)
     policy, errors, directories = licensing_map(root), [], []
     sources = {name: read_regular(root / name) for name in COPIES}
-    if POLICY not in sources["LICENSE"].decode("utf-8"):
+    license_text = sources["LICENSE"].decode("utf-8")
+    if not license_text.startswith("Respectful Slop License\nVersion 1.0-Draft"):
         errors.append("canonical LICENSE does not identify the supplied policy")
     workspace = tomllib.loads((root / "Cargo.toml").read_text()).get("workspace", {}).get("package", {})
     if "license" in workspace or "license-file" in workspace:
@@ -133,6 +139,8 @@ def check(data, synchronize=False, package_lists=False, only=None):
             errors.append(f"{package['name']}: package manifest is outside the workspace")
             continue
         declared = tomllib.loads(read_regular(manifest).decode("utf-8"))["package"]
+        if declared.get("name") != package["name"]:
+            errors.append(f"{package['name']}: metadata name does not match its manifest")
         terms = policy.get(directory.name)
         if terms is None:
             errors.append(f"{package['name']}: missing from the licensing map")
