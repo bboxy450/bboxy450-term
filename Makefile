@@ -46,6 +46,7 @@ help:
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
@@ -439,6 +440,12 @@ test-new-swarm:
 
 format-new-swarm:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/navigation.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/swarm_folder.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+.PHONY: test-close-shortcut
+test-close-shortcut:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process -- --ignored --exact --nocapture
 
 test-navigation:
 	@set -eu; . ./scripts/cache-env.sh; \

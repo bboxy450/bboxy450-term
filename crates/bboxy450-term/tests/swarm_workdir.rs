@@ -1359,6 +1359,56 @@ fn new_swarm_cwd_controls_stay_visible_and_launch_in_the_saved_folder() {
 }
 
 #[test]
+#[ignore = "private ctl close shortcut, split geometry and retained PTY fixture; make test-close-shortcut"]
+fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "key", "cmd-w"]);
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
+    let first = fixture.spawn("claude", &swarm, None);
+    fixture.ctl(&["ui", "key", "cmd-d"]);
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let second = wait_harness(&fixture, "claude", 2);
+    let focused = fixture.ctl(&["ui", "focus", &first]);
+    assert_eq!(focused["panes"].as_array().unwrap().len(), 2);
+    let owners = fixture.owners();
+    let before = fixture.ctl(&["seat", "ls"]);
+    let closed = fixture.ctl(&["ui", "key", "cmd-w"]);
+    assert_eq!(closed["focused"], second);
+    assert_eq!(closed["panes"].as_array().unwrap().len(), 1);
+    assert_eq!(closed["panes"][0]["seat"], second);
+    let status = fixture.ctl(&["app", "status"]);
+    assert_eq!(status["close"]["grace"][0]["seat"], first);
+    assert_eq!(status["close"]["grace"][0]["undo"], true);
+    let restored = fixture.ctl(&["ui", "key", "cmd-z"]);
+    assert_eq!(restored["focused"], first);
+    let geometry = |layout: &Value| {
+        layout["panes"].as_array().unwrap().iter().map(|pane| (
+            pane["seat"].clone(), pane["rect"].clone(), pane["cols"].clone(), pane["rows"].clone(),
+        )).collect::<Vec<_>>()
+    };
+    assert_eq!(geometry(&restored), geometry(&focused), "undo restores the same split and cell bounds");
+    let after = fixture.ctl(&["seat", "ls"]);
+    for seat in [&first, &second] {
+        let identity = |rows: &Value| {
+            let row = rows.as_array().unwrap().iter().find(|row| row["record"]["id"] == *seat).unwrap();
+            (row["record"]["generation"].clone(), row["state"]["process"].clone())
+        };
+        assert_eq!(identity(&before), identity(&after));
+    }
+    fixture.ctl(&["ui", "key", "cmd-comma"]);
+    assert_eq!(fixture.ctl(&["ui", "layout"])["page"], "settings");
+    let page_closed = fixture.ctl(&["ui", "key", "cmd-w"]);
+    assert!(page_closed["page"].is_null());
+    assert_eq!(page_closed["panes"].as_array().unwrap().len(), 2);
+    assert_eq!(fixture.owners(), owners);
+    assert!(fixture.app.as_mut().unwrap().try_wait().unwrap().is_none());
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
 #[ignore = "private ctl pointer/keyboard/PTY fixture; make test-navigation"]
 fn native_navigation_clicks_splits_goto_and_directory_validation() {
     let mut fixture = Fixture::new();

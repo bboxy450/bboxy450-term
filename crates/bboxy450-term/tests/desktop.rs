@@ -391,6 +391,17 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     wait_until("native desktop Settings action", DEADLINE, || {
         fixture.ctl(&["ui", "layout"])["page"] == "settings"
     });
+    fixture.action("close_focused_seat");
+    wait_until("native close respects Settings context", DEADLINE, || {
+        fixture.ctl(&["ui", "layout"])["page"].is_null()
+    });
+    fixture.assert_work_preserved(&owners, &seat, &before);
+    fixture.action("close_focused_seat");
+    wait_until("native close hides the focused seat", DEADLINE, || {
+        fixture.ctl(&["ui", "layout"])["panes"].as_array().is_some_and(Vec::is_empty)
+    });
+    fixture.ctl(&["ui", "key", "cmd-z"]);
+    fixture.assert_work_preserved(&owners, &seat, &before);
     fixture.action("new_tab");
     wait_until("native desktop New Tab action", DEADLINE, || {
         fixture.ctl(&["ui", "layout"])["launcher_open"] == true

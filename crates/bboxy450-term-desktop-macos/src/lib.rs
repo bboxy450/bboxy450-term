@@ -54,6 +54,13 @@ define_class!(
         fn activate(&self, sender: &NSMenuItem) {
             if let Ok(index) = usize::try_from(sender.tag())
                 && let Some(action) = Action::ALL.get(index) {
+                    if *action == Action::CloseFocusedSeat
+                        && NSApplication::sharedApplication(MainThreadMarker::from(self))
+                            .currentEvent()
+                            .is_some_and(|event| event.r#type() == NSEventType::KeyDown && event.isARepeat())
+                    {
+                        return;
+                    }
                     // A host panic cannot unwind through Objective-C.
                     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                         (self.ivars().callback)(*action)));

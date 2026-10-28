@@ -972,6 +972,7 @@ enum RoutedKey {
     OpenGraph,
     OpenSettings,
     MuteFocused,
+    CloseFocusedSeat,
     UndoClose,
     DismissStarting(bbt_mux::Ulid),
     SettingsKey(SettingsKey),
@@ -1159,6 +1160,9 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         };
     }
     if command && !mods.alt_key() && !mods.shift_key() && !mods.control_key() {
+        if shortcut == Some('w') {
+            return if repeat { RoutedKey::Local } else { RoutedKey::CloseFocusedSeat };
+        }
         if shortcut == Some(',') {
             return if repeat {
                 RoutedKey::Local
@@ -1463,6 +1467,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
+            | RoutedKey::CloseFocusedSeat
             | RoutedKey::ToggleHud
     ) {
         return global;
@@ -4287,6 +4292,22 @@ impl App {
             self.close_seat(seat, bbt_mux::Ulid::new(), true);
         }
     }
+    fn close_focused_seat(&mut self) {
+        if self.document.open {
+            self.close_document();
+        } else if self.local_tab.is_some() {
+            self.close_local_tab();
+        } else if let Some(op) = self.starting.focused() {
+            if self.dismiss_starting(op)
+                && let Some(effects) = &mut self.ui_collect
+            {
+                effects.push(UiEffect::StartingDismissed(op));
+            }
+        } else if let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) {
+            self.close_launcher();
+            self.close_seat(seat, bbt_mux::Ulid::new(), false);
+        }
+    }
     fn queue(&mut self, mut message: live::UiMsg) {
         if self.closing || self.live_commands.is_none() {
             return;
@@ -5105,6 +5126,7 @@ impl App {
             RoutedKey::OpenSettings => self.open_settings("Account"),
             RoutedKey::SettingsKey(key) => self.settings_key(key),
             RoutedKey::MuteFocused => self.mute_focused(),
+            RoutedKey::CloseFocusedSeat => self.close_focused_seat(),
             RoutedKey::UndoClose => self.undo_latest_close(),
             RoutedKey::DismissStarting(op) => {
                 if self.dismiss_starting(op)
@@ -9761,6 +9783,24 @@ mod layout_shortcut_tests {
     }
 
     #[test]
+    fn close_shortcut_follows_layout_suppresses_repeat_and_preserves_page_context() {
+        let mut input = character("w", "w", KeyCode::KeyJ, Some("w"), ModifiersState::SUPER);
+        assert_eq!(route_key(&input, 0, None), RoutedKey::CloseFocusedSeat);
+        assert_eq!(route_key(&input, 0, Some("claude")), RoutedKey::CloseFocusedSeat);
+        assert_eq!(route_composer(&input, 0, ComposeField::Body), RoutedKey::CloseFocusedSeat);
+        for routed in [route_local_page(&input, 0), route_settings(&input, 0, true), route_document(&input, 0)] {
+            assert_eq!(routed, RoutedKey::LocalPage(PageCommand::Close));
+        }
+        input.repeat = true;
+        assert_eq!(route_key(&input, 0, None), RoutedKey::Local);
+        input.repeat = false;
+        for modifiers in [ModifiersState::SUPER | ModifiersState::SHIFT, ModifiersState::SUPER | ModifiersState::ALT, ModifiersState::SUPER | ModifiersState::CONTROL] {
+            input.modifiers.state = modifiers;
+            assert_ne!(route_key(&input, 0, None), RoutedKey::CloseFocusedSeat);
+        }
+    }
+
+    #[test]
     fn quit_and_hard_quit_follow_the_layout_in_every_chrome_context() {
         for (mods, expected) in [
             (ModifiersState::SUPER, RoutedKey::Quit),
@@ -9807,6 +9847,7 @@ mod layout_shortcut_tests {
             (",", ",", RoutedKey::OpenSettings),
             ("z", "z", RoutedKey::UndoClose),
             ("m", "m", RoutedKey::MuteFocused),
+            ("w", "w", RoutedKey::CloseFocusedSeat),
         ] {
             let key = character(
                 logical,

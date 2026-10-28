@@ -1,0 +1,15 @@
+Scope: operator request — Cmd+W closes the currently focused seat.
+Base: 3ef27cf85f3f63fe49b2061a0c966b0ee212e264
+main.rs/desktop_menu.rs: layout-aware Cmd+W and native action share the existing
+seat close/grace/undo path; local pages/documents retain their close context.
+desktop-core: append CloseFocusedSeat action and Window > Close Seat (Cmd+W).
+desktop-macos: suppress repeated native Cmd+W; native probe dispatches all 12 actions.
+swarm_workdir.rs: ctl closes only focused split seat, Cmd+Z restores its geometry,
+both child identities and backend owners remain unchanged, Settings closes itself.
+desktop.rs: real private daemon/UI action IPC closes Settings then seat and undoes
+without replacing UI/backend/harness owners. No OS input injection or operator.
+make sync-release-inputs — exit 0, 10 copies already identical.
+make test-close-shortcut test-desktop test-desktop-app test-desktop-lifecycle test-boundaries — exit 0.
+Log: ~/Library/Logs/bboxy450-term/cmd-w-20261028-focused.log
+Final exact-source full CI: target/ci-local.log, source/result SHA lines.
+Signed install, installed smoke and land.sh receipt logs stay outside tracked source.

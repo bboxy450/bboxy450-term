@@ -31,9 +31,10 @@ pub enum Action {
     ToggleFullscreen,
     Minimize,
     Zoom,
+    CloseFocusedSeat,
 }
 impl Action {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 12] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -45,6 +46,7 @@ impl Action {
         Self::ToggleFullscreen,
         Self::Minimize,
         Self::Zoom,
+        Self::CloseFocusedSeat,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -59,6 +61,7 @@ impl Action {
             Self::ToggleFullscreen => "toggle_fullscreen",
             Self::Minimize => "minimize",
             Self::Zoom => "zoom",
+            Self::CloseFocusedSeat => "close_focused_seat",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -172,6 +175,7 @@ pub fn app_menu() -> Vec<MenuGroup> {
             title: "Window",
             items: vec![
                 MenuItem::action("New Tab", NewTab, "t"),
+                MenuItem::action("Close Seat", CloseFocusedSeat, "w"),
                 MenuItem::action("Split Right", SplitRight, "d"),
                 MenuItem {
                     shift: true,
@@ -301,6 +305,10 @@ mod tests {
             .find(|item| item.key == "q" && !item.option)
             .unwrap();
         assert_eq!(quit.command, MenuCommand::Action(Action::CloseWindow));
+        let close: Vec<_> = items.iter().filter(|item| item.key == "w").collect();
+        assert_eq!(close.len(), 1);
+        assert_eq!(close[0].command, MenuCommand::Action(Action::CloseFocusedSeat));
+        assert!(!close[0].option && !close[0].shift && !close[0].control);
         let hard = items
             .iter()
             .find(|item| item.command == MenuCommand::Action(Action::HardQuit))
