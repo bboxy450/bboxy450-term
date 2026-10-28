@@ -93,6 +93,7 @@ test-boundaries:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl --test native_signing; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::shell_path::tests -- --include-ignored; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib refresh_replaces_a_confirmed_failed_process -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
 
 bundle-files: compile
@@ -280,7 +281,7 @@ check-navigation:
 test-oracle-control:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto -p bboxy450-mux --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_oracle -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_oracle -- --include-ignored --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	$(MAKE) test-oracle-ui
 
@@ -288,7 +289,16 @@ test-oracle-ui:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp -- --ignored --nocapture
 
 check-oracle-control:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 format-oracle-control:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/logic.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/src/mcp/bridge.rs crates/bbt-mux/src/window_journal.rs crates/bbt-proto/src/registry.rs crates/bboxy450-term/src/model.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/live.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+.PHONY: test-large-gui-frame format-large-gui-frame
+test-large-gui-frame:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib gui_reply_budget_accepts_large_frames -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir large_terminal_snapshot -- --ignored --nocapture
+
+format-large-gui-frame:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/gui/mod.rs crates/bbt-mux/src/seat_socket.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/tests/swarm_workdir.rs

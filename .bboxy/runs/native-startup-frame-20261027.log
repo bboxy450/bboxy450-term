@@ -1,0 +1,67 @@
+2026-10-27: operator reported native app zooming, blank/frozen after reopen.
+Baseline MCP commit: 25ebb5ad2eb3a8e4eadd23a910800ab2ac92bad2 (signed).
+make test CI_LOG=target/ci-oracle-control.log: exit 0 on that exact baseline.
+27 invariants passed; 11 slow invariants deliberately skipped.
+
+Observed actual native app failure: "response exceeds negotiated frame bound".
+A large terminal snapshot exceeded the shared 1 MiB control-request budget.
+A successful app-status response alone did not prove terminal glyphs painted.
+Actual window capture before fix: blank terminal, live chrome.
+SHA256 ae4fe64206bd8699f93e153aced80b4bba885f723c7babca08aa9c6ba17423b2.
+Actual window capture after GUI reply fix: Codex contents visible.
+SHA256 350f8ce05379157acbedd7aaae499d679970b8aa899c6ce37b26049d8dfbc2e8.
+Captures are outside Git in ~/Library/Logs/bboxy450-term/.
+
+Operator authorized saved-state reset, UI kill and restart.
+Backed up exact window/state and window/epoch bytes privately, invalidated
+old epoch and cleared persisted UI state, killed only the UI we started,
+then launched the UI in a detached process session. Restored the swarm cwd
+from that backup. The supervisor and harnesses stayed alive; the actual
+Codex TUI PID/generation remained unchanged through logic replacement.
+Backup: ~/Library/Logs/bboxy450-term/window-reset-20261027-165435/.
+
+Mechanisms:
+- proto gui::MAX_REPLY_BYTES: 64 MiB bounded GUI reply budget.
+- mux read_gui_line/send: GUI snapshots use that budget; seat send/read and
+  GUI requests keep the existing 1 MiB bound.
+- cockpit read_replies and ctl Client::reply use the same GUI budget.
+- control-service version 2 replaces older logic while retaining PTYs.
+- startup retries a missing GUI endpoint through one confirmed owner refresh;
+  failed shutdown of an already departed process does not abort that refresh.
+- swarm row says cwd; no change to launch folder semantics.
+- real MCP spawn/split boundary is explicitly selected in Make/night, per #327 B2.
+
+make test-large-gui-frame: exit 0 (large-window fixture).
+Log: ~/Library/Logs/bboxy450-term/large-gui-frame-e2e.log.
+2,385,793 byte styled reply at 320x120 terminal, actual colored glyph pixels
+asserted before and after UI reattach; same PTY PID and process generation.
+make test-oracle-ui: exit 0 including missing-endpoint recovery.
+Log: ~/Library/Logs/bboxy450-term/oracle-control-recovery.log.
+make test-boundaries: exit 0 including nonzero old-owner shutdown recovery.
+make check-oracle-control: exit 0, all targets, -D warnings.
+make test-navigation: exit 0, four private process fixtures.
+make parity-swarm: exit 0, 72 measured cases, zero geometry mismatches.
+These last four predate the GUI reply budget extension; rerun before landing.
+Logs: ~/Library/Logs/bboxy450-term/startup-recovery-*.log.
+
+make -o build test-codex-rendering: exit 0 using the already-built baseline.
+Log: ~/Library/Logs/bboxy450-term/codex-rendering-current.log.
+Two real Codex TUIs, private daemon/local model, zero reconnects/clears during
+measured idle interval; resized checkpoint recovery and native wakes passed.
+Live fresh Codex seat observation: five seconds, zero new terminal bytes,
+zero reconnect messages and zero clears. This did not by itself prove the
+native window painted; the before/after captures above supplied that evidence.
+
+Final GUI-budget checks on the candidate production changes:
+make test-large-gui-frame: exit 0, both the 1 MiB seat/64 MiB GUI budget
+contract and the 2,385,793-byte painted-terminal/reopen fixture.
+Log: ~/Library/Logs/bboxy450-term/large-gui-frame-final.log.
+make check-oracle-control: exit 0, all touched crates/all targets/-D warnings.
+Log: ~/Library/Logs/bboxy450-term/large-gui-frame-clippy.log.
+make test-boundaries: exit 0.
+Log: ~/Library/Logs/bboxy450-term/large-gui-frame-boundaries.log.
+make test-navigation: exit 0, all five private process fixtures, including
+large terminal paint/reopen and Oracle MCP plus missing-endpoint recovery.
+Log: ~/Library/Logs/bboxy450-term/large-gui-frame-navigation.log.
+The signed exact-commit full CI and landing/parity receipts follow this commit.
+Do not treat pre-budget parity as the final landing parity verdict.

@@ -6,6 +6,10 @@
 //! its noun's file only. The wire is the flat enums' own derive, so it is unchanged by where
 //! a variant is listed (pinned by `tests/gui_wire_golden.rs`), and a variant name listed by
 //! two nouns is a duplicate-variant compile error. Every call site keeps `GuiAction::X`.
+/// Terminal snapshots for supported desktop grids exceed the MCP/control
+/// request bound. GUI replies have their own bounded transport budget.
+pub const MAX_REPLY_BYTES: usize = 64 * 1024 * 1024;
+
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 

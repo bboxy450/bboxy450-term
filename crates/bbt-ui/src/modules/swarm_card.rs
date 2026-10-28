@@ -667,9 +667,9 @@ pub struct PendingSpawn {
 
 /// Host-owned launch default, using the card's existing row tokens.
 pub fn workdir_row(key: &str, path: Option<&str>, ctx: ui::Context) -> c::Element {
-    let label=path.map_or_else(||"Choose working folder…".into(), |path| {
+    let label=path.map_or_else(||"Choose cwd…".into(), |path| {
         let name=std::path::Path::new(path).file_name().and_then(|name|name.to_str()).unwrap_or(path);
-        format!("Folder: {name}")
+        format!("cwd: {name}")
     });
     let button=|action:&str,label:String| named(format!("swarm-folder/{key}/{action}"),
         flow(plain(Some(ctx.density.tokens().tab_h as f32),[0.,STYLE.spacing.s4 as f32,0.,STYLE.spacing.s4 as f32],ui::Color::Transparent,STYLE.radius.row as f32),

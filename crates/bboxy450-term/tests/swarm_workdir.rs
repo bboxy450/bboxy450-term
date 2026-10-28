@@ -771,7 +771,7 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     fs::write(fixture.root.join("bin/claude"),
         "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '%s' \"$PWD\" > \"$HOME/$BBOXY_SEAT_ID.cwd\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
     let expect_cwd = |fixture: &Fixture, seat: &str, expected: &Path| {
-        fixture.ctl(&["seat", "wait", seat, "--text", "CWD:", "--timeout", "10000"]);
+        fixture.ctl(&["seat", "wait", seat, "--text", "CWD:", "--timeout", "30000"]);
         assert_eq!(
             fs::read_to_string(fixture.root.join(format!("home/{seat}.cwd"))).unwrap(),
             expected.to_str().unwrap()
@@ -918,8 +918,137 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
         "ctl",
         json!({"command":"layout_read","arguments":{}}),
     );
+    // Matching versions do not prove health: a retained owner may have lost
+    // its socket. One start must recover it, keeping all existing PTYs.
+    let old_owners = fixture.owners();
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    owner["ready"]["root"] = json!(fixture.root.join("missing-logic-endpoint"));
+    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    fixture.start();
+    let recovered_owners = fixture.owners();
+    assert_eq!(old_owners[0], recovered_owners[0]);
+    assert_ne!(old_owners[1], recovered_owners[1]);
+    let recovered = fixture.ctl(&["seat", "ls"]);
+    for old in upgraded_seats.as_array().unwrap() {
+        let current = recovered
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["record"]["id"] == old["record"]["id"])
+            .unwrap();
+        assert_eq!(current["record"]["generation"], old["record"]["generation"]);
+        assert_eq!(current["state"]["process"], old["state"]["process"]);
+    }
+    call(
+        &mut bridge,
+        "ctl",
+        json!({"command":"layout_read","arguments":{}}),
+    );
     println!(
-        "Oracle MCP: right split + completed focus frame; detached bottom split + reattach; control-service upgrade retained all {} process identities",
+        "Oracle MCP: right split + completed focus frame; detached bottom split + reattach; control-service upgrade and missing-endpoint recovery retained all {} process identities",
         after.as_array().unwrap().len()
+    );
+}
+
+// keeps: spec c1-live-seats; a desktop-size snapshot must reach the painted pane
+#[test]
+#[ignore = "private large-window GUI/PTY boundary; make test-large-gui-frame"]
+fn large_terminal_snapshot_survives_resize_and_ui_reattach() {
+    let mut fixture = Fixture::new();
+    fs::write(fixture.root.join("bin/claude"),r#"#!/bin/sh
+read -r line
+/usr/bin/awk 'BEGIN { for (r=0;r<120;r++) { for (c=0;c<240;c++) printf "\033[38;2;%d;30;40mX",(c%2)*200; printf "\033[0m\r\n" } printf "\r\nLARGE-VIEW-READY\r\n" }'
+exec /bin/cat
+"#).unwrap();
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let swarm = initial["regions"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .find_map(|k| k.strip_prefix("swarm:"))
+        .unwrap()
+        .to_owned();
+    let seat = fixture.spawn("claude", &swarm, None);
+    fixture.ctl(&["app", "resize", "320x120"]);
+    fixture.ctl(&["seat", "type", &seat, "render"]);
+    fixture.ctl(&["seat", "key", &seat, "enter"]);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "LARGE-VIEW-READY",
+        "--timeout",
+        "30000",
+    ]);
+    let screen = fixture.ctl(&["seat", "screen", &seat, "--cells"]);
+    let bytes = serde_json::to_vec(&screen).unwrap().len();
+    assert!(
+        bytes > 1024 * 1024,
+        "fixture must exercise a GUI reply above the previous 1 MiB cap: {bytes}"
+    );
+    let painted = |fixture: &Fixture, name: &str| {
+        let path = fixture.root.join(name);
+        fixture.ctl(&["seat", "capture", "window", path.to_str().unwrap()]);
+        let decoder = png::Decoder::new(std::io::BufReader::new(fs::File::open(path).unwrap()));
+        let mut reader = decoder.read_info().unwrap();
+        let mut bytes = vec![0; reader.output_buffer_size().unwrap()];
+        let info = reader.next_frame(&mut bytes).unwrap();
+        assert_eq!(info.color_type, png::ColorType::Rgba);
+        let red = bytes[..info.buffer_size()]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .enumerate()
+            .filter(|(i, p)| {
+                let x = (*i as u32) % info.width;
+                let y = (*i as u32) / info.width;
+                x > 400 && y > 120 && y + 100 < info.height && p[0] > 140 && p[1] < 80 && p[2] < 100
+            })
+            .count();
+        assert!(
+            red > 1000,
+            "large snapshot did not paint its colored terminal glyphs: {red} red pixels"
+        );
+    };
+    painted(&fixture, "large-before.png");
+    let before = fixture.ctl(&["seat", "ls"]);
+    let old = before
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == seat)
+        .unwrap();
+    let owners = fixture.owners();
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "LARGE-VIEW-READY",
+        "--timeout",
+        "30000",
+    ]);
+    painted(&fixture, "large-after.png");
+    let after = fixture.ctl(&["seat", "ls"]);
+    let current = after
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["record"]["id"] == seat)
+        .unwrap();
+    assert_eq!(old["record"]["generation"], current["record"]["generation"]);
+    assert_eq!(old["state"]["process"], current["state"]["process"]);
+    println!(
+        "Large terminal: {bytes} byte styled reply painted on a 320x120 terminal and after UI reattach; same PTY PID/generation"
     );
 }

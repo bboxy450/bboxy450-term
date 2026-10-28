@@ -1365,6 +1365,16 @@ fn gui_history_reply(
 }
 
 pub async fn read_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Option<Vec<u8>>> {
+    read_bounded_line(reader, MAX_LINE).await
+}
+/// GUI snapshots use the GUI reply budget; seat/MCP requests retain 1 MiB.
+pub async fn read_gui_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Option<Vec<u8>>> {
+    read_bounded_line(reader, bbt_proto::gui::MAX_REPLY_BYTES).await
+}
+async fn read_bounded_line(
+    reader: &mut (impl AsyncBufRead + Unpin),
+    limit: usize,
+) -> Result<Option<Vec<u8>>> {
     let mut line = Vec::new();
     loop {
         let part = reader.fill_buf().await?;
@@ -1379,8 +1389,12 @@ pub async fn read_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Optio
             .iter()
             .position(|b| *b == b'\n')
             .map_or(part.len(), |n| n + 1);
-        if line.len() + count > MAX_LINE {
-            return Err(invalid("NDJSON frame exceeds 1 MiB"));
+        if line.len() + count > limit {
+            return Err(invalid(if limit == MAX_LINE {
+                "NDJSON frame exceeds 1 MiB"
+            } else {
+                "GUI reply exceeds 64 MiB"
+            }));
         }
         let done = part[count - 1] == b'\n';
         line.extend_from_slice(&part[..count]);
@@ -1391,10 +1405,19 @@ pub async fn read_line(reader: &mut (impl AsyncBufRead + Unpin)) -> Result<Optio
         }
     }
 }
-
 async fn send(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
+    send_bounded(writer, value, bbt_proto::gui::MAX_REPLY_BYTES).await
+}
+async fn send_seat(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
+    send_bounded(writer, value, MAX_LINE).await
+}
+async fn send_bounded(
+    writer: &mut (impl AsyncWrite + Unpin),
+    value: &impl Serialize,
+    limit: usize,
+) -> Result<()> {
     let mut bytes = serde_json::to_vec(value)?;
-    if bytes.len() >= MAX_LINE {
+    if bytes.len() >= limit {
         return Err(invalid("response exceeds negotiated frame bound"));
     }
     bytes.push(b'\n');
@@ -1457,13 +1480,13 @@ async fn session_inner(
                     Action::PollEvents{consumer,limit}=> {if !consumers.contains(&consumer){Err(invalid("consumer belongs to another connection"))}else{Ok(serde_json::json!({"kind":"Events","events":client.bus.poll(&consumer,limit.min(128)).await?}))}}
                     Action::Ack{consumer,stream,sequence}=>{if !consumers.contains(&consumer){Err(invalid("consumer belongs to another connection"))}else{client.bus.ack(&consumer,&stream,sequence).await.map(|()|serde_json::json!({"kind":"Acked"}))}}
                 };
-                match result {Ok(value)=>send(&mut write,&value).await?,Err(error)=>send(&mut write,&serde_json::json!({"kind":"Rejected","reason":error.to_string()})).await?,}
+                match result {Ok(value)=>send_seat(&mut write,&value).await?,Err(error)=>send_seat(&mut write,&serde_json::json!({"kind":"Rejected","reason":error.to_string()})).await?,}
             }
             _=tick.tick(),if subscribed=> {
                 let snapshot=client.snapshot(seat,generation).await?;
                 let identity=(snapshot.view,snapshot.sequence);
                 if last!=Some(identity){view.offer(snapshot)?;last=Some(identity);}
-                if let Some(update)=view.next_update(){send(&mut write,&update).await?;}
+                if let Some(update)=view.next_update(){send_seat(&mut write,&update).await?;}
             }
         }
     }
@@ -1501,6 +1524,20 @@ mod gui_tests {
         logic::{Logic, LogicConfig},
         registry::SeatRecord,
     };
+
+    // keeps: spec c1-live-seats; large GUI replies do not widen seat/MCP requests
+    #[tokio::test]
+    async fn gui_reply_budget_accepts_large_frames_without_widening_seat_requests() {
+        let mut bytes = vec![b'x'; (1 << 20) + 16];
+        bytes.push(b'\n');
+        let mut seat_reader = bytes.as_slice();
+        assert!(read_line(&mut seat_reader).await.is_err());
+        let mut gui_reader = bytes.as_slice();
+        assert_eq!(
+            read_gui_line(&mut gui_reader).await.unwrap().unwrap().len(),
+            bytes.len() - 1
+        );
+    }
 
     // keeps: spec e2e-acceptance M6 (a committed mute is visible without draining the event lane).
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -33,8 +33,8 @@ use std::{
     time::Duration,
 };
 
-/// The GUI socket's frame cap (bbt-mux `seat_socket::read_line`).
-const FRAME_LIMIT: usize = 1 << 20;
+/// Shared GUI reply budget; control requests retain their existing bound.
+const FRAME_LIMIT: usize = bbt_proto::gui::MAX_REPLY_BYTES;
 const TIMEOUT: Duration = Duration::from_secs(15);
 const PAGE: usize = 128;
 
@@ -601,7 +601,7 @@ impl Client {
             return Err("gui.sock closed the connection (version or capability refused)".into());
         }
         if line.len() > FRAME_LIMIT {
-            return Err("gui.sock frame over the 1 MiB limit".into());
+            return Err("gui.sock frame over the GUI reply limit".into());
         }
         serde_json::from_slice(&line).map_err(|e| format!("gui.sock reply: {e}"))
     }

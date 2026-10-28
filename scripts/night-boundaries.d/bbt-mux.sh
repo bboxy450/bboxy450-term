@@ -17,3 +17,4 @@ cargo test -p bboxy450-mux --locked --test mcp mcp_seat_reads_page_real_capture_
 cargo test -p bboxy450-mux --locked --test mcp mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --test mcp mcp_seat_native_interrupt_is_bounded_audited_and_never_replayed -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --lib seat_socket::gui_tests::mute_reply_refreshes_authoritative_seat_before_receipt_without_events -- --ignored --exact --nocapture
+cargo test -p bboxy450-mux --locked --test mcp mcp_oracle_split_runs_without_a_ui_and_replays_after_logic_restart -- --ignored --exact --nocapture

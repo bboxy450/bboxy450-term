@@ -61,7 +61,17 @@ flowchart LR
 ```
 
 - **Processes.** The app spawns `bboxy450-term supervisor` and `bboxy450-term logic` as private entry points of the one binary, like `hook` (specs/README S5). The control socket lives at `default_socket_path()` (`M/transport.rs:118-131`, its first caller); the run dir under Application Support. Each process owns its own bbt-rt runtime, which closes the two-runtimes gap in [[architecture]] §8 by never sharing a process. Decision [[d1-crate-topology|#1]] moves the supervisor into `bbt-supervisor` after W2.4; C1 does not wait for that split.
-- **One GUI endpoint on logic**, `{root}/gui.sock`, with the seat socket's framing and admission (`M/seat_socket.rs:19, 139-175, 213`: NDJSON ≤ 1 MiB, version, capability) and a GUI action set: `ListSeats`, `Watch{seat, view}`, `Unwatch{seat}`, `Applied{seat, view, sequence}`, `Input{seat, id, bytes}`, `Resize{seat, cols, rows}`, `Spawn{spec}`, `ScheduleClose{seat}`, `UndoClose{seat, close_id}`, `GetHistory{seat, from, to}`. One connection multiplexes every seat, so 1000 seats cost one fd. Unwatched seats push only `seat/{id}/state` events over the same connection (the endpoint's bus filter, `seat_socket.rs:224`, widened to `seat/*/state` for the GUI); no grids.
+- **One GUI endpoint on logic**, `{root}/gui.sock`, with the seat socket's framing and admission (`M/seat_socket.rs:19, 139-175, 213`: NDJSON requests ≤ 1 MiB and GUI replies ≤ 64 MiB, version, capability) and a GUI action set: `ListSeats`, `Watch{seat, view}`, `Unwatch{seat}`, `Applied{seat, view, sequence}`, `Input{seat, id, bytes}`, `Resize{seat, cols, rows}`, `Spawn{spec}`, `ScheduleClose{seat}`, `UndoClose{seat, close_id}`, `GetHistory{seat, from, to}`. One connection multiplexes every seat, so 1000 seats cost one fd. Unwatched seats push only `seat/{id}/state` events over the same connection (the endpoint's bus filter, `seat_socket.rs:224`, widened to `seat/*/state` for the GUI); no grids.
+  The GUI reply bound is shared as `bbt_proto::gui::MAX_REPLY_BYTES` by logic,
+  the window reader and ctl. Seat/MCP framing remains at 1 MiB. A supported
+  desktop terminal must not lose its first snapshot to the control-request
+  limit: the 2026-10-27 regression paints a 320×120 colored terminal whose
+  styled reply alone exceeds 1 MiB, including after UI reattach, with the same
+  PTY process and generation. Native control-service version 2 refreshes an
+  older logic owner on attach, preserving the supervisor and harnesses.
+  If an existing owner's GUI endpoint is unavailable, one UI start replaces
+  that owner only after confirmed process departure; its failed exit status
+  must not require a second launch. A still-live owner still refuses replacement.
 - **`bbt-proto` is born here** (decision [[d6-shared-protocol|#6]]): `View`, `Screen`, `Snapshot`, `Delta`, `Update` from `M/streams.rs`, `SeatRecord` from `M/registry.rs`, the GUI action and reply enums. It depends on bbt-ui-model for ids until O2 moves ids down. Order becomes `… bboxybook bbt-proto bbt-mux bboxy450-term` in the same commit ([[layering]]).
 
 ## 2. Binding (decision [[d2-c1-io-binding|#2]])

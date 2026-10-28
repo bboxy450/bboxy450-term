@@ -3659,6 +3659,7 @@ fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
 
 // keeps: spec mcp-control-plane
 #[test]
+#[ignore = "#327 B2: real terminal boundary; make test-oracle-control"]
 fn mcp_oracle_split_runs_without_a_ui_and_replays_after_logic_restart() {
     isolated_seat_fixture("orchestrate");
 }

@@ -472,7 +472,7 @@ struct LogicBootstrap {
 fn fixture_hosts_default() -> bool {
     true
 }
-const MCP_CONTROL_VERSION: u16 = 1;
+const MCP_CONTROL_VERSION: u16 = 2;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
@@ -907,20 +907,31 @@ impl Session {
             let record = existing.take().unwrap();
             let mut old_logic = Process::adopted(&config, "logic", record);
             // Refresh logic only: the supervisor retains every live PTY and process.
-            stop_child(&mut old_logic, &mut None, "logic").await?;
+            stop_logic_for_refresh(&mut old_logic, &mut None).await?;
             eprintln!(
                 "control service, launch environment or GUI schema changed; refreshed logic, retained supervisor and seats"
             );
         }
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();
-            let io = attach_gui(&config, &mut endpoint, true).await?;
-            (
-                Process::adopted(&config, "logic", record),
-                None,
-                endpoint,
-                io,
-            )
+            let mut process = Process::adopted(&config, "logic", record);
+            match attach_gui(&config, &mut endpoint, true).await {
+                Ok(io) => (process, None, endpoint, io),
+                Err(error) => {
+                    eprintln!(
+                        "logic endpoint unavailable: {error}; refreshing logic, retaining supervisor and seats"
+                    );
+                    stop_logic_for_refresh(&mut process, &mut None).await?;
+                    let owner =
+                        start_logic(&config, &supervisor_ready, false, &launch_path).await?;
+                    (
+                        Process::Child(owner.child),
+                        owner.control,
+                        owner.endpoint,
+                        owner.io,
+                    )
+                }
+            }
         } else {
             let owner = start_logic(&config, &supervisor_ready, false, &launch_path).await?;
             (
@@ -1388,7 +1399,7 @@ async fn recover(
 async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>>) {
     let mut reader = BufReader::new(read);
     loop {
-        let reply = match read_line(&mut reader).await {
+        let reply = match bbt_mux::seat_socket::read_gui_line(&mut reader).await {
             Ok(Some(line)) => serde_json::from_slice(&line).map_err(Into::into),
             Ok(None) => return,
             Err(error) => Err(error),
@@ -1436,6 +1447,26 @@ fn child(config: &Config, entry: &str, launch_path: &std::ffi::OsStr) -> Result<
             bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new("spawn", entry, e));
         })?)
 }
+/// A broken adopted logic owner may exit without retiring its record. Only
+/// confirmed process departure permits replacement; live owners still refuse.
+async fn stop_logic_for_refresh(
+    child: &mut Process,
+    control: &mut Option<tokio::process::ChildStdin>,
+) -> Result<()> {
+    match stop_child(child, control, "logic").await {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            if child.try_wait()?.is_none() {
+                return Err(error);
+            }
+            eprintln!(
+                "previous logic departed during refresh: {error}; retaining supervisor and seats"
+            );
+            Ok(())
+        }
+    }
+}
+
 async fn stop_child(
     child: &mut Process,
     control: &mut Option<tokio::process::ChildStdin>,
@@ -1475,6 +1506,32 @@ async fn stop_child(
 )]
 mod gui_io_tests {
     use super::*;
+
+    // keeps: spec mux-daemon; a failed logic shutdown cannot require a second UI launch
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "real process shutdown boundary; make test-boundaries"]
+    async fn refresh_replaces_a_confirmed_failed_process_without_requiring_clean_shutdown() {
+        let native = Command::new("/bin/sh")
+            .args(["-c", "read -r line; exit 7"])
+            .env_clear()
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut child = Child::new(native);
+        let mut control = child.stdin.take();
+        let mut process = Process::Child(child);
+        stop_logic_for_refresh(&mut process, &mut control)
+            .await
+            .unwrap();
+        assert!(
+            process
+                .try_wait()
+                .unwrap()
+                .is_some_and(|exit| !exit.success())
+        );
+    }
 
     // keeps: spec c1-live-seats §2a (bounded GUI transport)
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
