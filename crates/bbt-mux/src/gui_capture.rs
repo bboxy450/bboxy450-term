@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! What another operator door asks of the window, relayed to the window's own session.
 //! Capture: a `GuiAction::Capture` from any operator door (the window or `ctl`) becomes
 //! `GuiReply::CaptureAsk`; the window writes the PNG off its UI thread and answers with
@@ -367,6 +369,7 @@ mod tests {
                 Ok(UiLayout {
                     regions: Default::default(),
                     swarm_workdirs: Default::default(),
+                    sidebar_open: Default::default(),
                     frame_seq,
                     layout_revision: None,
                     spawned: None,

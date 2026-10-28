@@ -1,4 +1,6 @@
 //! Pure journal representation of the visible window, never terminal bytes or grants.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_mux::Ulid;
 use bbt_proto::gui::{WindowScroll, WindowStage, WindowState, WindowSwarm, WindowTab, WindowTree};
 use bbt_ui_model as ui;
@@ -51,6 +53,9 @@ pub fn capture(
             .iter()
             .map(|id| Ulid(id.0.0))
             .collect(),
+        sidebar_sections_closed: prior
+            .or(model.window_restore.as_deref())
+            .map_or_else(Vec::new, |saved| saved.sidebar_sections_closed.clone()),
         swarms: model
             .ui
             .window
@@ -219,6 +224,31 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn capture_preserves_prior_section_choices_before_restore_fallback() {
+        let mut model = crate::model::Model::default();
+        let stage = model.ui.window.stage.clone();
+        let mut restored = capture(&model, &stage, [1280., 720.], None);
+        assert!(restored.sidebar_sections_closed.is_empty());
+        restored.sidebar_sections_closed = vec!["providers/Cloud".into()];
+        model.window_restore = Some(std::sync::Arc::new(restored));
+        assert_eq!(
+            capture(&model, &stage, [1280., 720.], None).sidebar_sections_closed,
+            ["providers/Cloud"]
+        );
+        let mut prior = capture(&model, &stage, [1280., 720.], None);
+        prior.sidebar_sections_closed = vec!["providers/Hosts".into()];
+        assert_eq!(
+            capture(&model, &stage, [1280., 720.], Some(&prior)).sidebar_sections_closed,
+            ["providers/Hosts"]
+        );
+        prior.sidebar_sections_closed.clear();
+        assert!(
+            capture(&model, &stage, [1280., 720.], Some(&prior))
+                .sidebar_sections_closed
+                .is_empty()
+        );
+    }
     // keeps: decision #344; UI data roundtrips while current registry metadata wins
     #[test]
     fn layout_and_focus_roundtrip_without_restoring_seat_authority() {

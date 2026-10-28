@@ -1,4 +1,6 @@
 //! Hit regions come from the solved sidebar, including clipped mini-grid cells.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 impl Scene {
     pub fn sidebar_extent(&self, layouts: &[c::Layout]) -> Option<(Rect, f32)> {
@@ -69,13 +71,25 @@ impl Scene {
                 );
             }
             add(
-                format!("swarm:{}", swarm.id),
+                format!("toggle-swarm:{}", swarm.id),
                 &format!("{base}/head"),
                 viewport,
             );
             add(
                 format!("new-seat:{}", swarm.id),
                 &format!("{base}/body/newseat"),
+                viewport,
+            );
+        }
+        let offset = if !self.live || self.swarms.is_empty() {
+            1
+        } else {
+            self.swarms.len()
+        };
+        for (i, card) in self.provider_cards().iter().enumerate() {
+            add(
+                format!("toggle-section:{}", card.key),
+                &format!("swarm{}/head", offset + i),
                 viewport,
             );
         }

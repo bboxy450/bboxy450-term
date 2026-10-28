@@ -369,6 +369,9 @@ pub struct UiLayout {
     pub regions: std::collections::BTreeMap<String, [f32; 4]>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub swarm_workdirs: std::collections::BTreeMap<Ulid, String>,
+    /// Produced-frame expansion choices: swarm:<ULID>, providers/Hosts and providers/Cloud.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub sidebar_open: std::collections::BTreeMap<String, bool>,
     /// The window composition this solved layout describes (not a bus cursor).
     pub frame_seq: u64,
     /// The tree revision encoded in this frame; absent on older hosts.
@@ -501,3 +504,40 @@ macro_rules! ui_replies {
     };
 }
 pub(super) use ui_replies;
+
+#[cfg(test)]
+mod sidebar_layout_compatibility {
+    use super::*;
+
+    #[test]
+    fn old_layouts_omit_expansion_choices_and_new_choices_roundtrip() {
+        let mut layout: UiLayout = serde_json::from_value(serde_json::json!({
+            "frame_seq": 1,
+            "size": [1280., 720.],
+            "swarm": null,
+            "tab": null,
+            "focused": null,
+            "launcher_open": false,
+            "page": null,
+            "document": null,
+            "panes": [],
+            "tree": []
+        }))
+        .unwrap();
+        assert!(layout.sidebar_open.is_empty());
+        assert!(
+            serde_json::to_value(&layout)
+                .unwrap()
+                .get("sidebar_open")
+                .is_none()
+        );
+        layout.sidebar_open.insert("providers/Hosts".into(), false);
+        layout.sidebar_open.insert("providers/Cloud".into(), true);
+        layout
+            .sidebar_open
+            .insert(format!("swarm:{}", Ulid::from(1u128)), false);
+        let decoded: UiLayout =
+            serde_json::from_slice(&serde_json::to_vec(&layout).unwrap()).unwrap();
+        assert_eq!(decoded.sidebar_open, layout.sidebar_open);
+    }
+}

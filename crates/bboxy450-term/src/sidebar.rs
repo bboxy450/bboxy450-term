@@ -1,9 +1,24 @@
-//! Native and ctl pointer resize share this nonblocking input boundary.
+//! Native and ctl sidebar toggles and resize share this nonblocking input boundary.
 //! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
 //! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::*;
 
 impl App {
+    pub(super) fn toggle_sidebar_section(&mut self, key: &str) {
+        let Some(current) = self.scene.sidebar_open().get(key).copied() else {
+            return;
+        };
+        let open = !current;
+        self.sidebar_accordion_overrides.insert(key.into(), open);
+        self.scene.set_sidebar_open(key, open);
+        if let Some(effects) = &mut self.ui_collect {
+            effects.push(UiEffect::SidebarSection {
+                key: key.into(),
+                open,
+            });
+        }
+        self.request_redraw();
+    }
     pub(super) fn begin_sidebar_resize(&mut self, at: [f32; 2]) -> bool {
         if self.document.open || self.launcher.is_some() {
             return false;

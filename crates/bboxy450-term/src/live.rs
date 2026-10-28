@@ -92,7 +92,7 @@ pub struct CommandSender {
     _stop: oneshot::Sender<CloseMode>,
 }
 enum CloseMode {
-    Detach(Option<bbt_proto::gui::WindowState>),
+    Detach(Option<Box<bbt_proto::gui::WindowState>>),
     HardQuit,
 }
 #[derive(Default)]
@@ -102,7 +102,7 @@ struct KnowledgeDemand {
 }
 impl CommandSender {
     pub fn detach(self, state: Option<bbt_proto::gui::WindowState>) {
-        let _ = self._stop.send(CloseMode::Detach(state));
+        let _ = self._stop.send(CloseMode::Detach(state.map(Box::new)));
     }
     pub fn shutdown(self) {
         let _ = self._stop.send(CloseMode::HardQuit);
@@ -1611,7 +1611,7 @@ async fn run_with_control(
         }
     }
     if let CloseMode::Detach(state) = close_mode {
-        let detached = session.detach(state).await;
+        let detached = session.detach(state.map(|state| *state)).await;
         if detached.is_ok() {
             logger.write("cockpit UI detached; backend owners kept alive");
         }

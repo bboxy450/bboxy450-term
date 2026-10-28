@@ -28,7 +28,7 @@ use bbt_ui_model::{
 };
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     time::Instant,
 };
 
@@ -223,6 +223,8 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 pub struct Scene {
     pub sidebar_scroll: f32,
     pub sidebar_width: f32,
+    pub open_swarms: BTreeSet<bbt_ui_model::SwarmId>,
+    pub sidebar_sections_closed: BTreeSet<String>,
     selected_swarm: Option<bbt_ui_model::SwarmId>,
     #[cfg(test)]
     projections: usize,
@@ -395,6 +397,8 @@ impl Scene {
         Self {
             sidebar_scroll: 0.,
             sidebar_width: TOKENS.sidebar.width as f32,
+            open_swarms: BTreeSet::new(),
+            sidebar_sections_closed: BTreeSet::new(),
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -515,6 +519,8 @@ impl Scene {
         Self {
             sidebar_scroll: 0.,
             sidebar_width: TOKENS.sidebar.width as f32,
+            open_swarms: BTreeSet::new(),
+            sidebar_sections_closed: BTreeSet::new(),
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -575,6 +581,12 @@ impl Scene {
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
         self.swarms = model.ui.window.sidebar.swarms.clone();
+        self.open_swarms = model.ui.window.sidebar.open.clone();
+        self.sidebar_sections_closed = model
+            .window_restore
+            .as_ref()
+            .map(|saved| saved.sidebar_sections_closed.iter().cloned().collect())
+            .unwrap_or_default();
         self.sidebar_width = model.ui.window.sidebar.width.clamp(
             bbt_ui_model::input::MIN_WIDTH,
             bbt_ui_model::input::MAX_WIDTH,
@@ -744,6 +756,58 @@ impl Scene {
     }
     pub fn sidebar_width_for(&self, size: [f32; 2]) -> f32 {
         Self::fitted_sidebar_width(self.sidebar_width, size)
+    }
+    pub fn sidebar_open(&self) -> BTreeMap<String, bool> {
+        self.swarms
+            .iter()
+            .map(|swarm| {
+                (
+                    format!("swarm:{}", swarm.id),
+                    self.open_swarms.contains(&swarm.id),
+                )
+            })
+            .chain(
+                self.provider_cards()
+                    .into_iter()
+                    .map(|card| (card.key, card.expanded)),
+            )
+            .collect()
+    }
+    pub fn set_sidebar_open(&mut self, key: &str, open: bool) -> bool {
+        if let Some(id) = key
+            .strip_prefix("swarm:")
+            .and_then(|id| id.parse::<bbt_ui_model::SwarmId>().ok())
+        {
+            if !self.swarms.iter().any(|swarm| swarm.id == id) {
+                return false;
+            }
+            if open {
+                self.open_swarms.insert(id);
+            } else {
+                self.open_swarms.remove(&id);
+            }
+        } else if matches!(key, "providers/Hosts" | "providers/Cloud") {
+            if open {
+                self.sidebar_sections_closed.remove(key);
+            } else {
+                self.sidebar_sections_closed.insert(key.into());
+            }
+        } else {
+            return false;
+        }
+        true
+    }
+    fn provider_cards(&self) -> Vec<SwarmCard> {
+        bboxy450_term::hosts::sidebar_cards(&self.hosts)
+            .into_iter()
+            .map(|mut card| {
+                let open = !self.sidebar_sections_closed.contains(&card.key);
+                card.expanded = open;
+                card.body = open;
+                card.closed = !open;
+                card
+            })
+            .collect()
     }
     pub fn fitted_sidebar_width(width: f32, size: [f32; 2]) -> f32 {
         // Keep a usable stage when the window cannot fit the saved preference.
@@ -1139,6 +1203,10 @@ impl Scene {
                     let mut view = card.clone();
                     view.key = swarm.id.to_string();
                     view.name = swarm.name.clone();
+                    let open = self.open_swarms.contains(&swarm.id);
+                    view.expanded = open;
+                    view.closed = !open;
+                    view.body = open;
                     view.unfocused = Some(swarm.id) != self.selected_swarm;
                     view.seats = swarm
                         .tabs
@@ -1195,7 +1263,7 @@ impl Scene {
                 })
                 .collect()
         };
-        cards.extend(bboxy450_term::hosts::sidebar_cards(&self.hosts));
+        cards.extend(self.provider_cards());
         let sidebar = Sidebar {
             cards,
             size: [sidebar_width, sidebar_height],

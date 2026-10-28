@@ -1,4 +1,6 @@
 //! Small, bounded GUI-state IO jobs; no job runs on the logic Worker or UI thread.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::store::{Result, Store, invalid, object_dir, sqlite::SqliteStore};
 use bbt_proto::gui::{WindowSnapshot, WindowState, WindowTree};
 use rusqlite::{OptionalExtension, params};
@@ -99,17 +101,28 @@ impl Journal {
     }
 }
 pub(crate) fn validate(state: &WindowState) -> Result<()> {
-    if !matches!(state.version, 1 | 2 | bbt_proto::gui::WINDOW_STATE_VERSION)
-        || state
-            .size
-            .iter()
-            .any(|n| !n.is_finite() || !(1.0..=16384.0).contains(n))
+    if !matches!(
+        state.version,
+        1 | 2 | 3 | bbt_proto::gui::WINDOW_STATE_VERSION
+    ) || state
+        .size
+        .iter()
+        .any(|n| !n.is_finite() || !(1.0..=16384.0).contains(n))
         || !state.sidebar_width.is_finite()
         || state.sidebar_width < 0.0
         || !state.sidebar_scroll.is_finite()
         || state.swarms.len() > 4096
     {
         return Err(invalid("window_state_invalid"));
+    }
+    let mut sections = BTreeSet::new();
+    if state.sidebar_sections_closed.len() > 2
+        || state.sidebar_sections_closed.iter().any(|section| {
+            !matches!(section.as_str(), "providers/Hosts" | "providers/Cloud")
+                || !sections.insert(section)
+        })
+    {
+        return Err(invalid("window_state_invalid_sidebar_sections"));
     }
     let mut swarms = BTreeSet::new();
     let mut tabs = BTreeSet::new();
@@ -200,6 +213,7 @@ mod tests {
             sidebar_scroll: 0.,
             sidebar_shown: true,
             open_swarms: vec![],
+            sidebar_sections_closed: vec![],
             swarms: vec![],
             stage: WindowStage {
                 swarm: None,
@@ -209,6 +223,40 @@ mod tests {
             scroll: vec![],
         }
     }
+    #[test]
+    fn journal_accepts_legacy_and_current_schemas_but_rejects_invalid_sections() {
+        for version in [1, 2, 3, bbt_proto::gui::WINDOW_STATE_VERSION] {
+            let mut state = empty();
+            state.version = version;
+            validate(&state).unwrap();
+        }
+        let mut state = empty();
+        state.version = bbt_proto::gui::WINDOW_STATE_VERSION;
+        for sections in [
+            vec!["providers/Hosts"],
+            vec!["providers/Cloud"],
+            vec!["providers/Cloud", "providers/Hosts"],
+        ] {
+            state.sidebar_sections_closed = sections.into_iter().map(String::from).collect();
+            validate(&state).unwrap();
+        }
+        for sections in [
+            vec!["unknown"],
+            vec!["providers/Hosts", "providers/Hosts"],
+            vec!["providers/Hosts", "providers/Cloud", "providers/Hosts"],
+        ] {
+            state.sidebar_sections_closed = sections.into_iter().map(String::from).collect();
+            assert!(
+                validate(&state)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("window_state_invalid_sidebar_sections")
+            );
+        }
+        state.sidebar_sections_closed.clear();
+        state.version = bbt_proto::gui::WINDOW_STATE_VERSION + 1;
+        assert!(validate(&state).is_err());
+    }
     // keeps: decision #344: a new GUI reads the last committed frame, old queued IO cannot overwrite it
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn reopening_restores_the_snapshot_and_fences_old_gui_jobs() {
@@ -216,7 +264,9 @@ mod tests {
         let journal = Journal::open(root.path()).unwrap();
         let first = journal.claim().await.unwrap();
         assert!(first.state.is_none());
-        let saved = empty();
+        let mut saved = empty();
+        saved.version = bbt_proto::gui::WINDOW_STATE_VERSION;
+        saved.sidebar_sections_closed = vec!["providers/Hosts".into(), "providers/Cloud".into()];
         journal.save(first.epoch, saved.clone()).await.unwrap();
         assert_eq!(journal.latest().as_deref(), Some(&saved));
         let reopened = Journal::open(root.path()).unwrap();

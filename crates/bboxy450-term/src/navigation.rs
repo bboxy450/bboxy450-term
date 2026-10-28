@@ -358,6 +358,14 @@ impl App {
         self.request_redraw();
     }
     pub(super) fn navigate_to(&mut self, id: &str) {
+        if let Some(swarm) = id.strip_prefix("toggle-swarm:") {
+            self.toggle_sidebar_section(&format!("swarm:{swarm}"));
+            return;
+        }
+        if let Some(section) = id.strip_prefix("toggle-section:") {
+            self.toggle_sidebar_section(section);
+            return;
+        }
         if id == "new-swarm" {
             let id = bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0);
             self.queue(live::UiMsg::NewSwarm(id));

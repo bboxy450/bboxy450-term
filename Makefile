@@ -44,6 +44,7 @@ help:
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
+	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
@@ -279,6 +280,17 @@ test-spawn-wire:
 .PHONY: test-navigation check-navigation
 .PHONY: test-new-swarm format-new-swarm
 .PHONY: test-swarm-switch check-swarm-switch
+.PHONY: test-sidebar-accordions check-sidebar-accordions
+test-sidebar-accordions:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	BBOXY_ACCORDION_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-accordions' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir sidebar_accordions_toggle_without_focus_changes_and_survive_ui_restart -- --ignored --exact --nocapture
+
+check-sidebar-accordions:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 test-swarm-switch:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test swarms --test seat_rows; \

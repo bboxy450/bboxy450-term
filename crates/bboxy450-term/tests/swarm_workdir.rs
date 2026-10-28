@@ -584,6 +584,240 @@ fn click_region(fixture: &Fixture, key: &str) -> Value {
     fixture.ctl(&["ui", "click", &x, &y])
 }
 
+fn goto_swarm(fixture: &Fixture, swarm: &str) -> Value {
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(fixture, &format!("goto swarm:{swarm}"));
+    let frame = fixture.ctl(&["ui", "key", "enter"]);
+    assert_eq!(frame["swarm"], swarm, "{frame}");
+    assert_eq!(frame["launcher_open"], false);
+    frame
+}
+
+// keeps: ux-prototype §3.1 and ux-flow open/shut — expansion never changes focus.
+#[test]
+#[ignore = "private ctl sidebar accordion/PTY/restart boundary; make test-sidebar-accordions"]
+fn sidebar_accordions_toggle_without_focus_changes_and_survive_ui_restart() {
+    fn stage(frame: &Value) -> Value {
+        let panes: Vec<_> = frame["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|pane| {
+                serde_json::json!({
+                    "seat": pane["seat"], "rect": pane["rect"],
+                    "cols": pane["cols"], "rows": pane["rows"],
+                    "focused": pane["focused"]
+                })
+            })
+            .collect();
+        serde_json::json!({
+            "swarm": frame["swarm"], "tab": frame["tab"],
+            "focused": frame["focused"], "page": frame["page"],
+            "size": frame["size"], "panes": panes
+        })
+    }
+    fn named<'a>(frame: &'a Value, kind: &str) -> Option<&'a Value> {
+        fn find<'a>(node: &'a Value, kind: &str) -> Option<&'a Value> {
+            if node["kind"].as_str() == Some(kind) {
+                return Some(node);
+            }
+            node["children"]
+                .as_array()?
+                .iter()
+                .find_map(|child| find(child, kind))
+        }
+        frame["tree"]
+            .as_array()?
+            .iter()
+            .find_map(|node| find(node, kind))
+    }
+    fn card_path(frame: &Value, header: &str) -> String {
+        fn find(node: &Value, rect: &Value) -> Option<String> {
+            if let Some(kind) = node["kind"].as_str()
+                && kind.starts_with("named:swarm")
+                && kind.ends_with("/head")
+                && node["rect"] == *rect
+            {
+                return Some(kind.trim_end_matches("/head").into());
+            }
+            node["children"]
+                .as_array()?
+                .iter()
+                .find_map(|child| find(child, rect))
+        }
+        let rect = &frame["regions"][header];
+        assert!(rect.is_array(), "missing header {header}: {frame}");
+        frame["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|node| find(node, rect))
+            .unwrap_or_else(|| panic!("header {header} is not fully visible: {frame}"))
+    }
+    fn process(fixture: &Fixture, seat: &str) -> Value {
+        let rows = fixture.ctl(&["seat", "ls"]);
+        let row = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap();
+        assert_eq!(row["state"]["process"]["kind"], "running", "{row}");
+        assert!(row["state"]["process"]["pid"].as_u64().unwrap() > 0);
+        serde_json::json!({
+            "process": row["state"]["process"],
+            "generation": row["record"]["generation"],
+            "process_generation": row["state"]["generation"]
+        })
+    }
+    fn capture(fixture: &Fixture, name: &str, frame: &Value) {
+        if let Some(directory) = std::env::var_os("BBOXY_ACCORDION_EVIDENCE") {
+            fs::create_dir_all(&directory).unwrap();
+            let path = PathBuf::from(directory).join(name);
+            fixture.ctl(&[
+                "seat",
+                "capture",
+                "window",
+                path.with_extension("png").to_str().unwrap(),
+            ]);
+            fs::write(
+                path.with_extension("json"),
+                serde_json::to_vec_pretty(frame).unwrap(),
+            )
+            .unwrap();
+        }
+    }
+    fn body(frame: &Value, path: &str, open: bool) {
+        assert_eq!(named(frame, &format!("{path}/body")).is_some(), open);
+        assert_eq!(named(frame, &format!("{path}/head/roll")).is_some(), !open);
+    }
+    fn controls(frame: &Value, swarm: &str, seat: &str, open: bool) {
+        for key in [
+            format!("seat:{seat}"),
+            format!("new-seat:{swarm}"),
+            format!("swarm-folder/{swarm}/choose"),
+            format!("swarm-folder/{swarm}/default"),
+        ] {
+            assert_eq!(frame["regions"][&key].is_array(), open, "{key}: {frame}");
+        }
+    }
+
+    let mut fixture = Fixture::new();
+    fixture.start();
+    // Keep all four cards visible: missing controls then mean folded bodies,
+    // rather than controls merely falling outside the scroll viewport.
+    let initial = fixture.ctl(&["app", "resize", "180x80"]);
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
+    let folder = fixture.root.join("project with spaces");
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, folder.to_str().unwrap()]);
+    let seat = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&seat, &folder);
+    fixture.ctl(&["ui", "focus", &seat]);
+    let other = click_region(&fixture, "new-swarm")["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(other, swarm);
+    goto_swarm(&fixture, &swarm);
+    fixture.ctl(&["ui", "sidebar-scroll", "1000"]);
+    let until = Instant::now() + Duration::from_secs(10);
+    let initial = loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if frame["sidebar_open"]["providers/Hosts"] == true
+            && frame["sidebar_open"]["providers/Cloud"] == true
+        {
+            break frame;
+        }
+        assert!(Instant::now() < until, "fake host cards absent: {frame}");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert_eq!(initial["focused"], seat);
+    assert_eq!(initial["panes"].as_array().unwrap().len(), 1);
+    let before_stage = stage(&initial);
+    let owners = fixture.owners();
+    let before_process = process(&fixture, &seat);
+    let swarm_key = format!("swarm:{swarm}");
+    let other_key = format!("swarm:{other}");
+    let targets = [
+        (swarm_key.as_str(), format!("toggle-swarm:{swarm}")),
+        ("providers/Hosts", "toggle-section:providers/Hosts".into()),
+        ("providers/Cloud", "toggle-section:providers/Cloud".into()),
+    ];
+    let paths: Vec<_> = targets
+        .iter()
+        .map(|(_, header)| card_path(&initial, header))
+        .collect();
+    let other_path = card_path(&initial, &format!("toggle-swarm:{other}"));
+    let mut expected = initial["sidebar_open"].clone();
+    assert_eq!(expected[&swarm_key], true);
+    assert_eq!(expected[&other_key], true);
+    controls(&initial, &swarm, &seat, true);
+    capture(&fixture, "accordions-open", &initial);
+
+    for ((key, header), path) in targets.iter().zip(&paths) {
+        body(&initial, path, true);
+        let closed = click_region(&fixture, header);
+        expected[*key] = Value::Bool(false);
+        assert_eq!(closed["sidebar_open"], expected, "only {key} closes");
+        assert_eq!(stage(&closed), before_stage, "header clicks only fold");
+        body(&closed, path, false);
+        body(&closed, &other_path, true);
+        controls(&closed, &swarm, &seat, *key != swarm_key);
+        let opened = click_region(&fixture, header);
+        expected[*key] = Value::Bool(true);
+        assert_eq!(opened["sidebar_open"], expected, "only {key} reopens");
+        assert_eq!(stage(&opened), before_stage);
+        body(&opened, path, true);
+        controls(&opened, &swarm, &seat, true);
+    }
+    for (key, header) in &targets {
+        let closed = click_region(&fixture, header);
+        expected[*key] = Value::Bool(false);
+        assert_eq!(closed["sidebar_open"], expected);
+        assert_eq!(stage(&closed), before_stage);
+    }
+    let closed = fixture.ctl(&["ui", "layout"]);
+    for path in &paths {
+        body(&closed, path, false);
+    }
+    controls(&closed, &swarm, &seat, false);
+    body(&closed, &other_path, true);
+    capture(&fixture, "accordions-closed", &closed);
+    goto_swarm(&fixture, &other);
+    let refocused = fixture.ctl(&["ui", "focus", &seat]);
+    assert_eq!(
+        refocused["sidebar_open"], expected,
+        "focus never opens a card"
+    );
+    assert_eq!(stage(&refocused), before_stage);
+    controls(&refocused, &swarm, &seat, false);
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(process(&fixture, &seat), before_process);
+
+    // ctl completion fences the durable state. Kill only this fixture's UI;
+    // the supervisor, logic and original harness must survive unchanged.
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(process(&fixture, &seat), before_process);
+    let restored = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(restored["sidebar_open"], expected);
+    assert_eq!(stage(&restored), before_stage);
+    for path in &paths {
+        body(&restored, path, false);
+    }
+    body(&restored, &other_path, true);
+    controls(&restored, &swarm, &seat, false);
+    capture(&fixture, "accordions-restored", &restored);
+    let refocused = fixture.ctl(&["ui", "focus", &seat]);
+    assert_eq!(refocused["sidebar_open"], expected);
+    assert_eq!(stage(&refocused), before_stage);
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
 #[test]
 #[ignore = "night: private ctl sidebar-drag/PTY/restart fixture; make test-sidebar-resize"]
 fn sidebar_drag_reflows_and_persists_without_restarting_harnesses() {
@@ -846,13 +1080,7 @@ fn native_navigation_clicks_splits_goto_and_directory_validation() {
     let mut fixture = Fixture::new();
     fixture.start();
     let initial = fixture.ctl(&["ui", "layout"]);
-    let swarm = initial["regions"]
-        .as_object()
-        .unwrap()
-        .keys()
-        .find_map(|key| key.strip_prefix("swarm:"))
-        .unwrap()
-        .to_string();
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
     let first = fixture.spawn("claude", &swarm, None);
     let second = fixture.spawn("zsh", &swarm, None);
     assert_eq!(
@@ -1071,7 +1299,7 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
         &first_swarm,
         &second_swarm,
     ] {
-        assert_eq!(click_region(&f, &format!("swarm:{swarm}"))["swarm"], *swarm);
+        assert_eq!(goto_swarm(&f, swarm)["swarm"], *swarm);
         std::thread::sleep(Duration::from_millis(40));
         clean(&f);
     }
@@ -1184,7 +1412,7 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
         );
     }
     for swarm in [&third_swarm, &first_swarm, &second_swarm] {
-        click_region(&f, &format!("swarm:{swarm}"));
+        goto_swarm(&f, swarm);
         clean(&f);
     }
     let owners = f.owners();
@@ -1236,13 +1464,7 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     };
     fixture.start();
     let initial = fixture.ctl(&["ui", "layout"]);
-    let swarm = initial["regions"]
-        .as_object()
-        .unwrap()
-        .keys()
-        .find_map(|k| k.strip_prefix("swarm:"))
-        .unwrap()
-        .to_owned();
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
     let oracle = fixture.spawn("claude", &swarm, None);
     expect_cwd(&fixture, &oracle, &fixture.root.join("repository"));
     let admission =
@@ -1422,13 +1644,7 @@ exec /bin/cat
 "#).unwrap();
     fixture.start();
     let initial = fixture.ctl(&["ui", "layout"]);
-    let swarm = initial["regions"]
-        .as_object()
-        .unwrap()
-        .keys()
-        .find_map(|k| k.strip_prefix("swarm:"))
-        .unwrap()
-        .to_owned();
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
     let seat = fixture.spawn("claude", &swarm, None);
     fixture.ctl(&["app", "resize", "320x120"]);
     fixture.ctl(&["seat", "type", &seat, "render"]);

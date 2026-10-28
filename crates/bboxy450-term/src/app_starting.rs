@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Starting-pane effects stay on the GUI owner; the existing IO queue still launches seats.
 use crate::*;
 use bboxy450_term::starting::{Intent, Launch};
@@ -239,6 +241,7 @@ impl App {
             Ok(bbt_proto::gui::UiLayout {
                 regions: Default::default(),
                 swarm_workdirs: Default::default(),
+                sidebar_open: Default::default(),
                 frame_seq: self.submitted_frame,
                 layout_revision: None,
                 clock: None,

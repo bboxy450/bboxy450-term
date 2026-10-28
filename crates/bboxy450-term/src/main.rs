@@ -721,6 +721,10 @@ enum UiEffect {
     /// The window has solved a layout at this logical size (`ctl app resize`).
     Size([f32; 2]),
     SidebarWidth(f32),
+    SidebarSection {
+        key: String,
+        open: bool,
+    },
     Refused(String),
     StartingDismissed(bbt_mux::Ulid),
 }
@@ -1913,6 +1917,7 @@ struct App {
     navigation_regions: Vec<(String, Rect)>,
     sidebar_scroll: Option<f32>,
     sidebar_width: Option<f32>,
+    sidebar_accordion_overrides: BTreeMap<String, bool>,
     sidebar_drag: bbt_ui_model::input::SidebarResize,
     sidebar_resize_region: Option<Rect>,
     sidebar_reveal: Option<bbt_proto::SwarmId>,
@@ -2097,6 +2102,7 @@ impl App {
             navigation_regions: Vec::new(),
             sidebar_scroll: None,
             sidebar_width: None,
+            sidebar_accordion_overrides: BTreeMap::new(),
             sidebar_drag: Default::default(),
             sidebar_resize_region: None,
             sidebar_reveal: None,
@@ -5173,6 +5179,13 @@ impl App {
                     Ok(self.scene.sidebar_width == *width)
                 }
             }
+            UiEffect::SidebarSection { key, open } => {
+                if self.sidebar_accordion_overrides.get(key) != Some(open) {
+                    Err("ui_frame_refused: a newer accordion toggle superseded this request".into())
+                } else {
+                    Ok(self.scene.sidebar_open().get(key) == Some(open))
+                }
+            }
             UiEffect::Size([w, h]) => {
                 Ok((self.solved_size[0] - w).abs() < 1. && (self.solved_size[1] - h).abs() < 1.)
             }
@@ -5258,6 +5271,12 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::SidebarSection { key, open } = effect
+                        && (self.sidebar_accordion_overrides.get(key) != Some(open)
+                            || layout.sidebar_open.get(key) != Some(open))
+                    {
+                        return Err("ui_frame_refused: sidebar section changed before its frame".into());
+                    }
                     if let UiEffect::SidebarWidth(width) = effect {
                         let expected = scene::Scene::fitted_sidebar_width(*width, layout.size);
                         if self.sidebar_width != Some(*width)
@@ -5803,6 +5822,7 @@ impl App {
             },
         );
         let layout = UiLayout {
+            sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             swarm_workdirs: model
                 .ui
@@ -5881,6 +5901,9 @@ impl App {
         self.solved_size = logical;
         if let Some(width) = self.sidebar_width {
             self.scene.sidebar_width = width;
+        }
+        for (key, open) in &self.sidebar_accordion_overrides {
+            self.scene.set_sidebar_open(key, *open);
         }
         let sending = self.ui_wait.as_ref().is_some_and(|wait| {
             wait.effects
@@ -6030,6 +6053,14 @@ impl App {
             );
             state.sidebar_scroll = self.scene.sidebar_scroll;
             state.sidebar_width = self.scene.sidebar_width;
+            state.open_swarms = self
+                .scene
+                .open_swarms
+                .iter()
+                .map(|id| bbt_mux::Ulid(id.0.0))
+                .collect();
+            state.sidebar_sections_closed =
+                self.scene.sidebar_sections_closed.iter().cloned().collect();
             if self.window_last.as_ref() != Some(&state) {
                 self.window_last = Some(state.clone());
                 self.queue(live::UiMsg::WindowState(state));

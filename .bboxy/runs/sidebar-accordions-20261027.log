@@ -1,0 +1,17 @@
+Sidebar accordions — operator request 2026-10-27
+Header clicks toggle only their own swarm/SSH Hosts/Cloud section; no stage, tab, focus or harness process changes. Go to stays independent.
+Closed sections use the existing compact band, state rollup and bumper. Hidden child controls have no retained hit regions. New swarms open independently.
+Current Scene choices are reapplied across model publications, included in produced-frame acknowledgements and persisted through the window-state journal.
+Window-state schema4 defaults provider sections open for old schemas1–3; existing gui_state_version handshake replaces incompatible logic while retaining supervisor/PTYS.
+E2E proves independent close/reopen, unchanged pane rectangles/focus, absence of hidden controls, remaining rollups, focus without unfold, persisted restart choices and unchanged owner/seat processes.
+Focused protocol, journal, app and ctl accordion tests all report zero failures in sidebar-accordions-focused.log.
+All-target strict Clippy initially detected larger detach payload and nested condition. Boxed only the optional detach snapshot and flattened the condition; final check passes.
+make check-sidebar-accordions — exit0; SHA256 ddb4d691daa0549f854da1f8701c6997492b8c523b5fd4b63fc2a81e8c06cc8a
+make test-navigation — exit0; SHA256 779ccf46fc5aafdc307716e78c3a16cc068572251ed1a637bdfb580016c054df
+make test-cross-focus — exit0; SHA256 35b805d41f8899cac92faf0f71ebb3d8e249e305453431332675dccc6611742b
+make test-boundaries — exit0; SHA256 56c26ee41c4a3b3212b28c832cbe58d9bdf9034618c289be992c1001daa771ad
+make parity-swarm — exit0; SHA256 bf3fbdb7c1135b382e02d3e48021ff9c154601bd36ce9c87ad481f92e9b472c7
+Navigation: 9 ctl-driven private-account e2es passed. Focus GPU capture passed. Parity:72/72 measured, zero geometry mismatches, zero pixel review advisories.
+make sync-release-inputs — exit0; all10 packaged input copies already identical.
+Private accordions-open/closed/restored captures inspected under target/sidebar-accordions; raw logs and identities remain outside Git.
+Subsequent exact-HEAD checks: signed make install, private installed smoke, make test and scripts/land.sh. Live refresh permits schema3→4 logic replacement and preserves supervisor/PTYS.

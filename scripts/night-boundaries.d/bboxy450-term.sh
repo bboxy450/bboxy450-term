@@ -50,3 +50,4 @@ cargo test -p bboxy450-term --locked --test swarm_workdir large_terminal_snapsho
 cargo test -p bboxy450-term --locked --test swarm_workdir new_swarm_cwd_controls_stay_visible_and_launch_in_the_saved_folder -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test swarm_workdir sidebar_drag_reflows_and_persists_without_restarting_harnesses -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test swarm_workdir swarm_switches_wait_for_membership_and_dim_real_inactive_seats -- --ignored --exact --nocapture
+cargo test -p bboxy450-term --locked --test swarm_workdir sidebar_accordions_toggle_without_focus_changes_and_survive_ui_restart -- --ignored --exact --nocapture

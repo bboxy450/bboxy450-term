@@ -1,4 +1,6 @@
 //! App lifecycle relayed to the GUI owner: `ctl app …`.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 
 /// Lifecycle operations relayed to the attached GUI owner, including headless.
@@ -98,7 +100,7 @@ macro_rules! app_replies {
 }
 pub(super) use app_replies;
 
-pub const WINDOW_STATE_VERSION: u16 = 3;
+pub const WINDOW_STATE_VERSION: u16 = 4;
 
 /// Durable GUI layout and operator launch defaults; seat authority remains in the registry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -110,6 +112,9 @@ pub struct WindowState {
     pub sidebar_scroll: f32,
     pub sidebar_shown: bool,
     pub open_swarms: Vec<Ulid>,
+    /// Closed non-swarm sections; an absent field keeps older windows expanded.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sidebar_sections_closed: Vec<String>,
     pub swarms: Vec<WindowSwarm>,
     pub stage: WindowStage,
     pub scroll: Vec<WindowScroll>,
@@ -168,4 +173,34 @@ pub struct WindowScroll {
 pub struct WindowSnapshot {
     pub epoch: Ulid,
     pub state: Option<WindowState>,
+}
+
+#[cfg(test)]
+mod sidebar_state_compatibility {
+    use super::*;
+
+    #[test]
+    fn pre_accordion_window_schemas_default_provider_sections_to_open() {
+        for version in [1, 2, 3] {
+            let state: WindowState = serde_json::from_value(serde_json::json!({
+                "version": version,
+                "size": [1280., 720.],
+                "sidebar_width": 300.,
+                "sidebar_scroll": 0.,
+                "sidebar_shown": true,
+                "open_swarms": [],
+                "swarms": [],
+                "stage": {"swarm": null, "tab": null, "focused": null},
+                "scroll": []
+            }))
+            .unwrap();
+            assert!(state.sidebar_sections_closed.is_empty());
+            assert!(
+                serde_json::to_value(&state)
+                    .unwrap()
+                    .get("sidebar_sections_closed")
+                    .is_none()
+            );
+        }
+    }
 }

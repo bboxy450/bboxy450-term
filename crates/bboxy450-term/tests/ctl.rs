@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
@@ -906,6 +908,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                         result: Box::new(Ok(bbt_proto::gui::UiLayout {
                             regions: Default::default(),
                             swarm_workdirs: Default::default(),
+                            sidebar_open: Default::default(),
                             clock: None,
                             frame_seq,
                             layout_revision: None,
@@ -1677,6 +1680,7 @@ async fn ctl_gui_seats(
                     result: Box::new(Ok(bbt_proto::gui::UiLayout {
                         regions: Default::default(),
                         swarm_workdirs: Default::default(),
+                        sidebar_open: Default::default(),
                         frame_seq: 0,
                         layout_revision: None,
                         clock: None,
