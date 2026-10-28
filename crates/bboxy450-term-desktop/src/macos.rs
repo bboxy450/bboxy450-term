@@ -292,14 +292,17 @@ pub(super) fn apply_window_action(
     let window = native_window(window)?;
     match action {
         Action::ShowWindow => {
+            let app = NSApplication::sharedApplication(MainThreadMarker::from(&*window));
+            app.unhide(None);
             window.deminiaturize(None);
             window.makeKeyAndOrderFront(None);
+            app.activate();
         }
         Action::HideWindow => {
             NSApplication::sharedApplication(MainThreadMarker::from(&*window)).hide(None)
         }
-        Action::Minimize => window.performMiniaturize(None),
-        Action::Zoom => window.performZoom(None),
+        Action::Minimize => window.miniaturize(None),
+        Action::Zoom => window.zoom(None),
         Action::ToggleFullscreen => window.toggleFullScreen(None),
         _ => return Err(Error::InvalidAction(action.as_str().into())),
     }
