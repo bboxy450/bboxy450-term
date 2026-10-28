@@ -50,8 +50,8 @@
   }
 
   const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
-  // What the app launches (decision #262, AGENTS.md): Claude supervises, so oracle; Codex implements, so executor and never an oracle
-  // class; a shell has no harness to prompt, so shell (worker class, no chip). A launcher preset or the row's role chip overrides.
+  // Starting defaults only: Settings controls each role's class and every harness's
+  // available roles. Harness names never determine authority.
   const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };
   // Demo cohorts only: a swarm with its oracle, so the lab shows every role mark.
   const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };   // decision #262: a shell's role is shell
@@ -1179,10 +1179,10 @@
   const LAUNCH = [
     // role: the default label (decision #262, AGENTS.md): Claude oracle, Codex executor and stays one, a shell is shell (no prompt, no chip)
     { id: 'claude', label: 'Claude', sub: 'oracle by default', harness: 'claude', role: 'oracle', kind: 'Harness', tile: '#D97757', section: 'Suggestions' },
-    { id: 'codex', label: 'Codex', sub: 'executor · never an oracle', harness: 'codex', role: 'executor', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
+    { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', role: 'executor', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
     { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', role: 'executor', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
     { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', role: 'executor', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
-    { id: 'zsh', label: 'zsh', sub: '~ · shell, no role', harness: 'zsh', role: 'shell', kind: 'Shell', tile: '#111827', section: 'Shells' },
+    { id: 'zsh', label: 'zsh', sub: 'shell by default', harness: 'zsh', role: 'shell', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
   // App title bar (design system › elements.title_bar): window dots · sidebar toggle (the fox ear) · the identity PNG · app name ·
   // crumb (swarm · seat) · spacer · theme icon. Height from style.json spacing.title_bar.
@@ -1228,7 +1228,7 @@
     // role presets (decision #262): a Claude seat chooses its role at spawn (oracle by default, architect, creativity, executor by #18);
     // Codex and shells have none (Codex implements; a shell has no harness to prompt), so → goes straight to placements. When the
     // swarm already has an Oracle the default stays oracle and the launcher says so, information rather than a block
-    const oracle = seats.find(x => x.role === 'oracle' && x.harness === 'claude' && (tabOf(x.key) || {}).sp === sp);
+    const oracle = seats.find(x => (SET.roles[x.role] || {}).cls === 'oracle' && (tabOf(x.key) || {}).sp === sp);
     const NOTE = oracle ? 'this swarm already has an Oracle: ' + oracle.name : null;
     const PRESETS = [['oracle', 'Oracle', 'supervises, briefs, verifies'], ['architect', 'Architect', 'specs, invariants, decisions'], ['creativity', 'Creativity', 'diverges before the pick'], ['executor', 'Executor', 'implements a scoped brief']];
     const presets = l => PRESETS.map(([role, label, say]) => ({ id: l.id + ':as:' + role, label, sub: role === l.role ? 'default · ' + (NOTE || say) : say, harness: l.harness, tile: l.tile, kind: 'Role', role, roleMark: role, launch: l, enterPicks: true, aliases: [role], children: () => placements(l, role) }));
@@ -1277,8 +1277,9 @@
     const m = host && SET.machines.find(x => x[0] === host), sw = swarm ? 'swarm ' + swarm.name : 'built-in';
     const f = (key, label, value, from, extra) => Object.assign({ key, label, value: value == null ? '' : String(value), from, home: HOME[key] }, extra || {});
     const out = [];
-    // role: prefilled from Settings › Harnesses; Claude chooses one, Codex and other harnesses are executors (decision #262)
-    if (h !== 'zsh') out.push(h === 'claude' ? f('role', 'Role', it.role || hr.role, 'Settings', { choices: ROLE_CHOICES.map(([v, say]) => ({ value: v, label: v[0].toUpperCase() + v.slice(1), say })) }) : f('role', 'Role', it.role || hr.role || 'executor', 'Settings', { fixed: true }));
+    // Role choices come from Settings for every harness; names do not imply a class.
+    const roles = hr.availableRoles || [...new Set([...Object.keys(SET.roles), it.role || hr.role].filter(Boolean))];
+    out.push(f('role', 'Role', it.role || hr.role, 'Settings', { fixed: roles.length <= 1, choices: roles.map(v => ({ value: v, label: v[0].toUpperCase() + v.slice(1), say: (ROLE_CHOICES.find(x => x[0] === v) || [v, (SET.roles[v] || {}).prompt || ''])[1] })) }));
     if (where !== 'local') {
       out.push(f('via', 'Via', md.via || (where === 'cloud' ? 'cloud' : 'ssh'), md.via ? host : 'built-in', { options: where === 'cloud' ? ['cloud'] : ['ssh', 'mosh', 'et'] }));
       out.push(f('target', 'Connect', md.target || (m ? m[1] : host), md.target ? 'last choice' : host, { choices: [...new Set([md.target || (m ? m[1] : host), ...(md.routes || [])])].map(v => ({ value: v, say: 'route' })) }));

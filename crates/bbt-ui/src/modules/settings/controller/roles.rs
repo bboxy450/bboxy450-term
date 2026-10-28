@@ -90,7 +90,7 @@ pub(super) fn valid_name(name: &str) -> bool {
         && !name.chars().any(char::is_control)
 }
 pub(super) fn valid_harness(name: &str) -> bool {
-    ["claude", "codex", "pi", "omp", "zsh"].contains(&name)
+    valid_name(name)
 }
 pub(super) fn valid_role(name: &str, role: &Role) -> bool {
     valid_name(name)
@@ -148,10 +148,10 @@ impl Controller {
             | Field::RoleDraftColor
             | Field::RoleDraftMark
             | Field::RoleDraftClass => self.roles.draft.is_some(),
-            Field::RolePrompt(name) => {
-                name != "shell" && values.roles.iter().any(|(id, _)| id == name)
+            Field::RolePrompt(name) | Field::RoleClass(name) => {
+                values.roles.iter().any(|(id, _)| id == name)
             }
-            Field::RoleClass(name) | Field::RoleDelete(name) => values
+            Field::RoleDelete(name) => values
                 .roles
                 .iter()
                 .any(|(id, role)| id == name && role.custom && !builtin(id)),
@@ -172,14 +172,10 @@ impl Controller {
         if self.section == "Roles" {
             let mut out = vec![];
             for (name, role) in &values.roles {
-                if name != "shell" {
-                    out.push(Field::RolePrompt(name.clone()));
-                }
+                out.push(Field::RolePrompt(name.clone()));
+                out.push(Field::RoleClass(name.clone()));
                 if role.custom {
-                    out.extend([
-                        Field::RoleClass(name.clone()),
-                        Field::RoleDelete(name.clone()),
-                    ]);
+                    out.push(Field::RoleDelete(name.clone()));
                 }
             }
             if self.roles.draft.is_some() {
@@ -308,8 +304,8 @@ impl Controller {
         match &patch {
             Patch::RoleUpsert { name, role } => {
                 if let Some((_, current)) = values.roles.iter_mut().find(|(id, _)| id == name) {
-                    if !current.custom && (role.cls != current.cls || role.custom) {
-                        self.error = Some("Built-in role classes are fixed".into());
+                    if !current.custom && role.custom {
+                        self.error = Some("Built-in roles cannot become custom roles".into());
                         return None;
                     }
                     *current = role.clone();
@@ -658,11 +654,9 @@ impl Regions {
         };
         if section == "Roles" {
             for (name, role) in &view.values.roles {
-                if name != "shell" {
-                    add(role_region(name, "prompt"), Field::RolePrompt(name.clone()));
-                }
+                add(role_region(name, "prompt"), Field::RolePrompt(name.clone()));
+                add(role_region(name, "class"), Field::RoleClass(name.clone()));
                 if role.custom {
-                    add(role_region(name, "class"), Field::RoleClass(name.clone()));
                     add(role_region(name, "delete"), Field::RoleDelete(name.clone()));
                 }
             }

@@ -201,7 +201,7 @@ fn settings_cursors_use_actual_fields_availability_and_scroll_clip() {
     );
     assert_eq!(
         regions.cursor(center(find(&tree, "card0/f2/control").rect)),
-        Cursor::Default
+        Cursor::Pointer
     );
     assert_eq!(
         regions.cursor(center(find(&tree, "role/new").rect)),

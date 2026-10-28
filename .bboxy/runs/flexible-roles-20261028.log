@@ -1,0 +1,17 @@
+ROLE: EXECUTOR — direct operator request, 2026-10-28
+Scope: Settings may assign any defined role to any harness; role classes are editable, including built-ins. Existing signed seat grants remain authoritative.
+Implementation base: 3ef27cf85f3f63fe49b2061a0c966b0ee212e264; isolated worktree fix/codex-oracle-20261028.
+make test-settings-roles — exit 0 (catalog, runtime cache, Settings UI, launcher resolution, persistence and enabled-control cursor assertions).
+make test-settings-roles-e2e — exit 0 (private GUI/PTY boundary and native Settings save/launch/restart).
+Native assertion: a Codex stand-in selected as oracle received actor.role={name:oracle,class:oracle} through the real MCP bridge and task_delegate in its tool catalogue; role prompt reached native argv.
+make test-boundaries — exit 0 (seat wiring, ctl, signing checks, login PATH, lifecycle and process cleanup).
+make test-licenses — exit 0 (6 license fixtures, 9 integration fixtures, all 27 crate notices and upstream bytes).
+node --check lab/web/components.js — exit 0.
+python3 -I scripts/test-night-boundaries.py — exit 1; the unchanged 3ef27cf8 baseline reproduces both failures: renamed Cargo package versus script-stem assertion, and literal target-dir versus shell expansion assertion. No fix to those unrelated failures is included.
+Final exact-commit CI and visual parity logs are retained in this worktree target directory; the canonical make push gate requires an exact-source successful CI result.
+No real model, login, operator input, release command or current app installation was used.
+crates/bbt-proto/src/gui/roles.rs:87 — pub fn validate
+crates/bboxy450-term/src/settings/roles.rs:38 — pub fn eligible
+crates/bbt-mux/src/logic/role_catalog.rs:86 — pub(super) fn validate_assignment
+crates/bboxy450-term/tests/settings.rs:484 — fn every_harness_can_persist_any_role
+crates/bboxy450-term/tests/swarm_workdir.rs:702 — fn settings_roles_and_harness_policies_persist

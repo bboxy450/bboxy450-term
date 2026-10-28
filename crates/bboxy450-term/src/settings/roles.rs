@@ -35,17 +35,8 @@ pub fn names(roles: &BTreeMap<String, RoleDefinition>) -> Vec<String> {
         .collect()
 }
 
-pub fn eligible(harness: &str, roles: &BTreeMap<String, RoleDefinition>) -> Vec<String> {
+pub fn eligible(_harness: &str, roles: &BTreeMap<String, RoleDefinition>) -> Vec<String> {
     names(roles)
-        .into_iter()
-        .filter(|name| {
-            if harness == "zsh" {
-                name == "shell"
-            } else {
-                name != "shell" && (harness == "claude" || roles[name].class == Class::Worker)
-            }
-        })
-        .collect()
 }
 
 pub fn view(name: &str, role: &RoleDefinition) -> Role {

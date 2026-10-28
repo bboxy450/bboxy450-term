@@ -279,7 +279,7 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     assert_eq!(policy[0]["data"]["muted"], false);
 
     // --role takes the launcher's preset table and guard (#262): an executor Claude is a
-    // worker, Codex is never an oracle, and an unknown name is refused by that name.
+    // worker, and an unknown name is refused by that name.
     let repo = repository.to_str().unwrap();
     let tester = ctl(
         &run,
@@ -296,7 +296,7 @@ async fn ctl_drives_a_claude_seat_from_outside_the_app() {
     assert_eq!(tester["role"]["name"], "executor", "{tester}");
     assert_eq!(tester["role"]["class"], "worker", "{tester}");
     for (harness, role, reason) in [
-        ("codex", "oracle", "codex_oracle_role_forbidden"),
+        ("pi", "missing", "unknown_role_preset"),
         ("claude", "wizard", "unknown_role_preset"),
     ] {
         let (ok, lines) = ctl_in(

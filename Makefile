@@ -381,14 +381,16 @@ test-settings-roles:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
-	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings --test settings_roles --test settings_destinations --test provider_settings; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings --test settings_roles --test settings_destinations --test provider_settings --test cursor; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test settings
 
 check-settings-roles:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-ui -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-settings-roles-e2e:
-	@set -eu; . ./scripts/cache-env.sh; BBOXY_SETTINGS_EVIDENCE='$(abspath $(TARGET_DIR))/settings-roles' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_roles_and_harness_policies_persist_and_reach_native_launches -- --ignored --exact --nocapture
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui gui_spawn_roles_follow_the_catalog_and_default_shells_to_worker -- --ignored --exact --nocapture; \
+	BBOXY_SETTINGS_EVIDENCE='$(abspath $(TARGET_DIR))/settings-roles' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_roles_and_harness_policies_persist_and_reach_native_launches -- --ignored --exact --nocapture
 
 test-sidebar-accordions:
 	@set -eu; . ./scripts/cache-env.sh; \

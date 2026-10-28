@@ -56,23 +56,22 @@ impl RoleCatalog {
             class, prompt: prompt.into(), send: String::new(), color: color.into(), mark: mark.into(),
         })).collect();
         let harnesses = [
-            (
-                "claude",
-                "oracle",
-                vec!["oracle", "architect", "creativity", "executor"],
-            ),
-            ("codex", "executor", vec!["creativity", "executor"]),
-            ("pi", "executor", vec!["creativity", "executor"]),
-            ("omp", "executor", vec!["creativity", "executor"]),
-            ("zsh", "shell", vec!["shell"]),
+            ("claude", "oracle"),
+            ("codex", "executor"),
+            ("pi", "executor"),
+            ("omp", "executor"),
+            ("zsh", "shell"),
         ]
         .into_iter()
-        .map(|(kind, default, available)| {
+        .map(|(kind, default)| {
             (
                 kind.into(),
                 HarnessRoles {
                     default_role: default.into(),
-                    available_roles: available.into_iter().map(String::from).collect(),
+                    available_roles: ["oracle", "architect", "creativity", "executor", "shell"]
+                        .into_iter()
+                        .map(String::from)
+                        .collect(),
                 },
             )
         })
@@ -90,13 +89,9 @@ impl RoleCatalog {
             return Err("role_catalog_too_large".into());
         }
         let builtin = Self::builtin();
-        for (name, definition) in &builtin.roles {
-            if self
-                .roles
-                .get(name)
-                .is_none_or(|role| role.class != definition.class)
-            {
-                return Err(format!("builtin_role_class_required: {name}"));
+        for name in builtin.roles.keys() {
+            if !self.roles.contains_key(name) {
+                return Err(format!("builtin_role_required: {name}"));
             }
         }
         for (name, role) in &self.roles {
@@ -131,26 +126,11 @@ impl RoleCatalog {
             }
             let mut seen = BTreeSet::new();
             for name in &policy.available_roles {
-                let role = self
-                    .roles
-                    .get(name)
-                    .ok_or_else(|| format!("unknown_available_role: {name}"))?;
+                if !self.roles.contains_key(name) {
+                    return Err(format!("unknown_available_role: {name}"));
+                }
                 if !seen.insert(name) {
                     return Err(format!("duplicate_available_role: {name}"));
-                }
-                if kind == "zsh" {
-                    if name != "shell" {
-                        return Err("zsh_requires_shell_role".into());
-                    }
-                } else if name == "shell" {
-                    return Err("shell_role_requires_zsh".into());
-                } else if kind != "claude" && role.class == Class::Oracle {
-                    return Err(if kind == "codex" {
-                        "codex_oracle_role_forbidden"
-                    } else {
-                        "harness_oracle_role_forbidden"
-                    }
-                    .into());
                 }
             }
             if !policy.available_roles.contains(&policy.default_role) {
@@ -189,7 +169,7 @@ pub(super) use role_replies;
 mod tests {
     use super::*;
     #[test]
-    fn builtin_roles_and_custom_classes_are_explicit_and_harness_bounded() {
+    fn every_harness_accepts_explicit_builtin_and_custom_role_classes() {
         let mut catalog = RoleCatalog::default();
         catalog.validate().unwrap();
         assert_eq!(catalog.roles["oracle"].class, Class::Oracle);
@@ -219,13 +199,22 @@ mod tests {
             .unwrap()
             .available_roles
             .push("Coordinator".into());
-        assert_eq!(
-            catalog.validate().unwrap_err(),
-            "codex_oracle_role_forbidden"
-        );
+        catalog.harnesses.get_mut("codex").unwrap().default_role = "Coordinator".into();
+        catalog.validate().unwrap();
+        for kind in ["pi", "omp", "custom"] {
+            let mut configured = catalog.clone();
+            configured.harnesses.insert(
+                kind.into(),
+                HarnessRoles {
+                    default_role: "Coordinator".into(),
+                    available_roles: vec!["Coordinator".into()],
+                },
+            );
+            configured.validate().unwrap();
+        }
     }
     #[test]
-    fn role_catalog_rejects_missing_defaults_duplicates_and_builtin_class_changes() {
+    fn role_catalog_rejects_missing_defaults_duplicates_and_missing_builtin_roles() {
         let mut catalog = RoleCatalog::default();
         catalog.harnesses.get_mut("claude").unwrap().default_role = "absent".into();
         assert!(
@@ -249,11 +238,14 @@ mod tests {
         );
         let mut catalog = RoleCatalog::default();
         catalog.roles.get_mut("executor").unwrap().class = Class::Oracle;
+        catalog.roles.get_mut("oracle").unwrap().class = Class::Worker;
+        catalog.validate().unwrap();
+        catalog.roles.remove("executor");
         assert!(
             catalog
                 .validate()
                 .unwrap_err()
-                .starts_with("builtin_role_class_required")
+                .starts_with("builtin_role_required")
         );
         assert!(
             serde_json::from_value::<RoleDefinition>(

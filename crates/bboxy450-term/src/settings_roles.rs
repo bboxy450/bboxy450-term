@@ -46,16 +46,7 @@ pub(super) fn configure_items(
                     .find(" · this swarm")
                     .map(|at| item.sub[at..].to_owned())
                     .unwrap_or_default();
-                item.sub = format!(
-                    "{} by default{}{}",
-                    policy.default_role,
-                    if item.harness == "codex" {
-                        " · never an oracle"
-                    } else {
-                        ""
-                    },
-                    note
-                );
+                item.sub = format!("{} by default{}", policy.default_role, note);
             }
         }
         if let Some(children) = &mut item.children {

@@ -188,27 +188,9 @@ fn role_card(
     class_caption(
         &mut card,
         &format!("{key}/f2"),
-        &b.note(
-            "",
-            if role.custom {
-                "Change class before launching seats"
-            } else {
-                "Built-in priority class"
-            },
-            true,
-        ),
+        &b.note("", "Change class before launching seats", true),
     );
-    if name == "shell" {
-        replace_named(
-            &mut card,
-            &format!("{key}/f0/control"),
-            &b.note(
-                "role/shell/prompt",
-                "Shell seats do not use a harness system prompt",
-                true,
-            ),
-        );
-    } else if state
+    if state
         .focused_text
         .as_ref()
         .is_some_and(|text| text.field == Field::RolePrompt(name.into()))
@@ -241,18 +223,18 @@ fn role_card(
             b.text("", "Granted by role class", 12.5, 400, false, true),
         ),
     );
+    replace_named(
+        &mut card,
+        &format!("{key}/f2/control"),
+        &b.select(
+            &controller::role_region(name, "class"),
+            &["worker".into(), "oracle".into()],
+            &role.cls,
+            false,
+            true,
+        ),
+    );
     if role.custom {
-        replace_named(
-            &mut card,
-            &format!("{key}/f2/control"),
-            &b.select(
-                &controller::role_region(name, "class"),
-                &["worker".into(), "oracle".into()],
-                &role.cls,
-                false,
-                true,
-            ),
-        );
         alias(
             &mut card,
             &format!("{key}/delete"),

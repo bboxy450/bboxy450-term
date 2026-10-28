@@ -3785,12 +3785,12 @@ fn mcp_seat_spawn_runs_once_with_isolated_home_and_existing_wiring() {
 
 // keeps: decision #262
 #[test]
-fn mcp_spawn_refuses_forbidden_and_unknown_presets_before_admitting_a_seat() {
+fn mcp_spawn_refuses_unknown_roles_before_admitting_a_seat() {
     let fixture = Fixture::new();
     let count = fixture.registry().list().unwrap().len();
     for (kind, role, reason) in [
-        ("codex", "oracle", "codex_oracle_role_forbidden"),
-        ("codex", "architect", "codex_oracle_role_forbidden"),
+        ("codex", "unknown", "unknown_role_preset"),
+        ("pi", "missing", "unknown_role_preset"),
         ("zsh", "director", "unknown_role_preset"),
     ] {
         refused(

@@ -8,7 +8,7 @@ cargo test -p bboxy450-mux --locked --test provenance unchanged_clipped_git_refs
 cargo test -p bboxy450-mux --locked --test logic ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --test messaging_flow custody_hold_gui_boundary -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --lib identity::native_keychain::fixtures::private_native_keychain_round_trip_and_cleanup -- --ignored --exact --nocapture
-cargo test -p bboxy450-mux --locked --test provider_gui gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker -- --ignored --exact --nocapture
+cargo test -p bboxy450-mux --locked --test provider_gui gui_spawn_roles_follow_the_catalog_and_default_shells_to_worker -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --test provider_gui operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --test provider_gui one_supervisor_routes_host_gui_states_and_keeps_remote_ptys_and_labels_after_logic_restart -- --ignored --exact --nocapture
 cargo test -p bboxy450-mux --locked --test mcp mcp_seat_input_consumes_readiness_and_enter_is_explicit -- --ignored --exact --nocapture

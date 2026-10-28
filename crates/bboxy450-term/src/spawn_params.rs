@@ -58,7 +58,7 @@ pub fn resolve_with_catalog(
         fixed,
     };
     let mut out = vec![];
-    if harness != "zsh" {
+    {
         let eligible = crate::settings::roles::eligible(harness, &catalog.roles);
         let policy = catalog.harnesses.get(harness);
         let available =
@@ -326,7 +326,7 @@ mod tests {
         use bbt_proto::{gui::RoleDefinition, registry::Class};
         use bbt_ui::modules::settings::controller::Patch;
         use std::collections::BTreeSet;
-        for harness in ["claude", "codex", "pi", "omp"] {
+        for harness in ["claude", "codex", "pi", "omp", "zsh", "custom"] {
             for explicit in [false, true] {
                 let mut preferences = crate::settings::Preferences::default();
                 for (name, class) in [("Reviewer Δ", Class::Worker), ("planner", Class::Oracle)] {
@@ -373,7 +373,7 @@ mod tests {
                 let choices = role.choices.as_ref().unwrap();
                 assert_eq!(
                     choices.iter().any(|choice| choice.value == "planner"),
-                    harness == "claude" && !explicit
+                    !explicit
                 );
                 assert_eq!(
                     choices
@@ -383,20 +383,22 @@ mod tests {
                         .purpose,
                     "Check the diff."
                 );
-                assert!(choices.iter().all(|choice| choice.value != "shell"
-                    && (harness == "claude"
-                        || catalog.roles[&choice.value].class == Class::Worker)));
+                assert_eq!(
+                    choices.iter().any(|choice| choice.value == "shell"),
+                    !explicit
+                );
             }
         }
-        let mut malformed = bbt_proto::gui::RoleCatalog::builtin();
-        let codex = malformed.harnesses.get_mut("codex").unwrap();
+        let mut configured = bbt_proto::gui::RoleCatalog::builtin();
+        let codex = configured.harnesses.get_mut("codex").unwrap();
         codex.default_role = "oracle".into();
         codex.available_roles = vec!["oracle".into()];
-        assert!(malformed.validate().is_err());
+        configured.validate().unwrap();
         let fields =
-            resolve_with_catalog("codex", &BTreeMap::new(), &malformed, None, "/workspace");
-        assert_eq!(fields[0].value, "executor");
-        assert!(fields[0].choices.as_ref().unwrap().is_empty());
+            resolve_with_catalog("codex", &BTreeMap::new(), &configured, None, "/workspace");
+        assert_eq!(fields[0].value, "oracle");
+        assert!(fields[0].fixed);
+        assert_eq!(fields[0].choices.as_ref().unwrap()[0].value, "oracle");
         let shell = resolve_with_catalog(
             "zsh",
             &BTreeMap::new(),
@@ -404,7 +406,8 @@ mod tests {
             None,
             "/workspace",
         );
-        assert!(shell.iter().all(|field| field.key != FieldKey::Role));
+        assert_eq!(shell[0].key, FieldKey::Role);
+        assert_eq!(shell[0].value, "shell");
     }
     #[test]
     fn resolver_table_prefills_every_local_row_and_names_its_source() {
@@ -433,21 +436,20 @@ mod tests {
                         BTreeMap::new()
                     };
                     let rows = resolve(harness, &settings, Some(&swarm), "/app");
-                    let mut expected = vec![];
-                    if harness != "zsh" {
-                        expected.push((
-                            FieldKey::Role,
-                            if has_last {
-                                "creativity"
-                            } else if harness == "claude" {
-                                "oracle"
-                            } else {
-                                "executor"
-                            }
-                            .into(),
-                            Source::Settings,
-                        ));
-                    }
+                    let mut expected = vec![(
+                        FieldKey::Role,
+                        if has_last {
+                            "creativity"
+                        } else if harness == "zsh" {
+                            "shell"
+                        } else if harness == "claude" {
+                            "oracle"
+                        } else {
+                            "executor"
+                        }
+                        .into(),
+                        Source::Settings,
+                    )];
                     expected.extend([
                         (
                             FieldKey::Directory,
@@ -509,7 +511,7 @@ mod tests {
                         rows.iter()
                             .find(|f| f.key == FieldKey::Role)
                             .map(|f| f.fixed),
-                        if harness == "zsh" { None } else { Some(false) }
+                        Some(false)
                     );
                     let directories = rows
                         .iter()

@@ -70,68 +70,56 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
     }
     let mut codex = HarnessRecord::builtin("codex").unwrap();
     codex.default_role.class = Class::Oracle;
-    assert_eq!(
-        codex.validate().unwrap_err().to_string(),
-        "codex_oracle_role_forbidden"
-    );
-    let claude = HarnessRecord::builtin("claude").unwrap();
-    for (name, class) in [
-        ("oracle", Class::Oracle),
-        ("architect", Class::Oracle),
-        ("creativity", Class::Worker),
-        ("executor", Class::Worker),
-        ("shell", Class::Worker),
-    ] {
+    codex.validate().unwrap();
+    for kind in ["claude", "codex", "pi", "omp", "zsh"] {
+        let harness = HarnessRecord::builtin(kind).unwrap();
+        for (name, class) in [
+            ("oracle", Class::Oracle),
+            ("architect", Class::Oracle),
+            ("creativity", Class::Worker),
+            ("executor", Class::Worker),
+            ("shell", Class::Worker),
+        ] {
+            assert_eq!(
+                harness.resolve_role(Some(name)).unwrap(),
+                Role {
+                    name: name.into(),
+                    class
+                }
+            );
+        }
         assert_eq!(
-            claude.resolve_role(Some(name)).unwrap(),
-            Role {
-                name: name.into(),
-                class
-            }
+            harness
+                .resolve_role(Some("director"))
+                .unwrap_err()
+                .to_string(),
+            "unknown_role_preset"
         );
     }
-    assert_eq!(
-        claude
-            .resolve_role(Some("director"))
-            .unwrap_err()
-            .to_string(),
-        "unknown_role_preset"
-    );
-    let codex = HarnessRecord::builtin("codex").unwrap();
-    for name in ["oracle", "architect"] {
-        assert_eq!(
-            codex.resolve_role(Some(name)).unwrap_err().to_string(),
-            "codex_oracle_role_forbidden"
-        );
-    }
-    assert_eq!(
-        bbt_mux::adapters::validate_role(
-            "claude",
-            &Role {
-                name: "oracle".into(),
-                class: Class::Worker
-            }
-        )
-        .unwrap_err()
-        .to_string(),
-        "role_class_mismatch"
-    );
+    bbt_mux::adapters::validate_role(
+        "claude",
+        &Role {
+            name: "oracle".into(),
+            class: Class::Worker,
+        },
+    )
+    .unwrap();
 }
 
 // keeps: decision #262
 #[test]
-fn codex_launch_refuses_oracle_class_before_creating_an_overlay() {
+fn codex_launch_carries_the_explicit_oracle_role_into_its_overlay() {
     use bbt_mux::registry::Class;
     let directory = tempfile::tempdir().unwrap();
     let root = directory.path().to_path_buf();
     let overlays = root.join("overlays");
-    let mut seat = SeatRecord::new(Ulid::new(), Ulid::new(), "forged", "codex");
-    // The class is authoritative even when a caller labels it executor.
+    let mut seat = SeatRecord::new(Ulid::new(), Ulid::new(), "configured", "codex");
+    seat.role.name = "oracle".into();
     seat.role.class = Class::Oracle;
     let context = LaunchContext {
         seat: &seat,
         cwd: &root,
-        role_prompt: "",
+        role_prompt: "Coordinate the swarm.",
         executable: std::path::Path::new("/fixture/bboxy450-term"),
         overlay_parent: &overlays,
         user_home: &root,
@@ -140,16 +128,17 @@ fn codex_launch_refuses_oracle_class_before_creating_an_overlay() {
         capability: [0; 32],
         resume: false,
     };
-    let error = plan(&HarnessRecord::builtin("codex").unwrap(), &context)
-        .err()
-        .unwrap();
-    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
-    assert!(!overlays.exists());
+    let plan = plan(&HarnessRecord::builtin("codex").unwrap(), &context).unwrap();
+    assert!(plan.overlay.exists());
+    let args = plan.spec.args.join(" ");
+    assert!(args.contains("Coordinate the swarm."));
+    assert!(args.contains("oracle"));
+    plan.cleanup().unwrap();
 }
 
 // keeps: decision #262
 #[test]
-fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
+fn logic_refuses_a_forged_codex_role_class_without_admitting_a_seat() {
     use bbt_mux::logic::{Logic, LogicConfig};
     use bbt_mux::registry::Class;
     let directory = tempfile::tempdir().unwrap();
@@ -190,14 +179,14 @@ fn logic_refuses_codex_oracle_authority_without_admitting_a_seat() {
             },
         ))
         .unwrap_err();
-    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
+    assert_eq!(error.to_string(), "configured_role_class_mismatch");
     let mut spec = bbt_mux::LaunchSpec::new("/bin/zsh", directory.path());
     spec.seat = record.id;
     spec.generation = record.generation;
     let error = runtime
         .block_on(logic.client.spawn(record.clone(), spec))
         .unwrap_err();
-    assert_eq!(error.to_string(), "codex_oracle_role_forbidden");
+    assert_eq!(error.to_string(), "configured_role_class_mismatch");
     assert!(
         runtime
             .block_on(logic.client.gui_seats())

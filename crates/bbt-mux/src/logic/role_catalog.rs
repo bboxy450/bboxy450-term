@@ -85,11 +85,6 @@ fn validate_replacement(catalog: &RoleCatalog, records: &[SeatRecord]) -> Result
 // New spawns additionally pass resolve(), which enforces the current allowed list.
 pub(super) fn validate_assignment(catalog: &RoleCatalog, kind: &str, role: &Role) -> Result<()> {
     crate::adapters::validate_role(kind, role)?;
-    // Intrinsic harness restrictions also apply to typed launches/restarts.
-    // Availability lists constrain only new choices, not retained assignments.
-    if matches!(kind, "pi" | "omp") && role.class == crate::registry::Class::Oracle {
-        return Err(invalid("harness_oracle_role_forbidden"));
-    }
     let definition = catalog
         .roles
         .get(&role.name)
@@ -121,14 +116,7 @@ pub(super) fn resolve(
     if !policy.available_roles.iter().any(|value| value == name) {
         return Err(invalid("role_not_available_for_harness"));
     }
-    Ok((
-        role,
-        if name == "shell" {
-            String::new()
-        } else {
-            definition.prompt.clone()
-        },
-    ))
+    Ok((role, definition.prompt.clone()))
 }
 
 #[cfg(test)]
@@ -174,8 +162,20 @@ mod tests {
             resolve(&catalog, "codex", Some("Coordinator"))
                 .unwrap_err()
                 .to_string(),
-            "codex_oracle_role_forbidden"
+            "role_not_available_for_harness"
         );
+        catalog
+            .harnesses
+            .get_mut("codex")
+            .unwrap()
+            .available_roles
+            .push("Coordinator".into());
+        catalog.harnesses.get_mut("codex").unwrap().default_role = "Coordinator".into();
+        catalog.validate().unwrap();
+        let (role, prompt) = resolve(&catalog, "codex", None).unwrap();
+        assert_eq!(role.class, Class::Oracle);
+        assert_eq!(prompt, "Coordinate the swarm.");
+        validate_assignment(&catalog, "codex", &role).unwrap();
         assert_eq!(
             resolve(&catalog, "claude", Some("Reviewer"))
                 .unwrap_err()
@@ -185,33 +185,26 @@ mod tests {
         assert!(resolve(&catalog, "zsh", None).unwrap().1.is_empty());
     }
     #[test]
-    fn retained_assignments_preserve_availability_but_never_harness_authority() {
+    fn retained_assignments_keep_their_class_when_availability_changes() {
         let mut catalog = configured();
         let oracle = Role {
             name: "oracle".into(),
             class: Class::Oracle,
         };
-        for kind in ["pi", "omp"] {
-            assert_eq!(
-                validate_assignment(&catalog, kind, &oracle)
-                    .unwrap_err()
-                    .to_string(),
-                "harness_oracle_role_forbidden"
-            );
+        for kind in ["claude", "codex", "pi", "omp", "zsh", "custom"] {
+            validate_assignment(&catalog, kind, &oracle).unwrap();
         }
         let executor = Role {
             name: "executor".into(),
             class: Class::Worker,
         };
         // Explicit operator-assigned/promoted shells retain their signed role.
-        // The new-launch preset still offers only shell.
+        // New choices are governed by the configured availability list.
         validate_assignment(&catalog, "zsh", &executor).unwrap();
         validate_assignment(&catalog, "zsh", &oracle).unwrap();
         assert_eq!(
-            resolve(&catalog, "zsh", Some("executor"))
-                .unwrap_err()
-                .to_string(),
-            "role_not_available_for_harness"
+            resolve(&catalog, "zsh", Some("executor")).unwrap().0,
+            executor
         );
         validate_assignment(
             &catalog,

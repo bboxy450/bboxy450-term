@@ -70,7 +70,12 @@ fn records() -> Records {
                 Harness {
                     role: "executor".into(),
                     available_roles: vec!["executor".into(), "creativity".into()],
-                    eligible_roles: vec!["executor".into(), "creativity".into(), "reviewer".into()],
+                    eligible_roles: vec![
+                        "oracle".into(),
+                        "executor".into(),
+                        "creativity".into(),
+                        "reviewer".into(),
+                    ],
                     tile: "#1F2937".into(),
                     command: "codex".into(),
                     ..Default::default()
@@ -184,7 +189,7 @@ fn hosted_creation_uses_retained_hits_and_keeps_a_draft_through_search_and_ime()
 }
 
 #[test]
-fn creation_validation_cancel_and_builtin_class_guards_keep_existing_records() {
+fn creation_validation_keeps_builtin_names_and_allows_explicit_class_changes() {
     let mut values = records();
     let original = serde_json::to_value(&values).unwrap();
     let mut control = Controller::new("Roles");
@@ -208,6 +213,8 @@ fn creation_validation_cancel_and_builtin_class_guards_keep_existing_records() {
         )
         .is_none()
     );
+    assert!(control.presentation().picker.is_some());
+    act(&mut control, &mut values, Action::Cancel);
     assert!(
         act(
             &mut control,
@@ -228,9 +235,11 @@ fn creation_validation_cancel_and_builtin_class_guards_keep_existing_records() {
                 }
             })
         )
-        .is_none()
+        .is_some()
     );
-    assert_eq!(serde_json::to_value(&values).unwrap(), original);
+    assert_ne!(serde_json::to_value(&values).unwrap(), original);
+    assert_eq!(values.roles[0].1.cls, "worker");
+    assert!(!values.roles[0].1.custom);
 }
 
 #[test]
@@ -343,6 +352,10 @@ fn harness_defaults_offer_only_available_roles_and_cannot_be_removed_from_the_se
         .is_none()
     );
     assert_eq!(view.values.harness[1].1.role, "creativity");
+    click(&mut control, &mut view, "harness/codex/available/oracle").unwrap();
+    click(&mut control, &mut view, "harness/codex/role");
+    click(&mut control, &mut view, "settings/choice/1").unwrap();
+    assert_eq!(view.values.harness[1].1.role, "oracle");
 }
 
 #[test]
@@ -422,7 +435,7 @@ fn hosted_destinations_and_harnesses_have_no_creation_or_fake_authority_controls
 }
 
 #[test]
-fn shell_has_no_prompt_editor_and_prompt_limits_match_the_catalog() {
+fn shell_role_has_the_same_prompt_editor_and_limits_as_other_roles() {
     let mut values = records();
     let shell = Role {
         prompt: String::new(),
@@ -439,7 +452,7 @@ fn shell_has_no_prompt_editor_and_prompt_limits_match_the_catalog() {
         )
         .is_none()
     );
-    assert!(!control.editing());
+    assert!(control.editing());
     let view = Settings {
         section: "Roles".into(),
         values,
@@ -447,7 +460,7 @@ fn shell_has_no_prompt_editor_and_prompt_limits_match_the_catalog() {
     };
     let frame = layout(&view, &control);
     assert!(
-        !Regions::new(&frame, &view)
+        Regions::new(&frame, &view)
             .unwrap()
             .fields()
             .contains(&Field::RolePrompt("shell".into()))

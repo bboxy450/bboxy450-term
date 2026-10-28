@@ -363,14 +363,7 @@ fn unavailable_roles_invalid_authority_and_duplicate_configuration_never_damage_
         ])
         .unwrap();
     let original = std::fs::read(&path).unwrap();
-    let mut invalid_builtin =
-        settings::roles::view("executor", &store.load().unwrap().roles["executor"]);
-    invalid_builtin.cls = "oracle".into();
     for patches in [
-        vec![Patch::RoleUpsert {
-            name: "executor".into(),
-            role: invalid_builtin,
-        }],
         vec![Patch::RoleDelete("executor".into())],
         vec![Patch::RoleDelete("reviewer".into())],
         vec![Patch::HarnessRole {
@@ -448,7 +441,12 @@ fn implicit_role_availability_grows_but_explicit_sets_and_typed_classes_stay_fix
             .iter()
             .any(|name| name == "reviewer")
     );
-    assert_eq!(catalog.harnesses["zsh"].available_roles, ["shell"]);
+    assert!(
+        catalog.harnesses["zsh"]
+            .available_roles
+            .iter()
+            .any(|name| name == "reviewer")
+    );
     let mut oracle = custom_role("Plan and supervise");
     oracle.cls = "oracle".into();
     preferences
@@ -464,20 +462,15 @@ fn implicit_role_availability_grows_but_explicit_sets_and_typed_classes_stay_fix
             .iter()
             .any(|name| name == "planner")
     );
-    for harness in ["codex", "pi", "omp"] {
+    for harness in ["claude", "pi", "omp", "zsh"] {
         assert!(
             catalog.harnesses[harness]
-                .available_roles
-                .iter()
-                .all(|name| catalog.roles[name].class == bbt_proto::registry::Class::Worker)
-        );
-        assert!(
-            !catalog.harnesses[harness]
                 .available_roles
                 .iter()
                 .any(|name| name == "planner")
         );
     }
+    assert_eq!(catalog.harnesses["codex"].available_roles, ["executor"]);
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("config.toml");
     std::fs::write(&path, "[roles.reviewer]\nprompt='Review'\n").unwrap();
@@ -485,6 +478,59 @@ fn implicit_role_availability_grows_but_explicit_sets_and_typed_classes_stay_fix
         Store::new(path).load().unwrap().roles["reviewer"].class,
         bbt_proto::registry::Class::Worker
     );
+}
+
+#[test]
+fn every_harness_can_persist_any_role_and_builtin_role_classes_are_editable() {
+    use bbt_proto::registry::Class;
+    use std::collections::BTreeSet;
+    for harness in ["claude", "codex", "pi", "omp", "zsh", "custom"] {
+        for (name, class) in [
+            ("oracle", Class::Worker),
+            ("executor", Class::Oracle),
+            ("shell", Class::Oracle),
+        ] {
+            let dir = tempfile::tempdir().unwrap();
+            let store = Store::new(dir.path().join("config.toml"));
+            let mut role = settings::roles::view(name, &settings::roles::builtin()[name]);
+            role.cls = settings::roles::class_name(class).into();
+            store
+                .save(&[
+                    Patch::RoleUpsert {
+                        name: name.into(),
+                        role,
+                    },
+                    Patch::HarnessRole {
+                        harness: harness.into(),
+                        role: name.into(),
+                    },
+                    Patch::HarnessAvailableRoles {
+                        harness: harness.into(),
+                        roles: BTreeSet::from([name.into()]),
+                    },
+                ])
+                .unwrap();
+            let saved = store.load().unwrap();
+            let catalog = saved.role_catalog();
+            assert_eq!(catalog.roles[name].class, class);
+            assert_eq!(catalog.harnesses[harness].default_role, name);
+            assert_eq!(catalog.harnesses[harness].available_roles, [name]);
+            assert_eq!(
+                settings::roles::eligible(harness, &catalog.roles).len(),
+                catalog.roles.len()
+            );
+            let records = settings::records(None, &saved);
+            let shown = &records
+                .harness
+                .iter()
+                .find(|(kind, _)| kind == harness)
+                .unwrap()
+                .1;
+            assert_eq!(shown.role, name);
+            assert_eq!(shown.available_roles, [name]);
+            assert_eq!(shown.eligible_roles.len(), catalog.roles.len());
+        }
+    }
 }
 
 // keeps: spec ux-prototype §5.6

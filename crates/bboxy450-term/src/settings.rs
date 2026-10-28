@@ -449,7 +449,13 @@ pub fn records(
             .push((name.clone(), roles::view(&name, &preferences.roles[&name])));
     }
     let catalog = preferences.role_catalog();
-    for kind in roles::HARNESSES {
+    for kind in roles::HARNESSES.into_iter().chain(
+        preferences
+            .harnesses
+            .keys()
+            .map(String::as_str)
+            .filter(|kind| !roles::HARNESSES.contains(kind)),
+    ) {
         let builtin = bbt_mux::adapters::HarnessRecord::builtin(kind).ok();
         let command = preferences.harnesses.get(kind).map_or_else(
             || {
@@ -501,7 +507,7 @@ pub fn records(
                     _ => "output cadence",
                 }
                 .into(),
-                custom: false,
+                custom: !roles::HARNESSES.contains(&kind),
             },
         ));
     }

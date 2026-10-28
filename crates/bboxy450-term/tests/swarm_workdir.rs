@@ -669,6 +669,33 @@ fn settings_uses_full_window_height_after_resizes() {
     assert!(fixture.ctl(&["ui", "layout"])["page"].is_null());
 }
 
+// Adapted from bboxy450-term tests/recovery.rs, codex_service_fixture: private readiness socket.
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[test]
+#[ignore = "private service subprocess for the settings launch fixture"]
+fn settings_codex_service_fixture() {
+    let socket = PathBuf::from(std::env::var_os("BBOXY_SETTINGS_CODEX_SOCKET").unwrap());
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            use tokio::signal::unix::{SignalKind, signal};
+            let mut hangup = signal(SignalKind::hangup()).unwrap();
+            let mut terminate = signal(SignalKind::terminate()).unwrap();
+            let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+            loop {
+                tokio::select! {
+                    _ = hangup.recv() => break,
+                    _ = terminate.recv() => break,
+                    stream = listener.accept() => drop(stream.unwrap()),
+                }
+            }
+            drop(listener);
+            fs::remove_file(socket).unwrap();
+        });
+}
+
 // keeps: ux-prototype Settings — saved account roles drive actual harness launches.
 #[test]
 #[ignore = "private ctl app/PTY boundary; make test-settings-roles-e2e"]
@@ -737,6 +764,14 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
     let mut fixture = Fixture::new();
     let args_file = fixture.root.join("claude-argv");
     fs::write(fixture.root.join("bin/claude"),format!("#!/bin/sh\nprintf '%s\\0' \"$@\" > '{}'\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n",args_file.display())).unwrap();
+    let codex = fixture.root.join("bin/codex");
+    let initialize = serde_json::json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"settings-codex-fixture","version":"1"}}});
+    let orient = serde_json::json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"orient","arguments":{}}});
+    fs::write(&codex, format!(
+        "#!/bin/sh\nif [ \"$1\" = app-server ]; then\n  BBOXY_SETTINGS_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact settings_codex_service_fixture --nocapture\nfi\nprintf '%s\\0' \"$@\" > '{}'\nprintf '%s\\n' '{}' '{}' | '{}' mcp > \"$HOME/$BBOXY_SEAT_ID.orient\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n",
+        std::env::current_exe().unwrap().display(), fixture.root.join("codex-argv").display(), initialize, orient, BIN,
+    )).unwrap();
+    fs::set_permissions(&codex, fs::Permissions::from_mode(0o700)).unwrap();
     fixture.start();
     let frame = fixture.ctl(&["app", "resize", "180x120"]);
     let swarm = frame["swarm"].as_str().unwrap().to_owned();
@@ -745,6 +780,8 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
     type_keys(&fixture, "Reviewer");
     click_region(&fixture, "role/draft/prompt");
     type_keys(&fixture, "Review code; cite evidence.");
+    click_region(&fixture, "role/draft/class");
+    choose(&fixture, "oracle");
     capture(&fixture, "role-draft");
     click_region(&fixture, "role/draft/add");
     let config = fixture.root.join("account/config.toml");
@@ -780,6 +817,16 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
         Some("Reviewer")
     );
     capture(&fixture, "harness-policies");
+    // Availability and default are independent operator choices on Codex too.
+    click_region(&fixture, "harness/codex/available/oracle");
+    click_region(&fixture, "harness/codex/available/oracle");
+    click_region(&fixture, "harness/codex/role");
+    choose(&fixture, "oracle");
+    assert_eq!(
+        read()["harnesses"]["codex"]["role"].as_str(),
+        Some("oracle")
+    );
+    capture(&fixture, "codex-oracle-policy");
     fixture.ctl(&["ui", "key", "esc"]);
     fixture.ctl(&["ui", "key", "cmd-t"]);
     type_keys(&fixture, "claude");
@@ -805,7 +852,7 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
         .iter()
         .find(|row| row["record"]["role"]["name"] == "Reviewer")
         .unwrap();
-    assert_eq!(row["record"]["role"]["class"], "worker");
+    assert_eq!(row["record"]["role"]["class"], "oracle");
     let seat = row["record"]["id"].as_str().unwrap().to_owned();
     fixture.expect_cwd(&seat, &fixture.root.join("repository"));
     let argv = fs::read(&args_file).unwrap();
@@ -821,6 +868,27 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
     assert!(prompt.contains("Review code; cite evidence."));
     assert!(prompt.to_lowercase().contains("orient"));
     assert!(prompt.contains(row["record"]["name"].as_str().unwrap()));
+    let codex_seat = fixture.spawn("codex", &swarm, None);
+    fixture.expect_cwd(&codex_seat, &fixture.root.join("repository"));
+    let admission =
+        fs::read_to_string(fixture.root.join(format!("home/{codex_seat}.orient"))).unwrap();
+    let admission: Value = admission
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .find(|reply| reply["id"] == 1)
+        .unwrap()["result"]["structuredContent"]
+        .clone();
+    assert_eq!(admission["actor"]["role"]["name"], "oracle");
+    assert_eq!(admission["actor"]["role"]["class"], "oracle");
+    assert!(
+        admission["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "task_delegate")
+    );
+    let argv = fs::read(fixture.root.join("codex-argv")).unwrap();
+    assert!(String::from_utf8_lossy(&argv).contains("Supervise the swarm."));
     let before_process = row["state"]["process"].clone();
     let before_owners = fixture.owners();
     for (section, prefix, name) in [

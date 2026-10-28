@@ -360,7 +360,7 @@ fn provider_gui_isolated_process() {
 // keeps: decision #262, real GUI role/spawn boundary
 #[test]
 #[ignore = "#327 B2/B4: private real GUI/PTY boundary; scripts/night-test-boundaries.sh"]
-fn gui_spawn_roles_refuse_codex_oracle_authority_and_default_shells_to_worker() {
+fn gui_spawn_roles_follow_the_catalog_and_default_shells_to_worker() {
     isolated_case("roles");
 }
 
@@ -406,25 +406,19 @@ fn gui_spawn_roles_case() {
         resume: None,
         placement: None,
     };
-    for (role, reason) in [
-        ("oracle", "codex_oracle_role_forbidden"),
-        ("architect", "codex_oracle_role_forbidden"),
-        ("director", "unknown_role_preset"),
-    ] {
-        spec.role = Some(role.into());
-        assert!(
-            runtime
-                .block_on(gui.spawn(Ulid::new(), spec.clone()))
-                .unwrap_err()
-                .contains(reason)
-        );
-        assert!(
-            runtime
-                .block_on(logic.client.gui_seats())
-                .unwrap()
-                .is_empty()
-        );
-    }
+    spec.role = Some("director".into());
+    assert!(
+        runtime
+            .block_on(gui.spawn(Ulid::new(), spec.clone()))
+            .unwrap_err()
+            .contains("unknown_role_preset")
+    );
+    assert!(
+        runtime
+            .block_on(logic.client.gui_seats())
+            .unwrap()
+            .is_empty()
+    );
     spec.harness_kind = "zsh".into();
     spec.role = None;
     let seat = runtime.block_on(gui.spawn(Ulid::new(), spec)).unwrap();
@@ -441,6 +435,31 @@ fn gui_spawn_roles_case() {
     let launch: serde_json::Value =
         serde_json::from_slice(&object.get("recovery_launch").unwrap().unwrap()).unwrap();
     assert_eq!(launch["role_prompt"], "");
+    for role in ["oracle", "architect", "executor"] {
+        let seat = runtime
+            .block_on(gui.spawn(
+                Ulid::new(),
+                bbt_proto::SpawnSpec {
+                    harness_kind: "zsh".into(),
+                    role: Some(role.into()),
+                    swarm: bbt_proto::SwarmId::from_u128(7),
+                    cwd: directory.path().to_string_lossy().into(),
+                    location: bbt_proto::Where::Local,
+                    args: Vec::new(),
+                    env: Vec::new(),
+                    command: None,
+                    name: None,
+                    resume: None,
+                    placement: None,
+                },
+            ))
+            .unwrap();
+        let record = runtime
+            .block_on(logic.client.gui_seat(Ulid(seat.0.0)))
+            .unwrap()
+            .record;
+        assert_eq!(record.role, bbt_mux::adapters::role_preset(role).unwrap());
+    }
     logic.shutdown().unwrap();
 }
 

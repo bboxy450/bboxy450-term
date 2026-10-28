@@ -1013,21 +1013,14 @@ const LAUNCHABLES: [(&str, &str, &str, &str, &str); 5] = [
     (
         "codex",
         "Codex",
-        "executor · never an oracle",
+        "executor by default",
         "#1F2937",
         "Suggestions",
     ),
     ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
     ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
-    ("zsh", "zsh", "~ · shell, no role", "#111827", "Shells"),
+    ("zsh", "zsh", "shell by default", "#111827", "Shells"),
 ];
-const ROLE_PRESETS: [(&str, &str, &str); 4] = [
-    ("oracle", "Oracle", "supervises, briefs, verifies"),
-    ("architect", "Architect", "specs, invariants, decisions"),
-    ("creativity", "Creativity", "diverges before the pick"),
-    ("executor", "Executor", "implements a scoped brief"),
-];
-
 fn default_spawn(
     id: &str,
     modifiers: Modifiers,
@@ -1036,9 +1029,9 @@ fn default_spawn(
     if modifiers != Modifiers::default() {
         return None;
     }
-    let (id, role) = match id.strip_prefix("claude:as:") {
-        Some(role) if ROLE_PRESETS.iter().any(|(name, _, _)| *name == role) => {
-            ("claude", Some(role.to_owned()))
+    let (id, role) = match id.rsplit_once(":as:") {
+        Some((harness, role)) if bbt_proto::gui::RoleCatalog::valid_name(role) => {
+            (harness, Some(role.to_owned()))
         }
         Some(_) => return None,
         None => (id, None),
@@ -1608,9 +1601,11 @@ fn swarm_oracle<'a>(
     let swarm = stage.unwrap_or(&model.ui.window.stage).swarm?;
     model.ui.seats.values().find_map(|seat| {
         (seat.swarm == swarm
-            && seat.harness.0 == "claude"
             && seat.lifecycle == bbt_ui_model::Lifecycle::Open
-            && seat.role.as_ref().is_some_and(|role| role.name == "oracle"))
+            && seat
+                .role
+                .as_ref()
+                .is_some_and(|role| role.class == bbt_ui_model::RoleClass::Oracle))
         .then_some(seat.name.as_str())
     })
 }
@@ -10643,7 +10638,17 @@ mod spawn_admission_tests {
                 && child.parameters
                 && child.role.as_deref() == Some(role)));
         }
-        assert!(spawn_pick("codex:as:oracle", Default::default(), None, None).is_none());
+        for (harness, role) in [
+            ("codex", "oracle"),
+            ("pi", "architect"),
+            ("zsh", "Reviewer Δ"),
+        ] {
+            assert!(matches!(
+                spawn_pick(&format!("{harness}:as:{role}"), Default::default(), None, None),
+                Some(live::UiMsg::Spawn { harness_kind, role: Some(selected), .. })
+                    if harness_kind == harness && selected == role
+            ));
+        }
     }
 
     #[test]

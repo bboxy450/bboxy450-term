@@ -12,9 +12,17 @@ links:
   - { to: "[[d18-executor-harness-override]]", rel: builds-on }
   - { to: "[[e2e-acceptance]]", rel: constrains }
 created: "2026-10-24T06:11:54Z"
-updated: "2026-10-24T06:26:55Z"
+updated: "2026-10-28T23:44:21Z"
 ---
 # Decision 262: launcher role defaults
+
+## Operator amendment, 2026-10-28
+
+The operator now requires any role on any harness and explicit editable role classes, including built-in roles. Harness/model names impose no class restrictions. The original choices below are starting defaults only. Settings owns role availability and default selection for every harness, including shells and custom harnesses; both GUI and MCP admission use the configured class and prompt. Existing grants remain authoritative: deleting or reclassifying an in-use role still requires a separate grant reissue. No model-name allowlist is introduced.
+
+Verification: `make test-settings-roles`, `make test-settings-roles-e2e`, `make test-boundaries`, and `make test` (the latter on the committed source).
+
+## Original decision, superseded where amended above
 
 Ruled by the Architect on 2026-10-24 from Aster's launch audit: the launcher labelled a Claude seat `executor` by default.
 

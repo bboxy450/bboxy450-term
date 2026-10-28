@@ -45,24 +45,17 @@ pub struct HarnessRecord {
 // bboxy450-term harness role admission: https://github.com/bboxy450/bboxy450-term
 // Credit copied/adapted/translated reuse accurately. Policy:
 // https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-pub fn validate_role(kind: &str, role: &Role) -> Result<()> {
-    if kind == "codex" && role.class == Class::Oracle {
-        return Err(invalid("codex_oracle_role_forbidden"));
-    }
-    if let Ok(builtin) = role_preset(&role.name) {
-        if role.class != builtin.class {
-            return Err(invalid("role_class_mismatch"));
-        }
-    } else if !bbt_proto::gui::RoleCatalog::valid_name(&role.name) {
+pub fn validate_role(_kind: &str, role: &Role) -> Result<()> {
+    if !bbt_proto::gui::RoleCatalog::valid_name(&role.name) {
         return Err(invalid("invalid_custom_role_name"));
     }
-    // Custom names carry an explicit typed class. The logic owner validates
+    // All names carry an explicit typed class. The logic owner validates
     // that assignment against the operator's persisted catalog before grants;
     // rendering or a role's display name can never supply new authority.
     Ok(())
 }
 
-/// Resolve the five decided role names to their grant authority (#262).
+/// Standalone starting presets; runtime authority comes from the saved catalog.
 pub fn role_preset(name: &str) -> Result<Role> {
     let class = match name {
         "oracle" | "architect" => Class::Oracle,
