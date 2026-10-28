@@ -30,7 +30,6 @@ members = [
 [workspace.package]
 version = "0.1.1"
 edition = "2024"
-license = "MIT OR Apache-2.0"
 repository = "https://github.com/bboxy450/bboxy450-term"
 authors = ["Boxy <bboxy450@gmail.com>"]
 rust-version = "1.99"
