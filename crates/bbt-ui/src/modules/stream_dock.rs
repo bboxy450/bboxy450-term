@@ -438,7 +438,9 @@ impl Message {
         if let Some(author) = &self.author {
             view.from = author.name.clone();
         }
-        if let Some(ts) = self.ts {
+        if view.time.is_empty()
+            && let Some(ts) = self.ts
+        {
             view.time = format!("{:02}:{:02}", (ts / 3_600_000) % 24, (ts / 60_000) % 60);
         }
         if self.kind.as_deref() == Some("presence") {
@@ -691,55 +693,25 @@ impl Message {
         } else {
             role_color(role)
         };
-        let mark = match author_kind {
-            Some("operator") => Some("OPERATOR".into()),
-            Some("observer") => Some("OBSERVER".into()),
-            _ => (!role.is_empty()).then(|| role.to_uppercase()),
-        };
         let head_key = format!("{key}/body/head");
         let mut head = vec![shrink(label(
             format!("{head_key}/who"),
             &self.from,
             text_style(
-                if dock { small } else { t.section as f32 },
+                if dock { caption } else { t.section as f32 },
                 600,
                 false,
                 ui::Color::Foreground,
             ),
             true,
         ))];
-        if let Some(mark) = mark {
-            head.push(
-                label(
-                    format!("{head_key}/role"),
-                    format!("<{mark}>"),
-                    text_style(caption, 400, true, color),
-                    false,
-                )
-                .into(),
-            );
-        }
-        let p0 = self
-            .priority_class
-            .as_deref()
-            .map_or(role == "oracle" && !self.foreign, |class| class == "oracle");
-        if p0 {
-            head.push(
-                badge(
-                    &format!("{head_key}/p0"),
-                    "p0",
-                    text_style(small, 400, true, ui::Color::Rgba([0., 0., 0., 1.])),
-                    Some(ui::Paint::solid(color)),
-                    None,
-                    (TOKENS.radius.grid as f32, sp.s2 as f32, None, false),
-                )
-                .into(),
-            );
-        } else if self.priority_class.as_deref() == Some("worker") && self.priority >= 7 {
+        // Roles stay visible through the rail. Repeat only exceptional priority,
+        // not the default authority class or local issuer on every message.
+        if self.priority >= 7 {
             head.push(
                 badge(
                     &format!("{head_key}/p1"),
-                    "p1",
+                    &format!("Priority {}", self.priority),
                     text_style(t.micro as f32, 400, true, ui::Color::Accent),
                     Some(tint(ui::Color::Accent, 0.14)),
                     Some(ui::Paint {
@@ -750,31 +722,6 @@ impl Message {
                 )
                 .into(),
             );
-        }
-        if self.issuer_kind.as_deref() == Some("local-dev") {
-            let color = rgba(TOKENS.color.state.waiting);
-            let mut ts = text_style(t.micro as f32, 400, false, color);
-            ts.tracking_em = 0.02;
-            ts.line_height = 14. / t.micro as f32;
-            let mut style = plain(None, [0., 5., 0., 5.], STYLE.radius.tag as f32);
-            style.overrides.fill = Some(tint(color, 0.14));
-            // CSS may wrap the issuer at its real hyphen, never in a word.
-            let flow = c::Flow {
-                children: vec![
-                    label("", "local-", ts, false).into(),
-                    label("", "dev", ts, false).into(),
-                ],
-                wrap: true,
-                justify: c::Justify::Start,
-                align: c::Alignment::Center,
-                row_gap: ui::Length::Px(0.),
-                column_gap: ui::Length::Px(0.),
-            };
-            head.push(shrink(column(
-                format!("{head_key}/issuer"),
-                style,
-                vec![c::Element::Flow(flow).into()],
-            )));
         }
 
         if show_ch && let Some(ch) = &self.ch {
@@ -791,7 +738,7 @@ impl Message {
         if let Some(kind) = self
             .kind
             .as_deref()
-            .filter(|s| *s != "message" && *s != "text")
+            .filter(|s| *s != "message" && *s != "text" && *s != "chunk")
         {
             let col = match kind {
                 "chunk" => rgba(TOKENS.color.ui.ok),
@@ -889,7 +836,7 @@ impl Message {
         head.push(auto_left(label(
             format!("{head_key}/time"),
             &self.time,
-            text_style(caption, 400, true, ui::Color::Muted),
+            text_style(small, 400, true, ui::Color::Muted),
             false,
         )));
         if self.held.as_deref() == Some("agent_ended") {
@@ -912,33 +859,17 @@ impl Message {
                 .into(),
             );
         } else if let Some(receipts) = &self.receipts {
-            head.push(
-                label(
-                    format!("{head_key}/receipts"),
-                    format!(
-                        "{} delivered · {} acked{}",
-                        receipts.delivered,
-                        receipts.acked,
-                        if receipts.held > 0 {
-                            format!(" · {} held", receipts.held)
-                        } else {
-                            String::new()
-                        }
-                    ),
-                    text_style(
-                        t.tiny as f32,
-                        400,
-                        true,
-                        if receipts.held > 0 {
-                            rgba(TOKENS.color.state.waiting)
-                        } else {
-                            ui::Color::Muted
-                        },
-                    ),
-                    false,
-                )
-                .into(),
-            );
+            if receipts.held > 0 {
+                head.push(
+                    label(
+                        format!("{head_key}/receipts"),
+                        format!("{} held", receipts.held),
+                        text_style(t.tiny as f32, 400, true, rgba(TOKENS.color.state.waiting)),
+                        false,
+                    )
+                    .into(),
+                );
+            }
         } else if let Some(ev) = &self.evidence {
             head.push(evidence(&format!("{head_key}/ticks"), ev, m).into());
         }
@@ -946,7 +877,7 @@ impl Message {
             row(
                 &head_key,
                 plain(None, [0.; 4], 0.),
-                sp.s4 as f32,
+                sp.s3 as f32,
                 c::Alignment::Center,
                 head,
             )
@@ -1032,15 +963,10 @@ impl Message {
                 .into(),
             );
         }
-        let mut ts = text_style(
-            body_size,
-            if role == "oracle" { 500 } else { 400 },
-            false,
-            ui::Color::Foreground,
-        );
-        ts.line_height = 1.4;
+        let mut ts = text_style(body_size, 400, false, ui::Color::Foreground);
+        ts.line_height = 1.5;
         ts.italic = role == "creativity";
-        let mut text_box = plain(None, [if dock { 0. } else { sp.s1 as f32 }, 0., 0., 0.], 0.);
+        let mut text_box = plain(None, [sp.s2 as f32, 0., 0., 0.], 0.);
         text_box.overrides.text = Some(ts);
         body.push(
             column(
@@ -1100,15 +1026,14 @@ impl Message {
                 .into(),
             );
         }
+        let pad = sp.s3 as f32;
         let mut style = base;
-        if role == "oracle" {
-            style.overrides.fill = Some(tint(color, 0.08));
-        }
+        style.overrides.fill = Some(ui::Paint::solid(ui::Color::Surface));
         style.overrides.padding = Some([
             ui::Length::Px(pad),
             ui::Length::Px(0.),
             ui::Length::Px(pad),
-            ui::Length::Px(0.),
+            ui::Length::Spacing(3),
         ]);
         let content = row(
             format!("{key}/contents"),
@@ -1128,7 +1053,7 @@ impl Message {
         let mut margin = plain(
             None,
             [
-                if dock { 7. - pad } else { 10. - pad },
+                sp.s2 as f32,
                 0.,
                 0.,
                 right - if dock { 4. } else { 8. } - size,
@@ -1164,7 +1089,7 @@ impl Message {
                 named(format!("{key}/unread-slot"), c::Element::Box(unread_slot)).into(),
             ],
         );
-        if self.reply_to.is_some() {
+        let card = if self.reply_to.is_some() {
             column(
                 format!("{key}/nested"),
                 plain(None, [0., 0., 0., 18.], 0.),
@@ -1172,7 +1097,12 @@ impl Message {
             )
         } else {
             base
-        }
+        };
+        column(
+            format!("{key}/space"),
+            plain(None, [0., 0., sp.s2 as f32, 0.], 0.),
+            vec![card.into()],
+        )
     }
 }
 

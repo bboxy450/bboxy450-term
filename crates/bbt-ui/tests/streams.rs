@@ -376,3 +376,70 @@ fn a_changed_task_keeps_its_reject_draft_visible_without_an_enabled_mutation() {
         ui::cursor::Cursor::Pointer
     );
 }
+
+// keeps: operator chat cleanup — readable cards retain messages and exceptional state.
+#[test]
+fn ordinary_messages_are_quiet_cards_and_explicit_local_times_win() {
+    let ordinary = Message {
+        author: Some(Author {
+            kind: "operator".into(),
+            id: "operator".into(),
+            name: "Boxy".into(),
+        }),
+        role: "oracle".into(),
+        issuer_kind: Some("local-dev".into()),
+        priority_class: Some("oracle".into()),
+        kind: Some("chunk".into()),
+        time: "11:06".into(),
+        ts: Some(18 * 3_600_000 + 6 * 60_000),
+        text: "The complete message stays readable and can wrap across the card.".into(),
+        receipts: Some(Receipts {
+            delivered: 2,
+            acked: 2,
+            held: 0,
+        }),
+        ..Default::default()
+    };
+    let held = Message {
+        priority: 8,
+        kind: Some("decision".into()),
+        receipts: Some(Receipts {
+            delivered: 1,
+            acked: 0,
+            held: 1,
+        }),
+        ..ordinary.clone()
+    };
+    let tree = layout(messages(vec![ordinary.clone(), held]), 300.);
+    let first = node(&tree, "e0").unwrap();
+    let text = labels(first);
+    assert!(text.contains("Boxy") && text.contains(&ordinary.text));
+    assert!(text.contains("11:06") && !text.contains("18:06"));
+    for noise in [
+        "local-dev",
+        "<OPERATOR>",
+        "p0",
+        "chunk",
+        "delivered",
+        "acked",
+    ] {
+        assert!(!text.contains(noise), "{noise}");
+    }
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    assert!(
+        matches!(&first.children[0].kind, c::LayoutKind::Box { style, .. } if style.fill == ui::Paint::solid(ui::Color::Surface).resolve(ctx).unwrap())
+    );
+    let head = node(&tree, "e0/body/head").unwrap().rect;
+    let body = node(&tree, "e0/body/text").unwrap().rect;
+    assert!(body.y >= head.bottom() + bbt_ui_model::STYLE.spacing.s2 as f32 - 0.01);
+    assert!(
+        node(&tree, "e1").unwrap().rect.y
+            >= first.rect.bottom() + bbt_ui_model::STYLE.spacing.s2 as f32 - 0.01
+    );
+    let exceptional = labels(node(&tree, "e1").unwrap());
+    assert!(
+        exceptional.contains("Priority 8")
+            && exceptional.contains("decision")
+            && exceptional.contains("1 held")
+    );
+}

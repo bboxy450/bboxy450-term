@@ -42,6 +42,11 @@ fn sidebar_footer_keeps_send_delegate_and_kind_controls_inside_its_width() {
                     .unwrap()
                     .layout(Rect::new(0., 0., width as f32, 0.), ctx, &Metrics)
                     .unwrap();
+                let send = find(&layout, "composer/send").unwrap().rect;
+                let priority = find(&layout, "composer/priority").unwrap().rect;
+                assert!(priority.right() <= send.x, "priority is a separate control");
+                let keycap = find(&layout, "composer/send/kbd/text").unwrap();
+                assert!(matches!(&keycap.children[0].kind, c::LayoutKind::Text { runs, .. } if runs.iter().map(|r| r.text.as_str()).collect::<String>() == "↵"));
                 for key in ["composer/send", "composer/priority", "composer/kpick"] {
                     let rect = find(&layout, key).unwrap().rect;
                     assert!(
@@ -246,4 +251,42 @@ fn task_status_is_canonical_in_graph_records_without_renaming_seat_activity() {
     let old: Work = serde_json::from_value(serde_json::json!({"state":"running"})).unwrap();
     assert_eq!(old.state, "running");
     assert_eq!(serde_json::to_value(&old).unwrap()["status"], "running");
+}
+
+// keeps: operator chat cleanup — success bookkeeping does not occupy the next draft.
+#[test]
+fn composer_hides_routine_success_but_keeps_send_failures_visible() {
+    use bbt_ui::{self as ui, components as c, modules::composer::Notice};
+    use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
+    struct Metrics;
+    impl TextMeasure for Metrics {
+        fn width(&self, text: &str, style: &TextStyle) -> f32 {
+            text.chars().count() as f32 * style.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, style: &TextStyle) -> [f32; 2] {
+            [style.size * 0.8, style.size * 0.2]
+        }
+    }
+    fn has_notice(node: &c::Layout) -> bool {
+        matches!(&node.kind, c::LayoutKind::Named(name) if name == "composer/notice")
+            || node.children.iter().any(has_notice)
+    }
+    let ctx = ui::Context::new(ui::Theme::Light, ui::Density::Cozy);
+    for kind in ["sent", "pending", "held", "refused"] {
+        let view = Composer {
+            notice: Some(Notice {
+                kind: kind.into(),
+                text: "send status".into(),
+            }),
+            ..Default::default()
+        };
+        let tree = view
+            .element(ctx, 320., &Metrics)
+            .unwrap()
+            .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
+            .unwrap();
+        assert_eq!(has_notice(&tree), kind != "sent", "{kind}");
+    }
 }

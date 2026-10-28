@@ -448,7 +448,7 @@ impl Composer {
             ui::Color::Accent
         };
         let mut children = vec![];
-        if let Some(n) = &self.notice {
+        if let Some(n) = self.notice.as_ref().filter(|n| n.kind != "sent") {
             children.push(notice_line("composer/notice", n, false).into());
         }
         let mut cells = vec![
@@ -592,72 +592,87 @@ impl Composer {
             &self.kind
         };
         foot.push(named("composer/kpick", kind_chip("composer/kind", kind, true)).into());
-        let mut pip = plain(
+        // Priority is a separate, quiet control, rather than an unexplained
+        // red number embedded inside the primary send action.
+        let mut priority_style = plain(
             None,
-            [1., sp.s2 as f32, 1., sp.s2 as f32],
+            [3., sp.s2 as f32, 3., sp.s2 as f32],
             STYLE.radius.pill as f32,
         );
-        pip.overrides.fill = Some(ui::Paint::solid(rgba(TOKENS.color.state.errored)));
-        let mut send = plain(None, [3., sp.s4 as f32, 3., 3.], STYLE.radius.pill as f32);
-        send.overrides.fill = Some(ui::Paint::solid(accent));
+        priority_style.overrides.fill = Some(ui::Paint {
+            color: ui::Color::Foreground,
+            alpha: ui::Alpha::Badge,
+        });
+        let priority = row(
+            "composer/priority",
+            priority_style,
+            0.,
+            c::Alignment::Center,
+            vec![
+                label(
+                    "composer/priority/text",
+                    format!("Priority {}", self.priority),
+                    text_style(t.micro as f32, 500, true, ui::Color::Muted),
+                    false,
+                )
+                .into(),
+            ],
+        );
+        let mut send_style = plain(
+            None,
+            [3., sp.s4 as f32, 3., sp.s4 as f32],
+            STYLE.radius.pill as f32,
+        );
+        send_style.overrides.fill = Some(ui::Paint::solid(accent));
+        let send = row(
+            "composer/send",
+            send_style,
+            sp.s2 as f32,
+            c::Alignment::Center,
+            vec![
+                label(
+                    "composer/send/text",
+                    if delegate { "Delegate" } else { "Send" },
+                    text_style(t.caption as f32, 600, false, ui::Color::OnAccent),
+                    false,
+                )
+                .into(),
+                row(
+                    "composer/send/kbd",
+                    {
+                        let mut style = plain(None, [1., 5., 1., 5.], STYLE.radius.tag as f32);
+                        style.overrides.fill = Some(ui::Paint {
+                            color: ui::Color::Foreground,
+                            alpha: ui::Alpha::Badge,
+                        });
+                        style.overrides.opacity = Some(0.75);
+                        style
+                    },
+                    0.,
+                    c::Alignment::Center,
+                    vec![
+                        label(
+                            "composer/send/kbd/text",
+                            "↵",
+                            ui::Text {
+                                line_height: 14. / t.micro as f32,
+                                ..text_style(t.micro as f32, 600, true, ui::Color::OnAccent)
+                            },
+                            false,
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            ],
+        );
         foot.push(
             row(
-                "composer/send",
-                send,
-                sp.s2 as f32,
+                "composer/actions",
+                plain(None, [0.; 4], 0.),
+                sp.s3 as f32,
                 c::Alignment::Center,
-                vec![
-                    row(
-                        "composer/priority",
-                        pip,
-                        0.,
-                        c::Alignment::Center,
-                        vec![
-                            label(
-                                "composer/priority/text",
-                                self.priority.to_string(),
-                                text_style(t.micro as f32, 500, true, ui::Color::Rgba([1.; 4])),
-                                false,
-                            )
-                            .into(),
-                        ],
-                    )
-                    .into(),
-                    label(
-                        "composer/send/text",
-                        if delegate { "Delegate" } else { "Send" },
-                        text_style(t.caption as f32, 600, false, ui::Color::OnAccent),
-                        false,
-                    )
-                    .into(),
-                    row(
-                        "composer/send/kbd",
-                        {
-                            let mut s = plain(None, [1., 5., 1., 5.], STYLE.radius.tag as f32);
-                            s.overrides.fill = Some(ui::Paint {
-                                color: ui::Color::Foreground,
-                                alpha: ui::Alpha::Badge,
-                            });
-                            s.overrides.opacity = Some(0.75);
-                            s
-                        },
-                        0.,
-                        c::Alignment::Center,
-                        vec![
-                            label(
-                                "composer/send/kbd/text",
-                                "⌘↵",
-                                ui::Text {
-                                    line_height: 14. / t.micro as f32,
-                                    ..text_style(t.micro as f32, 600, true, ui::Color::OnAccent)
-                                },
-                                false,
-                            )
-                            .into(),
-                        ],
-                    )
-                    .into(),
-                ],
+                vec![priority.into(), send.into()],
             )
             .into(),
         );
@@ -676,7 +691,7 @@ impl Composer {
         )?;
         let footer = if fixed_width > inner {
             // Keep every action reachable in a minimum-width sidebar.
-            let send = foot.pop().expect("footer has its send action");
+            let actions = foot.pop().expect("footer has its primary actions");
             stack(
                 "composer/foot",
                 plain(None, [0.; 4], 0.),
@@ -696,7 +711,7 @@ impl Composer {
                         plain(None, [0.; 4], 0.),
                         0.,
                         c::Alignment::Center,
-                        vec![spacer(), send],
+                        vec![spacer(), actions],
                     )
                     .into(),
                 ],
