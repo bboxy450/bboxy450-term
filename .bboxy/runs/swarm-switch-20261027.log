@@ -1,0 +1,16 @@
+Swarm switching and inactive dimming — operator request 2026-10-27
+Swarm read ownership: defer message/history and messaging-tree reads for empty GUI-only swarms; keep task reads live; first registry member releases the original demand. Startup event attachment does not query a captured swarm id.
+Navigation: no manufactured send refusal on scope change. Empty composer defaults to new swarm; nonempty draft text/attachments survive and old recipients clear.
+Selection: selected swarm vivid even empty; other cards dim once. Nonfocused rows inside selected card dim once; pane strips/content dim; all identity rims/bumpers retain color.
+PTY: raw/dimmed textures retained in shared native/headless cache. Existing CSS saturation/opacity applied over washed background only on source/focus/theme changes; focused pixels copy original raster.
+E2E: empty swarm switches have no unknown-stream/operator-swarm errors; first harness resumes messaging; two visible split PTYs gray on blur and restore original red pixels on focus; UI restart retains owner PIDs and harness generations.
+make test-swarm-switch — exit0; SHA256 fd9385e63cdd087bf598f3b5ed6aa8db1456f4fd868eec115d1b1e9f2951c2d6
+make test-navigation — exit0; SHA256 a3f51dccb3207c7dc37fe885452af72df85e0db0b60c1a0ebee62edce3f59634
+make test-cross-focus — exit0; SHA256 2d752b22b38264bcea5c3bbca02f230469515c41624b8da9d3fee1067d5ba8aa
+make check-swarm-switch — exit0; SHA256 3e3c38c2cff1054af0cdcbdf320dbb15c92d6d05bbf9e59fcef3852ac839dbb4
+make parity-swarm (precommit reference) — exit0; SHA256 fe4dfc5f69ac383997f8479686e2538560043eaaefdda8ff8d017d01467ce9e7
+Precommit parity: 72 measured/required, zero geometry mismatches. Three pixel advisories reviewed: new native inactive seat dimming versus previous committed web reference. Postcommit parity compares updated committed web source.
+Separate existing gap observed with an invalid test destination: ui compose --to channel:swarms/ID resolves to nonexistent channels/swarms/ID; its matching refusal becomes a frame timeout. Correct seat targeting is verified; invalid-target frame-error propagation is outside this cut.
+Subsequent checks: postcommit parity, signed install, private installed smoke, exact-HEAD make test and scripts/land.sh. Raw logs/identities stay outside Git.
+make test at1921bfdc — exit2: packaged-inputs-current alone found stale components.js copies. Canonical source/render tests passed.
+make sync-release-inputs — exit0, ten identical copies. Added canonical Make sync workflow and refreshed both crate copies; runtime implementation unchanged.

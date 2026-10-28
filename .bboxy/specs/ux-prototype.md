@@ -38,6 +38,7 @@ A swarm is a rounded body (radius 11, surface colour) in the finish language of 
 - **Colour**: one per swarm, random from its key (36 hues × 2 lightness bands), user-changeable by clicking the swatch. Hover lightens the band's own colour; it never turns white or grey.
 - **Open and shut**: every swarm's band is always visible. Clicking a band opens or shuts the block, nothing else. A shut block is a thin tab: band only, with the roll-up of its seats' state glyphs (worst first, max 6) and a waiting badge. Several blocks may be open. Blocks sit 8 px apart (retired-vocabulary token name: `layout.cohort_gap`).
 - **Unfocused**: the swarm holding the focused seat is full contrast; every other swarm's band and rows desaturate and fade with the pane `[dim]` tokens, the body washes toward grey, the bumper keeps its colour.
+- The selected swarm stays full contrast even when empty. Within it, every seat except the active seat dims once; an inactive swarm dims its contents once as a whole. Pane strips and actual PTY output use the same dim tokens. Identity borders and alive rims keep their colours and attention pulses.
 - **Below the blocks**: a big body-coloured button `+ new swarm` (44 px). A swarm is a world: its own seats, tabs, shadows and stream. A new swarm starts with one zsh seat.
 
 ### 3.2 Inside an open block

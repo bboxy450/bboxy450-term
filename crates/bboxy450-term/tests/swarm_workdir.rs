@@ -1017,6 +1017,205 @@ fn capture_navigation(fixture: &Fixture, name: &str) {
     }
 }
 
+#[test]
+#[ignore = "private ctl swarm switching, messaging readiness and colored PTY GPU regression"]
+fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
+    fn capture(f: &Fixture, name: &str) -> (u32, Vec<u8>) {
+        let path = f.root.join(name);
+        f.ctl(&["seat", "capture", "window", path.to_str().unwrap()]);
+        if let Some(directory) = std::env::var_os("BBOXY_SWITCH_EVIDENCE") {
+            fs::create_dir_all(&directory).unwrap();
+            fs::copy(&path, PathBuf::from(directory).join(name)).unwrap();
+        }
+        let mut reader = png::Decoder::new(std::io::BufReader::new(fs::File::open(path).unwrap()))
+            .read_info()
+            .unwrap();
+        let mut bytes = vec![0; reader.output_buffer_size().unwrap()];
+        let info = reader.next_frame(&mut bytes).unwrap();
+        assert_eq!(info.color_type, png::ColorType::Rgba);
+        bytes.truncate(info.buffer_size());
+        (info.width, bytes)
+    }
+    fn clean(f: &Fixture) {
+        let frame = f.ctl(&["ui", "layout"]);
+        let errors = f.ctl(&["debug", "errors"]);
+        for forbidden in [
+            "unknown GUI stream",
+            "unknown operator messaging swarm",
+            "swarm changed; choose a destination",
+        ] {
+            assert!(!frame.to_string().contains(forbidden), "{frame}");
+            assert!(!errors.to_string().contains(forbidden), "{errors}");
+            assert!(!f.log().contains(forbidden), "{}", f.log());
+        }
+    }
+    let mut f = Fixture::new();
+    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[2J\\033[HCWD:%s\\n' \"$PWD\"\nprintf '\\033[48;2;255;0;0m                \\033[0m\\nCOLOR-READY\\n'\nexec /bin/cat\n").unwrap();
+    f.start();
+    let first_swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let second_swarm = click_region(&f, "new-swarm")["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let third_swarm = click_region(&f, "new-swarm")["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    for swarm in [
+        &first_swarm,
+        &third_swarm,
+        &second_swarm,
+        &first_swarm,
+        &second_swarm,
+    ] {
+        assert_eq!(click_region(&f, &format!("swarm:{swarm}"))["swarm"], *swarm);
+        std::thread::sleep(Duration::from_millis(40));
+        clean(&f);
+    }
+    let first = f.spawn("claude", &second_swarm, None);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &first,
+        "--text",
+        "COLOR-READY",
+        "--timeout",
+        "10000",
+    ]);
+    f.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        &first,
+        "--text",
+        "SWARM-READS-RESUMED",
+    ]);
+    let until = Instant::now() + Duration::from_secs(10);
+    while !f
+        .ctl(&["ui", "layout"])
+        .to_string()
+        .contains("SWARM-READS-RESUMED")
+    {
+        assert!(
+            Instant::now() < until,
+            "message reads did not resume\n{}",
+            f.log()
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    f.ctl(&["ui", "key", "cmd-d"]);
+    type_keys(&f, "claude");
+    f.ctl(&["ui", "key", "enter"]);
+    let second = wait_harness(&f, "claude", 2);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &second,
+        "--text",
+        "COLOR-READY",
+        "--timeout",
+        "10000",
+    ]);
+    f.ctl(&["ui", "clock", "freeze"]);
+    let active = f.ctl(&["ui", "focus", &first]);
+    assert_eq!(
+        active["panes"].as_array().unwrap().len(),
+        2,
+        "both seats must stay visible"
+    );
+    f.ctl(&["ui", "clock", "advance", "900"]);
+    let (width, vivid) = capture(&f, "swarm-seat-active.png");
+    let pane = active["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["seat"] == first)
+        .unwrap();
+    let rect: Vec<_> = pane["rect"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap() as usize)
+        .collect();
+    let mut red = vec![];
+    for y in rect[1] + 2..rect[1] + rect[3] - 2 {
+        for x in rect[0] + 2..rect[0] + rect[2] - 2 {
+            let i = (y * width as usize + x) * 4;
+            if vivid[i] > 240 && vivid[i + 1] < 15 && vivid[i + 2] < 15 {
+                red.push(i);
+            }
+        }
+    }
+    assert!(
+        red.len() > 100,
+        "actual focused PTY has no red background cells"
+    );
+    let inactive = f.ctl(&["ui", "focus", &second]);
+    let inactive_pane = inactive["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["seat"] == first)
+        .unwrap();
+    assert_eq!(
+        pane["rect"], inactive_pane["rect"],
+        "focus changes paint, never pane geometry"
+    );
+    f.ctl(&["ui", "clock", "advance", "900"]);
+    let (_, faded) = capture(&f, "swarm-seat-inactive.png");
+    for &i in &red {
+        let rgb = &faded[i..i + 3];
+        assert!(
+            rgb.iter().max().unwrap() - rgb.iter().min().unwrap() < 32,
+            "inactive PTY stayed colorful: {rgb:?}"
+        );
+    }
+    f.ctl(&["ui", "focus", &first]);
+    f.ctl(&["ui", "clock", "advance", "900"]);
+    let (_, restored) = capture(&f, "swarm-seat-refocused.png");
+    for i in red {
+        assert_eq!(
+            &vivid[i..i + 4],
+            &restored[i..i + 4],
+            "focus did not restore original cell pixels"
+        );
+    }
+    for swarm in [&third_swarm, &first_swarm, &second_swarm] {
+        click_region(&f, &format!("swarm:{swarm}"));
+        clean(&f);
+    }
+    let owners = f.owners();
+    let before = f.ctl(&["seat", "ls"]);
+    let mut old = f.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    f.start();
+    assert_eq!(f.owners(), owners);
+    let after = f.ctl(&["seat", "ls"]);
+    for seat in [&first, &second] {
+        let get = |rows: &Value| {
+            rows.as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["record"]["id"] == *seat)
+                .map(|r| {
+                    (
+                        r["record"]["generation"].clone(),
+                        r["state"]["process"].clone(),
+                    )
+                })
+                .unwrap()
+        };
+        assert_eq!(get(&before), get(&after));
+    }
+    clean(&f);
+    f.ctl(&["app", "stop"]);
+    assert!(f.app.as_mut().unwrap().wait().unwrap().success());
+}
+
 // keeps: spec mcp-control-plane
 #[test]
 #[ignore = "private unattended seat-MCP/GUI/PTY boundary; make test-oracle-control"]

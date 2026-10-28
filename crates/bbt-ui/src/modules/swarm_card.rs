@@ -1,5 +1,7 @@
 //! Swarm chrome and its accepted tab compositions. Visibility and lifecycle
 //! data belong to the caller; this module neither changes them nor runs a clock.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{
     self as ui, components as c,
     modules::{
@@ -206,16 +208,11 @@ pub(crate) fn card_style(fill: ui::Color) -> ui::Style {
     });
     s
 }
-fn dim(element: c::Element, unfocused: bool) -> c::Element {
-    if unfocused {
-        c::Element::Filter {
-            content: Box::new(element),
-            saturation: TOKENS.dim.saturate as f32,
-            opacity: TOKENS.dim.opacity as f32,
-        }
-    } else {
-        element
+fn dim(mut element: c::Element, unfocused: bool) -> c::Element {
+    if unfocused && let c::Element::Box(node) = &mut element {
+        node.style.overrides.dim = Some(true);
     }
+    element
 }
 
 #[derive(Debug, Clone)]

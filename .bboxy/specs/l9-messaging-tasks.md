@@ -96,6 +96,8 @@ Pushes to the app, all of them, travel on **Kestrel's W2.6b lane**: `GuiReply::E
 
 ## 5. Acceptance, the spec signs off
 
+An empty swarm is valid window state before backend membership exists. Selecting it keeps message/history and messaging-tree reads pending until its first registry seat is published; task reads remain available. Reattachment refreshes the selected scope through that owner, never a startup-captured swarm id. Ordinary swarm navigation is not a send refusal: an empty composer targets the newly selected swarm, while a nonempty draft keeps its text/attachments and clears its old recipients.
+
 1. A DM composed in the GUI to a seat returns `Messaging { Stored }`, is signed by the device key with `seat = nil` and the operator role (§2a) and verified by the receiving seat, is delivered through W2.4 (receipt visible on `operator/inbox/receipt`), is journaled under `Operator { device_id }`, and a replay of the same `id` returns the same `Stored` without a second send.
 2. A post to the swarm stream with `kind: decision` appears in the stream dock through the events lane within one pump; a plain progress note from a worker-class seat to the stream is refused with the hint ([[messaging]] attention budget).
 3. `List` with a cursor pages the operator's inbox; each row shows its issuer kind and carries its bus position; unread equals retained message rows past the operator's durable read-mark, survives an app restart, and is unchanged by the app merely receiving events.

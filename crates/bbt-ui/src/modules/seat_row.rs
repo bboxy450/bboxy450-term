@@ -1,5 +1,7 @@
 //! Seat identity and its subordinate rows. Inputs are view data, never a clock,
 //! harness adapter, delivery scheduler or task controller.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{self as ui, components as c};
 use bbt_ui_model::{Activity, Grade, STYLE, SeatColor, TOKENS};
 
@@ -186,6 +188,8 @@ pub struct SeatRow {
     pub where_: Option<String>,
     pub link: Option<super::link::LinkState>,
     pub focused: bool,
+    /// Dim this row's chrome content; its identity rim remains vivid.
+    pub unfocused: bool,
     pub muted: bool,
     pub authority: Option<String>,
     pub held: Vec<Held>,
@@ -224,6 +228,7 @@ impl SeatRow {
             where_: None,
             link: None,
             focused: false,
+            unfocused: false,
             muted: false,
             authority: None,
             held: vec![],
@@ -268,6 +273,7 @@ impl SeatRow {
             [0., padding, 0., padding],
             radius,
         );
+        style.overrides.dim = self.unfocused.then_some(true);
         let state_color = match self.activity {
             Activity::Waiting(_) => rgba(TOKENS.color.state.waiting),
             Activity::Errored => rgba(TOKENS.color.state.errored),
@@ -646,19 +652,28 @@ impl SeatRow {
         }
         let base = row_box(style, d.gap as f32, children);
         let base = if let Some(subtitle) = &self.subtitle {
+            let mut content = named(
+                "sub",
+                label(
+                    subtitle,
+                    STYLE.r#type.small as f32,
+                    400,
+                    false,
+                    ui::Color::Muted,
+                ),
+            );
+            if self.unfocused {
+                // The subtitle is a separate overlay with no rim of its own.
+                content = c::Element::Filter {
+                    content: Box::new(content),
+                    saturation: TOKENS.dim.saturate as f32,
+                    opacity: TOKENS.dim.opacity as f32,
+                };
+            }
             c::Element::Layers {
                 base: Box::new(base),
                 overlays: vec![c::Placed {
-                    content: named(
-                        "sub",
-                        label(
-                            subtitle,
-                            STYLE.r#type.small as f32,
-                            400,
-                            false,
-                            ui::Color::Muted,
-                        ),
-                    ),
+                    content,
                     left: (d.pad_x + d.icon + d.gap) as f32,
                     bottom: 2.,
                 }],

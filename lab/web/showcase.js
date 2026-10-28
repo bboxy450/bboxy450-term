@@ -586,7 +586,7 @@
     focused = key;
     const fs = seats.find(s => s.key === key); if (fs && fs.state === 'waiting' && !fs.attnDone && !opts.force) { fs.attnDone = true; attention(); }   // focus handles it
     if (!opts.force && !stageKeys.includes(key)) { render(); if (opts.locate) locate(key, opts.locate); return; }   // another tab: the stage switches, then the swell says where you landed
-    main.querySelectorAll('.seat-row[data-key]').forEach(n => n.classList.toggle('focused', n.dataset.key === key));
+    main.querySelectorAll('.seat-row[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); const sp = n.closest('.space'); n.classList.toggle('unfocused', !!sp && sp.dataset.space === space().key && !f); });
     main.querySelectorAll('.pane[data-key]').forEach(n => { const f = n.dataset.key === key; n.classList.toggle('focused', f); n.classList.toggle('unfocused', !f); });
     const f = seats.find(s => s.key === key);
     document.getElementById('crumb').textContent = '· ' + space().name + ' · ' + f.name;

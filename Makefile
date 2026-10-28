@@ -40,6 +40,7 @@ help:
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
+	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
@@ -51,6 +52,7 @@ help:
 	  'make install-unsigned            Debug app, ad-hoc only, target/install-unsigned' \
 	  'make release                    Signed app ZIP, SHA256 and detached GPG signature' \
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
+	  'make sync-release-inputs         Refresh packaged copies of canonical build inputs' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=...'
@@ -173,6 +175,10 @@ release: bundle
 	gpg --batch --yes --local-user '$(GPG_KEY)' --armor --detach-sign '$(ARCHIVE)'; \
 	gpg --verify '$(ARCHIVE).asc' '$(ARCHIVE)'; printf 'Signed release artifacts: %s{,.sha256,.asc}\n' '$(ARCHIVE)'
 
+.PHONY: sync-release-inputs
+sync-release-inputs:
+	@python3 -I scripts/release-inputs.py --sync
+
 package-crate:
 	@set -eu; test -n '$(CRATE)' || { echo 'Usage: make package-crate CRATE=package-name' >&2; exit 2; }; \
 	. ./scripts/cache-env.sh; cargo package --locked -p '$(CRATE)' --target-dir '$(TARGET_DIR)'; \
@@ -272,6 +278,16 @@ test-spawn-wire:
 
 .PHONY: test-navigation check-navigation
 .PHONY: test-new-swarm format-new-swarm
+.PHONY: test-swarm-switch check-swarm-switch
+test-swarm-switch:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test swarms --test seat_rows; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	BBOXY_SWITCH_EVIDENCE='$(abspath $(TARGET_DIR))/swarm-switch' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir swarm_switches_wait_for_membership_and_dim_real_inactive_seats -- --ignored --exact --nocapture
+
+check-swarm-switch:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 .PHONY: test-sidebar-resize check-sidebar-resize
 test-sidebar-resize:
 	@set -eu; . ./scripts/cache-env.sh; \

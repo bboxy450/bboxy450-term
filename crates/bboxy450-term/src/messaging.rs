@@ -1,5 +1,7 @@
 //! UI glue for the shared messaging protocol. No IO, signing, routing policy,
 //! unread authority or reusable widgets live in the app.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::cockpit::UiMsg;
 use bbt_mux::Ulid;
 use bbt_proto::{
@@ -18,6 +20,33 @@ pub use history::{History, HistoryAction};
 pub const MAX_RESULTS: usize = 64;
 pub const MAX_RESULT_BYTES: usize = 1024 * 1024;
 pub const MAX_DESTINATIONS: usize = 32;
+
+#[cfg(test)]
+mod empty_swarm_reads {
+    use super::*;
+
+    #[test]
+    fn tree_reads_wait_for_membership_without_blocking_or_losing_task_reads() {
+        let mut records = Records::default();
+        records.select(SwarmId::from_u128(1));
+        let tasks = records.commands_with_messaging(false);
+        assert_eq!(tasks.len(), 2);
+        assert!(
+            tasks
+                .iter()
+                .all(|command| matches!(command, UiMsg::Task { .. }))
+        );
+        assert!(records.commands_with_messaging(false).is_empty());
+        let trees = records.commands_with_messaging(true);
+        assert_eq!(trees.len(), 2);
+        assert!(
+            trees
+                .iter()
+                .all(|command| matches!(command, UiMsg::Messaging { .. }))
+        );
+        assert!(records.commands_with_messaging(true).is_empty());
+    }
+}
 
 /// Built-in destinations are W2.4's documented id-based paths. Additional
 /// channel/group choices must come from tree pages, never guessed labels.
@@ -830,9 +859,9 @@ impl Client {
                 }
                 Reply::Messaging(Response::Stored { .. }) if !task => pending.stored += 1,
                 Reply::Messaging(Response::Refused { error }) if !task => {
-                    pending.failures.push(format!(
-                        "{}: {}; {}", error.kind, error.message, error.hint
-                    ));
+                    pending
+                        .failures
+                        .push(format!("{}: {}; {}", error.kind, error.message, error.hint));
                 }
                 Reply::Task(TaskResponse::Applied) if task => {
                     pending.stored += 1;
@@ -1269,14 +1298,23 @@ impl Records {
         }
     }
     pub fn commands(&mut self) -> Vec<UiMsg> {
+        self.commands_with_messaging(true)
+    }
+    pub fn commands_with_messaging(&mut self, messaging_ready: bool) -> Vec<UiMsg> {
         let Some(scope) = self.scope else {
             return vec![];
         };
         let mut commands = vec![];
-        while self.pending.len() < 8 {
+        let mut remaining = self.waiting.len();
+        while self.pending.len() < 8 && remaining > 0 {
+            remaining -= 1;
             let Some(read) = self.waiting.pop_front() else {
                 break;
             };
+            if !messaging_ready && matches!(read, Read::Tree(..)) {
+                self.waiting.push_back(read);
+                continue;
+            }
             let id = Ulid::new();
             let command = match &read {
                 Read::Tasks(after) | Read::Unassigned(after) => UiMsg::Task {

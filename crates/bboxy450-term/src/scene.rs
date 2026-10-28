@@ -681,6 +681,9 @@ impl Scene {
                 row.muted = seat.muted;
                 row.deferred = model.messaging_deferred.get(id).cloned();
                 row.focused = Some(*id) == self.focused;
+                // An inactive card dims its whole body once. In the selected
+                // card, dim only rows other than the active seat.
+                row.unfocused = Some(seat.swarm) == stage.swarm && !row.focused;
                 if self.backend_lost {
                     row.activity = Activity::Errored;
                     row.title = "backend lost".into();
@@ -1136,6 +1139,7 @@ impl Scene {
                     let mut view = card.clone();
                     view.key = swarm.id.to_string();
                     view.name = swarm.name.clone();
+                    view.unfocused = Some(swarm.id) != self.selected_swarm;
                     view.seats = swarm
                         .tabs
                         .iter()
@@ -1242,6 +1246,7 @@ impl Scene {
             if let Slot::Seat(id) = slot {
                 (seat.swell, seat.attention) = self.envelope(id, now, LocateWhere::Pane);
             }
+            seat.unfocused = false; // The pane dims its strip and content together.
             let pane_ctx = ui::Context {
                 seat: seat.color.unwrap_or(ctx.seat),
                 focused: seat.focused,
@@ -1253,7 +1258,7 @@ impl Scene {
                 gap_from: None,
                 resumed: None,
                 min_height: rect.h,
-                unfocused: false,
+                unfocused: !pane_ctx.focused,
                 reconnecting: false,
                 reconnected: false,
                 glow_seed: match slot {
@@ -2979,6 +2984,69 @@ mod launcher_tests {
             "window constraints do not overwrite the saved preference"
         );
         assert_eq!(scene.sidebar_width_for([1000., 700.]), 520.);
+    }
+
+    #[test]
+    fn selected_swarm_and_active_seat_control_exactly_one_dim_even_when_empty() {
+        let records: Vec<_> = [(1, 100), (2, 100), (3, 200)]
+            .into_iter()
+            .map(|(seat, swarm)| {
+                bbt_proto::SeatRecord::new(bbt_mux::Ulid(seat), bbt_mux::Ulid(swarm), "seat", "zsh")
+            })
+            .collect();
+        let mut model = bboxy450_term::model::build_at(
+            &records,
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        let mut stage = model.ui.window.stage.clone();
+        stage.swarm = Some(bbt_ui_model::SwarmId::from_u128(100));
+        stage.focused = Some(SeatId::from_u128(1));
+        let mut scene = Scene::live();
+        scene.set_model(&model, &stage);
+        let row = |id| &scene.seats[scene.seat_index[&SeatId::from_u128(id)]];
+        assert!(row(1).focused && !row(1).unfocused);
+        assert!(!row(2).focused && row(2).unfocused);
+        assert!(
+            !row(3).focused && !row(3).unfocused,
+            "the other card dims its body once"
+        );
+        let is_dim = |layout: &c::Layout, key: &str| {
+            let head = named(layout, key).unwrap();
+            let c::LayoutKind::Box { style, .. } = &head.children[0].kind else {
+                panic!("swarm head")
+            };
+            style.dim.is_some()
+        };
+        let layout = scene.layout([1200., 900.], false).unwrap();
+        assert!(!is_dim(&layout[1], "swarm0/head"));
+        assert!(is_dim(&layout[1], "swarm1/head"));
+        let empty = bbt_ui_model::SwarmId::from_u128(300);
+        model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .push(bbt_ui_model::Swarm::new(empty, "empty", vec![]));
+        stage = Stage {
+            swarm: Some(empty),
+            tab: None,
+            focused: None,
+        };
+        scene.set_model(&model, &stage);
+        let layout = scene.layout([1200., 900.], false).unwrap();
+        assert!(is_dim(&layout[1], "swarm0/head"));
+        assert!(is_dim(&layout[1], "swarm1/head"));
+        assert!(
+            !is_dim(&layout[1], "swarm2/head"),
+            "an empty selected swarm is still active"
+        );
+        assert!(
+            scene.seats.iter().all(|row| !row.unfocused),
+            "inactive cards own their rows' one dim"
+        );
     }
 
     #[test]

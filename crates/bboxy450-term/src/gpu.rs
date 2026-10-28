@@ -1,4 +1,6 @@
 //! Surface ownership stays with winit; device setup runs on the shared IO runtime.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::budget::GpuSample;
 use crate::display_link::Drawable;
 use bboxy450_term::model::{self, DrawCtx, Model};
@@ -13,6 +15,7 @@ use bbt_ui_model::{
     STYLE, TOKENS,
     draw::{Color, DrawList},
     layout::Rect,
+    tokens::Theme,
 };
 use block2::RcBlock;
 use objc2::rc::Retained;
@@ -121,7 +124,14 @@ struct CellTexture {
     screen: Arc<Screen>,
     frame: Arc<PreparedGrid>,
     texture: wgpu::Texture,
+    dimmed: Option<DimmedCellTexture>,
 }
+struct DimmedCellTexture {
+    texture: wgpu::Texture,
+    theme: Option<Theme>,
+}
+#[derive(Default)]
+struct CellTextures(BTreeMap<SeatId, CellTexture>);
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
     pub config: wgpu::SurfaceConfiguration,
@@ -131,7 +141,7 @@ pub struct Gpu {
     pub passes: bbt_render::passes::Counts,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
-    cells: BTreeMap<SeatId, CellTexture>,
+    cells: CellTextures,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
 }
@@ -156,6 +166,9 @@ fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
     })
 }
 fn clear(view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
+    clear_color(view, wgpu::Color::TRANSPARENT, encoder);
+}
+fn clear_color(view: &wgpu::TextureView, color: wgpu::Color, encoder: &mut wgpu::CommandEncoder) {
     bbt_render::passes::count(bbt_render::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("app clear"),
@@ -164,7 +177,7 @@ fn clear(view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
             depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                load: wgpu::LoadOp::Clear(color),
                 store: wgpu::StoreOp::Store,
             },
         })],
@@ -247,7 +260,7 @@ impl Gpu {
             passes: Default::default(),
             target,
             backdrop,
-            cells: BTreeMap::new(),
+            cells: CellTextures::default(),
             gpu_sender,
             gpu_samples,
         })
@@ -436,7 +449,14 @@ impl Gpu {
         )
         .map_err(|e| e.to_string())?;
         if let Some(panes) = panes {
-            self.draw_cells(&panes, scale, &mut encoder);
+            self.cells.draw(
+                &mut self.renderer,
+                &self.target,
+                panes.model,
+                panes.bounds,
+                scale,
+                &mut encoder,
+            )?;
             if !panes.overlay.is_empty() {
                 encode_ops(
                     &mut self.renderer,
@@ -511,28 +531,46 @@ impl Gpu {
         frame.present(&self.renderer.context)?;
         Ok(Some((encoded, wait + present.elapsed())))
     }
-    fn draw_cells(&mut self, panes: &Panes<'_>, scale: f32, encoder: &mut wgpu::CommandEncoder) {
-        self.cells
-            .retain(|id, _| panes.bounds.iter().any(|(visible, _)| visible == id));
-        for (id, rect) in panes.bounds {
-            let (Some(screen), Some(frame)) =
-                (panes.model.screens.get(id), panes.model.frames.get(id))
-            else {
+}
+
+impl CellTextures {
+    /// Keep the terminal raster and its inactive CSS group separately. Focused
+    /// output remains a byte-exact copy; only changed source/theme recomposites
+    /// the dim texture. Both native and windowless drivers use this cache.
+    // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn draw(
+        &mut self,
+        renderer: &mut ChromeRenderer,
+        destination: &wgpu::Texture,
+        model: &Model,
+        bounds: &[(SeatId, Rect)],
+        scale: f32,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), String> {
+        self.0
+            .retain(|id, _| bounds.iter().any(|(visible, _)| visible == id));
+        let theme = model.ui.window.theme;
+        for (id, rect) in bounds {
+            let (Some(screen), Some(frame)) = (model.screens.get(id), model.frames.get(id)) else {
                 continue;
             };
-            let changed = self.cells.get(id).is_none_or(|old| {
+            let changed = self.0.get(id).is_none_or(|old| {
                 !Arc::ptr_eq(&old.screen, screen) || !Arc::ptr_eq(&old.frame, frame)
             });
             if changed {
-                let old = self.cells.remove(id);
-                let texture = old
-                    .filter(|old| {
-                        old.texture.width() == frame.width && old.texture.height() == frame.height
-                    })
-                    .map(|old| old.texture)
-                    .unwrap_or_else(|| {
-                        texture(&self.renderer.context.device, [frame.width, frame.height])
+                let old = self.0.remove(id).filter(|old| {
+                    old.texture.width() == frame.width && old.texture.height() == frame.height
+                });
+                let (texture, mut dimmed) =
+                    old.map(|old| (old.texture, old.dimmed)).unwrap_or_else(|| {
+                        (
+                            texture(&renderer.context.device, [frame.width, frame.height]),
+                            None,
+                        )
                     });
+                if let Some(dimmed) = &mut dimmed {
+                    dimmed.theme = None;
+                }
                 let view = texture.create_view(&wgpu::TextureViewDescriptor {
                     format: Some(FORMAT.add_srgb_suffix()),
                     ..Default::default()
@@ -553,31 +591,79 @@ impl Gpu {
                         scale,
                     },
                 );
-                self.cells.insert(
+                self.0.insert(
                     *id,
                     CellTexture {
                         screen: screen.clone(),
                         frame: frame.clone(),
                         texture,
+                        dimmed,
                     },
                 );
             }
-            let cached = &self.cells[id];
+            let cached = self.0.get_mut(id).expect("visible terminal cache");
+            let focused = model.ui.window.stage.focused == Some(*id);
+            if !focused
+                && cached
+                    .dimmed
+                    .as_ref()
+                    .is_none_or(|old| old.theme != Some(theme))
+            {
+                let dimmed = cached.dimmed.get_or_insert_with(|| DimmedCellTexture {
+                    texture: texture(&renderer.context.device, [frame.width, frame.height]),
+                    theme: None,
+                });
+                let background = Color::hex(theme.palette().bg)
+                    .mix(Color::hex(theme.palette().fg_dim), TOKENS.dim.wash as f32)
+                    .0;
+                let view = dimmed.texture.create_view(&Default::default());
+                clear_color(
+                    &view,
+                    wgpu::Color {
+                        r: f64::from(background[0]),
+                        g: f64::from(background[1]),
+                        b: f64::from(background[2]),
+                        a: 1.,
+                    },
+                    encoder,
+                );
+                renderer
+                    .composite_group(
+                        &cached.texture.create_view(&Default::default()),
+                        group::Filter {
+                            opacity: TOKENS.dim.opacity as f32,
+                            saturation: TOKENS.dim.saturate as f32,
+                        },
+                        target(&view, scale),
+                        encoder,
+                    )
+                    .map_err(|error| error.to_string())?;
+                dimmed.theme = Some(theme);
+            }
+            let source = if focused {
+                &cached.texture
+            } else {
+                &cached
+                    .dimmed
+                    .as_ref()
+                    .expect("inactive terminal cache")
+                    .texture
+            };
             let x = (rect.x * scale).round().max(0.) as u32;
             let y = (rect.y * scale).round().max(0.) as u32;
             let width = ((rect.w * scale).floor().max(0.) as u32)
                 .min(frame.width)
-                .min(self.config.width.saturating_sub(x));
+                .min(destination.width().saturating_sub(x));
             let height = ((rect.h * scale).floor().max(0.) as u32)
                 .min(frame.height)
-                .min(self.config.height.saturating_sub(y));
+                .min(destination.height().saturating_sub(y));
             if width > 0 && height > 0 {
                 bbt_render::passes::count(bbt_render::passes::Kind::Copy);
                 encoder.copy_texture_to_texture(
-                    cached.texture.as_image_copy(),
+                    source.as_image_copy(),
                     wgpu::TexelCopyTextureInfo {
                         origin: wgpu::Origin3d { x, y, z: 0 },
-                        ..self.target.as_image_copy()
+                        ..destination.as_image_copy()
                     },
                     wgpu::Extent3d {
                         width,
@@ -587,6 +673,7 @@ impl Gpu {
                 );
             }
         }
+        Ok(())
     }
 }
 
@@ -658,6 +745,7 @@ pub(crate) struct VerificationFrame {
     materials: m::Pass,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
+    cells: CellTextures,
 }
 impl VerificationFrame {
     pub async fn new() -> Result<Self, String> {
@@ -671,6 +759,7 @@ impl VerificationFrame {
             materials,
             target,
             backdrop,
+            cells: CellTextures::default(),
         })
     }
     pub fn context(&self) -> std::sync::Arc<DeviceContext> {
@@ -750,24 +839,14 @@ impl VerificationFrame {
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
-        let cells = self.target.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(FORMAT.add_srgb_suffix()),
-            ..Default::default()
-        });
-        for (seat, rect) in bounds {
-            if let Some(prepared) = model.frames.get(seat) {
-                bboxy450_term::model::draw_pane(
-                    &model.screens[seat],
-                    *rect,
-                    &mut bboxy450_term::model::DrawCtx {
-                        frame: prepared,
-                        encoder: &mut encoder,
-                        target: &cells,
-                        scale: 1.,
-                    },
-                );
-            }
-        }
+        self.cells.draw(
+            &mut self.renderer,
+            &self.target,
+            model,
+            bounds,
+            1.,
+            &mut encoder,
+        )?;
         if !foreground.is_empty() {
             encode_ops(
                 &mut self.renderer,

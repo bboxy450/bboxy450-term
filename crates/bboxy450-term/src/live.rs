@@ -1,4 +1,6 @@
 //! GUI socket IO, immutable model publication and worker-only preparation.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use std::{
     collections::{BTreeMap, VecDeque},
     path::{Path, PathBuf},
@@ -1353,7 +1355,6 @@ async fn run_with_control(
                         GuiReply::EventStatus {attached,reason}=> {
                             if event_model(&mut model).status(if attached {None} else {Some(reason.as_deref().unwrap_or("events held"))}) {
                                 updates.publish(model.clone());
-                                if attached {queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:format!("swarm-{swarm}")});}
                             }
                             None
                         }
@@ -1465,7 +1466,6 @@ async fn run_with_control(
                         GuiReply::Ok {op}=> {
                             if event_model(&mut model).attach_result(op,None) {
                                 updates.publish(model.clone());
-                                queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:format!("swarm-{swarm}")});
                             }
                             logger.write(format!("GUI operation {op} accepted"));
                         },

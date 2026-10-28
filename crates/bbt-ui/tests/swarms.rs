@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_ui::{
     self as ui, components as c,
     modules::{seat_row::SeatRow, sidebar::Sidebar, swarm_card::SwarmCard},
@@ -68,15 +70,19 @@ fn collapsed_thousand_seat_card_keeps_a_bounded_composition_and_clips_its_materi
 fn unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper() {
     use bbt_ui_model::draw::Prim;
     let mut card = card(2);
+    let active = card
+        .element(ctx())
+        .layout(Rect::new(0., 0., 280., 0.), ctx(), &Metrics)
+        .unwrap();
     card.unfocused = true;
     let layout = card
         .element(ctx())
         .layout(Rect::new(0., 0., 280., 0.), ctx(), &Metrics)
         .unwrap();
     let head = find(&layout, "head").unwrap();
-    assert!(
-        matches!(&head.children[0].kind,c::LayoutKind::Filter{opacity,..} if *opacity==bbt_ui_model::TOKENS.dim.opacity as f32)
-    );
+    assert!(matches!(&head.children[0].kind,c::LayoutKind::Box{style,..} if style.dim.is_some()));
+    assert_eq!(layout.rect, active.rect);
+    assert_eq!(head.rect, find(&active, "head").unwrap().rect);
     let paints = c::paint(&layout, ctx());
     assert!(paints.iter().any(|p| {
         match p {
@@ -94,6 +100,144 @@ fn unfocused_card_dims_only_its_contents_and_keeps_the_identity_bumper() {
             .collect::<Vec<_>>(),
         ["0", "1"]
     );
+}
+
+// keeps: spec ux-prototype §3.1 — the inactive swarm dims contents, not identity rims
+#[test]
+fn inactive_open_swarm_dims_its_seats_once_and_keeps_rims_outside_dim_groups() {
+    use bbt_ui::modules::{
+        mini_grid::Node,
+        tab_row::{TabRow, TabSeat},
+    };
+    use bbt_ui_model::{Activity, draw::Prim, layout::Axis};
+    fn visit(
+        ops: &[c::Paint],
+        depth: usize,
+        texts: &mut Vec<usize>,
+        rims: &mut Vec<(usize, ui::Rim)>,
+    ) {
+        for op in ops {
+            match op {
+                c::Paint::Group {
+                    ops,
+                    opacity,
+                    saturation,
+                    ..
+                } => {
+                    let dim = *opacity == bbt_ui_model::TOKENS.dim.opacity as f32
+                        && *saturation == bbt_ui_model::TOKENS.dim.saturate as f32;
+                    visit(ops, depth + usize::from(dim), texts, rims);
+                }
+                c::Paint::Draw(list) | c::Paint::Underlay(list) => {
+                    for primitive in &list.primitives {
+                        if matches!(primitive, Prim::Text { .. }) {
+                            texts.push(depth);
+                        }
+                    }
+                }
+                c::Paint::Material {
+                    kind: ui::Material::Rim,
+                    rim: Some(rim),
+                    ..
+                } => rims.push((depth, *rim)),
+                _ => {}
+            }
+        }
+    }
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        let ctx = ui::Context::new(theme, ui::Density::Cozy);
+        let mut card = card(2);
+        card.closed = false;
+        card.expanded = true;
+        card.body = true;
+        card.new_seat = true;
+        for row in &mut card.seats {
+            row.activity = Activity::Active;
+            row.swell = 1.;
+        }
+        let cells: Vec<_> = card
+            .seats
+            .iter()
+            .map(|row| Node::Cell {
+                key: row.key.clone(),
+                name: row.name.clone(),
+                activity: row.activity,
+            })
+            .collect();
+        card.tabs = vec![TabRow {
+            name: "two seats".into(),
+            shortcut: None,
+            tree: Node::Split {
+                axis: Axis::Row,
+                ratio: 0.5,
+                a: Box::new(cells[0].clone()),
+                b: Box::new(cells[1].clone()),
+            },
+            seats: card
+                .seats
+                .iter()
+                .cloned()
+                .map(|row| TabSeat {
+                    row,
+                    children: vec![],
+                })
+                .collect(),
+            expanded: true,
+            focused_key: None,
+        }];
+        let active = card
+            .element(ctx)
+            .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
+            .unwrap();
+        let (mut active_text, mut active_rims) = (vec![], vec![]);
+        visit(
+            &c::paint(&active, ctx),
+            0,
+            &mut active_text,
+            &mut active_rims,
+        );
+        assert!(!active_text.is_empty() && active_text.iter().all(|depth| *depth == 0));
+        assert!(active_rims.len() >= 3, "tab header and both seat rims");
+        card.unfocused = true;
+        let inactive = card
+            .element(ctx)
+            .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
+            .unwrap();
+        for key in [
+            "head",
+            "body",
+            "body/tab0/seat0/row",
+            "body/tab0/seat1/row",
+            "body/newseat",
+        ] {
+            assert_eq!(
+                find(&active, key).unwrap().rect,
+                find(&inactive, key).unwrap().rect,
+                "{key}"
+            );
+        }
+        let (mut inactive_text, mut inactive_rims) = (vec![], vec![]);
+        visit(
+            &c::paint(&inactive, ctx),
+            0,
+            &mut inactive_text,
+            &mut inactive_rims,
+        );
+        assert_eq!(inactive_text.len(), active_text.len());
+        assert!(
+            inactive_text.iter().all(|depth| *depth == 1),
+            "{inactive_text:?}"
+        );
+        assert_eq!(
+            inactive_rims, active_rims,
+            "identity rims keep their color and effective opacity"
+        );
+        let bumper_height = ui::Style::new(ui::Preset::SwarmCard)
+            .resolve(ctx)
+            .unwrap()
+            .bumper[0];
+        assert!(c::paint(&inactive, ctx).iter().any(|op| matches!(op, c::Paint::Draw(list) if list.primitives.iter().any(|p| matches!(p, Prim::Rect { rect, fill, .. } if rect.h == bumper_height && fill.0 == card.color)))));
+    }
 }
 // keeps: spec gui-components §1.3
 #[test]

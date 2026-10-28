@@ -1,5 +1,7 @@
 //! L7 SeatRow fixture host. Only constructor arguments and external flow bounds
 //! enter native composition. DOM parts are read by snapshots, never by layout.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{
     Result,
     gallery::{self, Case},
@@ -177,6 +179,7 @@ pub fn seat(v: &Value, o: &Value, height: Option<f32>) -> row::SeatRow {
         .map(Into::into);
     s.link = serde_json::from_value(v["link"].clone()).ok();
     s.focused = o["focused"] == true;
+    s.unfocused = o["unfocused"] == true;
     s.muted = v["muted"] == true;
     s.deferred = serde_json::from_value(v["deferred"].clone()).ok();
     s.authority = v["authority"].as_str().map(Into::into);

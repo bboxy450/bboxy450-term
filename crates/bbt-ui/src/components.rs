@@ -1,5 +1,7 @@
 //! L6 retained Box, Text, Stack and ScrollView. Layout is pure; paint is ordered
 //! draw-list/material data. The host supplies fonts, a viewport and scroll offsets.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{Context, Length, Material, ResolvedStyle, ResolvedText, Style};
 pub use bbt_ui_model::draw::{LineCap, LineJoin, LinearAlphaMask, PathCommand, PathStroke};
 use bbt_ui_model::{
@@ -2243,12 +2245,38 @@ fn paint_node(node: &Layout, draw: DrawCtx, opacity: f32, clips: &[Clip], out: &
     {
         let mut ops = Vec::new();
         paint_contents(node, draw, opacity, clips, &mut ops);
-        out.push(Paint::Group {
-            ops,
-            opacity: style.opacity * style.dim.map_or(1., |d| d.opacity),
-            saturation: style.dim.map_or(1., |d| d.saturate),
-            mask: mask.map(|m| m.translated([node.rect.x, node.rect.y])),
-        });
+        if let Some(dim) = style.dim {
+            // Dim chrome content, while the identity rims retain their source
+            // colour and alpha. Explicit opacity/masks still enclose both.
+            let (body, rims) = split_rims(ops);
+            if rims.is_empty() {
+                // A content-only box keeps its existing single filter pass.
+                out.push(Paint::Group {
+                    ops: body,
+                    opacity: style.opacity * dim.opacity,
+                    saturation: dim.saturate,
+                    mask: mask.map(|m| m.translated([node.rect.x, node.rect.y])),
+                });
+                return;
+            }
+            ops = vec![Paint::Group {
+                ops: body,
+                opacity: dim.opacity,
+                saturation: dim.saturate,
+                mask: None,
+            }];
+            ops.extend(rims);
+        }
+        if *group || mask.is_some() || style.opacity != 1. {
+            out.push(Paint::Group {
+                ops,
+                opacity: style.opacity,
+                saturation: 1.,
+                mask: mask.map(|m| m.translated([node.rect.x, node.rect.y])),
+            });
+        } else {
+            out.extend(ops);
+        }
         return;
     }
     paint_contents(node, draw, opacity, clips, out);

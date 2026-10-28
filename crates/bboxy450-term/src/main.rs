@@ -2738,8 +2738,9 @@ impl App {
         if self.composer_scope != stage.swarm {
             if self.composer_scope.is_some() {
                 self.composer.view.to.clear();
-                self.composer_client
-                    .refused("swarm changed; choose a destination");
+                if self.composer.view.text.is_empty() && self.composer.view.attach.is_empty() {
+                    self.composer.view.to = vec![channel];
+                }
             } else if self.composer.view.to.is_empty() {
                 self.composer.view.to = vec![channel];
             }
@@ -2821,7 +2822,7 @@ impl App {
         self.events_seen = Some(model.events.clone());
     }
     fn conversation_reads(&mut self, viewed: bool) {
-        if self.closing || self.backend_lost {
+        if self.closing || self.backend_lost || !self.messaging_scope_ready() {
             return;
         }
         admit_reads(
@@ -2847,11 +2848,22 @@ impl App {
         if self.closing || self.backend_lost {
             return;
         }
+        let messaging_ready = self.messaging_scope_ready();
         admit_reads(
             self.live_commands.as_deref(),
             &mut self.operation_backlog,
-            || self.task_records.commands(),
+            || self.task_records.commands_with_messaging(messaging_ready),
         );
+    }
+    fn messaging_scope_ready(&self) -> bool {
+        // Empty swarms exist in window state before their first seat is
+        // registered. Keep their read intents pending until the backend owns
+        // that scope; selecting one must not manufacture transport errors.
+        self.composer_scope.is_some_and(|scope| {
+            self.live_state
+                .as_ref()
+                .is_some_and(|model| model.ui.seats.values().any(|seat| seat.swarm == scope))
+        })
     }
     fn blur_reject(&mut self) {
         self.reject_focus = false;

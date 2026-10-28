@@ -1,5 +1,6 @@
 // Component library for the web lab. Every renderer returns a DOM node and reads only CSS variables set by lab.js.
 // Mirrors the planned Rust ui-model: seat {key,name,harness,role,title,state}, tab {name,shortcut,tree}, space {name,key,tabs}.
+// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 (function () {
   const T = window.TOKENS;
   const el = (tag, attrs, ...kids) => window.Lab.el(tag, attrs, ...kids);
@@ -151,7 +152,7 @@
   // ---------- molecules ----------
   function seatRow(seat, opts) {
     opts = opts || {};
-    const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : ''), style: '--seat:' + seatColor(seat) });
+    const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : '') + (opts.unfocused ? ' unfocused' : ''), style: '--seat:' + seatColor(seat) });
     const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
     if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where + (seat.link ? ' ' + linkOf(seat.link).kind : ''), title: (seat.where === 'cloud' ? 'runs in the cloud' : 'over ssh') + (seat.host ? ' · ' + seat.host : '') + (seat.link ? ' · ' + linkSay(seat.link) : '') }, harnessIcon(seat.where)));
     row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
@@ -953,7 +954,7 @@
     const seats = tab.seats || leaves(tab.tree);
     if (seats.length === 1) {
       const s = seats[0];
-      const w = el('div', {}, seatRow(s, { focused: s.key === opts.focusedKey, shortcut: tab.shortcut }), ...subagentRows(s));
+      const w = el('div', {}, seatRow(s, { focused: s.key === opts.focusedKey, unfocused: opts.dimSeats && s.key !== opts.focusedKey, shortcut: tab.shortcut }), ...subagentRows(s));
       for (const t of (s.tasks || [])) { w.append(taskRow(t, s, { onAccept: opts.onAccept, review: !!(opts.review || opts.onAccept) })); for (const a of (t.artifacts || [])) w.append(artifactRow(a)); }
       return w;
     }
@@ -975,7 +976,7 @@
     const wrap = el('div', {}, row);
     if (opts.expanded) {
       const body = el('div', { class: 'tab-body' });
-      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey }), ...subagentRows(s)); for (const t of (s.tasks || [])) { body.append(taskRow(t, s, { onAccept: opts.onAccept, review: !!(opts.review || opts.onAccept) })); for (const a of (t.artifacts || [])) body.append(artifactRow(a)); } }
+      for (const s of seats) { body.append(seatRow(s, { focused: s.key === opts.focusedKey, unfocused: opts.dimSeats && s.key !== opts.focusedKey }), ...subagentRows(s)); for (const t of (s.tasks || [])) { body.append(taskRow(t, s, { onAccept: opts.onAccept, review: !!(opts.review || opts.onAccept) })); for (const a of (t.artifacts || [])) body.append(artifactRow(a)); } }
       wrap.append(body);
     }
     return wrap;
@@ -1022,7 +1023,7 @@
       for (const tab of space.tabs) {
         const tkey = space.key + '/' + tab.name;
         const open = st.openTabs.has(tkey) || (tab.seats || leaves(tab.tree)).length === 1 && st.autoOpenSingles;
-        body.append(tabRow(tab, { expanded: open, focusedKey: st.focusedKey, onAccept: st.onAccept, onToggle: () => { st.openTabs.has(tkey) ? st.openTabs.delete(tkey) : st.openTabs.add(tkey); st.rerender(); } }));
+        body.append(tabRow(tab, { expanded: open, focusedKey: st.focusedKey, dimSeats: st.currentSpace === space.key, onAccept: st.onAccept, onToggle: () => { st.openTabs.has(tkey) ? st.openTabs.delete(tkey) : st.openTabs.add(tkey); st.rerender(); } }));
       }
       // closed, in grace (T7): the process still runs; the seconds left and a hairline draining over the grace window (timestamped, so
       // re-renders resume it); undo or ⌘Z restores it in place

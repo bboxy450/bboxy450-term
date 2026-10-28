@@ -1,4 +1,5 @@
 /* bboxy450-term web lab. Colours, sizes and durations come from tokens.js via lab.js. */
+/* Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md */
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
 body {
@@ -664,6 +665,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .space.unfocused { background: color-mix(in srgb, color-mix(in srgb, var(--surface) calc(100% - var(--dim-wash)), var(--fg-dim)) var(--card-alpha), transparent); }
 .space.unfocused .space-head, .space.unfocused .space-body { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); transition: opacity var(--hover-ms), filter var(--hover-ms); }
 .space.unfocused:hover .space-head, .space.unfocused:hover .space-body { opacity: calc(var(--dim-opacity) + 0.2); }
+.seat-row.unfocused > :not(canvas.rim) { filter: saturate(var(--dim-sat)); opacity: var(--dim-opacity); }
 
 /* swarm rename in place */
 .space-head .sname-edit { background: rgba(0,0,0,.25); border: 0; outline: 0; color: var(--on-accent); font: inherit; letter-spacing: inherit; text-transform: inherit; width: 120px; padding: 1px var(--s3); border-radius: var(--r-grid); }

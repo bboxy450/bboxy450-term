@@ -1,5 +1,7 @@
 //! SwarmCard/Sidebar host. Constructor data and an external viewport are inputs;
 //! every descendant rectangle and baseline remains an independent diagnostic.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{
     Result,
     gallery::{self, Case},
@@ -183,6 +185,13 @@ pub fn sidebar(
         let key = v["key"].as_str().unwrap_or("");
         let mut c = card(v, opts, contains(&opts["openSpaces"], key), false, ctx)?;
         c.unfocused = current.is_some_and(|s| s != key);
+        if current == Some(key) {
+            for tab in &mut c.tabs {
+                for seat in &mut tab.seats {
+                    seat.row.unfocused = tab.focused_key.as_deref() != Some(seat.row.key.as_str());
+                }
+            }
+        }
         cards.push(c)
     }
     Ok(Sidebar {

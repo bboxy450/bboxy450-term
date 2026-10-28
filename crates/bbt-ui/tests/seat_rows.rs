@@ -2,6 +2,8 @@
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
 )]
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_ui::{
     self as ui, components as c,
     modules::seat_row::{SeatRow, Subagent, named},
@@ -24,6 +26,160 @@ impl c::Measure for Metrics {
 }
 fn context() -> ui::Context {
     ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)
+}
+
+fn dim_observations(ops: &[c::Paint]) -> (Vec<usize>, Vec<(usize, ui::Rim)>) {
+    fn visit(
+        ops: &[c::Paint],
+        depth: usize,
+        text: &mut Vec<usize>,
+        rims: &mut Vec<(usize, ui::Rim)>,
+    ) {
+        for op in ops {
+            match op {
+                c::Paint::Group {
+                    ops,
+                    opacity,
+                    saturation,
+                    ..
+                } => {
+                    let dim = *opacity == bbt_ui_model::TOKENS.dim.opacity as f32
+                        && *saturation == bbt_ui_model::TOKENS.dim.saturate as f32;
+                    visit(ops, depth + usize::from(dim), text, rims);
+                }
+                c::Paint::Draw(list) | c::Paint::Underlay(list) => {
+                    for primitive in &list.primitives {
+                        if matches!(primitive, Prim::Text { .. }) {
+                            text.push(depth);
+                        }
+                    }
+                }
+                c::Paint::Material {
+                    kind: ui::Material::Rim,
+                    rim: Some(rim),
+                    ..
+                } => rims.push((depth, *rim)),
+                _ => {}
+            }
+        }
+    }
+    let (mut text, mut rims) = (vec![], vec![]);
+    visit(ops, 0, &mut text, &mut rims);
+    (text, rims)
+}
+
+// keeps: spec ux-prototype §3-4, identity rims bypass inactive chrome dimming
+#[test]
+fn inactive_seat_content_dims_once_without_moving_or_dimming_its_rim() {
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        let ctx = ui::Context::new(theme, ui::Density::Cozy);
+        let mut row = SeatRow::new("inactive", "Vivid identity", "claude");
+        row.color = Some(bbt_ui_model::draw::Color::hex("#40A0FF").0);
+        row.activity = Activity::Active;
+        row.subtitle = Some("executor · local".into());
+        row.swell = 1.;
+        let active = row
+            .element(ctx)
+            .layout(Rect::new(0., 0., 360., 0.), ctx, &Metrics)
+            .unwrap();
+        let (active_text, active_rims) = dim_observations(&c::paint(&active, ctx));
+        assert!(!active_text.is_empty() && active_text.iter().all(|depth| *depth == 0));
+        assert!(!active_rims.is_empty());
+        row.unfocused = true;
+        let inactive = row
+            .element(ctx)
+            .layout(Rect::new(0., 0., 360., 0.), ctx, &Metrics)
+            .unwrap();
+        for key in ["row", "name", "tile", "right/glyph", "sub"] {
+            assert_eq!(
+                find(&active, key).unwrap().rect,
+                find(&inactive, key).unwrap().rect,
+                "{key}"
+            );
+        }
+        let (inactive_text, inactive_rims) = dim_observations(&c::paint(&inactive, ctx));
+        assert_eq!(inactive_text.len(), active_text.len());
+        assert!(
+            inactive_text.iter().all(|depth| *depth == 1),
+            "{inactive_text:?}"
+        );
+        assert_eq!(
+            inactive_rims, active_rims,
+            "identity rims must not inherit the dim transform"
+        );
+    }
+}
+
+// keeps: spec gui-components — explicit filters, masks and opacity retain their semantics
+#[test]
+fn content_dim_preserves_unrelated_mask_opacity_and_explicit_filters() {
+    let ctx = context();
+    let mut row = SeatRow::new("mask", "Masked identity", "codex");
+    row.unfocused = true;
+    let mut element = row.element(ctx);
+    let c::Element::Named { content, .. } = &mut element else {
+        panic!("row name")
+    };
+    let c::Element::Box(frame) = content.as_mut() else {
+        panic!("row frame")
+    };
+    frame.style.overrides.opacity = Some(0.6);
+    let mask = c::LinearAlphaMask {
+        start: [72., 0.],
+        end: [100., 0.],
+        alpha0: 1.,
+        alpha1: 0.,
+    };
+    frame.mask = Some(mask);
+    let layout = element
+        .layout(Rect::new(13., 27., 320., 0.), ctx, &Metrics)
+        .unwrap();
+    let painted = c::paint(&layout, ctx);
+    let [
+        c::Paint::Group {
+            ops,
+            opacity,
+            saturation,
+            mask: Some(painted_mask),
+        },
+    ] = painted.as_slice()
+    else {
+        panic!("explicit opacity and mask must still enclose content and rims")
+    };
+    assert_eq!((*opacity, *saturation), (0.6, 1.));
+    assert_eq!(*painted_mask, mask.translated([13., 27.]));
+    let (text, rims) = dim_observations(ops);
+    assert!(!text.is_empty() && text.iter().all(|depth| *depth == 1));
+    assert!(!rims.is_empty() && rims.iter().all(|(depth, _)| *depth == 0));
+
+    row.unfocused = false;
+    let ordinary = c::Element::Filter {
+        content: Box::new(row.element(ctx)),
+        saturation: 0.4,
+        opacity: 0.7,
+    }
+    .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
+    .unwrap();
+    let painted = c::paint(&ordinary, ctx);
+    let [
+        c::Paint::Group {
+            ops,
+            opacity,
+            saturation,
+            mask: None,
+        },
+    ] = painted.as_slice()
+    else {
+        panic!("an explicit filter still encloses the whole row")
+    };
+    assert_eq!((*opacity, *saturation), (0.7, 0.4));
+    assert!(ops.iter().any(|op| matches!(
+        op,
+        c::Paint::Material {
+            kind: ui::Material::Rim,
+            ..
+        }
+    )));
 }
 
 // keeps: spec gui-components §1.3
