@@ -231,7 +231,6 @@ pub(super) fn run_daemon(
         }
     });
     app.run();
-    stop.wait();
     worker
         .join()
         .map_err(|_| Error::Native("daemon worker panicked".into()))?

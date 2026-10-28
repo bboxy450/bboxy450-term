@@ -6,6 +6,10 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Unattended native-object/action probe; no desktop input or operator identity.
 #[cfg(target_os = "macos")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "single-threaded native fixture collector; no operator or rendered UI state"
+)]
 fn main() {
     use bboxy450_term_desktop::{Action, MenuBar, Tray, run_daemon};
     use std::sync::{Arc, Mutex};

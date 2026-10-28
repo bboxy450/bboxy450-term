@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     str::FromStr,
-    sync::{Arc, Condvar, Mutex},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -220,21 +223,16 @@ pub type Callback = Box<dyn Fn(Action) + Send + Sync + 'static>;
 /// Wake the daemon's main loop after its asynchronous worker has shut down.
 #[derive(Clone)]
 pub struct StopHandle {
-    state: Arc<(Mutex<bool>, Condvar)>,
+    state: Arc<AtomicBool>,
     #[cfg(target_os = "macos")]
     native: bool,
     native_error: Option<Error>,
 }
 impl StopHandle {
     pub fn stop(&self) {
-        let (lock, wake) = &*self.state;
-        let mut stopped = lock.lock().unwrap_or_else(|p| p.into_inner());
-        if *stopped {
+        if self.state.swap(true, Ordering::AcqRel) {
             return;
         }
-        *stopped = true;
-        drop(stopped);
-        wake.notify_all();
         #[cfg(target_os = "macos")]
         if self.native {
             macos::stop_main_loop();
@@ -247,19 +245,11 @@ impl StopHandle {
         #[cfg(not(target_os = "macos"))]
         let _ = native;
         Self {
-            state: Arc::new((Mutex::new(false), Condvar::new())),
+            state: Arc::new(AtomicBool::new(false)),
             #[cfg(target_os = "macos")]
             native,
             native_error,
         }
-    }
-    fn wait(&self) {
-        let (lock, wake) = &*self.state;
-        let guard = lock.lock().unwrap_or_else(|p| p.into_inner());
-        drop(
-            wake.wait_while(guard, |stopped| !*stopped)
-                .unwrap_or_else(|p| p.into_inner()),
-        );
     }
 }
 
@@ -329,7 +319,6 @@ fn run_without_native(
             result
         }
     });
-    stop.wait();
     handle
         .join()
         .map_err(|_| Error::Native("daemon worker panicked".into()))?
