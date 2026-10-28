@@ -1,4 +1,6 @@
 //! The native picker returns an intent; it never changes the process-wide cwd.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::{App, UiEvent, UiProxy, live};
 use bbt_proto::SwarmId;
 
@@ -64,9 +66,14 @@ pub(super) fn choose(
     directory: Option<&str>,
 ) -> Result<(), String> {
     use objc2::MainThreadMarker;
-    use objc2_app_kit::{NSModalResponseOK, NSOpenPanel};
+    use objc2_app_kit::{NSApplication, NSModalResponseOK, NSOpenPanel};
     use objc2_foundation::{NSString, NSURL};
     let mtm = MainThreadMarker::new().ok_or("folder picker requires the window thread")?;
+    let application = NSApplication::sharedApplication(mtm);
+    let window = application
+        .keyWindow()
+        .or_else(|| application.mainWindow())
+        .ok_or("folder picker requires an active terminal window")?;
     let panel = NSOpenPanel::openPanel(mtm);
     if let Some(directory) = directory {
         panel.setDirectoryURL(Some(&NSURL::fileURLWithPath(&NSString::from_str(
@@ -94,7 +101,10 @@ pub(super) fn choose(
         };
         let _ = proxy.send_event(UiEvent::SwarmFolderPicked { swarm, path });
     });
-    panel.beginWithCompletionHandler(&complete);
+    // Keep the chooser attached to its terminal instead of opening a modeless
+    // panel behind it. Origin/credit policy:
+    // https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    panel.beginSheetModalForWindow_completionHandler(&window, &complete);
     Ok(())
 }
 

@@ -1,3 +1,5 @@
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(
     clippy::disallowed_methods,
     reason = "private unattended app/PTY fixture"
@@ -580,6 +582,68 @@ fn click_region(fixture: &Fixture, key: &str) -> Value {
         .round()
         .to_string();
     fixture.ctl(&["ui", "click", &x, &y])
+}
+
+#[test]
+#[ignore = "night: private ctl new-swarm/cwd/PTY/restart fixture; make test-new-swarm"]
+fn new_swarm_cwd_controls_stay_visible_and_launch_in_the_saved_folder() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let initial = fixture.ctl(&["ui", "layout"]);
+    let original = initial["swarm"].as_str().unwrap();
+    let original_folder = fixture.root.join("override");
+    fixture.ctl(&[
+        "ui",
+        "swarm-workdir",
+        original,
+        original_folder.to_str().unwrap(),
+    ]);
+    let mut swarm = String::new();
+    for _ in 0..8 {
+        fixture.ctl(&["ui", "sidebar-scroll", "-1000"]);
+        let created = click_region(&fixture, "new-swarm");
+        let next = created["swarm"].as_str().unwrap().to_owned();
+        assert_ne!(next, swarm, "each click creates a new swarm");
+        swarm = next;
+        assert_ne!(swarm, original);
+        assert!(created["focused"].is_null());
+        let key = format!("swarm-folder/{swarm}/choose");
+        assert!(
+            created["regions"][&key].as_array().is_some(),
+            "new swarm cwd must be visible"
+        );
+    }
+    let folder = fixture.root.join("project with spaces");
+    let selected = fixture.ctl(&["ui", "swarm-workdir", &swarm, folder.to_str().unwrap()]);
+    assert_eq!(selected["swarm_workdirs"][&swarm], folder.to_str().unwrap());
+    assert_eq!(
+        selected["swarm_workdirs"][original],
+        original_folder.to_str().unwrap()
+    );
+    let reset = click_region(&fixture, &format!("swarm-folder/{swarm}/default"));
+    assert!(reset["swarm_workdirs"][&swarm].is_null());
+    assert_eq!(
+        reset["swarm_workdirs"][original],
+        original_folder.to_str().unwrap()
+    );
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, folder.to_str().unwrap()]);
+    let seat = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&seat, &folder);
+    std::thread::sleep(Duration::from_millis(500));
+    let owners = fixture.owners();
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(
+        fixture.ctl(&["ui", "layout"])["swarm_workdirs"][&swarm],
+        folder.to_str().unwrap()
+    );
+    let next = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&next, &folder);
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
 }
 
 #[test]

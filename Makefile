@@ -267,6 +267,15 @@ test-spawn-wire:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) launch_parameters_wire -- --nocapture
 
 .PHONY: test-navigation check-navigation
+.PHONY: test-new-swarm format-new-swarm
+test-new-swarm:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) new_swarm_workdir; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir new_swarm_cwd -- --ignored
+
+format-new-swarm:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/navigation.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/swarm_folder.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
 test-navigation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \

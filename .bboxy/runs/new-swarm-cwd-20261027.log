@@ -1,0 +1,14 @@
+ROLE: EXECUTOR — new swarm cwd control repair, 2026-10-27
+Brief: operator reports inability to set working folder on a new swarm.
+Mechanism: native directory picker attaches as a sheet to key/main terminal window;
+new/selected empty swarms reveal cwd from solved geometry; folder hits clip to viewport;
+ctl ui layout exposes the same retained folder choose/default regions.
+Attribution: root ATTRIBUTION.md and compact origin/credit URLs in touched Rust sources.
+make test-new-swarm — exit 0: overflow/reveal/clipping unit + eight-new-swarm ctl fixture,
+cwd reset isolation, real PTY cwd inheritance, UI restart and backend-owner retention.
+make test-navigation — exit 0: unit suites plus 6 private app/PTY fixtures.
+Gap: headless fixtures use ctl to commit the folder choice; the macOS sheet interaction
+is not automated or claimed as a reproduced native-panel failure. No operator input required.
+Full exact-HEAD CI/landing/install evidence is retained outside Git and reported at handoff.
+/Users/feral/Library/Logs/bboxy450-term/new-swarm-cwd-focused.log sha256=6537ed7bad16aa7c76a6b0fab58e74a66839537cb8f453d6eff16abd948198bd
+/Users/feral/Library/Logs/bboxy450-term/new-swarm-cwd-navigation.log sha256=e8ad51f1c3a718ce3f7ba55ad8e778ed73076961055d5925a923c87fc7271f57

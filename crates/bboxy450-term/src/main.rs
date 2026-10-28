@@ -1,4 +1,6 @@
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 mod animation_clock;
 mod app_starting;
 mod assets;
@@ -1907,6 +1909,7 @@ struct App {
     swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
     navigation_regions: Vec<(String, Rect)>,
     sidebar_scroll: Option<f32>,
+    sidebar_reveal: Option<bbt_proto::SwarmId>,
     sidebar_viewport: Option<(Rect, f32)>,
     launch_directory_pending: Option<bbt_mux::Ulid>,
     launch_directory_error: Option<String>,
@@ -2087,6 +2090,7 @@ impl App {
             swarm_folder_regions: Vec::new(),
             navigation_regions: Vec::new(),
             sidebar_scroll: None,
+            sidebar_reveal: None,
             sidebar_viewport: None,
             launch_directory_pending: None,
             launch_directory_error: None,
@@ -5864,17 +5868,27 @@ impl App {
                 .as_ref()
                 .map_or(0., |m| m.ui.window.sidebar.scroll)
         });
-        let layouts = if self.local_tab.is_some() {
-            self.scene
-                .local_page_chrome_at(logical, dock, self.clock_frame.now)?
-        } else {
-            self.scene.layout_docked_at(
-                logical,
-                self.animation_start.is_some() || self.animate,
-                dock,
-                self.clock_frame.now,
-            )?
+        let local = self.local_tab.is_some();
+        let effects = self.animation_start.is_some() || self.animate;
+        let now = self.clock_frame.now;
+        let layout = |scene: &scene::Scene| {
+            if local {
+                scene.local_page_chrome_at(logical, dock, now)
+            } else {
+                scene.layout_docked_at(logical, effects, dock, now)
+            }
         };
+        let mut layouts = layout(&self.scene)?;
+        if let Some(swarm) = self.sidebar_reveal
+            && let Some(scroll) = self.scene.swarm_folder_scroll(&layouts, swarm)
+        {
+            self.sidebar_reveal = None;
+            if scroll != self.scene.sidebar_scroll {
+                self.scene.sidebar_scroll = scroll;
+                self.sidebar_scroll = Some(scroll);
+                layouts = layout(&self.scene)?;
+            }
+        }
         self.local_page_layout = self
             .local_tab
             .as_ref()

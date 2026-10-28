@@ -1,4 +1,6 @@
 //! Native sidebar metadata and the optional frozen scene-15 smoke fixture.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 mod navigation;
 mod starting;
 use bboxy450_term::starting::Slot;
@@ -205,6 +207,15 @@ fn named<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
         return Some(layout);
     }
     layout.children.iter().find_map(|child| named(child, name))
+}
+fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> {
+    if matches!(&layout.kind, c::LayoutKind::Named(key) if key.ends_with(name)) {
+        return Some(layout);
+    }
+    layout
+        .children
+        .iter()
+        .find_map(|child| named_suffix(child, name))
 }
 
 pub struct Scene {
@@ -745,25 +756,52 @@ impl Scene {
         &self,
         layouts: &[c::Layout],
     ) -> Vec<(bbt_proto::SwarmId, Rect, bool)> {
-        fn button(layout: &c::Layout, key: &str) -> Option<Rect> {
-            if matches!(&layout.kind,c::LayoutKind::Named(name) if name.ends_with(key)) {
-                return Some(layout.rect);
-            }
-            layout.children.iter().find_map(|child| button(child, key))
-        }
         let mut out = vec![];
         if let Some(sidebar) = layouts.get(1) {
+            let viewport = self
+                .sidebar_extent(layouts)
+                .map_or(sidebar.rect, |(r, _)| r);
             for swarm in &self.swarms {
                 for (action, reset) in [("choose", false), ("default", true)] {
-                    if let Some(rect) =
-                        button(sidebar, &format!("swarm-folder/{}/{action}", swarm.id))
+                    if let Some(button) =
+                        named_suffix(sidebar, &format!("swarm-folder/{}/{action}", swarm.id))
                     {
-                        out.push((swarm.id, rect, reset));
+                        let r = button.rect;
+                        let x = r.x.max(viewport.x);
+                        let y = r.y.max(viewport.y);
+                        let w = r.right().min(viewport.right()) - x;
+                        let h = r.bottom().min(viewport.bottom()) - y;
+                        if w > 0. && h > 0. {
+                            out.push((swarm.id, Rect::new(x, y, w, h), reset));
+                        }
                     }
                 }
             }
         }
         out
+    }
+    /// Reveal an empty swarm's controls using their solved, unscrolled geometry.
+    pub fn swarm_folder_scroll(
+        &self,
+        layouts: &[c::Layout],
+        swarm: bbt_proto::SwarmId,
+    ) -> Option<f32> {
+        let sidebar = layouts.get(1)?;
+        let (viewport, max) = self.sidebar_extent(layouts)?;
+        let button = named_suffix(sidebar, &format!("swarm-folder/{swarm}/choose"))?.rect;
+        let index = self.swarms.iter().position(|s| s.id == swarm)?;
+        let head = named(sidebar, &format!("swarm{index}/head"))?.rect;
+        let top = if button.bottom() - head.y <= viewport.h {
+            head.y
+        } else {
+            button.y
+        };
+        let delta = if top < viewport.y {
+            top - viewport.y
+        } else {
+            (button.bottom() - viewport.bottom()).max(0.)
+        };
+        Some((self.sidebar_scroll + delta).clamp(0., max))
     }
     pub fn focused(&self) -> Option<SeatId> {
         match self
@@ -2709,6 +2747,53 @@ mod launcher_tests {
         assert!(!hits[0].2 && hits[1].2);
         assert!(hits.iter().all(|(_, rect, _)| rect.w > 0. && rect.h > 0.));
         assert!(hits[0].1.right() <= hits[1].1.x);
+    }
+
+    #[test]
+    fn new_swarm_workdir_is_revealed_and_hidden_controls_cannot_take_clicks() {
+        let mut model = bboxy450_term::model::build_at(
+            &[],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        let ids: Vec<_> = (100..112).map(bbt_proto::SwarmId::from_u128).collect();
+        model.ui.window.sidebar.swarms = ids
+            .iter()
+            .map(|id| bbt_ui_model::Swarm::new(*id, "empty", vec![]))
+            .collect();
+        model.ui.window.sidebar.open.extend(ids.iter().copied());
+        let target = *ids.last().unwrap();
+        model.ui.window.stage = bbt_ui_model::Stage {
+            swarm: Some(target),
+            tab: None,
+            focused: None,
+        };
+        let mut scene = Scene::live();
+        scene.set_model(&model, &model.ui.window.stage);
+        let layouts = scene.layout([1000., 400.], false).unwrap();
+        assert!(
+            !scene
+                .swarm_folder_regions(&layouts)
+                .iter()
+                .any(|(id, _, _)| *id == target)
+        );
+        scene.sidebar_scroll = scene.swarm_folder_scroll(&layouts, target).unwrap();
+        assert!(scene.sidebar_scroll > 0.);
+        let layouts = scene.layout([1000., 400.], false).unwrap();
+        let (viewport, _) = scene.sidebar_extent(&layouts).unwrap();
+        let hits = scene.swarm_folder_regions(&layouts);
+        assert!(hits.iter().any(|(id, _, _)| *id == target));
+        assert!(hits.len() < ids.len());
+        for (_, rect, _) in hits {
+            assert!(rect.y >= viewport.y && rect.bottom() <= viewport.bottom());
+            assert!(rect.x >= viewport.x && rect.right() <= viewport.right());
+        }
+        assert_eq!(
+            scene.swarm_folder_scroll(&layouts, target),
+            Some(scene.sidebar_scroll)
+        );
     }
 }
 

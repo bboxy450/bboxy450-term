@@ -1,4 +1,6 @@
 //! Native pointer input and launcher navigation share one dispatch boundary.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::*;
 impl App {
     pub(super) fn solve_launcher(&mut self, size: [f32; 2]) -> Result<(), String> {
@@ -329,6 +331,7 @@ impl App {
         }
     }
     pub(super) fn select_empty_swarm(&mut self, swarm: bbt_proto::SwarmId) {
+        self.sidebar_reveal = Some(swarm);
         self.starting.release_focus();
         if self.document.open {
             self.close_document();
@@ -424,6 +427,13 @@ impl App {
             .collect();
         for (seat, r) in &self.focus_bounds {
             regions.insert(format!("pane:{seat}"), [r.x, r.y, r.w, r.h]);
+        }
+        for (swarm, r, reset) in &self.swarm_folder_regions {
+            let action = if *reset { "default" } else { "choose" };
+            regions.insert(
+                format!("swarm-folder/{swarm}/{action}"),
+                [r.x, r.y, r.w, r.h],
+            );
         }
         if let Some(layout) = &self.launcher_layout {
             let clip = |r: Rect| {
