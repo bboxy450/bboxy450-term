@@ -359,7 +359,7 @@ pub(super) fn apply_titlebar_action(
     action: TitlebarAction,
 ) -> Result<(), Error> {
     match action {
-        TitlebarAction::Fill => fill(&native_window(window)?),
+        TitlebarAction::Fill => fill(&*native_window(window)?),
         TitlebarAction::Zoom => apply_window_action(window, Action::Zoom),
         TitlebarAction::Minimize => apply_window_action(window, Action::Minimize),
         TitlebarAction::None => Ok(()),
