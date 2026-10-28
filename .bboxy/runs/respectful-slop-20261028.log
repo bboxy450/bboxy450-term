@@ -10,3 +10,5 @@ Initial integration check refused absent Mermaid license and an omitted app map 
 No publishing or version bump. App bundle and future crate/release workflows include LICENSE/NOTICE/ATTRIBUTION alongside preserved upstream texts.
 Gap: Mermaid original fixture-import revision/per-file source URLs were not recorded; companionREADME labels unknown rather than inventing provenance. Current upstream MIT license is pinned by exact blob/hash.
 Final signed-source CI, signed installation, artifact-signature and landing receipts are recorded by Make/scripts/land.sh in their normal local logs.
+First full CI at7e2867ba — exit2; old corpus test expected retired SPDX-output strings, and native signing fixture lacked the new license-check entrypoint/documents. Updated fixtures to scoped custom-map checks and actual bundle notice bytes/refusal before signing.
+make test-license-integration — exit0; corpus6 and fake native-signing2 passed without operator/Keychain.

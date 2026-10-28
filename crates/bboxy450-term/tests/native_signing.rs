@@ -104,6 +104,11 @@ fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     }
     fs::write(p.join("Makefile"), include_str!("../../../Makefile")).unwrap();
     fs::write(p.join("scripts/cache-env.sh"), "# isolated fake build tools\n").unwrap();
+    fs::write(
+        p.join("scripts/licenses.sh"),
+        "#!/bin/sh\nset -eu\nfor name in LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE; do test -s \"$name\"; done\nprintf 'checked\\n' >> \"$FIXTURE_ROOT/license-checks\"\n",
+    )
+    .unwrap();
     fs::write(p.join("crates/bboxy450-term/Cargo.toml"), "[package]\nversion='0.1.0'\n").unwrap();
     fs::write(
         p.join("scripts/bundle-macos.sh"),
@@ -113,8 +118,8 @@ fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     for name in ["Info.plist", "bboxy.icns"] {
         fs::write(p.join("packaging/macos").join(name), "fixture").unwrap();
     }
-    for name in ["LICENSE-MIT", "LICENSE-APACHE", "NOTICE"] {
-        fs::write(p.join(name), "fixture").unwrap();
+    for name in ["LICENSE", "NOTICE", "ATTRIBUTION.md", "LICENSE-MIT", "LICENSE-APACHE"] {
+        fs::write(p.join(name), format!("fixture {name}")).unwrap();
     }
     fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
     for (name, body) in [
@@ -169,6 +174,14 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-term")
             .is_file()
     );
+    for name in ["LICENSE", "NOTICE", "ATTRIBUTION.md", "LICENSE-MIT", "LICENSE-APACHE"] {
+        assert_eq!(
+            fs::read(p.join("target/debug/bboxy450-term.app/Contents/Resources").join(name)).unwrap(),
+            fs::read(p.join(name)).unwrap(),
+            "bundle preserves {name} bytes"
+        );
+    }
+    assert_eq!(fs::read_to_string(p.join("license-checks")).unwrap(), "checked\n");
     let path = format!("{}:{}", p.join("tools").display(), std::env::var("PATH").unwrap());
     let refused = Command::new("make").arg("bundle").arg("PROFILE=debug")
         .current_dir(p).env("PATH", &path).env("FIXTURE_ROOT", p)
@@ -187,4 +200,11 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         .map(|line| serde_json::from_str(line).unwrap()).collect();
     let at = calls[2].iter().position(|arg| arg == "--sign").unwrap();
     assert_eq!(calls[2][at + 1], "-");
+    fs::remove_file(p.join("ATTRIBUTION.md")).unwrap();
+    let calls_before = fs::read(p.join("calls")).unwrap();
+    let missing = Command::new("make").arg("bundle-unsigned")
+        .current_dir(p).env("PATH", &path).env("FIXTURE_ROOT", p)
+        .output().unwrap();
+    assert!(!missing.status.success(), "missing attribution stops bundling before signing");
+    assert_eq!(fs::read(p.join("calls")).unwrap(), calls_before);
 }

@@ -195,7 +195,7 @@ release: bundle
 sync-release-inputs:
 	@python3 -I scripts/release-inputs.py --sync
 
-.PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures check-license-packages
+.PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures test-license-integration check-license-packages
 sync-licenses:
 	@python3 -I scripts/license-packages.py --sync
 
@@ -210,6 +210,11 @@ test-licenses-fixtures:
 
 test-licenses: test-licenses-fixtures check-licenses
 	@python3 -I scripts/test-source-notices.py
+
+test-license-integration:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-doc --target-dir '$(TARGET_DIR)' --test corpus; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test native_signing
 
 check-license-packages:
 	@python3 -I scripts/license-packages.py --packages

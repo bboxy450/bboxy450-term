@@ -404,9 +404,10 @@ fn next_number_reads_only_frontmatter_across_nested_and_spaced_paths() {
 
 // keeps: invariant licenses-present
 #[test]
-fn licence_map_fixtures_keep_escaped_aliases_and_spdx_refusals() {
+fn licence_map_fixtures_keep_escaped_aliases_and_custom_term_refusals() {
     let output = std::process::Command::new("python3")
         .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/test-licenses.py"))
+        .arg("PackageLicenses.test_metadata_and_map_reject_blanket_or_ambiguous_terms")
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -414,13 +415,5 @@ fn licence_map_fixtures_keep_escaped_aliases_and_spdx_refusals() {
         output.status.success(),
         "{stdout}\n{}",
         String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(
-        stdout.contains("multiple escaped links and pipes retain columns 0"),
-        "{stdout}"
-    );
-    assert!(
-        stdout.contains("linked row still enforces SPDX 1"),
-        "{stdout}"
     );
 }
