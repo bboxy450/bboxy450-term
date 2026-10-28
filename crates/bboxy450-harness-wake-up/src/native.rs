@@ -560,6 +560,11 @@ pub async fn codex_proxy(
                         if let Some(instructions) = launch.config.get("developer_instructions") {
                             call["params"]["developerInstructions"] = instructions.clone();
                         }
+                        for (key, parameter) in [("approval_policy", "approvalPolicy"), ("sandbox_mode", "sandbox")] {
+                            if let Some(value) = launch.config.get(key) {
+                                call["params"][parameter] = value.clone();
+                            }
+                        }
                         call["params"]["cwd"] = json!(launch.cwd);
                         pending = Some((call["id"].clone(), expected));
                         frame = Message::Text(serde_json::to_string(&call)?.into());

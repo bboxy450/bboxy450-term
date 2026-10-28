@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-10-28T15:30:00Z"
 ---
 # ICD: app ↔ harness
 
@@ -21,6 +21,7 @@ updated: "2026-10-26T16:18:20Z"
 | Timing | a launched seat is a starting pane in the next frame; the harness comes up asynchronously |
 | States and lifecycle | Codex uses its installed CLI's shared daemon (operator, 2026-10-27: "respect the daemon" and wake-up "will work with shared server"); the CLI starts it idempotently if absent, and bboxy never restarts, stops or cleans it up. Bboxy owns only a per-seat connection proxy; it adds configuration to that TUI's first start/resume, registers the server-returned thread through the authenticated seat hook, and leaves unrelated threads alone. Native control pins the real daemon's kernel peer PID/start stamp and exact authenticated thread; shared status polling is read-only, and unknown/notLoaded refuses a wake without loading or choosing another thread. Older supervisor-owned private runtimes remain attachable. A seat restart is generation plus one, resumed by session id |
 | Startup context (operator, 2026-10-27) | Claude append-system-prompt and Codex developer_instructions contain NAME, ROLE, host/cwd, and an instruction to call bboxy's orient MCP first. Codex's per-seat private wrapper supplies admission to MCP/hooks independently of the shared daemon's environment; the capability never enters CLI flags |
+| Launch permissions (operator, 2026-10-28) | Every fresh/resumed Claude launch uses the installed CLI's `--dangerously-skip-permissions` flag (the operator requested bypass-permissions intent); Codex uses `--yolo`. Caller-supplied conflicting permission-mode/approval/sandbox selectors or policy overrides, and a `--` separator that would disable managed options, refuse before creating an overlay. Codex carries `approval_policy="never"` and `sandbox_mode="danger-full-access"` in that seat's first TUI start/resume config and typed request fields so remote/shared-daemon clients obey the same policy. This never changes global client/daemon configuration, unrelated threads, passive observation or wake requests; hook-trust bypass remains separately unrequested |
 | Failure | the wake-up kit says whether a harness can be woken and names the fallback; native outcomes are never retried blindly |
 | Hook diagnostics (#56, Oracle cf405d78) | isolate inherited parent session IDs at Codex TUI/service exec; observe only its verified owner-PID, uniquely loaded thread via `thread/resume` with `excludeTurns:true` and no overrides, cancelled on binding/generation change; forward bounded `hook/completed` failures to the best-effort run journal, never hook input/context; unavailable stderr/exit/duration and async-hook coverage remain unknown, never inferred |
 | Versioning | the app never writes the user's `~/.claude` or `~/.codex`; writes the client makes there are listed with cause; the hook-trust record is the one accepted app-caused write |

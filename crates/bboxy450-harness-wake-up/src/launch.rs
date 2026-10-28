@@ -131,11 +131,24 @@ fn codex_config(args: &[String]) -> Result<BTreeMap<String, serde_json::Value>> 
         }
     }
     let mut config = toml::Table::new();
-    for pair in args.windows(2) {
-        if pair[0] != "-c" && pair[0] != "--config" {
+    let mut arguments = args.iter();
+    while let Some(argument) = arguments.next() {
+        let value = if argument == "-c" || argument == "--config" {
+            arguments
+                .next()
+                .ok_or_else(|| invalid("Codex config override needs key=value"))?
+                .as_str()
+        } else if let Some(value) = argument.strip_prefix("--config=") {
+            value
+        } else if let Some(value) = argument.strip_prefix("-c") {
+            if value.is_empty() {
+                continue;
+            }
+            value
+        } else {
             continue;
-        }
-        let (key, raw) = pair[1]
+        };
+        let (key, raw) = value
             .split_once('=')
             .ok_or_else(|| invalid("Codex config override needs key=value"))?;
         let literal = serde_json::to_string(raw)?;
@@ -144,6 +157,80 @@ fn codex_config(args: &[String]) -> Result<BTreeMap<String, serde_json::Value>> 
         merge(&mut config, parsed);
     }
     Ok(serde_json::from_value(serde_json::to_value(config)?)?)
+}
+
+fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
+    if matches!(kind, "claude" | "codex") && args.iter().any(|arg| arg == "--") {
+        return Err(invalid("Managed harness launches always add required options; remove the -- separator that would disable them"));
+    }
+    match kind {
+        "claude" => {
+            if args.iter().any(|arg| {
+                matches!(arg.as_str(), "--permission-mode" | "--restricted")
+                    || arg.starts_with("--permission-mode=")
+            }) {
+                return Err(invalid(
+                    "Claude launches always bypass permissions; remove conflicting permission-mode/restricted arguments",
+                ));
+            }
+            if !args
+                .iter()
+                .any(|arg| arg == "--dangerously-skip-permissions")
+            {
+                args.push("--dangerously-skip-permissions".into());
+            }
+        }
+        "codex" => {
+            if args.iter().any(|arg| {
+                matches!(
+                    arg.as_str(),
+                    "-a" | "--ask-for-approval"
+                        | "-s"
+                        | "--sandbox"
+                        | "--approve-for-me"
+                        | "--full-auto"
+                ) || arg.starts_with("--ask-for-approval=")
+                    || arg.starts_with("--sandbox=")
+                    || (!arg.starts_with("--") && (arg.starts_with("-a") || arg.starts_with("-s")))
+            }) {
+                return Err(invalid(
+                    "Codex launches always use --yolo; remove conflicting approval/sandbox arguments",
+                ));
+            }
+            let config = codex_config(args)?;
+            for (key, required) in [
+                ("approval_policy", "never"),
+                ("sandbox_mode", "danger-full-access"),
+            ] {
+                if config
+                    .get(key)
+                    .is_some_and(|value| value.as_str() != Some(required))
+                {
+                    return Err(invalid(format!(
+                        "Codex launches always use --yolo; conflicting {key} override"
+                    )));
+                }
+            }
+            for arg in args.iter_mut() {
+                if arg == "--dangerously-bypass-approvals-and-sandbox" {
+                    *arg = "--yolo".into();
+                }
+            }
+            if !args.iter().any(|arg| arg == "--yolo") {
+                args.push("--yolo".into());
+            }
+            // Remote clients do not forward arbitrary local CLI policy settings.
+            // Carry the same policy in this seat's first start/resume request.
+            args.extend([
+                "-c".into(),
+                "approval_policy=\"never\"".into(),
+                "-c".into(),
+                "sandbox_mode=\"danger-full-access\"".into(),
+            ]);
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 /// Release a launch overlay and its optional owned short socket alias.
@@ -339,6 +426,8 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     {
         return Err(invalid("launch paths must be absolute"));
     }
+    let mut args = record.command[1..].to_vec();
+    launch_permissions(&record.kind, &mut args)?;
     let overlay = context
         .overlay_parent
         .join(format!("launch-{}", crate::Ulid::new()));
@@ -348,7 +437,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
         .create(&overlay)?;
     let mut spec = LaunchPlan {
         program: record.command[0].clone(),
-        args: record.command[1..].to_vec(),
+        args,
         cwd: context.cwd.to_owned(),
         env: BTreeMap::new(),
         overlay: overlay.clone(),
@@ -515,7 +604,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 }
                 spec.args
                     .extend(["-c".into(), format!("hooks={{{}}}", entries.join(","))]);
-                notes.push("Codex inline hook schema/trust needs native approval; no bypass or trust hashes written");
+                notes.push("Codex inline hook schema/trust needs native approval; no hook-trust bypass or trust hashes written");
             }
             if context.resume {
                 let id = session

@@ -223,7 +223,7 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     assert!(prompt.contains("ROLE: EXECUTOR"));
     assert!(prompt.contains("First call the bboxy MCP `orient` tool, before other work"));
     assert!(prompt.contains(&serde_json::to_string(temp.path()).unwrap()));
-    assert!(!plan.args.iter().any(|s| s.contains("bypass")));
+    assert!(plan.args.iter().any(|arg| arg == "--dangerously-skip-permissions"));
     assert_eq!(std::fs::read(settings).unwrap(), b"operator-config");
     let mut codex_record = HarnessRecord::builtin("codex").unwrap();
     let other_approval = "mcp_servers.other.default_tools_approval_mode=\"prompt\"";
@@ -245,11 +245,13 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
         approval_overrides,
         [
             other_approval,
+            "approval_policy=\"never\"",
             "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"",
             "check_for_update_on_startup=false"
         ]
     );
     assert_eq!(std::fs::read(config).unwrap(), original);
+    assert!(codex.args.iter().any(|arg| arg == "--yolo"));
     let hooks = codex.args.iter().find(|s| s.starts_with("hooks=")).unwrap();
     assert!(hooks.contains("SessionStart="));
     assert!(hooks.contains("SubagentStart="));
@@ -307,6 +309,123 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     .unwrap();
     assert!(hook::osc(id, &large).unwrap().is_none());
     plan.cleanup().unwrap();
+}
+
+// keeps: interface app-harness — operator's 2026-10-28 launch policy
+#[test]
+fn fresh_and_resumed_custom_launches_always_carry_permission_bypass() {
+    let root = tempfile::tempdir().unwrap();
+    for kind in ["claude", "codex"] {
+        for (resume, preconfigured) in [(false, false), (false, true), (true, false), (true, true)] {
+            let context = LaunchContext {
+                id: Ulid::new(),
+                generation: 1,
+                name: "permissions fixture",
+                role_name: "executor",
+                harness_session_id: resume.then_some("00000000-0000-4000-8000-000000000001"),
+                skill: "fixture skill",
+                cwd: root.path(),
+                role_prompt: "fixture prompt",
+                executable: std::path::Path::new("/unused/bboxy450-term"),
+                overlay_parent: root.path(),
+                user_home: root.path(),
+                user_zdotdir: None,
+                socket: std::path::Path::new("/unused/control"),
+                capability: [4; 32],
+                resume,
+            };
+            let mut record = HarnessRecord::builtin(kind).unwrap();
+            record.command[0] = format!("/custom/{kind}");
+            let flag = if kind == "claude" {
+                "--dangerously-skip-permissions"
+            } else {
+                "--yolo"
+            };
+            if preconfigured {
+                record.command.push(if kind == "codex" && resume {
+                    "--dangerously-bypass-approvals-and-sandbox".into()
+                } else {
+                    flag.into()
+                });
+            }
+            let launch = plan(&record, &context).unwrap();
+            assert_eq!(
+                launch
+                    .args
+                    .iter()
+                    .filter(|arg| arg.as_str() == flag)
+                    .count(),
+                1,
+                "{kind} resume={resume} preconfigured={preconfigured}"
+            );
+            if kind == "codex" {
+                let config: serde_json::Value = serde_json::from_slice(
+                    &std::fs::read(launch.overlay.join("codex-launch.json")).unwrap(),
+                )
+                .unwrap();
+                assert_eq!(config["config"]["approval_policy"], "never");
+                assert_eq!(config["config"]["sandbox_mode"], "danger-full-access");
+                assert_eq!(config["resume"].is_string(), resume);
+            }
+            launch.cleanup().unwrap();
+        }
+    }
+}
+// keeps: interface app-harness — conflicting caller options cannot downgrade policy
+#[test]
+fn conflicting_launch_permission_selectors_refuse_without_an_overlay() {
+    let root = tempfile::tempdir().unwrap();
+    let context = LaunchContext {
+        id: Ulid::new(),
+        generation: 1,
+        name: "conflict fixture",
+        role_name: "executor",
+        harness_session_id: None,
+        skill: "fixture skill",
+        cwd: root.path(),
+        role_prompt: "fixture prompt",
+        executable: std::path::Path::new("/unused/bboxy450-term"),
+        overlay_parent: root.path(),
+        user_home: root.path(),
+        user_zdotdir: None,
+        socket: std::path::Path::new("/unused/control"),
+        capability: [4; 32],
+        resume: false,
+    };
+    for (kind, arguments) in [
+        ("claude", vec!["--permission-mode", "plan"]),
+        ("claude", vec!["--permission-mode=manual"]),
+        ("claude", vec!["--restricted"]),
+        ("claude", vec!["--"]),
+        ("codex", vec!["--"]),
+        ("codex", vec!["--sandbox", "read-only"]),
+        ("codex", vec!["--sandbox=workspace-write"]),
+        ("codex", vec!["-sread-only"]),
+        ("codex", vec!["-a", "on-request"]),
+        ("codex", vec!["--ask-for-approval=on-request"]),
+        ("codex", vec!["--approve-for-me"]),
+        ("codex", vec!["-c", "approval_policy=\"on-request\""]),
+        ("codex", vec!["--config=sandbox_mode=\"read-only\""]),
+        ("codex", vec!["-capproval_policy=\"on-request\""]),
+    ] {
+        let mut record = HarnessRecord::builtin(kind).unwrap();
+        record
+            .command
+            .extend(arguments.iter().map(|value| (*value).to_owned()));
+        let error = match plan(&record, &context) {
+            Ok(_) => panic!("accepted {kind} {arguments:?}"),
+            Err(error) => error,
+        };
+        assert!(
+            error.to_string().contains("always"),
+            "{kind} {arguments:?}: {error}"
+        );
+        assert_eq!(
+            std::fs::read_dir(root.path()).unwrap().count(),
+            0,
+            "refusal creates no overlay"
+        );
+    }
 }
 
 // keeps: spec harness-kits §5

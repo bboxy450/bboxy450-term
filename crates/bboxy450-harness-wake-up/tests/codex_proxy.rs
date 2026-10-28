@@ -94,3 +94,59 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
     .await
     .expect("large catalog relay stalled");
 }
+
+// keeps: interface app-harness — policy is scoped to this seat's first launch request
+#[tokio::test]
+async fn shared_start_and_resume_enforce_seat_permission_policy_without_changing_later_requests() {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        for method in ["thread/start", "thread/resume"] {
+            let root = tempfile::tempdir().unwrap();
+            let frontend = root.path().join("front");
+            let backend = root.path().join("back");
+            let listener = tokio::net::UnixListener::bind(&backend).unwrap();
+            let unchanged = json!({"id":2,"method":"thread/resume","params":{"threadId":"unrelated-thread","approvalPolicy":"on-request","sandbox":"read-only","config":{"approval_policy":"on-request"}}});
+            let expected_unchanged = unchanged.clone();
+            let server = tokio::spawn(async move {
+                let mut ws = loop {
+                    let (stream, _) = listener.accept().await.unwrap();
+                    if let Ok(ws) = tokio_tungstenite::accept_async(stream).await { break ws; }
+                };
+                let call: serde_json::Value = serde_json::from_str(&ws.next().await.unwrap().unwrap().into_text().unwrap()).unwrap();
+                assert_eq!(call["method"], method);
+                assert_eq!(call["params"]["approvalPolicy"], "never");
+                assert_eq!(call["params"]["sandbox"], "danger-full-access");
+                assert_eq!(call["params"]["config"]["approval_policy"], "never");
+                assert_eq!(call["params"]["config"]["sandbox_mode"], "danger-full-access");
+                ws.send(Message::Text(json!({"id":1,"result":{"thread":{"id":"fixture-thread"}}}).to_string().into())).await.unwrap();
+                let title: serde_json::Value = serde_json::from_str(&ws.next().await.unwrap().unwrap().into_text().unwrap()).unwrap();
+                assert_eq!(title["method"], "thread/name/set");
+                ws.send(Message::Text(json!({"id":title["id"],"result":{}}).to_string().into())).await.unwrap();
+                let other: serde_json::Value = serde_json::from_str(&ws.next().await.unwrap().unwrap().into_text().unwrap()).unwrap();
+                assert_eq!(other, expected_unchanged);
+                ws.send(Message::Text(json!({"id":2,"result":{}}).to_string().into())).await.unwrap();
+            });
+            let launch = CodexLaunch {
+                name: "private fixture".into(), cwd: root.path().into(),
+                config: [("approval_policy".into(), json!("never")), ("sandbox_mode".into(), json!("danger-full-access"))].into(),
+                resume: (method == "thread/resume").then(|| "fixture-thread".into()), host: "/usr/bin/true".into(),
+            };
+            let proxy = tokio::spawn(async move {
+                native::codex_proxy(&frontend, &backend, &launch, "/must-not-start-a-daemon").await.unwrap();
+            });
+            let path = root.path().join("front");
+            while !path.exists() { tokio::task::yield_now().await; }
+            let (mut client, _) = tokio_tungstenite::client_async("ws://localhost/", tokio::net::UnixStream::connect(path).await.unwrap()).await.unwrap();
+            let mut params = json!({"approvalPolicy":"on-request","sandbox":"read-only","config":{"approval_policy":"on-request","sandbox_mode":"read-only"}});
+            if method == "thread/resume" { params["threadId"] = json!("fixture-thread"); }
+            client.send(Message::Text(json!({"id":1,"method":method,"params":params}).to_string().into())).await.unwrap();
+            let reply: serde_json::Value = serde_json::from_str(&client.next().await.unwrap().unwrap().into_text().unwrap()).unwrap();
+            assert_eq!(reply["id"], 1);
+            client.send(Message::Text(unchanged.to_string().into())).await.unwrap();
+            let reply: serde_json::Value = serde_json::from_str(&client.next().await.unwrap().unwrap().into_text().unwrap()).unwrap();
+            assert_eq!(reply["id"], 2);
+            server.await.unwrap();
+            proxy.abort();
+            let _ = proxy.await;
+        }
+    }).await.expect("private policy proxy stalled");
+}
