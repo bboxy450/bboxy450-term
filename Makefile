@@ -45,6 +45,7 @@ help:
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
@@ -87,6 +88,12 @@ test-parity:
 	@$(MAKE) test CI_ARGS=--parity
 
 .PHONY: parity-settings
+.PHONY: test-cursors
+test-cursors:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
+
 .PHONY: test-settings-window
 test-settings-window:
 	@set -eu; . ./scripts/cache-env.sh; \

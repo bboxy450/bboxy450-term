@@ -42,7 +42,7 @@ impl App {
         if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
             self.settings_action(settings_controller::Action::EndDrag);
         }
-        self.sidebar_cursor();
+        self.update_cursor();
         true
     }
     pub(super) fn move_sidebar_resize(&mut self, at: [f32; 2]) -> bool {
@@ -60,24 +60,7 @@ impl App {
     }
     pub(super) fn end_sidebar_resize(&mut self) {
         self.sidebar_drag.finish();
-        self.sidebar_cursor();
-    }
-    pub(super) fn sidebar_cursor(&self) {
-        let over = !self.document.open
-            && self.launcher.is_none()
-            && self.sidebar_resize_region.is_some_and(|r| {
-                self.pointer[0] >= r.x
-                    && self.pointer[0] < r.right()
-                    && self.pointer[1] >= r.y
-                    && self.pointer[1] < r.bottom()
-            });
-        if let Some(window) = &self.window {
-            window.set_cursor(if self.sidebar_drag.active() || over {
-                winit::window::CursorIcon::EwResize
-            } else {
-                winit::window::CursorIcon::Default
-            });
-        }
+        self.update_cursor();
     }
     pub(super) fn drag_sidebar(&mut self, from: [f32; 2], to: [f32; 2]) -> Result<(), String> {
         if !self.begin_sidebar_resize(from) {

@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: 2026-10-24T00:24:57Z
+updated: 2026-10-28T16:56:12Z
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }
@@ -356,6 +356,15 @@ pub struct Ripple  { at: Pt, t0_ms: f32, color: [f32;3] }   // ≤ 6 live, 900 m
 | shadow pulse | a shadow spoke | `Pulse { 700 }` | `focus` ramps 1 → 0 over 700 ms through the brightness channel (showcase.js:527) | ripple |
 | presence / audit notice | someone muted, unmuted, or the Oracle acted | `Notice` → `StreamItem::Presence` | chrome: centred stream line | ripple, glow |
 | hover | pointer is here | hit test | chrome tint; panes also arm dwell | focus on rows, ripple |
+
+Native cursor intent (operator, 2026-10-28): enabled actionable controls and
+links use the platform's pointing hand; editable text uses the text cursor;
+inactive controls and blank areas use the default pointer. Resize handles retain
+their directional resize cursor. Shared UI regions resolve this from the same
+retained hit tests and clipping as clicks. The desktop host maps the intent via
+winit on macOS, Windows, X11 and Wayland, with no platform-specific cursor assets.
+Document/launcher overlays block underlying controls, active drags retain their
+cursor, and movement, layout changes, pointer exit and focus loss refresh/reset it.
 
 Rules the model enforces: `Locate` is emitted only from click and keyboard paths and after a stage switch once the new layout exists (showcase.js:367); `Update`s from the mux never emit it. On a light theme the fx pass multiplies toward the seat colour instead of adding (showcase.js:493-497); the model only supplies `theme` and `bg`. Waiting pulses at `motion.pulse_ms`, active breathes at `glow.active_pulse_ms`; both read `now_ms` so rows and panes share one clock (components.js:140-146).
 

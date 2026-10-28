@@ -179,6 +179,8 @@ fn settings_cursors_use_actual_fields_availability_and_scroll_clip() {
                 settings::Role {
                     prompt: "Supervise".into(),
                     cls: "oracle".into(),
+                    color: "#8B5CF6".into(),
+                    mark: "♜".into(),
                     ..Default::default()
                 },
             )],

@@ -18,6 +18,7 @@ mod headless;
 mod live;
 mod log;
 mod navigation;
+mod pointer_cursor;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -1965,6 +1966,8 @@ struct App {
     compose_startup: bool,
     operation_backlog: VecDeque<live::UiMsg>,
     pointer: [f32; 2],
+    pointer_inside: bool,
+    cursor_icon: std::cell::Cell<bbt_ui::cursor::Cursor>,
     query_dragging: bool,
     backend_lost: bool,
     app_generation: u64,
@@ -2155,6 +2158,8 @@ impl App {
             compose_startup: args.iter().any(|arg| arg == "--compose"),
             operation_backlog: VecDeque::new(),
             pointer: [0.; 2],
+            pointer_inside: false,
+            cursor_icon: Default::default(),
             query_dragging: false,
             backend_lost: false,
             app_generation: 0,
@@ -6223,6 +6228,7 @@ impl App {
                 self.queue(live::UiMsg::WindowState(state));
             }
         }
+        self.update_cursor();
         Ok(layouts)
     }
     /// Data and focus may change between ticks; only a usable frame projects
@@ -7115,10 +7121,10 @@ impl ApplicationHandler<UiEvent> for App {
         }
         match event {
             WindowEvent::Focused(focused) => {
+                self.frontmost = focused;
                 if !focused {
                     self.end_sidebar_resize();
                 }
-                self.frontmost = focused;
                 if !focused {
                     if self.rim_preview.take().is_some() {
                         self.apply_preferences();
@@ -7127,6 +7133,7 @@ impl ApplicationHandler<UiEvent> for App {
                         self.settings_action(settings_controller::Action::Blur);
                     }
                 }
+                self.update_cursor();
                 self.sync_notifications();
             }
             WindowEvent::ThemeChanged(theme) => {
@@ -7173,13 +7180,19 @@ impl ApplicationHandler<UiEvent> for App {
                 self.modifiers = modifiers.state();
                 self.keyboard.modifiers_changed(modifiers);
             }
+            WindowEvent::CursorEntered { .. } => {
+                self.pointer_inside = true;
+                self.update_cursor();
+            }
+            WindowEvent::CursorLeft { .. } => self.pointer_left(),
             WindowEvent::CursorMoved { position, .. } => {
                 let scale = self
                     .window
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
-                self.sidebar_cursor();
+                self.pointer_inside = true;
+                self.update_cursor();
                 if self.move_sidebar_resize(self.pointer) {
                     return;
                 }
@@ -7414,6 +7427,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
                     self.settings_action(settings_controller::Action::EndDrag);
                 }
+                self.update_cursor();
             }
             WindowEvent::Ime(_) if self.document.open => {}
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
