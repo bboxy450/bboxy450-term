@@ -1,3 +1,7 @@
+// Project integration: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Existing Apache-2.0 crate terms and retained upstream notices apply.
+// Credit bboxy450 integration accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_core::{Dimensions, Term};
 
 // keeps: spec terminal-core §D1

@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Verification capture of the exact composition submitted to the surface.
 //! The UI only queues a copy. GPU waits, PNG encoding and file IO run off UI.
 use crate::log::Logger;

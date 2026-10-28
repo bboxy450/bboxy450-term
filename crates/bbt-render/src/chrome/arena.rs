@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Per-owner buffer arenas: one growable buffer per binding kind, a fresh aligned slice per
 //! draw. Slices are staged in a CPU shadow and uploaded by `flush` in one write per arena,
 //! which the owner of the submit calls right before submitting (wgpu 30's write_buffer makes a

@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::{
     Grid, Options,
     sprites::{self, Sprite},
@@ -53,6 +59,9 @@ pub struct Image {
 /// An immutable frame prepared off the UI thread. Encoding only records GPU
 /// commands: no fonts, parser access, readback, polling, locks or CPU wait.
 /// The target view must use Rgba8UnormSrgb on the preparing device.
+// bboxy450-term prepared terminal framebuffer: https://github.com/bboxy450/bboxy450-term
+// Credit copied/adapted/translated reuse accurately. Policy:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub struct PreparedGrid {
     pub width: u32,
     pub height: u32,

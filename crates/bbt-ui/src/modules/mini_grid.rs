@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! A split-tree thumbnail composed from flat boxes and text. The component owns
 //! no renderer or device; its caller supplies the external size and focus key.
 use crate::{self as ui, components as c, modules::seat_row::named};

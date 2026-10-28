@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 fn rounded_sdf(p:vec2f,r:vec4f,radii:vec4f)->f32 {
     let q=p-r.xy-r.zw*0.5;var radius=radii.x;
     if q.x>0.0 {radius=radii.y;} if q.y>0.0 {radius=select(radii.w,radii.z,q.x>0.0);}

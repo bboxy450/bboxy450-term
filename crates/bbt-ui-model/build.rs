@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods, reason = "build script: compile-time IO, not the UI thread")]
 use std::collections::BTreeMap;
 use std::env;
@@ -154,7 +160,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (_, tokens) = generator.value("Tokens", &tokens);
     let (_, style) = generator.value("Style", &style);
     let out = format!(
-        "// Generated from design/tokens.toml and design/style.json.\n{}\npub const TOKENS: Tokens = {tokens};\npub const STYLE: Style = {style};\n",
+        "// Generated from design/tokens.toml and design/style.json.\n// Copyright 2026 Boxy (bboxy450) and contributors.\n// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft\n// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term\n// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE\n// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.\n// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md\n{}\npub const TOKENS: Tokens = {tokens};\npub const STYLE: Style = {style};\n",
         generator.definitions()
     );
     fs::write(

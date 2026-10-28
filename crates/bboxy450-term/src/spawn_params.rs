@@ -1,6 +1,10 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Local launch resolution. All values are captured before the IO owner sees a spawn.
-//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
-//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_ui::modules::launcher::{FieldKey, Source, SpawnField, ValueChoice};
 use std::collections::BTreeMap;
 
@@ -33,6 +37,10 @@ pub fn resolve(
     )
 }
 
+// Adapted from bboxy450-term's own web launchFields/composeLaunch preview.
+// bboxy450-term launcher parameter resolution: https://github.com/bboxy450/bboxy450-term
+// Credit copied/adapted/translated reuse accurately. Policy:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub fn resolve_with_catalog(
     harness: &str,
     settings: &Harnesses,

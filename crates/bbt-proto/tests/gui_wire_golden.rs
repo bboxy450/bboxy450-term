@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! #320 cut 0: the GUI wire (ctl-cli §2) pinned byte for byte before dispatch moves to
 //! per-noun modules. Every line of `golden/gui_wire.tsv` must decode and re-encode unchanged,
 //! and every variant either enum declares must have a line, so a new kind without one fails.

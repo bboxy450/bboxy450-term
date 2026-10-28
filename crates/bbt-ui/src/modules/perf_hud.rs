@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! The perf overlay (Cmd+Opt+F): the runtime meter record in the hud panel, as the lab's
 //! components.js perfHud draws it. Phase-stacked frame bars under a dashed budget line,
 //! the legend doubling as the table, a foot of CPU/GPU/late. The host maps its meter onto

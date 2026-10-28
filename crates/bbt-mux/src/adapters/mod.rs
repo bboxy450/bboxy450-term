@@ -1,7 +1,11 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Harness-specific launch, observation and guarded delivery. IO belongs to the
 //! mux worker/R1 handle; observations never authorize local tool execution.
-//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
-//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub mod guard;
 pub mod hook;
 pub mod launch;
@@ -38,6 +42,9 @@ pub struct HarnessRecord {
 }
 
 /// Enforce harness authority before admitting a launch, including direct PTYs.
+// bboxy450-term harness role admission: https://github.com/bboxy450/bboxy450-term
+// Credit copied/adapted/translated reuse accurately. Policy:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub fn validate_role(kind: &str, role: &Role) -> Result<()> {
     if kind == "codex" && role.class == Class::Oracle {
         return Err(invalid("codex_oracle_role_forbidden"));

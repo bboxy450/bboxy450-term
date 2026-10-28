@@ -1,6 +1,10 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Operator-authored role settings supplied to the runtime as a derived snapshot.
-//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
-//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 use crate::registry::Class;
 use std::collections::{BTreeMap, BTreeSet};
@@ -27,6 +31,9 @@ pub struct HarnessRoles {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+// bboxy450-term role-catalog authority: https://github.com/bboxy450/bboxy450-term
+// Credit copied/adapted/translated reuse accurately. Policy:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub struct RoleCatalog {
     pub roles: BTreeMap<String, RoleDefinition>,
     pub harnesses: BTreeMap<String, HarnessRoles>,

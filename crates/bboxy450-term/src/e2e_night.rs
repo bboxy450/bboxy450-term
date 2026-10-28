@@ -1,3 +1,9 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! `bboxy450-term e2e night [--group G]`: the unattended e2e runner (#282, e2e-acceptance
 //! §4a). It starts the headless app (`ctl app start --headless`, on a throwaway test account)
 //! in a throwaway run directory, so no operator account, Keychain or display is touched,
