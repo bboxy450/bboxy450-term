@@ -1,4 +1,7 @@
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+mod role_catalog;
 
 #[cfg(test)]
 #[path = "knowledge/responsiveness_tests.rs"]
@@ -270,6 +273,12 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<()>>,
     ),
+    ConfigureRoles(
+        Ulid,
+        bbt_proto::gui::RoleCatalog,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     GuiEndpoint(oneshot::Sender<Result<EndpointInfo>>),
     GuiHello(oneshot::Sender<Result<bbt_proto::gui::GuiHello>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
@@ -381,6 +390,7 @@ impl Command {
                 | Self::GuiDebug(..)
                 | Self::GuiPlugin(..)
                 | Self::GuiKnowledgeControl(..)
+                | Self::ConfigureRoles(..)
         )
     }
 }
@@ -729,6 +739,23 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
             self.unavailable("control outcome unavailable; query the original operation ID")
+        })?
+    }
+    /// Only the operator's admitted GUI/ctl endpoint supplies Settings snapshots.
+    /// The acknowledgement follows durable cache storage and Worker adoption.
+    pub async fn configure_roles(
+        &self,
+        id: Ulid,
+        catalog: bbt_proto::gui::RoleCatalog,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::ConfigureRoles(id, catalog, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("role catalog update outcome unknown; resend the saved snapshot")
         })?
     }
     pub async fn gui_spawn(
@@ -2133,10 +2160,17 @@ impl RingPage {
     }
 }
 
+struct RoleUpdate {
+    reply: oneshot::Sender<Result<()>>,
+    result: Result<bbt_proto::gui::RoleCatalog>,
+}
 struct Worker {
     connections: Connections,
     config: LogicConfig,
     registry: Registry,
+    role_catalog: std::result::Result<bbt_proto::gui::RoleCatalog, String>,
+    role_catalog_store: role_catalog::CatalogStore,
+    role_updates: tokio::task::JoinSet<RoleUpdate>,
     // Reads retain an immutable catalogue without holding the logic worker.
     // Scans and provenance updates use copy-on-write while an older read is active.
     index: Arc<Index>,
@@ -2230,6 +2264,10 @@ impl Worker {
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
+        let role_catalog_store = role_catalog::CatalogStore::new(account.clone());
+        // A corrupt derived cache refuses role admissions, not PTY ownership.
+        // A fresh validated Settings snapshot repairs it through ConfigureRoles.
+        let role_catalog = role_catalog_store.load().map_err(|error| error.to_string());
         // The selected support/run namespace keeps custom and test runs private.
         let plugin_roots = crate::plugins::DiscoveryRoots::new(
             config
@@ -2296,6 +2334,9 @@ impl Worker {
             connections,
             config,
             registry,
+            role_catalog,
+            role_catalog_store,
+            role_updates: tokio::task::JoinSet::new(),
             index: Arc::new(index),
             knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             knowledge_host,
@@ -2362,6 +2403,63 @@ impl Worker {
         worker.publish_control_audits()?;
         worker.refresh_identity()?;
         Ok(worker)
+    }
+    fn configured_roles(&self) -> Result<&bbt_proto::gui::RoleCatalog> {
+        self.role_catalog
+            .as_ref()
+            .map_err(|reason| invalid(format!("role_catalog_unavailable: {reason}")))
+    }
+    fn roles_idle(&self) -> Result<()> {
+        if !self.role_updates.is_empty() {
+            return Err(invalid(
+                "Busy: role catalog is committing; retry after RolesConfigured",
+            ));
+        }
+        Ok(())
+    }
+    fn configured_role(
+        &self,
+        kind: &str,
+        requested: Option<&str>,
+    ) -> Result<(crate::registry::Role, String)> {
+        role_catalog::resolve(self.configured_roles()?, kind, requested)
+    }
+    fn configure_roles(
+        &mut self,
+        id: Ulid,
+        catalog: bbt_proto::gui::RoleCatalog,
+        _origin: crate::mcp::Origin,
+        reply: oneshot::Sender<Result<()>>,
+    ) {
+        // Origin has only the admitted Gui/Ctl operator doors. The seat socket
+        // exposes no ConfigureRoles request; it cannot supply this snapshot.
+        if id == Ulid::nil() {
+            let _ = reply.send(Err(invalid("role_catalog_requires_operator")));
+            return;
+        }
+        if let Err(error) = self.roles_idle() {
+            let _ = reply.send(Err(error));
+            return;
+        }
+        if self
+            .role_catalog
+            .as_ref()
+            .is_ok_and(|current| current == &catalog)
+        {
+            let _ = reply.send(Ok(()));
+            return;
+        }
+        let store = self.role_catalog_store.clone();
+        self.role_updates.spawn_on(
+            async move {
+                let result = tokio::task::spawn_blocking(move || store.save(catalog))
+                    .await
+                    .map_err(|error| invalid(format!("role catalog IO stopped: {error}")))
+                    .and_then(|result| result);
+                RoleUpdate { reply, result }
+            },
+            &self.handle,
+        );
     }
     fn host_for_seat(&self, seat: Ulid) -> Result<HostId> {
         match self.registry.get(seat) {
@@ -3607,6 +3705,7 @@ impl Worker {
             return Err("focus target is closed".into());
         }
         if let crate::mcp::seats::Request::Spawn(args) = &request {
+            self.roles_idle().map_err(|error| error.to_string())?;
             if !args.cwd.is_dir() {
                 return Err("spawn cwd is not an available directory".into());
             }
@@ -3622,8 +3721,8 @@ impl Worker {
                 crate::mcp::seats::effect_id(actor, call, args.target()),
             )
             .map_err(|e| e.to_string())?;
-            HarnessRecord::builtin(&args.approved_profile)
-                .and_then(|harness| harness.resolve_role(args.role.as_deref()))
+            HarnessRecord::builtin(&args.approved_profile).map_err(|error| error.to_string())?;
+            self.configured_role(&args.approved_profile, args.role.as_deref())
                 .map_err(|error| error.to_string())?;
         }
         Ok(request)
@@ -3850,12 +3949,9 @@ impl Worker {
                         harness.kind.clone(),
                     );
                     record.launch_placement = Some(self.control_placement(&args, id)?);
-                    record.role = harness.resolve_role(args.role.as_deref())?;
-                    let role_prompt = if record.role.name == "shell" {
-                        String::new()
-                    } else {
-                        format!("ROLE: {}", record.role.name.to_ascii_uppercase())
-                    };
+                    let (role, role_prompt) =
+                        self.configured_role(&harness.kind, args.role.as_deref())?;
+                    record.role = role;
                     self.launch(
                         record,
                         harness,
@@ -4864,7 +4960,7 @@ impl Worker {
             return Err(invalid("seat/harness kind mismatch"));
         }
         harness.validate()?;
-        crate::adapters::validate_role(&harness.kind, &record.role)?;
+        role_catalog::validate_assignment(self.configured_roles()?, &harness.kind, &record.role)?;
         let endpoint = self.ensure_endpoint(record.id, record.generation)?;
         let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
         let mut plan = crate::adapters::launch::plan(
@@ -5135,12 +5231,19 @@ impl Worker {
         })
     }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
-        crate::adapters::validate_role(&record.harness_kind, &record.role)?;
+        role_catalog::validate_assignment(
+            self.configured_roles()?,
+            &record.harness_kind,
+            &record.role,
+        )?;
         check_size(spec.size.cols as usize, spec.size.rows as usize)?;
         if record.id != spec.seat || record.generation != spec.generation {
             return Err(invalid("launch and record identity mismatch"));
         }
         let new_record = self.registry.get(record.id).is_err();
+        if new_record {
+            self.roles_idle()?;
+        }
         match self.registry.get(record.id) {
             Ok(old) if old != record => return Err(invalid("seat record conflicts")),
             Ok(_) => (),
@@ -6513,6 +6616,17 @@ impl Worker {
         Ok(())
     }
     fn pump_messages(&mut self) -> Result<()> {
+        while let Some(joined) = self.role_updates.try_join_next() {
+            match joined {
+                Ok(done) => {
+                    let result = done.result.map(|catalog| {
+                        self.role_catalog = Ok(catalog);
+                    });
+                    let _ = done.reply.send(result);
+                }
+                Err(error) => eprintln!("role catalog update stopped; outcome unknown: {error}"),
+            }
+        }
         self.service_identity_jobs()?;
         if let Ok(revision) = self.knowledge_host.revision()
             && revision != self.knowledge_seen
@@ -7325,6 +7439,7 @@ impl Worker {
         spec: bbt_proto::SpawnSpec,
         door: crate::mcp::Door,
     ) -> Result<bbt_proto::SeatId> {
+        self.roles_idle()?;
         let call = crate::mcp::Call {
             op_id: id,
             tool: "gui_spawn".into(),
@@ -7462,12 +7577,8 @@ impl Worker {
             }
         };
         record.launch_placement = spec.placement;
-        record.role = harness.resolve_role(spec.role.as_deref())?;
-        let role_prompt = if record.role.name == "shell" {
-            String::new()
-        } else {
-            format!("ROLE: {}", record.role.name.to_ascii_uppercase())
-        };
+        let (role, role_prompt) = self.configured_role(&harness.kind, spec.role.as_deref())?;
+        record.role = role;
         let resume = spec.resume.is_some();
         record.harness_session_id = spec.resume;
         Ok((
@@ -7730,6 +7841,9 @@ impl Worker {
                             Ok(())
                         })();
                         let _ = reply.send(result);
+                    }
+                    Command::ConfigureRoles(id, catalog, origin, reply) => {
+                        self.configure_roles(id, catalog, origin, reply);
                     }
                     Command::GuiHosts(reply) => {
                         let _ = reply.send(Ok(self.connections.gui_hosts()));

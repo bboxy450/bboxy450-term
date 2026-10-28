@@ -367,6 +367,7 @@ pub fn task_report(
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Reply {
+    RolesConfigured,
     Messaging(Response),
     Task(TaskResponse),
     Attention,

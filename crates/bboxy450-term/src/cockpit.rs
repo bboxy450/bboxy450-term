@@ -44,6 +44,10 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    ConfigureRoles {
+        id: bbt_mux::Ulid,
+        catalog: bbt_proto::gui::RoleCatalog,
+    },
     NewSwarm(bbt_proto::SwarmId),
     SwarmWorkdir {
         swarm: bbt_proto::SwarmId,
@@ -475,7 +479,7 @@ fn fixture_hosts_default() -> bool {
     true
 }
 // Includes GUI control verbs: older logic cannot decode UiRequest::Drag.
-const MCP_CONTROL_VERSION: u16 = 3;
+const MCP_CONTROL_VERSION: u16 = 5;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {

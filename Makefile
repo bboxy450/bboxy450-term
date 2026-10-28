@@ -79,6 +79,14 @@ test check:
 test-parity:
 	@$(MAKE) test CI_ARGS=--parity
 
+.PHONY: parity-settings
+parity-settings:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	settings_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("settings","harness-icon","launcher")]; assert selected; print(json.dumps(selected))'); \
+	sh scripts/parity.sh --cases "$$settings_cases"
+
 parity-swarm:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
@@ -281,6 +289,26 @@ test-spawn-wire:
 .PHONY: test-new-swarm format-new-swarm
 .PHONY: test-swarm-switch check-swarm-switch
 .PHONY: test-sidebar-accordions check-sidebar-accordions
+.PHONY: test-settings-roles check-settings-roles test-settings-roles-e2e
+.PHONY: test-settings-role-runtime
+test-settings-role-runtime:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge_provider
+
+test-settings-roles:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings --test settings_roles --test settings_destinations --test provider_settings; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test settings
+
+check-settings-roles:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-ui -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-settings-roles-e2e:
+	@set -eu; . ./scripts/cache-env.sh; BBOXY_SETTINGS_EVIDENCE='$(abspath $(TARGET_DIR))/settings-roles' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_roles_and_harness_policies_persist_and_reach_native_launches -- --ignored --exact --nocapture
+
 test-sidebar-accordions:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \

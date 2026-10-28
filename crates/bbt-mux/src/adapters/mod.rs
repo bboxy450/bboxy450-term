@@ -1,5 +1,7 @@
 //! Harness-specific launch, observation and guarded delivery. IO belongs to the
 //! mux worker/R1 handle; observations never authorize local tool execution.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub mod guard;
 pub mod hook;
 pub mod launch;
@@ -40,9 +42,16 @@ pub fn validate_role(kind: &str, role: &Role) -> Result<()> {
     if kind == "codex" && role.class == Class::Oracle {
         return Err(invalid("codex_oracle_role_forbidden"));
     }
-    if role.class != role_preset(&role.name)?.class {
-        return Err(invalid("role_class_mismatch"));
+    if let Ok(builtin) = role_preset(&role.name) {
+        if role.class != builtin.class {
+            return Err(invalid("role_class_mismatch"));
+        }
+    } else if !bbt_proto::gui::RoleCatalog::valid_name(&role.name) {
+        return Err(invalid("invalid_custom_role_name"));
     }
+    // Custom names carry an explicit typed class. The logic owner validates
+    // that assignment against the operator's persisted catalog before grants;
+    // rendering or a role's display name can never supply new authority.
     Ok(())
 }
 
@@ -60,7 +69,8 @@ pub fn role_preset(name: &str) -> Result<Role> {
 }
 
 impl HarnessRecord {
-    /// A spawn preset changes the name and class together; absence uses settings.
+    /// Standalone builtin preset resolution. The logic owner resolves runtime
+    /// launches through its persisted operator role catalog.
     pub fn resolve_role(&self, preset: Option<&str>) -> Result<Role> {
         let role = role_preset(preset.unwrap_or(&self.default_role.name))?;
         validate_role(&self.kind, &role)?;
@@ -68,6 +78,19 @@ impl HarnessRecord {
     }
 
     pub fn builtin(kind: &str) -> Result<Self> {
+        if matches!(kind, "pi" | "omp") {
+            return Ok(Self {
+                kind: kind.into(),
+                name: kind.into(),
+                command: vec![kind.into()],
+                tile: "#7397d4".into(),
+                icon: kind.into(),
+                default_role: role_preset("executor")?,
+                wake_method: WakeMethod::Pty,
+                state_source: StateSource::Cadence,
+                hooks: false,
+            });
+        }
         let record = bboxy450_harness_wake_up::HarnessRecord::builtin(kind)?;
         Ok(Self {
             kind: record.kind,
@@ -178,5 +201,22 @@ impl Adapter for Session {
             .await;
             mapping::outcome(outcome)
         })
+    }
+}
+
+#[cfg(test)]
+mod configured_harness_tests {
+    use super::*;
+    #[test]
+    fn advertised_pi_and_omp_reuse_generic_pty_records() {
+        for kind in ["pi", "omp"] {
+            let harness = HarnessRecord::builtin(kind).unwrap();
+            harness.validate().unwrap();
+            assert_eq!(harness.command, [kind]);
+            assert_eq!(harness.wake_method, WakeMethod::Pty);
+            assert_eq!(harness.state_source, StateSource::Cadence);
+            assert_eq!(harness.default_role, role_preset("executor").unwrap());
+            assert!(!harness.hooks);
+        }
     }
 }

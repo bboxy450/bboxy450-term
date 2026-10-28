@@ -2,6 +2,8 @@
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
 )]
+// Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bboxy450_term::{
     grids::Grids,
     model::{self, Model},
@@ -9,6 +11,477 @@ use bboxy450_term::{
 };
 use bbt_ui::modules::settings::controller::Patch;
 use std::{sync::Arc, time::Duration};
+
+fn custom_role(prompt: &str) -> bbt_ui::modules::settings::Role {
+    bbt_ui::modules::settings::Role {
+        prompt: prompt.into(),
+        send: "own swarm · operator DM".into(),
+        color: "#7397d4".into(),
+        mark: "♜".into(),
+        cls: "worker".into(),
+        custom: true,
+    }
+}
+
+#[test]
+fn destination_availability_persists_independently_and_preserves_rediscovery_and_comments() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("config.toml");
+    std::fs::write(&path, "# retained\n[unmanaged]\nvalue = 17\n[destinations.'ssh:node-a']\navailable = true # availability comment\n[destinations.'cloud:future provider']\navailable = false\n").unwrap();
+    let store = Store::new(path.clone());
+    let mut state = State::default();
+    state.accept(&settings::Snapshot {
+        loaded: true,
+        preferences: store.load().unwrap(),
+        ..Default::default()
+    });
+    assert!(
+        state
+            .preferences
+            .disabled_destinations
+            .contains("cloud:future provider")
+    );
+    state
+        .edit(Patch::DestinationAvailable {
+            id: "ssh:node-a".into(),
+            available: false,
+        })
+        .unwrap();
+    state
+        .edit(Patch::DestinationAvailable {
+            id: "cloud:nebula".into(),
+            available: false,
+        })
+        .unwrap();
+    let request = state.edit(Patch::Theme("light".into())).unwrap();
+    let settings::Request::Save { patches, .. } = request else {
+        panic!("save request");
+    };
+    assert_eq!(
+        patches.len(),
+        3,
+        "destination edits never coalesce over each other or appearance"
+    );
+    let saved = store.save(&patches).unwrap();
+    assert_eq!(
+        saved.disabled_destinations,
+        std::collections::BTreeSet::from([
+            "ssh:node-a".into(),
+            "cloud:nebula".into(),
+            "cloud:future provider".into()
+        ])
+    );
+    assert_eq!(saved, store.load().unwrap());
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        text.contains("# retained")
+            && text.contains("value = 17")
+            && text.contains("# availability comment")
+    );
+    let restored = store
+        .save(&[Patch::DestinationAvailable {
+            id: "ssh:node-a".into(),
+            available: true,
+        }])
+        .unwrap();
+    assert!(!restored.disabled_destinations.contains("ssh:node-a"));
+    assert!(
+        restored
+            .disabled_destinations
+            .contains("cloud:future provider")
+    );
+    let empty = settings::records(Some(&Model::default()), &restored);
+    assert!(
+        empty.destination_ids.is_empty(),
+        "a stored identifier never creates a provider or host"
+    );
+    assert!(
+        empty
+            .disabled_destinations
+            .contains("cloud:future provider")
+    );
+}
+
+#[test]
+fn invalid_destination_configuration_and_edits_leave_the_file_untouched() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("config.toml");
+    std::fs::write(&path, "# original\n[other]\nvalue = 7\n").unwrap();
+    let store = Store::new(path.clone());
+    let original = std::fs::read(&path).unwrap();
+    for id in [
+        "",
+        "ssh:",
+        "cloud:",
+        "local",
+        "ftp:rig",
+        "ssh:rig\n",
+        "cloud:\0provider",
+        "cloud: provider ",
+    ] {
+        assert!(!settings::destinations::valid_id(id));
+        let patch = Patch::DestinationAvailable {
+            id: id.into(),
+            available: false,
+        };
+        let mut preferences = settings::Preferences::default();
+        assert!(preferences.apply(&patch).is_err());
+        assert!(preferences.disabled_destinations.is_empty());
+        assert!(store.save(&[patch]).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+    }
+    assert!(!settings::destinations::valid_id(&format!(
+        "ssh:{}",
+        "a".repeat(509)
+    )));
+    assert!(settings::destinations::valid_id(&format!(
+        "ssh:{}",
+        "a".repeat(508)
+    )));
+    for text in [
+        "[destinations.'ssh:rig']\navailable='yes'\n",
+        "[destinations.'local']\navailable=false\n",
+        "destinations=[]\n",
+    ] {
+        std::fs::write(&path, text).unwrap();
+        assert!(store.load().is_err());
+        assert!(store.save(&[Patch::Theme("dark".into())]).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
+    }
+}
+
+#[test]
+fn settings_destinations_follow_observed_ids_and_rendered_group_order_not_labels() {
+    use bbt_proto::{GuiHost, HostState, Where};
+    let host = |location, label: &str| GuiHost {
+        location,
+        provider: "fixture".into(),
+        label: label.into(),
+        address: Some("display@address.invalid".into()),
+        region: Some("fixture-region".into()),
+        state: HostState::Connected { rtt_ms: 60 },
+    };
+    let hosts = vec![
+        host(Where::Local, "Local"),
+        host(
+            Where::Cloud {
+                provider: "zeta".into(),
+                host: "one".into(),
+            },
+            "Shared label",
+        ),
+        host(
+            Where::Ssh {
+                host: "node-b".into(),
+            },
+            "Shared label",
+        ),
+        host(
+            Where::Cloud {
+                provider: "alpha".into(),
+                host: "one".into(),
+            },
+            "Shared label",
+        ),
+        host(
+            Where::Ssh {
+                host: "node-a".into(),
+            },
+            "Shared label",
+        ),
+        host(
+            Where::Cloud {
+                provider: "alpha".into(),
+                host: "two".into(),
+            },
+            "Other label",
+        ),
+    ];
+    let mut preferences = settings::Preferences::default();
+    for id in ["ssh:node-b", "cloud:alpha"] {
+        preferences
+            .apply(&Patch::DestinationAvailable {
+                id: id.into(),
+                available: false,
+            })
+            .unwrap();
+    }
+    let model = Model {
+        hosts: hosts.clone(),
+        ..Default::default()
+    };
+    let records = settings::records(Some(&model), &preferences);
+    assert_eq!(
+        records.destination_ids,
+        std::collections::BTreeMap::from([
+            ("machine/0".into(), "ssh:node-b".into()),
+            ("machine/1".into(), "ssh:node-a".into()),
+            ("cloud/0".into(), "cloud:alpha".into()),
+            ("cloud/1".into(), "cloud:zeta".into()),
+        ])
+    );
+    assert_eq!(
+        records.disabled_destinations,
+        preferences.disabled_destinations
+    );
+    assert_eq!(records.machines.len(), 2);
+    assert_eq!(records.cloud.len(), 2);
+    assert_eq!(records.cloud[0].0, "alpha");
+    assert_eq!(
+        records.cloud[0].4,
+        Some(bbt_ui::modules::link::LinkState::Connected { rtt_ms: 60 })
+    );
+    assert_eq!(
+        model.hosts, hosts,
+        "availability never changes observed provider connection state"
+    );
+    assert_eq!(
+        settings::destinations::id(&Where::Ssh {
+            host: "node-b".into()
+        })
+        .as_deref(),
+        Some("ssh:node-b")
+    );
+    assert_eq!(
+        settings::destinations::id(&Where::Cloud {
+            provider: "alpha".into(),
+            host: "two".into()
+        })
+        .as_deref(),
+        Some("cloud:alpha")
+    );
+    assert_eq!(settings::destinations::id(&Where::Local), None);
+}
+
+#[test]
+fn roles_and_harness_choices_persist_and_batches_preserve_comments_and_other_fields() {
+    use std::collections::BTreeSet;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.toml");
+    std::fs::write(&path, "# untouched\n[other]\nx = 7\n[roles.executor]\nprompt = 'old prompt' # role comment\n[harnesses.codex]\ncommand = 'codex' # command comment\n").unwrap();
+    let store = Store::new(path.clone());
+    let mut state = State::default();
+    state.accept(&settings::Snapshot {
+        loaded: true,
+        preferences: store.load().unwrap(),
+        ..Default::default()
+    });
+    state
+        .edit(Patch::RoleUpsert {
+            name: "Reviewer Δ".into(),
+            role: custom_role("Review the diff.\nReport concrete defects."),
+        })
+        .unwrap();
+    state
+        .edit(Patch::HarnessRole {
+            harness: "codex".into(),
+            role: "Reviewer Δ".into(),
+        })
+        .unwrap();
+    state
+        .edit(Patch::HarnessLaunch {
+            harness: "codex".into(),
+            command: "/tools/codex".into(),
+            arguments: vec!["--sandbox".into(), "workspace-write".into()],
+        })
+        .unwrap();
+    let request = state
+        .edit(Patch::HarnessAvailableRoles {
+            harness: "codex".into(),
+            roles: BTreeSet::from(["executor".into(), "Reviewer Δ".into()]),
+        })
+        .unwrap();
+    let settings::Request::Save { patches, .. } = request else {
+        panic!("save request");
+    };
+    assert_eq!(
+        patches.len(),
+        4,
+        "independent changes to one harness must all survive coalescing"
+    );
+    let saved = store.save(&patches).unwrap();
+    assert_eq!(saved, store.load().unwrap());
+    assert_eq!(
+        saved.roles["Reviewer Δ"].class,
+        bbt_proto::registry::Class::Worker
+    );
+    assert_eq!(saved.harnesses["codex"].role.as_deref(), Some("Reviewer Δ"));
+    assert_eq!(
+        saved.harnesses["codex"].command.as_deref(),
+        Some("/tools/codex")
+    );
+    assert_eq!(
+        saved.harnesses["codex"].arguments.as_deref(),
+        Some(["--sandbox".to_owned(), "workspace-write".to_owned()].as_slice())
+    );
+    let mut executor = settings::roles::view("executor", &saved.roles["executor"]);
+    executor.prompt = "Implement the scoped task and report evidence.".into();
+    store
+        .save(&[Patch::RoleUpsert {
+            name: "executor".into(),
+            role: executor,
+        }])
+        .unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        text.contains("# untouched")
+            && text.contains("x = 7")
+            && text.contains("# role comment")
+            && text.contains("# command comment")
+    );
+    assert!(text.contains("Reviewer Δ"));
+    assert_eq!(
+        store.load().unwrap().roles["Reviewer Δ"].prompt,
+        "Review the diff.\nReport concrete defects."
+    );
+}
+
+#[test]
+fn unavailable_roles_invalid_authority_and_duplicate_configuration_never_damage_the_file() {
+    use std::collections::BTreeSet;
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.toml");
+    let store = Store::new(path.clone());
+    store
+        .save(&[
+            Patch::RoleUpsert {
+                name: "reviewer".into(),
+                role: custom_role("Review"),
+            },
+            Patch::HarnessAvailableRoles {
+                harness: "codex".into(),
+                roles: BTreeSet::from(["executor".into(), "reviewer".into()]),
+            },
+            Patch::HarnessRole {
+                harness: "codex".into(),
+                role: "reviewer".into(),
+            },
+        ])
+        .unwrap();
+    let original = std::fs::read(&path).unwrap();
+    let mut invalid_builtin =
+        settings::roles::view("executor", &store.load().unwrap().roles["executor"]);
+    invalid_builtin.cls = "oracle".into();
+    for patches in [
+        vec![Patch::RoleUpsert {
+            name: "executor".into(),
+            role: invalid_builtin,
+        }],
+        vec![Patch::RoleDelete("executor".into())],
+        vec![Patch::RoleDelete("reviewer".into())],
+        vec![Patch::HarnessRole {
+            harness: "codex".into(),
+            role: "oracle".into(),
+        }],
+        vec![Patch::HarnessRole {
+            harness: "claude".into(),
+            role: "missing".into(),
+        }],
+        vec![Patch::HarnessAvailableRoles {
+            harness: "codex".into(),
+            roles: BTreeSet::from(["executor".into()]),
+        }],
+        vec![Patch::RoleUpsert {
+            name: "Oracle".into(),
+            role: custom_role("reserved spelling"),
+        }],
+    ] {
+        assert!(store.save(&patches).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), original);
+    }
+    let mut values = store.load().unwrap();
+    let before = values.clone();
+    assert!(
+        values
+            .apply(&Patch::HarnessAvailableRoles {
+                harness: "codex".into(),
+                roles: BTreeSet::from(["executor".into()])
+            })
+            .is_err()
+    );
+    assert_eq!(
+        values, before,
+        "refused optimistic edits leave the current view intact"
+    );
+    for invalid in [
+        "[roles.reviewer]\nprompt='a'\n[roles.reviewer]\nprompt='b'\n",
+        "[harnesses.codex]\nallowed_roles=['executor','executor']\n",
+    ] {
+        std::fs::write(&path, invalid).unwrap();
+        assert!(store.load().is_err());
+        assert!(store.save(&[Patch::Theme("light".into())]).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), invalid);
+    }
+}
+
+#[test]
+fn implicit_role_availability_grows_but_explicit_sets_and_typed_classes_stay_fixed() {
+    use std::collections::BTreeSet;
+    let mut preferences = settings::Preferences::default();
+    preferences
+        .apply(&Patch::HarnessAvailableRoles {
+            harness: "codex".into(),
+            roles: BTreeSet::from(["executor".into()]),
+        })
+        .unwrap();
+    preferences
+        .apply(&Patch::RoleUpsert {
+            name: "reviewer".into(),
+            role: custom_role("Review"),
+        })
+        .unwrap();
+    let catalog = preferences.role_catalog();
+    assert_eq!(catalog.harnesses["codex"].available_roles, ["executor"]);
+    assert!(
+        catalog.harnesses["pi"]
+            .available_roles
+            .iter()
+            .any(|name| name == "reviewer")
+    );
+    assert!(
+        catalog.harnesses["claude"]
+            .available_roles
+            .iter()
+            .any(|name| name == "reviewer")
+    );
+    assert_eq!(catalog.harnesses["zsh"].available_roles, ["shell"]);
+    let mut oracle = custom_role("Plan and supervise");
+    oracle.cls = "oracle".into();
+    preferences
+        .apply(&Patch::RoleUpsert {
+            name: "planner".into(),
+            role: oracle,
+        })
+        .unwrap();
+    let catalog = preferences.role_catalog();
+    assert!(
+        catalog.harnesses["claude"]
+            .available_roles
+            .iter()
+            .any(|name| name == "planner")
+    );
+    for harness in ["codex", "pi", "omp"] {
+        assert!(
+            catalog.harnesses[harness]
+                .available_roles
+                .iter()
+                .all(|name| catalog.roles[name].class == bbt_proto::registry::Class::Worker)
+        );
+        assert!(
+            !catalog.harnesses[harness]
+                .available_roles
+                .iter()
+                .any(|name| name == "planner")
+        );
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.toml");
+    std::fs::write(&path, "[roles.reviewer]\nprompt='Review'\n").unwrap();
+    assert_eq!(
+        Store::new(path).load().unwrap().roles["reviewer"].class,
+        bbt_proto::registry::Class::Worker
+    );
+}
 
 // keeps: spec ux-prototype §5.6
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -100,6 +573,51 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
         );
     }
     assert!(records.roles.iter().any(|(name, _)| name == "shell"));
+    assert_eq!(
+        records
+            .harness
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>(),
+        ["claude", "codex", "pi", "omp", "zsh"]
+    );
+    for (kind, wake, source, hooks) in [
+        ("claude", "socket", "reported", true),
+        ("codex", "app-server", "reported", true),
+        ("pi", "pty", "output cadence", false),
+        ("omp", "pty", "output cadence", false),
+    ] {
+        let harness = &records
+            .harness
+            .iter()
+            .find(|(name, _)| name == kind)
+            .unwrap()
+            .1;
+        assert_eq!(
+            (
+                harness.wake.as_str(),
+                harness.state_from.as_str(),
+                harness.hooks
+            ),
+            (wake, source, hooks)
+        );
+        assert!(harness.available_roles.contains(&harness.role));
+        assert!(
+            harness
+                .available_roles
+                .iter()
+                .all(|name| harness.eligible_roles.contains(name))
+        );
+    }
+    assert!(
+        records
+            .roles
+            .iter()
+            .filter(|(name, _)| name != "shell")
+            .all(|(_, role)| !role.prompt.is_empty()
+                && !role.color.is_empty()
+                && !role.mark.is_empty())
+    );
 }
 
 // keeps: spec ux-prototype §5.6

@@ -875,7 +875,7 @@ async fn gui_session(
                     }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+                        GuiAction::ConfigureRoles {id,..}|GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
@@ -971,6 +971,10 @@ async fn gui_session(
                             GuiAction::GetEvents {stream,after,limit}=> {
                                 let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
                                 gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?)
+                            }
+                            GuiAction::ConfigureRoles {id,catalog}=> {
+                                client.configure_roles(id,catalog,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::RolesConfigured {id})
                             }
                             GuiAction::Spawn {id,spec}=> {
                                 let seat=client.gui_spawn(id,spec.clone(),door).await?;

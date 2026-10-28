@@ -593,6 +593,214 @@ fn goto_swarm(fixture: &Fixture, swarm: &str) -> Value {
     frame
 }
 
+// keeps: ux-prototype Settings — saved account roles drive actual harness launches.
+#[test]
+#[ignore = "private ctl app/PTY boundary; make test-settings-roles-e2e"]
+fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
+    fn text(node: &Value) -> String {
+        node["text"].as_str().map(str::to_owned).unwrap_or_else(|| {
+            node["children"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(text)
+                .collect()
+        })
+    }
+    fn named<'a>(node: &'a Value, key: &str) -> Option<&'a Value> {
+        if node["kind"].as_str().is_some_and(|kind| {
+            kind == format!("named:{key}") || kind.ends_with(&format!("/{key}"))
+        }) {
+            return Some(node);
+        }
+        node["children"]
+            .as_array()?
+            .iter()
+            .find_map(|child| named(child, key))
+    }
+    fn choose(fixture: &Fixture, value: &str) {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        let key = frame["regions"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .filter(|key| key.starts_with("settings/choice/"))
+            .find(|key| {
+                frame["tree"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find_map(|node| named(node, key))
+                    .is_some_and(|node| text(node).trim() == value)
+            })
+            .unwrap_or_else(|| panic!("no choice {value}: {frame}"));
+        click_region(fixture, key);
+    }
+    fn settings(fixture: &Fixture, section: &str) -> Value {
+        fixture.ctl(&["ui", "key", "cmd-t"]);
+        type_keys(fixture, &format!("settings {section}"));
+        fixture.ctl(&["ui", "key", "enter"])
+    }
+    fn capture(fixture: &Fixture, name: &str) {
+        if let Some(root) = std::env::var_os("BBOXY_SETTINGS_EVIDENCE") {
+            let root = PathBuf::from(root);
+            fs::create_dir_all(&root).unwrap();
+            fixture.ctl(&[
+                "seat",
+                "capture",
+                "window",
+                root.join(format!("{name}.png")).to_str().unwrap(),
+            ]);
+            fs::write(
+                root.join(format!("{name}.json")),
+                serde_json::to_vec_pretty(&fixture.ctl(&["ui", "layout"])).unwrap(),
+            )
+            .unwrap();
+        }
+    }
+    let mut fixture = Fixture::new();
+    let args_file = fixture.root.join("claude-argv");
+    fs::write(fixture.root.join("bin/claude"),format!("#!/bin/sh\nprintf '%s\\0' \"$@\" > '{}'\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n",args_file.display())).unwrap();
+    fixture.start();
+    let frame = fixture.ctl(&["app", "resize", "180x120"]);
+    let swarm = frame["swarm"].as_str().unwrap().to_owned();
+    settings(&fixture, "roles");
+    click_region(&fixture, "role/new");
+    type_keys(&fixture, "Reviewer");
+    click_region(&fixture, "role/draft/prompt");
+    type_keys(&fixture, "Review code; cite evidence.");
+    capture(&fixture, "role-draft");
+    click_region(&fixture, "role/draft/add");
+    let config = fixture.root.join("account/config.toml");
+    let read = || {
+        fs::read_to_string(&config)
+            .unwrap()
+            .parse::<toml_edit::DocumentMut>()
+            .unwrap()
+    };
+    assert_eq!(
+        read()["roles"]["Reviewer"]["prompt"].as_str(),
+        Some("Review code; cite evidence.")
+    );
+    capture(&fixture, "roles-saved");
+    settings(&fixture, "harnesses");
+    for kind in ["claude", "codex", "pi", "omp", "zsh"] {
+        assert!(
+            fixture.ctl(&["ui", "layout"])["regions"][format!("harness/{kind}/role")].is_array(),
+            "missing {kind} tile"
+        );
+    }
+    for kind in ["claude", "codex"] {
+        click_region(&fixture, &format!("harness/{kind}/role"));
+        choose(&fixture, "Reviewer");
+    }
+    click_region(&fixture, "harness/claude/available/creativity");
+    assert_eq!(
+        read()["harnesses"]["claude"]["role"].as_str(),
+        Some("Reviewer")
+    );
+    assert_eq!(
+        read()["harnesses"]["codex"]["role"].as_str(),
+        Some("Reviewer")
+    );
+    capture(&fixture, "harness-policies");
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "right"]);
+    let params = fixture.ctl(&["ui", "layout"]);
+    assert_eq!(params["launcher_params"]["fields"][0]["value"], "Reviewer");
+    let choosing = fixture.ctl(&["ui", "key", "right"]);
+    assert_eq!(choosing["launcher_params"]["choosing"], "Role");
+    let visible: String = choosing["tree"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(text)
+        .collect();
+    assert!(visible.contains("Reviewer"));
+    assert!(!visible.contains("Creativity"));
+    fixture.ctl(&["ui", "key", "left"]);
+    fixture.ctl(&["ui", "key", "enter"]);
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let row = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["role"]["name"] == "Reviewer")
+        .unwrap();
+    assert_eq!(row["record"]["role"]["class"], "worker");
+    let seat = row["record"]["id"].as_str().unwrap().to_owned();
+    fixture.expect_cwd(&seat, &fixture.root.join("repository"));
+    let argv = fs::read(&args_file).unwrap();
+    let argv: Vec<_> = argv
+        .split(|byte| *byte == 0)
+        .map(|part| String::from_utf8_lossy(part).into_owned())
+        .collect();
+    let prompt = &argv[argv
+        .iter()
+        .position(|arg| arg == "--append-system-prompt")
+        .unwrap()
+        + 1];
+    assert!(prompt.contains("Review code; cite evidence."));
+    assert!(prompt.to_lowercase().contains("orient"));
+    assert!(prompt.contains(row["record"]["name"].as_str().unwrap()));
+    let before_process = row["state"]["process"].clone();
+    let before_owners = fixture.owners();
+    for (section, prefix, name) in [
+        ("machines", "destination/ssh:", "ssh-availability"),
+        ("cloud", "destination/cloud:", "cloud-availability"),
+    ] {
+        let frame = settings(&fixture, section);
+        let key = frame["regions"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .find(|key| key.starts_with(prefix))
+            .unwrap()
+            .clone();
+        click_region(&fixture, &key);
+        let id = key
+            .strip_prefix("destination/")
+            .unwrap()
+            .strip_suffix("/available")
+            .unwrap();
+        assert_eq!(
+            read()["destinations"][id]["available"].as_bool(),
+            Some(false)
+        );
+        capture(&fixture, name);
+    }
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "ssh");
+    assert!(!fixture.ctl(&["ui", "layout"])["regions"]["launcher:item:ssh"].is_array());
+    fixture.ctl(&["ui", "key", "esc"]);
+    let saved = fs::read(&config).unwrap();
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), before_owners);
+    assert_eq!(fs::read(&config).unwrap(), saved);
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "cloud");
+    assert!(!fixture.ctl(&["ui", "layout"])["regions"]["launcher:item:cloud"].is_array());
+    fixture.ctl(&["ui", "key", "esc"]);
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let row = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat)
+        .unwrap();
+    assert_eq!(row["state"]["process"], before_process);
+    assert_eq!(row["record"]["role"]["name"], "Reviewer");
+    settings(&fixture, "roles");
+    capture(&fixture, "roles-restored");
+    assert_eq!(fixture.ctl(&["ui", "layout"])["swarm"], swarm);
+}
+
 // keeps: ux-prototype §3.1 and ux-flow open/shut — expansion never changes focus.
 #[test]
 #[ignore = "private ctl sidebar accordion/PTY/restart boundary; make test-sidebar-accordions"]

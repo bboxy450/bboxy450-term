@@ -1,4 +1,6 @@
 //! The one admitted GUI connection multiplexes state and watched view updates.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //!
 //! Dispatch by noun (decision #320): each verb family's module owns its request and reply
 //! types and lists its own `GuiAction` and `GuiReply` variants in one `macro_rules!` list,
@@ -24,6 +26,7 @@ mod identity;
 mod message;
 mod plugin;
 mod record;
+mod roles;
 mod seat;
 mod task;
 mod ui;
@@ -35,10 +38,13 @@ use self::identity::{identity_actions, identity_replies};
 use self::message::{message_actions, message_replies};
 use self::plugin::{plugin_actions, plugin_replies};
 use self::record::{record_actions, record_replies};
+use self::roles::{role_actions, role_replies};
 use self::seat::{seat_actions, seat_replies};
 use self::task::{task_actions, task_replies};
 use self::ui::{ui_actions, ui_replies};
-pub use self::{app::*, debug::*, events::*, identity::*, plugin::*, record::*, seat::*, ui::*};
+pub use self::{
+    app::*, debug::*, events::*, identity::*, plugin::*, record::*, roles::*, seat::*, ui::*,
+};
 
 pub type Row = Vec<bbt_core::Cell>;
 
@@ -88,7 +94,7 @@ macro_rules! common_replies {
 flat_enum! {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
-    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, events_actions, message_actions, task_actions, record_actions]
+    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, events_actions, message_actions, task_actions, record_actions, role_actions]
 }
 
 flat_enum! {
@@ -98,7 +104,7 @@ flat_enum! {
     clippy::large_enum_variant,
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
-    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, events_replies, message_replies, task_replies, record_replies, common_replies]
+    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, events_replies, message_replies, task_replies, record_replies, role_replies, common_replies]
 }
 
 #[cfg(test)]

@@ -1,14 +1,18 @@
-//! IO-owned preferences. Only the explicit Appearance/Notifications patches write.
+//! IO-owned preferences. Explicit patches are the only configuration writer.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(
     clippy::disallowed_methods,
     reason = "bounded preferences IO owner, guarded against UI-thread calls"
 )]
 use bbt_ui::modules::settings::{Appearance, Notifications, controller::Patch};
+pub mod destinations;
 pub mod knowledge;
 pub mod messaging;
 pub mod registry;
+pub mod roles;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
@@ -268,6 +272,8 @@ pub struct Preferences {
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub harnesses: crate::spawn_params::Harnesses,
+    pub roles: BTreeMap<String, bbt_proto::gui::RoleDefinition>,
+    pub disabled_destinations: BTreeSet<String>,
 }
 impl Default for Preferences {
     fn default() -> Self {
@@ -284,12 +290,23 @@ impl Default for Preferences {
             },
             notifications: Notifications::default(),
             harnesses: Default::default(),
+            roles: roles::builtin(),
+            disabled_destinations: BTreeSet::new(),
         }
     }
 }
 impl Preferences {
     pub fn apply(&mut self, patch: &Patch) -> Result<(), String> {
         patch.validate()?;
+        let mut next = self.clone();
+        next.apply_inner(patch)?;
+        next.role_catalog().validate()?;
+        *self = next;
+        Ok(())
+    }
+    fn apply_inner(&mut self, patch: &Patch) -> Result<(), String> {
+        self.apply_role_patch(patch)?;
+        self.apply_destination_patch(patch)?;
         if let Patch::HarnessLaunch {
             harness,
             command,
@@ -400,10 +417,11 @@ pub fn records(
     model: Option<&crate::model::Model>,
     preferences: &Preferences,
 ) -> bbt_ui::modules::settings::Records {
-    use bbt_ui::modules::settings::{Harness, Role};
+    use bbt_ui::modules::settings::Harness;
     let mut out = model.map_or_else(Default::default, |m| crate::hosts::settings(&m.hosts));
     out.appearance = preferences.appearance.clone();
     out.notifications = preferences.notifications.clone();
+    out.disabled_destinations = preferences.disabled_destinations.clone();
     registry::project(&mut out, model);
     if let Some(identity) = model.and_then(|m| m.identity.as_ref()) {
         out.account.key_state = format!("{:?}", identity.state);
@@ -415,49 +433,66 @@ pub fn records(
         out.account.key_state = "unavailable".into();
         out.account.name = "Identity status is not available".into();
     }
-    for name in ["oracle", "architect", "creativity", "executor", "shell"] {
-        if let Ok(role) = bbt_mux::adapters::role_preset(name) {
-            out.roles.push((
-                name.into(),
-                Role {
-                    cls: format!("{:?}", role.class).to_lowercase(),
-                    prompt: "Not exposed by the runtime".into(),
-                    send: "Authority is read-only here".into(),
-                    ..Default::default()
-                },
-            ));
-        }
+    for name in roles::names(&preferences.roles) {
+        out.roles
+            .push((name.clone(), roles::view(&name, &preferences.roles[&name])));
     }
-    for kind in ["claude", "codex", "pi", "omp", "zsh"] {
-        if let Ok(h) = bbt_mux::adapters::HarnessRecord::builtin(kind) {
-            out.harness.push((
-                kind.into(),
-                Harness {
-                    role: preferences
-                        .harnesses
-                        .get(kind)
-                        .and_then(|h| h.role.clone())
-                        .unwrap_or(h.default_role.name),
-                    wake: format!("{:?}", h.wake_method),
-                    hooks: h.hooks,
-                    command: preferences.harnesses.get(kind).map_or_else(
-                        || h.command.join(" "),
-                        |d| {
-                            let command = d.command.clone().unwrap_or_else(|| h.command[0].clone());
-                            crate::spawn_params::join(
-                                &std::iter::once(command)
-                                    .chain(d.arguments.clone().unwrap_or_default())
-                                    .collect::<Vec<_>>(),
-                            )
-                        },
-                    ),
-                    tile: h.tile,
-                    icon: h.icon,
-                    state_from: format!("{:?}", h.state_source),
-                    custom: false,
-                },
-            ));
-        }
+    let catalog = preferences.role_catalog();
+    for kind in roles::HARNESSES {
+        let builtin = bbt_mux::adapters::HarnessRecord::builtin(kind).ok();
+        let command = preferences.harnesses.get(kind).map_or_else(
+            || {
+                builtin
+                    .as_ref()
+                    .map_or_else(|| kind.into(), |h| h.command.join(" "))
+            },
+            |defaults| {
+                let command = defaults.command.clone().unwrap_or_else(|| {
+                    builtin
+                        .as_ref()
+                        .map_or(kind, |h| h.command[0].as_str())
+                        .into()
+                });
+                crate::spawn_params::join(
+                    &std::iter::once(command)
+                        .chain(defaults.arguments.clone().unwrap_or_default())
+                        .collect::<Vec<_>>(),
+                )
+            },
+        );
+        out.harness.push((
+            kind.into(),
+            Harness {
+                role: catalog.harnesses[kind].default_role.clone(),
+                available_roles: catalog.harnesses[kind].available_roles.clone(),
+                eligible_roles: roles::eligible(kind, &preferences.roles),
+                wake: match builtin.as_ref().map(|h| h.wake_method) {
+                    Some(bbt_mux::adapters::WakeMethod::ClaudeSocket) => "socket",
+                    Some(bbt_mux::adapters::WakeMethod::CodexRpc) => "app-server",
+                    Some(bbt_mux::adapters::WakeMethod::Operator) => "operator",
+                    _ => "pty",
+                }
+                .into(),
+                hooks: builtin.as_ref().is_some_and(|h| h.hooks),
+                command,
+                tile: match kind {
+                    "claude" => "#D97757",
+                    "codex" => "#1F2937",
+                    "pi" => "#7C3AED",
+                    "omp" => "#0EA5E9",
+                    _ => "#111827",
+                }
+                .into(),
+                icon: kind.into(),
+                state_from: match builtin.as_ref().map(|h| h.state_source) {
+                    Some(bbt_mux::adapters::StateSource::Reported) => "reported",
+                    Some(bbt_mux::adapters::StateSource::Hooks) => "hooks",
+                    _ => "output cadence",
+                }
+                .into(),
+                custom: false,
+            },
+        ));
     }
     if let Some(model) = model {
         for seat in model.ui.seats.values() {
@@ -586,7 +621,11 @@ pub fn default_path() -> Result<PathBuf, String> {
 }
 fn key(patch: &Patch) -> (&str, &str) {
     match patch {
-        Patch::HarnessLaunch { harness, .. } => ("harnesses", harness),
+        Patch::HarnessLaunch { harness, .. } => ("harness-launch", harness),
+        Patch::HarnessRole { harness, .. } => ("harness-role", harness),
+        Patch::HarnessAvailableRoles { harness, .. } => ("harness-roles", harness),
+        Patch::RoleUpsert { name, .. } | Patch::RoleDelete(name) => ("roles", name),
+        Patch::DestinationAvailable { id, .. } => ("destinations", id),
         Patch::Theme(_) => ("appearance", "theme"),
         Patch::Density(_) => ("appearance", "density"),
         Patch::Rim(_) => ("appearance", "rim"),
@@ -599,7 +638,14 @@ fn key(patch: &Patch) -> (&str, &str) {
 }
 fn value(patch: &Patch) -> Value {
     match patch {
-        Patch::HarnessLaunch { .. } => unreachable!("harness table handled before scalar patches"),
+        Patch::HarnessLaunch { .. }
+        | Patch::HarnessRole { .. }
+        | Patch::HarnessAvailableRoles { .. }
+        | Patch::RoleUpsert { .. }
+        | Patch::RoleDelete(_)
+        | Patch::DestinationAvailable { .. } => {
+            unreachable!("structured Settings tables handled before scalar patches")
+        }
         Patch::Theme(v) | Patch::Density(v) => Value::from(v.clone()),
         Patch::Rim(v) => Value::from(*v as f64),
         Patch::Glow(v)
@@ -694,6 +740,7 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
         };
         preferences.apply(&patch)?;
     }
+    roles::read(doc, &mut preferences)?;
     if let Some(harnesses) = doc.get("harnesses") {
         let harnesses = harnesses
             .as_table_like()
@@ -705,12 +752,21 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
             let mut defaults = crate::spawn_params::HarnessDefaults::default();
             if let Some(role) = table.get("role") {
                 let role = role.as_str().ok_or("Harness role must be text")?;
-                if (kind != "claude" && role != "executor" && !(kind == "zsh" && role == "shell"))
-                    || bbt_mux::adapters::role_preset(role).is_err()
-                {
-                    return Err("Invalid harness default role".into());
-                }
                 defaults.role = Some(role.into());
+            }
+            if let Some(roles) = table.get("allowed_roles") {
+                defaults.allowed_roles = Some(
+                    roles
+                        .as_array()
+                        .ok_or("Harness allowed_roles must be an array")?
+                        .iter()
+                        .map(|role| {
+                            role.as_str()
+                                .map(str::to_owned)
+                                .ok_or_else(|| "Harness available role must be text".to_owned())
+                        })
+                        .collect::<Result<_, _>>()?,
+                );
             }
             if let Some(command) = table.get("command") {
                 defaults.command = Some(
@@ -737,6 +793,8 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
             preferences.harnesses.insert(kind.into(), defaults);
         }
     }
+    destinations::read(doc, &mut preferences)?;
+    preferences.role_catalog().validate()?;
     Ok(preferences)
 }
 
@@ -807,18 +865,27 @@ impl Store {
         let mut doc = Self::document(&path)?;
         parse(&doc)?;
         for patch in patches {
+            if roles::write(&mut doc, patch)? || destinations::write(&mut doc, patch)? {
+                continue;
+            }
             if let Patch::HarnessLaunch {
                 harness,
                 command,
                 arguments,
             } = patch
             {
-                doc["harnesses"][harness]["command"] = toml_edit::value(command);
-                doc["harnesses"][harness]["arguments"] = toml_edit::value(
-                    arguments
-                        .iter()
-                        .map(String::as_str)
-                        .collect::<toml_edit::Array>(),
+                roles::replace(
+                    &mut doc["harnesses"][harness]["command"],
+                    Value::from(command.clone()),
+                );
+                roles::replace(
+                    &mut doc["harnesses"][harness]["arguments"],
+                    Value::Array(
+                        arguments
+                            .iter()
+                            .map(String::as_str)
+                            .collect::<toml_edit::Array>(),
+                    ),
                 );
                 continue;
             }

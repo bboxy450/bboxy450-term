@@ -1,6 +1,9 @@
 //! Read-mostly Settings composition. Host-owned records and section selection;
 //! this view never reads config files, unlocks keys, or issues grants.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub mod controller;
+mod hosted;
 pub mod knowledge;
 pub mod messaging;
 pub mod plugins;
@@ -57,7 +60,7 @@ pub struct Signatures {
     #[serde(rename = "seatCommits")]
     pub seat_commits: bool,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Role {
     pub prompt: String,
@@ -71,6 +74,8 @@ pub struct Role {
 #[serde(default)]
 pub struct Harness {
     pub role: String,
+    pub available_roles: Vec<String>,
+    pub eligible_roles: Vec<String>,
     pub wake: String,
     pub hooks: bool,
     pub command: String,
@@ -117,6 +122,9 @@ pub struct Records {
     pub account: Account,
     pub cloud: Vec<Cloud>,
     pub machines: Vec<(String, String, String, String, MachineState)>,
+    /// Host-supplied stable IDs for observed machine/{index} and cloud/{index} rows.
+    pub destination_ids: std::collections::BTreeMap<String, String>,
+    pub disabled_destinations: std::collections::BTreeSet<String>,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub plugins: Vec<plugins::Plugin>,
@@ -131,6 +139,29 @@ pub struct Records {
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub shortcuts: Vec<(String, String)>,
+}
+impl Records {
+    pub(super) fn destination_id(&self, key: &str) -> Option<&str> {
+        let (kind, index) = key.split_once('/')?;
+        let index = index.parse::<usize>().ok()?;
+        if key != format!("{kind}/{index}") {
+            return None;
+        }
+        let id = self.destination_ids.get(key)?;
+        let observed = match kind {
+            "machine" => index < self.machines.len() && id.starts_with("ssh:"),
+            "cloud" => index < self.cloud.len() && id.starts_with("cloud:"),
+            _ => false,
+        };
+        (observed && valid_destination_id(id)).then_some(id.as_str())
+    }
+}
+fn valid_destination_id(id: &str) -> bool {
+    id.strip_prefix("ssh:")
+        .or_else(|| id.strip_prefix("cloud:"))
+        .is_some_and(|name| !name.is_empty() && name.trim() == name)
+        && id.len() <= 512
+        && !id.chars().any(char::is_control)
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -847,7 +878,10 @@ impl Build<'_> {
         ];
         if v.custom {
             band.pop();
-            band.push(self.text("", "delete", 10., 500, false, false).into());
+            band.push(
+                self.text(&format!("{k}/delete"), "delete", 10., 500, false, false)
+                    .into(),
+            );
         }
         let mut s = surface(co, 0.18, 0., [0., 12., 0., 12.], Some(30.));
         s = border(s, co, false);
@@ -1352,12 +1386,13 @@ impl Settings {
                 content: Box::new(col("", plain(None, [14., 18., 32., 18.], 0.), 12., kids)),
             }),
         );
-        row(
+        let root = row(
             "settings",
             surface(ui::Color::Background, 1., 0., [0.; 4], Some(height)),
             0.,
             vec![fixed(side, 200.), fill(main)],
-        )
+        );
+        hosted::picker(root, state, ctx, m, width, height)
     }
     fn presented_section(
         &self,
@@ -1365,6 +1400,15 @@ impl Settings {
         width: f32,
         state: &controller::Presentation,
     ) -> Vec<c::Item> {
+        if state.read_only {
+            match self.section.as_str() {
+                "Roles" => return hosted::roles(self, b, width, state),
+                "Harnesses" => return hosted::harnesses(self, b, width),
+                "Cloud" => return vec![self.cloud(b, width, false).into()],
+                "Machines" => return vec![self.machines(b, false).into()],
+                _ => {}
+            }
+        }
         if !state.read_only
             || matches!(
                 self.section.as_str(),
@@ -1581,8 +1625,8 @@ impl Settings {
                 }
                 vec![b.grid("harnesses", width, 230., 10., items).into()]
             }
-            "Cloud" => vec![self.cloud(b, width).into()],
-            "Machines" => vec![self.machines(b).into()],
+            "Cloud" => vec![self.cloud(b, width, true).into()],
+            "Machines" => vec![self.machines(b, true).into()],
             "Shortcuts" => vec![self.shortcuts(b, width).into()],
             "Appearance" => vec![self.appearance(b, window_controls_available).into()],
             "Notifications" => vec![self.notifications(b).into()],
@@ -1594,7 +1638,7 @@ impl Settings {
     }
 }
 impl Settings {
-    fn cloud(&self, b: &Build, width: f32) -> c::Element {
+    fn cloud(&self, b: &Build, width: f32, allow_create: bool) -> c::Element {
         let tiles = self
             .values
             .cloud
@@ -1676,9 +1720,20 @@ impl Settings {
                             false,
                             true,
                         )),
-                        b.toggle("", *on).into(),
+                        if allow_create {
+                            b.toggle("", *on)
+                        } else {
+                            c::Element::Spacer
+                        }
+                        .into(),
                     ],
                 );
+                let mut contents = vec![head.into(), foot.into()];
+                if !allow_create
+                    && let Some(control) = hosted::availability(self, b, &format!("cloud/{i}"))
+                {
+                    contents.push(control.into());
+                }
                 col(
                     &format!("cloud/{i}"),
                     border(
@@ -1687,19 +1742,14 @@ impl Settings {
                         true,
                     ),
                     10.,
-                    vec![head.into(), foot.into()],
+                    contents,
                 )
             })
-            .chain(std::iter::once(b.add_card(
-                "cloud/add",
-                "+ connect a provider",
-                "",
-                72.,
-            )))
+            .chain(allow_create.then(|| b.add_card("cloud/add", "+ connect a provider", "", 72.)))
             .collect();
-        b.card("card0","Cloud providers",vec![col("",plain(None,[4.,0.,0.,0.],0.),0.,vec![b.grid("cloud",width-28.,190.,8.,tiles).into()]).into(),b.note("","Regions appear under Cloud in the launcher. Credentials live in the keychain, never in config.toml.",true).into()],[4.,14.,10.,14.])
+        b.card("card0","Cloud providers",vec![col("",plain(None,[4.,0.,0.,0.],0.),0.,vec![b.grid("cloud",width-28.,190.,8.,tiles).into()]).into(),b.note("",if allow_create { "Regions appear under Cloud in the launcher. Credentials live in the keychain, never in config.toml." } else { "Existing destinations from the runtime provider snapshot. Connection configuration is read-only here." },true).into()],[4.,14.,10.,14.])
     }
-    fn machines(&self, b: &Build) -> c::Element {
+    fn machines(&self, b: &Build, allow_create: bool) -> c::Element {
         let mut rows: Vec<c::Item> = self
             .values
             .machines
@@ -1737,61 +1787,69 @@ impl Settings {
                         .into(),
                     ],
                 );
+                let mut contents = vec![
+                    fixed(
+                        link.map_or_else(
+                            || b.dot("", matches!(up, MachineState::Legacy(true)), 8.),
+                            |link| link.dot(),
+                        ),
+                        8.,
+                    ),
+                    fill(mt),
+                    b.text("", hw, 11., 400, false, true).into(),
+                    row(
+                        "",
+                        surface(
+                            badge(b.ctx, STYLE.tint.badge_alpha as f32),
+                            1.,
+                            5.,
+                            [1., 6., 1., 6.],
+                            None,
+                        ),
+                        0.,
+                        vec![
+                            txt(
+                                "",
+                                key,
+                                ui::Text {
+                                    line_height: 16. / 11.,
+                                    ..font(11., 400, true, ui::Color::Foreground)
+                                },
+                            )
+                            .into(),
+                        ],
+                    )
+                    .into(),
+                ];
+                if !allow_create
+                    && let Some(control) = hosted::availability(self, b, &format!("machine/{i}"))
+                {
+                    contents.push(control.into());
+                }
                 row(
                     &format!("machine{i}"),
                     bottom(plain(None, [8., 0., 8., 0.], 0.), b.ctx, false),
                     12.,
-                    vec![
-                        fixed(
-                            link.map_or_else(
-                                || b.dot("", matches!(up, MachineState::Legacy(true)), 8.),
-                                |link| link.dot(),
-                            ),
-                            8.,
-                        ),
-                        fill(mt),
-                        b.text("", hw, 11., 400, false, true).into(),
-                        row(
-                            "",
-                            surface(
-                                badge(b.ctx, STYLE.tint.badge_alpha as f32),
-                                1.,
-                                5.,
-                                [1., 6., 1., 6.],
-                                None,
-                            ),
-                            0.,
-                            vec![
-                                txt(
-                                    "",
-                                    key,
-                                    ui::Text {
-                                        line_height: 16. / 11.,
-                                        ..font(11., 400, true, ui::Color::Foreground)
-                                    },
-                                )
-                                .into(),
-                            ],
-                        )
-                        .into(),
-                    ],
+                    contents,
                 )
                 .into()
             })
             .collect();
-        rows.push(
-            row(
-                "",
-                bottom(plain(Some(44.), [10., 0., 10., 0.], 0.), b.ctx, false),
-                0.,
-                vec![b.text("", "+ add a machine", 12.5, 400, false, true).into()],
-            )
-            .into(),
-        );
+        if allow_create {
+            rows.push(
+                row(
+                    "",
+                    bottom(plain(Some(44.), [10., 0., 10., 0.], 0.), b.ctx, false),
+                    0.,
+                    vec![b.text("", "+ add a machine", 12.5, 400, false, true).into()],
+                )
+                .into(),
+            );
+        }
         rows.push(
             b.note(
                 "",
-                "Read from ~/.ssh/config. Machines appear under SSH in the launcher.",
+                if allow_create { "Read from ~/.ssh/config. Machines appear under SSH in the launcher." } else { "Existing destinations from the runtime provider snapshot. Connection configuration is read-only here." },
                 true,
             )
             .into(),

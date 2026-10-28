@@ -1,15 +1,37 @@
 //! Pure Settings interaction. The host owns records, persistence, focus routing and IO.
+//! Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+mod roles;
 use super::{Appearance, Notifications, Records, SECTIONS};
 use crate::{
     components as c,
     text_edit::{Command as EditCommand, Editor},
 };
 use bbt_ui_model::{TOKENS, layout::Rect};
+pub use roles::{DraftRole, FocusedText, Picker, role_region};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Patch {
+    DestinationAvailable {
+        id: String,
+        available: bool,
+    },
+    RoleUpsert {
+        name: String,
+        role: super::Role,
+    },
+    RoleDelete(String),
+    HarnessRole {
+        harness: String,
+        role: String,
+    },
+    HarnessAvailableRoles {
+        harness: String,
+        roles: BTreeSet<String>,
+    },
     HarnessLaunch {
         harness: String,
         command: String,
@@ -27,6 +49,21 @@ pub enum Patch {
 impl Patch {
     pub fn validate(&self) -> Result<(), String> {
         let valid = match self {
+            Self::DestinationAvailable { id, .. } => super::valid_destination_id(id),
+            Self::RoleUpsert { name, role } => roles::valid_role(name, role),
+            Self::RoleDelete(name) => roles::valid_name(name) && !roles::builtin(name),
+            Self::HarnessRole { harness, role } => {
+                roles::valid_harness(harness) && roles::valid_name(role)
+            }
+            Self::HarnessAvailableRoles {
+                harness,
+                roles: allowed,
+            } => {
+                roles::valid_harness(harness)
+                    && !allowed.is_empty()
+                    && allowed.len() <= 256
+                    && allowed.iter().all(|name| roles::valid_name(name))
+            }
             Self::HarnessLaunch {
                 harness,
                 command,
@@ -64,7 +101,12 @@ impl Patch {
     }
     pub fn apply(&self, appearance: &mut Appearance, notifications: &mut Notifications) {
         match self {
-            Self::HarnessLaunch { .. } => {}
+            Self::HarnessLaunch { .. }
+            | Self::DestinationAvailable { .. }
+            | Self::RoleUpsert { .. }
+            | Self::RoleDelete(_)
+            | Self::HarnessRole { .. }
+            | Self::HarnessAvailableRoles { .. } => {}
             Self::Theme(v) => appearance.theme = v.clone(),
             Self::Density(v) => appearance.density = v.clone(),
             Self::Rim(v) => appearance.rim = *v,
@@ -78,6 +120,23 @@ impl Patch {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Field {
+    DestinationAvailable(String),
+    RoleNew,
+    RoleAdd,
+    RoleCancel,
+    RoleDraftName,
+    RoleDraftPrompt,
+    RoleDraftColor,
+    RoleDraftMark,
+    RoleDraftSend,
+    RoleDraftClass,
+    RolePrompt(String),
+    RoleSend(String),
+    RoleClass(String),
+    RoleDelete(String),
+    HarnessRole(String),
+    HarnessAvailableRole { harness: String, role: String },
+    Choice(usize),
     Theme,
     Density,
     Rim,
@@ -103,6 +162,8 @@ pub enum Focus {
 }
 #[derive(Debug, Clone)]
 pub enum Action {
+    Commit,
+    Cancel,
     Section(String),
     Search(EditCommand),
     Focus(Focus),
@@ -139,6 +200,7 @@ pub struct Controller {
     attention: Option<super::messaging::Rule>,
     plugin: Option<PluginIntent>,
     knowledge: Option<KnowledgeIntent>,
+    roles: roles::Controls,
 }
 impl Default for Controller {
     fn default() -> Self {
@@ -154,6 +216,7 @@ impl Default for Controller {
             attention: None,
             plugin: None,
             knowledge: None,
+            roles: Default::default(),
         }
     }
 }
@@ -165,6 +228,9 @@ pub struct Presentation {
     pub window_controls_available: bool,
     pub read_only: bool,
     pub focus: Focus,
+    pub role_draft: Option<DraftRole>,
+    pub focused_text: Option<FocusedText>,
+    pub picker: Option<Picker>,
 }
 impl Default for Presentation {
     fn default() -> Self {
@@ -175,6 +241,9 @@ impl Default for Presentation {
             window_controls_available: true,
             read_only: false,
             focus: Focus::None,
+            role_draft: None,
+            focused_text: None,
+            picker: None,
         }
     }
 }
@@ -197,10 +266,17 @@ impl Controller {
             window_controls_available: false,
             read_only: true,
             focus: self.focus.clone(),
+            role_draft: self.roles.draft.clone(),
+            focused_text: self.roles.text.as_ref().map(|text| FocusedText {
+                field: text.field.clone(),
+                value: text.value.clone(),
+                edit: text.editor.edit(),
+            }),
+            picker: self.roles.picker.clone(),
         }
     }
     pub fn editing(&self) -> bool {
-        self.focus == Focus::Search
+        self.focus == Focus::Search || self.roles.text.is_some()
     }
     pub fn scroll_by(&mut self, dy: f32, limit: f32) -> bool {
         if !dy.is_finite() || !limit.is_finite() {
@@ -281,6 +357,15 @@ impl Controller {
     }
     fn editable(&self, field: &Field, values: &Records) -> bool {
         match field {
+            Field::DestinationAvailable(id) => {
+                values.destination_ids.iter().any(|(key, mapped)| {
+                    mapped == id
+                        && values.destination_id(key) == Some(id.as_str())
+                        && ((!self.query.trim().is_empty())
+                            || (self.section == "Machines" && key.starts_with("machine/"))
+                            || (self.section == "Cloud" && key.starts_with("cloud/")))
+                })
+            }
             Field::PluginEnable(id) | Field::PluginTrust(id) => {
                 (self.section == "Plugins" || !self.query.trim().is_empty())
                     && values.plugin_controls
@@ -321,10 +406,21 @@ impl Controller {
                 (self.section == "Notifications" || !self.query.trim().is_empty())
                     && values.notifications.enabled
             }
+            _ => self.role_editable(field, values),
         }
     }
     fn fields(&self, values: &Records) -> Vec<Field> {
         match self.section.as_str() {
+            "Machines" | "Cloud" => values
+                .destination_ids
+                .iter()
+                .filter_map(|(key, id)| {
+                    let field = Field::DestinationAvailable(id.clone());
+                    (values.destination_id(key).is_some() && self.editable(&field, values))
+                        .then_some(field)
+                })
+                .collect(),
+            "Roles" | "Harnesses" => self.role_fields(values),
             "Account" if self.editable(&Field::IdentityUnlock, values) => {
                 vec![Field::IdentityUnlock]
             }
@@ -423,8 +519,28 @@ impl Controller {
         values: &mut Records,
         defaults: &Records,
     ) -> Option<Patch> {
+        let committed = self.prepare_role_action(&action, values);
+        let result = self
+            .handle_role_action(&action, values, defaults)
+            .unwrap_or_else(|| self.handle_base(action, values, defaults));
+        match (committed, result) {
+            (Some(first), Some(next)) => {
+                self.roles.patches.push(next);
+                Some(first)
+            }
+            (Some(patch), None) | (None, Some(patch)) => Some(patch),
+            (None, None) => None,
+        }
+    }
+    fn handle_base(
+        &mut self,
+        action: Action,
+        values: &mut Records,
+        defaults: &Records,
+    ) -> Option<Patch> {
         let reset = matches!(action, Action::Reset(_));
         let patch = match action {
+            Action::Commit | Action::Cancel => return None,
             Action::Attention(rule) => {
                 self.attention_change(rule.destination, rule.class, rule.mode, values);
                 return None;
@@ -495,6 +611,10 @@ impl Controller {
                     return None;
                 }
                 match field {
+                    Field::DestinationAvailable(id) => Patch::DestinationAvailable {
+                        available: values.disabled_destinations.contains(&id),
+                        id,
+                    },
                     Field::KnowledgeProvider(root) => {
                         self.knowledge_change(root, 1, values);
                         return None;
@@ -585,6 +705,7 @@ impl Controller {
                         }
                         Patch::DisabledHarnesses(set)
                     }
+                    _ => return None,
                 }
             }
             Action::Nudge(delta) => match &self.focus {
@@ -656,7 +777,12 @@ impl Controller {
             }
         };
         let field = match &patch {
-            Patch::HarnessLaunch { .. } => return None,
+            Patch::DestinationAvailable { id, .. } => Field::DestinationAvailable(id.clone()),
+            Patch::HarnessLaunch { .. }
+            | Patch::RoleUpsert { .. }
+            | Patch::RoleDelete(_)
+            | Patch::HarnessRole { .. }
+            | Patch::HarnessAvailableRoles { .. } => return None,
             Patch::Theme(_) => Field::Theme,
             Patch::Density(_) => Field::Density,
             Patch::Rim(_) => Field::Rim,
@@ -675,6 +801,13 @@ impl Controller {
         if let Err(error) = patch.validate() {
             self.error = Some(error);
             return None;
+        }
+        if let Patch::DestinationAvailable { id, available } = &patch {
+            if *available {
+                values.disabled_destinations.remove(id);
+            } else {
+                values.disabled_destinations.insert(id.clone());
+            }
         }
         patch.apply(&mut values.appearance, &mut values.notifications);
         self.error = None;
@@ -843,9 +976,38 @@ impl Regions {
             let Some(scope) = scope else { continue };
             out.controls(scope, section, view);
         }
+        out.role_picker_controls(layout);
+        fn role_caret(node: &c::Layout) -> Option<Rect> {
+            if matches!(&node.kind, c::LayoutKind::Named(name) if name.starts_with("role/") && name.ends_with("/edit/caret"))
+            {
+                return Some(node.rect);
+            }
+            node.children.iter().find_map(role_caret)
+        }
+        out.caret = role_caret(layout).or(out.caret);
         Some(out)
     }
     fn controls(&mut self, layout: &c::Layout, section: &str, view: &super::Settings) {
+        let prefix = match section {
+            "Machines" => Some("machine/"),
+            "Cloud" => Some("cloud/"),
+            _ => None,
+        };
+        if let Some(prefix) = prefix {
+            for (key, id) in &view.values.destination_ids {
+                if key.starts_with(prefix)
+                    && view.values.destination_id(key) == Some(id.as_str())
+                    && let Some(node) = find(layout, &format!("destination/{id}/available"))
+                {
+                    self.hits.push((
+                        node.rect,
+                        Hit::Toggle(Field::DestinationAvailable(id.clone())),
+                        true,
+                    ));
+                }
+            }
+        }
+        self.role_controls(layout, section, view);
         if section == "Plugins" {
             for (i, plugin) in view.values.plugins.iter().enumerate() {
                 if plugin.root.is_none()
@@ -1027,6 +1189,7 @@ impl Regions {
             Hit::Set(Patch::Theme(_)) => Field::Theme,
             Hit::Set(Patch::Density(_)) => Field::Density,
             Hit::Rim => Field::Rim,
+            Hit::Toggle(Field::Choice(_)) => return None,
             Hit::Toggle(field) => field.clone(),
             _ => return None,
         })
@@ -1041,6 +1204,30 @@ impl Regions {
             }
         }
         fields
+    }
+    /// Visible retained actions, including popup options outside Tab order.
+    pub fn control_regions(&self) -> Vec<(Field, Rect)> {
+        self.hits
+            .iter()
+            .filter_map(|(rect, hit, main)| {
+                let Hit::Toggle(field) = hit else {
+                    return None;
+                };
+                let rect = if *main {
+                    let x = rect.x.max(self.viewport.x);
+                    let y = rect.y.max(self.viewport.y);
+                    Rect::new(
+                        x,
+                        y,
+                        (rect.right().min(self.viewport.right()) - x).max(0.),
+                        (rect.bottom().min(self.viewport.bottom()) - y).max(0.),
+                    )
+                } else {
+                    *rect
+                };
+                (rect.w > 0. && rect.h > 0.).then(|| (field.clone(), rect))
+            })
+            .collect()
     }
     pub fn focus_rect(&self, focus: &Focus) -> Option<Rect> {
         match focus {

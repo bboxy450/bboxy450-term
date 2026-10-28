@@ -1,4 +1,5 @@
 //! Seat controls are explicit, generation-bound and independent of GUI focus.
+//! Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,8 @@ use crate::{
     adapters::{Evidence, WakeOutcome},
     registry::{Class, SeatRecord},
 };
+
+const APPROVED_PROFILES: [&str; 5] = ["zsh", "claude", "codex", "pi", "omp"];
 
 pub(crate) fn handles(name: &str) -> bool {
     mutation(name) || matches!(name, "screen_read" | "history_read" | "layout_read" | "ctl")
@@ -48,8 +51,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     if actor.role.class == Class::Oracle {
         defs.extend([
             ("seat_input_text","Paste literal text only through the live positive-readiness guard. submit explicitly chooses Enter; rejected input is not queued.",json!({"text":text,"submit":{"type":"boolean"}}),vec!["text","submit"]),
-            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. No arbitrary commands, environment, privilege class or resume.",json!({"swarm_id":id,"approved_profile":{"enum":["zsh","claude","codex"]},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id}),vec!["swarm_id","approved_profile","cwd"]),
-            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab.",json!({"swarm_id":id,"approved_profile":{"enum":["zsh","claude","codex"]},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]}}),vec!["swarm_id","approved_profile","cwd","side"]),
+            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. No arbitrary commands, environment, privilege class or resume.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id}),vec!["swarm_id","approved_profile","cwd"]),
+            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]}}),vec!["swarm_id","approved_profile","cwd","side"]),
             ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
             ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
             ("seat_mute","Set current target mute policy once under the expected policy epoch and process generation.",json!({"expected_policy_epoch":revision}),vec!["expected_policy_epoch"]),
@@ -328,7 +331,7 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
             if a.swarm_id != actor.swarm_id || a.swarm_id == Ulid::nil() {
                 return Err("spawn outside caller swarm".into());
             }
-            if !matches!(a.approved_profile.as_str(), "zsh" | "claude" | "codex") {
+            if !APPROVED_PROFILES.contains(&a.approved_profile.as_str()) {
                 return Err("unapproved spawn profile".into());
             }
             if !a.cwd.is_absolute() || a.cwd.as_os_str().len() > 4096 {

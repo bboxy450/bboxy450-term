@@ -439,6 +439,17 @@ impl App {
         if let Some(r) = self.sidebar_resize_region {
             regions.insert("sidebar-resize".into(), [r.x, r.y, r.w, r.h]);
         }
+        if let Some(settings) = self
+            .local_page_layout
+            .as_ref()
+            .and_then(|page| page.settings.as_ref())
+        {
+            for (field, r) in settings.control_regions() {
+                if let Some(key) = crate::settings_roles::control_key(&field) {
+                    regions.insert(key, [r.x, r.y, r.w, r.h]);
+                }
+            }
+        }
         for (seat, r) in &self.focus_bounds {
             regions.insert(format!("pane:{seat}"), [r.x, r.y, r.w, r.h]);
         }

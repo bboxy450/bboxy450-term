@@ -200,3 +200,5 @@ action	{"kind":"KnowledgeControl","body":{"id":"00000000000000000000000001","req
 action	{"kind":"KnowledgeControl","body":{"id":"00000000000000000000000001","request":{"kind":"select","root":"repo","provider":"candidate","revision":0,"sha256":"abababababababababababababababababababababababababababababababab"}}}
 action	{"kind":"KnowledgeControl","body":{"id":"00000000000000000000000001","request":{"kind":"reset","root":"repo"}}}
 reply	{"kind":"KnowledgeControl","body":{"op":"00000000000000000000000001","status":{"roots":[{"id":"repo","path":"/private/root/.bboxy","provider":{"id":"bboxy450-term-data_source-bboxy","name":"bboxy450-term-data_source-bboxy","sha256":null},"revision":0,"records":1,"process":null,"refusal":null}],"offered":[{"id":"bboxy450-term-data_source-bboxy","name":"bboxy450-term-data_source-bboxy","sha256":null}]}}}
+action	{"kind":"ConfigureRoles","body":{"id":"00000000000000000000000000","catalog":{"roles":{},"harnesses":{}}}}
+reply	{"kind":"RolesConfigured","body":{"id":"00000000000000000000000000"}}

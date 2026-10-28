@@ -1,4 +1,6 @@
 //! Local launch resolution. All values are captured before the IO owner sees a spawn.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_ui::modules::launcher::{FieldKey, Source, SpawnField, ValueChoice};
 use std::collections::BTreeMap;
 
@@ -6,6 +8,7 @@ use std::collections::BTreeMap;
 #[serde(default)]
 pub struct HarnessDefaults {
     pub role: Option<String>,
+    pub allowed_roles: Option<Vec<String>>,
     pub command: Option<String>,
     pub arguments: Option<Vec<String>>,
 }
@@ -14,6 +17,26 @@ pub type Harnesses = BTreeMap<String, HarnessDefaults>;
 pub fn resolve(
     harness: &str,
     settings: &Harnesses,
+    swarm: Option<&bbt_ui_model::Swarm>,
+    fallback: &str,
+) -> Vec<SpawnField> {
+    let preferences = crate::settings::Preferences {
+        harnesses: settings.clone(),
+        ..Default::default()
+    };
+    resolve_with_catalog(
+        harness,
+        settings,
+        &preferences.role_catalog(),
+        swarm,
+        fallback,
+    )
+}
+
+pub fn resolve_with_catalog(
+    harness: &str,
+    settings: &Harnesses,
+    catalog: &bbt_proto::gui::RoleCatalog,
     swarm: Option<&bbt_ui_model::Swarm>,
     fallback: &str,
 ) -> Vec<SpawnField> {
@@ -28,32 +51,63 @@ pub fn resolve(
     };
     let mut out = vec![];
     if harness != "zsh" {
-        let role = if harness == "claude" {
-            defaults.and_then(|d| d.role.as_deref()).unwrap_or("oracle")
+        let eligible = crate::settings::roles::eligible(harness, &catalog.roles);
+        let policy = catalog.harnesses.get(harness);
+        let available =
+            policy.map_or_else(|| eligible.clone(), |policy| policy.available_roles.clone());
+        let choices: Vec<_> = available
+            .into_iter()
+            .filter(|name| eligible.contains(name))
+            .map(|value| {
+                let (label, purpose) = match value.as_str() {
+                    "oracle" => ("Oracle".into(), "supervises, briefs, verifies".into()),
+                    "architect" => ("Architect".into(), "specs, invariants, decisions".into()),
+                    "creativity" => ("Creativity".into(), "diverges before the pick".into()),
+                    "executor" => ("Executor".into(), "implements a scoped brief".into()),
+                    _ => (
+                        value.clone(),
+                        catalog.roles[&value]
+                            .prompt
+                            .lines()
+                            .next()
+                            .unwrap_or("")
+                            .chars()
+                            .take(120)
+                            .collect(),
+                    ),
+                };
+                ValueChoice {
+                    value,
+                    label,
+                    purpose,
+                }
+            })
+            .collect();
+        let preferred =
+            policy
+                .map(|policy| policy.default_role.as_str())
+                .unwrap_or(if harness == "claude" {
+                    "oracle"
+                } else {
+                    "executor"
+                });
+        let fallback_role = if harness == "claude" {
+            "oracle"
         } else {
             "executor"
         };
-        let choices = (harness == "claude").then(|| {
-            [
-                ("oracle", "Oracle", "supervises, briefs, verifies"),
-                ("architect", "Architect", "specs, invariants, decisions"),
-                ("creativity", "Creativity", "diverges before the pick"),
-                ("executor", "Executor", "implements a scoped brief"),
-            ]
-            .into_iter()
-            .map(|(value, label, purpose)| ValueChoice {
-                value: value.into(),
-                label: label.into(),
-                purpose: purpose.into(),
-            })
-            .collect()
-        });
+        let role = choices
+            .iter()
+            .find(|choice| choice.value == preferred)
+            .or_else(|| choices.first())
+            .map_or(fallback_role, |choice| choice.value.as_str());
+        let fixed = choices.len() <= 1;
         out.push(field(
             FieldKey::Role,
             role.into(),
             Source::Settings,
-            choices,
-            harness != "claude",
+            Some(choices),
+            fixed,
         ));
     }
     let cwd = swarm.and_then(|s| s.workdir.as_deref()).unwrap_or(fallback);
@@ -260,6 +314,91 @@ mod tests {
     use super::*;
     use bbt_ui_model::{Swarm, SwarmId};
     #[test]
+    fn configured_catalog_drives_role_prefill_and_membership_for_each_harness() {
+        use bbt_proto::{gui::RoleDefinition, registry::Class};
+        use bbt_ui::modules::settings::controller::Patch;
+        use std::collections::BTreeSet;
+        for harness in ["claude", "codex", "pi", "omp"] {
+            for explicit in [false, true] {
+                let mut preferences = crate::settings::Preferences::default();
+                for (name, class) in [("Reviewer Δ", Class::Worker), ("planner", Class::Oracle)] {
+                    preferences.roles.insert(
+                        name.into(),
+                        RoleDefinition {
+                            class,
+                            prompt: "Check the diff.\nReturn evidence.".into(),
+                            send: "own swarm · operator DM".into(),
+                            color: "#7397d4".into(),
+                            mark: "♜".into(),
+                        },
+                    );
+                }
+                preferences
+                    .apply(&Patch::HarnessRole {
+                        harness: harness.into(),
+                        role: "Reviewer Δ".into(),
+                    })
+                    .unwrap();
+                if explicit {
+                    preferences
+                        .apply(&Patch::HarnessAvailableRoles {
+                            harness: harness.into(),
+                            roles: BTreeSet::from(["Reviewer Δ".into()]),
+                        })
+                        .unwrap();
+                }
+                let catalog = preferences.role_catalog();
+                catalog.validate().unwrap();
+                let fields = resolve_with_catalog(
+                    harness,
+                    &preferences.harnesses,
+                    &catalog,
+                    None,
+                    "/workspace",
+                );
+                let role = &fields[0];
+                assert_eq!(
+                    (role.key, role.value.as_str(), role.source),
+                    (FieldKey::Role, "Reviewer Δ", Source::Settings)
+                );
+                assert_eq!(role.fixed, explicit);
+                let choices = role.choices.as_ref().unwrap();
+                assert_eq!(
+                    choices.iter().any(|choice| choice.value == "planner"),
+                    harness == "claude" && !explicit
+                );
+                assert_eq!(
+                    choices
+                        .iter()
+                        .find(|choice| choice.value == "Reviewer Δ")
+                        .unwrap()
+                        .purpose,
+                    "Check the diff."
+                );
+                assert!(choices.iter().all(|choice| choice.value != "shell"
+                    && (harness == "claude"
+                        || catalog.roles[&choice.value].class == Class::Worker)));
+            }
+        }
+        let mut malformed = bbt_proto::gui::RoleCatalog::builtin();
+        let codex = malformed.harnesses.get_mut("codex").unwrap();
+        codex.default_role = "oracle".into();
+        codex.available_roles = vec!["oracle".into()];
+        assert!(malformed.validate().is_err());
+        let fields =
+            resolve_with_catalog("codex", &BTreeMap::new(), &malformed, None, "/workspace");
+        assert_eq!(fields[0].value, "executor");
+        assert!(fields[0].choices.as_ref().unwrap().is_empty());
+        let shell = resolve_with_catalog(
+            "zsh",
+            &BTreeMap::new(),
+            &bbt_proto::gui::RoleCatalog::builtin(),
+            None,
+            "/workspace",
+        );
+        assert!(shell.iter().all(|field| field.key != FieldKey::Role));
+    }
+    #[test]
     fn resolver_table_prefills_every_local_row_and_names_its_source() {
         for harness in ["claude", "codex", "pi", "omp", "zsh"] {
             for has_folder in [false, true] {
@@ -279,6 +418,7 @@ mod tests {
                                 role: Some("creativity".into()),
                                 command: Some("/tool".into()),
                                 arguments: Some(vec!["--literal".into(), "two words".into()]),
+                                ..Default::default()
                             },
                         )])
                     } else {
@@ -289,8 +429,10 @@ mod tests {
                     if harness != "zsh" {
                         expected.push((
                             FieldKey::Role,
-                            if harness == "claude" {
-                                if has_last { "creativity" } else { "oracle" }
+                            if has_last {
+                                "creativity"
+                            } else if harness == "claude" {
+                                "oracle"
                             } else {
                                 "executor"
                             }
@@ -359,11 +501,7 @@ mod tests {
                         rows.iter()
                             .find(|f| f.key == FieldKey::Role)
                             .map(|f| f.fixed),
-                        if harness == "zsh" {
-                            None
-                        } else {
-                            Some(harness != "claude")
-                        }
+                        if harness == "zsh" { None } else { Some(false) }
                     );
                     let directories = rows
                         .iter()
@@ -400,6 +538,7 @@ mod tests {
             "claude".into(),
             HarnessDefaults {
                 role: Some("oracle".into()),
+                allowed_roles: Some(vec!["oracle".into(), "architect".into()]),
                 ..Default::default()
             },
         )]);
@@ -421,6 +560,10 @@ mod tests {
         );
         resolved.remember("claude", &mut swarm, &mut settings);
         assert_eq!(settings["claude"].role.as_deref(), Some("oracle"));
+        assert_eq!(
+            settings["claude"].allowed_roles.as_deref(),
+            Some(["oracle".to_owned(), "architect".to_owned()].as_slice())
+        );
         let next = resolve("claude", &settings, Some(&swarm), "/app");
         assert_eq!(next[0].value, "oracle");
         assert!(next[1..].iter().all(|f| f.source == Source::LastChoice));

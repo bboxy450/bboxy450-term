@@ -1,4 +1,6 @@
 //! Pure host-to-view projection. L8 owns launcher/settings input and hosting.
+//! Origin: bboxy450-term, MIT OR Apache-2.0. Retain credit on reuse:
+//! https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use bbt_proto::{GuiHost, HostState, Where};
 use bbt_ui::{
     self as ui, components as c,
@@ -38,17 +40,27 @@ pub fn settings(hosts: &[GuiHost]) -> Records {
     for host in hosts {
         match &host.location {
             Where::Local => {}
-            Where::Ssh { host: name } => records.machines.push((
-                host.label.clone(),
-                host.address.clone().unwrap_or_else(|| name.clone()),
-                String::new(),
-                String::new(),
-                MachineState::Link(link(&host.state)),
-            )),
+            Where::Ssh { host: name } => {
+                records.destination_ids.insert(
+                    format!("machine/{}", records.machines.len()),
+                    format!("ssh:{name}"),
+                );
+                records.machines.push((
+                    host.label.clone(),
+                    host.address.clone().unwrap_or_else(|| name.clone()),
+                    String::new(),
+                    String::new(),
+                    MachineState::Link(link(&host.state)),
+                ));
+            }
             Where::Cloud { provider, .. } => clouds.entry(provider.clone()).or_default().push(host),
         }
     }
     for (name, hosts) in clouds {
+        records.destination_ids.insert(
+            format!("cloud/{}", records.cloud.len()),
+            format!("cloud:{name}"),
+        );
         let state = hosts
             .iter()
             .max_by_key(|host| match &host.state {

@@ -399,6 +399,7 @@ enum ActionReply {
     Knowledge(Ulid),
     Plugin(Ulid, bool),
     Root(Ulid),
+    Roles(Ulid),
     Events { stream: String },
     EventCursor,
 }
@@ -431,6 +432,7 @@ impl ActionReplies {
             GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
             GuiAction::Plugin { id, request } => ActionReply::Plugin(*id, !request.mutation()),
             GuiAction::KnowledgeControl { id, .. } => ActionReply::Root(*id),
+            GuiAction::ConfigureRoles { id, .. } => ActionReply::Roles(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
                 stream: stream.clone(),
             },
@@ -442,6 +444,7 @@ impl ActionReplies {
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let independent = match reply {
+            GuiReply::RolesConfigured { id } => self.0.iter().position(|r| *r == ActionReply::Roles(*id)),
             GuiReply::Knowledge { op, .. } => self
                 .0
                 .iter()
@@ -452,7 +455,7 @@ impl ActionReplies {
                 .iter()
                 .position(|r| matches!(r,ActionReply::Plugin(id,_) if id==op)),
             GuiReply::Error { op, .. } => self.0.iter().position(
-                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id) if id==op),
+                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id) if id==op),
             ),
             _ => None,
         };
@@ -462,7 +465,10 @@ impl ActionReplies {
         let at = self.0.iter().position(|r| {
             !matches!(
                 r,
-                ActionReply::Knowledge(_) | ActionReply::Plugin(..) | ActionReply::Root(_)
+                ActionReply::Knowledge(_)
+                    | ActionReply::Plugin(..)
+                    | ActionReply::Root(_)
+                    | ActionReply::Roles(_)
             )
         })?;
         let expected = &self.0[at];
@@ -1185,6 +1191,7 @@ async fn run_with_control(
                         }
                     },
                     UiMsg::PluginControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Plugin {id:*id,request:request.clone()}); } },
+                    UiMsg::ConfigureRoles {id,catalog}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::ConfigureRoles {id:*id,catalog:catalog.clone()}); } },
                     UiMsg::KnowledgeControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:*id,request:request.clone()}); } },
                     UiMsg::IdentityControl {id,request}=>queue_action(&mut outgoing,GuiAction::Identity(bbt_proto::identity::IdentityCall {id:*id,request:*request})),
                     UiMsg::Input {seat,generation,id,bytes}=> {
@@ -1499,6 +1506,9 @@ async fn run_with_control(
                         GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
                         GuiReply::IdentityControl {op,response}=> {
                             if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Ok(response)); }
+                        },
+                        GuiReply::RolesConfigured {id}=> {
+                            if terminal_reply == Some(ActionReply::Roles(id)) { operation_reply(&mut model,&updates,id,bboxy450_term::messaging::Reply::RolesConfigured); }
                         },
                         GuiReply::Knowledge {op,response}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {

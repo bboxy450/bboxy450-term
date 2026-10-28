@@ -15,6 +15,8 @@ mod live;
 mod log;
 mod navigation;
 mod scene;
+mod settings_destinations;
+mod settings_roles;
 mod sidebar;
 mod spawn_gate;
 mod stall;
@@ -268,6 +270,8 @@ use bboxy450_term::settings as preferences;
 use bbt_ui::modules::settings::{Settings, controller as settings_controller};
 #[derive(Debug, PartialEq, Eq)]
 enum SettingsKey {
+    Commit,
+    Cancel,
     Edit(EditCommand),
     Next(bool),
     Nudge(i32),
@@ -1350,6 +1354,23 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     RoutedKey::LocalPage(command)
 }
 fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> RoutedKey {
+    if input.state == ElementState::Pressed
+        && !input.repeat
+        && input.logical_key == Key::Named(NamedKey::Escape)
+    {
+        return RoutedKey::SettingsKey(SettingsKey::Cancel);
+    }
+    if input.state == ElementState::Pressed
+        && !input.repeat
+        && editing
+        && input.logical_key == Key::Named(NamedKey::Enter)
+    {
+        return if input.modifiers.state.shift_key() {
+            RoutedKey::SettingsKey(SettingsKey::Edit(EditCommand::Insert("\n".into())))
+        } else {
+            RoutedKey::SettingsKey(SettingsKey::Commit)
+        };
+    }
     let global = route_local_page(input, modes);
     if input.state == ElementState::Released
         || matches!(
@@ -1891,6 +1912,7 @@ struct App {
     >,
     preferences: preferences::State,
     preferences_io: Option<preferences::Io>,
+    role_settings: settings_roles::Sync,
     rim_preview: Option<f32>,
     mute: preferences::Mute,
     custody: preferences::CustodyControl,
@@ -2067,6 +2089,7 @@ impl App {
             launcher_choices: Default::default(),
             preferences: preferences::State::default(),
             preferences_io: None,
+            role_settings: Default::default(),
             rim_preview: None,
             mute: preferences::Mute::default(),
             custody: preferences::CustodyControl::default(),
@@ -2266,6 +2289,10 @@ impl App {
         }
     }
     fn open_local_tab(&mut self, tab: LocalTab) {
+        if matches!(&self.local_tab, Some(LocalTab::Settings { controller, .. }) if controller.editing())
+        {
+            self.settings_action(settings_controller::Action::Blur);
+        }
         if self.rim_preview.take().is_some() {
             self.apply_preferences();
         }
@@ -2433,6 +2460,23 @@ impl App {
             ),
             ..Default::default()
         };
+        view.launch = LAUNCHABLES
+            .into_iter()
+            .map(
+                |(harness, label, _, tile, _)| bbt_ui::modules::settings::Launch {
+                    harness: harness.into(),
+                    label: label.into(),
+                    tile: tile.into(),
+                },
+            )
+            .collect();
+        for (id, harness) in &mut view.values.harness {
+            if let Some((_, _, _, tile, _)) =
+                LAUNCHABLES.iter().find(|(kind, _, _, _, _)| kind == id)
+            {
+                harness.tile = (*tile).into();
+            }
+        }
         if let Some(model) = self.live_state.as_deref() {
             self.settings_plugins.decorate(&mut view.values, model);
             self.settings_knowledge.decorate(&mut view.values, model);
@@ -2510,6 +2554,7 @@ impl App {
         let patch = controller
             .handle(action, &mut view.values, &view.defaults)
             .or_else(|| commit_drag.map(settings_controller::Patch::Rim));
+        let extra_patches = controller.take_patches();
         if let Some(commands) = &self.live_commands {
             commands.observe_knowledge(
                 controller.section == "Knowledge" || !controller.query.trim().is_empty(),
@@ -2578,7 +2623,13 @@ impl App {
             self.request_redraw();
             return;
         }
-        if let Some(patch) = patch {
+        for patch in patch.into_iter().chain(extra_patches) {
+            if let Err(reason) = self.validate_role_edit(&patch) {
+                if let Some(LocalTab::Settings { controller, .. }) = &mut self.local_tab {
+                    controller.error = Some(reason);
+                }
+                continue;
+            }
             match self.preferences.edit(patch) {
                 Ok(request) => match &self.preferences_io {
                     Some(io) => {
@@ -2603,7 +2654,18 @@ impl App {
     fn settings_key(&mut self, key: SettingsKey) {
         use settings_controller::{Action, Focus};
         let action = match key {
+            SettingsKey::Commit => Action::Commit,
+            SettingsKey::Cancel => {
+                if matches!(&self.local_tab, Some(LocalTab::Settings { controller, .. }) if controller.can_cancel())
+                {
+                    Action::Cancel
+                } else {
+                    self.close_local_tab();
+                    return;
+                }
+            }
             SettingsKey::Reload => {
+                self.role_settings.retry();
                 let request = self.preferences.reload();
                 if let Some(io) = &self.preferences_io
                     && let Err(reason) = io.submit(request)
@@ -2655,6 +2717,25 @@ impl App {
         self.settings_action(action);
     }
     fn apply_preferences(&mut self) {
+        self.sync_role_settings();
+        if self.launcher.is_some() {
+            let mut items =
+                launcher_items_for(self.live_state.as_deref(), self.launcher_stage.as_ref());
+            settings_roles::configure_items(
+                &mut items,
+                &self.preferences.preferences.role_catalog(),
+            );
+            settings_destinations::filter(
+                &mut items,
+                &self.preferences.preferences.disabled_destinations,
+                self.live_state
+                    .as_ref()
+                    .map_or(&[], |model| model.hosts.as_slice()),
+            );
+            if let Some(launcher) = &mut self.launcher {
+                launcher.replace_items(preset_launcher_items(items, self.launcher_preset));
+            }
+        }
         let system = self.verify.theme.unwrap_or(self.system_theme);
         self.scene
             .set_appearance(&self.effective_preferences(), system);
@@ -2693,6 +2774,10 @@ impl App {
         }
     }
     fn close_local_tab(&mut self) {
+        if matches!(&self.local_tab, Some(LocalTab::Settings { controller, .. }) if controller.editing())
+        {
+            self.settings_action(settings_controller::Action::Blur);
+        }
         if self.rim_preview.take().is_some() {
             self.apply_preferences();
         }
@@ -3405,6 +3490,19 @@ impl App {
             used,
             self.focus.stage.as_ref(),
         ));
+        if let Some(launcher) = &mut self.launcher {
+            settings_roles::configure_items(
+                &mut launcher.launcher.items,
+                &self.preferences.preferences.role_catalog(),
+            );
+            settings_destinations::filter(
+                &mut launcher.launcher.items,
+                &self.preferences.preferences.disabled_destinations,
+                self.live_state
+                    .as_ref()
+                    .map_or(&[], |model| model.hosts.as_slice()),
+            );
+        }
         self.launcher_layout = None;
         if let Some(window) = &self.window {
             window.set_ime_allowed(true);
@@ -3523,9 +3621,10 @@ impl App {
                         .find(|s| Some(s.id) == swarm)
                 });
                 let fallback = model.map_or("/", |m| m.launch_directory.as_str());
-                let fields = bboxy450_term::spawn_params::resolve(
+                let fields = bboxy450_term::spawn_params::resolve_with_catalog(
                     &harness,
                     &self.preferences.preferences.harnesses,
+                    &self.preferences.preferences.role_catalog(),
                     row,
                     fallback,
                 );
@@ -3573,13 +3672,31 @@ impl App {
                     self.launch_local(&id, modifiers, None);
                     return;
                 }
-                if let Some(message) = spawn_pick(
+                if let Some(mut message) = spawn_pick(
                     &id,
                     modifiers,
                     self.live_state.as_deref(),
                     self.focus.stage.as_ref(),
                 ) && self.live_commands.is_some()
                 {
+                    if !self
+                        .role_settings
+                        .applied(&self.preferences.preferences.role_catalog())
+                    {
+                        self.launch_directory_error = Some(
+                            self.role_settings
+                                .error
+                                .clone()
+                                .unwrap_or_else(|| "Role settings are still being applied".into()),
+                        );
+                        self.request_redraw();
+                        return;
+                    }
+                    if let live::UiMsg::Spawn { role, .. } = &mut message
+                        && !id.contains(":as:")
+                    {
+                        *role = None;
+                    }
                     self.logger
                         .write(format!("launcher default spawn requested: id={id}"));
                     self.queue(message);
@@ -3633,6 +3750,20 @@ impl App {
         if self.live_commands.is_none() || !self.preferences.loaded {
             return;
         }
+        self.sync_role_settings();
+        if !self
+            .role_settings
+            .applied(&self.preferences.preferences.role_catalog())
+        {
+            self.launch_directory_error = Some(
+                self.role_settings
+                    .error
+                    .clone()
+                    .unwrap_or_else(|| "Role settings are still being applied".into()),
+            );
+            self.request_redraw();
+            return;
+        }
         let Some((harness, swarm)) = self.local_launcher_target(id) else {
             return;
         };
@@ -3645,9 +3776,10 @@ impl App {
                     .iter()
                     .find(|s| Some(s.id) == swarm)
             });
-            bboxy450_term::spawn_params::resolve(
+            bboxy450_term::spawn_params::resolve_with_catalog(
                 &harness,
                 &self.preferences.preferences.harnesses,
+                &self.preferences.preferences.role_catalog(),
                 row,
                 model.map_or("/", |m| m.launch_directory.as_str()),
             )
@@ -4754,10 +4886,17 @@ impl App {
                             != swarm_oracle(Some(&state), self.focus.stage.as_ref()))
             });
             if refresh && let Some(launcher) = &mut self.launcher {
-                launcher.replace_items(preset_launcher_items(
-                    launcher_items_for(Some(&state), self.focus.stage.as_ref()),
-                    self.launcher_preset,
-                ));
+                let mut items = launcher_items_for(Some(&state), self.focus.stage.as_ref());
+                settings_roles::configure_items(
+                    &mut items,
+                    &self.preferences.preferences.role_catalog(),
+                );
+                settings_destinations::filter(
+                    &mut items,
+                    &self.preferences.preferences.disabled_destinations,
+                    &state.hosts,
+                );
+                launcher.replace_items(preset_launcher_items(items, self.launcher_preset));
                 self.launcher_layout = None;
             }
             self.scene_dirty = true;
@@ -4789,6 +4928,7 @@ impl App {
                 let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
                 self.live_state = Some(state);
             }
+            self.sync_role_settings();
             if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
                 self.request_attention_read(false);
             }
@@ -5158,7 +5298,12 @@ impl App {
             }
             UiEffect::Graph => Ok(model.e2e.is_some()),
             UiEffect::Preferences { saved } => Ok(self.preferences.loaded
-                && (!*saved || self.preferences.saved() || self.preferences.error.is_some())),
+                && (!*saved
+                    || self.preferences.error.is_some()
+                    || (self.preferences.saved()
+                        && self
+                            .role_settings
+                            .settled(&self.preferences.preferences.role_catalog())))),
             UiEffect::Clock { state, landed } => {
                 if self.clock.revision() == state.revision {
                     // A clock step must not outrun the earlier focus episode whose
@@ -5983,14 +6128,23 @@ impl App {
                         .error
                         .as_deref()
                         .or(controller.error.as_deref())
+                        .or(self.role_settings.error.as_deref())
                         .or(custody_notice);
-                    let status = issue.unwrap_or(if self.preferences.saved() {
-                        "saved"
-                    } else if !self.preferences.loaded {
-                        "loading"
-                    } else {
-                        "saving"
-                    });
+                    let status = issue.unwrap_or(
+                        if self.preferences.saved()
+                            && !self
+                                .role_settings
+                                .applied(&self.preferences.preferences.role_catalog())
+                        {
+                            "applying roles"
+                        } else if self.preferences.saved() {
+                            "saved"
+                        } else if !self.preferences.loaded {
+                            "loading"
+                        } else {
+                            "saving"
+                        },
+                    );
                     let status = if self.focus.stage.as_ref().and_then(|s| s.swarm) != *swarm {
                         format!("{status} · local to original swarm")
                     } else {
@@ -6486,6 +6640,7 @@ impl ApplicationHandler<UiEvent> for App {
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
         self.apply_notification_click();
+        self.sync_role_settings();
         let pending = self.custody.wake_at();
         if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
             self.queue(message);
@@ -6501,6 +6656,7 @@ impl ApplicationHandler<UiEvent> for App {
                 .map(|(_, at)| at + Duration::from_secs(30))
                 .into_iter()
                 .chain(self.custody.wake_at())
+                .chain(self.role_settings.wake_at())
                 .min()
                 .map_or(ControlFlow::Wait, ControlFlow::WaitUntil),
         );
@@ -6906,6 +7062,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::BackendLost(reason) => {
+                self.role_settings.disconnected();
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
@@ -6918,6 +7075,7 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::BackendReady => {
                 self.backend_lost = false;
+                self.sync_role_settings();
                 self.scene.backend_ready();
                 self.conversation_reads(false);
                 self.task_reads();
@@ -9192,6 +9350,7 @@ mod input_tests {
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::NewSwarm(_)
+                | live::UiMsg::ConfigureRoles { .. }
                 | live::UiMsg::SwarmWorkdir { .. }
                 | live::UiMsg::SwarmLaunchDefaults { .. }
                 | live::UiMsg::Close(_)
