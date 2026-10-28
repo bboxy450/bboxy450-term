@@ -1562,7 +1562,7 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
         }
     }
     let mut f = Fixture::new();
-    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[2J\\033[HCWD:%s\\n' \"$PWD\"\nprintf '\\033[48;2;255;0;0m                \\033[0m\\nCOLOR-READY\\n'\nexec /bin/cat\n").unwrap();
+    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[2J\\033[HCWD:%s\\n' \"$PWD\"\nprintf '\\033]11;rgb:20/30/40\\007\\033[48;2;255;0;0m\\033[2K\\033[0m\\nCOLOR-READY\\n'\nexec /bin/cat\n").unwrap();
     f.start();
     let first_swarm = f.ctl(&["ui", "layout"])["swarm"]
         .as_str()
@@ -1685,15 +1685,59 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
             "inactive PTY stayed colorful: {rgb:?}"
         );
     }
+    // Blank terminal pixels and the 8px padding must share a background;
+    // otherwise the inactive wash looks like a thick internal border.
+    let x = rect[0] + rect[2] / 2;
+    let y = rect[1] + rect[3] / 2;
+    let interior = (y * width as usize + x) * 4;
+    for (x, y) in [(rect[0] - 4, y), (x, rect[1] - 4)] {
+        let padding = (y * width as usize + x) * 4;
+        for channel in 0..3 {
+            assert!(
+                faded[padding + channel].abs_diff(faded[interior + channel]) <= 2,
+                "inactive padding differs from terminal background: {:?} vs {:?}",
+                &faded[padding..padding + 4],
+                &faded[interior..interior + 4]
+            );
+        }
+    }
     f.ctl(&["ui", "focus", &first]);
     f.ctl(&["ui", "clock", "advance", "900"]);
     let (_, restored) = capture(&f, "swarm-seat-refocused.png");
-    for i in red {
+    for &i in &red {
         assert_eq!(
             &vivid[i..i + 4],
             &restored[i..i + 4],
             "focus did not restore original cell pixels"
         );
+    }
+    let other = f.spawn("claude", &first_swarm, None);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &other,
+        "--text",
+        "COLOR-READY",
+        "--timeout",
+        "10000",
+    ]);
+    let closed = f.spawn("claude", &second_swarm, None);
+    f.ctl(&["seat", "close", &closed]);
+    // Closing a tab updates backend focus. A subsequent window-local swarm
+    // selection must drive both chrome and PTY paint in the very same frame.
+    for _ in 0..2 {
+        goto_swarm(&f, &first_swarm);
+        let selected = goto_swarm(&f, &second_swarm);
+        assert_eq!(selected["focused"], first);
+        f.ctl(&["ui", "clock", "advance", "900"]);
+        let (_, switched) = capture(&f, "swarm-seat-after-close-switch.png");
+        for &i in &red {
+            assert_eq!(
+                &vivid[i..i + 4],
+                &switched[i..i + 4],
+                "closed tab/swarm switch left the selected terminal dimmed"
+            );
+        }
     }
     for swarm in [&third_swarm, &first_swarm, &second_swarm] {
         goto_swarm(&f, swarm);
@@ -2009,7 +2053,6 @@ exec /bin/cat
         "Large terminal: {bytes} byte styled reply painted on a 320x120 terminal and after UI reattach; same PTY PID/generation"
     );
 }
-
 
 #[test]
 #[ignore = "private ctl vertical sidebar split/PTY/restart fixture"]

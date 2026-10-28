@@ -122,7 +122,32 @@ struct FrameTime {
 pub struct Panes<'a> {
     pub model: &'a Model,
     pub bounds: &'a [(SeatId, Rect)],
+    /// Window-local focus, projected in the same frame as the pane chrome.
+    pub focused: Option<SeatId>,
     pub overlay: Vec<Paint>,
+}
+
+/// Match the terminal group's default background across its padding and the
+/// unused fraction of the last cell. Same sRGB math as chrome/group.wgsl;
+/// the RGBA8 wash is quantized before source-over, just like the GPU target.
+pub fn terminal_background(background: [u8; 4], theme: Theme, focused: bool) -> Color {
+    let source = Color(background.map(|v| f32::from(v) / 255.));
+    if focused {
+        return source;
+    }
+    let wash = Color::hex(theme.palette().bg)
+        .mix(Color::hex(theme.palette().fg_dim), TOKENS.dim.wash as f32);
+    let [r, g, b, _] = source.0;
+    let luma = r * 0.213 + g * 0.715 + b * 0.072;
+    Color(std::array::from_fn(|i| {
+        if i == 3 {
+            1.
+        } else {
+            let filtered = luma + (source.0[i] - luma) * TOKENS.dim.saturate as f32;
+            filtered * TOKENS.dim.opacity as f32
+                + (wash.0[i] * 255.).round() / 255. * (1. - TOKENS.dim.opacity as f32)
+        }
+    }))
 }
 struct CellTexture {
     screen: Arc<Screen>,
@@ -456,8 +481,7 @@ impl Gpu {
             self.cells.draw(
                 &mut self.renderer,
                 &self.target,
-                panes.model,
-                panes.bounds,
+                &panes,
                 scale,
                 &mut encoder,
             )?;
@@ -546,15 +570,20 @@ impl CellTextures {
         &mut self,
         renderer: &mut ChromeRenderer,
         destination: &wgpu::Texture,
-        model: &Model,
-        bounds: &[(SeatId, Rect)],
+        panes: &Panes<'_>,
         scale: f32,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), String> {
+        let Panes {
+            model,
+            bounds,
+            focused,
+            ..
+        } = panes;
         self.0
             .retain(|id, _| bounds.iter().any(|(visible, _)| visible == id));
         let theme = model.ui.window.theme;
-        for (id, rect) in bounds {
+        for (id, rect) in *bounds {
             let (Some(screen), Some(frame)) = (model.screens.get(id), model.frames.get(id)) else {
                 continue;
             };
@@ -606,7 +635,7 @@ impl CellTextures {
                 );
             }
             let cached = self.0.get_mut(id).expect("visible terminal cache");
-            let focused = model.ui.window.stage.focused == Some(*id);
+            let focused = *focused == Some(*id);
             if !focused
                 && cached
                     .dimmed
@@ -799,7 +828,19 @@ impl VerificationFrame {
         completed: SyncSender<(u64, Instant)>,
         wake: impl Fn() + Send + Sync + 'static,
     ) -> Result<Duration, String> {
-        self.draw_layers_notifying(ops, vec![], model, bounds, frame, 450., completed, wake)
+        self.draw_layers_notifying(
+            ops,
+            Panes {
+                model,
+                bounds,
+                focused: model.ui.window.stage.focused,
+                overlay: vec![],
+            },
+            frame,
+            450.,
+            completed,
+            wake,
+        )
     }
 
     /// The windowless driver uses the same foreground-after-pane order as winit.
@@ -810,9 +851,7 @@ impl VerificationFrame {
     pub fn draw_layers_notifying(
         &mut self,
         ops: Vec<Paint>,
-        foreground: Vec<Paint>,
-        model: &Model,
-        bounds: &[(SeatId, Rect)],
+        panes: Panes<'_>,
         frame: u64,
         time_ms: f32,
         completed: SyncSender<(u64, Instant)>,
@@ -843,21 +882,15 @@ impl VerificationFrame {
             &mut encoder,
         )
         .map_err(|e| e.to_string())?;
-        self.cells.draw(
-            &mut self.renderer,
-            &self.target,
-            model,
-            bounds,
-            1.,
-            &mut encoder,
-        )?;
-        if !foreground.is_empty() {
+        self.cells
+            .draw(&mut self.renderer, &self.target, &panes, 1., &mut encoder)?;
+        if !panes.overlay.is_empty() {
             encode_ops(
                 &mut self.renderer,
                 &self.materials,
                 &self.target,
                 &self.backdrop,
-                foreground,
+                panes.overlay,
                 FrameTime {
                     scale: 1.,
                     time_ms,
@@ -1205,6 +1238,13 @@ mod clear_fold_tests {
     /// Paint ops into a fresh 1600x960 target: `folded` folds the clear into the first pass,
     /// else an explicit clear pass runs first (the old path). Pixels and pass counts.
     fn render(ops: Vec<Paint>, folded: bool) -> (Vec<u8>, bbt_render::passes::Counts) {
+        render_with(ops, folded, |_, _, _| {})
+    }
+    fn render_with(
+        ops: Vec<Paint>,
+        folded: bool,
+        after: impl FnOnce(&mut ChromeRenderer, &wgpu::Texture, &mut wgpu::CommandEncoder),
+    ) -> (Vec<u8>, bbt_render::passes::Counts) {
         let [w, h] = [1600, 960];
         let mut renderer = ChromeRenderer::new(crate::assets::images().unwrap()).unwrap();
         let pass = m::Pass::new(&renderer.context.device, FORMAT);
@@ -1236,6 +1276,7 @@ mod clear_fold_tests {
             &mut encoder,
         )
         .unwrap();
+        after(&mut renderer, &target, &mut encoder);
         let counts = bbt_render::passes::take();
         let buffer = renderer
             .context
@@ -1271,6 +1312,60 @@ mod clear_fold_tests {
             .unwrap();
         let pixels = buffer.slice(..).get_mapped_range().unwrap().to_vec();
         (pixels, counts)
+    }
+
+    // keeps: spec ux-prototype §3-4, local focus controls actual PTY pixels
+    #[test]
+    fn cached_terminal_ungrays_with_window_focus_before_backend_focus_catches_up() {
+        let (pixels, _) = render_with(vec![], true, |renderer, target, encoder| {
+            let mut term = bbt_core::Term::new(8, 2, 0);
+            term.advance(b"\x1b[48;2;255;0;0m\x1b[2J\x1b[?25l");
+            let id = SeatId::from_u128(1);
+            let mut model = Model::default();
+            model.screens.insert(
+                id,
+                Arc::new(Screen::from_term(&term, String::new(), None, None)),
+            );
+            let context = Arc::new(DeviceContext {
+                device: renderer.context.device.clone(),
+                queue: renderer.context.queue.clone(),
+                adapter_info: renderer.context.adapter_info.clone(),
+            });
+            model::PanePreparer::new(context)
+                .unwrap()
+                .prepare(&mut model)
+                .unwrap();
+            assert!(model.ui.window.stage.focused.is_none());
+            let mut cache = CellTextures::default();
+            for (x, focused) in [(0., None), (128., Some(id)), (256., None)] {
+                cache
+                    .draw(
+                        renderer,
+                        target,
+                        &Panes {
+                            model: &model,
+                            bounds: &[(id, Rect::new(x, 0., 32., 24.))],
+                            focused,
+                            overlay: vec![],
+                        },
+                        1.,
+                        encoder,
+                    )
+                    .unwrap();
+            }
+        });
+        let pixel = |x: usize| &pixels[(4 * 1600 + x) * 4..(4 * 1600 + x) * 4 + 4];
+        assert_eq!(
+            pixel(132),
+            &[255, 0, 0, 255],
+            "selected cached cells stayed dimmed"
+        );
+        assert_eq!(
+            pixel(4),
+            pixel(260),
+            "refocusing changed the cached inactive pixels"
+        );
+        assert_ne!(pixel(4), pixel(132));
     }
 
     // keeps: spec runtime §4

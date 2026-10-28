@@ -244,6 +244,7 @@ pub struct Scene {
     tree: Option<SplitNode>,
     starting: Option<starting::StartingScene>,
     seat_index: HashMap<SeatId, usize>,
+    terminal_backgrounds: HashMap<SeatId, [u8; 4]>,
     focused: Option<SeatId>,
     live: bool,
     backend_lost: bool,
@@ -418,6 +419,7 @@ impl Scene {
             tree: Some(tree(&fixture["tree"])),
             starting: None,
             seat_index: (0..15).map(|i| (SeatId::from_u128(i as u128), i)).collect(),
+            terminal_backgrounds: HashMap::new(),
             focused: Some(SeatId::from_u128(0)),
             live: false,
             backend_lost: false,
@@ -541,6 +543,7 @@ impl Scene {
             tree: None,
             starting: None,
             seat_index: HashMap::new(),
+            terminal_backgrounds: HashMap::new(),
             focused: None,
             live: true,
             backend_lost: false,
@@ -657,6 +660,15 @@ impl Scene {
             self.layout_revision = self.layout_revision.saturating_add(1);
         }
         self.tree = tree;
+        self.terminal_backgrounds = self.tree.as_ref().into_iter()
+            .flat_map(SplitNode::leaves)
+            .filter_map(|id| {
+                model.screens.get(&id).map(|screen| (
+                    id,
+                    bboxy450_term::model::terminal_background(screen, model.ui.window.theme),
+                ))
+            })
+            .collect();
         self.closed = model
             .ui
             .window
@@ -1572,6 +1584,26 @@ impl Scene {
             let (body, rim) = c::split_rims(c::paint(layout, ctx));
             ops.extend(body);
             rims.extend(rim);
+        }
+        if self.live {
+            // Real PTYs replace the kit's transparent terminal. Carry their
+            // background through the padding without changing cell/rim bounds.
+            let mut padding = DrawList::default();
+            for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
+                if let Slot::Seat(id) = slot
+                    && let Some(term) = named(layout, "pane/term")
+                    && let Some(background) = self.terminal_backgrounds.get(&id)
+                {
+                    padding.rect(
+                        term.rect,
+                        0.,
+                        crate::gpu::terminal_background(
+                            *background, ctx.theme, self.focused() == Some(id),
+                        ),
+                    );
+                }
+            }
+            ops.push(c::Paint::Draw(padding));
         }
         if self.glow {
             ops.extend(rims);

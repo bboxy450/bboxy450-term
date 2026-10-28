@@ -498,9 +498,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         gpu.draw_layers_notifying(
                             base,
-                            foreground,
-                            &model,
-                            &app.pane_bounds,
+                            crate::gpu::Panes {
+                                model: &model,
+                                bounds: &app.pane_bounds,
+                                focused: app.scene.focused(),
+                                overlay: foreground,
+                            },
                             submitted,
                             app.clock_frame.time_ms,
                             completed.clone(),

@@ -1452,6 +1452,10 @@ pub fn draw_pane(screen: &Screen, rect: Rect, ctx: &mut DrawCtx<'_>) {
 fn rgb(value: u32) -> [u8; 4] {
     [(value >> 16) as u8, (value >> 8) as u8, value as u8, 255]
 }
+/// The same default background as the cells, including OSC 11 overrides.
+pub fn terminal_background(screen: &Screen, theme: Theme) -> [u8; 4] {
+    palette(screen, 257, theme)
+}
 fn palette(screen: &Screen, index: usize, theme: Theme) -> [u8; 4] {
     if let Some(v) = screen.palette.get(index)
         && let (Some(r), Some(g), Some(b)) = (v["r"].as_u64(), v["g"].as_u64(), v["b"].as_u64())

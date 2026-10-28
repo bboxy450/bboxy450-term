@@ -6522,6 +6522,7 @@ impl App {
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
                 bounds: &self.pane_bounds,
+                focused: self.scene.focused(),
                 overlay: pane_overlay,
             }),
         )? {

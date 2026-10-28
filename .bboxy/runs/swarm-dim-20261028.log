@@ -1,0 +1,19 @@
+Scope: close-tab/swarm-switch focus restoration and inactive terminal padding seam.
+Base: d3232e5c3d5bda641b37a1d33a1c6ccfbc5e91fb
+gpu.rs/main.rs/headless.rs: pass projected window focus to retained PTY textures;
+the backend window journal may lag the current frame and cannot choose its dim state.
+model.rs/scene.rs: resolve visible terminal backgrounds including OSC 11, then
+paint padding/remainder with the same sRGB saturation/opacity over the gray wash.
+Cell bounds, terminal padding, layout geometry and rim exclusion stay unchanged.
+swarm_workdir.rs: close an extra tab, switch populated swarms twice, compare
+restored PTY pixels, assert inactive padding/interior channels differ by <=2.
+gpu.rs test: hold backend focus stale while toggling local focus on cached red cells.
+Negative: make test-swarm-switch, original padding — exit 2 (test exit 101),
+padding [47,48,61,255] vs terminal [34,35,43,255].
+Negative: make test-swarm-switch, old backend-focus lookup — exit 2 (test exit 101),
+selected cached cells [59,48,56,255] vs required [255,0,0,255].
+make test-swarm-switch check-swarm-switch — exit 0; 160 binary tests passed,
+private ctl/GPU e2e passed, strict all-target Clippy passed.
+Logs: ~/Library/Logs/bboxy450-term/swarm-dim-20261028-{before,focus-negative,final-focused}.log
+Final exact-commit full CI: target/ci-local.log (source/result SHA lines).
+Signed installation/smoke and land.sh receipts are recorded outside tracked source.
