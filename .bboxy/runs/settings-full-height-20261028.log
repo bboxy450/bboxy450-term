@@ -1,0 +1,8 @@
+Scope: Settings fills the full available window stage; preserve sidebar chat reservation and existing Settings controls/scrolling.
+Cause: App.solve_ui passes conversation_layout.height (a sidebar-only dock, roughly45%windowheight) to Scene.settings_page_layout, which subtracts it from both Settings widget height and page frame. This produces the blank lower area in the operator screenshot.
+Fix: Settings no longer accepts a sidebar dock height. Its widget and bounded local frame use window height below title/header only; sidebar chrome continues receiving its dock normally.
+make test-settings-window — exit0;7 appunit checks including light-theme/rim/scroller and12 sidebar-dock/height combinations. Private ctl e2e verifies navigation+viewport reach window bottom525/960/1350, captures all3sizes, opens/cancels newrole, returns to panes. No operator/nativekeystroke injection.
+Captures manually inspected: target/settings-window/short.png andlarge.png; complete nav reachesbottom and newrole control visible atlarge size. Raw fixture outputs ignored/outsideGit.
+make parity-settings — exit0;472 cases,416 required/measured geometry,0unproven/0mismatches;48 existing icon-edge pixel advisories. No web/component design changes.
+The private resize regression is registered in the existing night-boundaries selector. Runtime change is UI geometry only; no process/protocol or harness admission change.
+Final exact-source fullCI, signed install/smoke and scripts/land.sh receipts are emitted by their normal local logs.

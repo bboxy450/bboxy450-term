@@ -1491,17 +1491,18 @@ impl Scene {
     pub fn settings_page_layout(
         &self,
         size: [f32; 2],
-        dock: f32,
         view: &ui::modules::settings::Settings,
         state: &ui::modules::settings::controller::Presentation,
         status: &str,
     ) -> Result<LocalPageLayout, String> {
         let width = (size[0] - self.sidebar_width_for(size)).max(1.);
-        let height = (size[1] - STYLE.spacing.title_bar as f32 - dock - 44.).max(1.);
+        // The conversation dock occupies the sidebar only. Settings owns the
+        // full stage below its title and header, including in tall windows.
+        let height = (size[1] - STYLE.spacing.title_bar as f32 - 44.).max(1.);
         let body = view.element_with(self.ui_context(), &self.metrics, width, height, state);
         let mut page = self.local_page_frame(
             size,
-            dock,
+            0.,
             &format!("Settings · {} · {status}", view.section),
             body,
             0.,
@@ -2911,7 +2912,6 @@ mod launcher_tests {
         let page = scene
             .settings_page_layout(
                 [1600., 960.],
-                180.,
                 &view,
                 &controller.presentation(),
                 "saved",
@@ -2933,7 +2933,7 @@ mod launcher_tests {
             (left - (scene.sidebar_width + 4.)).abs() < 0.01,
             "saved rim must produce its 4 px stage inset"
         );
-        assert!(page.viewport.bottom() <= 780.);
+        assert!((page.viewport.bottom() - 960.).abs() < 0.01);
         assert!(page.settings.as_ref().unwrap().rim.is_some());
         let mut text = String::new();
         fn labels(node: &c::Layout, text: &mut String) {
@@ -2948,6 +2948,41 @@ mod launcher_tests {
         }
         labels(&page.layout, &mut text);
         assert!(text.contains("not yet applied to the window"));
+    }
+
+    // keeps: spec ux-prototype §5 — sidebar chat never reduces Settings height.
+    #[test]
+    fn settings_fills_the_stage_while_sidebar_chat_keeps_its_own_height() {
+        let scene = Scene::new();
+        let preferences = bboxy450_term::settings::Preferences::default();
+        let view = ui::modules::settings::Settings {
+            section: "Roles".into(),
+            values: bboxy450_term::settings::records(None, &preferences),
+            defaults: bboxy450_term::settings::records(None, &preferences),
+            ..Default::default()
+        };
+        let controller = ui::modules::settings::controller::Controller::new("Roles");
+        let mut previous_scroll = f32::INFINITY;
+        for height in [480., 720., 960., 1200.] {
+            let size = [1280., height];
+            let conversation = scene
+                .conversation_layout(size, &Default::default())
+                .unwrap();
+            assert!(conversation.height > 0. && conversation.height < height);
+            let sidebar_height = scene.local_page_chrome(size, 0.).unwrap()[1].rect.h;
+            for dock in [0., 180., conversation.height] {
+                let chrome = scene.local_page_chrome(size, dock).unwrap();
+                assert!((sidebar_height - chrome[1].rect.h - dock).abs() < 0.01);
+                let page = scene
+                    .settings_page_layout(size, &view, &controller.presentation(), "saved")
+                    .unwrap();
+                assert!((page.layout.rect.bottom() - height).abs() < 0.01);
+                assert!((page.viewport.bottom() - height).abs() < 0.01);
+                assert!((named(&page.layout, "side").unwrap().rect.bottom() - height).abs() < 0.01);
+                assert!(page.max_scroll >= 0. && page.max_scroll <= previous_scroll);
+                previous_scroll = page.max_scroll;
+            }
+        }
     }
     // keeps: spec ux-prototype §5
     #[test]

@@ -87,6 +87,12 @@ test-parity:
 	@$(MAKE) test CI_ARGS=--parity
 
 .PHONY: parity-settings
+.PHONY: test-settings-window
+test-settings-window:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) settings_; \
+	BBOXY_SETTINGS_WINDOW_EVIDENCE='$(abspath $(TARGET_DIR))/settings-window' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_uses_full_window_height_after_resizes -- --ignored --exact --nocapture
+
 parity-settings:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \

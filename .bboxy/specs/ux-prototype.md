@@ -4,7 +4,7 @@ type: "spec"
 number: 92
 title: "UX prototype spec — bboxy450-term sidebar and panes"
 created: "2026-10-21T20:07:02Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-28T16:29:21Z"
 ---
 # UX prototype spec — bboxy450-term sidebar and panes
 
@@ -110,6 +110,8 @@ Two ways, same result.
 Either way the placed seat gets focus and the locate signal. Ratios are then adjusted by dragging the gutter (section 2).
 
 ### 5.6 Settings
+
+**Native window sizing (operator, 2026-10-28):** Settings navigation and its content scroller fill the stage to the window bottom, below the title bar and Settings header. The conversation dock reserves space only in the application sidebar; it never shortens the Settings page. Resizing keeps the scroller and picker bounds tied to the current window.
 ⌘, or the Settings row in the launcher opens settings as a tab in the current swarm: a pane with a strip, a left nav with search, and cards in the card material. Sections: Account as a hero around the GPG key (portrait beside the full 40-hex fingerprint grouped in 4s, ed25519 · signing, unlocked · gpg-agent cache, uid, copy fingerprint, trust path GPG primary → certified device key → certified seat key, root held by gpg-agent · never exported, Show paper recovery with its identity-only caption, Link Google for cloud drawn as a link), certified device key cards with revoke (local; peers learn on next contact) and an enroll card that produces a signed request when the primary is elsewhere, a Signatures card (commits on, messages via the seat's leaf key on, seats sign commits off and assumed); Cloud providers as tiles with a connect toggle; SSH machines as rows from `~/.ssh/config`; Roles as cards per role with a built-in chip, default system prompt, may-send-to and an editable priority class (changing class re-issues the role's seat grants), plus a + new role card (name, colour, mark, prompt, send, class); Harnesses as tiles with default role, wake, state source and hooks, plus a + new harness tile (name, command, colour, icon; runs through the PTY adapter); Appearance with theme thumbnails, density previews at real row heights, gutter, glow and subtitle, all applying live; Shortcuts. Read-mostly from `config.toml`: a changed row shows the accent dot and a reset. Opens on Account. Closing the tab needs no grace.
 
 **Native Settings cut (operator, 2026-10-28).** Add roles with name, colour, mark, default prompt and an explicit priority class; save them in the same preferences TOML. Built-in classes remain fixed. Each harness chooses a default from its available roles and can restrict that set; the default cannot be removed. An absent restriction includes newly added eligible roles. Claude accepts worker- or oracle-class roles; Codex, pi and omp accept worker-class roles; zsh keeps `shell`. New launches use the configured prompt, name and role through the existing harness startup context. An acknowledged derived runtime catalog supports launches with no UI present; new UI launches wait for its acknowledgement. Existing seats keep their role and captured launch prompt. Deletion and class changes of in-use roles refuse before preference writes; no grant reissue is claimed by this cut. Messaging permissions and wake/hooks/state capabilities remain observed, read-only data.

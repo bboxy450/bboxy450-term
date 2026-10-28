@@ -597,6 +597,78 @@ fn goto_swarm(fixture: &Fixture, swarm: &str) -> Value {
     frame
 }
 
+// keeps: ux-prototype Settings — sidebar chat never reduces Settings height.
+#[test]
+#[ignore = "private ctl Settings resize/capture boundary; make test-settings-window"]
+fn settings_uses_full_window_height_after_resizes() {
+    fn named<'a>(node: &'a Value, key: &str) -> Option<&'a Value> {
+        if node["kind"].as_str().is_some_and(|kind| {
+            kind == format!("named:{key}") || kind.ends_with(&format!("/{key}"))
+        }) {
+            return Some(node);
+        }
+        node["children"]
+            .as_array()?
+            .iter()
+            .find_map(|child| named(child, key))
+    }
+    let mut fixture = Fixture::new();
+    fixture.start();
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "settings roles");
+    fixture.ctl(&["ui", "key", "enter"]);
+    for (label, size) in [("short", "130x35"), ("tall", "180x64"), ("large", "220x90")] {
+        let frame = fixture.ctl(&["app", "resize", size]);
+        assert_eq!(frame["page"], "settings");
+        let height = frame["size"][1].as_f64().unwrap();
+        let settings = frame["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|node| named(node, "settings"))
+            .expect("retained Settings page");
+        for key in ["side", "main"] {
+            let rect = named(settings, key).unwrap()["rect"]
+                .as_array()
+                .unwrap()
+                .clone();
+            let bottom = rect[1].as_f64().unwrap() + rect[3].as_f64().unwrap();
+            assert!(
+                (bottom - height).abs() < 0.5,
+                "{label} Settings {key} stops at {bottom}, window bottom {height}"
+            );
+        }
+        if let Some(root) = std::env::var_os("BBOXY_SETTINGS_WINDOW_EVIDENCE") {
+            let root = PathBuf::from(root);
+            fs::create_dir_all(&root).unwrap();
+            fixture.ctl(&[
+                "seat",
+                "capture",
+                "window",
+                root.join(format!("{label}.png")).to_str().unwrap(),
+            ]);
+            fs::write(
+                root.join(format!("{label}.json")),
+                serde_json::to_vec_pretty(&frame).unwrap(),
+            )
+            .unwrap();
+        }
+        println!("{label}: Settings navigation and scroll viewport reach window bottom {height}");
+    }
+    let frame = fixture.ctl(&["ui", "layout"]);
+    let add = frame["regions"]["role/new"]
+        .as_array()
+        .expect("new role control visible in tall Settings");
+    assert!(
+        add[1].as_f64().unwrap() + add[3].as_f64().unwrap() <= frame["size"][1].as_f64().unwrap()
+    );
+    click_region(&fixture, "role/new");
+    assert!(fixture.ctl(&["ui", "layout"])["regions"]["role/draft/name"].is_array());
+    click_region(&fixture, "role/draft/cancel");
+    fixture.ctl(&["ui", "key", "esc"]);
+    assert!(fixture.ctl(&["ui", "layout"])["page"].is_null());
+}
+
 // keeps: ux-prototype Settings — saved account roles drive actual harness launches.
 #[test]
 #[ignore = "private ctl app/PTY boundary; make test-settings-roles-e2e"]

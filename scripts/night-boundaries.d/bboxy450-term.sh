@@ -1,6 +1,8 @@
 #!/bin/sh
 # Exact real boundaries for bboxy450-term; append new selectors here.
+# Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 set -eu
+cargo test -p bboxy450-term --locked --test swarm_workdir settings_uses_full_window_height_after_resizes -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test lifecycle lifecycle_real_process_boundary -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test custody custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test r5_stall synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io -- --ignored --exact --nocapture

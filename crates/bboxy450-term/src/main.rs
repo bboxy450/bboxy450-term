@@ -6156,7 +6156,6 @@ impl App {
                     };
                     self.scene.settings_page_layout(
                         logical,
-                        dock,
                         &view,
                         &controller.presentation(),
                         &status,
