@@ -34,12 +34,11 @@ define_class!(
     impl Target {
         #[unsafe(method(activate:))]
         fn activate(&self, sender: &NSMenuItem) {
-            if let Ok(index) = usize::try_from(sender.tag()) {
-                if let Some(action) = Action::ALL.get(index) {
+            if let Ok(index) = usize::try_from(sender.tag())
+                && let Some(action) = Action::ALL.get(index) {
                     // A host panic cannot unwind through Objective-C.
                     let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                         (self.ivars().callback)(*action)));
-                }
             }
         }
     }
