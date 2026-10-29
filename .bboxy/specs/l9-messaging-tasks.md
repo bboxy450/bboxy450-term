@@ -22,7 +22,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-23T18:28:25Z
-updated: "2026-10-29T19:17:39Z"
+updated: "2026-10-29T19:48:09Z"
 ---
 # L9-M — messaging and tasks in the app
 
@@ -182,6 +182,15 @@ and merge by canonical message identity. Preserve confirmed signature / actual
 application-ACK evidence when older history arrives; no transport, native
 submission, pixel or stored-message grade may manufacture model acknowledgement.
 No new per-message wire revision is required for this selected seam.
+
+An authenticated, matched Recent item and canonical row with equal `bus: None`
+may be displayed before event publication, preserving None and conferring no
+Event admission, unread coverage, cursor/pending movement, read mark or ACK.
+Keep ordinary Event stream fences: later actual authorized publication merges
+by canonical message ID/context and its real position without duplicate rows or
+loss of confirmed signature/ACK evidence; require an actual canonical-None →
+actual-Event production witness and a negative control restoring the old None
+rejection before implementation acceptance.
 
 ### Coalescing, pages, failure and lifecycle
 

@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T19:17:39Z"
+updated: "2026-10-29T19:48:09Z"
 ---
 # ICD: logic ↔ GUI
 
@@ -100,3 +100,12 @@ protocol, wire version or budget is selected. Those in signed 9b3769a3 remain
 unselected pending a real counterexample. Identity/snapshot/failure/restart and
 retained-348000/16384 produced-frame/mutation witnesses are specified in #156.
 Implementation supplement #447 and independently verified results remain open.
+
+An authenticated, matched Recent item and canonical row with equal `bus: None`
+may be displayed before event publication, preserving None and conferring no
+Event admission, unread coverage, cursor/pending movement, read mark or ACK.
+Keep ordinary Event stream fences: later actual authorized publication merges
+by canonical message ID/context and its real position without duplicate rows or
+loss of confirmed signature/ACK evidence; require an actual canonical-None →
+actual-Event production witness and a negative control restoring the old None
+rejection before implementation acceptance.
