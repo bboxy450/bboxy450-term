@@ -306,9 +306,7 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
                     | Evidence::NativeWritten
                     | Evidence::ApplicationAcknowledged)
             );
-            row["receipt"]["recipient"] == seat
-                && durable
-                && row["receipt"]["held"].is_null()
+            row["receipt"]["recipient"] == seat && durable && row["receipt"]["held"].is_null()
         }),
         "recipient lacks a real stored receipt: {receipts}"
     );
