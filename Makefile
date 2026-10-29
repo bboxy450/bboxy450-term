@@ -97,6 +97,7 @@ help:
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
 	  'make test-settings-night          Private full R2/G1/G2 Settings proofs and negative controls' \
+	  'make test-notification-copy       Actual native request fields, real waiting/mute and copy mutations' \
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
@@ -549,6 +550,12 @@ test-spawn-wire:
 .PHONY: test-sidebar-accordions check-sidebar-accordions
 .PHONY: test-settings-role-picker-ui test-settings-role-picker check-settings-role-picker
 .PHONY: test-settings-night
+.PHONY: test-notification-copy
+test-notification-copy:
+	@$(MAKE) compile PROFILE=debug
+	@set -eu; . ./scripts/cache-env.sh; \
+	python3 -I -B scripts/e2e/notification_copy_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --target-dir '$(TARGET_DIR)' --out '$(TARGET_DIR)/night-notification-copy'
+
 test-settings-night:
 	@$(MAKE) compile PROFILE=debug
 	@set -eu; . ./scripts/cache-env.sh; \

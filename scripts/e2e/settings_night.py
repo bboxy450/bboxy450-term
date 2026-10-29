@@ -25,7 +25,7 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def run(binary, script, out):
+def run(binary, script, out, native_copy_test=None):
     root = Path(tempfile.mkdtemp(prefix="bset-", dir="/tmp"))
     for name in ("home", "work", "repository", "zsh-config", "bin"):
         (root / name).mkdir(mode=0o700)
@@ -77,6 +77,8 @@ def run(binary, script, out):
         assert len(labels) == 1, "Account did not expose a verified test-account identity"
         env.update(BBT=str(binary), E2E_WORK=str(root / "work"), E2E_APP=str(status["pid"]),
                    BBOXY_CTL_ISSUER=labels[0])
+        if native_copy_test is not None:
+            env["BBOXY_NATIVE_COPY_TEST_BIN"] = str(Path(native_copy_test).resolve(strict=True))
         ctl("ui", "key", "esc")
         with (root / "work/output.log").open("w") as log:
             result = subprocess.run(["/bin/sh", str(script)], env=env, cwd=root / "repository",
@@ -113,7 +115,7 @@ def main():
     scripts = Path(__file__).resolve().parent
     args.out.mkdir(parents=True, exist_ok=True)
     inputs = [scripts / (name + ".sh") for name in args.only]
-    inputs += [scripts / name for name in ("settings.py", "settings_night.py", "rim_more.py", "ui.py", "rim_clock.py")]
+    inputs += [scripts / name for name in ("settings.py", "settings_night.py", "rim_more.py", "ui.py", "rim_clock.py", "lib.sh")]
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=scripts, text=True).strip()
     diff = subprocess.check_output(["git", "diff", "HEAD", "--"], cwd=scripts)
     manifest = {"binary": str(binary), "binary_sha256": digest(binary), "source_head": revision,
