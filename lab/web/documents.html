@@ -34,6 +34,20 @@ D['with a diagram'] = { ...D.spec, path: '.bboxy/specs/mux-daemon.md', title: 'M
 // a real .bboxy doc opens with an H1 equal to its title: the header shows it once; a different first heading stays
 D['title in body'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# bboxy450-term - vision\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
 D['different first heading'] = { ...D.spec, path: '.bboxy/vision.md', title: 'bboxy450-term — vision', body: '# Why a cockpit\n\n## Cockpit first\nReal and local seats, harnesses, messaging, tasks.' };
+D['provenance details'] = {
+  type: 'task', id: '01JAX5N7P8Q9R0S1T2U3V4W5X6', path: '.bboxy/tasks/2026-10-29-retain-session.md', title: 'Keep work attached when a window closes', status: 'running',
+  assignee: 'Rook Ashwhisker', assigneeColor: ROOK, role: 'executor',
+  body: 'Preserve the active session and pending work when the window closes. Reopening the swarm should return to the same seat.',
+  prov: { ...base.prov, updated_by: 'Rook Ashwhisker', updatedColor: ROOK, signed: null },
+  provenanceDetails: {
+    provenance: {
+      digest: 'sha256:' + '3c'.repeat(32), matter_digest: 'a7'.repeat(32), log: '.bboxy/log/2026-10-29.jsonl#1302',
+      sig: 'Rml4dHVyZSBvbmx5OiBub3QgYSB2ZXJpZmllZCBzaWduYXR1cmUuIEZpeGVkIHByb3ZlbmFuY2UgZXZpZGVuY2Uu', signer: 'seat:fixture-executor'
+    },
+    authorship: { created_by: 'seat:fixture-oracle', updated_by: 'seat:fixture-executor', created: '2026-10-29T09:12:00Z', updated: '2026-10-29T10:34:00Z' }
+  }
+};
+D['provenance details expanded'] = D['provenance details'];
 // numbered records (decisions #47, #48): the index a host loads; [[#N]] and [[slug|#N]] resolve against it or read as missing
 const RECS = [[42, 'decision', 'The focus swell replaces the locate ripple', '.bboxy/decisions/d42-focus-swell.md', 'd42-focus-swell'],
   [43, 'decision', 'Alive borders are a kit capability', '.bboxy/decisions/d43-kit-alive-borders.md', 'd43-kit-alive-borders'],
@@ -77,6 +91,6 @@ Lab.page({ title: 'documents', wide: true, note: 'The work-item system from work
       stage.append(C.docModal(doc, { seat: { name: 'Nyx Copperwing' }, onFeed: (d, sel) => console.log('feed', d.path, sel ? 'selection' : 'document'), onClose: () => {} }));
       body.append(stage, el('div', { class: 'lab-note', style: 'padding-top:8px' }, '⌘-click a .md path in a pane, a wikilink in the stream, or a work item in the sidebar or Graph opens this. ⏎ feeds the document into the focused seat as a message and closes; ⌘⏎ feeds only the selection; esc closes; focus returns where it was.')); return;
     }
-    body.append(C.docView({ prov: base.prov, ...d }));
+    body.append(C.docView({ prov: base.prov, ...d }, { provenanceDetailsOpen: s === 'provenance details expanded' }));
   } });
 </script></body></html>
