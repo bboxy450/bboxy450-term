@@ -1395,7 +1395,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 23);
+    assert_eq!(tools.len(), 25);
     assert!(
         tools
             .iter()
@@ -1404,10 +1404,6 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
                 Some("orient" | "self_status" | "seat_list" | "seat_get" | "graph_read")
             ))
             .all(|tool| tool["annotations"]["readOnlyHint"] == true)
-    );
-    assert_eq!(
-        rpc(&mut bridge, 3, "resources/list", json!({}))["error"]["code"],
-        -32601
     );
     let op_id = Ulid::new();
     let params = json!({"name":"orient","arguments":{},"_meta":{"bboxy450/op_id":op_id}});
@@ -1437,6 +1433,191 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
             .parse::<Ulid>()
             .is_ok()
     );
+}
+
+// keeps: plugin-host — discover exact instructions through the admitted root;
+// instructions and cached replies confer no additional authority.
+#[test]
+fn mcp_skills_and_resources_share_exact_root_bound_instructions_and_recheck_admission() {
+    let fixture = Fixture::new();
+    let mut bridge = fixture.bridge(fixture.own.id);
+    for (method, params) in [
+        ("resources/list", json!({})),
+        (
+            "resources/read",
+            json!({"uri":"bboxy://skills/not-initialized"}),
+        ),
+    ] {
+        assert_eq!(rpc(&mut bridge, 0, method, params)["error"]["code"], -32002);
+    }
+    let initialized = rpc(
+        &mut bridge,
+        1,
+        "initialize",
+        json!({
+            "protocolVersion":"2025-11-25","clientInfo":{"name":"skills-fixture","version":"1"},"capabilities":{}
+        }),
+    );
+    assert_eq!(
+        initialized["result"]["capabilities"]["resources"],
+        json!({"listChanged":false,"subscribe":false})
+    );
+    assert!(
+        initialized["result"]["capabilities"]
+            .get("skills")
+            .is_none()
+    );
+    assert_eq!(
+        rpc(&mut bridge, 2, "skills/list", json!({}))["error"]["code"],
+        -32601
+    );
+    let catalogue = rpc(&mut bridge, 3, "tools/list", json!({}));
+    for name in ["skill_list", "skill_read"] {
+        let tool = catalogue["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|tool| tool["name"] == name)
+            .unwrap();
+        assert_eq!(tool["annotations"]["readOnlyHint"], true);
+    }
+    // Settle the fixture's real workspace through the ordinary authenticated port.
+    let list = data(fixture.call(fixture.own.id, Ulid::new(), "skill_list", json!({})));
+    assert!(list["provider_error"].is_null());
+    let skills = list["skills"].as_array().unwrap();
+    assert_eq!(
+        skills.len(),
+        2,
+        "only the two host guides exist in this private root"
+    );
+    let wire_list = rpc(
+        &mut bridge,
+        4,
+        "tools/call",
+        json!({"name":"skill_list","arguments":{}}),
+    );
+    assert_eq!(data(wire_list["result"].clone())["skills"], list["skills"]);
+    let resources = rpc(&mut bridge, 5, "resources/list", json!({}));
+    assert_eq!(
+        resources["result"]["resources"].as_array().unwrap().len(),
+        skills.len()
+    );
+    let mut saved_read = None;
+    for metadata in skills {
+        let uri = metadata["uri"].as_str().unwrap();
+        assert!(uri.starts_with("bboxy://skills/"));
+        assert!(!metadata["root_id"].as_str().unwrap().is_empty());
+        assert!(!metadata["origin"].as_str().unwrap().is_empty());
+        let resource = resources["result"]["resources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|resource| resource["uri"] == uri)
+            .unwrap();
+        assert_eq!(resource["name"], metadata["name"]);
+        assert_eq!(resource["description"], metadata["description"]);
+        assert_eq!(resource["mimeType"], "text/markdown");
+        let expected = match metadata["name"].as_str().unwrap() {
+            "bboxy450" => bboxy450_harness_wake_up::launch::render_skill(
+                include_str!("../src/adapters/skills/bboxy450/SKILL.md"),
+                &serde_json::to_string(&fixture.own.role.name).unwrap(),
+                &serde_json::to_string(&fixture.own.role.class).unwrap(),
+            ),
+            "knowledge-base" => {
+                include_str!("../src/knowledge/skills/knowledge-base/SKILL.md").into()
+            }
+            name => panic!("unexpected host guide {name}"),
+        };
+        assert_eq!(metadata["size"], expected.len());
+        assert_eq!(
+            metadata["digest"],
+            format!("sha256:{}", bbt_mux::store::digest(expected.as_bytes()))
+        );
+        let op = Ulid::new();
+        let params =
+            json!({"name":"skill_read","arguments":{"uri":uri},"_meta":{"bboxy450/op_id":op}});
+        let read = rpc(&mut bridge, 6, "tools/call", params.clone());
+        let content = data(read["result"].clone())["skill"].clone();
+        assert_eq!(content["content"], expected);
+        let mut returned_metadata = content;
+        returned_metadata.as_object_mut().unwrap().remove("content");
+        assert_eq!(&returned_metadata, metadata);
+        assert_eq!(
+            rpc(&mut bridge, 7, "tools/call", params.clone())["result"],
+            read["result"]
+        );
+        let resource_read = rpc(&mut bridge, 8, "resources/read", json!({"uri":uri}));
+        assert_eq!(
+            resource_read["result"]["contents"],
+            json!([{"uri":uri,"mimeType":"text/markdown","text":expected}])
+        );
+        saved_read = Some((uri.to_owned(), params));
+    }
+    for uri in [
+        "file:///etc/passwd",
+        "bboxy://skills/../../SKILL.md",
+        "bboxy://skills/unknown/SKILL.md",
+    ] {
+        let refused = rpc(
+            &mut bridge,
+            9,
+            "tools/call",
+            json!({"name":"skill_read","arguments":{"uri":uri}}),
+        );
+        assert_eq!(refused["result"]["isError"], true);
+        assert!(
+            refused["result"]["structuredContent"]
+                .get("skill")
+                .is_none()
+        );
+        assert_eq!(
+            rpc(&mut bridge, 10, "resources/read", json!({"uri":uri}))["error"]["code"],
+            -32002
+        );
+    }
+    let (uri, cached) = saved_read.unwrap();
+    // Another private swarm's new root has its own host guides; it cannot borrow
+    // an opaque URI from this root, even though the guide names are the same.
+    let other = fixture._temp.path().join("other-skills-root");
+    std::fs::create_dir_all(other.join(".bboxy")).unwrap();
+    fixture
+        .registry()
+        .update_swarm_workdir(fixture.outside.swarm, Some(other.to_str().unwrap()))
+        .unwrap();
+    let outside = data(fixture.call(fixture.outside.id, Ulid::new(), "skill_list", json!({})));
+    assert_ne!(outside["skills"][0]["root_id"], skills[0]["root_id"]);
+    assert_eq!(
+        fixture.call(
+            fixture.outside.id,
+            Ulid::new(),
+            "skill_read",
+            json!({"uri":uri})
+        )["isError"],
+        true
+    );
+    fixture
+        .registry()
+        .update(fixture.own.id, |seat| {
+            seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    let refused = rpc(&mut bridge, 11, "tools/call", cached);
+    assert!(
+        refused.get("error").is_some() || refused["result"]["isError"] == true,
+        "revoked admission returned cached instructions: {refused}"
+    );
+    assert!(
+        refused["result"]["structuredContent"]
+            .get("skill")
+            .is_none()
+    );
+    let refused = rpc(&mut bridge, 12, "resources/read", json!({"uri":uri}));
+    assert!(
+        refused.get("error").is_some(),
+        "revoked resource admission returned instructions: {refused}"
+    );
+    assert!(refused["result"].get("contents").is_none());
 }
 
 // keeps: spec mcp-control-plane
