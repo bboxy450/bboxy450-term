@@ -567,6 +567,7 @@ impl Messaging {
             &request,
             Request::Send { .. }
                 | Request::List { .. }
+                | Request::Recent { .. }
                 | Request::Receipts { .. }
                 | Request::Acknowledge { .. }
                 | Request::Ls { .. }
@@ -616,6 +617,57 @@ impl Messaging {
                     Ok(Response::Messages { page })
                 }
             },
+            Request::Recent {
+                channel,
+                before,
+                limit,
+            } => {
+                let Source::Operator(source) = source else {
+                    return Err(invalid("recent messages require operator authority"));
+                };
+                let channel = channel
+                    .map(|path| super::tree::normalize(&path, true))
+                    .transpose()?;
+                if let Some(path) = &channel {
+                    self.swarm(swarm)?.tree.check(
+                        Actor::Operator,
+                        path.trim_end_matches("/**").trim_end_matches("/*"),
+                        Right::Read,
+                    )?;
+                }
+                let page = self.swarm(swarm)?.ledger.recent_for(
+                    channel.is_none().then_some(source.reference.recipient()),
+                    channel.as_deref(),
+                    before,
+                    limit,
+                )?;
+                let rows = page
+                    .items
+                    .iter()
+                    .map(|message| self.operator_message_row(swarm, message.view().id))
+                    .collect::<Result<Vec<_>>>()?;
+                let mut response = Response::Recent {
+                    page,
+                    rows,
+                    projected_at: crate::store::now_ms(),
+                };
+                while serde_json::to_vec(&response)?.len() > 512 * 1024 {
+                    let Response::Recent { page, rows, .. } = &mut response else {
+                        unreachable!()
+                    };
+                    if page.items.len() <= 1 {
+                        return Err(invalid(
+                            "recent message exceeds response byte limit; original retained",
+                        ));
+                    }
+                    // Keep the newest suffix; the exclusive older cursor includes
+                    // every whole signed message trimmed from this response.
+                    page.items.remove(0);
+                    rows.remove(0);
+                    page.next = Some(page.items[0].sequence);
+                }
+                Ok(response)
+            }
             Request::Receipts {
                 message,
                 after,
@@ -3090,6 +3142,250 @@ mod reference_tests {
         fn verify(&self, _: &Envelope) -> Result<()> {
             Err(invalid("pending has no author"))
         }
+    }
+
+    fn recent_fixture() -> (tempfile::TempDir, Messaging, SeatRecord) {
+        let root = tempfile::tempdir().unwrap();
+        let registry =
+            Registry::new(SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap());
+        let recipient = SeatRecord::new(Ulid::new(), Ulid::new(), "recent fixture", "zsh");
+        registry.insert(&recipient).unwrap();
+        let messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
+        (root, messaging, recipient)
+    }
+    fn recent(
+        messaging: &mut Messaging,
+        swarm: Ulid,
+        channel: Option<String>,
+        before: Option<u64>,
+        limit: usize,
+    ) -> super::super::api::Response {
+        messaging
+            .request_operator_pending(
+                None,
+                &Default::default(),
+                swarm,
+                super::super::api::Request::Recent {
+                    channel,
+                    before,
+                    limit,
+                },
+                1_000_000,
+            )
+            .unwrap()
+    }
+    fn pending_text(messaging: &mut Messaging, recipient: &SeatRecord, text: &str) -> Ulid {
+        let request = SendRequest::text(format!("seats/{}/inbox", recipient.id), text);
+        let id = request.id;
+        assert!(matches!(
+            messaging
+                .request_operator_pending(
+                    None,
+                    &Default::default(),
+                    recipient.swarm,
+                    super::super::api::Request::Send { message: request },
+                    1000
+                )
+                .unwrap(),
+            super::super::api::Response::Stored { .. }
+        ));
+        id
+    }
+
+    #[test]
+    fn recent_operator_read_pages_latest_messages_despite_receipt_traffic_and_refuses_seats() {
+        use super::super::api::{Request, Response};
+        let (_root, mut messaging, recipient) = recent_fixture();
+        let ids: Vec<_> = (0..4)
+            .map(|number| pending_text(&mut messaging, &recipient, &format!("recent-{number}")))
+            .collect();
+        // Repeated native recipient-store outcomes create real receipt history;
+        // newest messages remain in their own ledger index rather than the bus tail.
+        for attempt in 0..140 {
+            let now = 10_000 + attempt * 10_000;
+            let work = messaging
+                .prepare(recipient.swarm, recipient.id, now)
+                .unwrap()
+                .unwrap();
+            messaging
+                .finish(
+                    recipient.swarm,
+                    &work,
+                    &WakeOutcome {
+                        evidence: crate::adapters::Evidence::RecipientStored,
+                        native_id: None,
+                        note: "receipt-heavy fixture".into(),
+                    },
+                    now + 1,
+                    false,
+                )
+                .unwrap();
+        }
+        assert!(
+            messaging
+                .swarm(recipient.swarm)
+                .unwrap()
+                .ledger
+                .receipt_events(ids[0], recipient.id, None)
+                .unwrap()
+                .len()
+                > 128
+        );
+        let Response::Recent {
+            page,
+            rows,
+            projected_at,
+        } = recent(&mut messaging, recipient.swarm, None, None, 2)
+        else {
+            panic!("recent response")
+        };
+        assert!(projected_at > 0);
+        assert_eq!(
+            page.items
+                .iter()
+                .map(|item| item.view().id)
+                .collect::<Vec<_>>(),
+            ids[2..]
+        );
+        assert_eq!(rows.iter().map(|row| row.id).collect::<Vec<_>>(), ids[2..]);
+        assert!(
+            rows.iter()
+                .all(|row| row.signature == bbt_proto::messaging::SignatureState::Pending)
+        );
+        let before = page.next.expect("older messages remain");
+        assert_eq!(before, page.items[0].sequence);
+        let Response::Recent { page, rows, .. } =
+            recent(&mut messaging, recipient.swarm, None, Some(before), 2)
+        else {
+            unreachable!()
+        };
+        assert_eq!(
+            page.items
+                .iter()
+                .map(|item| item.view().id)
+                .collect::<Vec<_>>(),
+            ids[..2]
+        );
+        assert_eq!(rows.iter().map(|row| row.id).collect::<Vec<_>>(), ids[..2]);
+        assert!(page.items.iter().all(|item| item.sequence < before));
+        assert_eq!(page.next, None);
+        let channel = format!("seats/{}/inbox", recipient.id);
+        let Response::Recent { page, .. } =
+            recent(&mut messaging, recipient.swarm, Some(channel), None, 128)
+        else {
+            unreachable!()
+        };
+        assert_eq!(page.items.len(), 4);
+        for operator in [false, true] {
+            let error = messaging
+                .request(
+                    recipient.id,
+                    1,
+                    Request::Recent {
+                        channel: None,
+                        before: None,
+                        limit: 2,
+                    },
+                    operator,
+                    None,
+                    1_000_000,
+                )
+                .unwrap_err();
+            assert!(error.to_string().contains("operator authority"));
+        }
+        for limit in [0, 129] {
+            assert!(
+                messaging
+                    .request_operator_pending(
+                        None,
+                        &Default::default(),
+                        recipient.swarm,
+                        Request::Recent {
+                            channel: None,
+                            before: None,
+                            limit
+                        },
+                        1_000_000
+                    )
+                    .is_err()
+            );
+        }
+        assert!(
+            messaging
+                .request_operator_pending(
+                    None,
+                    &Default::default(),
+                    recipient.swarm,
+                    Request::Recent {
+                        channel: Some("../private".into()),
+                        before: None,
+                        limit: 2
+                    },
+                    1_000_000
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn recent_complete_response_fits_bytes_without_truncating_messages_or_losing_older_cursor() {
+        use super::super::api::Response;
+        let (_root, mut messaging, recipient) = recent_fixture();
+        let text = "x".repeat(bbt_proto::messaging::MAX_TEXT);
+        let ids: Vec<_> = (0..36)
+            .map(|_| pending_text(&mut messaging, &recipient, &text))
+            .collect();
+        let response = recent(&mut messaging, recipient.swarm, None, None, 128);
+        assert!(serde_json::to_vec(&response).unwrap().len() <= 512 * 1024);
+        let Response::Recent { page, rows, .. } = response else {
+            unreachable!()
+        };
+        assert!(!page.items.is_empty() && page.items.len() < ids.len());
+        assert_eq!(rows.len(), page.items.len());
+        assert_eq!(page.items.last().unwrap().view().id, *ids.last().unwrap());
+        assert_eq!(page.next, Some(page.items[0].sequence));
+        assert!(rows.iter().all(|row| row.text == text));
+        let mut seen: Vec<_> = page.items.iter().map(|item| item.view().id).collect();
+        let mut before = page.next;
+        while let Some(cursor) = before {
+            let response = recent(&mut messaging, recipient.swarm, None, Some(cursor), 128);
+            assert!(serde_json::to_vec(&response).unwrap().len() <= 512 * 1024);
+            let Response::Recent { page, rows, .. } = response else {
+                unreachable!()
+            };
+            assert_eq!(rows.len(), page.items.len());
+            assert!(page.items.iter().all(|item| item.sequence < cursor));
+            let older: Vec<_> = page.items.iter().map(|item| item.view().id).collect();
+            assert!(!older.is_empty());
+            seen.splice(0..0, older);
+            before = page.next;
+            assert!(seen.len() <= ids.len());
+        }
+        assert_eq!(
+            seen, ids,
+            "exclusive cursor recovers every whole message exactly once"
+        );
+        let other = SeatRecord::new(Ulid::new(), recipient.swarm, "empty filtered inbox", "zsh");
+        messaging.registry.insert(&other).unwrap();
+        messaging.sync_seat(&other).unwrap();
+        let channel = Some(format!("seats/{}/inbox", other.id));
+        let Response::Recent { page, rows, .. } =
+            recent(&mut messaging, recipient.swarm, channel.clone(), None, 128)
+        else {
+            unreachable!()
+        };
+        assert!(page.items.is_empty() && rows.is_empty());
+        let cursor = page
+            .next
+            .expect("byte-bounded scan must not traverse every unrelated body");
+        assert!(cursor > 1 && cursor < 36);
+        let Response::Recent { page, rows, .. } =
+            recent(&mut messaging, recipient.swarm, channel, Some(cursor), 128)
+        else {
+            unreachable!()
+        };
+        assert!(page.items.is_empty() && rows.is_empty());
+        assert_eq!(page.next, None);
     }
 
     // keeps: spec messaging

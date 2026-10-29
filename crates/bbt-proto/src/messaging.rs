@@ -855,6 +855,13 @@ pub enum Request {
         after: u64,
         limit: usize,
     },
+    /// Operator-only message history, independent of event/receipt traffic.
+    /// `before` is an exclusive ledger sequence; None starts at the newest row.
+    Recent {
+        channel: Option<String>,
+        before: Option<u64>,
+        limit: usize,
+    },
     Receipts {
         message: Ulid,
         after: u64,
@@ -917,6 +924,14 @@ pub enum Response {
     },
     Messages {
         page: Page<StoredMessage>,
+    },
+    /// Items and matching canonical rows are in ascending chronological order.
+    /// `page.next` is an exclusive older cursor at the oldest scanned ledger
+    /// sequence when candidates remain, including byte-bounded empty filtered pages.
+    Recent {
+        page: Page<StoredMessage>,
+        rows: Vec<MessageRow>,
+        projected_at: u64,
     },
     Receipts {
         page: Page<Receipt>,

@@ -1117,6 +1117,66 @@ impl Ledger {
         }
         Ok(Page { items, next })
     }
+    /// Read message rows newest first through the primary-key sequence index;
+    /// receipts live elsewhere and cannot displace the recent conversation.
+    pub(crate) fn recent_for(
+        &self,
+        actor: Option<Recipient>,
+        channel: Option<&str>,
+        before: Option<u64>,
+        limit: usize,
+    ) -> Result<Page<StoredMessage>> {
+        if limit == 0 || limit > 128 {
+            return Err(invalid("message page limit must be 1..128"));
+        }
+        let upper = before
+            .map(sqlint)
+            .transpose()?
+            .map_or(i64::MAX, |seq| seq - 1);
+        let db = self.store.connection()?;
+        let mut q = db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq<=?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) ORDER BY seq DESC LIMIT 257")?;
+        let mut rows = q.query(params![upper, actor.map(|actor| actor.to_string())])?;
+        let mut items = Vec::new();
+        let mut bytes = 0;
+        let mut scanned = 0;
+        let mut through = None;
+        let mut next = None;
+        while let Some(row) = rows.next()? {
+            if scanned >= 256 || items.len() >= limit {
+                next = through;
+                break;
+            }
+            let sequence = u64_at(row, 0)?;
+            let raw: Vec<u8> = row.get(1)?;
+            if scanned > 0 && bytes + raw.len() > 512 * 1024 {
+                next = through;
+                break;
+            }
+            bytes += raw.len();
+            scanned += 1;
+            through = Some(sequence);
+            let message = self.decode_message(sequence, &raw, row.get(2)?)?;
+            let matches_channel = channel.is_none_or(|path| {
+                let context = message
+                    .view()
+                    .context
+                    .trim_end_matches("/**")
+                    .trim_end_matches("/*");
+                let base = path.trim_end_matches("/**").trim_end_matches("/*");
+                context == base
+                    || (path.ends_with("/**")
+                        && context
+                            .strip_prefix(base)
+                            .is_some_and(|rest| rest.starts_with('/')))
+            });
+            if !matches_channel {
+                continue;
+            }
+            items.push(message);
+        }
+        items.reverse();
+        Ok(Page { items, next })
+    }
     pub fn pending_application_ack(&self, recipient: Ulid) -> Result<u64> {
         Ok(self.store.connection()?.query_row(
             "SELECT COUNT(DISTINCT message) FROM msg_deliveries WHERE recipient=?1 AND evidence<>'application-acknowledged'",

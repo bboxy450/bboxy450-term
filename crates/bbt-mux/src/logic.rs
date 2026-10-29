@@ -8132,6 +8132,7 @@ impl Worker {
             &request,
             crate::messaging::api::Request::Send { .. }
                 | crate::messaging::api::Request::List { .. }
+                | crate::messaging::api::Request::Recent { .. }
                 | crate::messaging::api::Request::Receipts { .. }
                 | crate::messaging::api::Request::Acknowledge { .. }
                 | crate::messaging::api::Request::Ls { .. }
@@ -8149,6 +8150,7 @@ impl Worker {
         let mutation = !matches!(
             request,
             crate::messaging::api::Request::List { .. }
+                | crate::messaging::api::Request::Recent { .. }
                 | crate::messaging::api::Request::Receipts { .. }
                 | crate::messaging::api::Request::Ls { .. }
         );

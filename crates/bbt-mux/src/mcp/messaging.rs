@@ -251,6 +251,21 @@ fn id(value: Ulid) -> Result<Ulid, String> {
 }
 /// Adapt the shared GUI record through the same parsers as the MCP tools.
 pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<Request, String> {
+    if let Request::Recent {
+        channel,
+        before,
+        limit,
+    } = &value
+    {
+        if !matches!(actor, Actor::Operator { .. } | Actor::OperatorLocal { .. }) {
+            return Err("recent messages require operator authority".into());
+        }
+        return Ok(Request::Recent {
+            channel: channel.clone().map(|value| path(value, true)).transpose()?,
+            before: *before,
+            limit: tools::page_limit(Some(*limit))?,
+        });
+    }
     if let Request::Mute { seat, .. } = &value {
         if actor.class() != Class::Oracle {
             return Err("tool requires oracle-class authority".into());
@@ -261,6 +276,7 @@ pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<
     let tool = match &value {
         Request::Send { .. } => "message_send",
         Request::List { .. } => "message_list",
+        Request::Recent { .. } => unreachable!("operator recent read handled directly"),
         Request::Receipts { .. } => "message_receipts",
         Request::Acknowledge { .. } => "message_ack",
         Request::Ls { .. } => "ch_ls",
