@@ -554,9 +554,17 @@ impl TerminalRenderer {
     }
 }
 
-/// Join only explicit ZWJ/skin-tone sequences, preserving parser cell positions.
+/// Join explicit ZWJ/skin-tone sequences and regional-indicator flag pairs,
+/// preserving parser cell positions and styled run boundaries.
 /// Ordinary programming characters remain separate, with ligatures off.
 fn emoji_cluster(grid: &Grid, row: u16, col: u16) -> (String, u16) {
+    let regional = |value: &str| {
+        let mut chars = value.chars();
+        chars
+            .next()
+            .is_some_and(|c| (0x1f1e6..=0x1f1ff).contains(&(c as u32)))
+            && chars.next().is_none()
+    };
     let start = usize::from(row) * usize::from(grid.columns);
     let cell = &grid.cells[start + usize::from(col)];
     let mut text = cell.text.clone();
@@ -568,7 +576,8 @@ fn emoji_cluster(grid: &Grid, row: u16, col: u16) -> (String, u16) {
             .chars()
             .next()
             .is_some_and(|c| (0x1f3fb..=0x1f3ff).contains(&(c as u32)));
-        if !(text.ends_with('\u{200d}') || modifier)
+        let flag_pair = regional(&text) && regional(&next.text);
+        if !(text.ends_with('\u{200d}') || modifier || flag_pair)
             || next.width == 0
             || next.bold != cell.bold
             || next.italic != cell.italic
@@ -876,6 +885,50 @@ mod tests {
                 "font rasterization changed after moving threads at {scale}x"
             );
         }
+    }
+
+    // keeps: terminal native emoji — actual parser cells form one flag per indicator pair.
+    #[test]
+    fn regional_indicator_pairs_join_from_real_parser_cells_without_eating_following_text() {
+        use bbt_core::{Column, Line, Term, term::cell::Flags};
+        let mut term = Term::new(8, 1, 0);
+        term.advance("🇺🇦🇯🇵x🇨".as_bytes());
+        let cells = (0..8)
+            .map(|column| {
+                let cell = &term.grid()[Line(0)][Column(column)];
+                let flags = cell.flags;
+                let width = if flags.contains(Flags::WIDE_CHAR_SPACER) {
+                    0
+                } else if flags.contains(Flags::WIDE_CHAR) {
+                    2
+                } else {
+                    1
+                };
+                Cell {
+                    text: if width == 0 {
+                        String::new()
+                    } else {
+                        std::iter::once(cell.c)
+                            .chain(cell.zerowidth().unwrap_or_default().iter().copied())
+                            .collect()
+                    },
+                    width,
+                    ..Default::default()
+                }
+            })
+            .collect();
+        let mut grid = Grid {
+            columns: 8,
+            rows: 1,
+            cells,
+            cursor: None,
+        };
+        assert_eq!(emoji_cluster(&grid, 0, 0), ("🇺🇦".into(), 2));
+        assert_eq!(emoji_cluster(&grid, 0, 2), ("🇯🇵".into(), 2));
+        assert_eq!(emoji_cluster(&grid, 0, 4), ("x".into(), 1));
+        assert_eq!(emoji_cluster(&grid, 0, 5), ("🇨".into(), 1));
+        grid.cells[1].italic = true;
+        assert_eq!(emoji_cluster(&grid, 0, 0), ("🇺".into(), 1));
     }
 
     // keeps: spec renderer §1/§1b/§4.2 — terminal placement, atlas generations and immutable native fonts
