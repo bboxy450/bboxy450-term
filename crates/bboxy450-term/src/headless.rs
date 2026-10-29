@@ -547,6 +547,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                 wake.unpark();
                             },
                         )?;
+                        app.remember_terminal_frame();
                         if app.ui_observe {
                             app.frame_observations.produced(
                                 submitted,

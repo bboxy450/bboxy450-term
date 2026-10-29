@@ -598,6 +598,7 @@ pub(crate) fn source_guard() {
                 "PhysicalKey",
                 "logical_key",
                 "KeyboardInput",
+                "shortcut_key(",
             ] {
                 assert!(
                     !source.contains(token),

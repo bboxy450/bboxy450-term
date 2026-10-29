@@ -12,7 +12,10 @@ use bbt_proto::{
     gui::{UiRenderedScreen, UiScreenIngestion},
 };
 
-use crate::model::{Model, PreparedScreen};
+use crate::{
+    model::{Model, PreparedScreen},
+    terminal_selection::Display,
+};
 
 struct Ingress {
     view: View,
@@ -25,9 +28,22 @@ struct Ingress {
 pub struct Frames {
     submitted: u64,
     panes: BTreeMap<SeatId, Ingress>,
+    displayed: BTreeMap<SeatId, Display>,
 }
 
 impl Frames {
+    /// Only a successful native/headless frame submission calls this. One Arc per visible
+    /// terminal body, replaced rather than accumulated; ordinary ingestion never changes it.
+    pub fn record_displayed(&mut self, displays: impl IntoIterator<Item = Display>) {
+        self.displayed = displays
+            .into_iter()
+            .map(|display| (display.seat, display))
+            .collect();
+    }
+    pub fn displayed(&self, seat: SeatId) -> Option<&Display> {
+        self.displayed.get(&seat)
+    }
+
     /// Called when the GUI owner takes a prepared publication, not when ctl
     /// subsequently asks for it. Metadata-only publications keep the old origin.
     pub fn ingest(&mut self, model: &Model) {
@@ -182,6 +198,37 @@ mod tests {
             .unwrap()
     }
 
+    #[test]
+    fn terminal_selection_uses_last_drawn_source_until_a_new_frame_and_retires_hidden_panes() {
+        let seat = SeatId::from_u128(1);
+        let mut frames = Frames::default();
+        let old = model(7);
+        let source = &old.prepared_screens[&seat];
+        let display = Display {
+            seat,
+            view: source.baseline.unwrap().0,
+            screen: source.screen.clone(),
+            rect: bbt_ui_model::layout::Rect::new(0., 0., 30., 20.),
+            cell: [10., 20.],
+            historical_row: None,
+        };
+        frames.record_displayed([display.clone()]);
+        let mut next = model(8);
+        Arc::make_mut(&mut next.prepared_screens.get_mut(&seat).unwrap().screen).cells[0][0].c =
+            'X';
+        frames.ingest(&next);
+        assert!(Arc::ptr_eq(
+            &frames.displayed(seat).unwrap().screen,
+            &source.screen
+        ));
+        assert_eq!(frames.displayed(seat).unwrap().screen.cells[0][0].c, 'A');
+        let mut drawn = display;
+        drawn.screen = next.prepared_screens[&seat].screen.clone();
+        frames.record_displayed([drawn]);
+        assert_eq!(frames.displayed(seat).unwrap().screen.cells[0][0].c, 'X');
+        frames.record_displayed([]);
+        assert!(frames.displayed(seat).is_none());
+    }
     #[test]
     fn next_produced_frame_keeps_its_ingestion_and_actual_prepared_text() {
         let seat = SeatId::from_u128(1);

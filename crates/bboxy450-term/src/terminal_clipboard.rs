@@ -8,47 +8,28 @@
 use crate::*;
 use bboxy450_term::terminal_selection::Display;
 
-fn copy_chord(input: &keyboard::Input<'_>, selected: bool) -> bool {
-    selected
-        && input.state.is_pressed()
-        && input.modifiers.state == ModifiersState::SUPER
-        && keyboard::shortcut_key(input) == Some('c')
-}
 impl App {
-    pub(super) fn terminal_display(&self, seat: SeatId) -> Option<Display> {
-        if self.app_overlays.open()
-            || self.document.open
-            || self.launcher.is_some()
-            || self.local_tab.is_some()
-            || self.composer.view.focus
-            || self.reject_focus
-        {
-            return None;
-        }
+    /// Build the source/geometry that this frame will actually encode, including a retained
+    /// old live frame during font resize. Historical fallback without its row is unavailable.
+    fn prepared_terminal_display(&self, seat: SeatId) -> Option<Display> {
         let model = self.live_state.as_ref()?;
-        let focused = self
-            .focus
-            .stage
-            .as_ref()
-            .unwrap_or(&model.ui.window.stage)
-            .focused;
-        if focused != Some(seat) {
-            return None;
-        }
         let body = self.pane_bounds.iter().find(|(id, _)| *id == seat)?.1;
         let prepared = model.prepared_screens.get(&seat)?;
         let frame = model.frames.get(&seat)?;
-        let screen = &prepared.screen;
-        let view = model.screen_baselines.get(&seat)?.0;
-        let desired = model
-            .history
-            .get(&seat)
-            .map_or(model.screens.get(&seat)?, |h| &h.screen);
-        if !Arc::ptr_eq(screen, desired)
-            || view.generation != model.ui.seats.get(&seat)?.process_generation
-        {
+        if body.w <= 0. || body.h <= 0. {
             return None;
         }
+        let screen = &prepared.screen;
+        let (view, historical_row) = match prepared.baseline {
+            Some((view, _)) => (view, None),
+            None => {
+                let history = model.history.get(&seat)?;
+                if !Arc::ptr_eq(screen, &history.screen) {
+                    return None;
+                }
+                (model.screen_baselines.get(&seat)?.0, Some(history.top_row))
+            }
+        };
         let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
         let cell = [
             frame.width as f32 / screen.cols as f32 / scale,
@@ -59,7 +40,7 @@ impl App {
             view,
             screen: screen.clone(),
             cell,
-            historical_row: model.history.get(&seat).map(|h| h.top_row),
+            historical_row,
             rect: Rect::new(
                 body.x,
                 body.y,
@@ -67,6 +48,63 @@ impl App {
                 body.h.min(frame.height as f32 / scale),
             ),
         })
+    }
+    fn terminal_context(&self, seat: SeatId) -> bool {
+        if self.app_overlays.open()
+            || self.document.open
+            || self.launcher.is_some()
+            || self.local_tab.is_some()
+            || self.composer.view.focus
+            || self.reject_focus
+        {
+            return false;
+        }
+        self.live_state.as_ref().is_some_and(|model| {
+            self.focus
+                .stage
+                .as_ref()
+                .unwrap_or(&model.ui.window.stage)
+                .focused
+                == Some(seat)
+        })
+    }
+    /// Input reads the last successful frame, never a newer not-yet-drawn publication.
+    pub(super) fn terminal_display(&self, seat: SeatId) -> Option<Display> {
+        if !self.terminal_context(seat) {
+            return None;
+        }
+        let model = self.live_state.as_ref()?;
+        let drawn = self.frame_observations.displayed(seat)?;
+        let view = model.screen_baselines.get(&seat)?.0;
+        let body = self.pane_bounds.iter().find(|(id, _)| *id == seat)?.1;
+        if drawn.view != view
+            || view.generation != model.ui.seats.get(&seat)?.process_generation
+            || drawn.historical_row != model.history.get(&seat).map(|h| h.top_row)
+            || drawn.rect.x != body.x
+            || drawn.rect.y != body.y
+            || drawn.rect.w > body.w
+            || drawn.rect.h > body.h
+        {
+            return None;
+        }
+        Some(drawn.clone())
+    }
+    /// At most one shared screen Arc per visible terminal body; hidden panes retire on this
+    /// successful frame. No history lines or second model snapshot are retained here.
+    pub(super) fn remember_terminal_frame(&mut self) {
+        let displays: Vec<_> = self
+            .pane_bounds
+            .iter()
+            .filter_map(|(seat, _)| self.prepared_terminal_display(*seat))
+            .collect();
+        self.frame_observations.record_displayed(displays);
+        if let Some(seat) = self.terminal_selection.seat() {
+            if let Some(display) = self.terminal_display(seat) {
+                self.terminal_selection.refresh(&display);
+            } else {
+                self.terminal_selection.clear();
+            }
+        }
     }
     pub(super) fn begin_terminal_selection(&mut self, seat: SeatId, at: [f32; 2]) {
         self.terminal_selection.clear();
@@ -96,9 +134,6 @@ impl App {
         let display = self.terminal_display(self.terminal_selection.seat()?)?;
         self.terminal_selection.text(&display)
     }
-    pub(super) fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
-        copy_chord(input, self.terminal_copy_text().is_some())
-    }
     pub(super) fn copy_terminal_selection(&mut self) -> bool {
         let Some(text) = self.terminal_copy_text() else {
             return false;
@@ -118,14 +153,18 @@ impl App {
         }
         true
     }
-    pub(super) fn paint_terminal_selection(&self) -> Vec<bbt_ui::components::Paint> {
+    pub(super) fn paint_terminal_selection(&mut self) -> Vec<bbt_ui::components::Paint> {
         let Some(display) = self
             .terminal_selection
             .seat()
-            .and_then(|seat| self.terminal_display(seat))
+            .filter(|seat| self.terminal_context(*seat))
+            .and_then(|seat| self.prepared_terminal_display(seat))
         else {
             return vec![];
         };
+        if !self.terminal_selection.refresh(&display) {
+            return vec![];
+        }
         let mut draw = bbt_ui_model::draw::DrawList::default();
         for rect in self.terminal_selection.rectangles(&display) {
             draw.rect(
@@ -135,22 +174,5 @@ impl App {
             );
         }
         vec![bbt_ui::components::Paint::Draw(draw)]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn terminal_selection_copy_chord_does_not_steal_ctrl_c_or_empty_selection() {
-        let mut input = chrome_input("cmd-c").unwrap();
-        assert!(copy_chord(&input, true));
-        assert!(!copy_chord(&input, false));
-        input.modifiers.state = ModifiersState::CONTROL;
-        assert!(!copy_chord(&input, true));
-        assert_eq!(route_key(&input, 0, None), RoutedKey::Terminal(vec![3]));
-        input.modifiers.state = ModifiersState::SUPER;
-        input.state = ElementState::Released;
-        assert!(!copy_chord(&input, true));
     }
 }

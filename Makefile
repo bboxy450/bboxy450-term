@@ -770,6 +770,8 @@ test-terminal-selection:
 	cargo test --locked -p bboxy450-term-desktop-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-term-desktop-macos --target-dir '$(TARGET_DIR)' clipboard_; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib terminal_selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib keyboard_adapter_uses_neutral_core_and_live_modes; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib every_verb_maps_to_exactly_one_window_action; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) selection; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir terminal_selection_ -- --ignored --nocapture
 

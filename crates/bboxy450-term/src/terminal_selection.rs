@@ -112,12 +112,21 @@ impl SelectionState {
                     }))
         })
     }
+    /// Accept unchanged selected cells once per new displayed source. Subsequent idle paint
+    /// and copy validation use Arc identity; incompatible sources are discarded immediately.
+    pub fn refresh(&mut self, display: &Display) -> bool {
+        if !self.valid(display) {
+            self.clear();
+            return false;
+        }
+        self.selected.as_mut().unwrap().display = display.clone();
+        true
+    }
     pub fn extend(&mut self, display: &Display, at: [f32; 2]) -> bool {
         if !self.dragging {
             return false;
         }
-        if !self.valid(display) {
-            self.clear();
+        if !self.refresh(display) {
             return false;
         }
         self.selected.as_mut().unwrap().end = display.point(at);
@@ -291,6 +300,26 @@ mod tests {
         assert_eq!(s.text(&next).as_deref(), Some("abc"));
         Arc::make_mut(&mut next.screen).cells[0][1].c = 'X';
         assert_eq!(s.text(&next), None);
+    }
+    #[test]
+    fn selection_refresh_rebases_accepted_arc_and_discards_overwritten_source() {
+        let d = display(b"abcdef\r\nother", 10, 2);
+        let mut s = select(&d, [0., 1.], [30., 1.]);
+        let mut next = d.clone();
+        Arc::make_mut(&mut next.screen).cursor = (1, 2);
+        assert!(!Arc::ptr_eq(
+            &s.selected.as_ref().unwrap().display.screen,
+            &next.screen
+        ));
+        assert!(s.refresh(&next));
+        assert!(Arc::ptr_eq(
+            &s.selected.as_ref().unwrap().display.screen,
+            &next.screen
+        ));
+        assert_eq!(s.text(&next).as_deref(), Some("abc"));
+        Arc::make_mut(&mut next.screen).cells[0][1].c = 'X';
+        assert!(!s.refresh(&next));
+        assert!(s.selected.is_none());
     }
     #[test]
     fn selection_fences_seat_generation_view_screen_and_geometry_and_mouse_override() {

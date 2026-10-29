@@ -33,3 +33,18 @@ result: layering/cross-os held; core2 + mac clipboard2 tests passed; all-target 
 native probe: assertions verified all17 menu callbacks (including Copy), tray4, owned-window Fill/Zoom/Minimize/Show, disposal, runloop stop
 raw: /tmp/bboxy-selection-native.log
 sha256: 0ce863fbd1efe8a150661ac23552a5f0fc4e56dd49e18a6edc29b7eca656ef18
+
+Root review followup (2026-10-28 PDT)
+- Key classification moved to main.rs router. terminal_copy_chord takes a lazy FnOnce probe; non-Cmd-C/release/Ctrl-C regression closures panic if selection is inspected.
+- keyboard.rs source guard now forbids shortcut_key( outside main.rs/keyboard.rs.
+- SelectionState::refresh accepts and retains a new source Arc once when selected cells are unchanged; pure regression checks the actual Arc identity, then verifies selected overwrite clears it.
+- frame_observation::Frames now keeps one Display/shared screen Arc per actually drawn visible terminal body. Entries replace each successful native/headless submission and hidden panes retire. Model ingestion alone cannot alter the last-drawn source; added pure regression.
+- Copy reads last-drawn source, fenced by current focused seat/View/process generation/history row/body. Paint validates the pending frame once, then uses the Arc fast path. Historical fallback whose viewport row is unavailable is not selectable.
+- Added all four real parse samples and typed request assertions to the existing verb gate: select, shift-select, copy, clipboard-read. No count-only bump.
+command: python3 source scan matching the extended keyboard guard over80 app files, plus assert Cmd-C classification precedes the lazy selected() probe
+exit: 0
+raw: /tmp/bboxy-selection-followup-guard.log
+sha256: e16630e5625a4f5884ad1fe839090a7825a94dbd9237e0000d8aab91e0ffc88f
+command: git diff --check
+exit: 0
+App Rust tests remain for root warm verification; no cold app build performed in this worktree. make test-terminal-selection now includes keyboard source guard and full verb parse coverage tests as well as pure selection/last-drawn and app/e2e cases.

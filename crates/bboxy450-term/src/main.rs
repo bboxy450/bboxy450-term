@@ -1113,6 +1113,12 @@ fn spawn_pick(
     Some(message)
 }
 
+/// Classify first: ordinary keys never inspect or allocate a terminal selection string.
+fn terminal_copy_chord(input: &keyboard::Input<'_>, selected: impl FnOnce() -> bool) -> bool {
+    input.state.is_pressed() && input.modifiers.state == ModifiersState::SUPER
+        && keyboard::shortcut_key(input) == Some('c') && selected()
+}
+
 /// This is the same routing entry point used by winit and the synthetic tests.
 fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> RoutedKey {
     if input.state == ElementState::Released {
@@ -5543,6 +5549,9 @@ impl App {
         self.overlay_outcome(outcome);
         true
     }
+    fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
+        terminal_copy_chord(input, || self.terminal_copy_text().is_some())
+    }
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
     fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
@@ -7248,6 +7257,7 @@ impl App {
                 }
             }
             self.last_presented = Some(std::time::SystemTime::now());
+            self.remember_terminal_frame();
             self.starting_produced(self.meter.total_frames(), &layouts);
             if self.ui_observe {
                 if let Some(model) = &self.live_state {
@@ -12208,6 +12218,22 @@ mod ctl_ui_layout_tests {
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn terminal_selection_copy_classifier_is_lazy_and_keeps_ctrl_c_as_terminal_input() {
+        let mut input = chrome_input("cmd-c").unwrap();
+        assert!(terminal_copy_chord(&input, || true));
+        assert!(!terminal_copy_chord(&input, || false));
+        input.modifiers.state = ModifiersState::CONTROL;
+        assert!(!terminal_copy_chord(&input, || panic!("Ctrl-C must not inspect selection")));
+        assert_eq!(route_key(&input, 0, None), RoutedKey::Terminal(vec![3]));
+        input.modifiers.state = ModifiersState::SUPER;
+        input.state = ElementState::Released;
+        assert!(!terminal_copy_chord(&input, || panic!("release must not inspect selection")));
+        input.state = ElementState::Pressed;
+        input.logical_key = Key::Character("x".into());
+        input.unmodified_key = Key::Character("x".into());
+        assert!(!terminal_copy_chord(&input, || panic!("another key must not inspect selection")));
+    }
     #[test]
     #[allow(
         clippy::disallowed_methods,

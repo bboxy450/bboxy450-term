@@ -2185,6 +2185,15 @@ mod tests {
                 "{noun} {verb}: {action}"
             );
         }
+        for (line, expected) in [
+            ("ui select 10 20 30 40", bbt_proto::gui::UiRequest::TerminalSelect { from: [10, 20], to: [30, 40], shift: false }),
+            ("ui shift-select 10 20 30 40", bbt_proto::gui::UiRequest::TerminalSelect { from: [10, 20], to: [30, 40], shift: true }),
+            ("ui copy", bbt_proto::gui::UiRequest::Copy),
+            ("ui clipboard-read", bbt_proto::gui::UiRequest::ClipboardRead),
+        ] {
+            let parsed = parse_full(&args(line)).unwrap();
+            assert!(matches!(parsed.command, Command::Ui(actual) if actual == expected), "{line}");
+        }
         let parse_samples: Vec<&str> = [
             ui::PARSE_SAMPLES,
             identity::PARSE_SAMPLES,
