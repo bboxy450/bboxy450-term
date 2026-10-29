@@ -1,0 +1,29 @@
+ROLE: EXECUTOR
+Scope: shared terminal idle-checkpoint retry admission; no protocol, lifecycle or recovery-budget change.
+Worktree: /Users/feral/mydev/bboxy450-term-typing-replay
+Base: 243c870be0f7d8b7247fff18f9b9125c724d4c05
+Paths: crates/bbt-mux/src/logic.rs, crates/bbt-mux/tests/checkpoint_scheduling.rs, Makefile, .bboxy/runs/typing-replay-latency.log
+Acceptance: refused idle save leaves fresh PTY echo flowing below R/2R; no false pause; held forced save/100MiB recovery retain bounded debt; real ctl shell input; strict all-target Clippy mux+app.
+Root cause scope: controlled Busy idle-publication mechanism only; original operator episode unproven.
+Mechanism: crates/bbt-mux/src/logic.rs:6412 — failed idle publication previously set checkpoint_requested, which allow_record:6571 treats as a parser barrier; change preserves existing requests and forces retry only for non-idle images.
+Baseline command: make test-terminal-replay TARGET_DIR=target — exit2 (Cargo101), scheduling4passed/1failed; new assertion checkpoint_pauses1!=0. Busy echo215238us, parsed73bytes, refusal gate still enabled.
+Initial fixture build correction: same command initially Cargo101 E0624 private Failure::new; changed fixture to public Failure fields, then baseline above reproduced.
+Provenance: existing root ATTRIBUTION.md already names canonical repository/policy and existing touched source headers carry absolute credit/policy URLs; no external protected implementation reused.
+Remaining risk: run-loop input still defers while an actual checkpoint owns the single leased supervisor stream; this patch does not change that D253 agreement. No normal input-induced checkpoint or equal-size UI resize churn found.
+Fixed command: make test-terminal-replay TARGET_DIR=target — exit0; scheduling5passed/0failed (held forced-save isolation, false pause regression,20MiB backlog idle exclusion,100MiB R/2R debt);4PTY SIGKILL/recovery1passed/0failed; actual ctl zsh screen/type/key/paste/wait1passed/0failed.
+Controlled echo sample: before215238us/1pause; after13048us/0pauses at73parsed bytes,6Busy refusals remained enabled. Samples describe this controlled fixture, not operator latency or an end-to-GPU claim.
+Recovery sample: dirty seat parsed_debt4198400bytes (<16777216), backlog8387598bytes;4seats every_seat_live_ms171.104; owned fixture PIDs reaped.
+make test-licenses — exit0;6license fixtures+9source-notice tests;27workspace crate licenses and retained upstream bytes held; source notice changed0.
+rustfmt --check --edition2024 --config skip_children=true [both touched Rust files] — exit0; git diff --check — exit0.
+Verification paths: crates/bbt-mux/tests/checkpoint_scheduling.rs:345 — controlled Busy gate stays enabled while actual GUI-input receipt and raw PTY echo advance the authoritative parser; pause counter0 and title clear. Makefile:346 — focused regression/recovery/real ctl target; Makefile:352 — strict all-target mux+dependent app check.
+Out of scope/unproven: original operator latency timeline, end-to-GPU latency, dedicated checkpoint stream, resize checkpoint relaxation, stale-image encode ordering. No operator session or account changed.
+make check-terminal-replay TARGET_DIR=target — exit0; strict --all-targets Clippy bboxy450-mux and dependent bboxy450-term, -Dwarnings,46.25s.
+Full make test/exact integrated source: parent integration gate; not run in this writing worktree.
+Source SHA256 Makefile: d85db3f92df7631c5597642c1cfd98a8e3ca63917ca6c0a55638e33885b45fac
+Source SHA256 crates/bbt-mux/src/logic.rs: 3a089d9ad937633e4a34f69b75d01e3b7c9b95ea2c7a9501ecf0e513f76e4ba2
+Source SHA256 crates/bbt-mux/tests/checkpoint_scheduling.rs: c678ec4442257d5a0d0c85f32a957239e7bfedb326c2a972d4196577e3f27185
+Raw evidence /tmp/bboxy450-typing-replay-baseline-compile-error.log SHA256=c70b9360333758e5146bde539e55829e8e8695d65ef3ba29993014eb2bacd8d7
+Raw evidence /tmp/bboxy450-typing-replay-baseline.log SHA256=572e4040a09dc67c787a32ca8267fbade5ff1fa4eb896af7a622ab3829d605d5
+Raw evidence /tmp/bboxy450-typing-replay-fixed.log SHA256=67cdc2372a130d66fbc77c3bb1a19321954ebfe2201bcedea9a0a9c3117768f3
+Raw evidence /tmp/bboxy450-typing-replay-clippy.log SHA256=c1051caea04f6bcf785f1218628dcff5c990b8aae1850151657e12144833506b
+Raw evidence /tmp/bboxy450-typing-replay-licenses.log SHA256=cf888eeb6f040be61647c0b9fd9ac708323c981ab80605d3e7fdfa1fabb2cfde

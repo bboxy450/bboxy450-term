@@ -45,6 +45,8 @@ help:
 	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
+	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make check-terminal-replay       Strict all-target Clippy for mux and app' \
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
@@ -354,6 +356,16 @@ test-checkpoint-resize:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
+
+.PHONY: test-terminal-replay check-terminal-replay
+test-terminal-replay:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test checkpoint_scheduling -- --nocapture; \
+	R5G_SEATS=4 cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test recovery checkpoint_bounded_recovery -- --exact --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl ctl_screen_input_and_wait_drive_a_seat -- --exact --nocapture
+
+check-terminal-replay:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-landing-phases
 test-landing-phases:

@@ -6406,7 +6406,10 @@ impl Worker {
             Err(error)
                 if is_capture_busy(&error) || crate::provider::fake::is_link_down(&error) =>
             {
-                view.checkpoint_requested = true;
+                // Maintenance can retry after catching up again. Preserve a
+                // newer lifecycle request, but do not turn idle backpressure
+                // into a parse barrier for fresh terminal output.
+                view.checkpoint_requested |= !idle;
                 view.checkpoint_retry_at = Instant::now() + Duration::from_millis(200);
             }
             Err(error) => return Err(error),

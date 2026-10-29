@@ -14,7 +14,7 @@ mod common;
 use std::collections::BTreeMap;
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::{Duration, Instant};
 
@@ -33,6 +33,8 @@ const R: u64 = 8 * 1024 * 1024;
 struct SaveGate {
     held: AtomicBool,
     entered: AtomicBool,
+    busy: AtomicBool,
+    refused: AtomicU64,
 }
 
 struct OtherHost(Option<Client>);
@@ -77,6 +79,16 @@ impl SupervisorConnection for HeldOutput {
             Action::PublishCheckpoint { checkpoint, .. } => Some(Saved::decode(checkpoint)?),
             _ => None,
         };
+        if saved.as_ref().is_some_and(|saved| saved.byte_end > 0)
+            && self.gate.busy.load(Ordering::Acquire)
+        {
+            self.gate.refused.fetch_add(1, Ordering::AcqRel);
+            return Err(bbt_mux::Failure {
+                code: bbt_mux::FailureCode::Busy,
+                message: "fixture checkpoint publication is busy".into(),
+            }
+            .into());
+        }
         if saved.as_ref().is_some_and(|saved| saved.byte_end > 0)
             && self.gate.held.load(Ordering::Acquire)
         {
@@ -196,7 +208,7 @@ impl Fixture {
     }
     fn spawn_at(&self, seat: Ulid, bytes: u64, location: Location, go: &str) {
         let go = self.temp.path().join(go);
-        let script = "import os,sys,time\nfrom pathlib import Path\np=Path(sys.argv[1])\nwhile not p.exists(): time.sleep(.01)\nleft=int(sys.argv[2])\nwhile left:\n n=os.write(1,b'x'*min(left,16384)); left-=n\nos.write(1,b'COMPLETE')\ntime.sleep(300)\n";
+        let script = "import os,sys,time,tty\nfrom pathlib import Path\np=Path(sys.argv[1])\nwhile not p.exists(): time.sleep(.01)\ntty.setraw(0)\nleft=int(sys.argv[2])\nwhile left:\n n=os.write(1,b'x'*min(left,16384)); left-=n\nos.write(1,b'COMPLETE')\nwhile True:\n b=os.read(0,1)\n if not b: break\n os.write(1,b)\n";
         let mut spec = LaunchSpec::new("python3", self.temp.path());
         spec.seat = seat;
         spec.args = vec![
@@ -319,12 +331,81 @@ impl Fixture {
 impl Drop for Fixture {
     fn drop(&mut self) {
         self.gate.held.store(false, Ordering::Release);
+        self.gate.busy.store(false, Ordering::Release);
         if let Some(logic) = self.logic.take() {
             let _ = logic.shutdown();
         }
         drop(self.supervisor.take());
         drop(self.other_supervisor.take());
     }
+}
+
+// keeps: decision #253 — idle checkpoint retries never block fresh output.
+#[test]
+fn busy_idle_checkpoint_does_not_pause_a_fresh_pty_echo() {
+    let fixture = Fixture::new();
+    fixture.spawn(fixture.seat, 64);
+    fixture.gate.busy.store(true, Ordering::Release);
+    let (through, end) = fixture.start_and_capture(64);
+    fixture.catch_up(through, end);
+    let until = Instant::now() + Duration::from_secs(10);
+    while fixture.gate.refused.load(Ordering::Acquire) < 6 {
+        assert!(
+            Instant::now() < until,
+            "idle save never exhausted Busy retries"
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let started = Instant::now();
+    fixture.runtime.block_on(async {
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            fixture
+                .logic()
+                .client
+                .gui_input(fixture.seat, 1, Ulid::new(), b"!".to_vec()),
+        )
+        .await
+        .expect("input waited indefinitely behind Busy checkpoint retries")
+        .unwrap();
+    });
+    loop {
+        let snapshot = fixture
+            .runtime
+            .block_on(fixture.logic().client.snapshot(fixture.seat, 1))
+            .unwrap();
+        if snapshot.sequence > through {
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "fresh one-byte echo stopped behind a refused idle save: {:?}",
+            fixture.row(fixture.seat)
+        );
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    assert!(fixture.gate.busy.load(Ordering::Acquire));
+    let row = fixture.row(fixture.seat).unwrap();
+    println!(
+        "Busy idle checkpoint: echo_us={} refused={} parsed_bytes={} checkpoint_pauses={}",
+        started.elapsed().as_micros(),
+        fixture.gate.refused.load(Ordering::Acquire),
+        row.parsed_byte_end,
+        row.checkpoint_pauses
+    );
+    assert_eq!(row.parsed_byte_end, end + 1);
+    assert_eq!(
+        row.checkpoint_pauses, 0,
+        "idle save became a parser barrier"
+    );
+    assert!(!row.checkpoint_paused);
+    let seat = fixture
+        .runtime
+        .block_on(fixture.logic().client.gui_seat(fixture.seat))
+        .unwrap();
+    assert!(!seat.state.title.contains("Replay paused for checkpoint"));
+    fixture.gate.busy.store(false, Ordering::Release);
+    fixture.finish();
 }
 
 // keeps: decision #253
