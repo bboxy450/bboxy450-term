@@ -62,6 +62,83 @@
     "No retained failure of the historical well-formed restart request has established its EOF cause.",
     "The diagnostic regression proves error retention, not the historical EOF repair.",
     "Quarantine row retained; no retries or deadline changes.",
-    "Canonical full gate and signed landing follow this committed source."
-  ]
+    "Corrected-source canonical full gate and signed author landing follow this record."
+  ],
+  "make_boundary": {
+    "mechanism": "Original canonical gate exposed inherited Make target/control fields in the private native-signing fixture. Final repair is owned by fixture_command in crates/bboxy450-term/tests/native_signing.rs under task213. Production Make test/check/boundary recipes retain their original environment behavior; only new narrow targets and short GUI evidence paths remain.",
+    "first_canonical_gate": {
+      "command": "make test",
+      "source": "caecfb23531045b093fcdce372f69495c6ad2282",
+      "exit_code": 2,
+      "log": "/tmp/lumen-gui-ci-local.log",
+      "sha256": "2620c3b01b2454e812190a41b4553a451f2ea6477eb12f16aca09552c0a69d13",
+      "failure": "native_bundle_recipe_installs_the_same_requirement_without_real_signing",
+      "gui_regressions": "both passed; no historical normal-request EOF witness"
+    },
+    "superseded_make_boundary_experiment": [
+      {
+        "command": [
+          "make",
+          "test-make-isolation",
+          "TARGET_DIR=target/checkout-c561eb9fdaeee95e62c3",
+          "TEST_MAKE_ENV="
+        ],
+        "exit_code": 2,
+        "log": "/tmp/lumen-gui-make-env-red.log",
+        "sha256": "5cf909ac1004034d847ae4d47ff7575bb2bb7fd7d4c21549a895cd5996fe9566"
+      },
+      {
+        "command": [
+          "make",
+          "test-make-isolation",
+          "TARGET_DIR=target/checkout-c561eb9fdaeee95e62c3"
+        ],
+        "exit_code": 0,
+        "log": "/tmp/lumen-gui-make-env-green.log",
+        "sha256": "8c2310baeda3ba6fe99ba135cf43fda421375027989fc521901320c954f4572b"
+      }
+    ]
+  },
+  "capacity": {
+    "initial_allocation_gib": 4,
+    "measured_full_gate_peak_gib": 4.5,
+    "oracle_reallocation_message": "01M633FGTGV3MVHCVVMW482V0F",
+    "active_target_allocation_gib": 6,
+    "free_floor_gib": 10,
+    "retired_own_inactive_executables": 140,
+    "retirement_manifest": "/tmp/lumen-gui-retired-products.json",
+    "retirement_sha256": "54d041bc1e1c9692fa96aa2e7ad42bdbe038f735ba7a04d9213f286bbe3484df",
+    "evidence_target_prefix": "target/checkout-c561eb9fdaeee95e62c3"
+  },
+  "exact_source_gui_binaries": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-night-gui-events/target/checkout-c561eb9fdaeee95e62c3/debug/deps/gui_events-04464734845e1649",
+      "sha256": "db2404754860fe16e1e71a2d191cb31d1f07ced450cc99f772a8064cd1fe1693"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-night-gui-events/target/checkout-c561eb9fdaeee95e62c3/debug/deps/gui_events-29cb37402c82d4e4",
+      "sha256": "7def68d3c5db40dd5910c4235f4aaf3f65cef05d3e7d13015aefb38203ebd2bc"
+    }
+  ],
+  "cache_relocation": {
+    "boundary_exit_code": 2,
+    "log": "/tmp/lumen-gui-boundaries-final.log",
+    "mechanism": "Moving target preserved cached executables with the old CARGO_BIN_EXE path; CLI tests failed before spawning. The inactive executables containing the exact old path were invalidated for canonical rebuild.",
+    "invalidated_manifest": "/tmp/lumen-gui-stale-moved-artifacts.json",
+    "evidence_copy": "/tmp/lumen-gui-evidence-3ujs88rm"
+  },
+  "fixture_socket_paths": {
+    "default_target_socket_bytes": 101,
+    "nested_target_socket_bytes": 131,
+    "repair": "Canonical GUI target retains evidence in /tmp so private nested Cargo targets cannot exceed macOS sockaddr_un path bounds."
+  },
+  "superseded_verification": {
+    "source": "4a175da45086716f690f538d79dc3023f44d886e",
+    "boundary_command": "make test-boundaries TARGET_DIR=target/checkout-c561eb9fdaeee95e62c3",
+    "boundary_exit_code": 0,
+    "boundary_log": "/tmp/lumen-gui-boundaries-rebuilt.log",
+    "full_gate_exit_code": 2,
+    "full_gate_disposition": "Intentionally cancelled after Oracle task213 owner ruling; not a completed normal gate.",
+    "cancellation_proof": "/tmp/lumen-gui-superseded-gate-cancellation.json"
+  }
 }

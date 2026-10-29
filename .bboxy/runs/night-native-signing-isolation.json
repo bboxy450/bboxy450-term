@@ -1,0 +1,41 @@
+{
+  "task": 213,
+  "primary_task": 183,
+  "scope": "Confine native-signing fixture child Make/build context without changing production recursive Make behavior",
+  "mechanism": "fixture_command removes inherited Make control fields and target/profile/bundle destinations; callers then apply their own fixture variables and fake tools. Existing bundle assertions execute in a child carrying deliberately hostile inherited context.",
+  "verification": [
+    {
+      "command": "make test-make-isolation TARGET_DIR=target/checkout-c561eb9fdaeee95e62c3",
+      "mutation": "retain inherited Make/target controls at fixture child boundary",
+      "exit_code": 2,
+      "log": "/tmp/lumen-native-fixture-mutation-red.log",
+      "sha256": "a93679ae9f2d3563826fe8ce8a4a8ad6506bd0f96f62499f948a5d05abf607f0"
+    },
+    {
+      "command": "make test-make-isolation TARGET_DIR=target/checkout-c561eb9fdaeee95e62c3",
+      "exit_code": 0,
+      "log": "/tmp/lumen-native-fixture-restored-green.log",
+      "sha256": "53d70baaf67e93fb992d56b890b0bf899b1024ee6a176be0950e265e85b33559"
+    }
+  ],
+  "preserved_assertions": [
+    "approved signer and designated requirement",
+    "signing reuse without redundant lookup",
+    "missing identity refusal without unsigned fallback",
+    "unsigned build makes no private-key lookup",
+    "missing attribution refuses before signing",
+    "all signer/verifier bundle paths remain within the private fixture",
+    "hostile outer target stays absent"
+  ],
+  "original_failed_gate": {
+    "source": "caecfb23531045b093fcdce372f69495c6ad2282",
+    "command": "make test",
+    "exit_code": 2,
+    "log": "/tmp/lumen-gui-ci-local.log",
+    "sha256": "2620c3b01b2454e812190a41b4553a451f2ea6477eb12f16aca09552c0a69d13"
+  },
+  "not_claimed": [
+    "Historical GUI event EOF cause remains unproven.",
+    "Final exact-source normal gate and signed landing are recorded by the authenticated task report."
+  ]
+}

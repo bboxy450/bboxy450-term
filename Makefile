@@ -43,6 +43,7 @@ help:
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
+	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
@@ -185,10 +186,15 @@ test-swarm:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture --test-threads=$(SWARM_TEST_THREADS)
 
+.PHONY: test-make-isolation
+test-make-isolation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test native_signing
+
 .PHONY: test-gui-events
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_GUI_EVENTS_EVIDENCE='$(abspath $(TARGET_DIR))/gui-events' cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
