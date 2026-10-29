@@ -86,14 +86,15 @@ def png(path):
     return width, height, rows
 
 
-def ink_bounds(image, rect):
+def ink_bounds(image, rect, color=None):
     width, height, rows = image
     x, y, w, h = rect
     points = []
     for yy in range(max(0, math.floor(y)), min(height, math.ceil(y+h))):
         for xx in range(max(0, math.floor(x)), min(width, math.ceil(x+w))):
             r, g, b, alpha = rows[yy][xx*4:xx*4+4]
-            if alpha > 240 and min(r, g, b) > 170:
+            visible = min(r,g,b) > 170 if color is None else max(abs(channel-color[i]*255) for i,channel in enumerate([r,g,b])) < 65
+            if alpha > 240 and visible:
                 points.append((xx, yy))
     require(points, "the measured glyph run painted no foreground ink")
     return [min(x for x,y in points), min(y for x,y in points),
@@ -207,7 +208,7 @@ def d1(app):
     heading_fonts = []
     cases = [(f"heading{level}", "#"*level+f" HeadingLevel{level}\n\nBodyGlyphProbeHgMQ\n",
               [f"HeadingLevel{level}","BodyGlyphProbeHgMQ"]) for level in range(1,7)] + [
-        ("lists", "- BulletAlpha\n- BulletBeta\n\n3. OrderedThree\n4. OrderedFour\n", ["BulletAlpha","BulletBeta","3.","OrderedThree","4.","OrderedFour"]),
+        ("lists", "- BulletAlpha\n- BulletBeta\n\n3. OrderedThree\n4. OrderedFour\n", ["•","BulletAlpha","BulletBeta","3.","OrderedThree","4.","OrderedFour"]),
         ("table", "| HeaderLeft | HeaderRight |\n| :--- | ---: |\n| CellAlpha | CellBeta |\n", ["HeaderLeft","HeaderRight","CellAlpha","CellBeta"]),
         ("code", "```python\nprint('CodeGlyphProbe')\n```\n", ["print('CodeGlyphProbe')"]),
         ("tasks", "- [x] DoneTask\n- [ ] OpenTask\n", ["☑ DoneTask","☐ OpenTask"]),
@@ -222,6 +223,17 @@ def d1(app):
         for run in observed["texts"]:
             painted[run["key"]] = painted.get(run["key"],"")+run["text"]
         require(all(any(text in value for value in painted.values()) for text in wanted), f"{name}: visible text has no native paint")
+        feature_keys = {key for key,value in painted.items() if any(text in value for text in wanted)}
+        feature_ink = []
+        for run in observed["texts"]:
+            if run["key"] in feature_keys and run["text"].strip():
+                ink = ink_bounds(image,run["rect"],run["color"])
+                feature_ink.append({"key":run["key"],"text":run["text"],"ink":ink,"font_size":run["font_size"]})
+                if not name.startswith("heading"):
+                    token = "caption" if name == "code" else "body"
+                    if name == "footnotes" and run["text"] == "[proof]":
+                        token = "caption" if run["key"].endswith("/label") else "micro"
+                    require(abs(run["font_size"]-style[token]) < 0.001,f"{name}: native font lost the {token} type token")
         if name.startswith("heading"):
             level = int(name[-1])
             heading = next(t for t in observed["texts"] if t["text"] == wanted[0])
@@ -230,6 +242,8 @@ def d1(app):
                     f"H{level} did not paint its baselined named style: {heading}")
             require(heading["line_height"] >= expected and present[wanted[0]][3] >= expected,
                     f"H{level} line geometry clips its native type size")
+            require(ink_bounds(image,heading["rect"],heading["color"])[3] >= expected*0.55,
+                    f"H{level} painted glyphs below their baselined true size")
             heading_fonts.append(heading["font_size"])
             require(all(a > b for a,b in zip(heading_fonts,heading_fonts[1:])),
                     f"native heading hierarchy collapsed: {heading_fonts}")
@@ -237,7 +251,7 @@ def d1(app):
             require(any(run["mono"] and "CodeGlyphProbe" in run["text"] for run in observed["texts"]), "code was not painted with the native monospace font")
         if name == "table":
             require(present["HeaderLeft"][0] < present["HeaderRight"][0] and present["CellAlpha"][1] > present["HeaderLeft"][1], "table lost its actual row/column geometry")
-        app.checks.append({"feature":name,"frame":layout["frame_seq"],"text_geometry":{text:present.get(text) for text in wanted}})
+        app.checks.append({"feature":name,"frame":layout["frame_seq"],"text_geometry":{text:present.get(text) for text in wanted},"native_ink":feature_ink})
         if name == "heading1":
             original = next(t for t in observed["texts"] if t["text"] == "BodyGlyphProbeHgMQ")
             original_ink = ink_bounds(image,original["rect"])
