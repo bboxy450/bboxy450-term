@@ -29,7 +29,7 @@ impl App {
     pub(super) fn consume_desktop_font_key(&mut self, action: Action, scancode: Option<u32>) {
         if matches!(
             action,
-            Action::IncreaseTerminalFont | Action::DecreaseTerminalFont | Action::Paste
+            Action::IncreaseTerminalFont | Action::DecreaseTerminalFont | Action::Paste | Action::Copy
         ) && let Some(scancode) = scancode
         {
             self.keyboard.consumed_scancode(scancode);
@@ -65,6 +65,7 @@ impl App {
             Action::IncreaseTerminalFont => self.change_terminal_font(1),
             Action::DecreaseTerminalFont => self.change_terminal_font(-1),
             Action::Paste => self.composer_paste(),
+            Action::Copy => { self.copy_terminal_selection(); },
             Action::ShowWindow
             | Action::HideWindow
             | Action::ToggleFullscreen

@@ -11,11 +11,23 @@ use bboxy450_term_desktop_core::{
 };
 use objc2::AnyThread;
 use objc2_app_kit::{NSBitmapImageFileType, NSBitmapImageRep, NSPasteboard};
-use objc2_foundation::{MainThreadMarker, NSData, NSDictionary, ns_string};
+use objc2_foundation::{MainThreadMarker, NSData, NSDictionary, NSString, ns_string};
 
 pub fn read_clipboard() -> Result<Option<ClipboardContent>, Error> {
     MainThreadMarker::new().ok_or(Error::MainThreadRequired)?;
     snapshot(&NSPasteboard::generalPasteboard())
+}
+/// Write through the platform clipboard port. Tests use the same writer with a unique board.
+pub fn write_clipboard_text(text: &str) -> Result<(), Error> {
+    MainThreadMarker::new().ok_or(Error::MainThreadRequired)?;
+    write_text(&NSPasteboard::generalPasteboard(), text)
+}
+fn write_text(board: &NSPasteboard, text: &str) -> Result<(), Error> {
+    if text.len() > 1024 * 1024 { return Err(Error::Native("clipboard_text_too_large".into())); }
+    let text = NSString::from_str(text);
+    board.clearContents();
+    if board.setString_forType(&text, ns_string!("public.utf8-plain-text")) { Ok(()) }
+    else { Err(Error::Native("clipboard_write_failed".into())) }
 }
 fn snapshot(board: &NSPasteboard) -> Result<Option<ClipboardContent>, Error> {
     for (kind, format) in [
@@ -80,6 +92,13 @@ mod tests {
         0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 11, 73, 68, 65, 84, 120, 156, 99, 248, 15, 4, 0, 9,
         251, 3, 253, 251, 94, 107, 43, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
     ];
+    #[test]
+    fn clipboard_private_text_writer_preserves_unicode_and_lines() {
+        let board = NSPasteboard::pasteboardWithUniqueName();
+        write_text(&board, "界e\u{301}  \nsecond").unwrap();
+        assert_eq!(snapshot(&board).unwrap(), Some(ClipboardContent::Text("界e\u{301}  \nsecond".into())));
+        board.clearContents();
+    }
     #[test]
     fn clipboard_private_pasteboard_snapshots_png_tiff_text_without_general_clipboard() {
         let board = NSPasteboard::pasteboardWithUniqueName();

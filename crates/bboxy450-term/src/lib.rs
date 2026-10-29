@@ -25,6 +25,7 @@ pub mod messaging;
 pub mod model;
 pub mod notifications;
 pub mod scrollback;
+pub mod terminal_selection;
 pub mod settings;
 pub mod spawn_params;
 

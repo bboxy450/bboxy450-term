@@ -62,7 +62,7 @@ fn main() {
     })
     .unwrap();
     println!(
-        "native menu15/tray4 callbacks, borderless Fill/Zoom/Minimize/Show, disposal and runloop stop: pass"
+        "native menu17/tray4 callbacks, borderless Fill/Zoom/Minimize/Show, disposal and runloop stop: pass"
     );
 }
 

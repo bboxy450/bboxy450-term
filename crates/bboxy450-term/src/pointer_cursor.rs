@@ -156,6 +156,9 @@ impl App {
                 Cursor::Default
             };
         }
+        if self.terminal_selection.dragging || self.pane_bounds.iter().any(|(seat, _)| {
+            self.terminal_display(*seat).is_some_and(|d| d.contains(at) && d.allows_selection(self.modifiers.shift_key()))
+        }) { return Cursor::Text; }
         Cursor::Default
     }
 

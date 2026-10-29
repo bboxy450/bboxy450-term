@@ -353,7 +353,9 @@ impl App {
                 && self.pointer[1] >= rect.y
                 && self.pointer[1] < rect.bottom()
         }) {
-            self.focus_action(FocusAction::Activate(*id, FocusOrigin::Pane));
+            let id = *id;
+            self.focus_action(FocusAction::Activate(id, FocusOrigin::Pane));
+            self.begin_terminal_selection(id, at);
         }
     }
     pub(super) fn select_empty_swarm(&mut self, swarm: bbt_proto::SwarmId) {

@@ -30,6 +30,7 @@ mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
 mod swarm_folder;
+mod terminal_clipboard;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -940,6 +941,7 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
         });
     }
     let (logical_key, code) = match name {
+        "c" => (Key::Character("c".into()), KeyCode::KeyC),
         "t" => (Key::Character("t".into()), KeyCode::KeyT),
         "d" => (Key::Character("d".into()), KeyCode::KeyD),
         "a" => (Key::Character("a".into()), KeyCode::KeyA),
@@ -1002,6 +1004,7 @@ enum RoutedKey {
     Launcher(LauncherCommand),
     Composer(ComposeCommand),
     ComposerPaste,
+    TerminalCopy,
     ComposerVertical { backwards: bool, extend: bool },
     ComposerLineEdge { end: bool, extend: bool },
     Pane(Navigation),
@@ -2042,6 +2045,8 @@ struct App {
     conversation_scroll: f32,
     conversation_layout: Option<scene::ConversationLayout>,
     composer_dragging: bool,
+    terminal_selection: bboxy450_term::terminal_selection::SelectionState,
+    private_clipboard: Option<String>,
     compose_startup: bool,
     operation_backlog: VecDeque<live::UiMsg>,
     pointer: [f32; 2],
@@ -2248,6 +2253,8 @@ impl App {
             conversation_layout: None,
             conversation_scroll: 0.,
             composer_dragging: false,
+            terminal_selection: Default::default(),
+            private_clipboard: None,
             compose_startup: args.iter().any(|arg| arg == "--compose"),
             operation_backlog: VecDeque::new(),
             pointer: [0.; 2],
@@ -4688,6 +4695,7 @@ impl App {
         self.flush_commands();
     }
     fn scroll_pane(&mut self, seat: SeatId, request: ScrollRequest) {
+        self.terminal_selection.clear();
         let Some(generation) = self
             .live_state
             .as_ref()
@@ -5536,6 +5544,7 @@ impl App {
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
     fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+        if self.terminal_copy_shortcut(input) { return RoutedKey::TerminalCopy; }
         if self.launcher.is_none()
             && !self.document.open
             && self.local_tab.is_none()
@@ -5588,6 +5597,7 @@ impl App {
     }
     fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
         match routed {
+            RoutedKey::TerminalCopy => { self.copy_terminal_selection(); },
             RoutedKey::OpenLauncher => self.open_launcher(),
             RoutedKey::SplitLauncher(side) => self.split_launcher(side),
             RoutedKey::OpenGraph => self.open_graph(),
@@ -7068,6 +7078,7 @@ impl App {
         } else {
             vec![]
         };
+        pane_overlay.extend(self.paint_terminal_selection());
         pane_overlay.extend(self.scene.foreground_with_document(
             logical,
             self.launcher_layout.as_ref(),
@@ -7833,6 +7844,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.overlay_hover(self.pointer) {
                     return;
                 }
+                if self.extend_terminal_selection(self.pointer) { return; }
                 if self.move_sidebar_resize(self.pointer) {
                     return;
                 }
@@ -8213,7 +8225,9 @@ impl ApplicationHandler<UiEvent> for App {
                             .get(&seat)
                             .map(|screen| screen.modes)
                     });
-                let routed = if self.document.open
+                let routed = if self.terminal_copy_shortcut(&input) {
+                    finish_route(&mut self.keyboard, &input, RoutedKey::TerminalCopy)
+                } else if self.document.open
                     || (self.launcher.is_none()
                         && (self.local_tab.is_some()
                             || self.composer.view.focus

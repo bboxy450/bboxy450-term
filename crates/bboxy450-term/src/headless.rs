@@ -522,6 +522,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             app.document_layout.as_ref(),
                             rims,
                         );
+                        foreground.splice(0..0, app.paint_terminal_selection());
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         foreground.extend(app.paint_app_overlay());
                         gpu.draw_layers_notifying(

@@ -36,9 +36,10 @@ pub enum Action {
     IncreaseTerminalFont,
     DecreaseTerminalFont,
     Paste,
+    Copy,
 }
 impl Action {
-    pub const ALL: [Self; 16] = [
+    pub const ALL: [Self; 17] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -55,6 +56,7 @@ impl Action {
         Self::IncreaseTerminalFont,
         Self::DecreaseTerminalFont,
         Self::Paste,
+        Self::Copy,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -74,6 +76,7 @@ impl Action {
             Self::IncreaseTerminalFont => "increase_terminal_font",
             Self::DecreaseTerminalFont => "decrease_terminal_font",
             Self::Paste => "paste",
+            Self::Copy => "copy",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -182,7 +185,7 @@ pub fn app_menu() -> Vec<MenuGroup> {
                 },
                 MenuItem::separator(),
                 MenuItem::responder("Cut", "cut:", "x"),
-                MenuItem::responder("Copy", "copy:", "c"),
+                MenuItem::action("Copy", Copy, "c"),
                 MenuItem::action("Paste", Paste, "v"),
                 MenuItem::responder("Select All", "selectAll:", "a"),
             ],
@@ -361,6 +364,7 @@ mod tests {
             MenuCommand::Action(Action::MuteFocusedSeat)
         );
         assert!(!mute[0].option && !mute[0].shift && !mute[0].control);
+        assert_eq!(items.iter().find(|item| item.key == "c").unwrap().command, MenuCommand::Action(Action::Copy));
         let hard = items
             .iter()
             .find(|item| item.command == MenuCommand::Action(Action::HardQuit))
@@ -371,7 +375,7 @@ mod tests {
                 .iter()
                 .any(|item| item.command == MenuCommand::Action(Action::ShowWindow))
         );
-        for selector in ["cut:", "copy:", "selectAll:"] {
+        for selector in ["cut:", "selectAll:"] {
             assert!(
                 items
                     .iter()
