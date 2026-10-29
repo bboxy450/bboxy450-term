@@ -75,6 +75,9 @@ help:
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
+	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
+	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
+	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make smoke-installed             Private smoke of the installed signed app' \
@@ -426,6 +429,20 @@ test-spawn-wire:
 .PHONY: test-new-swarm format-new-swarm
 .PHONY: test-swarm-switch check-swarm-switch
 .PHONY: test-sidebar-accordions check-sidebar-accordions
+.PHONY: test-settings-role-picker-ui test-settings-role-picker check-settings-role-picker
+test-settings-role-picker-ui:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings_roles; \
+	cargo clippy --locked -p bboxy450-ui --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-settings-role-picker: test-settings-role-picker-ui
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_harness_default_role_survives_complete_clicks_and_model_publication -- --ignored --exact --nocapture
+
+check-settings-role-picker:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 .PHONY: test-settings-roles check-settings-roles test-settings-roles-e2e
 .PHONY: test-settings-role-runtime
 test-settings-role-runtime:

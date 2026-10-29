@@ -6330,9 +6330,7 @@ impl App {
             UiRequest::RightClick { x, y } => self.overlay_right_click([x as f32, y as f32]),
             UiRequest::Click { x, y } => {
                 self.pointer_pressed([x as f32, y as f32]);
-                self.end_sidebar_resize();
-                self.query_dragging = false;
-                self.composer_dragging = false;
+                self.pointer_released();
             }
             UiRequest::Compose(request) => self.compose_ui(request)?,
             UiRequest::PasteImage {path} => {
@@ -8088,20 +8086,7 @@ impl ApplicationHandler<UiEvent> for App {
                 state: ElementState::Released,
                 button: MouseButton::Left,
                 ..
-            } if self.app_overlays.open() => {}
-            WindowEvent::MouseInput {
-                state: ElementState::Released,
-                button: MouseButton::Left,
-                ..
-            } => {
-                self.end_sidebar_resize();
-                self.query_dragging = false;
-                self.composer_dragging = false;
-                if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
-                    self.settings_action(settings_controller::Action::EndDrag);
-                }
-                self.update_cursor();
-            }
+            } => self.pointer_released(),
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Right,

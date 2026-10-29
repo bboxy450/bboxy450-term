@@ -359,6 +359,76 @@ fn harness_defaults_offer_only_available_roles_and_cannot_be_removed_from_the_se
 }
 
 #[test]
+fn pointer_release_keeps_the_harness_picker_and_its_retained_choice_hits() {
+    let mut view = Settings {
+        section: "Harnesses".into(),
+        values: records(),
+        defaults: records(),
+        ..Default::default()
+    };
+    let mut control = Controller::new("Harnesses");
+    click(&mut control, &mut view, "harness/codex/role");
+    assert!(act(&mut control, &mut view.values, Action::EndDrag).is_none());
+    assert!(
+        control.presentation().picker.is_some(),
+        "the mouse-up that completes opening a picker must leave it open"
+    );
+
+    // A fresh host projection and passive hit/cursor reads retain the controller.
+    view.values = records();
+    let frame = layout(&view, &control);
+    let choice = named(&frame, "settings/choice/1").unwrap().rect;
+    let at = [choice.x + choice.w / 2., choice.y + choice.h / 2.];
+    let regions = Regions::new(&frame, &view).unwrap();
+    assert!(matches!(
+        regions.hit(at),
+        Some(Hit::Toggle(Field::Choice(1)))
+    ));
+    assert!(matches!(
+        regions.hit(at),
+        Some(Hit::Toggle(Field::Choice(1)))
+    ));
+    let patch = click(&mut control, &mut view, "settings/choice/1").unwrap();
+    assert_eq!(
+        patch,
+        Patch::HarnessRole {
+            harness: "codex".into(),
+            role: "creativity".into(),
+        }
+    );
+    assert!(act(&mut control, &mut view.values, Action::EndDrag).is_none());
+    assert_eq!(view.values.harness[1].1.role, "creativity");
+    assert!(control.presentation().picker.is_none());
+}
+
+#[test]
+fn pointer_release_keeps_role_text_focus_until_an_actual_blur() {
+    let mut values = records();
+    let mut control = Controller::new("Roles");
+    act(
+        &mut control,
+        &mut values,
+        Action::Toggle(Field::RolePrompt("reviewer".into())),
+    );
+    act(&mut control, &mut values, Action::EndDrag);
+    assert!(
+        control.editing(),
+        "mouse-up must keep the clicked editor active"
+    );
+    act(
+        &mut control,
+        &mut values,
+        Action::Search(Command::Insert(" changed".into())),
+    );
+    assert!(act(&mut control, &mut values, Action::EndDrag).is_none());
+    assert_eq!(values.roles[3].1.prompt, "Call orient first");
+    assert!(matches!(
+        act(&mut control, &mut values, Action::Blur),
+        Some(Patch::RoleUpsert { role, .. }) if role.prompt == "Call orient first changed"
+    ));
+}
+
+#[test]
 fn keyboard_picker_cancel_tab_and_custom_class_change_share_control_state() {
     let mut values = records();
     let mut control = Controller::new("Roles");

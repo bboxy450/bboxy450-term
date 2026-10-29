@@ -78,6 +78,19 @@ impl App {
             self.request_redraw();
         }
     }
+    /// Complete the same pointer gesture for native input and private ctl clicks.
+    pub(super) fn pointer_released(&mut self) {
+        if self.app_overlays.open() {
+            return;
+        }
+        self.end_sidebar_resize();
+        self.query_dragging = false;
+        self.composer_dragging = false;
+        if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+            self.settings_action(settings_controller::Action::EndDrag);
+        }
+        self.update_cursor();
+    }
     pub(super) fn pointer_pressed(&mut self, at: [f32; 2]) {
         self.pointer = at;
         if self.overlay_pointer(at) {

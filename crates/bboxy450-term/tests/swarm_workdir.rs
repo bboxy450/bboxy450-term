@@ -700,6 +700,79 @@ fn settings_codex_service_fixture() {
         });
 }
 
+// keeps: native/ctl complete clicks retain Settings pickers across live publications.
+#[test]
+#[ignore = "private ctl complete-click/PTY boundary; make test-settings-role-picker"]
+fn settings_harness_default_role_survives_complete_clicks_and_model_publication() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let frame = fixture.ctl(&["app", "resize", "180x120"]);
+    let swarm = frame["swarm"].as_str().unwrap().to_owned();
+    let existing = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&existing, &fixture.root.join("repository"));
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "settings harnesses");
+    fixture.ctl(&["ui", "key", "enter"]);
+
+    // ctl Click follows the native down/up handlers, including Settings EndDrag.
+    let opened = click_region(&fixture, "harness/claude/role");
+    assert!(
+        opened["regions"]["settings/choice/1"].is_array(),
+        "{opened}"
+    );
+    fixture.ctl(&["seat", "type", &existing, "PICKER-PUBLICATION\n"]);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &existing,
+        "--text",
+        "PICKER-PUBLICATION",
+        "--timeout",
+        "10000",
+    ]);
+    let published = fixture.ctl(&["ui", "layout"]);
+    assert!(
+        published["regions"]["settings/choice/1"].is_array(),
+        "a live screen publication must retain the open picker: {published}"
+    );
+    // Built-in role order is oracle, architect, creativity, executor, shell.
+    click_region(&fixture, "settings/choice/1");
+    let config = fixture.root.join("account/config.toml");
+    let read = || {
+        fs::read_to_string(&config)
+            .unwrap()
+            .parse::<toml_edit::DocumentMut>()
+            .unwrap()
+    };
+    assert_eq!(
+        read()["harnesses"]["claude"]["role"].as_str(),
+        Some("architect")
+    );
+    assert!(
+        fixture.ctl(&["ui", "layout"])["regions"]["settings/choice/1"].is_null(),
+        "choosing a role closes the picker"
+    );
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let launched = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["role"]["name"] == "architect")
+        .unwrap_or_else(|| panic!("saved default did not reach a new launch: {seats}"));
+    let seat = launched["record"]["id"].as_str().unwrap();
+    assert_ne!(seat, existing);
+    fixture.expect_cwd(seat, &fixture.root.join("repository"));
+    assert_eq!(
+        read()["harnesses"]["claude"]["role"].as_str(),
+        Some("architect")
+    );
+    fixture.ctl(&["app", "stop"]);
+}
+
 // keeps: ux-prototype Settings — saved account roles drive actual harness launches.
 #[test]
 #[ignore = "private ctl app/PTY boundary; make test-settings-roles-e2e"]

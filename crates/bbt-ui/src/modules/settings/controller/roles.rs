@@ -269,6 +269,11 @@ impl Controller {
         action: &Action,
         values: &mut Records,
     ) -> Option<Patch> {
+        // Every native click ends with EndDrag, including picker/editor clicks.
+        // Release only ends a drag; it is not a focus change or an edit commit.
+        if matches!(action, Action::EndDrag) {
+            return None;
+        }
         if !matches!(action, Action::Search(_)) {
             self.editor
                 .handle(&mut self.query, EditCommand::CancelPreedit);
