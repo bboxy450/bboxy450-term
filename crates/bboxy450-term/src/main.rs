@@ -548,6 +548,46 @@ fn pane_controls(
     (watched, sizes)
 }
 
+// bboxy450-term font receipts tie desired, live and encoded geometry together.
+// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn terminal_font_geometry_ready(
+    desired: [usize; 2],
+    sent: [usize; 2],
+    live: [usize; 2],
+    prepared: [usize; 2],
+    pixels: [u32; 2],
+    cell: [u32; 2],
+) -> bool {
+    desired == sent
+        && desired == live
+        && desired == prepared
+        && pixels.map(|v| v as usize)
+            == [desired[0] * cell[0] as usize, desired[1] * cell[1] as usize]
+}
+
+fn terminal_font_display_ready(
+    display: &bboxy450_term::terminal_selection::Display,
+    pane: &bbt_proto::gui::UiPane,
+    cell: [u32; 2],
+    scale: f32,
+) -> bool {
+    let pixels = [
+        u32::from(pane.cols) * cell[0],
+        u32::from(pane.rows) * cell[1],
+    ];
+    display.screen.cols == usize::from(pane.cols)
+        && display.screen.rows == usize::from(pane.rows)
+        && display.cell == cell.map(|v| v as f32 / scale)
+        && display.rect.x == pane.rect[0]
+        && display.rect.y == pane.rect[1]
+        && display.rect.w == pane.rect[2].min(pixels[0] as f32 / scale)
+        && display.rect.h == pane.rect[3].min(pixels[1] as f32 / scale)
+        && pane
+            .rendered
+            .as_ref()
+            .is_none_or(|rendered| rendered.pixel_size == Some(pixels))
+}
+
 #[derive(Default)]
 struct FocusState {
     controller: Focus,
@@ -5863,29 +5903,51 @@ impl App {
                 if let Some(reason) = &self.preferences.error {
                     return Err(format!("ui_frame_refused: terminal font: {reason}"));
                 }
+                let scale = self
+                    .window
+                    .as_ref()
+                    .map_or(1., |window| window.scale_factor() as f32);
+                let (_, desired) = pane_controls(
+                    model,
+                    &self.pane_bounds,
+                    &self.watched,
+                    &BTreeMap::new(),
+                    self.scene.focused(),
+                    scale,
+                    self.verify.grid_size,
+                );
                 Ok(self.preferences.saved()
                     && model.settings.as_ref().is_some_and(|settings| {
                         settings.preferences.appearance.terminal_font_size
                             == self.preferences.preferences.appearance.terminal_font_size
                     })
-                    && self.pane_bounds.iter().all(|(seat, _)| {
-                        model
-                            .screens
+                    && desired.len() == self.pane_bounds.len()
+                    && desired.iter().all(|(seat, expected)| {
+                        let Some((screen, sent)) =
+                            model.screens.get(seat).zip(self.pane_sizes.get(seat))
+                        else {
+                            return false;
+                        };
+                        let selected = model
+                            .history
                             .get(seat)
-                            .zip(self.pane_sizes.get(seat))
-                            .is_some_and(|(screen, (_, cols, rows))| {
-                                (screen.cols, screen.rows)
-                                    == (usize::from(*cols), usize::from(*rows))
-                                    && model
-                                        .frames
-                                        .get(seat)
-                                        .zip(model.prepared_screens.get(seat))
-                                        .zip(model.terminal_cell_pixels)
-                                        .is_some_and(|((frame, source), [cw, ch])| {
-                                            frame.width as usize == source.screen.cols * cw as usize
-                                                && frame.height as usize
-                                                    == source.screen.rows * ch as usize
-                                        })
+                            .map_or(screen, |history| &history.screen);
+                        model
+                            .frames
+                            .get(seat)
+                            .zip(model.prepared_screens.get(seat))
+                            .zip(model.terminal_cell_pixels)
+                            .is_some_and(|((frame, source), cell)| {
+                                expected.0 == sent.0
+                                    && Arc::ptr_eq(&source.screen, selected)
+                                    && terminal_font_geometry_ready(
+                                        [usize::from(expected.1), usize::from(expected.2)],
+                                        [usize::from(sent.1), usize::from(sent.2)],
+                                        [screen.cols, screen.rows],
+                                        [source.screen.cols, source.screen.rows],
+                                        [frame.width, frame.height],
+                                        cell,
+                                    )
                             })
                     }))
             }
@@ -6005,6 +6067,27 @@ impl App {
             }
         }
     }
+    fn terminal_font_presented_ready(&self, layout: &bbt_proto::gui::UiLayout) -> bool {
+        if self.ui_effect_ready(&UiEffect::TerminalFont) != Ok(true) {
+            return false;
+        }
+        let Some(cell) = self
+            .live_state
+            .as_ref()
+            .and_then(|model| model.terminal_cell_pixels)
+        else {
+            return false;
+        };
+        let scale = self
+            .window
+            .as_ref()
+            .map_or(1., |window| window.scale_factor() as f32);
+        layout.panes.iter().all(|pane| {
+            self.frame_observations
+                .displayed(SeatId::from_u128(pane.seat.0))
+                .is_some_and(|display| terminal_font_display_ready(display, pane, cell, scale))
+        })
+    }
     fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {
         if let Ok(layout) = &mut layout {
             layout.frame_seq = frame;
@@ -6019,6 +6102,17 @@ impl App {
             .as_ref()
             .is_some_and(|wait| wait.after.is_some_and(|after| frame >= after))
         {
+            if self.ui_wait.as_ref().is_some_and(|wait| {
+                wait.effects
+                    .iter()
+                    .any(|effect| matches!(effect, UiEffect::TerminalFont))
+            }) && let Ok(produced) = &layout
+                && !self.terminal_font_presented_ready(produced)
+            {
+                // Keep the original absolute deadline and frame threshold. Geometry/model
+                // publications drive the next candidate; a rejected frame schedules no paint.
+                return;
+            }
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
@@ -12218,6 +12312,77 @@ mod ctl_ui_layout_tests {
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn terminal_font_receipts_reject_stale_resize_and_mixed_produced_geometry() {
+        let desired = [72, 48];
+        let cell = [9, 17];
+        assert!(
+            !terminal_font_geometry_ready(desired, [65, 43], [65, 43], [65, 43], [585, 731], cell),
+            "font16 viewport cannot acknowledge font15 geometry"
+        );
+        assert!(
+            !terminal_font_geometry_ready(desired, desired, desired, [72, 43], [648, 731], cell),
+            "independently coherent old source is not the current viewport"
+        );
+        assert!(terminal_font_geometry_ready(
+            desired,
+            desired,
+            desired,
+            desired,
+            [648, 816],
+            cell
+        ));
+        let seat = SeatId::from_u128(1);
+        let mut display = bboxy450_term::terminal_selection::Display {
+            seat,
+            view: View {
+                seat: bbt_mux::Ulid(1),
+                generation: 1,
+                view_generation: bbt_mux::Ulid(2),
+            },
+            screen: Arc::new(bbt_proto::Screen::from_term(
+                &bbt_core::Term::new(72, 43, 0),
+                String::new(),
+                None,
+                None,
+            )),
+            rect: Rect::new(1., 2., 648., 731.),
+            cell: [9., 17.],
+            historical_row: Some(10),
+        };
+        let mut pane = bbt_proto::gui::UiPane {
+            seat: bbt_mux::Ulid(1),
+            rect: [1., 2., 665., 829.],
+            cols: 81,
+            rows: 48,
+            focused: true,
+            scroll: Default::default(),
+            rendered: None,
+        };
+        assert!(
+            !terminal_font_display_ready(&display, &pane, cell, 1.),
+            "the failing648x731 /81x48 receipt must be rejected"
+        );
+        pane.cols = 72;
+        assert!(
+            !terminal_font_display_ready(&display, &pane, cell, 1.),
+            "fresh pane counts cannot hide the old43-row drawn source"
+        );
+        display.screen = Arc::new(bbt_proto::Screen::from_term(
+            &bbt_core::Term::new(72, 48, 0),
+            String::new(),
+            None,
+            None,
+        ));
+        display.rect.h = 816.;
+        assert!(
+            terminal_font_display_ready(&display, &pane, cell, 1.),
+            "historical panes are proven by the actual drawn source without a live rendered payload"
+        );
+        display.cell = [8., 15.];
+        assert!(!terminal_font_display_ready(&display, &pane, cell, 1.));
+    }
+
     #[test]
     fn terminal_selection_copy_classifier_is_lazy_and_keeps_ctrl_c_as_terminal_input() {
         let mut input = chrome_input("cmd-c").unwrap();

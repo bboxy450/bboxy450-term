@@ -1604,7 +1604,10 @@ fn terminal_font_shortcuts_resize_all_seats_and_survive_ui_restart() {
         let until = Instant::now() + Duration::from_secs(10);
         loop {
             if frame["panes"].as_array().unwrap().iter().all(|pane| {
-                if !pane["rendered"]["pixel_size"].is_array() {
+                if !pane["rendered"]["pixel_size"].is_array()
+                    || pane["rendered"]["lines"].as_array().map(Vec::len)
+                        != pane["rows"].as_u64().map(|rows| rows as usize)
+                {
                     return false;
                 }
                 let screen = fixture.ctl(&["seat", "screen", pane["seat"].as_str().unwrap()]);
