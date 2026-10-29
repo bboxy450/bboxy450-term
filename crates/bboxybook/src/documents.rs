@@ -154,14 +154,14 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                 view.record_links = Some(links);
             }
             let element = view.element_with_body(ctx, &metrics, available, &|width| {
-                let title: Option<&str> = Some(if view.document.title.is_empty() {
+                let title = if view.document.title.is_empty() {
                     &view.document.path
                 } else {
                     &view.document.title
-                });
+                };
                 if evidence.is_object() {
                     return markdown.hosted_body_element_with_controller(
-                        title.unwrap_or_default(),
+                        title,
                         ctx,
                         &metrics,
                         width,
@@ -171,7 +171,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                 }
                 if let Some(links) = &view.record_links {
                     return markdown.body_element_with_links(
-                        title,
+                        Some(title),
                         ctx,
                         &metrics,
                         width,
@@ -179,17 +179,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                         links,
                     );
                 }
-                markdown.body_element_with_title(
-                    Some(if view.document.title.is_empty() {
-                        &view.document.path
-                    } else {
-                        &view.document.title
-                    }),
-                    ctx,
-                    &metrics,
-                    width,
-                    &view.diagrams,
-                )
+                markdown.body_element_with_title(Some(title), ctx, &metrics, width, &view.diagrams)
             });
             let width = if view.modal {
                 980_f32.min(view.viewport[0] * 0.94).min(available[0])

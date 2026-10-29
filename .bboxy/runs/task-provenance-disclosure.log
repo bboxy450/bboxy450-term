@@ -3,5 +3,12 @@ scope: presentation only; provenance/authorship collapsed per document; native c
 focused pre-e2e make test-document-provenance — exit0 (doc layout/record host, UI documents/controller, app document host).
 source checks — rustfmt and git diff --check exit0.
 visual gate attempts1/2 — exit2, 16 new-case geometry mismatches; browser references use committed HEAD, so uncommitted label-style edits were not consumed. Rerun after committing the matching candidate; existing152 cases had no geometry mismatch.
-full ctl e2e, strict all-target Clippy, updated parity and full normal CI: pending final candidate checks; raw logs remain outsideGit.
+make test-document-provenance final — exit0, including native ctl expand/collapse/reopen and unchanged source bytes/frontmatter/etag.
+make check-documents final — exit0, -D warnings on all targets for doc/UI/proto/mux/book/app.
+make parity-documents final — exit0, 168 measured cases, zero geometry mismatches; all16 new collapsed/expanded cases within pixel policy. Existing16 diagram pixel reviews remain advisory.
+YAML-specific evidence values use lossless YAML fallback; preformatted indentation is retained without changing ordinary text.
+Full normal CI and author landing remain required on the final committed candidate; raw logs stay outside Git.
 focused_log /Users/feral/Library/Logs/bboxy450-term/task-provenance-focused-pass3-20261029.log sha256 a235dc40fda2bf130930f3d7cd0d330d52a0c3f1681bce226f516c345dc6e6f4
+raw /Users/feral/Library/Logs/bboxy450-term/task-provenance-focused-final-20261029.log sha256 55a82c496b033fc85c87638ed377de5a1d343d072dbdfc00bb007e7b63162dda
+raw /Users/feral/Library/Logs/bboxy450-term/task-provenance-clippy-retry-20261029.log sha256 1ac8f3d96915390bef96077eeb2d5dc137ba647a1b92628d4d324e77685473b5
+raw /Users/feral/Library/Logs/bboxy450-term/task-provenance-parity-final-20261029.log sha256 953ae7b8b1c25885d1693e8520740bc5ef8a51afd8eac85f25f313564c00a8c4
