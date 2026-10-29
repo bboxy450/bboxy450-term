@@ -10138,7 +10138,8 @@ impl Worker {
                 // The side-task completion unparks this thread. Contended
                 // nonblocking receive must not create a no-progress spin.
                 std::thread::park_timeout(Duration::from_millis(1));
-            } else if (!made_progress || !pending_events.has_ready())
+            } else if !self.checkpoint_saves.active()
+                && (!made_progress || !pending_events.has_ready())
                 && deferred_commands.is_empty()
                 && commands.is_empty()
             {
