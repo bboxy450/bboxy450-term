@@ -326,6 +326,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui layout",
     "ui clock freeze",
     "ui notification-click s",
+    "ui notification-foreground true",
     "ui compose --to s --text hi",
     "ui paste-image /tmp/fixture.png",
     "ui swarm-workdir 00000000000000000000000001 default",
