@@ -360,7 +360,9 @@ test-documents-controls:
 
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_membership_over_64_keeps_events_chat_and_tasks_live --nocapture --test-threads=1
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
