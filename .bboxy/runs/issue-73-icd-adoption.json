@@ -1,0 +1,14 @@
+{
+  "source": "7cd80813f505e8b836aa6466cfed810556f3eea7",
+  "commands": [
+    {
+      "command": "git verify-commit 7cd80813f505e8b836aa6466cfed810556f3eea7",
+      "exit": 0
+    }
+  ],
+  "sha256": {
+    ".bboxy/specs/l9-messaging-tasks.md": "23a81458093d0062325fc1ec7b24ec1a7dfdad18cd98c76af5b39fdc0104b4b4",
+    ".bboxy/interfaces/logic-gui.md": "00dfe10fa7dedf485437039dce2a94a6ddcbfbd4a71584915805d2317a80b044",
+    ".bboxy/interfaces/messaging-seats.md": "dbc4ef4a900ed12d7f6d022c71a0ea381cf46e792e6b96ce488002f81cf5d015"
+  }
+}

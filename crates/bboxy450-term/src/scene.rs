@@ -1168,7 +1168,12 @@ impl Scene {
             - row_style.margin[1]
             - row_style.margin[3])
             .max(1.);
-        let mut extra: Vec<_> = if self.tree.is_none() {
+        // Adapted from bboxy450-term signed candidate 9739ea66 (scene.rs).
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        // Live swarms replace these three fields below. Do not populate and
+        // clone an all-seat template that is never laid out or painted.
+        let scoped = self.live && !self.swarms.is_empty();
+        let mut extra: Vec<_> = if !scoped && self.tree.is_none() {
             seats.iter().map(|s| s.element_in_swarm(ctx)).collect()
         } else {
             vec![]
@@ -1176,6 +1181,7 @@ impl Scene {
         extra.extend(
             self.closed
                 .iter()
+                .filter(|_| !scoped)
                 .filter(|(_, until, _, _)| now < *until)
                 .map(|(id, until, name, harness)| {
                     ui::modules::closed_strip::ClosedStrip {
@@ -1192,7 +1198,7 @@ impl Scene {
             key: "swarm".into(),
             name: "swarm".into(),
             color: Color::hex("#2E6BFF").0,
-            seats: seats.clone(),
+            seats: if scoped { vec![] } else { seats.clone() },
             expanded: true,
             closed: false,
             unfocused: false,
@@ -1203,6 +1209,7 @@ impl Scene {
             tabs: self
                 .tree
                 .as_ref()
+                .filter(|_| !scoped)
                 .map(|tree| {
                     vec![TabRow {
                         name: if self.live { "seats" } else { "all fifteen" }.into(),
@@ -1224,7 +1231,7 @@ impl Scene {
                 })
                 .unwrap_or_default(),
         };
-        let mut cards = if !self.live || self.swarms.is_empty() {
+        let mut cards = if !scoped {
             let mut card = card;
             card.extra.extend(self.starting_rows(None, ctx));
             vec![card]
@@ -2211,6 +2218,303 @@ fn history_row_rect(
 mod depth_tests {
     use super::*;
 
+    // Adapted from this project's tests/r5_stall.rs owned child driver.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    #[test]
+    #[ignore = "owned synthetic64/50 phase packet; existing R5 functional assertions"]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "owns this private child and its logs"
+    )]
+    fn live_swarm_template_functional_phase_packet() {
+        use std::{
+            process::{Command, Stdio},
+            time::Duration,
+        };
+        let directory = tempfile::Builder::new()
+            .prefix("scene-template-phase-")
+            .tempdir()
+            .unwrap();
+        let root = directory.keep();
+        let report = root.join("report.json");
+        let mut child = Command::new(
+            std::env::var("BBOXY_SCENE_TEMPLATE_BINARY")
+                .expect("use make test-scene-template-phase"),
+        )
+        .args([
+            "--stall-test",
+            "--stall-headless",
+            "--stall-seats",
+            "64",
+            "--stall-watched",
+            "50",
+            "--stall-seconds",
+            "5",
+            "--stall-idle",
+            "2",
+            "--stall-report",
+        ])
+        .arg(&report)
+        .arg("--stall-run-dir")
+        .arg(root.join("fixture"))
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .stdout(Stdio::from(
+            std::fs::File::create(root.join("stdout.log")).unwrap(),
+        ))
+        .stderr(Stdio::from(
+            std::fs::File::create(root.join("stderr.log")).unwrap(),
+        ))
+        .spawn()
+        .unwrap();
+        std::fs::write(root.join("owned-pid"), child.id().to_string()).unwrap();
+        println!("private synthetic64/50 phase evidence: {}", root.display());
+        let started = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if started.elapsed() > Duration::from_secs(90) {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                panic!(
+                    "owned phase child exceeded unchanged 90s boundary; {}",
+                    root.display()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        let value: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&report).expect("actual R5 report")).unwrap();
+        println!(
+            "actual child exit={status}; load={}→{}; failures={}; phase_packet={}",
+            value["host_load_before"],
+            value["host_load_after"],
+            value["failures"],
+            report.display()
+        );
+        assert!(
+            status.success(),
+            "actual R5 child failure; no ignored idle or timing result"
+        );
+        assert_eq!(value["kind"], "synthetic-render-state");
+        assert_eq!(value["rows"], 64);
+        assert_eq!(value["watched"], 50);
+        assert_eq!(value["real_ptys"], 0);
+        assert_eq!(value["timing_gated"], false);
+        assert_eq!(value["stdout_bytes"], 1_000_000_000u64);
+        assert!(value["fault_read_ms"].as_f64().unwrap() >= 2000.);
+        assert_eq!(
+            value["metrics"]["encoded_changes"]
+                .as_object()
+                .unwrap()
+                .len(),
+            50
+        );
+        assert_eq!(value["metrics"]["idle_frames"], 0);
+        assert_eq!(value["metrics"]["guard_violations"], 0);
+        assert_eq!(value["failures"], serde_json::json!([]));
+        assert!(value["metrics"]["frame_budget"].is_object());
+        assert_eq!(value["metrics"]["diagnostics"]["enabled"], true);
+    }
+
+    // keeps: spec ux-prototype §5; live and implicit single-swarm chrome agree
+    #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "writes only an explicitly requested private paint comparison fixture"
+    )]
+    fn live_swarm_template_keeps_fallback_paint_and_pane_geometry() {
+        use bbt_ui_model::{Swarm, SwarmId, Tab, TabId};
+        let mut snapshots = Vec::new();
+        for (theme, density) in [
+            (ui::Theme::Dark, ui::Density::Cozy),
+            (ui::Theme::Dark, ui::Density::Compact),
+            (ui::Theme::Light, ui::Density::Cozy),
+            (ui::Theme::Light, ui::Density::Compact),
+        ] {
+            for live in [false, true] {
+                let mut scene = Scene::new();
+                scene.live = live;
+                scene.context = ui::Context::new(theme, density);
+                // Real live projections use the seat identity as the row key.
+                for (id, index) in &scene.seat_index {
+                    scene.seats[*index].key = id.to_string();
+                }
+                let size = [1600., 960.];
+                let at = Instant::now();
+                let fallback = scene.layout_at(size, false, at).unwrap();
+                let paint = format!("{:?}", scene.paint(&fallback, size, None, None));
+                let panes = scene.pane_bounds(&fallback);
+                let mut tab = Tab::new(
+                    TabId::from_u128(1),
+                    if live { "seats" } else { "all fifteen" },
+                    scene.tree.clone().unwrap(),
+                );
+                tab.shortcut = Some(1);
+                tab.seats = (0..scene.seats.len())
+                    .map(|i| SeatId::from_u128(i as u128))
+                    .collect();
+                scene.swarms = vec![Swarm::new(SwarmId::from_u128(1), "swarm", vec![tab])];
+                scene.open_swarms.insert(SwarmId::from_u128(1));
+                scene.selected_swarm = Some(SwarmId::from_u128(1));
+                let explicit = scene.layout_at(size, false, at).unwrap();
+                assert_eq!(scene.pane_bounds(&explicit), panes);
+                let explicit_paint = format!("{:?}", scene.paint(&explicit, size, None, None));
+                if !live {
+                    assert_eq!(
+                        explicit_paint, paint,
+                        "unused explicit data cannot alter fallback paint"
+                    );
+                }
+                snapshots.push(serde_json::json!({"theme":format!("{theme:?}"),"density":format!("{density:?}"),"live":live,"fallback":paint,"explicit":explicit_paint,"panes":format!("{panes:?}")}));
+            }
+        }
+        // The canonical Make comparison runs this same fixture against the old
+        // production population hunk and this cut, comparing every paint op.
+        if let Ok(path) = std::env::var("BBOXY_SCENE_TEMPLATE_PAINT") {
+            std::fs::write(path, serde_json::to_vec(&snapshots).unwrap()).unwrap();
+        }
+    }
+
+    // keeps: spec c1-live-seats; each live swarm retains only its own rows
+    #[test]
+    fn live_swarm_template_keeps_rows_scoped_and_the_active_stage_unchanged() {
+        use bbt_ui_model::{Swarm, SwarmId, Tab, TabId};
+        fn text(layout: &c::Layout, out: &mut String) {
+            if let c::LayoutKind::Text { runs, .. } = &layout.kind {
+                for run in runs {
+                    out.push_str(&run.text);
+                    out.push(' ');
+                }
+            }
+            for child in &layout.children {
+                text(child, out);
+            }
+        }
+        let mut scene = Scene::new();
+        scene.live = true;
+        scene.seats.truncate(4);
+        scene.seat_index.retain(|_, index| *index < 4);
+        for (id, index) in &scene.seat_index {
+            scene.seats[*index].key = id.to_string();
+            scene.seats[*index].name = ["a0", "a1", "b0", "b1"][*index].into();
+        }
+        let ids: Vec<_> = (0..4).map(SeatId::from_u128).collect();
+        let a = SplitNode::split(
+            Axis::Row,
+            0.5,
+            SplitNode::Leaf(ids[0]),
+            SplitNode::Leaf(ids[1]),
+        );
+        let b = SplitNode::split(
+            Axis::Column,
+            0.5,
+            SplitNode::Leaf(ids[2]),
+            SplitNode::Leaf(ids[3]),
+        );
+        scene.tree = Some(a.clone());
+        scene.swarms = vec![
+            Swarm::new(
+                SwarmId::from_u128(1),
+                "alpha",
+                vec![Tab::new(TabId::from_u128(1), "A", a)],
+            ),
+            Swarm::new(
+                SwarmId::from_u128(2),
+                "beta",
+                vec![Tab::new(TabId::from_u128(2), "B", b)],
+            ),
+        ];
+        scene
+            .open_swarms
+            .extend(scene.swarms.iter().map(|swarm| swarm.id));
+        scene.selected_swarm = Some(SwarmId::from_u128(1));
+        let at = Instant::now();
+        for (index, label) in [(0, "a-closed"), (1, "b-closed")] {
+            let id = SeatId::from_u128(90 + index as u128);
+            let until = at + std::time::Duration::from_secs(2);
+            scene.closed.push((id, until, label.into(), "zsh".into()));
+            scene.swarms[index].closed.push(bbt_ui_model::ClosedStrip {
+                seat: id,
+                until,
+                undo: bbt_ui_model::UndoRecord {
+                    tab: TabId::from_u128(1),
+                    tab_index: 0,
+                    tab_name: "old".into(),
+                    shortcut: None,
+                    expanded: true,
+                    parent: None,
+                    process_generation: 1,
+                },
+            });
+        }
+        scene.starting = Some(starting::StartingScene {
+            projection: bboxy450_term::starting::Projection {
+                swarm: Some(SwarmId::from_u128(1)),
+                tab: Some(TabId::from_u128(1)),
+                focused: Some(Slot::Seat(ids[0])),
+                tree: Some(SplitNode::split(
+                    Axis::Row,
+                    0.5,
+                    SplitNode::Leaf(Slot::Seat(ids[0])),
+                    SplitNode::Leaf(Slot::Seat(ids[1])),
+                )),
+            },
+            rows: [
+                (
+                    bbt_mux::Ulid(91),
+                    SeatRow::new("starting/a", "a-starting", "zsh"),
+                ),
+                (
+                    bbt_mux::Ulid(92),
+                    SeatRow::new("starting/b", "b-starting", "zsh"),
+                ),
+            ]
+            .into(),
+            unbound: vec![
+                (SwarmId::from_u128(1), bbt_mux::Ulid(91)),
+                (SwarmId::from_u128(2), bbt_mux::Ulid(92)),
+            ],
+        });
+        let layouts = scene.layout_at([1600., 960.], false, at).unwrap();
+        for (index, own, other) in [
+            (0, ["a0", "a1"], ["b0", "b1"]),
+            (1, ["b0", "b1"], ["a0", "a1"]),
+        ] {
+            let card = named(&layouts[1], &format!("swarm{index}/card")).unwrap();
+            let mut labels = String::new();
+            text(card, &mut labels);
+            assert!(
+                own.iter().all(|name| labels.contains(name)),
+                "missing own rows: {labels}"
+            );
+            assert!(
+                other.iter().all(|name| !labels.contains(name)),
+                "foreign rows: {labels}"
+            );
+            assert!(labels.contains(if index == 0 { "a-closed" } else { "b-closed" }));
+            assert!(labels.contains(if index == 0 {
+                "a-starting"
+            } else {
+                "b-starting"
+            }));
+            assert!(!labels.contains(if index == 0 { "b-closed" } else { "a-closed" }));
+            assert!(!labels.contains(if index == 0 {
+                "b-starting"
+            } else {
+                "a-starting"
+            }));
+        }
+        assert_eq!(
+            scene
+                .pane_bounds(&layouts)
+                .iter()
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>(),
+            ids[..2]
+        );
+        assert_eq!(scene.focused(), Some(ids[0]));
+    }
     // keeps: spec ux-prototype §5
     #[test]
     fn local_graph_uses_a_clipped_retained_viewport_and_keeps_the_terminal_stage() {

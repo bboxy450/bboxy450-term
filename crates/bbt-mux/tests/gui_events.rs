@@ -678,7 +678,7 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
     rt.block_on(async {
         let mut gui = Gui::open(root.path(), &process).await;
         gui.attach().await;
-        assert_eq!(registry.list().unwrap().len(), 43, "65 exact GUI subjects across seven swarms");
+        assert_eq!(registry.list().unwrap().len(), 43, "108 exact GUI subjects across seven swarms, including canonical inboxes");
         let message = SendRequest::text("operator/inbox", "latest retained message body");
         let message_id = message.id;
         assert!(matches!(gui.messaging(Request::Send { message }).await, Response::Stored { .. }));
@@ -691,14 +691,16 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
         };
         let message_position = message.metadata.reference.position.clone();
         gui.send(GuiAction::EventAck {stream:message_position.stream.clone(), seq:message_position.sequence}).await;
+        let receipt_started = std::time::Instant::now();
         assert!(matches!(gui.messaging(Request::Acknowledge {message:message_id,agent:None}).await, Response::Applied));
         let receipt = match gui.until(|reply| matches!(reply,
             GuiReply::Event {subject,envelope,..} if subject.ends_with("/receipt")
-                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id)
+                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id && row.receipts.acked > 0)
         )).await {
             GuiReply::Event {envelope,..} => *envelope,
             _ => unreachable!(),
         };
+        println!("later explicit application-ACK receipt observed through the existing Event lane in {}ms; distinct from the retained-backlog composer witness",receipt_started.elapsed().as_millis());
         assert_ne!(receipt.metadata.reference.position, message_position);
         gui.send(GuiAction::EventAck {stream:receipt.metadata.reference.position.stream.clone(), seq:receipt.metadata.reference.position.sequence}).await;
         for expected in [message, receipt] {
@@ -727,6 +729,7 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
                 assert_eq!(row.text, "latest retained message body");
                 assert_eq!(row.issuer_kind, Some(IssuerKind::LocalDev));
                 assert_eq!(row.signature, bbt_proto::messaging::SignatureState::Signed);
+                assert!(row.receipts.acked > 0, "later receipt evidence is rehydrated; the initial snapshot is not permanently fresh");
                 let bus = row.bus.as_ref().unwrap();
                 assert_eq!(bus.stream, message_position.stream);
                 assert_eq!(bus.seq, message_position.sequence, "receipt is not the message position");
@@ -765,6 +768,30 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
             bbt_proto::events::GuiEventRecord::Event(event) if matches!(event.payload,
                 GuiEventPayload::Seat {..}|GuiEventPayload::Identity {..}|GuiEventPayload::Host {..})
         )));
+        // #73: a receipt can hydrate a row even when its direct publication is
+        // missing from the catalogue. Require the canonical message subject,
+        // not merely any event carrying this message ID.
+        let destination = format!("seats/{SEAT}/inbox");
+        let message = SendRequest::text(&destination, "direct canonical retained message");
+        let direct_id = message.id;
+        assert!(matches!(gui.messaging(Request::Send {message}).await, Response::Stored {..}));
+        let (stream, seq, row) = match gui.until(|reply| matches!(reply,
+            GuiReply::Event {subject,envelope,..} if subject == &format!("{destination}/message")
+                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == direct_id)
+        )).await {
+            GuiReply::Event {stream,seq,envelope,..} => {
+                let GuiEventPayload::Message {row} = envelope.payload else {unreachable!()};
+                (stream, seq, row)
+            },
+            _ => unreachable!(),
+        };
+        assert_eq!(row.text, "direct canonical retained message");
+        assert!(row.receipts.delivered > 0, "canonical projection includes actual recipient storage");
+        assert_eq!(row.receipts.acked, 0, "transport is not model consumption");
+        assert_eq!(row.bus.as_ref().unwrap().seq, seq);
+        let read = gui.cursor(&stream).await.read;
+        gui.send(GuiAction::EventAck {stream:stream.clone(), seq}).await;
+        assert_eq!(gui.cursor(&stream).await.read, read, "publication ACK never marks read");
         drop(gui);
     });
     process.stop();

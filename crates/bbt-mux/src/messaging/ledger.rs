@@ -170,6 +170,7 @@ impl Ledger {
             CREATE TABLE IF NOT EXISTS msg_deliveries(message INTEGER NOT NULL REFERENCES msg_messages(seq),recipient TEXT NOT NULL,agent TEXT NOT NULL,evidence TEXT NOT NULL,class INTEGER NOT NULL,held TEXT,eligible_ms INTEGER NOT NULL,batch_key TEXT NOT NULL,attempt TEXT,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
+            CREATE TABLE IF NOT EXISTS msg_wake_receipt_state(message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
             CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL,root_id TEXT);
             CREATE TABLE IF NOT EXISTS msg_digest_windows(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,agent TEXT NOT NULL,destination TEXT NOT NULL,class TEXT NOT NULL,deadline_ms INTEGER NOT NULL,messages INTEGER NOT NULL,sealed INTEGER NOT NULL);
             CREATE UNIQUE INDEX IF NOT EXISTS msg_digest_open ON msg_digest_windows(recipient,agent,destination,class) WHERE sealed=0;
@@ -988,7 +989,17 @@ impl Ledger {
             r.attempt = Some(work.id);
             r.note = "attempt journaled before native/PTY effects; result pending".into();
             save_receipt(&tx, &r)?;
-            receipt_event(&tx, &r, now)?;
+            // Retry bookkeeping stays in msg_attempts and the current receipt.
+            // Re-publishing pending before every identical no-effect result
+            // would defeat outcome coalescing and drown the durable GUI lane.
+            let retried: bool = tx.query_row(
+                "SELECT EXISTS(SELECT 1 FROM msg_wake_receipt_state WHERE message=?1 AND recipient=?2 AND agent=?3)",
+                params![sqlint(r.message_sequence)?, r.recipient.to_string(), r.agent.as_deref().unwrap_or("")],
+                |row| row.get(0),
+            )?;
+            if !retried {
+                receipt_event(&tx, &r, now)?;
+            }
         }
         let count = if digest {
             1
@@ -1079,7 +1090,7 @@ impl Ledger {
                 }
             }
             save_receipt(&tx, &receipt)?;
-            receipt_event(&tx, &receipt, now)?;
+            wake_receipt_event(&tx, &receipt, outcome, now)?;
         }
         tx.execute(
             "UPDATE msg_attempts SET outcome=?2 WHERE id=?1",
@@ -1690,6 +1701,37 @@ fn insert_deliveries(
 }
 fn save_receipt(db: &rusqlite::Connection, receipt: &Receipt) -> Result<()> {
     db.execute("UPDATE msg_deliveries SET evidence=?4,class=?5,held=?6,eligible_ms=?7,batch_key=?8,attempt=?9,data=?10 WHERE message=?1 AND recipient=?2 AND agent=?3",params![sqlint(receipt.message_sequence)?,receipt.recipient.to_string(),receipt.agent.as_deref().unwrap_or(""),serde_json::to_value(receipt.evidence)?.as_str().unwrap(),class_int(receipt.class),receipt.held,sqlint(receipt.eligible_ms)?,receipt.batch_key,receipt.attempt.map(|id|id.to_string()),serde_json::to_vec(receipt)?])?;
+    Ok(())
+}
+// Project-owned wake outcome coalescing: attempt IDs and retry deadlines are
+// journal state, not new delivery evidence. Keep every attempt, but publish an
+// unchanged refusal once, including across reopen. Changes to cause, evidence,
+// policy, signature, or native result still publish their real transition.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn wake_receipt_event(
+    tx: &rusqlite::Transaction<'_>,
+    receipt: &Receipt,
+    outcome: &WakeOutcome,
+    now: u64,
+) -> Result<()> {
+    let mut projection = receipt.clone();
+    projection.attempt = None;
+    projection.eligible_ms = 0;
+    let data = serde_json::to_vec(&(projection, outcome))?;
+    let changed = tx.execute(
+        "INSERT INTO msg_wake_receipt_state VALUES(?1,?2,?3,?4) \
+         ON CONFLICT(message,recipient,agent) DO UPDATE SET data=excluded.data \
+         WHERE data!=excluded.data",
+        params![
+            sqlint(receipt.message_sequence)?,
+            receipt.recipient.to_string(),
+            receipt.agent.as_deref().unwrap_or(""),
+            data
+        ],
+    )?;
+    if changed != 0 {
+        receipt_event(tx, receipt, now)?;
+    }
     Ok(())
 }
 fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) -> Result<()> {

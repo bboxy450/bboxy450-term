@@ -56,6 +56,9 @@ help:
 	  'make build-recovery-test         Retain the exact-HEAD recovery test executable' \
 	  'make test-recovery-built         Run the retained recovery test after source/hash checks' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
+	  'make test-chat-backlog           Exact direct subjects and retained no-effect wake receipt bounds' \
+	  'make test-scene-template         Live/fallback scene paint, pane and scoped-row equivalence' \
+	  'make test-scene-template-phase   Owned synthetic64/50 functional phase packet; no speedup claim' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
@@ -388,11 +391,41 @@ parity-documents:
 test-documents-controls:
 	@python3 -I -B scripts/e2e/documents_negative.py --target '$(TARGET_DIR)' --out '$(TARGET_DIR)/document-controls/'$$(date -u +%Y%m%dT%H%M%SZ)
 
+.PHONY: test-chat-backlog test-chat-backlog-component test-chat-backlog-frame test-chat-reconciliation test-scene-template test-scene-template-phase
+test-scene-template:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) scene::depth_tests::live_swarm_template -- --nocapture
+
+test-scene-template-phase: build
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_SCENE_TEMPLATE_BINARY='$(abspath $(TARGET_DIR))/debug/$(APP)' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) -- --ignored --exact scene::depth_tests::live_swarm_template_functional_phase_packet --nocapture --test-threads=1
+
+test-chat-backlog-component:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact component_receipt_backlog_keeps_fresh_composer_and_terminal_live --nocapture --test-threads=1
+	$(MAKE) test-chat-reconciliation
+
+test-chat-reconciliation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact canonical_recent_reconciles_real_event_once --nocapture --test-threads=1
+
+test-chat-backlog-frame:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_receipt_backlog_keeps_fresh_composer_and_terminal_live --nocapture --test-threads=1
+
+test-chat-backlog:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui -- --nocapture
+
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_membership_over_64_keeps_events_chat_and_tasks_live --nocapture --test-threads=1
+	$(MAKE) test-chat-backlog test-chat-backlog-component test-chat-backlog-frame
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \

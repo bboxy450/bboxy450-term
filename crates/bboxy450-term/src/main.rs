@@ -3835,13 +3835,14 @@ impl App {
     fn admit_composer(&mut self, batch: messaging::Batch) -> Vec<bbt_mux::Ulid> {
         self.chat_scroll.follow_latest();
         let commands = self.composer_client.admitted(batch);
-        let ids = commands
+        let ids: Vec<_> = commands
             .iter()
             .filter_map(|command| match command {
                 live::UiMsg::Messaging { id, .. } => Some(*id),
                 _ => None,
             })
             .collect();
+        self.message_history.watch_sends(&ids);
         self.operation_backlog.extend(commands);
         ids
     }
@@ -5575,6 +5576,14 @@ impl App {
                 &self.composer.view.attach,
                 &self.composer_client.protected_image_paths(),
             );
+            let follow_up_ids: Vec<_> = follow_up
+                .iter()
+                .filter_map(|command| match command {
+                    live::UiMsg::Messaging { id, .. } => Some(*id),
+                    _ => None,
+                })
+                .collect();
+            self.message_history.watch_sends(&follow_up_ids);
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             {
@@ -5592,8 +5601,12 @@ impl App {
             let records_changed = self
                 .task_records
                 .replies(&self.live_state.as_ref().unwrap().operation_results);
-            self.message_history
-                .replies(&self.live_state.as_ref().unwrap().operation_results);
+            if self
+                .message_history
+                .replies(&self.live_state.as_ref().unwrap().operation_results)
+            {
+                self.conversation_layout = None;
+            }
             if records_changed
                 && let Some((id, reason)) = &mut self.reject
                 && let Some((actual, issue)) = &self.task_records.review_issue

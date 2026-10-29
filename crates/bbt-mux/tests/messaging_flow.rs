@@ -528,6 +528,179 @@ impl AttentionFixture {
     }
 }
 
+// keeps: #73 no-effect retries remain real journaled attempts, without an
+// unbounded receipt stream; a changed result and explicit ACK still publish.
+#[test]
+fn repeated_not_ready_wake_receipts_are_coalesced_across_reopen() {
+    use bbt_mux::adapters::{ArbiterView, Binding, HarnessRecord, Session, WakeCause, native};
+    let mut f = AttentionFixture::new();
+    let id = f.send(1_000);
+    let binding = Binding {
+        seat: f.receiver.id,
+        generation: 1,
+        pid: std::process::id(),
+        process_start: native::process_start(std::process::id()).unwrap(),
+        session: "private-retained-readiness".into(),
+        attachment_generation: 1,
+        runtime: None,
+    };
+    let mut session =
+        Session::new(HarnessRecord::builtin("claude").unwrap(), binding.clone()).unwrap();
+    session
+        .observe_claude_session(
+            &native::ClaudeSessionFile {
+                pid: binding.pid,
+                session_id: binding.session.clone(),
+                process_start: binding.process_start.clone(),
+                status: "idle".into(),
+                waiting_for: None,
+                messaging_socket_path: None,
+            },
+            1,
+            0,
+        )
+        .unwrap();
+    let view = ArbiterView {
+        foreground_pid: Some(binding.pid),
+        binding,
+        operator_epoch: 0,
+        operator_draft: false,
+        active_tool: false,
+        sync_pending: false,
+        screen_switch_pending: false,
+        canonical: true,
+        echo: true,
+        bracketed_paste: true,
+    };
+    let input_journal = SqliteStore::open(&f.root.path().join("private-input")).unwrap();
+    let count = |f: &AttentionFixture| -> i64 {
+        f.ledger_store()
+            .connection()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM msg_receipts", [], |row| row.get(0))
+            .unwrap()
+    };
+    let mut baseline = 0;
+    let mut publications = 0;
+    for index in 0..128 {
+        if index == 64 {
+            f.reopen();
+        }
+        let now = 3_000 + index * 251;
+        let work = f
+            .messaging
+            .prepare(f.receiver.swarm, f.receiver.id, now)
+            .unwrap()
+            .unwrap();
+        assert_eq!(work.messages.len(), 1);
+        let outcome = session
+            .submit_pty(&view, now, work.id, &work.text(), &input_journal, |_| {
+                panic!("expired readiness must refuse before any PTY effect")
+            })
+            .unwrap();
+        assert_eq!(outcome.evidence, Evidence::RecipientStored);
+        assert_eq!(outcome.cause, Some(WakeCause::ComposerReadinessExpired));
+        f.messaging
+            .finish(f.receiver.swarm, &work, &outcome, now, false)
+            .unwrap();
+        if index == 0 {
+            baseline = count(&f);
+            publications = f.ledger_store().connection().unwrap()
+                .query_row("SELECT COUNT(*) FROM msg_bus_outbox", [], |row| row.get::<_, i64>(0)).unwrap();
+        }
+        assert_eq!(
+            count(&f),
+            baseline,
+            "unchanged refusal must not flood receipts at retry {index}"
+        );
+        let queued: i64 = f.ledger_store().connection().unwrap()
+            .query_row("SELECT COUNT(*) FROM msg_bus_outbox", [], |row| row.get(0)).unwrap();
+        assert_eq!(queued, publications, "bus publications are bounded too");
+        assert_eq!(f.receipt(id).evidence, Evidence::RecipientStored);
+        assert!(
+            f.messaging
+                .prepare(f.receiver.swarm, f.receiver.id, now + 249)
+                .unwrap()
+                .is_none()
+        );
+    }
+    let db = f.ledger_store().connection().unwrap();
+    let attempts: i64 = db
+        .query_row(
+            "SELECT COUNT(*) FROM msg_attempts WHERE outcome IS NOT NULL",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(attempts, 128, "coalescing never erases attempt evidence");
+    drop(db);
+    let work = f
+        .messaging
+        .prepare(f.receiver.swarm, f.receiver.id, 100_000)
+        .unwrap()
+        .unwrap();
+    f.finish(&work, 100_001);
+    assert_eq!(count(&f), baseline + 1, "actual native result publishes");
+    assert_eq!(f.receipt(id).evidence, Evidence::NativeWritten);
+    assert_eq!(
+        f.messaging
+            .pending_application_ack(f.receiver.id, 1)
+            .unwrap(),
+        1,
+        "native write is not model ACK"
+    );
+    assert!(
+        f.messaging
+            .prepare(f.receiver.swarm, f.receiver.id, 200_000)
+            .unwrap()
+            .is_none()
+    );
+    f.messaging
+        .request(
+            f.receiver.id,
+            1,
+            Request::Acknowledge {
+                message: id,
+                agent: None,
+            },
+            false,
+            None,
+            200_001,
+        )
+        .unwrap();
+    assert_eq!(count(&f), baseline + 2);
+    assert_eq!(f.receipt(id).evidence, Evidence::ApplicationAcknowledged);
+    assert_eq!(
+        f.messaging
+            .list(f.receiver.id, None, None, 0, 16)
+            .unwrap()
+            .items
+            .len(),
+        1
+    );
+}
+
+// keeps: #73 coalescing a no-effect result never makes an ambiguous subsequent
+// attempt safe to resubmit after a crash.
+#[test]
+fn coalesced_wake_receipts_keep_restarted_inflight_unknown() {
+    let mut f = AttentionFixture::new();
+    let id = f.send(1_000);
+    let work = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 2_000).unwrap().unwrap();
+    f.messaging.finish(f.receiver.swarm, &work, &WakeOutcome {
+        cause: None, evidence: Evidence::RecipientStored, native_id: None,
+        note: "no effect; readiness unavailable".into(),
+    }, 2_001, false).unwrap();
+    let retry = f.messaging.prepare(f.receiver.swarm, f.receiver.id, 3_000).unwrap().unwrap();
+    assert_ne!(retry.id, work.id);
+    f.reopen();
+    assert_eq!(f.receipt(id).evidence, Evidence::NativeUnknown);
+    assert_eq!(f.receipt(id).attempt, Some(retry.id));
+    assert!(f.messaging.prepare(f.receiver.swarm, f.receiver.id, 1_000_000).unwrap().is_none());
+    assert_eq!(f.messaging.pending_application_ack(f.receiver.id, 1).unwrap(), 1);
+    assert_eq!(f.messaging.list(f.receiver.id, None, None, 0, 16).unwrap().items.len(), 1);
+}
+
 // keeps: messaging-attention §3 ordinary Executor DMs wake without an override.
 #[test]
 fn executor_direct_conversation_wakes_immediately_by_default() {
