@@ -21,6 +21,399 @@ use bbt_mux::{Event, InputState, Supervisor, Ulid};
 use serde_json::json;
 use std::time::{Duration, Instant};
 
+// Adapted from bboxy450-term's private login-shell/PTY adapter fixtures below.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[test]
+fn terminal_colors_scrub_ambient_and_preserve_launch_and_shell_choices() {
+    let root = tempfile::tempdir().unwrap();
+    let home = root.path().join("parent-home");
+    std::fs::create_dir_all(&home).unwrap();
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "terminal_colors_private_process_fixture",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+        .env("HOME", &home)
+        .env("ZDOTDIR", &home)
+        .env("XDG_CONFIG_HOME", root.path().join("config"))
+        .env("XDG_DATA_HOME", root.path().join("data"))
+        .env("NO_COLOR", "1")
+        .env("TERM", "dumb")
+        .env("COLORTERM", "ambient-wrong")
+        .env("CLICOLOR", "0")
+        .env("BBT_TERMINAL_COLORS_ROOT", root.path())
+        .current_dir(root.path())
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    std::fs::write(root.path().join("child.stdout"), &output.stdout).unwrap();
+    std::fs::write(root.path().join("child.stderr"), &output.stderr).unwrap();
+    if !output.status.success() {
+        let retained = root.keep();
+        panic!(
+            "private color fixture failed: {}; evidence={}\nstdout={}\nstderr={}",
+            output.status,
+            retained.display(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    print!("{}", String::from_utf8_lossy(&output.stdout));
+}
+
+#[test]
+#[ignore = "private NO_COLOR subprocess, exercised by terminal_colors_scrub_ambient_and_preserve_launch_and_shell_choices"]
+fn terminal_colors_private_process_fixture() {
+    use std::os::unix::fs::PermissionsExt;
+
+    assert_eq!(std::env::var("NO_COLOR").unwrap(), "1");
+    let root =
+        std::fs::canonicalize(std::env::var_os("BBT_TERMINAL_COLORS_ROOT").unwrap()).unwrap();
+    let probe = root.join("color-probe");
+    let literal = "literal 'quote' ; $HOME $(must-not-expand)";
+    std::fs::write(
+        &probe,
+        r#"#!/bin/sh
+# bboxy450-term private color fixture; https://github.com/bboxy450/bboxy450-term
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+printf 'ENV|%s|%s|%s|%s\n' "${NO_COLOR-unset}" "$TERM" "$COLORTERM" "$CLICOLOR"
+printf 'RC|%s|%s\n' "${BBT_COLOR_PROFILE-unset}" "${BBT_COLOR_RC-unset}"
+printf 'CWD|%s\nARG|%s\nSENTINEL|%s\n' "$PWD" "$1" "${BBT_COLOR_SENTINEL-unset}"
+permission=no; mcp=no
+for arg do
+    case "$arg" in
+        --dangerously-skip-permissions) permission=yes ;;
+        --mcp-config) mcp=yes ;;
+    esac
+done
+printf 'FLAGS|%s|%s\n' "$permission" "$mcp"
+if [ -z "${NO_COLOR-}" ] && [ "$CLICOLOR" != 0 ] && [ -t 1 ]; then
+    printf '\033[31mRED-CELL\033[0m\n'
+else
+    printf 'PLAIN-CELL\n'
+fi
+printf 'COLOR-PROBE-DONE\n'
+exec /bin/sleep 30
+"#,
+    )
+    .unwrap();
+    std::fs::set_permissions(&probe, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(&root)).unwrap();
+    let client = supervisor.connect().unwrap();
+
+    for explicit in [false, true] {
+        let service_file = root.join(format!("companion-{explicit}"));
+        let mut spec = bbt_mux::LaunchSpec::new(probe.to_string_lossy(), &root);
+        spec.args = vec![literal.into()];
+        spec.size.cols = 200;
+        spec.env.insert("BBT_COLOR_SENTINEL".into(), "kept".into());
+        if explicit {
+            spec.env.extend([
+                ("NO_COLOR".into(), "launch-choice".into()),
+                ("TERM".into(), "explicit-term".into()),
+                ("COLORTERM".into(), "explicit-colorterm".into()),
+                ("CLICOLOR".into(), "0".into()),
+            ]);
+        }
+        spec.companion = Some(Box::new(bbt_mux::protocol::CompanionSpec {
+            program: "/bin/sh".into(),
+            args: vec![
+                "-c".into(),
+                r#"printf '%s\n' "${NO_COLOR-unset}" "$TERM" "$COLORTERM" "$CLICOLOR" "$BBT_COLOR_SENTINEL" "$PWD" "$1" "$(test -t 1 && printf tty || printf non-tty)" DONE > "$BBT_COLOR_SERVICE_FILE"; exec /bin/sleep 30"#.into(),
+                "color-service".into(),
+                literal.into(),
+            ],
+            env: if explicit {
+                [
+                    ("BBT_COLOR_SERVICE_FILE".into(), service_file.to_string_lossy().into()),
+                    ("NO_COLOR".into(), "service-choice".into()),
+                ].into()
+            } else {
+                [("BBT_COLOR_SERVICE_FILE".into(), service_file.to_string_lossy().into())].into()
+            },
+            ready_socket: root.join(format!("service-{explicit}.sock")),
+        }));
+        let info = client.spawn(spec).unwrap();
+        let attachment = client.attach(info.seat, info.generation).unwrap();
+        let bytes = terminal_color_output(&client, info.seat);
+        terminal_color_assert_output(&bytes, !explicit, literal, &root);
+        let expected_env = if explicit {
+            "ENV|launch-choice|explicit-term|explicit-colorterm|0"
+        } else {
+            "ENV|unset|xterm-256color|truecolor|1"
+        };
+        assert!(String::from_utf8_lossy(&bytes).contains(expected_env));
+        let until = Instant::now() + Duration::from_secs(5);
+        let service = loop {
+            let text = std::fs::read_to_string(&service_file).unwrap_or_default();
+            if text.ends_with("DONE\n") {
+                break text;
+            }
+            assert!(
+                Instant::now() < until,
+                "companion did not record its environment"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let expected = if explicit {
+            ["service-choice", "explicit-term", "explicit-colorterm", "0"]
+        } else {
+            ["unset", "dumb", "ambient-wrong", "0"]
+        };
+        assert_eq!(
+            service.lines().collect::<Vec<_>>(),
+            [
+                expected.as_slice(),
+                &["kept", root.to_str().unwrap(), literal, "non-tty", "DONE"]
+            ]
+            .concat()
+        );
+        client.kill(&attachment).unwrap();
+        println!(
+            "raw PTY/companion explicit={explicit}: ANSI/parser and environment precedence held"
+        );
+    }
+
+    drop(client);
+    drop(supervisor);
+    let logic_root = root.join("logic");
+    std::fs::create_dir(&logic_root).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(&logic_root)).unwrap();
+    let repository = logic_root.join(".bboxy");
+    std::fs::create_dir(&repository).unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let logic = bbt_mux::logic::Logic::start(
+        supervisor.connect().unwrap(),
+        bbt_mux::logic::LogicConfig {
+            run_dir: logic_root.join("run"),
+            repository,
+            ring: Default::default(),
+        },
+        ed25519_dalek::SigningKey::from_bytes(&[64; 32]),
+        runtime.handle(),
+    )
+    .unwrap();
+    let fish = root.join("config/fish");
+    std::fs::create_dir_all(&fish).unwrap();
+    std::fs::write(fish.join("config.fish"), "source $HOME/color-choice.fish\n").unwrap();
+    for (choice, explicit) in [(false, false), (true, false), (true, true)] {
+        let home = root.join(format!("shell-home-{choice}-{explicit}"));
+        std::fs::create_dir(&home).unwrap();
+        let rc = format!(
+            "export BBT_COLOR_PROFILE=loaded\nexport BBT_COLOR_RC=loaded\n{}",
+            if choice {
+                "export NO_COLOR=rc-choice\n"
+            } else {
+                ""
+            }
+        );
+        for file in [
+            ".zprofile",
+            ".zshrc",
+            ".bash_profile",
+            ".bashrc",
+            ".profile",
+        ] {
+            std::fs::write(home.join(file), &rc).unwrap();
+        }
+        std::fs::write(
+            home.join("color-choice.fish"),
+            format!(
+                "set -gx BBT_COLOR_PROFILE loaded\nset -gx BBT_COLOR_RC loaded\n{}",
+                if choice {
+                    "set -gx NO_COLOR rc-choice\n"
+                } else {
+                    ""
+                }
+            ),
+        )
+        .unwrap();
+        let mut harness = HarnessRecord::builtin("claude").unwrap();
+        harness.command = vec![probe.to_string_lossy().into(), literal.into()];
+        harness.hooks = false;
+        let record = SeatRecord::new(Ulid::new(), Ulid::new(), "private color fixture", "claude");
+        let id = record.id;
+        let swarm = record.swarm;
+        let mut env = vec![("BBT_COLOR_SENTINEL".into(), "kept".into())];
+        if explicit {
+            env.push(("NO_COLOR".into(), "gui-choice".into()));
+        }
+        runtime
+            .block_on(logic.client.spawn_harness(
+                record,
+                harness,
+                bbt_mux::adapters::launch::LaunchOptions {
+                    env,
+                    cwd: root.clone(),
+                    role_prompt: String::new(),
+                    executable: "/tmp/bboxy450-term".into(),
+                    user_home: home.clone(),
+                    user_zdotdir: Some(home),
+                    resume: false,
+                },
+            ))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(5);
+        let snapshot = loop {
+            let snapshot = runtime.block_on(logic.client.snapshot(id, 1)).unwrap();
+            let text: String = snapshot
+                .screen
+                .cells
+                .iter()
+                .flatten()
+                .map(|c| c.c)
+                .collect();
+            if text.contains("COLOR-PROBE-DONE") {
+                break snapshot;
+            }
+            assert!(
+                Instant::now() < until,
+                "login-shell color probe never completed: {text}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let history = runtime
+            .block_on(logic.client.history(id, 1, 1, snapshot.sequence))
+            .unwrap();
+        assert!(history.gap.is_none());
+        assert!(
+            history.next.is_none(),
+            "small color fixture unexpectedly paginated"
+        );
+        let bytes: Vec<u8> = history
+            .records
+            .into_iter()
+            .filter_map(|record| match record.event {
+                Event::Output { bytes, .. } => Some(bytes),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        terminal_color_assert_output(&bytes, !choice, literal, &root);
+        let text = String::from_utf8_lossy(&bytes);
+        let no_color = if explicit {
+            "gui-choice"
+        } else if choice {
+            "rc-choice"
+        } else {
+            "unset"
+        };
+        assert!(
+            text.contains(&format!("ENV|{no_color}|xterm-256color|truecolor|1")),
+            "{text}"
+        );
+        assert!(
+            text.contains("RC|loaded|loaded"),
+            "real default login shell did not read private startup: {text}"
+        );
+        assert!(
+            text.contains("FLAGS|yes|yes"),
+            "native harness integration flags were lost: {text}"
+        );
+        assert_eq!(
+            snapshot
+                .screen
+                .cells
+                .iter()
+                .flatten()
+                .any(|cell| cell.c == 'R'
+                    && cell.fg == bbt_core::Color::Named(bbt_core::NamedColor::Red)),
+            !choice,
+            "live Logic projection disagrees with the child's color choice"
+        );
+        runtime
+            .block_on(logic.client.close(
+                id,
+                1,
+                Ulid::new(),
+                bbt_mux::registry::Position {
+                    swarm,
+                    tab: Ulid::new(),
+                    split_path: vec![0],
+                    ratios: vec![],
+                    layout_revision: 1,
+                },
+                0,
+            ))
+            .unwrap();
+        println!(
+            "default login shell rc_no_color={choice}, explicit_gui_no_color={explicit}: ANSI/parser, private rc and native flags held"
+        );
+    }
+    logic.shutdown().unwrap();
+}
+
+fn terminal_color_output(client: &bbt_mux::Client, seat: Ulid) -> Vec<u8> {
+    let until = Instant::now() + Duration::from_secs(5);
+    let mut output = Vec::new();
+    loop {
+        assert!(
+            Instant::now() < until,
+            "PTY color probe timed out: {}",
+            String::from_utf8_lossy(&output)
+        );
+        match client.recv_timeout(Duration::from_millis(50)) {
+            Ok(Event::Output {
+                seat: id, bytes, ..
+            }) if id == seat => output.extend(bytes),
+            Ok(Event::Exited { seat: id, .. }) if id == seat => {
+                panic!("PTY color probe exited before its marker")
+            }
+            Ok(_) | Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+            Err(error) => panic!("PTY color event stream failed: {error}"),
+        }
+        if output
+            .windows(b"COLOR-PROBE-DONE".len())
+            .any(|part| part == b"COLOR-PROBE-DONE")
+        {
+            return output;
+        }
+    }
+}
+
+fn terminal_color_assert_output(bytes: &[u8], colored: bool, literal: &str, cwd: &std::path::Path) {
+    let text = String::from_utf8_lossy(bytes);
+    assert!(
+        text.contains(&format!("ARG|{literal}")),
+        "literal arguments changed: {text}"
+    );
+    assert!(
+        text.contains(&format!("CWD|{}", cwd.display())),
+        "working directory changed: {text}"
+    );
+    assert!(
+        text.contains("SENTINEL|kept"),
+        "explicit unrelated environment changed: {text}"
+    );
+    assert_eq!(
+        text.contains("\x1b[31mRED-CELL\x1b[0m"),
+        colored,
+        "actual child SGR: {text}"
+    );
+    assert_eq!(
+        text.contains("PLAIN-CELL"),
+        !colored,
+        "actual child opt-out: {text}"
+    );
+    let mut term = bbt_core::Term::new(200, 40, 0);
+    term.advance(bytes);
+    let red = (0..40).any(|row| {
+        (0..200).any(|col| {
+            let cell = &term.grid()[bbt_core::Line(row)][bbt_core::Column(col)];
+            cell.c == 'R' && cell.fg == bbt_core::Color::Named(bbt_core::NamedColor::Red)
+        })
+    });
+    assert_eq!(red, colored, "real PTY bytes must determine terminal color");
+}
+
 struct ZshStartupDiagnostics<'a> {
     root: Option<tempfile::TempDir>,
     client: &'a bbt_mux::Client,
