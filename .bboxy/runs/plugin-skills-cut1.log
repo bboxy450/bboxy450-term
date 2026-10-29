@@ -9,3 +9,9 @@ upstream: modelcontextprotocol/ext-skills ff224337b01f0c9b18b81dcf99eefe66e9a52b
 limits: no native 2026 server/discover or skills/list/get advertised; supporting files, generic plugin tool forwarding and bundled standalone stdio export remain separate work. Reading instructions grants no authority. Live user sessions untouched.
 sha256 issue63-plugin-skills-focused-20261029-pass2.log: 1cfac9c9fded9c38726cfe895db19730ff6de5b63a1230b9196bc01300be635d
 sha256 issue63-plugin-skills-clippy-20261029.log: d3debd02ca03d3a88972e56b83445f41b825256c514dabeaf2913b0d5b728b57
+full make test attempt1 — exit2; build output directory removed by author cache cleanup, restored before retry; source unchanged.
+full make test attempt2 — exit2; one existing MCP test retained pre-feature catalogue counts23/42; actual counts25/44 from the two new read-only tools. Fixed expectations; forbidden-worker-tool checks remain unchanged.
+make test-plugin-skills final — exit0; now also includes exact mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results regression.
+raw /Users/feral/Library/Logs/bboxy450-term/issue63-plugin-skills-full-first-ci-20261029.log sha256 5f67706846fa65f032f450aca58e164c111561c4ecec2df95b30e885834117da
+raw /Users/feral/Library/Logs/bboxy450-term/issue63-plugin-skills-full-second-ci-20261029.log sha256 94ed74415c8fb79c62bb683e3bb5084be1b9ba432baf89b9cf1783d8e6e6607c
+raw /Users/feral/Library/Logs/bboxy450-term/issue63-plugin-skills-focused-final-20261029.log sha256 af8b37b8d0115e6ec35e2d3f758ef98393edaec29d75cb787a53c64537e1052b

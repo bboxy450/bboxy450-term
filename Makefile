@@ -551,6 +551,7 @@ test-plugin-skills:
 	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_skills_ -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_four_methods_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results -- --exact --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test knowledge_provider -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters
 
