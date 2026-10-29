@@ -10,6 +10,9 @@ SHELL := /bin/sh
 APP := bboxy450-term
 PROFILE ?= release
 TARGET_DIR ?= target
+# Each fixture owns real app/PTY/provider processes. Leave fixed provider deadlines
+# for its own scenario rather than unrelated GUI fixture startup.
+SWARM_TEST_THREADS ?= 2
 INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app
@@ -99,7 +102,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=...'
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2'
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -179,7 +182,7 @@ test-swarm:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) swarm_workdir; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib window_state; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture --test-threads=$(SWARM_TEST_THREADS)
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
