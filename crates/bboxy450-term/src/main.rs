@@ -9678,7 +9678,7 @@ mod lazy_projection_tests {
         }
     }
 
-    fn published_model(revision: usize) -> Arc<bboxy450_term::model::Model> {
+    pub(super) fn published_model(revision: usize) -> Arc<bboxy450_term::model::Model> {
         let id = SeatId::from_u128(1);
         let swarm = SwarmId::from_u128(2);
         let mut seat = Seat::new(id, swarm, [1; 32], "fixture", "zsh");

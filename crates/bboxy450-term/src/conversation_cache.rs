@@ -187,12 +187,16 @@ mod tests {
         ) {
             return;
         }
+        // Resolve optional timezone metadata before registering the fixture UI.
+        // A later "—" -> local clock transition is a real input change, not a cache hit.
+        bboxy450_term::local_time::initialize();
         let (mut app, latest) = crate::lazy_projection_tests::fixture();
-        latest.publish(Arc::new(bboxy450_term::model::Model::default()));
-        app.drain(); // Settle ordinary empty-workspace notices before the cached view.
-        let scope = bbt_proto::SwarmId::from_u128(1);
-        app.composer_scope = Some(bbt_ui_model::SwarmId::from_u128(1));
-        app.message_history.select(scope);
+        let model = crate::lazy_projection_tests::published_model(0);
+        latest.publish(model.clone());
+        app.drain(); // Settle catalog/workspace state using a real retained swarm and seats.
+        let scope = bbt_proto::SwarmId::from_u128(2);
+        assert_eq!(app.composer_scope, Some(scope));
+        assert_eq!(app.message_history.selected(), "all");
         app.message_history.cursor(0, 1, 0);
         app.message_history
             .row(&row(scope), Some("operator/inbox"), 1000);
@@ -210,14 +214,25 @@ mod tests {
         for cell_width in [7, 8, 9] {
             // This is a real Latest publication consumed by App::drain, whose
             // normal path calls refresh_conversation before the following solve.
-            latest.publish(Arc::new(bboxy450_term::model::Model {
-                terminal_cell_pixels: Some([cell_width, 16]),
-                ..Default::default()
-            }));
+            let mut publication = model.as_ref().clone();
+            publication.terminal_cell_pixels = Some([cell_width, 16]);
+            latest.publish(Arc::new(publication));
             app.drain();
+            assert_eq!(app.composer_scope, Some(scope));
+            let input = app.conversation_inputs(app.solved_size);
+            let previous = app.conversation_cache.snapshot.as_ref().unwrap();
             assert!(
                 app.conversation_layout.is_some(),
-                "identical refresh must retain hit geometry"
+                "identical refresh must retain hit geometry: scope={:?}/{:?}, channel={}/{}, geometry={:?}/{:?}, stream_equal={}, tasks_equal={}, composer_equal={}",
+                previous.scope,
+                input.scope,
+                previous.channel,
+                input.channel,
+                previous.geometry,
+                input.geometry,
+                previous.view.stream == *input.stream,
+                previous.view.tasks.as_ref() == Some(input.tasks),
+                previous.view.composer == *input.composer,
             );
             app.project_scene(true);
             app.solve_ui([1200., 900.]).unwrap();
