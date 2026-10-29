@@ -845,6 +845,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
     let mut seats: Vec<_> = [(1, "codex"), (2, "claude")]
         .into_iter()
         .map(|(id, harness)| GuiSeat {
+            notification_episode: None,
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
                 bbt_mux::Ulid(id),

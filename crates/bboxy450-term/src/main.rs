@@ -138,6 +138,10 @@ pub enum UiEvent {
     CaptureDeadline(bbt_mux::Ulid),
     StallPoll,
     Notification(bboxy450_desktop_notifications::Response),
+    DesktopNotification {
+        id: String,
+        episode: bboxy450_term::attention::EpisodeKey,
+    },
     NotificationReady,
     NotificationError(String),
     ErrorCount(u64),
@@ -710,15 +714,33 @@ fn notification_target(
     now: Instant,
     model: Option<&bboxy450_term::model::Model>,
     window: bool,
+    expected: Option<bboxy450_term::attention::EpisodeKey>,
 ) -> NotificationTarget {
     if now.saturating_duration_since(received) >= Duration::from_secs(30) {
         return NotificationTarget::Refused("seat unavailable within 30 seconds");
     }
-    let Some(row) = model.and_then(|model| model.ui.seats.get(&seat)) else {
+    let Some(model) = model else {
+        return NotificationTarget::Pending;
+    };
+    let Some(row) = model.ui.seats.get(&seat) else {
         return NotificationTarget::Pending;
     };
     if row.lifecycle != bbt_ui_model::Lifecycle::Open {
         return NotificationTarget::Refused("seat is closed");
+    }
+    if let Some(expected) = expected {
+        if row.process_generation != expected.generation {
+            return NotificationTarget::Refused("seat generation changed");
+        }
+        let Some(current) = model.attention_key(seat) else {
+            return NotificationTarget::Pending;
+        };
+        if current.epoch == bbt_mux::Ulid::nil() && expected.epoch != bbt_mux::Ulid::nil() {
+            return NotificationTarget::Pending;
+        }
+        if current != expected {
+            return NotificationTarget::Refused("question changed");
+        }
     }
     if window {
         NotificationTarget::Ready
@@ -2122,7 +2144,7 @@ struct App {
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
-    pending_notification: Option<(SeatId, Instant)>,
+    pending_notification: Option<(SeatId, Instant, Option<bboxy450_term::attention::EpisodeKey>)>,
     notification_ui: Option<bboxy450_term::focus_ack::Ask>,
     #[cfg(debug_assertions)]
     notification_recorder: Option<bboxy450_term::notifications::recording::Recorder>,
@@ -4654,6 +4676,25 @@ impl App {
     }
     fn sync_notifications(&mut self) {
         let policy = self.preferences.notification_policy();
+        if let (Some(commands), Some(model)) = (&self.live_commands, &self.live_state) {
+            let focused = (self.local_tab.is_none()
+                && !self.document.open
+                && self.launcher.is_none()
+                && !self.app_overlays.open())
+                .then(|| self.focus.stage.as_ref().and_then(|stage| stage.focused))
+                .flatten();
+            commands.desktop_context(bboxy450_term::cockpit::desktop::Context {
+                policy: policy.clone(),
+                frontmost: self.frontmost,
+                focused: focused.map(|id| bbt_mux::Ulid(id.0.0)),
+                handled: model
+                    .attention_episodes
+                    .handled()
+                    .into_iter()
+                    .map(|(id, key)| (bbt_mux::Ulid(id.0.0), key))
+                    .collect(),
+            });
+        }
         if let (Some(worker), Some(model)) = (&mut self.notifications, &self.live_state) {
             let focused = self.focus.stage.as_ref().and_then(|stage| stage.focused);
             let known = model
@@ -4662,7 +4703,11 @@ impl App {
                 .keys()
                 .map(|seat| bboxy450_desktop_notifications::NotificationId(seat.0.to_string()))
                 .collect();
-            worker.submit(model.notifications(&policy, self.frontmost, focused), known);
+            worker.submit(
+                model.notifications(&policy, self.frontmost, focused),
+                known,
+                policy.enabled,
+            );
         }
     }
     /// Native focus events and the private recording probe share every effect.
@@ -4697,7 +4742,17 @@ impl App {
                     }
                     return;
                 }
-                self.pending_notification = Some((SeatId::from_u128(id.0), Instant::now()));
+                let seat = SeatId::from_u128(id.0);
+                let Some(episode) = self
+                    .live_state
+                    .as_ref()
+                    .and_then(|model| model.attention_key(seat))
+                else {
+                    self.logger
+                        .write("notification click refused: current question unavailable");
+                    return;
+                };
+                self.pending_notification = Some((seat, Instant::now(), Some(episode)));
                 self.apply_notification_click();
             }
             Err(_) => self
@@ -4705,8 +4760,22 @@ impl App {
                 .write("notification focus refused: invalid seat id"),
         }
     }
+    fn desktop_notification_clicked(
+        &mut self,
+        id: String,
+        episode: bboxy450_term::attention::EpisodeKey,
+    ) {
+        match id.parse::<bbt_mux::Ulid>() {
+            Ok(id) => {
+                self.pending_notification =
+                    Some((SeatId::from_u128(id.0), Instant::now(), Some(episode)));
+                self.apply_notification_click();
+            }
+            Err(_) => self.logger.write("notification focus refused: invalid seat id"),
+        }
+    }
     fn apply_notification_click(&mut self) {
-        let Some((seat, at)) = self.pending_notification else {
+        let Some((seat, at, expected)) = self.pending_notification else {
             return;
         };
         match notification_target(
@@ -4714,7 +4783,15 @@ impl App {
             at,
             Instant::now(),
             self.live_state.as_deref(),
-            self.window.is_some() || self.recording_active(),
+            self.window.is_some()
+                || self.recording_active()
+                || (cfg!(debug_assertions)
+                    && notification_test_account(
+                        self.test_account,
+                        self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+                    )
+                    && std::env::args().any(|arg| arg == "--desktop-fixture")),
+            expected,
         ) {
             NotificationTarget::Pending => return,
             NotificationTarget::Refused(reason) => {
@@ -7702,7 +7779,7 @@ impl ApplicationHandler<UiEvent> for App {
         }
         event_loop.set_control_flow(
             self.pending_notification
-                .map(|(_, at)| at + Duration::from_secs(30))
+                .map(|(_, at, _)| at + Duration::from_secs(30))
                 .into_iter()
                 .chain(self.custody.wake_at())
                 .chain(self.role_settings.wake_at())
@@ -7789,6 +7866,7 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
                 self.notification_clicked(id)
             }
+            UiEvent::DesktopNotification { id, episode } => self.desktop_notification_clicked(id, episode),
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Dismissed(_)) => {}
             UiEvent::NotificationReady => {
                 if let Some(worker) = &mut self.notifications {
@@ -9453,8 +9531,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
-        .map_err(|error| error as Box<dyn std::error::Error>)?;
+    let notification_test_account = bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
+        .map_err(|error| error as Box<dyn std::error::Error>)?
+        .is_some();
     bboxy450_term::cockpit::Config::repository_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
@@ -9514,7 +9593,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // The delegate is installed before run_app finishes application launch.
     // Authorization and native completion waits run only on the bounded worker.
     let callback_proxy = proxy.clone();
-    let notifications = if record_notifications {
+    // macOS may route a click to the foreground application process. Retain
+    // its response delegate, while the desktop owner alone authorizes/posts.
+    let _notification_listener = if cfg!(target_os = "macos")
+        && !record_notifications
+        && !notification_test_account
+        && !fake
+    {
+        let response_proxy = proxy.clone();
+        match bboxy450_desktop_notifications::open(Box::new(move |response| {
+            let _ = response_proxy.send_event(UiEvent::Notification(response));
+        })) {
+            Ok(listener) => Some(listener),
+            Err(error) => {
+                logger.write(error.to_string());
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let notifications = if record_notifications
+        || notification_test_account
+        || cfg!(target_os = "macos")
+    {
         None
     } else {
         match bboxy450_desktop_notifications::open(Box::new(move |response| {
@@ -11839,22 +11941,22 @@ mod launcher_host_tests {
         let now = Instant::now();
         let mut model = bboxy450_term::model::Model::default();
         assert_eq!(
-            notification_target(seat, now, now, None, false),
+            notification_target(seat, now, now, None, false, None),
             NotificationTarget::Pending
         );
         model.metadata_initialized = true;
         assert_eq!(
-            notification_target(seat, now, now, Some(&model), true),
+            notification_target(seat, now, now, Some(&model), true, None),
             NotificationTarget::Pending
         );
         model.ui = fixture();
         let stage = model.ui.window.stage.clone();
         assert_eq!(
-            notification_target(seat, now, now, Some(&model), false),
+            notification_target(seat, now, now, Some(&model), false, None),
             NotificationTarget::Pending
         );
         assert_eq!(
-            notification_target(seat, now, now, Some(&model), true),
+            notification_target(seat, now, now, Some(&model), true, None),
             NotificationTarget::Ready
         );
         assert_eq!(
@@ -11862,13 +11964,71 @@ mod launcher_host_tests {
             "readiness and native responses only emit an explicit focus intent"
         );
         assert!(matches!(
-            notification_target(seat, now, now + Duration::from_secs(30), Some(&model), true),
+            notification_target(seat, now, now + Duration::from_secs(30), Some(&model), true, None),
             NotificationTarget::Refused(_)
         ));
         model.ui.seats.get_mut(&seat).unwrap().lifecycle = bbt_ui_model::Lifecycle::ClosedRetained;
         assert_eq!(
-            notification_target(seat, now, now, Some(&model), true),
+            notification_target(seat, now, now, Some(&model), true, None),
             NotificationTarget::Refused("seat is closed")
+        );
+    }
+
+    #[test]
+    fn notification_click_cannot_handle_a_replacement_question_or_process() {
+        let seat = SeatId::from_u128(1);
+        let now = Instant::now();
+        let mut model = bboxy450_term::model::Model {
+            ui: fixture(),
+            ..Default::default()
+        };
+        let generation = model.ui.seats[&seat].process_generation;
+        let episode = bboxy450_term::attention::EpisodeKey {
+            epoch: bbt_mux::Ulid(41),
+            generation,
+            ordinal: 1,
+        };
+        let mut current = bbt_proto::GuiSeat {
+            notification_episode: Some(episode),
+            attention: None,
+            record: bbt_proto::registry::SeatRecord::new(
+                bbt_mux::Ulid(1), bbt_mux::Ulid(2), "fixture", "codex",
+            ),
+            state: bbt_proto::SeatState {
+                generation,
+                process: bbt_proto::ProcessStatus::Running { pid: 9 },
+                activity: bbt_proto::Activity::Waiting(bbt_proto::WaitKind::Question),
+                grade: bbt_proto::Grade::Shim,
+                title: String::new(),
+                detail: None,
+                turn_open: true,
+                observed_ms: 10,
+                subagents: vec![],
+            },
+        };
+        current.record.generation = generation;
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true, Some(episode)),
+            NotificationTarget::Pending,
+        );
+        model.observe_attention(&current, now);
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true, Some(episode)),
+            NotificationTarget::Ready,
+        );
+        current.notification_episode = Some(bboxy450_term::attention::EpisodeKey {
+            ordinal: 2,
+            ..episode
+        });
+        model.observe_attention(&current, now);
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true, Some(episode)),
+            NotificationTarget::Refused("question changed"),
+        );
+        model.ui.seats.get_mut(&seat).unwrap().process_generation += 1;
+        assert_eq!(
+            notification_target(seat, now, now, Some(&model), true, Some(episode)),
+            NotificationTarget::Refused("seat generation changed"),
         );
     }
 

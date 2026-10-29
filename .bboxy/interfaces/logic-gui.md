@@ -18,7 +18,7 @@ to own the target, and uses the existing task delegation authorization and root
 revision fences. `SeatControlled {op}` is correlated by operation ID; an unknown
 kill outcome retains that ID and never becomes a new automatic kill. Kill uses
 the supervisor's exact owned child attachment, keeps the seat/history, and is
-distinct from reversible close. `UI_CONTROL_VERSION = 4` requires an old logic
+distinct from reversible close. `UI_CONTROL_VERSION = 9` requires an old logic
 owner to refresh before these controls are sent.
 
 The independent `MCP_CONTROL_VERSION = 7` adds the native task import/context/
@@ -109,3 +109,42 @@ by canonical message ID/context and its real position without duplicate rows or
 loss of confirmed signature/ACK evidence; require an actual canonical-None →
 actual-Event production witness and a negative control restoring the old None
 rejection before implementation acceptance.
+
+## Current attention observer and desktop notification ownership
+
+Owners: logic's current-seat publisher (`bboxy450-mux`) and the existing desktop
+owner (`bboxy450-term::cockpit::desktop`); the frontend owns paint and explicit
+focus intent. The desktop process is the sole production native notification
+owner and survives ordinary UI detach. Private recording fixtures replace the
+native port and never reach the operator's notification account.
+
+A narrow authenticated observer uses no frontend/window claim, durable GUI
+events cursor, ACK/read mark, or terminal capture/watch. It admits only the
+existing device/peer authority, refuses mutating requests, and cannot promote a
+seat descendant. Bootstrap/reconnect/lag obtains a current snapshot; ordinary
+updates contain only changed seats. Historical event pages never create alerts.
+The bounded latest-state publisher must not wait for a reader or periodically
+scan the full roster; lag is explicit and reconciled by a fresh snapshot.
+
+Logic supplies `NotificationEpisode {epoch, generation, ordinal}` with each
+currently confirmed waiting seat. An episode is stable within that wait and
+changes after resolution, close, generation change or a new source epoch. The
+optional field is omitted for older wire forms. UI and desktop consume the same
+key; a handled acknowledgement must match it exactly. Native posting/handled
+state is retained by the desktop process across UI reconnects. A stale focus
+intent must never clear a newer question.
+
+The private desktop/UI port carries policy, frontmost/focused state and exact
+handled keys through a bounded coalesced handoff, separate from portable menu
+Actions. UI EOF means no frontmost/focused seat, retaining notification policy.
+Notification click uses the existing authenticated show/reattach path followed
+by current seat/generation validation and the ordinary focus action; it does
+not launch a replacement harness. Owner protocol upgrades retire only the exact
+birth-checked old desktop helper and preserve supervisor/seat processes.
+
+Verification: pure broker ordering/lag/authority and episode-key tests; private
+recording lifecycle test (detach UI, induce waiting, one notification, click,
+one reattached frontend, unchanged harness PID/generation); existing notification
+copy/mute and GUI lifecycle gates. Native permission and alert style are read
+without prompting by `make notification-status`. Authorization initialization
+runs off the event/UI owners only when notifications are enabled.

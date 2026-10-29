@@ -9874,10 +9874,10 @@ impl Worker {
                             self.register_claude_socket(id, generation, &event)?;
                             Ok(status)
                         });
-                        if let (Some(before), Ok(status)) = (&before, &result) {
-                            if !status.same_value(before) || attention_changed {
-                                self.publish_adapter(id, status.clone())?;
-                            }
+                        if let (Some(before), Ok(status)) = (&before, &result)
+                            && (!status.same_value(before) || attention_changed)
+                        {
+                            self.publish_adapter(id, status.clone())?;
                         }
                         if result.is_ok() {
                             if let Some(root) = self.provenance_binding(id, generation)

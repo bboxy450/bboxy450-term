@@ -92,6 +92,7 @@ pub struct CommandSender {
     knowledge: Arc<KnowledgeDemand>,
     workspace: tokio::sync::watch::Sender<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
+    desktop: tokio::sync::watch::Sender<Option<cockpit::desktop::Context>>,
     // UI loss detaches even when the queue and retained retry slot are full.
     // Only an explicit hard-quit signal stops the backend owners.
     _stop: oneshot::Sender<CloseMode>,
@@ -122,6 +123,16 @@ impl CommandSender {
     }
     pub fn set_context(&self, context: bboxy450_term::settings::ContextUpdate) {
         self.context.send_replace(Some(context));
+    }
+    pub fn desktop_context(&self, context: cockpit::desktop::Context) {
+        self.desktop.send_if_modified(|current| {
+            if current.as_ref() == Some(&context) {
+                false
+            } else {
+                *current = Some(context);
+                true
+            }
+        });
     }
 
     pub fn observe_knowledge_scoped(
@@ -162,10 +173,12 @@ struct Commands {
     knowledge: Arc<KnowledgeDemand>,
     workspace: tokio::sync::watch::Receiver<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Receiver<Option<bboxy450_term::settings::ContextUpdate>>,
+    desktop: tokio::sync::watch::Receiver<Option<cockpit::desktop::Context>>,
 }
 fn command_channel() -> (CommandSender, Commands) {
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
     let (context, contexts) = tokio::sync::watch::channel(None);
+    let (desktop, desktop_contexts) = tokio::sync::watch::channel(None);
     let (workspace, workspaces) = tokio::sync::watch::channel(None);
     let (stop, stopped) = oneshot::channel();
     let knowledge = Arc::new(KnowledgeDemand::default());
@@ -175,6 +188,7 @@ fn command_channel() -> (CommandSender, Commands) {
             knowledge: knowledge.clone(),
             workspace,
             context,
+            desktop,
             _stop: stop,
         },
         Commands {
@@ -183,6 +197,7 @@ fn command_channel() -> (CommandSender, Commands) {
             knowledge,
             workspace: workspaces,
             context: contexts,
+            desktop: desktop_contexts,
         },
     )
 }
@@ -228,13 +243,20 @@ pub fn start_with_sink(
             // Desktop setup is best effort and runs beside the IO owner. It
             // never gates backend readiness, messaging or the frame loop.
             let desktop_events = events.clone();
-            let _desktop = cockpit::desktop::attach(
+            let mut _desktop = cockpit::desktop::attach(
                 desktop_config,
                 session.desktop_supervisor.clone(),
-                move |action| {
-                    desktop_events(UiEvent::DesktopAction(action, None));
+                move |message| {
+                    desktop_events(match message {
+                        cockpit::desktop::Message::Action(action) => UiEvent::DesktopAction(action, None),
+                        cockpit::desktop::Message::NotificationClicked { id, episode } =>
+                            UiEvent::DesktopNotification { id, episode },
+                    });
                 },
             );
+            if let Some(port) = &mut _desktop {
+                port.follow_context(commands.desktop.clone());
+            }
             events(UiEvent::BackendInfo {
                 generation: session.endpoint.generation,
                 custody_backend: session.endpoint.custody_backend.clone(),
@@ -1749,6 +1771,8 @@ async fn run_with_control(
                                 Err(reason)=>logger.write(format!("operator spawn {op} not placed: {reason}")),
                             }
                         }
+                        // The dedicated desktop connection owns this feed.
+                        GuiReply::CurrentAttention {..}=>{},
                         GuiReply::Attention {..}|GuiReply::Event {..}|GuiReply::Gap {..}|GuiReply::Events {..}|GuiReply::EventCursor {..}|GuiReply::EventStatus {..}=>unreachable!("handled before state dispatch"),
                       }}
                       // Every accepted projection is in the published Model
@@ -2486,6 +2510,7 @@ mod tests {
         let mut record = bbt_proto::registry::SeatRecord::new(Ulid(42), Ulid(1), "muted", "zsh");
         record.muted = true;
         let snapshot = GuiReply::Seat(GuiSeat {
+            notification_episode: None,
             record,
             attention: None,
             state: bbt_proto::SeatState {
@@ -3114,6 +3139,7 @@ mod tests {
         use bbt_proto::events::*;
         let make_row = |sequence, activity| {
             let seat = GuiSeat {
+                notification_episode: None,
                 attention: None,
                 record: bbt_proto::SeatRecord::new(Ulid(3), Ulid(1), "question fixture", "claude"),
                 state: bbt_proto::SeatState {

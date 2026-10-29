@@ -207,6 +207,10 @@ impl AttentionSubscription {
                 }
                 Ok(_) => {}
                 Err(broadcast::error::RecvError::Lagged(_)) => {
+                    // Start at the current tail before reading its snapshot;
+                    // otherwise overwritten covered deltas can trigger repeated
+                    // resnapshots even after the consumer has caught up.
+                    self.receiver = self.current.changed.subscribe();
                     let snapshot = self.current.snapshot();
                     self.through = snapshot.revision;
                     return Ok(snapshot);

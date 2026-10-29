@@ -58,6 +58,8 @@ flowchart LR
 | `batch` | `run <file\|->` [--stop-on-error] | one command per JSONL line in, one reply line out per command in order, the same shapes as §2 and §3; the way scripts drive a night |
 | `recipe` | `list`; `detect <seat>` (which known prompts match the screen now); `run <recipe> <seat> [--dry-run]` | a data-driven composition of `seat screen`, `match`, `seat input`, `seat wait`, `report` (§4) |
 
+`debug notifications native` is an explicit local diagnostic of the calling signed bundle. It reads macOS authorization, alert enablement/style, Notification Center and sound settings without requesting permission, posting, or connecting to a frontend. `alerts_configured` describes those settings, never proof of presentation (Focus and system delivery policy may still suppress an alert). The ordinary `debug notifications` recording read is unchanged. Use `make notification-status`; `NOTIFICATION_BIN` can select another signed bundle for diagnosis.
+
 Flags on every verb: `--json` (default) or `--human`; `--op <ulid>` for an idempotent retry (#266 rule 1; omitted, the server mints and returns it); `--as "<label>"` or `BBOXY_CTL_ISSUER` for `issued_by` (#269; default `"<user>@<host>, shell"`); `--timeout <ms>` where a verb can wait; `--run-dir <path>` or `BBOXY_RUN_DIR` for discovery (#260).
 
 ## 1a. Where a verb lands (Seraph's C-0 findings, 2026-10-24)

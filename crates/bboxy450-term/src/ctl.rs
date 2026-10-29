@@ -127,7 +127,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   debug fault spawn-release <op>          release that exact launch once
   debug snapshot <file.json>              bounded R5 cursor/capture table; no tracing enabled
   debug ps                                this app's process tree; no argv or environment
-  debug notifications                     bounded test recording; no OS presentation
+  debug notifications [native]            test recording, or read-only local OS alert settings
   ui notification-click <seat>            recording callback, acknowledged by its pane frame
   record write <file|->                   an e2e record, signed by the operator device: the
                                           knowledge_write fields (path or ref, frontmatter,
@@ -474,9 +474,10 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         Command::Debug { .. } | Command::DebugFault { .. } | Command::DebugSpawnGate(_) => {
             Some(&[])
         }
-        Command::DebugReport | Command::DebugNotifications | Command::UiNotificationClick(_) => {
-            Some(&[])
-        }
+        Command::DebugReport
+        | Command::DebugNotifications
+        | Command::DebugNativeNotifications
+        | Command::UiNotificationClick(_) => Some(&[]),
         _ => None,
     };
     if let Some(allowed) = read_flags {
@@ -1833,6 +1834,18 @@ fn run_verb(
             .clone()
             .unwrap_or_else(|| default_endpoint.to_path_buf());
         // File-only diagnostics remain readable after a backend exit.
+        if matches!(parsed.command, Command::DebugNativeNotifications) {
+            // Explicit local settings read: no GUI admission, permission request,
+            // notification submission or dependency on a running frontend.
+            return print_reply(
+                out,
+                noun,
+                verb,
+                op.unwrap_or_else(fresh),
+                debug::native_settings()?,
+                parsed.human,
+            );
+        }
         if let Command::Debug {
             request: bbt_proto::gui::DebugRequest::Errors { since, seat },
             ..

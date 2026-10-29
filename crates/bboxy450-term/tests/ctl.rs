@@ -170,6 +170,31 @@ fn fixture_login(root: &Path, bin: &Path) {
     .unwrap();
 }
 
+#[test]
+fn native_notification_diagnostic_does_not_need_a_running_frontend() {
+    let private = tempfile::tempdir().unwrap();
+    let home = private.path().join("home");
+    std::fs::create_dir(&home).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .args(["ctl", "debug", "notifications", "native"])
+        .env_clear()
+        .env("HOME", &home)
+        .env("BBOXY_RUN_DIR", private.path().join("no-frontend"))
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let response: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let message = response["error"]["message"].as_str().unwrap();
+    // The unbundled test executable refuses before contacting Notification
+    // Center. An absent endpoint must never hide that local diagnosis.
+    assert!(
+        message.contains("no application bundle") || message.contains("notifications unsupported"),
+        "{response}"
+    );
+    assert!(!message.contains("endpoint"), "{response}");
+}
+
 /// Runs `bboxy450-term ctl ARGS` as an outside process; returns its JSON lines.
 fn ctl(run: &Path, args: &[&str]) -> Vec<Value> {
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))

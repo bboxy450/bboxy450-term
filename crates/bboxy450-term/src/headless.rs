@@ -204,6 +204,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         }
                         dirty = true;
                     }
+                    UiEvent::DesktopNotification { id, episode } => {
+                        app.desktop_notification_clicked(id, episode);
+                        dirty = true;
+                    }
                     UiEvent::TitlebarDoubleClick => app.titlebar_double_click(),
                     UiEvent::TaskRetry(epoch) => {
                         if app.task_records.retry_ready(epoch) {

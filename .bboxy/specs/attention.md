@@ -45,8 +45,10 @@ The seat state the adapters already produce: `Activity::Waiting(kind)` with `kin
 ## 3. The desktop notification
 
 - One notification per waiting episode: title the seat's name and harness, body the first line of the question or the permission being asked, **identifier = the seat id** so a repeat replaces rather than stacks, removed when the seat leaves `waiting`.
+- A waiting episode retries denied/undetermined authorization and transient native post failures every 30 seconds while it remains eligible, so enabling OS permission later does not require another question. Failed withdrawals retry too. A newer resolution, focus, or mute plan supersedes a retry before another post; no UI or live-model owner waits on native completion.
 - **Click → `Focus(seat)`**: raise the window, switch space and tab as needed, focus the pane; the same path as a sidebar click, including the landing rule (the swell fires after the switch).
 - **Mechanism.** `UNUserNotificationCenter` with the app as its own delegate, which requires a **bundle**: the build produces `bboxy450-term.app` (Info.plist with `CFBundleIdentifier`, the binary inside) for dev and release runs alike, identity-signed; Developer ID signing stays deferred (decision [[d24-defer-code-signing|#24]]). Without a bundle (a bare `cargo run`), the in-window swell still runs and **no notification is posted**; the app says so once in the log. No `osascript` fallback: `AGENTS.md` bans desktop scripting (Oracle, 2026-10-23).
+- When desktop notifications are enabled, the native worker checks authorization once on the initial live policy, even with no pending question; an undecided macOS permission requests consent off the UI thread. Disabling notifications suppresses this initial request. Resolved/denied initial checks do not poll with an empty waiting set; a timeout can retry without blocking launch.
 - Settings: notifications on by default; per-harness off; "only when the window is not frontmost" as the one option.
 
 ## 4. Order

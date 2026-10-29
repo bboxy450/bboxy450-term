@@ -22,7 +22,7 @@ pub struct Attention {
 }
 
 /// Supplied settings, independent of the future Settings host and persistence.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Notifications {
     pub enabled: bool,
     pub disabled_harnesses: BTreeSet<String>,
@@ -39,11 +39,7 @@ impl Default for Notifications {
 }
 
 /// An exact current episode; an old focus intent cannot handle a later one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EpisodeKey {
-    pub generation: u64,
-    pub ordinal: u64,
-}
+pub use bbt_proto::NotificationEpisode as EpisodeKey;
 
 /// A desired native notice. The ordinal distinguishes consecutive episodes
 /// even when their title/body and stable native identifier are identical.
@@ -75,7 +71,11 @@ impl Episodes {
     /// Apply a live current-state snapshot. Callers must not feed history pages.
     pub fn observe(&mut self, seat: &GuiSeat, now: Instant) {
         let id = SeatId::from_u128(seat.record.id.0);
-        if seat.record.generation != seat.state.generation {
+        if seat.record.generation != seat.state.generation
+            || seat
+                .notification_episode
+                .is_some_and(|key| key.generation != seat.state.generation)
+        {
             return;
         }
         if !matches!(seat.record.lifecycle, bbt_proto::registry::Lifecycle::Open)
@@ -84,11 +84,10 @@ impl Episodes {
             self.seats.remove(&id);
             return;
         }
-        if self
-            .seats
-            .get(&id)
-            .is_some_and(|old| old.key.generation != seat.state.generation)
-        {
+        if self.seats.get(&id).is_some_and(|old| {
+            old.key.generation != seat.state.generation
+                || seat.notification_episode.is_some_and(|key| key != old.key)
+        }) {
             self.seats.remove(&id);
         }
         let notification = Notification {
@@ -109,10 +108,11 @@ impl Episodes {
         let episode = self.seats.entry(id).or_insert_with(|| {
             self.ordinal += 1;
             Episode {
-                key: EpisodeKey {
+                key: seat.notification_episode.unwrap_or(EpisodeKey {
+                    epoch: bbt_mux::Ulid::nil(),
                     generation: seat.state.generation,
                     ordinal: self.ordinal,
-                },
+                }),
                 since: now,
                 handled: false,
                 muted: seat.record.muted,
@@ -133,6 +133,15 @@ impl Episodes {
 
     pub fn key(&self, seat: SeatId) -> Option<EpisodeKey> {
         self.seats.get(&seat).map(|episode| episode.key)
+    }
+
+    /// Exact live-source keys handled in this window, for the persistent desktop owner.
+    pub fn handled(&self) -> Vec<(SeatId, EpisodeKey)> {
+        self.seats
+            .iter()
+            .filter(|(_, episode)| episode.handled && episode.key.epoch != bbt_mux::Ulid::nil())
+            .map(|(&seat, episode)| (seat, episode.key))
+            .collect()
     }
 
     /// Only an explicit operator action handles an episode, including one
@@ -210,6 +219,7 @@ mod tests {
 
     fn fixture(activity: Activity) -> GuiSeat {
         GuiSeat {
+            notification_episode: None,
             attention: None,
             record: SeatRecord::new(Ulid(1), Ulid(2), "fixture", "claude"),
             state: SeatState {
@@ -224,6 +234,52 @@ mod tests {
                 subagents: vec![],
             },
         }
+    }
+
+    #[test]
+    fn shared_native_episode_keys_survive_metadata_and_reject_old_focus_intents() {
+        let mut seat = fixture(Activity::Waiting(WaitKind::Question));
+        let id = SeatId::from_u128(seat.record.id.0);
+        let first = EpisodeKey {
+            epoch: Ulid(41),
+            generation: seat.state.generation,
+            ordinal: 1,
+        };
+        seat.notification_episode = Some(first);
+        let mut episodes = Episodes::default();
+        episodes.observe(&seat, Instant::now());
+        assert_eq!(episodes.key(id), Some(first));
+        assert!(episodes.handle(id, first));
+        assert_eq!(episodes.handled(), [(id, first)]);
+        seat.state.observed_ms += 200;
+        episodes.observe(&seat, Instant::now());
+        assert_eq!(episodes.handled(), [(id, first)]);
+
+        let next = EpisodeKey {
+            ordinal: 2,
+            ..first
+        };
+        seat.notification_episode = Some(next);
+        episodes.observe(&seat, Instant::now());
+        assert!(episodes.handled().is_empty());
+        assert!(!episodes.handle(id, first));
+        assert!(episodes.handle(id, next));
+
+        let restarted_source = EpisodeKey {
+            epoch: Ulid(42),
+            ..first
+        };
+        seat.notification_episode = Some(restarted_source);
+        episodes.observe(&seat, Instant::now());
+        assert!(!episodes.handle(id, first));
+        assert!(!episodes.handle(id, next));
+        assert_eq!(episodes.key(id), Some(restarted_source));
+        seat.notification_episode = Some(EpisodeKey {
+            generation: 2,
+            ..restarted_source
+        });
+        episodes.observe(&seat, Instant::now());
+        assert_eq!(episodes.key(id), Some(restarted_source));
     }
 
     // keeps: spec attention §5

@@ -2892,6 +2892,7 @@ mod depth_tests {
 
         let seat = SeatId::from_u128(3);
         let mut current = GuiSeat {
+            notification_episode: None,
             attention: None,
             record: SeatRecord::new(Ulid(3), Ulid(2), "fixture", "zsh"),
             state: SeatState {

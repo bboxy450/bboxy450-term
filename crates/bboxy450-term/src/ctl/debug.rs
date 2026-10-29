@@ -6,6 +6,45 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 
+pub(super) fn native_settings() -> Result<Value, String> {
+    let settings = bboxy450_desktop_notifications::settings().map_err(|e| e.to_string())?;
+    Ok(native_settings_value(settings))
+}
+
+fn native_settings_value(settings: bboxy450_desktop_notifications::Settings) -> Value {
+    use bboxy450_desktop_notifications::{AlertStyle, Authorization, Setting};
+    let setting = |value| match value {
+        Setting::Enabled => "enabled",
+        Setting::Disabled => "disabled",
+        Setting::NotSupported => "not_supported",
+        Setting::Unknown => "unknown",
+    };
+    let authorization = match settings.authorization {
+        Authorization::Granted => "granted",
+        Authorization::Denied => "denied",
+        Authorization::Undetermined => "undetermined",
+    };
+    let alert_style = match settings.alert_style {
+        AlertStyle::None => "none",
+        AlertStyle::Banner => "banner",
+        AlertStyle::Alert => "alert",
+        AlertStyle::Unknown => "unknown",
+    };
+    json!({
+        "backend": "native",
+        "read_only": true,
+        "os_presentation": false,
+        "authorization": authorization,
+        "alerts": setting(settings.alerts),
+        "alert_style": alert_style,
+        "notification_center": setting(settings.notification_center),
+        "sound": setting(settings.sound),
+        "alerts_configured": settings.authorization == Authorization::Granted
+            && settings.alerts == Setting::Enabled
+            && matches!(settings.alert_style, AlertStyle::Banner | AlertStyle::Alert),
+    })
+}
+
 pub(super) fn read(
     client: &mut Client,
     request: bbt_proto::gui::DebugRequest,
@@ -85,6 +124,7 @@ macro_rules! debug_commands {
         $cb!(@next $rest [$($acc)* "debug": [
             DebugReport,
             DebugNotifications,
+            DebugNativeNotifications,
             DebugFault {
                 seat: String,
                 from: u64,
@@ -108,6 +148,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     Ok(Some(match *words {
         ["debug", "report"] => Command::DebugReport,
         ["debug", "notifications"] => Command::DebugNotifications,
+        ["debug", "notifications", "native"] => Command::DebugNativeNotifications,
         ["debug", "errors"] => Command::Debug {
             request: bbt_proto::gui::DebugRequest::Errors {
                 since: flag("since")
@@ -312,6 +353,90 @@ mod tests {
                     .is_err()
             );
         }
+    }
+
+    #[test]
+    fn native_notification_settings_do_not_equate_permission_with_visible_alerts() {
+        use bboxy450_desktop_notifications::{AlertStyle, Authorization, Setting, Settings};
+        for (authorization, alerts, alert_style, configured) in [
+            (
+                Authorization::Granted,
+                Setting::Enabled,
+                AlertStyle::Banner,
+                true,
+            ),
+            (
+                Authorization::Granted,
+                Setting::Enabled,
+                AlertStyle::Alert,
+                true,
+            ),
+            (
+                Authorization::Granted,
+                Setting::Disabled,
+                AlertStyle::Banner,
+                false,
+            ),
+            (
+                Authorization::Granted,
+                Setting::Enabled,
+                AlertStyle::None,
+                false,
+            ),
+            (
+                Authorization::Granted,
+                Setting::Unknown,
+                AlertStyle::Unknown,
+                false,
+            ),
+            (
+                Authorization::Denied,
+                Setting::Enabled,
+                AlertStyle::Banner,
+                false,
+            ),
+            (
+                Authorization::Undetermined,
+                Setting::Enabled,
+                AlertStyle::Banner,
+                false,
+            ),
+        ] {
+            let value = native_settings_value(Settings {
+                authorization,
+                alerts,
+                alert_style,
+                notification_center: Setting::Enabled,
+                sound: Setting::NotSupported,
+            });
+            assert_eq!(value["alerts_configured"], configured);
+            assert_eq!(value["read_only"], true);
+            assert_eq!(value["os_presentation"], false);
+            assert_eq!(value["sound"], "not_supported");
+        }
+    }
+
+    #[test]
+    fn native_notification_diagnostic_is_explicit_and_has_no_extra_flags() {
+        let parse = |text: &str| {
+            super::super::parse_full(
+                &text
+                    .split_whitespace()
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>(),
+            )
+        };
+        assert!(matches!(
+            parse("debug notifications").unwrap().command,
+            Command::DebugNotifications
+        ));
+        assert!(matches!(
+            parse("debug notifications native").unwrap().command,
+            Command::DebugNativeNotifications
+        ));
+        assert!(parse("debug notifications unknown").is_err());
+        assert!(parse("debug notifications native --authorize yes").is_err());
+        assert!(parse("debug notifications native --post yes").is_err());
     }
 
     // keeps: e2e-script-map §L2 — the existing operator debug noun owns fixture controls.

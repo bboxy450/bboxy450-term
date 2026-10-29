@@ -1,0 +1,19 @@
+scope: macOS harness attention notifications while UI is open, backgrounded or detached
+owners: existing desktop process posts; frontend supplies coalesced policy/focus/handled keys; logic publishes current state
+harnesses: Claude AskUserQuestion entry/parent-only resolution; Codex current-thread user-input requests
+protocol: UI_CONTROL_VERSION 9; additive NotificationEpisode and restricted current-attention observer; legacy rows/hello round-trip
+security: recorded owner/PID birth and supervisor lineage; no GUI claim, captures, ACK/read marks or terminal actions
+mechanisms: initial enabled-policy authorization off UI; unchanged-plan permission/post/removal retry; resolution/mute cancels retry
+preflight: make test-attention-notifications completed 0 within attention-notifications-integration-final-20261029.log before separate desktop target failure
+preflight: observer pure/socket tests 5 passed; proto golden 4 passed; legacy episode serde 2 passed
+preflight: make test-desktop-lifecycle completed 0 in attention-notifications-desktop-retry-20261029.log; detached post/click/one UI and exact backend/harness preservation
+preflight: make check-attention-notifications 0 in attention-notifications-clippy-final-20261029.log
+preflight: native settings read 0; authorization undetermined, no permission request or OS post; production consent remains required
+preflight: make test-notification-copy 0 before desktop-owner integration; final rerun required
+final checks: make test on exact signed committed source; make test-boundaries; make test-desktop-lifecycle; make test-notification-copy
+landing: scripts/land.sh only; final receipts/logs remain local and identify exact candidate SHA
+installation: make install with approved identity; make smoke-installed with private account, no OS notification prompt
+live state: no forced frontend restart; unsent composer drafts are not persisted; existing sessions and owners remain intact
+limit: private recorder and native request construction verify delivery mechanics, not actual Notification Center banner presentation
+limit: stable seat-ID OS callbacks lack a per-post token; captured episode protects asynchronous reattachment, not identification of an already superseded native response
+logs: ~/Library/Logs/bboxy450-term/attention-notifications-*-20261029.log and native-settings JSON; no raw logs or fixture identities committed

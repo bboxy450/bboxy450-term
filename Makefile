@@ -9,6 +9,7 @@ SHELL := /bin/sh
 
 APP := bboxy450-term
 PROFILE ?= release
+NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
 GITKB_BIN ?= $(shell command -v git-kb)
 GITKB_SCHEMA ?= crates/bbt-plugin/schemas/data_source-1.0.schema.json
@@ -133,6 +134,9 @@ help:
 	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
 	  'make test-settings-night          Private full R2/G1/G2 Settings proofs and negative controls' \
 	  'make test-notification-copy       Actual native request fields, real waiting/mute and copy mutations' \
+	  'make test-attention-notifications Question hooks, notification retries and read-only native diagnostics' \
+	  'make check-attention-notifications Strict all-target notification/harness Clippy' \
+	  'make notification-status         Read installed macOS alert settings without a permission prompt' \
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
 	  'make build-gitkb-plugin          Build self-contained GitKB provider, pin installed CLI' \
@@ -790,6 +794,35 @@ test-spawn-wire:
 .PHONY: test-settings-role-picker-ui test-settings-role-picker check-settings-role-picker
 .PHONY: test-settings-night
 .PHONY: test-notification-copy
+notification-status:
+	@'$(NOTIFICATION_BIN)' ctl debug notifications native
+
+.PHONY: notification-status test-attention-notifications check-attention-notifications
+test-attention-observer:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test notification_episode; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib attention_observer; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::attention_tests
+
+.PHONY: test-attention-observer
+test-attention-notifications:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-desktop-notifications -p bboxy450-desktop-notifications-macos --lib --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-harness-wake-up --test adapters --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test adapters --test attention_policy --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --lib attention_observer --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --lib notifications::tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --lib attention::tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --lib ctl::debug::tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --lib cockpit::desktop::attention::tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --bin $(APP) notification_ --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test ctl native_notification_diagnostic_does_not_need_a_running_frontend --target-dir '$(TARGET_DIR)' -- --exact
+
+check-attention-notifications:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-desktop-notifications -p bboxy450-desktop-notifications-macos -p bboxy450-harness-wake-up -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 test-notification-copy:
 	@$(MAKE) compile PROFILE=debug
 	@set -eu; . ./scripts/cache-env.sh; \

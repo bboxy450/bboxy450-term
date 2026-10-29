@@ -21,8 +21,8 @@ const CONTEXT_BYTES: u64 = 256 * 1024;
 pub struct Context {
     pub policy: Notifications,
     pub frontmost: bool,
-    pub focused: Option<SeatId>,
-    pub handled: Vec<(SeatId, EpisodeKey)>,
+    pub focused: Option<bbt_mux::Ulid>,
+    pub handled: Vec<(bbt_mux::Ulid, EpisodeKey)>,
 }
 impl Default for Context {
     fn default() -> Self {
@@ -199,10 +199,10 @@ impl Prepared {
                 Event::Error(reason) => eprintln!("desktop notifications: {reason}"),
                 Event::FixtureClick(id) => {
                     #[cfg(debug_assertions)]
-                    if let Some(recorder) = &self.recorder {
-                        if let Err(error) = recorder.activate(&NotificationId(id)) {
-                            eprintln!("desktop fixture notification click refused: {error}");
-                        }
+                    if let Some(recorder) = &self.recorder
+                        && let Err(error) = recorder.activate(&NotificationId(id))
+                    {
+                        eprintln!("desktop fixture notification click refused: {error}");
                     }
                     #[cfg(not(debug_assertions))]
                     let _ = id;
@@ -210,19 +210,19 @@ impl Prepared {
             }
             refresh(&state, &mut worker);
             #[cfg(debug_assertions)]
-            if let Some(recorder) = &self.recorder {
-                if let Ok(mut snapshot) = recorder.snapshot() {
-                    let (submitted, processed) =
-                        worker.as_ref().map_or((0, 0), |worker| worker.progress());
-                    snapshot["owner"] = serde_json::json!("desktop");
-                    snapshot["source_ready"] = serde_json::json!(state.source_ready);
-                    snapshot["plan_revision"] = serde_json::json!(submitted);
-                    snapshot["processed_revision"] = serde_json::json!(processed);
-                    snapshot["settled"] = serde_json::json!(submitted == processed);
-                    snapshot["ui_attached"] = serde_json::json!(state.attachment.is_some());
-                    if let Err(error) = write_fixture_state(&_config, &snapshot) {
-                        eprintln!("desktop fixture recording unavailable: {error}");
-                    }
+            if let Some(recorder) = &self.recorder
+                && let Ok(mut snapshot) = recorder.snapshot()
+            {
+                let (submitted, processed) =
+                    worker.as_ref().map_or((0, 0), |worker| worker.progress());
+                snapshot["owner"] = serde_json::json!("desktop");
+                snapshot["source_ready"] = serde_json::json!(state.source_ready);
+                snapshot["plan_revision"] = serde_json::json!(submitted);
+                snapshot["processed_revision"] = serde_json::json!(processed);
+                snapshot["settled"] = serde_json::json!(submitted == processed);
+                snapshot["ui_attached"] = serde_json::json!(state.attachment.is_some());
+                if let Err(error) = write_fixture_state(&_config, &snapshot) {
+                    eprintln!("desktop fixture recording unavailable: {error}");
                 }
             }
         }
@@ -280,7 +280,7 @@ impl State {
         self.attachment = Some(attachment);
         self.context = context;
         for (seat, key) in &self.context.handled {
-            self.episodes.handle(*seat, *key);
+            self.episodes.handle(SeatId::from_u128(seat.0), *key);
         }
     }
     fn detach(&mut self, attachment: u64) {
@@ -334,7 +334,7 @@ impl State {
         }
         self.episodes.retain(self.seats.keys().copied());
         for (seat, key) in &self.context.handled {
-            self.episodes.handle(*seat, *key);
+            self.episodes.handle(SeatId::from_u128(seat.0), *key);
         }
     }
     fn desired(&self) -> crate::attention::Desired {
@@ -344,7 +344,7 @@ impl State {
         self.episodes.notifications(
             &self.context.policy,
             self.context.frontmost,
-            self.context.focused,
+            self.context.focused.map(|id| SeatId::from_u128(id.0)),
         )
     }
     /// Capture before the asynchronous Show/reattach path. A disconnected
@@ -512,7 +512,7 @@ pub(super) async fn publish_context(
 async fn observe(config: Config, events: mpsc::Sender<Event>) {
     let mut previous_error = None;
     loop {
-        let result = async {
+        let result: Result<()> = async {
             let mut endpoint = owners::read::<LogicReady>(&config, "logic")?
                 .ok_or_else(|| invalid("desktop attention logic unavailable"))?
                 .ready;
@@ -648,8 +648,8 @@ mod tests {
         let second = 11;
         let mut context = enabled_context();
         context.frontmost = true;
-        context.focused = Some(id);
-        context.handled = vec![(id, key)];
+        context.focused = Some(bbt_mux::Ulid(id.0.0));
+        context.handled = vec![(bbt_mux::Ulid(id.0.0), key)];
         state.attach(first, context.clone());
         state.attach(second, context);
         state.detach(first);
@@ -673,7 +673,7 @@ mod tests {
         let mut state = State::default();
         let mut current = enabled_context();
         current.frontmost = true;
-        current.focused = Some(SeatId::from_u128(1));
+        current.focused = Some(bbt_mux::Ulid(1));
         state.attach(2, current.clone());
         state.attach(1, Context::default());
         state.detach(1);
@@ -764,6 +764,7 @@ mod tests {
     #[tokio::test]
     async fn context_requires_current_frontend_owner_and_tracks_eof() {
         let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
         let config = Config {
             executable: std::env::current_exe().unwrap(),
             socket: root.path().join("mux.sock"),

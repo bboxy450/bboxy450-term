@@ -2174,6 +2174,7 @@ mod tests {
         assert!(next.ui.window.sidebar.open.is_empty());
         assert_eq!(next.ui.seats[&id].name, "renamed");
         let mut seat = GuiSeat {
+            notification_episode: None,
             attention: None,
             record: record.clone(),
             state: SeatState {

@@ -755,6 +755,7 @@ async fn logic_main() -> Result<()> {
                 .map(|account| account.key_store())
         })
         .transpose()?;
+    let observer_config = bootstrap.config.clone();
     let logic_config = LogicConfig {
         run_dir: bootstrap.config.run_dir,
         repository: bootstrap.config.repository,
@@ -775,6 +776,10 @@ async fn logic_main() -> Result<()> {
     if bootstrap.recover_seats {
         logic.client.recover_seats().await?;
     }
+    let observer_supervisor = bootstrap.supervisor.pid;
+    logic.client.set_attention_observer_guard(std::sync::Arc::new(move |pid| {
+        desktop::admit_observer(&observer_config, pid, observer_supervisor)
+    }));
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
     let door = if bootstrap.config.ctl {
@@ -1308,10 +1313,23 @@ impl Session {
 }
 
 async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> Result<GuiIo> {
+    attach_gui_mode(config, endpoint, claim, false).await
+}
+
+async fn attach_attention(config: &Config, endpoint: &mut LogicReady) -> Result<GuiIo> {
+    attach_gui_mode(config, endpoint, false, true).await
+}
+
+async fn attach_gui_mode(
+    config: &Config,
+    endpoint: &mut LogicReady,
+    claim: bool,
+    observer: bool,
+) -> Result<GuiIo> {
     let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
     let mut io = GuiIo::new(stream, endpoint.capability);
     let id = bbt_mux::Ulid::new();
-    io.try_send(GuiAction::GuiHello { id, claim })?;
+    io.try_send(GuiAction::GuiHello { id, claim, observer })?;
     tokio::time::timeout(STARTUP_TIMEOUT, async {
         loop {
             match io.event().await {
