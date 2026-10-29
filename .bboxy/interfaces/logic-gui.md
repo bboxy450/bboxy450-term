@@ -31,7 +31,7 @@ bridges, selected-root context and actual shell output. The fixture advertises
 the older contract in its private owner record; it does not run an old binary
 or authorize a live application restart.
 
-UI control version 6 adds `NotificationForeground {frontmost}` for debug,
+UI control version 7 adds `NotificationForeground {frontmost}` for debug,
 verified private test accounts (selector plus the admitted signed-run identity
 label in a signing-ready state) with an active recording backend and no native
 window. Every other context refuses before mutation. It and native focus events
