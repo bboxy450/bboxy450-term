@@ -74,7 +74,7 @@ pub(super) enum Surface {
     Dialog {
         dialog: Box<Dialog>,
         rename: Option<Rename>,
-        seat: Option<SeatForm>,
+        seat: Option<Box<SeatForm>>,
     },
 }
 pub(super) enum Regions {
@@ -416,7 +416,7 @@ impl App {
             on_edit: None,
         });
         if let Some(Surface::Dialog { seat, .. }) = &mut self.app_overlays.surface {
-            *seat = Some(form);
+            *seat = Some(Box::new(form));
         }
         if action == "assign-task" {
             self.read_seat_tasks(None);
