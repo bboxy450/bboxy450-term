@@ -3605,6 +3605,18 @@ fn seat_context_actions_assign_captured_tasks_and_confirm_only_the_target_kill()
     click_region(&fixture, "context-menu:assign-task");
     // Change focus after opening; the task still belongs to the captured first seat.
     fixture.ctl(&["ui", "focus", &peer]);
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if frame["regions"]["seat-choice:0"].is_array() {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "restored-root task picker did not load: {frame}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
     click_region(&fixture, "seat-choice:0");
     let assigned = fs::read_to_string(&first_task).unwrap();
     assert!(assigned.contains(&format!("seat:{first}")), "{assigned}");

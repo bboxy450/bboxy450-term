@@ -30,3 +30,9 @@ Kill limitation: native.rs codex_proxy drops a thread connection but has no thre
 UI_CONTROL_VERSION4 follows image-paste version3; root owns the integration conflict.
 Accidental inactive target/debug was removed after confirming no compiler referenced it; only this worktree's own target/seat-context-check remains.
 Still unproven: app compile/unit/e2e, full affected/dependent all-target Clippy and exact-HEAD make test. Role prompt policy still pending operator selection; do not ship the placeholder role UX.
+
+Backend final check:
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0, strict all-target Clippy for plugin/proto/mux.
+Raw /tmp/bboxy-seat-context-clippy.log SHA256 69724430f9abc9eaa9d2b551505d8a95e98b33537a87ddb695fa6a52b10ebd6c.
+Second read-only audit: no new defect in retry tokens/scopes, mutation isolation, role pagination or post-write unknown outcomes; this remains a source review, not execution evidence.
+Native e2e waits for the restored-root read after changing focus, covering an asynchronous mount rather than assuming cached readiness.
