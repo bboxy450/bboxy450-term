@@ -79,6 +79,7 @@ struct CrashLink {
     frozen: Arc<AtomicBool>,
     latest: Option<Event>,
     byte_ends: BTreeMap<u64, u64>,
+    pending_bytes: BTreeMap<u64, u64>,
     ready: Arc<Mutex<BTreeSet<Ulid>>>,
     worker: Option<std::thread::ThreadId>,
     side_saves: Arc<AtomicU64>,
@@ -86,12 +87,88 @@ struct CrashLink {
     delivery: Arc<Mutex<DeliveryDiagnostics>>,
 }
 impl CrashLink {
+    fn observe_burst_record(&mut self, event: &Event) {
+        if event.seat() != self.burst_seat {
+            return;
+        }
+        let bytes = match event {
+            Event::Output { bytes, .. } => bytes.len() as u64,
+            _ => 0,
+        };
+        account_capture_bytes(
+            &mut self.byte_ends,
+            &mut self.pending_bytes,
+            event.sequence().unwrap(),
+            bytes,
+        );
+    }
     fn observe_client(&self) {
         let mut delivery = self.delivery.lock().unwrap();
         delivery.client = self.inner.diagnostics(self.burst_seat, 1);
         delivery.held_sequence = self.latest.as_ref().and_then(Event::sequence);
     }
 }
+
+fn account_capture_bytes(
+    byte_ends: &mut BTreeMap<u64, u64>,
+    pending: &mut BTreeMap<u64, u64>,
+    mut sequence: u64,
+    mut bytes: u64,
+) {
+    assert!(sequence > 0);
+    if let Some(old) = pending.remove(&sequence) {
+        assert_eq!(old, bytes, "duplicate capture bytes differ at {sequence}");
+    }
+    loop {
+        let Some(previous) = byte_ends.get(&(sequence - 1)).copied() else {
+            pending.insert(sequence, bytes);
+            break;
+        };
+        let end = previous.checked_add(bytes).unwrap();
+        if let Some(old) = byte_ends.insert(sequence, end) {
+            assert_eq!(old, end, "duplicate capture end differs at {sequence}");
+        }
+        sequence += 1;
+        let Some(next) = pending.remove(&sequence) else {
+            break;
+        };
+        bytes = next;
+    }
+}
+
+#[test]
+fn live_capture_bridge_is_counted_only_after_its_exact_replay_prefix() {
+    let mut ends = BTreeMap::from([(0, 0)]);
+    let mut pending = BTreeMap::new();
+    // Worker receives live 158 before it replays the gap preceding it.
+    account_capture_bytes(&mut ends, &mut pending, 158, 9216);
+    assert_eq!(ends, BTreeMap::from([(0, 0)]));
+    for sequence in 1..=157 {
+        account_capture_bytes(&mut ends, &mut pending, sequence, 1024);
+    }
+    assert_eq!(ends[&158], 157 * 1024 + 9216);
+    assert!(pending.is_empty());
+    account_capture_bytes(&mut ends, &mut pending, 159, 16384);
+    let expected = 157 * 1024 + 9216 + 16384;
+    assert_eq!(ends[&159], expected);
+    account_capture_bytes(&mut ends, &mut pending, 159, 16384);
+    assert_eq!(ends[&159], expected);
+    account_capture_bytes(&mut ends, &mut pending, 999, 16384);
+    assert!(
+        !ends.contains_key(&999),
+        "a later notification is not a parsed prefix"
+    );
+}
+
+#[test]
+#[should_panic(expected = "duplicate capture end differs")]
+fn duplicate_capture_cannot_change_the_fixture_byte_cursor() {
+    let mut ends = BTreeMap::from([(0, 0)]);
+    let mut pending = BTreeMap::new();
+    account_capture_bytes(&mut ends, &mut pending, 1, 1024);
+    account_capture_bytes(&mut ends, &mut pending, 1, 2048);
+}
+
 impl SupervisorConnection for CrashLink {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
         let worker = *self
@@ -133,7 +210,7 @@ impl SupervisorConnection for CrashLink {
         }
         let reply = self.inner.request(action)?;
         self.observe_client();
-        if burst_read {
+        if burst_from.is_some() {
             let histories: Vec<_> = match &reply {
                 Reply::RingHistory { history } => vec![history.as_ref()],
                 Reply::RingHistoryBatch { results } => results
@@ -144,16 +221,7 @@ impl SupervisorConnection for CrashLink {
             };
             for history in histories {
                 for record in &history.records {
-                    if record.event.seat() != self.burst_seat {
-                        continue;
-                    }
-                    let seq = record.event.sequence().unwrap();
-                    let previous = self.byte_ends[&(seq - 1)];
-                    let bytes = match &record.event {
-                        Event::Output { bytes, .. } => bytes.len() as u64,
-                        _ => 0,
-                    };
-                    self.byte_ends.insert(seq, previous + bytes);
+                    self.observe_burst_record(&record.event);
                 }
             }
         }
@@ -167,6 +235,7 @@ impl SupervisorConnection for CrashLink {
         if !self.held.load(Ordering::Acquire)
             && let Some(event) = self.latest.take()
         {
+            self.observe_burst_record(&event);
             {
                 let mut delivery = self.delivery.lock().unwrap();
                 delivery.held_released = delivery.held_released.saturating_add(1);
@@ -204,6 +273,11 @@ impl SupervisorConnection for CrashLink {
                 self.observe_client();
                 wait = Duration::ZERO;
             } else {
+                // A returned live record can bridge two replay pages: e.g.
+                // live 158 follows replay 1..157, then the next page starts 159.
+                // Keep only its length until the contiguous prefix is known;
+                // held future notifications never advance this accounting.
+                self.observe_burst_record(&event);
                 {
                     let mut delivery = self.delivery.lock().unwrap();
                     if event.seat() == self.burst_seat {
@@ -288,6 +362,7 @@ fn checkpoint_recovery_child() {
             frozen: frozen.clone(),
             latest: None,
             byte_ends: BTreeMap::from([(0, 0)]),
+            pending_bytes: BTreeMap::new(),
             ready: ready.clone(),
             worker: None,
             side_saves: side_saves.clone(),
