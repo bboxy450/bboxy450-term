@@ -49,6 +49,7 @@ help:
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
+	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
@@ -471,6 +472,12 @@ test-seat-mute:
 	BBOXY_SWARM_EVIDENCE='$(abspath $(TARGET_DIR))/seat-mute' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart -- --ignored --exact --nocapture
 
 .PHONY: test-close-shortcut
+.PHONY: test-workspace-roots
+test-workspace-roots:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider; \
+	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
 test-close-shortcut:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \

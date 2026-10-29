@@ -1,0 +1,20 @@
+Scope: independent cwd-root cache foundation; active application routing is unchanged.
+Base: eb1c8aaa5284fccabe5b85ade66e9ecd5a8cf6a6
+knowledge/workspaces.rs: one Workspace per canonical .bboxy path, startup index store
+reused, additional root stores isolated by existing root hash, shared cwd reuses Index Arc.
+RootBinding captures swarm/revision/root ID; get/get_mut reject stale or mismatched scope.
+Explicit unavailable selection replaces prior selection; None deliberately selects startup.
+Owned prepare/mount/insert split keeps canonicalization/open/scan on blocking IO; insertion
+returns retired stale/duplicate mount ownership for IO cleanup, never closes a provider itself.
+knowledge/roots.rs: share unchanged canonical root hashing and expose Host root_id internally.
+tests/workspace_roots.rs: four unattended temp-repository tests cover colliding IDs/#N/slugs,
+isolated writes/stores, targeted scans, symlink dedup, startup reuse, stale revisions/root IDs,
+late mount completion fencing and a removed cwd not recreated by delayed mount.
+make -n test-workspace-roots — exit 0.
+rustfmt --check on new module/tests; git diff --check — exit 0.
+make test-workspace-roots — exit 0: workspace_roots 4/4, knowledge 11/11,
+knowledge_provider 1/1; cargo clippy -p bboxy450-mux --all-targets -- -D warnings passed.
+Log: ~/Library/Logs/bboxy450-term/workspace-roots-20261028-focused.log
+Deliberate follow-up: registry metadata integration, GUI scope capture, task/MCP routing,
+root-bound journal replay/completion fences and root-scoped messaging task projections.
+No new authorization path, protocol field, UI mutation, merge, push or installation in this cut.

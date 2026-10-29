@@ -10,6 +10,7 @@ mod bboxy;
 mod read;
 pub(crate) mod roots;
 pub(crate) mod seat_reads;
+pub mod workspaces;
 pub use bboxy::BboxySource;
 pub use bbt_plugin::data_source;
 pub use read::read;

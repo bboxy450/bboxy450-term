@@ -29,6 +29,13 @@ use tokio::{runtime::Handle, sync::Semaphore};
 pub(crate) const BUNDLED: &str = "bboxy450-term-data_source-bboxy";
 const PREFIX: &str = "knowledge/roots/";
 
+pub(crate) fn root_identity(root: &std::path::Path) -> Result<String> {
+    let path = root
+        .to_str()
+        .ok_or_else(|| invalid("knowledge root must be UTF-8"))?;
+    Ok(format!("{:x}", Sha256::digest(path.as_bytes())))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Binding {
     root: String,
@@ -118,7 +125,7 @@ impl Host {
             .to_str()
             .ok_or_else(|| invalid("knowledge root must be UTF-8"))?
             .to_owned();
-        let id = format!("{:x}", Sha256::digest(path.as_bytes()));
+        let id = root_identity(&root)?;
         let default = Binding {
             root: path,
             provider: BUNDLED.into(),
@@ -204,6 +211,9 @@ impl Host {
             .selected
             .lock()
             .map_or(true, |s| s.binding.provider != BUNDLED)
+    }
+    pub(crate) fn root_id(&self) -> &str {
+        &self.0.id
     }
     pub(crate) fn close(&self) {
         let external = self
