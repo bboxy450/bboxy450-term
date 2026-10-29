@@ -94,6 +94,7 @@ pub fn outcome(outcome: kit::WakeOutcome) -> WakeOutcome {
         evidence: evidence(outcome.evidence),
         native_id: outcome.native_id,
         note: outcome.note,
+        cause: outcome.cause,
     }
 }
 pub fn native_outcome(outcome: &WakeOutcome) -> Result<kit::WakeOutcome> {
@@ -101,6 +102,7 @@ pub fn native_outcome(outcome: &WakeOutcome) -> Result<kit::WakeOutcome> {
         evidence: native_evidence(outcome.evidence)?,
         native_id: outcome.native_id.clone(),
         note: outcome.note.clone(),
+        cause: outcome.cause,
     })
 }
 pub fn launch_plan(plan: kit::LaunchPlan, seat: Ulid, generation: u64) -> super::LaunchPlan {
@@ -234,17 +236,24 @@ mod tests {
             kit::Evidence::NativeUnknown,
         ] {
             assert_eq!(native_evidence(evidence(value)).unwrap(), value);
-            let native = kit::WakeOutcome {
-                evidence: value,
-                native_id: Some("correlation".into()),
-                note: "unverified receiver".into(),
-            };
-            let wire = outcome(native.clone());
-            assert_eq!(native_outcome(&wire).unwrap(), native);
-            assert_eq!(
-                serde_json::to_value(&wire).unwrap(),
-                serde_json::to_value(&native).unwrap()
-            );
+            for cause in [
+                None,
+                Some(kit::WakeCause::NativeFrameWritten),
+                Some(kit::WakeCause::Unrecognized),
+            ] {
+                let native = kit::WakeOutcome {
+                    cause,
+                    evidence: value,
+                    native_id: Some("correlation".into()),
+                    note: "unverified receiver".into(),
+                };
+                let wire = outcome(native.clone());
+                assert_eq!(native_outcome(&wire).unwrap(), native);
+                assert_eq!(
+                    serde_json::to_value(&wire).unwrap(),
+                    serde_json::to_value(&native).unwrap()
+                );
+            }
         }
         assert!(native_evidence(super::super::Evidence::ApplicationAcknowledged).is_err());
     }

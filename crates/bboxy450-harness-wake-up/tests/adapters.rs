@@ -7,7 +7,7 @@
 #![allow(clippy::disallowed_methods)] // Disposable protocol fixtures, never UI.
 use bboxy450_harness_wake_up::{
     Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Priority, Readiness, Session,
-    State, Ulid, hook,
+    State, Ulid, WakeCause, hook,
     launch::{LaunchContext, plan},
     native,
 };
@@ -485,6 +485,7 @@ fn adapters_native_claude_socket_writes_priority_without_claiming_consumption() 
         assert_eq!(frame["msg_id"], id.to_string());
         assert_eq!(frame["message"]["content"], "literal peer text");
         assert_eq!(outcome.evidence, Evidence::NativeWritten);
+        assert_eq!(outcome.cause, Some(WakeCause::NativeFrameWritten));
         let mut binding = adapter.binding.clone();
         binding.generation += 1;
         adapter.rebind(binding).unwrap();
@@ -543,6 +544,7 @@ fn adapters_codex_rpc_admits_exact_message_and_preserves_unknown_on_disconnect()
             let outcome=native::wake(&binding,&endpoint,Ulid::new(),"fixture",priority,true).await;
             assert_eq!(server.await.unwrap()["params"]["input"][0]["text"],"fixture");
             assert_eq!(outcome.evidence,if disconnect||malformed{Evidence::NativeUnknown}else{Evidence::NativeQueued});
+            assert_eq!(outcome.cause,Some(if disconnect||malformed{WakeCause::NativeWriteAmbiguous}else{WakeCause::NativeQueueAdmitted}));
         });
     }
 }
@@ -642,7 +644,8 @@ fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
         false,
     ));
     assert_eq!(outcome.evidence, Evidence::RecipientStored);
-    assert!(outcome.note.contains("not yet bound"));
+    assert_eq!(outcome.cause, Some(WakeCause::NativeThreadUnbound));
+    assert!(!outcome.note.is_empty() && outcome.note.len() <= 640);
     assert_eq!(
         listener.accept().unwrap_err().kind(),
         std::io::ErrorKind::WouldBlock
@@ -707,7 +710,8 @@ fn codex_bootstrap_and_unloaded_threads_never_admit_or_retry_a_submission() {
             )
             .await;
             assert_eq!(outcome.evidence, Evidence::NativeUnknown);
-            assert!(outcome.note.contains("no mutation or automatic retry"));
+            assert_eq!(outcome.cause, Some(WakeCause::NativeThreadUnknown));
+            assert!(!outcome.note.is_empty() && outcome.note.len() <= 640);
             assert_eq!(
                 server.await.unwrap(),
                 ["initialize", "initialized", "thread/read"]

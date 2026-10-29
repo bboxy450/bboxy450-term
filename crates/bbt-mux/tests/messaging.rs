@@ -530,6 +530,7 @@ impl Fixture {
                 self.b.swarm,
                 work,
                 &WakeOutcome {
+                    cause: None,
                     evidence,
                     note: "fixture".into(),
                     native_id: None,
@@ -1475,5 +1476,116 @@ fn arrival_path_limit_rejects_instead_of_silently_losing_an_unpaused_route() {
         .unwrap_err()
         .to_string()
         .contains("arrival paths")
+    );
+}
+
+// keeps: interface app-harness — stable-ID legacy/typed replay cannot rewrite retained facts.
+#[test]
+fn wake_causes_journal_replay_retains_legacy_and_typed_outcomes() {
+    use bbt_mux::adapters::WakeCause;
+    for cause in [None, Some(WakeCause::NativeWriteAmbiguous)] {
+        let mut fixture = Fixture::new();
+        let message = fixture.send(fixture.a.id, "one ambiguous attempt", 1000);
+        let work = fixture.take(1001);
+        let outcome = WakeOutcome {
+            evidence: Evidence::NativeUnknown,
+            native_id: None,
+            note: "specific retained diagnostic".into(),
+            cause,
+        };
+        fixture
+            .messaging
+            .finish(fixture.b.swarm, &work, &outcome, 1002, false)
+            .unwrap();
+        fixture.reopen();
+        fixture
+            .messaging
+            .finish(fixture.b.swarm, &work, &outcome, 1003, false)
+            .unwrap();
+        let mut changed = outcome.clone();
+        changed.cause = Some(WakeCause::NativeRejected);
+        assert!(
+            fixture
+                .messaging
+                .finish(fixture.b.swarm, &work, &changed, 1004, false)
+                .is_err()
+        );
+        let receipt = &fixture
+            .messaging
+            .receipts(fixture.a.id, message.envelope().unwrap().id)
+            .unwrap()[0];
+        assert_eq!(receipt.evidence, Evidence::NativeUnknown);
+        assert_eq!(receipt.note, outcome.note);
+        assert!(
+            fixture
+                .messaging
+                .prepare(fixture.b.swarm, fixture.b.id, 9000)
+                .unwrap()
+                .is_none()
+        );
+    }
+}
+
+// keeps: interface app-harness — unknown wire causes cannot collapse different retained facts.
+#[test]
+fn wake_causes_future_journal_facts_cannot_be_replaced_by_a_normalized_cause() {
+    use bbt_mux::adapters::WakeCause;
+    let mut fixture = Fixture::new();
+    let message = fixture.send(fixture.a.id, "future ambiguous attempt", 1000);
+    let work = fixture.take(1001);
+    fixture.finish(&work, Evidence::NativeUnknown, 1002);
+    let bytes = serde_json::to_vec(&serde_json::json!({
+        "evidence":"native-unknown", "native_id":null, "note":"opaque retained diagnostic",
+        "cause":"future-peer-state"
+    }))
+    .unwrap();
+    let store = SqliteStore::open(
+        &object_dir(fixture.tmp.path(), &format!("swarm-{}", fixture.b.swarm)).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        store
+            .connection()
+            .unwrap()
+            .execute(
+                "UPDATE msg_attempts SET outcome=?2 WHERE id=?1",
+                rusqlite::params![work.id.to_string(), &bytes],
+            )
+            .unwrap(),
+        1
+    );
+    fixture.reopen();
+    let normalized: WakeOutcome = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(normalized.cause, Some(WakeCause::Unrecognized));
+    assert!(
+        fixture
+            .messaging
+            .finish(fixture.b.swarm, &work, &normalized, 1003, false)
+            .is_err()
+    );
+    let retained: Vec<u8> = store
+        .connection()
+        .unwrap()
+        .query_row(
+            "SELECT outcome FROM msg_attempts WHERE id=?1",
+            [work.id.to_string()],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(retained, bytes);
+    assert_eq!(
+        fixture
+            .messaging
+            .receipts(fixture.a.id, message.envelope().unwrap().id)
+            .unwrap()[0]
+            .evidence,
+        Evidence::NativeUnknown
+    );
+    assert!(
+        fixture
+            .messaging
+            .prepare(fixture.b.swarm, fixture.b.id, 9000)
+            .unwrap()
+            .is_none()
     );
 }

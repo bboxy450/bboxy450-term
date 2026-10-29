@@ -122,6 +122,7 @@ fn custody_hold_never_holds_local_delivery() {
             swarm,
             &work,
             &WakeOutcome {
+                cause: None,
                 evidence: Evidence::NativeWritten,
                 native_id: Some("fixture-single-native-attempt".into()),
                 note: "fixture wrote once".into(),
@@ -410,7 +411,7 @@ fn events_are_stored_and_never_wake_by_default() {
     let work = messaging.prepare(swarm, oracle.id, 2_001).unwrap().unwrap();
     assert_eq!(work.messages.len(), 1);
     assert_eq!(work.messages[0].view().id, id);
-    messaging.finish(swarm, &work, &WakeOutcome { evidence: Evidence::NativeWritten, native_id: Some("one-attention-wake".into()), note: "fixture native delivery".into() }, 2_002, false).unwrap();
+    messaging.finish(swarm, &work, &WakeOutcome { cause: None, evidence: Evidence::NativeWritten, native_id: Some("one-attention-wake".into()), note: "fixture native delivery".into() }, 2_002, false).unwrap();
     assert!(messaging.prepare(swarm, oracle.id, 2_003).unwrap().is_none());
 }
 
@@ -515,6 +516,7 @@ impl AttentionFixture {
                 self.receiver.swarm,
                 work,
                 &WakeOutcome {
+                    cause: None,
                     evidence: Evidence::NativeWritten,
                     native_id: Some("attention-fixture".into()),
                     note: "written once".into(),

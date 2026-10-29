@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Readiness is a short-lived, single-use indication bound to the live process,
 //! native session, attachment and operator-input epoch. State alone is not one.
-use super::{Binding, Evidence, Session, State, WakeOutcome};
+use super::{Binding, Evidence, Session, State, WakeCause, WakeOutcome};
 use crate::{Result, Ulid, invalid};
 
 /// Maximum encoded literal paste, matching the existing host input bound.
@@ -51,9 +51,20 @@ pub enum Readiness {
     /// Positive short-lived composer readiness that must be rechecked and consumed.
     Ready(ReadyToken),
     /// Named current reason automatic literal input cannot be admitted.
-    NotReady(&'static str),
+    NotReady(ReadinessRefusal),
     /// The selected harness has no supported guarded input adapter.
     OperatorHandoff,
+}
+/// A refusal assigned at its owning guard branch, without classifying note text.
+#[derive(Debug, Clone, Copy)]
+pub struct ReadinessRefusal {
+    /// Bounded machine-readable explanation, not input authority.
+    pub cause: WakeCause,
+    /// Existing human diagnostic for this guard branch.
+    pub note: &'static str,
+}
+fn not_ready(cause: WakeCause, note: &'static str) -> Readiness {
+    Readiness::NotReady(ReadinessRefusal { cause, note })
 }
 /// A literal paste consumes readiness; Enter is an explicit caller choice.
 #[derive(Clone, Copy)]
@@ -71,35 +82,50 @@ pub fn check(session: &Session, view: &ArbiterView, now_ms: u64) -> Readiness {
         return Readiness::OperatorHandoff;
     }
     if view.binding != session.binding {
-        return Readiness::NotReady("process/session/attachment changed");
+        return not_ready(
+            WakeCause::InputBindingChanged,
+            "process/session/attachment changed",
+        );
     }
     if session.dialog || session.status.state == State::Waiting {
-        return Readiness::NotReady("pending dialog");
+        return not_ready(WakeCause::DialogPending, "pending dialog");
     }
     if session.status.turn_open
         || session.status.state != State::Idle
         || !session.status.subagents.is_empty()
     {
-        return Readiness::NotReady("turn or subagent is active");
+        return not_ready(WakeCause::TurnActive, "turn or subagent is active");
     }
     let Some(proof) = &session.proof else {
-        return Readiness::NotReady("no positive composer-ready indication");
+        return not_ready(
+            WakeCause::ComposerReadinessMissing,
+            "no positive composer-ready indication",
+        );
     };
     if proof.binding != view.binding || now_ms.saturating_sub(proof.observed_ms) > 2000 {
-        return Readiness::NotReady("readiness indication expired or replaced");
+        return not_ready(
+            WakeCause::ComposerReadinessExpired,
+            "readiness indication expired or replaced",
+        );
     }
     if view.operator_draft || view.active_tool || view.sync_pending || view.screen_switch_pending {
-        return Readiness::NotReady("draft/tool/render transition owns input");
+        return not_ready(
+            WakeCause::InputOwned,
+            "draft/tool/render transition owns input",
+        );
     }
     if view.foreground_pid != Some(session.binding.pid) {
-        return Readiness::NotReady("foreground process changed");
+        return not_ready(WakeCause::ForegroundChanged, "foreground process changed");
     }
     if session.record.kind == "zsh" {
         if !view.canonical || !view.echo {
-            return Readiness::NotReady("shell not in canonical echo mode");
+            return not_ready(
+                WakeCause::ShellModeInvalid,
+                "shell not in canonical echo mode",
+            );
         }
     } else if now_ms.saturating_sub(session.last_output_ms) < 500 {
-        return Readiness::NotReady("recent output");
+        return not_ready(WakeCause::RecentOutput, "recent output");
     }
     Readiness::Ready(ReadyToken {
         binding: view.binding.clone(),

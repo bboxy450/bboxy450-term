@@ -15,7 +15,7 @@ use ulid::Ulid;
 
 use super::{Call, SeatActor as Actor, tools};
 use crate::{
-    adapters::{Evidence, WakeOutcome},
+    adapters::{Evidence, WakeCause, WakeOutcome},
     registry::{Class, SeatRecord},
 };
 
@@ -475,7 +475,8 @@ pub(crate) fn failure(op: Ulid, code: &str, reason: &str, ids: Value) -> Value {
     result
 }
 pub(crate) fn input_result(call: &Call, id: Ulid, outcome: WakeOutcome) -> Value {
-    match outcome.evidence {
+    let cause = outcome.cause;
+    let mut result = match outcome.evidence {
         Evidence::NativeWritten | Evidence::NativeQueued => super::success(
             call.op_id,
             json!({"status":if outcome.evidence==Evidence::NativeWritten{"applied"}else{"accepted"},"input_id":id,"evidence":outcome.evidence,"native_id":outcome.native_id,"note":outcome.note}),
@@ -488,7 +489,7 @@ pub(crate) fn input_result(call: &Call, id: Ulid, outcome: WakeOutcome) -> Value
             "not_submitted",
             &format!(
                 "not ready: {}",
-                if outcome.note == "no positive composer-ready indication" {
+                if cause == Some(WakeCause::ComposerReadinessMissing) {
                     "no positive readiness"
                 } else {
                     &outcome.note
@@ -496,7 +497,13 @@ pub(crate) fn input_result(call: &Call, id: Ulid, outcome: WakeOutcome) -> Value
             ),
             json!({"input_id":id}),
         ),
+    };
+    if let Some(cause) = cause {
+        result["structuredContent"]["cause"] = json!(cause);
+        result["content"][0]["text"] =
+            json!(serde_json::to_string(&result["structuredContent"]).unwrap());
     }
+    result
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -713,6 +720,71 @@ mod tests {
                 .unwrap()
                 .execute("UPDATE msg_policies SET epoch=1", [])
                 .unwrap();
+        }
+    }
+}
+
+#[cfg(test)]
+mod wake_cause_tests {
+    use super::*;
+
+    fn project(evidence: Evidence, cause: Option<WakeCause>, note: &str) -> Value {
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "seat_input_text".into(),
+            args: json!({}),
+        };
+        let result = input_result(
+            &call,
+            Ulid::new(),
+            WakeOutcome {
+                evidence,
+                native_id: None,
+                note: note.into(),
+                cause,
+            },
+        );
+        let text: Value =
+            serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(text, result["structuredContent"]);
+        result["structuredContent"].clone()
+    }
+
+    // keeps: interface app-harness — cause selects the probe; note is not a classifier.
+    #[test]
+    fn wake_causes_choose_readiness_without_parsing_notes_or_promoting_unknown() {
+        let typed = project(
+            Evidence::RecipientStored,
+            Some(WakeCause::ComposerReadinessMissing),
+            "different human wording",
+        );
+        assert_eq!(typed["error"]["code"], "not_submitted");
+        assert_eq!(typed["cause"], "composer-readiness-missing");
+        assert_eq!(
+            typed["error"]["message"],
+            "not ready: no positive readiness"
+        );
+        for cause in [None, Some(WakeCause::Unrecognized)] {
+            let legacy_note = "no positive composer-ready indication";
+            let legacy = project(Evidence::RecipientStored, cause, legacy_note);
+            assert_eq!(legacy["error"]["code"], "not_submitted");
+            assert_eq!(
+                legacy["error"]["message"],
+                format!("not ready: {legacy_note}")
+            );
+            if cause.is_none() {
+                assert!(legacy.get("cause").is_none());
+            }
+        }
+        for cause in [
+            None,
+            Some(WakeCause::Unrecognized),
+            Some(WakeCause::ComposerReadinessMissing),
+            Some(WakeCause::NativeQueueAdmitted),
+        ] {
+            let unknown = project(Evidence::NativeUnknown, cause, "mutation remains unknown");
+            assert_eq!(unknown["error"]["code"], "unknown");
+            assert_eq!(unknown["status"], "unknown");
         }
     }
 }

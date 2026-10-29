@@ -276,6 +276,7 @@ mod tests {
     fn wake_batch_is_one_private_metadata_line_with_pinned_modes() {
         let (root, work, binding) = work(WakeMode::Wake);
         let outcome = WakeOutcome {
+            cause: None,
             evidence: Evidence::NativeQueued,
             native_id: Some("queue-id-not-a-turn".into()),
             note: "PRIVATE CAPABILITY AND NOTE".into(),
@@ -310,6 +311,7 @@ mod tests {
             &binding,
             "codex",
             &WakeOutcome {
+                cause: None,
                 evidence: Evidence::RecipientStored,
                 native_id: None,
                 note: "pre-write refusal".into(),

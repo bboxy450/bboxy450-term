@@ -498,7 +498,8 @@ fn fixture_hosts_default() -> bool {
 }
 // MCP control schema/grants; logical UI input is versioned independently.
 // MA-10 sender resolution must activate even when the retained owner is healthy.
-const MCP_CONTROL_VERSION: u16 = 8;
+// Typed wake causes run in retained logic; a new GUI must activate that producer.
+const MCP_CONTROL_VERSION: u16 = 9;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {

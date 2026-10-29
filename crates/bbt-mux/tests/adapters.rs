@@ -817,6 +817,7 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
 // keeps: spec harness-adapters
 #[test]
 fn adapters_literal_guard_negatives_write_no_bytes() {
+    use bbt_mux::adapters::WakeCause;
     for case in [
         "active",
         "waiting",
@@ -891,5 +892,89 @@ fn adapters_literal_guard_negatives_write_no_bytes() {
             )
             .unwrap();
         assert_eq!(result.evidence, Evidence::RecipientStored, "{case}");
+        let cause = match case {
+            "active" | "subagent" => WakeCause::TurnActive,
+            "waiting" => WakeCause::DialogPending,
+            "expired" => WakeCause::ComposerReadinessExpired,
+            "generation" | "attachment" | "pid" => WakeCause::InputBindingChanged,
+            "draft" | "tool" | "sync" | "screen" => WakeCause::InputOwned,
+            "foreground" => WakeCause::ForegroundChanged,
+            "canonical" | "echo" => WakeCause::ShellModeInvalid,
+            _ => unreachable!(),
+        };
+        assert_eq!(result.cause, Some(cause), "{case}");
+        assert!(!result.note.is_empty() && result.note.len() <= 640);
+    }
+}
+
+// keeps: interface app-harness — legacy/future unknown journal facts never authorize another writer.
+#[test]
+fn wake_causes_replayed_unknowns_block_native_and_pty_resubmission() {
+    use bbt_mux::adapters::{Endpoint, Priority, WakeCause, WakeOutcome};
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for cause in [
+        None,
+        Some("future-peer-state"),
+        Some("native-queue-admitted"),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("native.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let mut session = session("claude");
+        let attachment = runtime
+            .block_on(session.attach(Endpoint::Claude { path }))
+            .unwrap();
+        drop(listener.accept().unwrap()); // Only the read-only attachment probe.
+        let id = Ulid::new();
+        let journal = SqliteStore::open(&root.path().join("journal")).unwrap();
+        let mut wire =
+            json!({"evidence":"native-unknown","native_id":null,"note":"retained ambiguous write"});
+        if let Some(cause) = cause {
+            wire["cause"] = json!(cause);
+        }
+        journal
+            .put(
+                &format!("adapter_input/{id}"),
+                &serde_json::to_vec(&wire).unwrap(),
+            )
+            .unwrap();
+        let outcome = session
+            .submit_pty(
+                &arbiter(&session),
+                1000,
+                id,
+                "must not write",
+                &journal,
+                |_| {
+                    panic!("journal replay called the PTY writer");
+                },
+            )
+            .unwrap();
+        assert_eq!(outcome.evidence, Evidence::NativeUnknown);
+        assert_eq!(outcome.note, "retained ambiguous write");
+        assert!(!session.can_attempt_native(id));
+        let native = runtime.block_on(session.wake(
+            &attachment,
+            id,
+            "must not resend",
+            Priority::Next,
+            false,
+        ));
+        assert_eq!(native.evidence, Evidence::NativeUnknown);
+        assert_eq!(native.cause, Some(WakeCause::PreviousOutcomeUnknown));
+        assert_eq!(
+            listener.accept().unwrap_err().kind(),
+            std::io::ErrorKind::WouldBlock
+        );
+        // Mux and kit retain the same legacy absent-cause byte contract.
+        let legacy = r#"{"evidence":"native-unknown","native_id":null,"note":"opaque"}"#;
+        assert_eq!(
+            serde_json::to_string(&serde_json::from_str::<WakeOutcome>(legacy).unwrap()).unwrap(),
+            legacy
+        );
     }
 }

@@ -1190,6 +1190,7 @@ fn identity_chain_provider_preserves_messaging_store_retry_thread_receipt_and_ac
             f.peer.swarm,
             &work,
             &WakeOutcome {
+                cause: None,
                 evidence: Evidence::NativeWritten,
                 note: "fixture".into(),
                 native_id: None,

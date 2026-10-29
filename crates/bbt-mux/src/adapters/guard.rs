@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Mux owns the durable input journal and host-result classification.
-use super::{Evidence, Session, WakeOutcome};
+use super::{Evidence, Session, WakeCause, WakeOutcome};
 use crate::{Ulid, store::Result};
 pub use bboxy450_harness_wake_up::guard::*;
 impl Session {
@@ -43,6 +43,10 @@ impl Session {
         let key = format!("adapter_input/{id}");
         if let Some(bytes) = journal.get(&key)? {
             let outcome: WakeOutcome = serde_json::from_slice(&bytes)?;
+            if self.inner.can_attempt_native(id) {
+                self.inner
+                    .record_outcome(id, &super::mapping::native_outcome(&outcome)?);
+            }
             return Ok(outcome);
         }
         let token = match check(self, view, now_ms) {
@@ -51,7 +55,8 @@ impl Session {
                 return Ok(WakeOutcome {
                     evidence: Evidence::RecipientStored,
                     native_id: None,
-                    note: reason.into(),
+                    note: reason.note.into(),
+                    cause: Some(reason.cause),
                 });
             }
             Readiness::OperatorHandoff => {
@@ -59,11 +64,13 @@ impl Session {
                     evidence: Evidence::RecipientStored,
                     native_id: None,
                     note: "operator handoff required".into(),
+                    cause: Some(WakeCause::OperatorHandoff),
                 });
             }
         };
         let bytes = self.prepare_literal(token, view, now_ms, input)?;
-        let pending = WakeOutcome::unknown(
+        let pending = WakeOutcome::unknown_cause(
+            WakeCause::PtySubmissionPending,
             "PTY submission journaled; query the original supervisor input ID",
         );
         // Persist before any write. A crash here is unknown, never a second Enter.
@@ -76,6 +83,7 @@ impl Session {
                     evidence: Evidence::NativeWritten,
                     native_id: Some(id.to_string()),
                     note: "fully PTY-written; consumption unverified".into(),
+                    cause: Some(WakeCause::PtyWritten),
                 }
             }
             Err(error)
@@ -97,7 +105,11 @@ impl Session {
                 WakeOutcome {
                     evidence: Evidence::RecipientStored,
                     native_id: None,
-                    note: format!("supervisor refused before mutation: {error}"),
+                    note: super::observe::short(
+                        &format!("supervisor refused before mutation: {error}"),
+                        640,
+                    ),
+                    cause: Some(WakeCause::SupervisorRefused),
                 }
             }
             _ => pending,
@@ -105,7 +117,8 @@ impl Session {
         self.inner
             .record_outcome(id, &super::mapping::native_outcome(&result)?);
         if journal.put(&key, &serde_json::to_vec(&result)?).is_err() {
-            return Ok(WakeOutcome::unknown(
+            return Ok(WakeOutcome::unknown_cause(
+                WakeCause::PtyResultUnjournaled,
                 "PTY result could not be journaled; query original input ID",
             ));
         }

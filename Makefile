@@ -57,6 +57,7 @@ help:
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
+	  'make test-wake-causes            Typed wake causes, legacy replay, MCP refusal and retained-logic refresh' \
 	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
@@ -494,6 +495,18 @@ fmt-harness-proxy:
 
 test-harness-proxy:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
+
+.PHONY: test-wake-causes
+test-wake-causes:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib --test adapters; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib adapters::; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib wake_causes_; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging wake_causes_; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments -- --exact; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir task_migration_catalogue_upgrade_retains_all_seats_and_shell_state -- --ignored --exact --nocapture --test-threads=1; \
+	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 .PHONY: test-codex-rendering
 test-codex-rendering: build test-harness-proxy

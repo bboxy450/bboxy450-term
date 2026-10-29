@@ -658,6 +658,7 @@ fn gate_bus() {
             for (sw, work) in in_flight.drain(..) {
                 let done = now_ms();
                 let outcome = WakeOutcome {
+                    cause: None,
                     evidence: Evidence::NativeWritten,
                     note: "gate".into(),
                     native_id: None,

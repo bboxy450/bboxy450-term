@@ -1,0 +1,80 @@
+{
+  "tasks": [
+    243,
+    246,
+    301
+  ],
+  "source_base": "9b59c52437b0ed25b91a4185bb4917862cbcb392",
+  "source_manifest": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-source.json",
+  "source_manifest_sha256": "459f2164f9e817dc28be5eee33dfc2f940979e290ab9c28ea1d2c8fd6409dd35",
+  "verification": [
+    {
+      "command": "make test-wake-causes",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-final.log",
+      "sha256": "b551d32e8c4b075a1042e7ab6de18c8c1f7d23223f277fb55827563fa1bf4ab7",
+      "test_results": [
+        "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s",
+        "test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 201 filtered out; finished in 0.01s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 210 filtered out; finished in 0.00s",
+        "test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.03s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 62 filtered out; finished in 0.79s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 23 filtered out; finished in 8.59s"
+      ]
+    },
+    {
+      "command": "make test-boundaries",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/boundaries.log",
+      "sha256": "aa1597e38c48e33bd5cc0ba09785dd57c5cccbbadb864d4c135168d0232d59d6",
+      "test_results": [
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.44s",
+        "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 55.92s",
+        "test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.86s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 210 filtered out; finished in 0.15s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 175 filtered out; finished in 0.10s",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 177 filtered out; finished in 0.00s",
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.57s"
+      ]
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/licenses-final.log",
+      "sha256": "9617a8fa6a1fe41c6dae2dc7752fea826ed49d071f1e0f44f04521b717b131da",
+      "test_results": []
+    }
+  ],
+  "development_reds": [
+    {
+      "command": "make test-wake-causes",
+      "exit_code": 2,
+      "mechanism": "new test enum typo",
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-development.log",
+      "sha256": "61efb2d82e3f084466316c15ae23fd986e09cd5abb028dfcbe34a30682db3b91"
+    },
+    {
+      "command": "make test-wake-causes",
+      "exit_code": 2,
+      "mechanism": "new test expected absent status instead of existing unknown status",
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-2.log",
+      "sha256": "d1ff84e0b747f51cddadb549110b192d05cd3b73d9ddbd34c5beb79b460d8f10"
+    },
+    {
+      "command": "make test-wake-causes",
+      "exit_code": 2,
+      "mechanism": "repeated unknown replay invalidated newer readiness; restored no-retry state only once",
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-3.log",
+      "sha256": "917d45177f5e94344168c51e0a5cc39a26a6388e2c9ec1781afd712a13f89a01"
+    }
+  ],
+  "limits": [
+    "Same executable with older advertised MCP markers 8, 6 and absent; not an actual older-binary upgrade proof.",
+    "Historical issue40 and original proxy20s causal mechanisms remain unproven; no quarantine removed."
+  ],
+  "next": [
+    "Exact signed-source make test and normal scripts/land.sh remain required; not yet claimed."
+  ]
+}

@@ -2365,7 +2365,7 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }
 
-// keeps: task API upgrade contract; task_import_context/import/reconcile.
+// keeps: task API and typed wake-cause upgrade contracts; same executable with old advertised versions.
 #[test]
 #[ignore = "private same-account logic upgrade; make test-task-migration"]
 fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
@@ -2462,6 +2462,31 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
             assert_eq!(current["state"]["generation"], old["state"]["generation"]);
         }
     }
+    fn typed_readiness_refusal(oracle: &mut Bridge, target: &str) {
+        // The private Claude replacement is /bin/cat: it emits no positive
+        // composer proof. This is a real guarded MCP call, not a note parser.
+        let reply = rpc(
+            oracle,
+            "tools/call",
+            json!({
+                "name":"seat_input_text",
+                "arguments":{"seat_id":target,"expected_process_generation":"1",
+                             "text":"PRIVATE-WAKE-CAUSE-MUST-NOT-WRITE","submit":true},
+                "_meta":{"bboxy450/op_id":bbt_mux::Ulid::new().to_string()}
+            }),
+        );
+        assert!(reply.get("error").is_none(), "{reply}");
+        let result = &reply["result"];
+        assert_eq!(result["isError"], true, "{result}");
+        assert_eq!(
+            result["structuredContent"]["error"]["code"],
+            "not_submitted"
+        );
+        assert_eq!(
+            result["structuredContent"]["cause"],
+            "composer-readiness-missing"
+        );
+    }
     fn reattach(fixture: &mut Fixture) {
         let mut ui = fixture.app.take().unwrap();
         ui.kill().unwrap();
@@ -2553,7 +2578,8 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
     assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
     let owner_path = fixture.root.join("run/logic.owner.json");
     let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
-    assert_eq!(owner["ready"]["mcp_control_version"], 7);
+    assert_eq!(owner["ready"]["mcp_control_version"], 9);
+    typed_readiness_refusal(&mut oracle_bridge, &worker);
     let owners = fixture.owners();
     reattach(&mut fixture);
     assert_eq!(
@@ -2563,7 +2589,7 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
     );
     retained(&fixture, &before);
 
-    for version in [Some(6), None] {
+    for version in [Some(8), Some(6), None] {
         let owners = fixture.owners();
         let mut ui = fixture.app.take().unwrap();
         ui.kill().unwrap();
@@ -2586,17 +2612,20 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
         assert_ne!(upgraded[1], owners[1], "older logic retained");
         retained(&fixture, &before);
         assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
+        typed_readiness_refusal(&mut oracle_bridge, &worker);
+        let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        assert_eq!(owner["ready"]["mcp_control_version"], 9);
         shell_echo(
             &fixture,
             &shell,
-            if version.is_some() {
-                "AFTER6"
-            } else {
-                "AFTERMISSING"
+            match version {
+                Some(8) => "AFTER8",
+                Some(_) => "AFTER6",
+                None => "AFTERMISSING",
             },
         );
         eprintln!(
-            "task catalogue upgrade: advertised={version:?}; supervisor={} retained; logic {} -> {}; all 3 seat PIDs/generations/native sessions retained; same Oracle context and worker refusal; real shell state/PTY echo held",
+            "task/wake-cause catalogue upgrade (same executable): advertised={version:?}; supervisor={} retained; logic {} -> {}; all 3 seat PIDs/generations/native sessions retained; same Oracle context, typed readiness refusal and worker refusal; real shell state/PTY echo held",
             upgraded[0], owners[1], upgraded[1]
         );
     }

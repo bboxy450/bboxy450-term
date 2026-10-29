@@ -7654,7 +7654,7 @@ impl Worker {
                 );
             }
         }
-        use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
+        use crate::adapters::{Evidence, Priority, WakeCause, WakeMethod, WakeOutcome};
         while let Some(result) = self.control_deliveries.try_join_next() {
             let delivery = match result {
                 Ok(delivery) => delivery,
@@ -7731,7 +7731,7 @@ impl Worker {
             let mut text = work.text();
             let relayed = if let Some(agent) = &work.agent {
                 if !view.adapter.status.subagents.iter().any(|a| &a.id == agent) {
-                    self.messaging.finish(swarm,&work,&WakeOutcome{evidence:Evidence::RecipientStored,native_id:None,note:"held: target subagent ended or is not currently reported; never redirect".into()},now_ms(),false)?;
+                    self.messaging.finish(swarm,&work,&WakeOutcome{evidence:Evidence::RecipientStored,native_id:None,note:"held: target subagent ended or is not currently reported; never redirect".into(),cause:Some(WakeCause::TargetSubagentUnavailable)},now_ms(),false)?;
                     continue;
                 }
                 text =
@@ -7764,6 +7764,7 @@ impl Worker {
                                 && outcome.evidence == Evidence::RecipientStored
                                 && let Some(reason) = delivery_failure
                             {
+                                outcome.cause = Some(WakeCause::NativeAttachmentUnavailable);
                                 outcome.note = crate::adapters::observe::short(
                                     &format!("native attachment unavailable: {reason}; no mutation attempted"),
                                     640,
@@ -7802,6 +7803,7 @@ impl Worker {
                             native_id: None,
                             note: "pending for operator: harness has no autonomous input path"
                                 .into(),
+                            cause: Some(WakeCause::OperatorHandoff),
                         },
                         now_ms(),
                         false,
@@ -7834,11 +7836,12 @@ impl Worker {
         generation: u64,
         input: crate::adapters::guard::LiteralInput<'_>,
     ) -> Result<crate::adapters::WakeOutcome> {
-        use crate::adapters::{Evidence, WakeOutcome};
-        let pending = |note: &str| WakeOutcome {
+        use crate::adapters::{Evidence, WakeCause, WakeOutcome};
+        let pending = |cause, note: &str| WakeOutcome {
             evidence: Evidence::RecipientStored,
             native_id: None,
-            note: note.into(),
+            note: crate::adapters::observe::short(note, 640),
+            cause: Some(cause),
         };
         let attachment = self
             .attachments
@@ -7856,6 +7859,7 @@ impl Worker {
             Ok(Reply::InputContext { context }) => context,
             _ => {
                 return Ok(pending(
+                    WakeCause::PtyArbiterUnavailable,
                     "pending for operator: live PTY arbiter unavailable",
                 ));
             }
@@ -7875,11 +7879,18 @@ impl Worker {
                 .is_none_or(|observed_ms| observed_ms <= context.last_input_ms)
             || now.saturating_sub(context.last_input_ms) < 500
         {
-            return Ok(pending(if view.adapter.readiness_observed_ms().is_none() {
-                "no positive composer-ready indication"
+            let (cause, note) = if view.adapter.readiness_observed_ms().is_none() {
+                (
+                    WakeCause::ComposerReadinessMissing,
+                    "no positive composer-ready indication",
+                )
             } else {
-                "pending for operator: fresh readiness after the last input and a caught-up PTY are required"
-            }));
+                (
+                    WakeCause::PtyReadinessPending,
+                    "pending for operator: fresh readiness after the last input and a caught-up PTY are required",
+                )
+            };
+            return Ok(pending(cause, note));
         }
         let arbiter = crate::adapters::mapping::arbiter(
             view.adapter.binding.clone(),

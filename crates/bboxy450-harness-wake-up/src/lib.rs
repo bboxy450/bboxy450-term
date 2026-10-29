@@ -43,7 +43,7 @@ fn assert_not_ui_thread() {
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub use guard::{ArbiterView, LiteralInput, Readiness, ReadyToken};
+pub use guard::{ArbiterView, LiteralInput, Readiness, ReadinessRefusal, ReadyToken};
 pub use launch::{LaunchContext, LaunchPlan};
 pub use observe::{Grade, Observation, OscTap, Session, State, Status, WaitingKind};
 
@@ -247,6 +247,86 @@ pub enum Evidence {
     /// Mutation may have occurred; query it without automatic retry or PTY fallback.
     NativeUnknown,
 }
+/// Bounded explanation of an outcome, never input, retry or receipt authority.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WakeCause {
+    /// The retained attachment belongs to another binding.
+    NativeAttachmentReplaced,
+    /// This delivery identity already has an unresolved native outcome.
+    PreviousOutcomeUnknown,
+    /// The caller has no interrupt authority.
+    InterruptUnauthorized,
+    /// The native message exceeds its existing transport bound.
+    MessageTooLarge,
+    /// The live process identity could not be established.
+    ProcessIdentityUnavailable,
+    /// The process start stamp differs from the captured identity.
+    ProcessReplaced,
+    /// No native endpoint is attached.
+    NativeUnavailable,
+    /// The selected native thread differs from the bound session.
+    NativeThreadMismatch,
+    /// Startup has not bound an authenticated native thread yet.
+    NativeThreadUnbound,
+    /// Steering lacks a current native turn identifier.
+    CurrentTurnMissing,
+    /// Native thread identity or status is unknown.
+    NativeThreadUnknown,
+    /// Native preflight failed before any submission was attempted.
+    NativePreflightFailed,
+    /// Native preflight exceeded its existing deadline.
+    NativePreflightTimedOut,
+    /// The native peer explicitly rejected the submission.
+    NativeRejected,
+    /// A native write or reply is ambiguous; never automatically resubmit.
+    NativeWriteAmbiguous,
+    /// A native frame was written; receiver/model acceptance is unverified.
+    NativeFrameWritten,
+    /// The native queue admitted the message; model consumption is unverified.
+    NativeQueueAdmitted,
+    /// Input facts refer to another process/session/attachment.
+    InputBindingChanged,
+    /// A dialog owns input.
+    DialogPending,
+    /// A turn or subagent is active.
+    TurnActive,
+    /// No positive composer readiness has been observed.
+    ComposerReadinessMissing,
+    /// The observed readiness is expired or belongs to an older binding.
+    ComposerReadinessExpired,
+    /// A draft, tool or render transition owns input.
+    InputOwned,
+    /// The foreground process differs from the input owner.
+    ForegroundChanged,
+    /// The shell is not in canonical echo mode.
+    ShellModeInvalid,
+    /// Output is too recent for the existing readiness guard.
+    RecentOutput,
+    /// This harness has no supported autonomous input path.
+    OperatorHandoff,
+    /// PTY intent was journaled before the writer; its result is unresolved.
+    PtySubmissionPending,
+    /// The supervisor confirmed the full PTY write, not model consumption.
+    PtyWritten,
+    /// The supervisor refused the input before mutation.
+    SupervisorRefused,
+    /// The PTY result could not be retained after the attempted write.
+    PtyResultUnjournaled,
+    /// The target subagent ended or is no longer reported.
+    TargetSubagentUnavailable,
+    /// Native attachment discovery failed before submission.
+    NativeAttachmentUnavailable,
+    /// Live PTY arbiter facts are unavailable.
+    PtyArbiterUnavailable,
+    /// A caught-up PTY and fresh readiness after prior input are still required.
+    PtyReadinessPending,
+    /// Logic restarted while an attempt had no retained result.
+    RestartedInFlight,
+    /// A future wire cause is unknown; it grants no additional authority.
+    #[serde(other)]
+    Unrecognized,
+}
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 /// Native transport evidence and a named diagnostic for one stable delivery identity.
 pub struct WakeOutcome {
@@ -256,6 +336,9 @@ pub struct WakeOutcome {
     pub native_id: Option<String>,
     /// Bounded diagnostic detail explaining the delivery evidence.
     pub note: String,
+    /// Optional machine-readable explanation; omitted legacy fields keep their bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cause: Option<WakeCause>,
 }
 impl WakeOutcome {
     /// Construct ambiguous native evidence that forbids automatic resubmission.
@@ -264,6 +347,14 @@ impl WakeOutcome {
             evidence: Evidence::NativeUnknown,
             native_id: None,
             note: note.into(),
+            cause: None,
+        }
+    }
+    /// Construct a named ambiguous outcome without granting automatic resubmission.
+    pub fn unknown_cause(cause: WakeCause, note: impl Into<String>) -> Self {
+        Self {
+            cause: Some(cause),
+            ..Self::unknown(observe::short(&note.into(), 640))
         }
     }
 }
@@ -381,10 +472,12 @@ impl Adapter for Session {
                     evidence: Evidence::RecipientStored,
                     native_id: None,
                     note: "native attachment was replaced".into(),
+                    cause: Some(WakeCause::NativeAttachmentReplaced),
                 };
             }
             if !self.can_attempt_native(id) {
-                return WakeOutcome::unknown(
+                return WakeOutcome::unknown_cause(
+                    WakeCause::PreviousOutcomeUnknown,
                     "original native outcome is unknown; query it, never resubmit",
                 );
             }
@@ -453,5 +546,40 @@ mod availability_tests {
             endpoint: Endpoint::None,
         };
         assert!(!native_available(Some(&absent), &binding));
+    }
+}
+
+#[cfg(test)]
+mod wake_cause_tests {
+    use super::*;
+
+    // keeps: interface app-harness — additive cause preserves legacy bytes.
+    #[test]
+    fn wake_causes_preserve_legacy_bytes_and_decode_future_causes_safely() {
+        for bytes in [
+            r#"{"evidence":"native-unknown","native_id":null,"note":"legacy diagnostic"}"#,
+            r#"{"evidence":"native-queued","native_id":"q1","note":"admission only"}"#,
+            r#"{"evidence":"recipient-stored","native_id":null,"note":"specific refusal"}"#,
+        ] {
+            let outcome: WakeOutcome = serde_json::from_str(bytes).unwrap();
+            assert_eq!(outcome.cause, None);
+            assert_eq!(serde_json::to_string(&outcome).unwrap(), bytes);
+        }
+        let future: WakeOutcome = serde_json::from_str(
+            r#"{"evidence":"native-unknown","native_id":null,"note":"opaque peer","cause":"future-peer-state"}"#,
+        ).unwrap();
+        assert_eq!(future.cause, Some(WakeCause::Unrecognized));
+        assert_eq!(future.evidence, Evidence::NativeUnknown);
+        assert_eq!(future.note, "opaque peer");
+        let typed =
+            WakeOutcome::unknown_cause(WakeCause::NativeWriteAmbiguous, "concrete diagnostic");
+        assert_eq!(
+            serde_json::to_value(&typed).unwrap()["cause"],
+            "native-write-ambiguous"
+        );
+        assert_eq!(
+            serde_json::from_slice::<WakeOutcome>(&serde_json::to_vec(&typed).unwrap()).unwrap(),
+            typed
+        );
     }
 }

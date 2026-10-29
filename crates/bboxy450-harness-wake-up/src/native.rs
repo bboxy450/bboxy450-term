@@ -9,7 +9,7 @@
 //! without overrides; ambiguous control mutations are never automatically retried.
 use super::{
     Binding, Endpoint, Evidence, Grade, Observation, Priority, Session, State, WaitingKind,
-    WakeOutcome,
+    WakeCause, WakeOutcome,
 };
 use crate::{Result, Ulid, invalid};
 use futures_util::{SinkExt, StreamExt};
@@ -70,18 +70,35 @@ fn process_start_output(pid: u32, output: std::process::Output) -> Result<String
 /// # Errors
 /// Returns binding validation, process lookup or start-stamp mismatch failures.
 pub fn verify_process(binding: &Binding) -> Result<()> {
-    binding.validate()?;
-    if process_start(binding.pid)? != binding.process_start {
-        return Err(invalid("harness process was replaced"));
+    check_process(binding).map_err(|(_, error)| error)
+}
+type IdentityCheck = std::result::Result<(), (WakeCause, crate::Error)>;
+fn check_process(binding: &Binding) -> IdentityCheck {
+    binding
+        .validate()
+        .map_err(|error| (WakeCause::ProcessIdentityUnavailable, error))?;
+    let start = process_start(binding.pid)
+        .map_err(|error| (WakeCause::ProcessIdentityUnavailable, error))?;
+    if start != binding.process_start {
+        return Err((
+            WakeCause::ProcessReplaced,
+            invalid("harness process was replaced"),
+        ));
     }
     Ok(())
 }
 /// Match the transport to the launch-selected runtime, not a user-global locator.
 pub fn verify_codex_runtime(binding: &Binding, path: &Path) -> Result<()> {
+    check_codex_runtime(binding, path).map_err(|(_, error)| error)
+}
+fn check_codex_runtime(binding: &Binding, path: &Path) -> IdentityCheck {
     if binding.session.starts_with("process-") {
-        return Err(invalid("native thread is not yet bound"));
+        return Err((
+            WakeCause::NativeThreadUnbound,
+            invalid("native thread is not yet bound"),
+        ));
     }
-    verify_runtime_process(binding, path)
+    verify_runtime_process(binding, path).map_err(|error| (WakeCause::NativePreflightFailed, error))
 }
 fn verify_runtime_process(binding: &Binding, path: &Path) -> Result<()> {
     let runtime = binding
@@ -863,42 +880,51 @@ pub async fn wake(
     allow_interrupt: bool,
 ) -> WakeOutcome {
     crate::assert_not_ui_thread();
-    let unavailable = |note: &str| WakeOutcome {
+    let unavailable = |cause, note: &str| WakeOutcome {
         evidence: Evidence::RecipientStored,
         native_id: None,
         note: super::observe::short(note, 512),
+        cause: Some(cause),
     };
     if priority == Priority::Now && !allow_interrupt {
-        return unavailable("caller lacks interrupt authority");
+        return unavailable(
+            WakeCause::InterruptUnauthorized,
+            "caller lacks interrupt authority",
+        );
     }
     if text.len() > 48 * 1024 {
-        return unavailable("native message exceeds 48 KiB; no mutation attempted");
+        return unavailable(
+            WakeCause::MessageTooLarge,
+            "native message exceeds 48 KiB; no mutation attempted",
+        );
     }
-    if let Err(error) = verify_process(binding) {
-        return unavailable(&format!(
-            "native identity unavailable: {error}; no mutation attempted"
-        ));
+    if let Err((cause, error)) = check_process(binding) {
+        return unavailable(
+            cause,
+            &format!("native identity unavailable: {error}; no mutation attempted"),
+        );
     }
     let mut attempted = false;
+    let mut preflight_cause = WakeCause::NativePreflightFailed;
     let result=tokio::time::timeout(DEADLINE,async {
         match endpoint {
-            Endpoint::None=>Err(invalid("native delivery unavailable")),
+            Endpoint::None=>{preflight_cause=WakeCause::NativeUnavailable;Err(invalid("native delivery unavailable"))},
             Endpoint::Claude{path}=> {
                 own_socket(path)?;let mut socket=UnixStream::connect(path).await?;
                 let priority=match priority{Priority::Next=>"next",Priority::Later=>"later",Priority::Now=>"now"};
                 let mut bytes=serde_json::to_vec(&json!({"type":"user","uuid":id.to_string(),"msg_id":id.to_string(),"priority":priority,"message":{"role":"user","content":text}}))?;
-                bytes.push(b'\n');if bytes.len()>LIMIT{return Err(invalid("native frame bound"));}
+                bytes.push(b'\n');if bytes.len()>LIMIT{preflight_cause=WakeCause::MessageTooLarge;return Err(invalid("native frame bound"));}
                 attempted=true;socket.write_all(&bytes).await?;socket.shutdown().await?;
-                Ok(WakeOutcome{evidence:Evidence::NativeWritten,native_id:None,note:"frame written; receiver/model acceptance unverified".into()})
+                Ok(WakeOutcome{evidence:Evidence::NativeWritten,native_id:None,note:"frame written; receiver/model acceptance unverified".into(),cause:Some(WakeCause::NativeFrameWritten)})
             }
             Endpoint::Codex{path,thread,turn}=> {
-                if thread!=&binding.session {return Err(invalid("native thread binding mismatch"));}
-                verify_codex_runtime(binding,path)?;
+                if thread!=&binding.session {preflight_cause=WakeCause::NativeThreadMismatch;return Err(invalid("native thread binding mismatch"));}
+                if let Err((cause,error))=check_codex_runtime(binding,path) {preflight_cause=cause;return Err(error);}
                 let owner=binding.runtime.as_ref().ok_or_else(||invalid("native runtime is not bound"))?.pid;
                 let (mut socket,_)=codex_handshake(path,thread,Some(owner)).await?;
                 let input=json!([{"type":"text","text":text}]);
                 let request=if priority==Priority::Now {
-                    let expected=turn.as_ref().ok_or_else(||invalid("interrupt requires a current turn ID"))?;
+                    let expected=turn.as_ref().ok_or_else(||{preflight_cause=WakeCause::CurrentTurnMissing;invalid("interrupt requires a current turn ID")})?;
                     json!({"id":3,"method":"turn/steer","params":{"threadId":thread,"expectedTurnId":expected,"clientUserMessageId":id.to_string(),"input":input}})
                 }else{json!({"id":3,"method":"thread/queue/add","params":{"threadId":thread,"clientUserMessageId":id.to_string(),"input":input}})};
                 attempted=true;send(&mut socket,request).await?;let response=reply(&mut socket,3).await?;
@@ -913,25 +939,30 @@ pub async fn wake(
                     }
                     queued["id"].as_str().filter(|s|!s.is_empty()&&s.len()<=256).ok_or_else(||invalid("missing native queue ID"))?.into()
                 };
-                Ok(WakeOutcome{evidence:Evidence::NativeQueued,native_id:Some(native_id),note:"native admission only; model consumption unverified".into()})
+                Ok(WakeOutcome{evidence:Evidence::NativeQueued,native_id:Some(native_id),note:"native admission only; model consumption unverified".into(),cause:Some(WakeCause::NativeQueueAdmitted)})
             }
         }
     }).await;
     match result {
         Ok(Ok(value)) => value,
         Ok(Err(error)) if error.downcast_ref::<UnknownRuntime>().is_some() => {
-            WakeOutcome::unknown(error.to_string())
+            WakeOutcome::unknown_cause(WakeCause::NativeThreadUnknown, error.to_string())
         }
         Ok(Err(error)) if error.downcast_ref::<Rejected>().is_some() => {
-            unavailable("native rejected submission")
+            unavailable(WakeCause::NativeRejected, "native rejected submission")
         }
-        _ if attempted => {
-            WakeOutcome::unknown("native write/reply ambiguous; no PTY fallback or automatic retry")
-        }
-        Ok(Err(error)) => unavailable(&format!(
-            "native preflight failed: {error}; no mutation attempted"
-        )),
-        Err(_) => unavailable("native preflight timed out; no mutation attempted"),
+        _ if attempted => WakeOutcome::unknown_cause(
+            WakeCause::NativeWriteAmbiguous,
+            "native write/reply ambiguous; no PTY fallback or automatic retry",
+        ),
+        Ok(Err(error)) => unavailable(
+            preflight_cause,
+            &format!("native preflight failed: {error}; no mutation attempted"),
+        ),
+        Err(_) => unavailable(
+            WakeCause::NativePreflightTimedOut,
+            "native preflight timed out; no mutation attempted",
+        ),
     }
 }
 
@@ -1240,10 +1271,7 @@ mod registration_tests {
             false,
         ));
         assert_eq!(missing.evidence, Evidence::RecipientStored);
-        assert!(
-            missing.note.contains("native preflight failed"),
-            "{missing:?}"
-        );
+        assert_eq!(missing.cause, Some(WakeCause::NativePreflightFailed));
         assert!(
             missing
                 .note
@@ -1251,8 +1279,13 @@ mod registration_tests {
             "{missing:?}"
         );
         assert!(missing.note.contains("no mutation attempted"));
-        let mut replaced = binding;
+        let mut replaced = binding.clone();
         replaced.process_start.push_str(" replaced");
+        let error = verify_process(&replaced).unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<std::io::Error>().unwrap().kind(),
+            std::io::ErrorKind::InvalidData
+        );
         let replaced = runtime.block_on(wake(
             &replaced,
             &Endpoint::None,
@@ -1262,9 +1295,48 @@ mod registration_tests {
             false,
         ));
         assert_eq!(replaced.evidence, Evidence::RecipientStored);
-        assert!(
-            replaced.note.contains("harness process was replaced"),
-            "{replaced:?}"
-        );
+        assert_eq!(replaced.cause, Some(WakeCause::ProcessReplaced));
+        assert!(!replaced.note.is_empty() && replaced.note.len() <= 512);
+
+        let path = root.path().join("untouched.sock");
+        let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        for (priority, text, cause) in [
+            (
+                Priority::Now,
+                "fixture".to_owned(),
+                WakeCause::InterruptUnauthorized,
+            ),
+            (
+                Priority::Next,
+                "x".repeat(48 * 1024 + 1),
+                WakeCause::MessageTooLarge,
+            ),
+        ] {
+            let outcome = runtime.block_on(wake(
+                &binding,
+                &Endpoint::Claude { path: path.clone() },
+                Ulid::new(),
+                &text,
+                priority,
+                false,
+            ));
+            assert_eq!(outcome.evidence, Evidence::RecipientStored);
+            assert_eq!(outcome.cause, Some(cause));
+            assert_eq!(
+                listener.accept().unwrap_err().kind(),
+                std::io::ErrorKind::WouldBlock
+            );
+        }
+        let unavailable = runtime.block_on(wake(
+            &binding,
+            &Endpoint::None,
+            Ulid::new(),
+            "fixture",
+            Priority::Next,
+            false,
+        ));
+        assert_eq!(unavailable.evidence, Evidence::RecipientStored);
+        assert_eq!(unavailable.cause, Some(WakeCause::NativeUnavailable));
     }
 }

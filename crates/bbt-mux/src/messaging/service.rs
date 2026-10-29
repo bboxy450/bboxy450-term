@@ -3222,6 +3222,7 @@ mod reference_tests {
                     recipient.swarm,
                     &work,
                     &WakeOutcome {
+                        cause: None,
                         evidence: crate::adapters::Evidence::RecipientStored,
                         native_id: None,
                         note: "receipt-heavy fixture".into(),
@@ -3547,6 +3548,7 @@ mod reference_tests {
                 swarm,
                 &work,
                 &WakeOutcome {
+                    cause: None,
                     evidence: crate::adapters::Evidence::NativeWritten,
                     native_id: Some("operator-write-once".into()),
                     note: "fixture wrote once".into(),

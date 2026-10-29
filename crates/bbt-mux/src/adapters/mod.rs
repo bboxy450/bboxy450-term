@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub mod mapping;
 pub use bboxy450_harness_wake_up::{
     ArbiterView, Binding, Endpoint, NativeAttachment, Priority, Readiness, ReadyToken, StateSource,
-    WakeMethod, native_available,
+    WakeCause, WakeMethod, native_available,
 };
 pub use launch::{LaunchContext, LaunchPlan};
 pub use observe::{Grade, Observation, OscTap, Session, State, Status, WaitingKind};
@@ -121,6 +121,8 @@ pub struct WakeOutcome {
     pub evidence: Evidence,
     pub native_id: Option<String>,
     pub note: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cause: Option<WakeCause>,
 }
 impl WakeOutcome {
     pub fn unknown(note: impl Into<String>) -> Self {
@@ -128,6 +130,13 @@ impl WakeOutcome {
             evidence: Evidence::NativeUnknown,
             native_id: None,
             note: note.into(),
+            cause: None,
+        }
+    }
+    pub fn unknown_cause(cause: WakeCause, note: impl Into<String>) -> Self {
+        Self {
+            cause: Some(cause),
+            ..Self::unknown(observe::short(&note.into(), 640))
         }
     }
 }

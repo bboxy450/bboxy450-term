@@ -293,6 +293,7 @@ fn native_written_evidence_survives_supersession_and_replayed_ids_never_wake_twi
             f.a.swarm,
             &work,
             &WakeOutcome {
+                cause: None,
                 evidence: Evidence::NativeWritten,
                 native_id: Some("one actual attempt".into()),
                 note: "written".into(),
@@ -370,6 +371,7 @@ fn a_cancelled_inflight_attempt_does_not_rearm_when_the_adapter_reports_no_effec
             f.a.swarm,
             &work,
             &WakeOutcome {
+                cause: None,
                 evidence: Evidence::RecipientStored,
                 native_id: None,
                 note: "adapter refused before mutation".into(),

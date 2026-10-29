@@ -19,7 +19,7 @@ use super::{
     wire::{Envelope, EnvelopeExt, SendRequest},
 };
 use crate::{
-    adapters::{Evidence, WakeOutcome},
+    adapters::{Evidence, WakeCause, WakeOutcome},
     registry::Class,
     store::{Result, Store, events::Draft, invalid, sqlint, sqlite::SqliteStore},
 };
@@ -1036,7 +1036,8 @@ impl Ledger {
             return Err(invalid("attempt identity mismatch"));
         }
         if let Some(old) = old {
-            if serde_json::from_slice::<WakeOutcome>(&old)? != *outcome {
+            if serde_json::from_slice::<serde_json::Value>(&old)? != serde_json::to_value(outcome)?
+            {
                 return Err(invalid("attempt outcome conflicts"));
             }
             return Ok(());
@@ -1336,7 +1337,8 @@ impl Ledger {
         for work in works {
             self.finish(
                 &work,
-                &WakeOutcome::unknown(
+                &WakeOutcome::unknown_cause(
+                    WakeCause::RestartedInFlight,
                     "logic restarted with an in-flight attempt; never automatically resubmit",
                 ),
                 crate::store::now_ms(),

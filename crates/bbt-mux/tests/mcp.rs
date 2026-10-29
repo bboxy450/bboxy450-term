@@ -1006,6 +1006,7 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
         "not ready: no positive readiness",
     );
     assert_eq!(no_proof["error"]["code"], "not_submitted");
+    assert_eq!(no_proof["cause"], "composer-readiness-missing");
     assert!(!f.screen(f.peer.id).contains("DO-NOT-WRITE"));
     let mut interrupt = f.target(f.peer.id);
     interrupt["text"] = json!("native only");
