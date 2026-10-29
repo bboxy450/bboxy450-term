@@ -440,11 +440,45 @@ impl Command {
 /// The bounded idle cadence belongs to command admission, not a blocking
 /// supervisor read. Tokio's receiver notification interrupts this wait.
 /// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-async fn idle_command(commands: &mut mpsc::Receiver<Command>, until: Instant) -> Option<Command> {
-    tokio::time::timeout_at(tokio::time::Instant::from_std(until), commands.recv())
-        .await
-        .ok()
-        .flatten()
+async fn idle_command(
+    commands: &mut mpsc::Receiver<Command>,
+    until: Instant,
+    stop: &StopSignal,
+) -> Option<Command> {
+    if stop.requested() {
+        return None;
+    }
+    #[cfg(test)]
+    stop.idle_waiting.store(true, Ordering::Release);
+    let command = tokio::select! {
+        biased;
+        // A current-thread runtime may be synchronously joining this worker;
+        // its timer driver cannot run then. Notify wakes independently of it.
+        _ = stop.wake.notified() => None,
+        command = tokio::time::timeout_at(tokio::time::Instant::from_std(until), commands.recv()) => command.ok().flatten(),
+    };
+    #[cfg(test)]
+    stop.idle_waiting.store(false, Ordering::Release);
+    command
+}
+
+#[derive(Default)]
+struct StopSignal {
+    requested: AtomicBool,
+    wake: tokio::sync::Notify,
+    #[cfg(test)]
+    idle_waiting: AtomicBool,
+}
+impl StopSignal {
+    fn requested(&self) -> bool {
+        self.requested.load(Ordering::Acquire)
+    }
+    fn request(&self) {
+        self.requested.store(true, Ordering::Release);
+        // One worker waits here. A retained permit also closes the race between
+        // its flag check and registering the idle notification future.
+        self.wake.notify_one();
+    }
 }
 
 #[cfg(test)]
@@ -456,9 +490,11 @@ mod idle_command_tests {
         let (send, mut commands) = mpsc::channel(1);
         let now = tokio::time::Instant::now();
         let wait = tokio::spawn(async move {
+            let stop = StopSignal::default();
             idle_command(
                 &mut commands,
                 (now + crate::provider::IDLE_RECEIVE_WAIT).into_std(),
+                &stop,
             )
             .await
         });
@@ -473,12 +509,132 @@ mod idle_command_tests {
     async fn idle_wait_keeps_the_existing_ten_millisecond_fallback() {
         let (_send, mut commands) = mpsc::channel(1);
         let until = tokio::time::Instant::now() + crate::provider::IDLE_RECEIVE_WAIT;
-        let wait = tokio::spawn(async move { idle_command(&mut commands, until.into_std()).await });
+        let wait = tokio::spawn(async move {
+            idle_command(&mut commands, until.into_std(), &StopSignal::default()).await
+        });
         tokio::task::yield_now().await;
         tokio::time::advance(Duration::from_millis(9)).await;
         assert!(!wait.is_finished());
         tokio::time::advance(Duration::from_millis(1)).await;
         assert!(wait.await.unwrap().is_none());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn stop_before_idle_registration_is_retained() {
+        let (_send, mut commands) = mpsc::channel(1);
+        let stop = StopSignal::default();
+        stop.request();
+        let now = tokio::time::Instant::now();
+        assert!(
+            idle_command(
+                &mut commands,
+                (now + Duration::from_secs(1)).into_std(),
+                &stop
+            )
+            .await
+            .is_none()
+        );
+        assert_eq!(tokio::time::Instant::now(), now);
+    }
+
+    #[test]
+    #[ignore = "owned subprocess of the bounded current-thread shutdown regression"]
+    fn current_thread_shutdown_child() {
+        let Ok(root) = std::env::var("BBOXY_IDLE_SHUTDOWN_FIXTURE") else {
+            return;
+        };
+        let root = PathBuf::from(root);
+        for explicit in [true, false] {
+            let root = root.join(if explicit { "shutdown" } else { "drop" });
+            std::fs::create_dir_all(root.join("repository")).unwrap();
+            let runtime = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let supervisor = crate::Supervisor::start(crate::Config {
+                journal_directory: Some(root.join("supervisor-journal")),
+                ..Default::default()
+            })
+            .unwrap();
+            let logic = runtime.block_on(async {
+                let logic = Logic::start(
+                    supervisor.connect().unwrap(),
+                    LogicConfig {
+                        run_dir: root.join("logic"),
+                        repository: root.join("repository"),
+                        ring: Default::default(),
+                    },
+                    SigningKey::from_bytes(&[88; 32]),
+                    &tokio::runtime::Handle::current(),
+                )
+                .unwrap();
+                logic.client.gui_endpoint().await.unwrap();
+                tokio::time::timeout(Duration::from_secs(1), async {
+                    while !logic.stop.idle_waiting.load(Ordering::Acquire) {
+                        tokio::task::yield_now().await;
+                    }
+                })
+                .await
+                .unwrap();
+                logic
+            });
+            // The current-thread driver is no longer running. A timer cannot
+            // release this synchronous join; only the explicit stop wake can.
+            if explicit {
+                logic.shutdown().unwrap();
+            } else {
+                drop(logic);
+            }
+            supervisor.shutdown().unwrap();
+            println!(
+                "CURRENT_THREAD_IDLE_STOP {} ok",
+                if explicit { "shutdown" } else { "drop" }
+            );
+        }
+    }
+
+    #[test]
+    fn current_thread_shutdown_and_drop_have_an_external_watchdog() {
+        use std::process::{Command, Stdio};
+        let root = tempfile::tempdir().unwrap();
+        let log = root.path().join("child.log");
+        let output = std::fs::File::create(&log).unwrap();
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "logic::idle_command_tests::current_thread_shutdown_child",
+                "--ignored",
+                "--nocapture",
+            ])
+            .env("BBOXY_IDLE_SHUTDOWN_FIXTURE", root.path())
+            .stdin(Stdio::null())
+            .stdout(output.try_clone().unwrap())
+            .stderr(output)
+            .spawn()
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                let log = std::fs::read_to_string(&log).unwrap();
+                assert!(status.success(), "private shutdown fixture: {log}");
+                for mode in ["shutdown", "drop"] {
+                    assert!(
+                        log.contains(&format!("CURRENT_THREAD_IDLE_STOP {mode} ok")),
+                        "{log}"
+                    );
+                }
+                break;
+            }
+            if Instant::now() >= until {
+                child.kill().unwrap(); // Only the exact child started above; it owns no PTYs.
+                child.wait().unwrap();
+                panic!(
+                    "current-thread shutdown exceeded external watchdog: {}",
+                    std::fs::read_to_string(&log).unwrap()
+                );
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 }
 
@@ -1531,7 +1687,7 @@ impl LogicClient {
 
 pub struct Logic {
     pub client: LogicClient,
-    stop: Arc<AtomicBool>,
+    stop: Arc<StopSignal>,
     thread: Option<std::thread::JoinHandle<Result<()>>>,
 }
 enum IdentityMode {
@@ -1735,7 +1891,7 @@ impl Logic {
                 &config.run_dir,
             )?)),
         };
-        let stop = Arc::new(AtomicBool::new(false));
+        let stop = Arc::new(StopSignal::default());
         let stopping = stop.clone();
         let runtime = handle.clone();
         let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
@@ -1792,14 +1948,23 @@ impl Logic {
                 let _ = worker.handle.block_on(worker.bus.shutdown());
                 result
             })?;
-        match ready_rx.recv_timeout(Duration::from_secs(30))? {
+        let ready = match ready_rx.recv_timeout(Duration::from_secs(30)) {
+            Ok(ready) => ready,
+            Err(error) => {
+                // Preserve the startup deadline; the detached owner will exit
+                // when startup returns, even if its idle timer cannot run.
+                stop.request();
+                return Err(error.into());
+            }
+        };
+        match ready {
             Ok(()) => Ok(Self {
                 client,
                 stop,
                 thread: Some(thread),
             }),
             Err(error) => {
-                stop.store(true, Ordering::Release);
+                stop.request();
                 let _ = thread.join();
                 Err(invalid(error))
             }
@@ -1807,7 +1972,7 @@ impl Logic {
     }
     pub fn shutdown(mut self) -> Result<()> {
         bbt_rt::assert_not_ui_thread();
-        self.stop.store(true, Ordering::Release);
+        self.stop.request();
         if let Some(thread) = self.thread.take() {
             thread
                 .join()
@@ -1818,7 +1983,7 @@ impl Logic {
 }
 impl Drop for Logic {
     fn drop(&mut self) {
-        self.stop.store(true, Ordering::Release);
+        self.stop.request();
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
@@ -9077,7 +9242,7 @@ impl Worker {
         Ok(())
     }
 
-    fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<AtomicBool>) -> Result<()> {
+    fn run(&mut self, commands: &mut mpsc::Receiver<Command>, stop: Arc<StopSignal>) -> Result<()> {
         let mut scan_at = Instant::now();
         let mut adapters_at = Instant::now();
         let mut messages_at = Instant::now();
@@ -9086,7 +9251,7 @@ impl Worker {
         let mut pending_events = PendingSeats::default();
         let mut provider_recoveries = BTreeSet::new();
         let mut deferred_commands = VecDeque::new();
-        while !stop.load(Ordering::Acquire) {
+        while !stop.requested() {
             // One pending bind per turn, rotating on refusal. No sleep, replay
             // of attachment effects, global seat scan, or idle redraw wake.
             self.retry_endpoint()?;
@@ -10147,7 +10312,10 @@ impl Worker {
                     self.client
                         .capture_diagnostics
                         .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
-                if let Some(command) = self.handle.block_on(idle_command(commands, idle_until)) {
+                if let Some(command) = self
+                    .handle
+                    .block_on(idle_command(commands, idle_until, &stop))
+                {
                     // This is the next admitted command, not a replay. Keep the
                     // ordinary FIFO/checkpoint gates in the next work turn.
                     deferred_commands.push_back(command);
