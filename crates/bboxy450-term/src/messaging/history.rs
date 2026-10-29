@@ -14,6 +14,8 @@ use bbt_proto::SwarmId;
 use bbt_ui::modules::stream_dock::{Channel, Entry, UnreadCount};
 use std::collections::{BTreeMap, VecDeque};
 
+const EVENT_PAGE: u64 = 128;
+
 pub enum HistoryAction {
     Cursor { stream: String },
     Page { stream: String, after: u64 },
@@ -27,7 +29,7 @@ impl From<HistoryAction> for UiMsg {
             HistoryAction::Page { stream, after } => Self::EventPage {
                 stream,
                 after,
-                limit: 128,
+                limit: EVENT_PAGE as usize,
             },
             HistoryAction::Read { stream, sequence } => Self::MarkEventsRead { stream, sequence },
         }
@@ -62,6 +64,11 @@ pub struct History {
     failed_after: Option<u64>,
     page_issue: Option<String>,
     covered_high: Option<u64>,
+    covered_after: Option<u64>,
+    page_floor: Option<u64>,
+    older_join: Option<(u64, u64)>, // prior covered lower bound and high
+    bootstrap_tail: bool,
+    tail_after: Option<u64>,
     chain_next: Option<u64>,
     gap_after: Option<u64>,
     seen_activity: BTreeMap<String, u64>,
@@ -185,6 +192,7 @@ impl History {
             list_wanted: Some(0),
             cursor_wanted: true,
             page_wanted: Some(0),
+            bootstrap_tail: true,
             ..Default::default()
         };
     }
@@ -215,7 +223,15 @@ impl History {
     }
     pub fn reconnect(&mut self) {
         self.page_pending = None;
-        self.page_wanted = Some(self.page_next.unwrap_or(0));
+        self.page_wanted = Some(
+            self.page_next
+                .or(self.covered_high)
+                .or_else(|| {
+                    self.cursor
+                        .map(|(_, high, _)| high.saturating_sub(EVENT_PAGE))
+                })
+                .unwrap_or(0),
+        );
         self.list = None;
         self.list_wanted = Some(0);
         self.cursor_wanted = true;
@@ -230,6 +246,19 @@ impl History {
         }
         self.cursor = Some((read, high, unread));
         self.cursor_wanted = false;
+        if self.bootstrap_tail {
+            self.bootstrap_tail = false;
+            let after = high.saturating_sub(EVENT_PAGE);
+            if after != 0 {
+                // A cursor already present in the lane replaces the initial zero
+                // request. Otherwise only one speculative oldest page can precede
+                // this bounded correction; never walk the entire event stream.
+                self.tail_after = Some(after);
+                if self.failed_after.is_none() {
+                    self.page_wanted = Some(after);
+                }
+            }
+        }
     }
     pub fn row(&mut self, row: &wire::MessageRow, context: Option<&str>, projected_at: u64) {
         let Some(stream) = self.stream() else {
@@ -238,17 +267,13 @@ impl History {
         if row.bus.as_ref().is_none_or(|bus| bus.stream != stream) {
             return;
         }
-        if self
-            .rows
-            .iter()
-            .any(|old| {
-                old.row.id == row.id
-                    && (old.projected_at > projected_at
+        if self.rows.iter().any(|old| {
+            old.row.id == row.id
+                && (old.projected_at > projected_at
                         // A display clock cannot revoke a confirmed signature.
                         || (old.row.signature == wire::SignatureState::Signed
                             && row.signature == wire::SignatureState::Pending))
-            })
-        {
+        }) {
             return;
         }
         if let Some(old) = self
@@ -308,14 +333,56 @@ impl History {
         self.page_pending = None;
         self.page_issue = None;
         self.failed_after = None;
-        if after == 0 || self.chain_next == Some(after) || self.covered_high == Some(after) {
+        if self.tail_after == Some(after) {
+            self.tail_after = None;
+            self.page_floor = Some(after);
+            self.covered_after = Some(after);
+            self.older_join = None;
             self.chain_next = next;
-            self.covered_high = if next.is_none() { Some(high) } else { None };
+            self.covered_high = next.is_none().then_some(high);
+            self.page_next = next;
         } else {
-            self.covered_high = None;
-            self.chain_next = next;
+            self.page_floor = Some(self.page_floor.map_or(after, |floor| floor.min(after)));
+            let join = self.older_join.or_else(|| {
+                self.covered_after
+                    .zip(self.covered_high)
+                    .filter(|(lower, _)| after < *lower)
+            });
+            if let Some((lower, through)) = join {
+                self.covered_after = Some(self.covered_after.map_or(after, |old| old.min(after)));
+                if next.is_none_or(|next| next >= lower) {
+                    // An older page overlaps the already retained tail. Its `next`
+                    // is not another forward request through that same tail.
+                    self.covered_high = Some(if next.is_none() {
+                        high.max(through)
+                    } else {
+                        through
+                    });
+                    self.chain_next = None;
+                    self.page_next = None;
+                    self.older_join = None;
+                } else {
+                    // Byte-bounded pages can stop short of the existing interval.
+                    // Continue only on an explicit more(), and keep unread unknown.
+                    self.older_join = Some((lower, through));
+                    self.covered_high = None;
+                    self.chain_next = next;
+                    self.page_next = next;
+                }
+            } else {
+                if after == 0
+                    || (self.chain_next != Some(after) && self.covered_high != Some(after))
+                {
+                    self.covered_after = Some(after);
+                }
+                self.chain_next = next;
+                self.covered_high = next.is_none().then_some(high);
+                self.page_next = next;
+            }
         }
-        self.page_next = next;
+        if let Some(after) = self.tail_after {
+            self.page_wanted = Some(after);
+        }
     }
     pub fn page_failed(&mut self, revision: u64, reason: &str) {
         self.page_revision = self.page_revision.max(revision);
@@ -324,6 +391,7 @@ impl History {
         {
             self.page_pending = None;
             self.failed_after = Some(after);
+            self.page_wanted = None;
             self.page_issue = Some(reason.chars().take(256).collect());
         }
     }
@@ -374,11 +442,23 @@ impl History {
             self.list_wanted = self.list_failed_after.take().or(self.list_next);
         }
         if self.page_pending.is_none() {
-            self.page_wanted = self.failed_after.take().or(self.page_next).or_else(|| {
-                self.cursor
-                    .filter(|(_, high, _)| self.covered_high.is_some_and(|covered| covered < *high))
-                    .and(self.covered_high)
-            });
+            self.page_wanted = self
+                .failed_after
+                .take()
+                .or(self.tail_after)
+                .or(self.page_next)
+                .or_else(|| {
+                    self.cursor
+                        .filter(|(_, high, _)| {
+                            self.covered_high.is_some_and(|covered| covered < *high)
+                        })
+                        .and(self.covered_high)
+                })
+                .or_else(|| {
+                    self.page_floor
+                        .filter(|after| *after > 0)
+                        .map(|after| after.saturating_sub(EVENT_PAGE))
+                });
         }
     }
     /// Explicit operator view only. Receive/publish/ACK never call this.
@@ -463,7 +543,8 @@ impl History {
         if unread == 0 {
             return true;
         }
-        self.covered_high.is_some_and(|covered| covered >= high)
+        self.covered_after.is_some_and(|after| after <= read)
+            && self.covered_high.is_some_and(|covered| covered >= high)
             && self.gap_after.is_none_or(|last| last <= read)
             && self
                 .rows
@@ -581,6 +662,146 @@ impl History {
 #[cfg(test)]
 mod quiet_history_tests {
     use super::*;
+
+    fn request_page(history: &mut History) -> u64 {
+        history
+            .actions()
+            .into_iter()
+            .find_map(|action| match action {
+                HistoryAction::Page { after, .. } => Some(after),
+                _ => None,
+            })
+            .expect("one requested retained page")
+    }
+    fn latest_row(scope: SwarmId, sequence: u64) -> wire::MessageRow {
+        wire::MessageRow {
+            id: Ulid(300),
+            bus: Some(wire::BusPosition {
+                stream: format!("swarm-{scope}"),
+                seq: sequence,
+            }),
+            author: wire::AuthorRef {
+                kind: wire::AuthorKind::Seat,
+                id: "fixture-seat".into(),
+                name: "Fixture".into(),
+            },
+            issuer_kind: Some(wire::IssuerKind::LocalDev),
+            signature: wire::SignatureState::Signed,
+            signature_reason: None,
+            upgrade_of: None,
+            kind: wire::MessageKind::Decision,
+            priority_class: bbt_proto::registry::Class::Worker,
+            priority: 8,
+            text: "FOLLOWING-AGAIN".into(),
+            ts: 1000,
+            receipts: Default::default(),
+        }
+    }
+
+    #[test]
+    fn first_cursor_bootstraps_latest_bounded_page_without_claiming_skipped_unread() {
+        let scope = SwarmId::from_u128(91);
+        let mut history = History::default();
+        history.select(scope);
+        history.cursor(0, 300, 1);
+        assert_eq!(request_page(&mut history), 172);
+        history.row(&latest_row(scope, 299), Some("operator/inbox"), 100);
+        history.page(1, 300, None);
+        assert_eq!(history.page_floor, Some(172));
+        assert_eq!(history.covered_after, Some(172));
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::More);
+        assert!(
+            history.actions().is_empty(),
+            "no automatic walk through older history"
+        );
+        assert!(history.entries(&Default::default(), &Default::default(), &[])
+            .iter().any(|entry| matches!(entry, Entry::Message {data,..} if data.text == "FOLLOWING-AGAIN")));
+    }
+
+    #[test]
+    fn a_speculative_oldest_page_is_followed_once_by_the_confirmed_tail() {
+        let mut history = History::default();
+        history.select(SwarmId::from_u128(92));
+        assert_eq!(request_page(&mut history), 0);
+        history.cursor(0, 300, 1);
+        assert!(
+            history.actions().is_empty(),
+            "the existing read retains its completion fence"
+        );
+        history.page(1, 300, Some(128));
+        assert_eq!(request_page(&mut history), 172);
+        history.cursor(0, 320, 1);
+        history.page(2, 300, None);
+        assert_eq!(
+            history.covered_high,
+            Some(300),
+            "page high is not a newer live cursor"
+        );
+        assert!(
+            history.actions().is_empty(),
+            "cursor movement never starts a read loop"
+        );
+        history.more();
+        assert_eq!(request_page(&mut history), 300);
+        history.page(3, 320, None);
+        assert_eq!(history.covered_after, Some(172));
+        assert_eq!(history.covered_high, Some(320));
+    }
+
+    #[test]
+    fn older_scroll_pages_join_the_tail_only_after_real_contiguous_coverage() {
+        let scope = SwarmId::from_u128(93);
+        let mut history = History::default();
+        history.select(scope);
+        history.cursor(0, 300, 1);
+        assert_eq!(request_page(&mut history), 172);
+        history.row(&latest_row(scope, 299), Some("operator/inbox"), 100);
+        history.page(1, 300, None);
+        history.more();
+        assert_eq!(request_page(&mut history), 44);
+        history.page(2, 300, Some(100)); // Byte bound stops before the tail's lower edge.
+        assert_eq!(history.covered_high, None);
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::More);
+        assert!(history.actions().is_empty());
+        history.more();
+        assert_eq!(request_page(&mut history), 100);
+        history.page(3, 300, Some(228)); // This page overlaps the retained tail.
+        assert_eq!(history.covered_high, Some(300));
+        assert_eq!(history.covered_after, Some(44));
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::More);
+        history.more();
+        assert_eq!(request_page(&mut history), 0);
+        history.page(4, 300, Some(128));
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::Exact(1));
+        history.more();
+        assert!(
+            history.actions().is_empty(),
+            "all older pages are already covered"
+        );
+        history.gap(5, 6);
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::More);
+        history.cursor(6, 300, 1);
+        assert_eq!(history.seat_unread("fixture-seat"), UnreadCount::Exact(1));
+    }
+
+    #[test]
+    fn tail_refusal_requires_explicit_retry_and_a_newer_completion_revision() {
+        let mut history = History::default();
+        history.select(SwarmId::from_u128(94));
+        history.cursor(0, 500, 1);
+        assert_eq!(request_page(&mut history), 372);
+        history.page_failed(1, "private fixture refused");
+        history.cursor(0, 600, 1);
+        assert!(history.actions().is_empty());
+        history.more();
+        assert_eq!(request_page(&mut history), 372);
+        history.page(1, 500, None); // Replayed completion cannot satisfy the retry.
+        assert!(history.page_pending.is_some());
+        history.page(2, 500, None);
+        assert!(history.page_pending.is_none());
+        assert!(history.page_issue.is_none());
+        assert_eq!(history.covered_high, Some(500));
+    }
 
     #[test]
     fn normal_window_bookkeeping_is_quiet_while_real_failures_and_read_gaps_remain() {
