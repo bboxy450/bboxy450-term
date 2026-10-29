@@ -1,0 +1,14 @@
+Project bboxy450-term https://github.com/bboxy450/bboxy450-term; policy https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Task184 diagnostic-retention follow-up to signed5dadc7e; original ENOENT/root repair remain unproven. No product source/count/deadline/retry change.
+Mechanism: fixed5-stage x3-error counters account for all failures; retain first20 general samples plus first ENOENT exact path per stage (at most25 sample lines).
+make test-fifty-seat-startup — exit0,1.140s; deterministic23-event post-cap accounting/witness regression plus redaction control and all50 distinct real zsh echoes.
+target/night-fifty-seat-startup/accounting-and-fifty.log sha256=a9ceeeee5efd204577df9451c29cc73057105908270442dd650b7e8042a485ae
+Mutation: disable post-cap ENOENT witness retention — compile exit0; accounting regression exit1 (diagnostic accounting or post-cap ENOENT witness lost).
+target/night-fifty-seat-startup/accounting-mutation-result.json sha256=9b06777754dde9b8cbdf7dc2b54602e99f38b05e1729a20ec7c9fa8782284c3d
+make diagnose-fifty-seat-pty — Make exit2/native probe exit1,4.352s;64000 attempts,max16 live pairs;27 failures all posix_openpt /dev/ptmx errno-6; all27 accounted,0 ENOENT across all5 stages.
+target/night-fifty-seat-startup/accounted-native-probe.log sha256=4531116b7c58ca3b8bc778a0f472f80f1058996814fec738a1b21966086c3d71
+target/night-fifty-seat-startup/accounted-native-probe-result.json sha256=356d1997567b0cb2699e78bee1b06d390abd0b23d6f896b1c773f278cfb52a0d
+make test-licenses — exit0; license fixtures6/6 and source-notice fixtures9/9;27 workspace crate notices/policies held.
+target/night-fifty-seat-startup/accounting-licenses.log sha256=d148b783e3985f38270b4f514b83ed77a6c018f9f65c739786a7285e1499be83
+Full canonical result remains prior5dadc7e make test exit2 at signed-main. Decision220 pins verified historical618df56f; Pip task221 owns the isolated verifier. No unchanged full Make rerun or gate bypass.
+Acceptance1/2 remain UNMET (original cause/root repair); acceptance3 focused checks pass; acceptance4 awaits actual canonical rerun and authorized landing. Quarantine retained.

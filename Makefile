@@ -278,15 +278,19 @@ test-boundaries:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
 
 .PHONY: test-fifty-seat-startup
-test-fifty-seat-startup:
+test-fifty-seat-startup: build-fifty-seat-probe
 	@set -eu; . ./scripts/cache-env.sh; \
+	'$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe' --check-accounting; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test supervisor spawn_errors_name_the_failed_paths_without_arguments_or_environment -- --ignored --exact --nocapture; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test supervisor fifty_seats_share_one_supervisor_poller -- --ignored --exact --nocapture
 
-.PHONY: diagnose-fifty-seat-pty
-diagnose-fifty-seat-pty:
+.PHONY: build-fifty-seat-probe diagnose-fifty-seat-pty
+build-fifty-seat-probe:
 	@set -eu; test "$$(uname -s)" = Darwin; mkdir -p '$(TARGET_DIR)/night-fifty-seat-startup'; \
-	xcrun clang -std=c11 -O2 -Wall -Wextra -Werror -pthread crates/bbt-supervisor/tests/fixtures/pty_syscall_probe.c -o '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'; \
+	xcrun clang -std=c11 -O2 -Wall -Wextra -Werror -pthread crates/bbt-supervisor/tests/fixtures/pty_syscall_probe.c -o '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'
+
+diagnose-fifty-seat-pty: build-fifty-seat-probe
+	@set -eu; \
 	python3 -c 'import subprocess,sys; sys.exit(subprocess.run([sys.argv[1]], timeout=30).returncode)' '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'
 
 bundle-files: check-licenses compile
