@@ -718,6 +718,43 @@ fn gui_knowledge_reply(
     })
 }
 
+type GuiKnowledgeScope = Option<(Ulid, u64)>;
+/// Connection memory is bounded independently of each captured workspace.
+/// Canonical-root provider permits remain the logic owner's authority.
+#[derive(Default)]
+struct GuiKnowledgeBudget {
+    active: usize,
+    scopes: BTreeMap<GuiKnowledgeScope, usize>,
+}
+impl GuiKnowledgeBudget {
+    const CONNECTION: usize = 32;
+    const SCOPE: usize = 2;
+    fn key(scope: Option<bbt_proto::gui::SwarmScope>) -> GuiKnowledgeScope {
+        scope.map(|scope| (scope.swarm, scope.revision))
+    }
+    fn admit(&mut self, scope: GuiKnowledgeScope) -> bool {
+        if self.active >= Self::CONNECTION
+            || self.scopes.get(&scope).copied().unwrap_or(0) >= Self::SCOPE
+        {
+            return false;
+        }
+        self.active += 1;
+        *self.scopes.entry(scope).or_default() += 1;
+        true
+    }
+    fn release(&mut self, scope: GuiKnowledgeScope) -> Result<()> {
+        let Some(count) = self.scopes.get_mut(&scope) else {
+            return Err(invalid("knowledge budget completion has no admission"));
+        };
+        *count -= 1;
+        self.active -= 1;
+        if *count == 0 {
+            self.scopes.remove(&scope);
+        }
+        Ok(())
+    }
+}
+
 async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
@@ -779,6 +816,7 @@ async fn gui_session(
     let mut window_jobs: tokio::task::JoinSet<(Ulid, crate::store::Result<()>)> =
         tokio::task::JoinSet::new();
     let mut knowledge_reads = tokio::task::JoinSet::new();
+    let mut knowledge_budget = GuiKnowledgeBudget::default();
     let mut debug_reads = tokio::task::JoinSet::new();
     let mut plugin_jobs = tokio::task::JoinSet::new();
     let mut root_jobs = tokio::task::JoinSet::new();
@@ -830,14 +868,16 @@ async fn gui_session(
                         continue;
                     }
                     if let GuiAction::Knowledge {id,scope,method,args} = request.action {
-                        if knowledge_reads.len() >= 2 {
-                            let error = crate::knowledge::data_source::CommandError::new(
-                                "provider_busy", "this GUI session already has two knowledge reads",
+                        let key=GuiKnowledgeBudget::key(scope);
+                        if !knowledge_budget.admit(key) {
+                            let mut error = crate::knowledge::data_source::CommandError::new(
+                                "provider_busy", "this workspace already has two reads or the connection has 32 active reads",
                             );
+                            error.retry_after_ms=Some(100);
                             send(&mut write,&gui_knowledge_reply(id,Ok(Err(error)))?).await?;
                         } else {
                             let client = client.clone();
-                            knowledge_reads.spawn(async move { (id,client.gui_knowledge_scoped(method,args,scope).await) });
+                            knowledge_reads.spawn(async move { (id,key,client.gui_knowledge_scoped(method,args,scope).await) });
                         }
                         continue;
                     }
@@ -1164,7 +1204,8 @@ async fn gui_session(
                     if stop {client.captures.app_stopping(op);}
                 }
                 Some(completed)=knowledge_reads.join_next(),if !knowledge_reads.is_empty()=> {
-                    let (op,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;
+                    let (op,key,response)=completed.map_err(|_|invalid("knowledge reply task interrupted"))?;
+                    knowledge_budget.release(key)?;
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
                 }
                 Some(completed)=plugin_jobs.join_next(),if !plugin_jobs.is_empty()=> {
@@ -2471,5 +2512,41 @@ mod gui_tests {
         reader.abort();
         logic.shutdown().unwrap();
         supervisor.shutdown().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod knowledge_budget_tests {
+    use super::*;
+    #[test]
+    fn workspace_connection_budget_caps_and_releases_every_scope_key() {
+        let mut budget = GuiKnowledgeBudget::default();
+        let first = Some((Ulid(1), 1));
+        let next_revision = Some((Ulid(1), 2));
+        assert!(budget.admit(first));
+        assert!(budget.admit(first));
+        assert!(!budget.admit(first));
+        assert!(budget.admit(next_revision));
+        assert!(budget.admit(None));
+        budget.release(first).unwrap();
+        assert!(budget.admit(first));
+        budget.release(first).unwrap();
+        budget.release(first).unwrap();
+        budget.release(next_revision).unwrap();
+        budget.release(None).unwrap();
+        assert_eq!(budget.active, 0);
+        assert!(budget.scopes.is_empty());
+        for id in 1..=32 {
+            assert!(budget.admit(Some((Ulid(id), 0))));
+        }
+        assert!(!budget.admit(None));
+        assert_eq!(budget.active, 32);
+        for id in 1..=32 {
+            budget.release(Some((Ulid(id), 0))).unwrap();
+        }
+        assert!(budget.scopes.is_empty());
+        assert!(budget.admit(None));
+        budget.release(None).unwrap();
+        assert_eq!(budget.active, 0);
     }
 }

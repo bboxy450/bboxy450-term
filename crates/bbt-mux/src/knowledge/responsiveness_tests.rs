@@ -62,8 +62,10 @@ impl Drop for Release {
     }
 }
 impl DataSource for Held {
-    fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
-        self.block();
+    fn list(&self, request: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
+        if request.limit != Some(2) {
+            self.block();
+        }
         Ok(d::Page {
             items: vec![],
             next: None,
@@ -609,6 +611,180 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
     })
     .await
     .unwrap();
+    drop(release);
+    drop(gui);
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
+}
+
+// keeps: two slow reads in one captured workspace cannot exhaust another's socket admission.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn workspace_shared_socket_two_held_reads_leave_other_scope_capacity_and_release_slots() {
+    let root = tempfile::tempdir().unwrap();
+    let supervisor = crate::Supervisor::start(crate::Config {
+        journal_directory: Some(root.path().join("supervisor")),
+        ..Default::default()
+    })
+    .unwrap();
+    let run = root.path().join("run");
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository: root.path().join("first"),
+            ring: Default::default(),
+        },
+        SigningKey::from_bytes(&[48; 32]),
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let first = bbt_proto::gui::SwarmScope {
+        swarm: Ulid::new(),
+        revision: 0,
+    };
+    let second_dir = root.path().join("second");
+    std::fs::create_dir(&second_dir).unwrap();
+    let registry = Registry::new(SqliteStore::open(&object_dir(&run, "account").unwrap()).unwrap());
+    let second_record = registry
+        .update_swarm_workdir(Ulid::new(), Some(second_dir.to_str().unwrap()))
+        .unwrap();
+    let second = bbt_proto::gui::SwarmScope {
+        swarm: second_record.id,
+        revision: second_record.revision,
+    };
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match logic
+                .client
+                .gui_knowledge_scoped("list".into(), json!({"limit":2}), Some(second))
+                .await
+                .unwrap()
+            {
+                Ok(_) => break,
+                Err(error) if error.code == "workspace_pending" => {
+                    tokio::time::sleep(Duration::from_millis(20)).await
+                }
+                Err(error) => panic!("{error}"),
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let held = Arc::new(Held::default());
+    let release = Release(held.clone());
+    let (tx, rx) = oneshot::channel();
+    logic
+        .client
+        .tx
+        .send(Command::KnowledgeFixture(held.clone(), tx))
+        .await
+        .unwrap();
+    rx.await.unwrap();
+    let mut gui = Gui::connect(&logic.client.gui_endpoint().await.unwrap()).await;
+    let a = Ulid::new();
+    let b = Ulid::new();
+    for id in [a, b] {
+        gui.send(GuiAction::Knowledge {
+            id,
+            scope: Some(first),
+            method: "list".into(),
+            args: json!({"limit":1}),
+        })
+        .await;
+    }
+    held.entered(2).await;
+    let refused = Ulid::new();
+    gui.send(GuiAction::Knowledge {
+        id: refused,
+        scope: Some(first),
+        method: "list".into(),
+        args: json!({"limit":1}),
+    })
+    .await;
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if let GuiReply::Knowledge { op, response } = gui.next().await {
+                assert_eq!(op, refused);
+                let error = serde_json::from_value::<d::Result<Value>>(response)
+                    .unwrap()
+                    .unwrap_err();
+                assert_eq!(error.code, "provider_busy");
+                assert_eq!(error.retry_after_ms, Some(100));
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let ready = Ulid::new();
+    gui.send(GuiAction::Knowledge {
+        id: ready,
+        scope: Some(second),
+        method: "list".into(),
+        args: json!({"limit":2}),
+    })
+    .await;
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if let GuiReply::Knowledge { op, response } = gui.next().await {
+                assert_eq!(op, ready);
+                let value = serde_json::from_value::<d::Result<Value>>(response)
+                    .unwrap()
+                    .unwrap();
+                assert_eq!(value["swarm_workspace_id"], json!(second.swarm));
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        held.calls.load(Ordering::Acquire),
+        2,
+        "readyB waited for or entered heldA provider work"
+    );
+    assert_eq!(held.active.load(Ordering::Acquire), 2);
+    held.release();
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let mut pending = vec![a, b];
+        while !pending.is_empty() {
+            if let GuiReply::Knowledge { op, response } = gui.next().await {
+                assert!(
+                    serde_json::from_value::<d::Result<Value>>(response)
+                        .unwrap()
+                        .is_ok()
+                );
+                let at = pending.iter().position(|id| *id == op).unwrap();
+                pending.remove(at);
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let after = Ulid::new();
+    gui.send(GuiAction::Knowledge {
+        id: after,
+        scope: Some(first),
+        method: "list".into(),
+        args: json!({"limit":1}),
+    })
+    .await;
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            if let GuiReply::Knowledge { op, response } = gui.next().await {
+                assert_eq!(op, after);
+                assert!(
+                    serde_json::from_value::<d::Result<Value>>(response)
+                        .unwrap()
+                        .is_ok()
+                );
+                break;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(held.calls.load(Ordering::Acquire), 3);
     drop(release);
     drop(gui);
     logic.shutdown().unwrap();

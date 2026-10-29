@@ -10,3 +10,16 @@ exit: 0
 evidence: 27 workspace crates; license6 + notice9 checks; owned source notices held
 acceptance: signed A/B root activity/write/readback and #N/id/slug/task isolation; same cwd cache identity; same-op cross-root replay refused; stale completions fenced; missing cwd basic orient/chat retained; panic root isolated/retried; held IO scan permits PTY input/resize/chat/other-root reads; scan blocks effects before journal and same-op later succeeds; task source-root suppression and restart migration isolated; read queues bounded per root32
 limits: native frontend scope/captures and combined full CI owned by parent; no operator/Keychain/SSH used; no land/push by this executor
+
+exact_head: 610d47506be62e98b478e3b359449cb8a7901299
+command: make test-workspace-routing
+exit: 0
+log: /Users/feral/Library/Logs/bboxy450-term/workspace-routing-20261028-exact-610d4750.log
+note: the exact1288 audit-fault fixture received a legitimate pre-admission workspace_pending; signed test-only610d retains its op and retries only that explicit transient before requiring the injected storage failure and unchanged file.
+
+followup: per captured GUI scope2, legacy None separate, connection32; canonical-root worker2 unchanged; completion removes idle scope bookkeeping.
+command: make test-workspace-routing
+exit: 0
+log: /Users/feral/Library/Logs/bboxy450-term/workspace-routing-budget-20261028-focused.log
+evidence: workspace11; knowledge11; provider1; MCP52/9 existing ignored; messaging suppression8; recovery1/1 child ignored; cache4; responsiveness5; strict all-target mux Clippy held.
+acceptance: actual shared socket heldA2 allows readyB before releasingA; A third is provider_busy, slots reusable after completion; connection32 and idle-scope cleanup held.
