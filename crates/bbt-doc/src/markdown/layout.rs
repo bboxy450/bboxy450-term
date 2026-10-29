@@ -1213,8 +1213,7 @@ impl Render<'_> {
             .enumerate()
         {
             let mut items = vec![];
-            for i in 0..n {
-                let width = widths[i];
+            for (i, width) in widths.iter().copied().enumerate() {
                 let inner = (width - 2. * pad - 2.).max(0.);
                 let render = Render {
                     width: inner,
