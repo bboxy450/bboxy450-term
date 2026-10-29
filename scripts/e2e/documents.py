@@ -11,6 +11,7 @@ No parser/engine in this driver predicts production geometry. Expected edge
 relationships are finite fixture data; coordinates come from the actual modal.
 """
 import hashlib
+from collections import Counter
 import json
 import math
 import os
@@ -89,13 +90,25 @@ def png(path):
 def ink_bounds(image, rect, color=None):
     width, height, rows = image
     x, y, w, h = rect
+    pixels = [(xx,yy,tuple(rows[yy][xx*4:xx*4+4]))
+        for yy in range(max(0,math.floor(y)),min(height,math.ceil(y+h)))
+        for xx in range(max(0,math.floor(x)),min(width,math.ceil(x+w)))]
+    background = Counter(rgba[:3] for _,_,rgba in pixels).most_common(1)[0][0] if pixels else (0,0,0)
+    direction = [color[i]*255-background[i] for i in range(3)] if color else []
+    length = sum(value*value for value in direction)
     points = []
-    for yy in range(max(0, math.floor(y)), min(height, math.ceil(y+h))):
-        for xx in range(max(0, math.floor(x)), min(width, math.ceil(x+w))):
-            r, g, b, alpha = rows[yy][xx*4:xx*4+4]
-            visible = min(r,g,b) > 170 if color is None else max(abs(channel-color[i]*255) for i,channel in enumerate([r,g,b])) < 65
-            if alpha > 240 and visible:
-                points.append((xx, yy))
+    for xx,yy,(r,g,b,alpha) in pixels:
+        if color is None:
+            visible = min(r,g,b) > 170
+        else:
+            # Native antialias mixes the submitted color with this captured
+            # background. Thin hollow task glyphs need not reach solid white.
+            delta = [value-background[i] for i,value in enumerate([r,g,b])]
+            coverage = sum(a*b for a,b in zip(delta,direction))/length if length else 0
+            residual = max(abs(delta[i]-coverage*direction[i]) for i in range(3))
+            visible = 0.15 <= coverage <= 1.05 and residual <= 12
+        if alpha > 240 and visible:
+            points.append((xx, yy))
     require(points, "the measured glyph run painted no foreground ink")
     return [min(x for x,y in points), min(y for x,y in points),
             max(x for x,y in points)-min(x for x,y in points)+1,
