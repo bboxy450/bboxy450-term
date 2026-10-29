@@ -1,0 +1,12 @@
+ROLE: EXECUTOR
+scope: canonical unattended swarm regression target
+base: 804d82434cd9683179a84324c7288180ce2aa2c3
+
+Makefile: test-swarm excludes settings_codex_service_fixture from standalone --ignored selection. The settings launch test still starts that helper explicitly with its private readiness socket.
+Reason: the broad target ran all 15 actual scenarios successfully, then the subprocess-only helper panicked because its child environment was absent. No operator input was involved.
+
+make test-boundaries: exit 0 (completed before the Make selection fix; 20 ctl + 2 native-signing tests and shell/recovery/cockpit checks passed).
+make test-swarm parity-swarm: exit 0 (15 actual ctl scenarios passed, one helper filtered; 72 parity cases, zero reviews or geometry mismatches).
+raw_logs: /Users/feral/Library/Logs/bboxy450-term/context-mute-20261028-boundary-parity.log
+          /Users/feral/Library/Logs/bboxy450-term/context-mute-20261028-swarm-parity-recheck.log
+Full normal CI on base: exit 0; 27 invariants passed, 11 explicit slow checks skipped. Exact committed workflow is checked next.

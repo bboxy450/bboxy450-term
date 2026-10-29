@@ -155,7 +155,7 @@ test-swarm:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) swarm_workdir; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib window_state; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
