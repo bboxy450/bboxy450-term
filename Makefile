@@ -197,10 +197,11 @@ check-clipboard-isolation:
 test-role-identity:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP)
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p bboxy450-book --target-dir '$(TARGET_DIR)' --test fixtures
 
 check-role-identity:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p bboxy450-book -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 parity-role-identity:
 	@set -eu; . ./scripts/cache-env.sh; \
