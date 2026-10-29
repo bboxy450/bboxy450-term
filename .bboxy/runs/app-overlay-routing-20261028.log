@@ -1,0 +1,13 @@
+ROLE: EXECUTOR
+scope: visible context targets and overlay lifecycle keys
+base: 1a07bd48c701f4b9570b361b3393d80c861875f1
+
+main.rs: Menu/Shift-F10 obey local-page/document/launcher input ownership. Cmd-W dismisses overlays with repeat suppression; explicit quit/hard-quit use the existing lifecycle router.
+app_overlays.rs: local pages cannot hit prior terminal-pane bounds; visible sidebar contexts remain actionable.
+Existing arbitrary-dialog regression now asserts dismissal does not approve, repeat does not dismiss, quit remains explicit, page-owned Menu keys do not target hidden seats, and visible sidebar right clicks still work.
+
+make test-app-overlays: exit 0 (299 passed, 8 existing intentional ignores; strict all-target proto/app Clippy -D warnings).
+git diff --check: exit 0.
+raw_log: /Users/feral/Library/Logs/bboxy450-term/app-overlay-routing-20261028-focused.log
+Prior full normal CI on base: exit 0; 27 invariants passed, 11 explicit slow checks skipped. Final exact-commit gate follows this signed commit.
+No operator input or OS input injection. No live app processes touched.

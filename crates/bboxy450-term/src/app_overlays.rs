@@ -241,6 +241,9 @@ impl App {
                     })
             })
             .or_else(|| {
+                if self.local_tab.is_some() {
+                    return None;
+                }
                 self.focus_bounds
                     .iter()
                     .find(|(_, r)| hit(r))
@@ -779,5 +782,49 @@ mod tests {
         assert_eq!(app.unread_errors, 1);
         assert!(!app.app_overlays.open());
         assert!(app.composer.view.focus);
+
+        app.open_context(Target::Seat(SeatId::from_u128(3)), [100., 100.]);
+        let mut close = chrome_input("cmd-w").unwrap();
+        close.repeat = true;
+        assert!(app.overlay_key(&close));
+        assert!(app.app_overlays.open());
+        for modifiers in [
+            ModifiersState::SUPER,
+            ModifiersState::SUPER | ModifiersState::ALT,
+        ] {
+            let mut quit = chrome_input("q").unwrap();
+            quit.modifiers.state = modifiers;
+            assert!(!app.overlay_key(&quit));
+            assert!(app.app_overlays.open());
+        }
+        close.repeat = false;
+        assert!(app.overlay_key(&close));
+        assert!(!app.app_overlays.open());
+        assert_eq!(app.unread_errors, 1, "dismissal cannot invoke approval");
+        assert!(app.composer.view.focus);
+
+        let swarm = bbt_proto::SwarmId::from_u128(7);
+        app.focus.stage = Some(Stage {
+            swarm: Some(bbt_ui_model::SwarmId::from_u128(swarm.0.0)),
+            tab: None,
+            focused: Some(SeatId::from_u128(3)),
+        });
+        app.focus_bounds = vec![(SeatId::from_u128(3), Rect::new(300., 40., 500., 500.))];
+        app.open_settings("Roles");
+        for chord in ["menu", "shift-f10"] {
+            assert!(!app.overlay_key(&chrome_input(chord).unwrap()));
+            assert!(!app.app_overlays.open());
+        }
+        app.overlay_right_click([400., 100.]);
+        assert!(!app.app_overlays.open(), "a page hides prior pane bounds");
+        app.navigation_regions = vec![(format!("swarm:{swarm}"), Rect::new(0., 40., 200., 30.))];
+        app.overlay_right_click([100., 50.]);
+        assert!(
+            matches!(
+                app.app_overlays.surface,
+                Some(Surface::Menu { target: Target::Swarm(id), .. }) if id == swarm
+            ),
+            "the visible sidebar keeps its context menu"
+        );
     }
 }

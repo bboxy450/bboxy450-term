@@ -5101,6 +5101,9 @@ impl App {
         use app_overlays::{Surface, Target};
         use bbt_ui::overlays::{Outcome, context_menu as menu, dialog};
         if !self.app_overlays.open() {
+            if self.document.open || self.launcher.is_some() || self.local_tab.is_some() {
+                return false;
+            }
             if input.state.is_pressed()
                 && !input.repeat
                 && (matches!(input.logical_key, Key::Named(NamedKey::ContextMenu))
@@ -5117,6 +5120,14 @@ impl App {
                 return true;
             }
             return false;
+        }
+        match route_key(input, 0, Some("")) {
+            RoutedKey::Quit | RoutedKey::HardQuit => return false,
+            RoutedKey::CloseFocusedSeat => {
+                self.close_app_overlay();
+                return true;
+            }
+            _ => {}
         }
         if !input.state.is_pressed() {
             return true;
