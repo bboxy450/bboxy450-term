@@ -22,6 +22,8 @@ pub enum Patch {
     SidebarLayout {
         conversation_fraction: f32,
         composer_body_height: Option<f32>,
+        #[serde(default)]
+        tasks_height: Option<f32>,
     },
     DestinationAvailable {
         id: String,
@@ -58,9 +60,16 @@ pub enum Patch {
 impl Patch {
     pub fn validate(&self) -> Result<(), String> {
         let valid = match self {
-            Self::SidebarLayout { conversation_fraction, composer_body_height } =>
-                crate::modules::composer::SidebarLayout { conversation_fraction: *conversation_fraction,
-                    composer_body_height: *composer_body_height }.valid(),
+            Self::SidebarLayout {
+                conversation_fraction,
+                composer_body_height,
+                tasks_height,
+            } => crate::modules::composer::SidebarLayout {
+                conversation_fraction: *conversation_fraction,
+                composer_body_height: *composer_body_height,
+                tasks_height: *tasks_height,
+            }
+            .valid(),
             Self::DestinationAvailable { id, .. } => super::valid_destination_id(id),
             Self::RoleUpsert { name, role } => roles::valid_role(name, role),
             Self::RoleDelete(name) => roles::valid_name(name) && !roles::builtin(name),

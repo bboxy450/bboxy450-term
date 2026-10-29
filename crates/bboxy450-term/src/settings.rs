@@ -312,9 +312,16 @@ impl Preferences {
         Ok(())
     }
     fn apply_inner(&mut self, patch: &Patch) -> Result<(), String> {
-        if let Patch::SidebarLayout { conversation_fraction, composer_body_height } = patch {
+        if let Patch::SidebarLayout {
+            conversation_fraction,
+            composer_body_height,
+            tasks_height,
+        } = patch
+        {
             self.sidebar = bbt_ui::modules::composer::SidebarLayout {
-                conversation_fraction: *conversation_fraction, composer_body_height: *composer_body_height,
+                conversation_fraction: *conversation_fraction,
+                composer_body_height: *composer_body_height,
+                tasks_height: *tasks_height,
             };
         }
         self.apply_role_patch(patch)?;
@@ -734,6 +741,7 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
     preferences.apply(&Patch::SidebarLayout {
         conversation_fraction: read_number("conversation_fraction")?.unwrap_or(0.45),
         composer_body_height: read_number("composer_body_height")?,
+        tasks_height: read_number("tasks_height")?,
     })?;
     for field in [
         "theme",
@@ -908,12 +916,29 @@ impl Store {
         let mut doc = Self::document(&path)?;
         parse(&doc)?;
         for patch in patches {
-            if let Patch::SidebarLayout { conversation_fraction, composer_body_height } = patch {
-                roles::replace(&mut doc["sidebar"]["conversation_fraction"], Value::from(*conversation_fraction as f64));
+            if let Patch::SidebarLayout {
+                conversation_fraction,
+                composer_body_height,
+                tasks_height,
+            } = patch
+            {
+                roles::replace(
+                    &mut doc["sidebar"]["conversation_fraction"],
+                    Value::from(*conversation_fraction as f64),
+                );
                 if let Some(height) = composer_body_height {
                     roles::replace(&mut doc["sidebar"]["composer_body_height"], Value::from(*height as f64));
                 } else if let Some(table) = doc.get_mut("sidebar").and_then(Item::as_table_like_mut) {
                     table.remove("composer_body_height");
+                }
+                if let Some(height) = tasks_height {
+                    roles::replace(
+                        &mut doc["sidebar"]["tasks_height"],
+                        Value::from(*height as f64),
+                    );
+                } else if let Some(table) = doc.get_mut("sidebar").and_then(Item::as_table_like_mut)
+                {
+                    table.remove("tasks_height");
                 }
                 continue;
             }
@@ -1278,17 +1303,88 @@ mod tests {
         let path = dir.path().join("config.toml");
         fs::write(&path, "# keep layout note\n[sidebar]\ncustom = 42\n").unwrap();
         let store = Store::new(path.clone());
-        let patch = Patch::SidebarLayout { conversation_fraction: 0.7, composer_body_height: Some(125.) };
+        let patch = Patch::SidebarLayout {
+            conversation_fraction: 0.7,
+            composer_body_height: Some(125.),
+            tasks_height: Some(96.),
+        };
+        assert_eq!(
+            store.load().unwrap().sidebar.tasks_height,
+            None,
+            "legacy config retains default"
+        );
         let saved = store.save(&[patch]).unwrap();
         assert_eq!(saved.sidebar, store.load().unwrap().sidebar);
+        assert_eq!(saved.sidebar.tasks_height, Some(96.));
         assert_eq!(saved.sidebar.composer_body_height, Some(125.));
         let text = fs::read_to_string(&path).unwrap();
         assert!(text.contains("# keep layout note") && text.contains("custom = 42"));
-        store.save(&[Patch::SidebarLayout { conversation_fraction: 0.45, composer_body_height: None }]).unwrap();
+        store
+            .save(&[Patch::SidebarLayout {
+                conversation_fraction: 0.45,
+                composer_body_height: None,
+                tasks_height: None,
+            }])
+            .unwrap();
         assert_eq!(store.load().unwrap().sidebar, Default::default());
         let before = fs::read(&path).unwrap();
-        assert!(store.save(&[Patch::SidebarLayout { conversation_fraction: f32::NAN, composer_body_height: None }]).is_err());
+        assert!(
+            store
+                .save(&[Patch::SidebarLayout {
+                    conversation_fraction: f32::NAN,
+                    composer_body_height: None,
+                    tasks_height: None
+                }])
+                .is_err()
+        );
         assert_eq!(fs::read(&path).unwrap(), before);
+    }
+    #[test]
+    fn sidebar_tasks_height_preserves_comments_and_rejects_invalid_saved_values() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        fs::write(
+            &path,
+            "# keep sidebar\n[sidebar]\ncustom = 42\ntasks_height = 96 # keep task choice\n",
+        )
+        .unwrap();
+        let store = Store::new(path.clone());
+        let patch = |height| Patch::SidebarLayout {
+            conversation_fraction: 0.45,
+            composer_body_height: None,
+            tasks_height: Some(height),
+        };
+        store.save(&[patch(180.)]).unwrap();
+        assert_eq!(
+            Store::new(path.clone())
+                .load()
+                .unwrap()
+                .sidebar
+                .tasks_height,
+            Some(180.)
+        );
+        let bytes = fs::read(&path).unwrap();
+        let text = String::from_utf8(bytes.clone()).unwrap();
+        assert!(
+            text.contains("# keep sidebar")
+                && text.contains("custom = 42")
+                && text.contains("# keep task choice")
+        );
+        for height in [f32::NAN, f32::INFINITY, -1., 4097.] {
+            assert!(store.save(&[patch(height)]).is_err());
+            assert_eq!(fs::read(&path).unwrap(), bytes);
+        }
+        for height in [0., 4096.] {
+            assert!(patch(height).validate().is_ok());
+        }
+        let old_patch: Patch = serde_json::from_value(serde_json::json!({"SidebarLayout":{"conversation_fraction":0.45,"composer_body_height":null}})).unwrap();
+        assert!(matches!(
+            old_patch,
+            Patch::SidebarLayout {
+                tasks_height: None,
+                ..
+            }
+        ));
     }
     // keeps: spec e2e-acceptance §1 G1/G2
     #[test]

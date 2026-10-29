@@ -1590,10 +1590,14 @@ impl StreamDock {
         children
     }
     pub fn content(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+        self.content_from(ctx, 0, m)
+    }
+    /// Compose disjoint retained entry IDs when several streams share one tree.
+    pub fn content_from(&self, ctx: ui::Context, start: usize, m: &dyn c::Measure) -> c::Element {
         column(
             "dock/rows",
             plain(None, [0.; 4], 0.),
-            self.items_at(ctx, 0, m),
+            self.items_at(ctx, start, m),
         )
     }
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {

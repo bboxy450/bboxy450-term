@@ -80,9 +80,12 @@ impl Regions {
         }
     }
     pub fn dock(layout: &c::Layout, view: &StreamDock) -> Self {
+        Self::dock_from(layout, view, 0)
+    }
+    pub fn dock_from(layout: &c::Layout, view: &StreamDock, start: usize) -> Self {
         let mut out = Self::retained(layout);
         for (i, entry) in view.entries.iter().enumerate() {
-            let key = format!("e{i}");
+            let key = format!("e{}", i + start);
             match entry {
                 Entry::Message { data, .. } => {
                     for (j, attachment) in data.attach.iter().enumerate() {
@@ -160,6 +163,12 @@ impl Regions {
             }
         }
         out
+    }
+    /// Merge already clipped actions from disjoint stream entry ranges.
+    pub fn extend(&mut self, other: Self) {
+        self.rects.extend(other.rects);
+        self.actions.extend(other.actions);
+        self.inputs.extend(other.inputs);
     }
     pub fn attachments(
         &mut self,

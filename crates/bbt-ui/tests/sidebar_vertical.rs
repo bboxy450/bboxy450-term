@@ -122,3 +122,26 @@ fn sidebar_split_requests_reject_nonfinite_and_out_of_range_values() {
         );
     }
 }
+
+#[test]
+fn task_panel_split_requests_reject_invalid_values_and_preserve_legacy_default() {
+    assert_eq!(SidebarLayout::default().tasks_height, None);
+    for height in [f32::NAN, f32::INFINITY, -1., 4097.] {
+        assert!(
+            !SidebarLayout {
+                tasks_height: Some(height),
+                ..Default::default()
+            }
+            .valid()
+        );
+    }
+    for height in [0., 96., 4096.] {
+        assert!(
+            SidebarLayout {
+                tasks_height: Some(height),
+                ..Default::default()
+            }
+            .valid()
+        );
+    }
+}
