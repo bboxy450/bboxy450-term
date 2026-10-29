@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
 // Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 // Adapted from this project's tests/swarm_workdir.rs private Fixture and vertical split test.
 // Changes: backend-arriving chat, independent Tasks scroll, and third-handle persistence.
-// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(
     clippy::disallowed_methods,
     reason = "private unattended app/PTY fixture"
