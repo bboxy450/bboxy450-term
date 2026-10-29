@@ -3732,7 +3732,11 @@ fn seat_context_actions_assign_captured_tasks_and_confirm_only_the_target_kill()
         role_dialog.to_string().contains("next explicit Restart"),
         "{role_dialog}"
     );
-    click_region(&fixture, "seat-choice:1"); // Builtin Claude policy: Architect.
+    let applied = click_region(&fixture, "seat-choice:1"); // Builtin Claude policy: Architect.
+    assert!(
+        applied["regions"]["app-overlay"].is_null(),
+        "role click must return after its correlated success; a refusal/unknown stays visible: {applied}"
+    );
     let roles = fixture.ctl(&["seat", "ls"]);
     let changed = roles
         .as_array()

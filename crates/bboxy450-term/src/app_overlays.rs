@@ -526,6 +526,11 @@ impl App {
         let target = form.target.clone();
         form.pending = Some(id);
         form.error = None;
+        // flush_operations can drain this intent before apply_ui inspects the
+        // backlog. Capture this exact mutation's completion fence at creation.
+        if let Some(effects) = &mut self.ui_collect {
+            effects.push(UiEffect::Operation(id));
+        }
         self.operation_backlog.push_back(live::UiMsg::SeatControl {
             id,
             seat: target.id,
