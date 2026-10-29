@@ -978,3 +978,119 @@ fn wake_causes_replayed_unknowns_block_native_and_pty_resubmission() {
         );
     }
 }
+
+// keeps: interface app-harness — every returned unknown fences the same delivery ID.
+#[test]
+fn wake_causes_failed_result_journal_fences_same_id_native_and_pty() {
+    use bbt_mux::adapters::{Endpoint, Priority, WakeCause, WakeOutcome};
+    use bbt_mux::store::Result;
+    use std::cell::Cell;
+    struct FailResultJournal {
+        inner: SqliteStore,
+        puts: Cell<usize>,
+    }
+    impl Store for FailResultJournal {
+        fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
+            self.inner.get(key)
+        }
+        fn put(&self, key: &str, value: &[u8]) -> Result<()> {
+            self.puts.set(self.puts.get() + 1);
+            if self.puts.get() == 2 {
+                Err(bbt_mux::store::invalid(
+                    "controlled final journal write failure",
+                ))
+            } else {
+                self.inner.put(key, value)
+            }
+        }
+        fn list(&self, prefix: &str) -> Result<Vec<(String, Vec<u8>)>> {
+            self.inner.list(prefix)
+        }
+        fn sql(
+            &self,
+            query: &str,
+            args: &[rusqlite::types::Value],
+        ) -> Result<Vec<Vec<rusqlite::types::Value>>> {
+            self.inner.sql(query, args)
+        }
+        fn alarm(&self, key: &str, deadline_ms: u64) -> Result<()> {
+            self.inner.alarm(key, deadline_ms)
+        }
+        fn due_alarms(&self, now_ms: u64) -> Result<Vec<String>> {
+            self.inner.due_alarms(now_ms)
+        }
+    }
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("native.sock");
+    let listener = std::os::unix::net::UnixListener::bind(&path).unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut session = session("claude");
+    let attachment = runtime
+        .block_on(session.attach(Endpoint::Claude { path }))
+        .unwrap();
+    drop(listener.accept().unwrap()); // Only the read-only attachment probe.
+    let file = native::ClaudeSessionFile {
+        pid: session.binding.pid,
+        session_id: session.binding.session.clone(),
+        process_start: session.binding.process_start.clone(),
+        status: "idle".into(),
+        waiting_for: None,
+        messaging_socket_path: None,
+    };
+    session.observe_claude_session(&file, 5, 1000).unwrap();
+    let view = arbiter(&session);
+    let id = Ulid::new();
+    let journal = FailResultJournal {
+        inner: SqliteStore::open(&root.path().join("journal")).unwrap(),
+        puts: Cell::new(0),
+    };
+    let mut writes = 0;
+    let outcome = session
+        .submit_pty(&view, 1600, id, "write once", &journal, |bytes| {
+            writes += 1;
+            let pending: WakeOutcome = serde_json::from_slice(
+                &journal
+                    .get(&format!("adapter_input/{id}"))
+                    .unwrap()
+                    .unwrap(),
+            )
+            .unwrap();
+            assert_eq!(pending.evidence, Evidence::NativeUnknown);
+            assert_eq!(pending.cause, Some(WakeCause::PtySubmissionPending));
+            Ok(bbt_mux::InputReceipt {
+                input_id: id,
+                state: InputState::PtyWritten,
+                bytes_written: bytes.len(),
+                bytes_total: bytes.len(),
+            })
+        })
+        .unwrap();
+    assert_eq!(outcome.evidence, Evidence::NativeUnknown);
+    assert_eq!(outcome.cause, Some(WakeCause::PtyResultUnjournaled));
+    assert_eq!(writes, 1);
+    assert_eq!(journal.puts.get(), 2);
+    assert!(
+        !session.can_attempt_native(id),
+        "returned unknown did not fence native retry: {outcome:?}"
+    );
+    let native =
+        runtime.block_on(session.wake(&attachment, id, "must not resend", Priority::Next, false));
+    assert_eq!(native.evidence, Evidence::NativeUnknown);
+    assert_eq!(native.cause, Some(WakeCause::PreviousOutcomeUnknown));
+    assert_eq!(
+        listener.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    let replay = session
+        .submit_pty(&view, 1800, id, "write once", &journal, |_| {
+            panic!("second PTY write")
+        })
+        .unwrap();
+    assert_eq!(replay.evidence, Evidence::NativeUnknown);
+    assert_eq!(journal.puts.get(), 2);
+    assert_eq!(writes, 1);
+}

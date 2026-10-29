@@ -496,7 +496,10 @@ fmt-harness-proxy:
 test-harness-proxy:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
 
-.PHONY: test-wake-causes
+.PHONY: test-wake-causes test-wake-journal-failure
+test-wake-journal-failure:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters wake_causes_failed_result_journal_fences_same_id_native_and_pty -- --exact
+
 test-wake-causes:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib --test adapters; \

@@ -117,10 +117,13 @@ impl Session {
         self.inner
             .record_outcome(id, &super::mapping::native_outcome(&result)?);
         if journal.put(&key, &serde_json::to_vec(&result)?).is_err() {
-            return Ok(WakeOutcome::unknown_cause(
+            let unknown = WakeOutcome::unknown_cause(
                 WakeCause::PtyResultUnjournaled,
                 "PTY result could not be journaled; query original input ID",
-            ));
+            );
+            self.inner
+                .record_outcome(id, &super::mapping::native_outcome(&unknown)?);
+            return Ok(unknown);
         }
         Ok(result)
     }

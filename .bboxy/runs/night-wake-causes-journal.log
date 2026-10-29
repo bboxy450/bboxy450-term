@@ -1,0 +1,59 @@
+{
+  "tasks": [
+    243,
+    246,
+    301
+  ],
+  "source_base": "21fad45e3004a01d99e7aa31814e67dc6971f8da",
+  "mechanism": "A fully written PTY result followed by failed final journal.put returned unknown without recording that returned unknown; native retry stayed enabled until a later journal replay. Record the returned unknown at the same failure branch before return.",
+  "regression_test": "wake_causes_failed_result_journal_fences_same_id_native_and_pty",
+  "unchanged_test_source_sha256": "97867ef924a74a62c1a2fa59ead5b889f6db300ca5cc57e2c3e776b64e0b5d46",
+  "source_manifest": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/journal-source.json",
+  "source_manifest_sha256": "7d5f1fa28704422ced20f47e9f4a7f1617a9f5b2d572cc9db9502fdb01580173",
+  "verification": [
+    {
+      "command": "make test-wake-journal-failure",
+      "exit_code": 2,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/journal-negative.log",
+      "sha256": "6202559ec5609dc069281c896cc4b8d717040c4374312fb1a0fe6f27b7407c4f"
+    },
+    {
+      "command": "make test-wake-journal-failure",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/journal-green.log",
+      "sha256": "0368527a38d0ebb90daa23ac7cdc4b54e05c8ed9d098f4a93f98f8be2368c9a3"
+    },
+    {
+      "command": "make test-wake-causes",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/focused-journal.log",
+      "sha256": "fe6560c3886bf4522e7702706ee9456c8592a5d78d42bb7fcd0d95d1bef8b1be"
+    },
+    {
+      "command": "make test-boundaries",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/boundaries-journal.log",
+      "sha256": "4a9681b4461a785238287ad9f205a92e3e99c2c1738c633e202b019a198ffeb5"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/licenses-journal.log",
+      "sha256": "e210392f1f070d9d23266001d16287247211b92a002a5a51409d97ee3deb8b72"
+    }
+  ],
+  "interrupted_gate": {
+    "command": "make test",
+    "source": "21fad45e3004a01d99e7aa31814e67dc6971f8da",
+    "exit_code": -15,
+    "wrapper_exit": 241,
+    "reason": "Explicitly stopped for the demonstrated in-scope unknown fence repair; never claimed green.",
+    "log": "/Users/feral/mydev/bboxy450-term-night-adapter-startup/target/wake-causes/make-test-21f-cancelled-ci.log",
+    "sha256": "b3365874b067b4b11316995e0f776ab3f90ef7b1cabacff8a235680adb8cf6f2"
+  },
+  "limits": [
+    "Same executable with older advertised MCP markers; not an actual older-binary upgrade proof.",
+    "Historical issue40 and original proxy20s causes remain unproven; quarantine unchanged."
+  ],
+  "next": "Rebase preserves incoming signed mentions at MCP8; typed causes remain9. Exact final signed-source Make and normal author landing are still required."
+}
