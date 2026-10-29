@@ -314,6 +314,19 @@ impl State {
             let id = SeatId::from_u128(seat.record.id.0);
             self.known
                 .insert(NotificationId(seat.record.id.to_string()));
+            // This source has no fixture-key fallback: every row must be a
+            // current waiting episode from this exact logic epoch/generation.
+            if !seat.notification_episode.is_some_and(|key| {
+                key.epoch == update.epoch
+                    && key.epoch != bbt_mux::Ulid::nil()
+                    && key.generation == seat.record.generation
+                    && key.generation == seat.state.generation
+            }) || !matches!(seat.record.lifecycle, bbt_proto::registry::Lifecycle::Open)
+                || !matches!(seat.state.activity, bbt_proto::Activity::Waiting(_))
+            {
+                self.seats.remove(&id);
+                continue;
+            }
             self.episodes.observe(&seat, Instant::now());
             self.seats.insert(id, seat);
         }
@@ -667,6 +680,55 @@ mod tests {
         assert!(state.desired().is_empty());
         assert!(state.current_key(&id).is_none());
         assert!(state.known.contains(&NotificationId(id)));
+    }
+
+    #[test]
+    fn invalid_current_rows_end_prior_episode_instead_of_using_fixture_fallback() {
+        for invalid in [
+            "missing key",
+            "different epoch",
+            "nil epoch",
+            "key generation",
+            "record generation",
+            "state generation",
+            "closed seat",
+            "not waiting",
+        ] {
+            let mut state = State {
+                context: enabled_context(),
+                ..Default::default()
+            };
+            state.apply(snapshot(4, 1, 1));
+            let mut row = waiting(4, 2);
+            let mut epoch = bbt_mux::Ulid(4);
+            match invalid {
+                "missing key" => row.notification_episode = None,
+                "different epoch" => {
+                    row.notification_episode.as_mut().unwrap().epoch = bbt_mux::Ulid(5)
+                }
+                "nil epoch" => {
+                    epoch = bbt_mux::Ulid::nil();
+                    row.notification_episode.as_mut().unwrap().epoch = epoch;
+                }
+                "key generation" => row.notification_episode.as_mut().unwrap().generation = 2,
+                "record generation" => row.record.generation = 2,
+                "state generation" => row.state.generation = 2,
+                "closed seat" => row.record.lifecycle = bbt_proto::registry::Lifecycle::ClosedGrace,
+                "not waiting" => row.state.activity = Activity::Idle,
+                _ => unreachable!(),
+            }
+            state.apply(AttentionUpdate {
+                epoch,
+                revision: 2,
+                snapshot: invalid == "nil epoch",
+                seats: vec![row],
+                removed: vec![],
+            });
+            assert!(state.desired().is_empty(), "{invalid}");
+            let id = bbt_mux::Ulid(1).to_string();
+            assert!(state.current_key(&id).is_none(), "{invalid}");
+            assert!(state.known.contains(&NotificationId(id)), "{invalid}");
+        }
     }
 
     #[tokio::test]
