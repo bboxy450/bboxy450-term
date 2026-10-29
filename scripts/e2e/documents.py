@@ -232,13 +232,16 @@ def d1(app):
         layout,image = app.open(record,wanted)
         present = {node.get("text"):node["rect"] for _,node in nodes(layout) if node.get("text")}
         observed = app.observation(layout,record)
+        body_node = next(node for _,node in nodes(layout) if node["kind"] == "named:body")
+        body_keys = {key for key,_ in nodes({"tree":[body_node]})}
+        body_runs = [run for run in observed["texts"] if run["key"] in body_keys]
         painted = {}
-        for run in observed["texts"]:
+        for run in body_runs:
             painted[run["key"]] = painted.get(run["key"],"")+run["text"]
         require(all(any(text in value for value in painted.values()) for text in wanted), f"{name}: visible text has no native paint")
         feature_keys = {key for key,value in painted.items() if any(text in value for text in wanted)}
         feature_ink = []
-        for run in observed["texts"]:
+        for run in body_runs:
             if run["key"] in feature_keys and run["text"].strip():
                 ink = ink_bounds(image,run["rect"],run["color"])
                 feature_ink.append({"key":run["key"],"text":run["text"],"ink":ink,"font_size":run["font_size"]})
