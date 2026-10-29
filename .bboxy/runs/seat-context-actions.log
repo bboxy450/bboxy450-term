@@ -61,3 +61,9 @@ CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-task-contract TAR
 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0. This follow-on strict check finished before the disk-margin stop message was observed; no further independent compile was started.
   /tmp/bboxy-seat-task-contract-clippy.log SHA256 4e36eb5dea8d710f4ed2cac5090c247ebd4adf6e45fcf148a1ff431288d7005e.
 Own inactive target/seat-context-check retired only after lsof +D exited1 with no open handles, recovering disk margin for root's warm tests. Raw logs remain outside Git under /tmp. Root source/targets untouched.
+
+SeatControl reconnect correction — source-only root handoff:
+Integration review found live.rs discard_uncertain_actions omitted SeatControl. A failed send left the unpopped action in outgoing after operations_disconnected had recorded Unknown, allowing automatic execution after reconnect. Added the one missing predicate variant.
+Extended the existing disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive regression with Role/AssignTask/Kill/Restart controls: actual outgoing queue is discarded while Resize survives; exact original operation IDs retain Unknown; late completion is ignored; only an explicit retry queues the original Kill ID/seat/generation and can accept SeatControlled completion.
+Added canonical make test-seat-actions-reconnect and included it in test-seat-actions. Required root warm command: make test-seat-actions-reconnect TARGET_DIR=<root warm target>.
+No Cargo or app build run for this source-only follow-up, per root disk-margin instruction. Regression execution and full-gate acceptance remain unproven pending root warm checks. git diff --check — EXIT 0. Root source/targets untouched.

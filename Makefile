@@ -614,7 +614,7 @@ test-app-overlays:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions check-seat-actions-backend test-task-contract
+.PHONY: test-seat-actions test-seat-actions-backend test-seat-actions-reconnect check-seat-actions check-seat-actions-backend test-task-contract
 test-task-contract:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue -- --exact
 
@@ -625,7 +625,10 @@ test-seat-actions-backend: test-task-contract
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_role_tests; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui seat_controls_fence_generations_scope_and_kill_only_the_target_child -- --ignored --exact --nocapture
 
-test-seat-actions: test-seat-actions-backend
+test-seat-actions-reconnect:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) live::tests::disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive -- --exact
+
+test-seat-actions: test-seat-actions-backend test-seat-actions-reconnect
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) app_overlays; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_context_actions_ -- --ignored --nocapture

@@ -727,6 +727,7 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
         !matches!(
             action,
             GuiAction::Spawn { .. }
+                | GuiAction::SeatControl { .. }
                 | GuiAction::Messaging { .. }
                 | GuiAction::Task { .. }
                 | GuiAction::Identity(_)
@@ -2233,6 +2234,8 @@ mod tests {
     // keeps: spec c1-live-seats §2a
     #[test]
     fn disconnected_mutations_wait_for_explicit_retry_while_pane_controls_survive() {
+        use bboxy450_term::messaging::{Reply, Results};
+        use bbt_proto::gui::{SeatControl, SwarmScope};
         let seat = SeatId::from_u128(1);
         let mut outgoing = VecDeque::from([
             GuiAction::Messaging {
@@ -2256,11 +2259,82 @@ mod tests {
                 rows: 24,
             },
         ]);
+        let controls: Vec<_> = [
+            SeatControl::Role {
+                name: "architect".into(),
+            },
+            SeatControl::AssignTask {
+                scope: SwarmScope {
+                    swarm: Ulid(2),
+                    revision: 11,
+                },
+                task_path: ".bboxy/tasks/exact.md".into(),
+            },
+            SeatControl::Kill,
+            SeatControl::Restart,
+        ]
+        .into_iter()
+        .map(|command| GuiAction::SeatControl {
+            id: Ulid::new(),
+            seat: Ulid(1),
+            generation: 7,
+            command,
+        })
+        .collect();
+        let mut results = Results::default();
+        for control in &controls {
+            let GuiAction::SeatControl { id, .. } = control else {
+                unreachable!()
+            };
+            assert!(results.requested(*id));
+            queue_action(&mut outgoing, control.clone());
+        }
+        assert!(results.disconnected("fixture transport outcome unknown"));
         discard_uncertain_actions(&mut outgoing);
         assert_eq!(outgoing.len(), 1);
         assert!(
             matches!(outgoing.front(), Some(GuiAction::Resize { seat: actual, cols: 80, rows: 24, .. }) if *actual == seat)
         );
+        for control in &controls {
+            let GuiAction::SeatControl { id, .. } = control else {
+                unreachable!()
+            };
+            assert!(
+                matches!(&results.rows().find(|row| row.op == *id).unwrap().reply, Reply::Unknown(reason) if reason == "fixture transport outcome unknown")
+            );
+            assert!(
+                !results.complete(*id, Reply::SeatControlled),
+                "a late reply cannot turn an unknown outcome into success"
+            );
+        }
+        // Reconnect preserves desired pane controls and does not repopulate any
+        // uncertain mutation. Only an explicit retry can restore that command.
+        discard_uncertain_actions(&mut outgoing);
+        assert_eq!(outgoing.len(), 1);
+        let retry = controls[2].clone();
+        let GuiAction::SeatControl { id: retry_op, .. } = &retry else {
+            unreachable!()
+        };
+        assert!(results.requested(*retry_op));
+        queue_action(&mut outgoing, retry.clone());
+        assert!(
+            matches!(outgoing.back(), Some(GuiAction::SeatControl { id, seat: target, generation: 7, command: SeatControl::Kill }) if id == retry_op && *target == Ulid(1))
+        );
+        let mut replies = ActionReplies::default();
+        replies.sent(&retry);
+        assert_eq!(
+            replies.take(&GuiReply::SeatControlled { op: *retry_op }),
+            Some(ActionReply::SeatControl(*retry_op))
+        );
+        assert!(results.complete(*retry_op, Reply::SeatControlled));
+        assert!(matches!(
+            results
+                .rows()
+                .find(|row| row.op == *retry_op)
+                .unwrap()
+                .reply,
+            Reply::SeatControlled
+        ));
     }
 
     // keeps: spec c1-live-seats §2a
