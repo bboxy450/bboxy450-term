@@ -77,6 +77,7 @@ help:
 	  'make test-terminal-selection     Terminal drag selection, private clipboard and native Copy' \
 	  'make test-terminal-font          Global terminal font chords, native menu and retained PTY geometry' \
 	  'make test-terminal-colors        Private PTY/login-shell color defaults and explicit opt-outs' \
+	  'make test-terminal-colors-native Real private Codex shared-daemon TUI colors under NO_COLOR' \
 	  'make test-color-emoji            Native chrome/terminal color glyphs and Unicode clusters' \
 	  'make test-color-emoji-swarm      Private Unicode swarm rename, storage and UI restart' \
 	  'make check-color-emoji-all       Strict Clippy for color rendering and its dependents' \
@@ -542,10 +543,13 @@ test-harness-startup:
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
 
-.PHONY: test-terminal-colors
+.PHONY: test-terminal-colors test-terminal-colors-native
 test-terminal-colors:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters terminal_colors_ -- --nocapture
+
+test-terminal-colors-native: build
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --color-check
 
 check-harness-startup:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
