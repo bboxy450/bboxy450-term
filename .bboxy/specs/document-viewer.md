@@ -4,7 +4,7 @@ type: "spec"
 number: 118
 title: "Document viewer — native Markdown and Mermaid"
 created: "2026-10-22T00:22:14Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-29T14:27:05Z"
 links:
   - { to: "[[d52-brand-and-face]]", rel: decision }
 ---
@@ -16,6 +16,8 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: "native ma
 
 A **document modal** (operator, 2026-10-21: "it should be a modal; the usage pattern is open, scroll, copy maybe, close, feed into the harness"): ⌘-click on a path ending in `.md` in any pane (or an OSC 8 hyperlink, or a wikilink in the stream, or a work item in the sidebar and Graph tab) opens the file rendered natively by our wgpu renderer in a centred modal over the blurred window, the launcher's material and size class, with the frontmatter header, provenance strip and graph rail from the lab's documents page when the file is a `.bboxy/` item, or a plain document view for any other Markdown. Keyboard: scroll with arrows, space and page keys, ⌘F find, ⌘C copies the selection as Markdown source (not rendered text), ⌘A selects all, ⌘⇧C copies the path, **⏎ or ⌘⏎ feeds the document (or the selection) into the focused seat's harness as a message through the adapter and closes**, Esc closes. The modal never steals the seat's keyboard focus for longer than it is open; closing returns focus exactly where it was. A "pin as tab" action exists for the rare long read, but the modal is the default. No webview, no browser, no JavaScript.
 
+Operator, 2026-10-29: "clicking outside of it would close the viewer". A primary click on the backdrop outside the painted modal panel closes it and returns focus to the previous seat. The dismissal consumes the click; it never activates the obscured application underneath. Inside whitespace, selection, links and footer controls retain their own behavior. This applies to the modal presentation; an embedded or pinned document does not claim clicks elsewhere in the window.
+
 ## Path detection in panes
 
 Like iTerm2's semantic history: the terminal recognises `path`, `path:line`, `path:line:col` tokens in cell text, resolves them against the seat's cwd (from OSC 7) and the worktree, and underlines them on ⌘-hover. ⌘-click on `.md` opens the document tab; on code opens the seat's editor command (setting); on a directory opens a listing. OSC 8 hyperlinks are honoured as is. Wikilinks `[[…]]` anywhere in pane text resolve through the `.bboxy` index.
@@ -23,6 +25,8 @@ Like iTerm2's semantic history: the terminal recognises `path`, `path:line`, `pa
 ## Markdown
 
 Parse with `pulldown-cmark` (MIT; CommonMark + GFM tables, task lists, footnotes, strikethrough). Our own typesetting on the renderer's text pipeline: headings on the type scale from `style.json`, paragraphs with proper wrapping and hyphenless justification off, lists, block quotes, tables (our layout engine's row/column solver), images (PNG/JPEG via `image` crate into the colour atlas or a texture), links, footnotes, YAML frontmatter rendered as the header grid, wikilinks as chips with `{rel:w}` badges, code blocks highlighted with tree-sitter (grammars shared with the code graph) and copied with one click, math deferred.
+
+Operator, 2026-10-29: "tables dont fit into the markdown viewer view, lets improve that". Tables use the full available document-body column while ordinary prose keeps its readable measure. Text stays at the normal Body type size. Long cells wrap within fitted columns, preserving rich formatting, alignment and the original Markdown. Nested tables use their actual enclosing column. A table whose glyphs, atomic chips and padding still cannot fit keeps the existing horizontal pan rather than losing content or shrinking type.
 
 ## Images ([[d52-brand-and-face]], operator 2026-10-23)
 

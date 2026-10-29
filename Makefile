@@ -336,7 +336,7 @@ test-documents-night:
 	cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-doc --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-ui --test documents --test document_host --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-ui --test documents --test document_host --test flow --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test documents --test documents_observation --target-dir '$(TARGET_DIR)'; \
 	python3 -I -B scripts/e2e/documents_night.py --bin '$(abspath $(TARGET_DIR))/debug/$(APP)' --source '$(CURDIR)' --out '$(abspath $(TARGET_DIR))/documents-runs/'$$(date -u +%Y%m%dT%H%M%SZ); \
 	$(MAKE) check-documents
