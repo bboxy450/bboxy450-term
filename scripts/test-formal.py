@@ -19,7 +19,22 @@ formal = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(formal)
 
 
+publisher_spec = importlib.util.spec_from_file_location("publisher", Path(__file__).with_name("crates-publisher.py"))
+publisher = importlib.util.module_from_spec(publisher_spec)
+publisher_spec.loader.exec_module(publisher)
+
+
 class GateTests(unittest.TestCase):
+    def test_publisher_refuses_missing_wrong_and_stale_identity_without_any_upload(self):
+        token = "private-fixture-token"
+        digest = formal.hashlib.sha256(token.encode()).hexdigest()
+        receipt = {"publisher": "bboxy450", "source": "operator-confirmed", "token_sha256": digest}
+        publisher.verify_identity(token, receipt)
+        for changed in [{}, {**receipt, "publisher": "other"}, {**receipt, "source": "agent-guessed"},
+                        {**receipt, "token_sha256": "stale"}]:
+            with self.assertRaises(ValueError):
+                publisher.verify_identity(token, changed)
+
     def test_tool_errors_and_incomplete_success_are_not_property_failures(self):
         for code, output in [(0, "Parsing complete"), (12, "Syntax error"),
                              (13, "internal failure"), (1, "Temporal properties were violated")]:

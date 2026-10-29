@@ -126,6 +126,7 @@ class Repository:
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
         self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
+        self.write("Makefile", 'test-formal:\n\t@echo "private fixture formal checks"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -584,6 +585,14 @@ except Exception as error:
         self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
+    def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
+        self.repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        self.cut("crates/c/src/lib.rs")
+        result = self.repo.presubmit()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("test-formal", result.stdout + result.stderr)
+        self.assertFalse((self.repo.state / "cargo.jsonl").exists())
+
     def test_code_cut_passes_the_affected_crates_to_invariants(self):
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
@@ -730,6 +739,14 @@ class GateReceiptTests(unittest.TestCase):
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha)["tested_sha"], sha)
+        repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        formal_failed = repo.commit("Fixture failing formal gate")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        log.write_text(result.stdout + result.stderr)
+        with self.assertRaisesRegex(landing.Refusal, "gate_log_not_green"):
+            landing.gate_proof(log, formal_failed)
         repo.write("scripts/layering.sh", "#!/bin/sh\nexit 17\n")
         failed = repo.commit("Fixture failing actual gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,

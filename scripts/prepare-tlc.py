@@ -46,7 +46,7 @@ def main():
         lines.append(f"{key} = {json.dumps(value)}")
     (mirror / "Cargo.toml").write_text('\n'.join(lines) + '\n\n[workspace]\n')
     (mirror / "scripts").mkdir()
-    for name in ["formal.py", "test-formal.py"]:
+    for name in ["formal.py", "test-formal.py", "crates-publisher.py"]:
         shutil.copyfile(ROOT / "scripts" / name, mirror / "scripts" / name)
     (mirror / "verification").mkdir()
     shutil.copyfile(ROOT / "verification/tools.lock.json", mirror / "verification/tools.lock.json")

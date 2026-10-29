@@ -2,7 +2,8 @@
 
 Operator decision [365](../.bboxy/decisions/d365-mandatory-formal-verification.md)
 makes TLA+/TLC and Yarn verification mandatory for every crate. `make test`
-includes `make test-formal`. The hosted workflow also runs that target.
+includes `make test-formal`. Scoped presubmit/rechecks and the hosted workflow
+also run that target; changed model/tool inputs invalidate reuse.
 
 `make test-yarn-model` runs the native checker, existing reactor runtime and
 compile-fail fixtures, the shared-declaration projection/runtime comparison, and

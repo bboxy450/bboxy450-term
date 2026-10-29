@@ -316,7 +316,8 @@ def affected(range_spec, *, root=None):
     broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock") or p.startswith(".cargo/")]
     # Validation tools are shared for retry decisions, but are not Rust source
     # dependencies. Their fixture suite and the fast invariants check them.
-    tooling = [p for p in paths if p.startswith("scripts/") and not p.startswith("scripts/e2e/")]
+    tooling = [p for p in paths if (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))
+               or p.startswith("verification/") or p == "Makefile"]
     touched = set()
     for path in paths:
         absolute = root / path
@@ -582,6 +583,12 @@ def command_tools(argv, root):
             else:
                 part.append(token)
         return result
+    if executable == "make" and "test-formal" in words:
+        return {"Makefile", "scripts/formal.py", "scripts/test-formal.py",
+                "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
+                "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs",
+                "crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
+                "crates/bbt-yarn-macros/src/lib.rs"}
     if executable in {"sh", "bash", "dash", "python", "python3", "node"}:
         entries = [word for word in words[1:] if not word.startswith("-")]
         if not entries:
@@ -797,6 +804,7 @@ def presubmit_worker(base, result_path, recheck=None):
     root = repository()
     data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     atomic_write(result_path, json.dumps(data) + "\n")
+    checked(["make", "test-formal"], root)
     if data["tier"] == "lab":
         if recheck is None:
             records_checks(root, data["paths"])
@@ -827,7 +835,8 @@ def presubmit_worker(base, result_path, recheck=None):
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
     for argv in data.get("recheck", {}).get("commands", []):
-        checked(argv, root)
+        if argv != ["make", "test-formal"]:
+            checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
     return 0
@@ -837,7 +846,7 @@ def clean_source(root):
     if git("status", "--porcelain", "--untracked-files=no", cwd=root):
         raise Refusal("dirty_tracked_tree")
     untracked = git("ls-files", "--others", "--exclude-standard", "-z", cwd=root).split("\0")
-    source = [p for p in untracked if p.startswith(("crates/", "scripts/", "lab/", "design/", ".cargo/"))
+    source = [p for p in untracked if p.startswith(("crates/", "scripts/", "verification/", "lab/", "design/", ".cargo/"))
               or p in ("Cargo.toml", "Cargo.lock", "build.rs")]
     if source:
         raise Refusal("untracked_source: " + ", ".join(source))

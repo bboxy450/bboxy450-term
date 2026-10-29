@@ -42,6 +42,7 @@ help:
 	  'make test                       Full local CI; no operator input' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
+	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
 	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
 	  'make test-tlc-standalone        Verify the public standalone source, native + TLC' \
 	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
@@ -1162,7 +1163,18 @@ publish-tlc-github:
 	python3 -c 'import json,subprocess,sys; d=json.load(open(sys.argv[1]+"/SOURCE.json")); assert d["revision"]==subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()' "$$mirror"; \
 	file='$(abspath $(TARGET_DIR))/package/bboxy450-tlc-'"$$version"'.crate'; \
 	gpg --verify "$$file.asc" "$$file"; \
-	git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; \
+	if git -C "$$mirror" rev-parse -q --verify "refs/tags/v$$version" >/dev/null; then git -C "$$mirror" verify-tag "v$$version"; else git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; fi; \
 	gh repo create bboxy450/bboxy450-tlc --public --description 'Experimental pure Rust model checker, checked side by side with TLA+/TLC' --source "$$mirror" --remote origin --push; \
 	git -C "$$mirror" push origin --follow-tags; \
 	gh release create "v$$version" --repo bboxy450/bboxy450-tlc "$$file" "$$file.asc" --title "bboxy450-tlc $$version" --notes 'Experimental finite expression/action subset. Native and upstream Java TLC run side by side; complete TLC compatibility is not claimed. Signed source provenance is recorded in SOURCE.json.'
+
+.PHONY: publish-tlc-crate
+publish-tlc-crate:
+	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
+	mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); version='$(APP_VERSION)'; \
+	test "$$(cat '$(TARGET_DIR)/tlc-standalone.passed')" = "$$(git -C "$$mirror" rev-parse HEAD)"; \
+	file='$(abspath $(TARGET_DIR))/package/bboxy450-tlc-'"$$version"'.crate'; gpg --verify "$$file.asc" "$$file"; \
+	if git -C "$$mirror" rev-parse -q --verify "refs/tags/v$$version" >/dev/null; then git -C "$$mirror" verify-tag "v$$version"; else git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; fi; \
+	python3 -I scripts/crates-publisher.py --receipt '$(abspath $(TARGET_DIR))/crates-publisher.json' --target '$(abspath $(TARGET_DIR))'; \
+	gpg --verify "$$file.asc" "$$file"

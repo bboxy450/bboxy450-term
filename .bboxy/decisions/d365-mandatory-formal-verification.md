@@ -66,7 +66,7 @@ limits. Establish which TLA+ features and TLC modes are supported. Do not call a
 restricted frontend complete TLC, and do not remove the reference on confidence
 or an agent's report.
 
-**Executable gate:** `make test-formal`, included in `make test` and manual hosted
+**Executable gate:** `make test-formal`, included in `make test`, scoped presubmit/rechecks and manual hosted
 CI. It runs native Rust tests/strict lint, negative infrastructure controls, and
 native/TLC graph and verdict comparison. Sources, model hashes, bounds, tool
 versions, actual exit statuses and coverage are recorded under
