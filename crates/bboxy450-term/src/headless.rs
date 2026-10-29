@@ -187,6 +187,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
+                    UiEvent::SeatTaskRetry(op) => {
+                        dirty |= app.retry_seat_tasks(op);
+                    }
                     UiEvent::DesktopAction(action, scancode) => {
                         app.consume_desktop_font_key(action, scancode);
                         if let Some(hard) = app.desktop_action(action) {

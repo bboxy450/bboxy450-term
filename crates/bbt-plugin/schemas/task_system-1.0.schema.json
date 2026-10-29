@@ -278,11 +278,10 @@
           "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
         },
         "role": {
-          "enum": [
-            "executor",
-            "oracle",
-            "creativity"
-          ]
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "The target's exact current role, or an authorized legacy executor/oracle/creativity override."
         }
       },
       "required": [

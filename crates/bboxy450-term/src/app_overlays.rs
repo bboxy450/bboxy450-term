@@ -45,6 +45,7 @@ struct SeatTarget {
     harness: String,
     scope: Result<bbt_proto::gui::SwarmScope, String>,
 }
+#[derive(Clone, Copy)]
 enum SeatFormKind {
     Roles,
     Tasks { next: Option<bbt_mux::Ulid> },
@@ -58,6 +59,11 @@ pub(super) struct SeatForm {
     pending: Option<bbt_mux::Ulid>,
     reading: bool,
     error: Option<String>,
+    offset: usize,
+    read_after: Option<bbt_mux::Ulid>,
+    retrying: bool,
+    retries: u8,
+    retry_started: Option<Instant>,
 }
 pub(super) enum Surface {
     Menu {
@@ -250,6 +256,10 @@ fn seat_dialog(form: &SeatForm, ctx: ui::Context) -> (overlays::Modal, Vec<dialo
             "Assign task",
             "Open tasks from this seat’s swarm working folder",
         ),
+        SeatFormKind::Kill if form.target.harness == "codex" => (
+            "Kill seat process?",
+            "Stops this seat’s TTY and relay. The shared Codex server stays running; an active model turn may continue. Its terminal and history remain. This cannot be undone.",
+        ),
         SeatFormKind::Kill => (
             "Kill seat process?",
             "Stops this seat’s current process. Its terminal and history remain available. This cannot be undone.",
@@ -286,7 +296,7 @@ fn seat_dialog(form: &SeatForm, ctx: ui::Context) -> (overlays::Modal, Vec<dialo
         text(format!("{} · {}", form.target.name, form.target.harness)).into(),
         text(explanation).into(),
     ];
-    for (index, (_, label)) in form.choices.iter().enumerate() {
+    for (index, (_, label)) in form.choices.iter().enumerate().skip(form.offset).take(8) {
         let id = format!("seat-choice:{index}");
         let enabled = form.pending.is_none();
         body.push(button(&id, label, enabled, false).into());
@@ -308,6 +318,23 @@ fn seat_dialog(form: &SeatForm, ctx: ui::Context) -> (overlays::Modal, Vec<dialo
         body.push(text("No open tasks in this working folder").into());
     }
     let mut actions = vec![button(CANCEL, "Cancel", true, false)];
+    if matches!(form.kind, SeatFormKind::Roles) {
+        for (id, label, visible) in [
+            ("seat-previous", "Previous roles", form.offset > 0),
+            (
+                "seat-next",
+                "Next roles",
+                form.offset + 8 < form.choices.len(),
+            ),
+        ] {
+            if visible {
+                let mut action = dialog::Control::new(id, dialog::ControlKind::Action);
+                action.enabled = form.pending.is_none();
+                actions.push(button(id, label, action.enabled, false));
+                controls.push(action);
+            }
+        }
+    }
     if let SeatFormKind::Tasks { next: Some(_) } = form.kind {
         let mut next = dialog::Control::new("seat-next", dialog::ControlKind::Action);
         next.enabled = form.pending.is_none();
@@ -360,6 +387,11 @@ impl App {
             pending: None,
             reading: false,
             error: None,
+            offset: 0,
+            read_after: None,
+            retrying: false,
+            retries: 0,
+            retry_started: None,
         };
         if matches!(form.kind, SeatFormKind::Roles) {
             let catalog = self.preferences.preferences.role_catalog();
@@ -409,6 +441,7 @@ impl App {
         }
         let id = bbt_mux::Ulid::new();
         form.pending = Some(id);
+        form.read_after = after;
         form.reading = true;
         form.error = None;
         form.choices.clear();
@@ -440,6 +473,19 @@ impl App {
         if form.pending.is_some() {
             return;
         }
+        if matches!(form.kind, SeatFormKind::Roles) {
+            match action {
+                "seat-previous" => {
+                    form.offset = form.offset.saturating_sub(8);
+                    return;
+                }
+                "seat-next" if form.offset + 8 < form.choices.len() => {
+                    form.offset += 8;
+                    return;
+                }
+                _ => {}
+            }
+        }
         if matches!(form.kind, SeatFormKind::Roles)
             && !self
                 .role_settings
@@ -450,7 +496,6 @@ impl App {
         }
         if action == "seat-next" {
             if let SeatFormKind::Tasks { next } = form.kind {
-                let next = next;
                 self.read_seat_tasks(next);
             }
             return;
@@ -509,12 +554,18 @@ impl App {
                 != Some(scope)
         {
             form.choices.clear();
+            form.kind = SeatFormKind::Tasks { next: None };
+            form.reading = false;
+            form.retrying = false;
             form.error = Some("Swarm working folder changed · reopen this menu".into());
             return;
         }
         let Some(op) = form.pending else {
             return;
         };
+        if form.retrying {
+            return;
+        }
         let Some(result) = model.operation_results.rows().find(|row| row.op == op) else {
             return;
         };
@@ -529,9 +580,28 @@ impl App {
                 form.kind = SeatFormKind::Tasks { next: *next };
                 form.pending = None;
                 form.reading = false;
+                form.retries = 0;
+                form.retry_started = None;
             }
             Reply::SeatControlled if !form.reading => {
                 self.close_app_overlay();
+            }
+            Reply::Refused(reason)
+                if form.reading
+                    && reason.starts_with("workspace_pending")
+                    && form.retries < 50
+                    && form
+                        .retry_started
+                        .is_none_or(|began| began.elapsed() < Duration::from_secs(10)) =>
+            {
+                form.retries += 1;
+                form.retry_started.get_or_insert_with(Instant::now);
+                form.retrying = true;
+                let proxy = self.proxy.clone();
+                bbt_rt::handle().spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    let _ = proxy.send_event(UiEvent::SeatTaskRetry(op));
+                });
             }
             Reply::Refused(reason) => {
                 form.pending = None;
@@ -548,6 +618,23 @@ impl App {
                 form.error = Some("Unexpected seat action response".into());
             }
         }
+    }
+    pub(super) fn retry_seat_tasks(&mut self, op: bbt_mux::Ulid) -> bool {
+        let Some(Surface::Dialog {
+            seat: Some(form), ..
+        }) = &mut self.app_overlays.surface
+        else {
+            return false;
+        };
+        if form.pending != Some(op) || !form.retrying {
+            return false;
+        }
+        let after = form.read_after;
+        form.pending = None;
+        form.retrying = false;
+        self.read_seat_tasks(after);
+        self.request_redraw();
+        true
     }
     pub(super) fn overlay_right_click(&mut self, at: [f32; 2]) {
         self.pointer = at;
@@ -1042,6 +1129,53 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn role_picker_pages_keep_choices_and_cancel_reachable() {
+        let mut form = SeatForm {
+            target: SeatTarget {
+                id: bbt_mux::Ulid(3),
+                generation: 7,
+                name: "role fixture".into(),
+                harness: "claude".into(),
+                scope: Err("no workspace required".into()),
+            },
+            kind: SeatFormKind::Roles,
+            choices: (0..20)
+                .map(|index| (format!("role-{index}"), format!("Role {index}")))
+                .collect(),
+            pending: None,
+            reading: false,
+            error: None,
+            offset: 0,
+            read_after: None,
+            retrying: false,
+            retries: 0,
+            retry_started: None,
+        };
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let (_, first) = seat_dialog(&form, ctx);
+        assert_eq!(
+            first
+                .iter()
+                .filter(|control| control.id.starts_with("seat-choice:"))
+                .count(),
+            8
+        );
+        assert!(first.iter().any(|control| control.id == CANCEL));
+        assert!(first.iter().any(|control| control.id == "seat-next"));
+        assert!(!first.iter().any(|control| control.id == "seat-previous"));
+        form.offset = 16;
+        let (_, last) = seat_dialog(&form, ctx);
+        assert_eq!(
+            last.iter()
+                .filter(|control| control.id.starts_with("seat-choice:"))
+                .count(),
+            4
+        );
+        assert!(last.iter().any(|control| control.id == CANCEL));
+        assert!(last.iter().any(|control| control.id == "seat-previous"));
+        assert!(!last.iter().any(|control| control.id == "seat-next"));
+    }
     #[test]
     #[allow(
         clippy::disallowed_methods,

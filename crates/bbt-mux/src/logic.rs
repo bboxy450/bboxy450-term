@@ -5882,10 +5882,11 @@ impl Worker {
                         }
                         record.role = role;
                         Ok(())
-                    })?;
+                    }).map_err(|error| invalid(format!("unknown: role authority write outcome unavailable: {error}; retain operation ID {op}")))?;
                     // sync_seat derives a new policy epoch from the authoritative
                     // registry role; previously admitted MCP actors fail revalidation.
-                    this.messaging.sync_seat(&this.registry.get(id)?)?;
+                    let updated = this.registry.get(id).map_err(|error| invalid(format!("unknown: role authority changed; record reload unavailable: {error}; retain operation ID {op}")))?;
+                    this.messaging.sync_seat(&updated).map_err(|error| invalid(format!("unknown: role authority changed; policy publication unavailable: {error}; retain operation ID {op}")))?;
                     this.publish(
                         &format!("seat-{id}"),
                         Draft::new(
@@ -5893,7 +5894,7 @@ impl Worker {
                             "role",
                             serde_json::json!({"role":name}),
                         ),
-                    )
+                    ).map_err(|error| invalid(format!("unknown: role authority changed; state publication unavailable: {error}; retain operation ID {op}")))
                 })
             }
             SeatControl::Kill => {

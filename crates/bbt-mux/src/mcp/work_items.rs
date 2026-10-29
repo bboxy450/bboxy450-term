@@ -75,7 +75,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     ];
     if actor.class() == Class::Oracle {
         definitions.extend([
-            ("task_delegate", "Assign a scoped task to an existing seat and send its signed Task brief.", json!({"task_path":path,"seat_id":id,"role":{"enum":["executor","oracle","creativity"]}}), vec!["task_path","seat_id"]),
+            ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
             ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero and evidence for every declared criterion.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),
@@ -406,19 +406,8 @@ pub(crate) fn prepare(
         "task_delegate" => {
             let args: Delegate = tools::parse(&call.args)?;
             let target = target(registry, actor, args.seat_id)?;
-            let role = args.role.unwrap_or_else(|| {
-                if target.role.class == Class::Oracle {
-                    "oracle"
-                } else {
-                    "executor"
-                }
-                .into()
-            });
-            if !matches!(role.as_str(), "executor" | "oracle" | "creativity")
-                || (role == "oracle" && target.role.class != Class::Oracle)
-            {
-                return Err("requested task role exceeds target authority".into());
-            }
+            let role = args.role.unwrap_or_else(|| target.role.name.clone());
+            validate_task_role(&target, &role)?;
             Effect::Task {
                 document: task(&args.task_path)?,
                 action: Box::new(Action::Delegate { target, role }),
@@ -627,6 +616,14 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
     }
     Ok(())
 }
+fn validate_task_role(target: &SeatRecord, role: &str) -> Checked<()> {
+    if (!matches!(role, "executor" | "oracle" | "creativity") && role != target.role.name)
+        || (role == "oracle" && target.role.class != Class::Oracle)
+    {
+        return Err("requested task role exceeds target authority".into());
+    }
+    Ok(())
+}
 fn target(registry: &Registry, actor: &Actor, id: Ulid) -> Checked<SeatRecord> {
     let target = registry.get(id).map_err(|_| "target seat unavailable")?;
     if actor
@@ -767,9 +764,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 return Err("task is already assigned to target".into());
             }
             let role = doc.metadata["role"].as_str().unwrap_or("executor");
-            if role == "oracle" && target.role.class != Class::Oracle {
-                return Err("requested task role exceeds target authority".into());
-            }
+            validate_task_role(&target, role)?;
             notices.push((
                 Recipient::Seat(assignee),
                 "release",
@@ -947,4 +942,90 @@ fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
     }
     hash.update(event.as_bytes());
     Ulid::from_bytes(hash.finalize()[..16].try_into().unwrap())
+}
+
+#[cfg(test)]
+mod task_role_tests {
+    use super::*;
+    use crate::store::sqlite::SqliteStore;
+    #[test]
+    #[allow(clippy::disallowed_methods, reason = "private task planning fixture")]
+    fn default_and_explicit_task_briefs_keep_the_exact_architect_and_custom_role() {
+        let root = tempfile::tempdir().unwrap();
+        let registry = Registry::new(SqliteStore::open(&root.path().join("account")).unwrap());
+        let mut target = SeatRecord::new(Ulid(2), Ulid(7), "target", "claude");
+        target.role = crate::registry::Role {
+            name: "architect".into(),
+            class: Class::Oracle,
+        };
+        registry.insert(&target).unwrap();
+        let mut index = Index::open(
+            &root.path().join("docs"),
+            SqliteStore::open(&root.path().join("index")).unwrap(),
+        )
+        .unwrap();
+        let source = format!(
+            "---\nid: {}\nnumber: 1\ntype: task\nstatus: open\nassignee: none\n---\nPreserve the assigned role.\n",
+            Ulid(3)
+        );
+        std::fs::create_dir_all(root.path().join("docs/tasks")).unwrap();
+        std::fs::write(root.path().join("docs/tasks/brief.md"), &source).unwrap();
+        let document = Document::parse("tasks/brief.md", &source);
+        index.documents.insert(document.path.clone(), document);
+        let actor = Actor::Operator {
+            device_id: Ulid(4),
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        for (name, class) in [
+            ("architect", Class::Oracle),
+            ("Code reviewer", Class::Worker),
+        ] {
+            registry
+                .update(target.id, |record| {
+                    record.role.name = name.into();
+                    record.role.class = class;
+                    Ok(())
+                })
+                .unwrap();
+            for role in [None, Some(name.to_owned())] {
+                let call = call(
+                    Ulid::new(),
+                    TaskRequest::Delegate {
+                        task_path: ".bboxy/tasks/brief.md".into(),
+                        seat_id: target.id,
+                        role,
+                    },
+                )
+                .unwrap();
+                let Prepared::Effect(effect) = prepare(&index, &registry, &actor, &call).unwrap()
+                else {
+                    panic!("delegation must prepare an effect");
+                };
+                let plan = plan(*effect, &actor, &call).unwrap();
+                assert_eq!(plan.writes[0].metadata["role"], name);
+                assert!(
+                    plan.wakes[0]
+                        .summary
+                        .starts_with(&format!("ROLE: {}.", name.to_uppercase()))
+                );
+            }
+        }
+        target.role = crate::registry::Role {
+            name: "Code reviewer".into(),
+            class: Class::Worker,
+        };
+        for role in ["oracle", "architect", "invented"] {
+            assert!(validate_task_role(&target, role).is_err());
+        }
+        for role in ["executor", "creativity", "Code reviewer"] {
+            validate_task_role(&target, role).unwrap();
+        }
+        let tool = catalogue(&actor)
+            .into_iter()
+            .find(|tool| tool["name"] == "task_delegate")
+            .unwrap();
+        assert_eq!(tool["inputSchema"]["properties"]["role"]["type"], "string");
+        assert!(tool["inputSchema"]["properties"]["role"]["enum"].is_null());
+    }
 }

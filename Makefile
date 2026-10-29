@@ -613,10 +613,12 @@ test-app-overlays:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions
+.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions check-seat-actions-backend
 test-seat-actions-backend:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)' --test data_source; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_role_tests; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui seat_controls_fence_generations_scope_and_kill_only_the_target_child -- --ignored --exact --nocapture
 
 test-seat-actions: test-seat-actions-backend
@@ -625,7 +627,10 @@ test-seat-actions: test-seat-actions-backend
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_context_actions_ -- --ignored --nocapture
 
 check-seat-actions:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-proto -p bboxy450-mux -p $(APP) -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+check-seat-actions-backend:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-proto -p bboxy450-mux --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-workspace-boundary check-workspace-boundary format-workspace-boundary
 test-workspace-boundary:

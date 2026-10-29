@@ -14,3 +14,19 @@ Pending: final backend run, app build/unit/e2e, strict all-target clippy, combin
 Role instruction delivery policy awaits the operator's explicit choice. Current backend role primitive only changes registry authority/policy epoch and preserves process; UI wording/behavior must be completed after that choice before shipping.
 No live operator seat was killed or reset. Tests create private HOME and two owned zsh children. Kill uses a supervisor attachment with exact seat/generation; shared Codex runtime is not targeted.
 An accidental direct ui-lint invocation started default-target cargo; its exact owned cargo-clippy/cargo PIDs were stopped immediately. No result claimed; no peer target touched.
+
+2026-10-29 follow-up source/evidence:
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0.
+  All proto tests/goldens passed; plugin data_source 3/0; task-role prepare/plan regression 1/0; private provider GUI process test 1/0.
+  Real two-child evidence: role changes policy epoch with unchanged PID/generation; unknown role refused; stale scope does not write; captured task assignment is claimed/signed; stale-generation kill refused; exact target exits; same-op kill replays receipt; peer PID/process unchanged.
+  Raw /tmp/bboxy-seat-context-backend.log SHA256 4678a1de464c886e6dae0f6349989e14463402b213a273a2d73d40654ebebdf9.
+make test-licenses — EXIT 0; nine negative/positive cases passed. Raw /tmp/bboxy-seat-context-licenses.log SHA256 c2c64293edeb4a9ab0ba58167f1f0861611223e03336fd1e6201057015f271fb.
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-backend TARGET_DIR=target/seat-context-check — running at source handoff.
+
+Added exact-target-role task defaults, bounded MCP/plugin role schemas and the existing legacy override/class guard; Architect/custom briefs retain their real role names. Reassign refuses mismatched custom role rather than issuing a false role brief.
+First scoped workspace reads may return workspace_pending. Native/headless task picker now retries only reads every100ms, at most50 attempts/10s, under its captured dialog token/scope; changed cwd disarms it. No mutation retries.
+Read-only source audit found role post-write failure ambiguity and overflowing custom role lists. Role write/sync/publish failure now reports Unknown with retained op ID; role choices paginate8 and Cancel stays present.
+Kill limitation: native.rs codex_proxy drops a thread connection but has no thread-stop call. Kill process stops the exact owned TTY/relay and preserves the shared Codex server; an active model turn may continue. The Codex confirmation says this explicitly. No daemon-wide kill or invented native endpoint.
+UI_CONTROL_VERSION4 follows image-paste version3; root owns the integration conflict.
+Accidental inactive target/debug was removed after confirming no compiler referenced it; only this worktree's own target/seat-context-check remains.
+Still unproven: app compile/unit/e2e, full affected/dependent all-target Clippy and exact-HEAD make test. Role prompt policy still pending operator selection; do not ship the placeholder role UX.

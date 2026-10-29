@@ -1083,6 +1083,56 @@ fn seat_controls_case() {
             .unwrap()
             .contains("assignee: none")
     );
+    // The real picker hydrates its captured root before offering a mutation.
+    let until = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let read = Ulid::new();
+        runtime.block_on(gui.send(GuiAction::Task {
+            id: read,
+            scope: Some(SwarmScope {
+                swarm: Ulid(7),
+                revision: 0,
+            }),
+            request: bbt_proto::messaging::TaskRequest::List {
+                unassigned: true,
+                swarm_id: None,
+                status: Some("open".into()),
+                assignee: None,
+                after: None,
+                limit: Some(8),
+            },
+        }));
+        let ready = loop {
+            match runtime.block_on(gui.recv()) {
+                GuiReply::Task {
+                    op,
+                    response: bbt_proto::messaging::TaskResponse::Items { items, .. },
+                } if op == read => {
+                    assert_eq!(items.len(), 1);
+                    break true;
+                }
+                GuiReply::Error { op, reason }
+                    if op == read && reason.starts_with("workspace_pending") =>
+                {
+                    break false;
+                }
+                GuiReply::Error { op, reason } if op == read => {
+                    panic!("task picker read refused: {reason}")
+                }
+                _ => {}
+            }
+        };
+        if ready {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < until,
+            "captured root never became ready"
+        );
+        runtime.block_on(async {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        });
+    }
     let assign = SeatControl::AssignTask {
         scope: SwarmScope {
             swarm: Ulid(7),

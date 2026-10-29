@@ -78,6 +78,7 @@ use winit::{
 pub enum UiEvent {
     DocumentRetry(u64),
     TaskRetry(u64),
+    SeatTaskRetry(bbt_mux::Ulid),
     LaunchDirectoryChecked {
         token: bbt_mux::Ulid,
         value: String,
@@ -7354,6 +7355,9 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::SeatTaskRetry(op) => {
+                self.retry_seat_tasks(op);
+            }
             UiEvent::TaskRetry(epoch) => {
                 if self.task_records.retry_ready(epoch) {
                     self.task_reads();
