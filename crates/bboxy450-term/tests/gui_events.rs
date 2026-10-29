@@ -249,13 +249,21 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
     fixture.ctl(&["ui", "focus", seat]);
     let seats = fixture.ctl(&["seat", "ls"]);
     let seats = seats.as_array().unwrap();
+    // ListSeats projects current GUI seats; historical membership remains in
+    // the registry and still contributes to the exact event catalogue.
+    let retained = Registry::new(
+        SqliteStore::open(&object_dir(&fixture.root.join("run"), "account").unwrap()).unwrap(),
+    )
+    .list()
+    .unwrap();
     assert_eq!(
-        seats
+        retained
             .iter()
-            .filter(|s| s["record"]["lifecycle"] == "closed_retained")
+            .filter(|s| s.lifecycle == Lifecycle::ClosedRetained)
             .count(),
         43
     );
+    assert_eq!(seats.len(), 1);
     assert_eq!(
         seats
             .iter()
