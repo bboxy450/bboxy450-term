@@ -702,7 +702,7 @@ impl Render<'_> {
                     width: self.table_width,
                     ..*self
                 }
-                .table(key, align, header, rows),
+                .table(key, align, header, rows, true),
                 STYLE.spacing.s4 as f32,
                 STYLE.spacing.s4 as f32,
             ),
@@ -1135,6 +1135,7 @@ impl Render<'_> {
         align: &[TableAlign],
         header: &[Vec<Inline>],
         rows: &[Vec<Vec<Inline>>],
+        fit_words: bool,
     ) -> c::Element {
         let n = header
             .len()
@@ -1164,9 +1165,10 @@ impl Render<'_> {
                 let [min, max, hard] = self.cell_widths(cell, f);
                 words.push(min);
                 hard_minima[i] = hard_minima[i].max(hard + 2. * pad + 2.);
-                minima[i] = minima[i]
-                    .max(min.min(content_limit) + 2. * pad + 2.)
-                    .max(hard_minima[i]);
+                minima[i] = minima[i].max(min.min(content_limit) + 2. * pad + 2.);
+                if fit_words {
+                    minima[i] = minima[i].max(hard_minima[i]);
+                }
                 preferred[i] = preferred[i].max(max + 2. * pad + 2.);
             }
             cell_words.push(words);
@@ -1177,7 +1179,7 @@ impl Render<'_> {
         // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
         let minimum: f32 = minima.iter().sum();
         let hard_minimum: f32 = hard_minima.iter().sum();
-        if minimum > available && minimum > hard_minimum {
+        if fit_words && minimum > available && minimum > hard_minimum {
             let fraction = ((available - hard_minimum).max(0.) / (minimum - hard_minimum)).min(1.);
             for (min, hard) in minima.iter_mut().zip(&hard_minima) {
                 *min = hard + (*min - hard) * fraction;
@@ -1216,7 +1218,8 @@ impl Render<'_> {
                 let inner = (width - 2. * pad - 2.).max(0.);
                 let render = Render {
                     width: inner,
-                    fragment_words: cell_words[ri].get(i).is_some_and(|word| *word > inner),
+                    fragment_words: fit_words
+                        && cell_words[ri].get(i).is_some_and(|word| *word > inner),
                     ..*self
                 };
                 let f = font(
@@ -1404,6 +1407,10 @@ impl Render<'_> {
                         vec![Inline::Text("Value".into())],
                     ],
                     &rows,
+                    // Generated YAML/cryptographic metadata keeps its existing
+                    // min-word horizontal viewport; fitting is for GFM tables.
+                    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                    false,
                 )
                 .into(),
             );

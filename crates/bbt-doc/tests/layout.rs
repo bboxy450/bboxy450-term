@@ -226,6 +226,65 @@ fn fitted_tables_use_the_offered_width_and_align_short_and_wrapped_cells() {
     assert_eq!(doc.source, source);
 }
 
+// keeps: spec document-viewer §Markdown — fitting body tables preserves generated metadata policy.
+#[test]
+fn narrow_gfm_tables_fit_while_generated_metadata_keeps_its_original_word_viewport() {
+    use bbt_ui::modules::document_modal::controller::{RecordLinks, Regions};
+    let token = "0123456789abcdef".repeat(4);
+    let source = format!("| Left | Right |\n| --- | --- |\n| {token} | {token} |\n");
+    let mut doc = parse(&source);
+    let metadata = serde_json::json!({"type":"note", "authorship":{"public_key":token}});
+    doc.set_metadata(&metadata).unwrap();
+    let layout = doc
+        .hosted_body_element(
+            "Note",
+            ctx(),
+            &Fonts,
+            240.,
+            &RecordLinks::new(),
+            &Default::default(),
+        )
+        .layout(Rect::new(0., 0., 240., 0.), ctx(), &Fonts)
+        .unwrap();
+    let gfm = named(&layout, "block0/rows").unwrap();
+    assert!(
+        gfm.rect.w <= 240.01,
+        "source Markdown table wraps to its offered width"
+    );
+    let generated = named(&layout, "metadata/grid").unwrap();
+    let generated_rows = named(&layout, "metadata/grid/rows").unwrap();
+    assert!(
+        generated_rows.rect.w > generated.rect.w,
+        "generated key/value metadata retains min-word pan"
+    );
+    let key = runs(named(&layout, "metadata/grid/row1/cell0/text").unwrap());
+    assert_eq!(
+        key.len(),
+        1,
+        "generated metadata key must not enter the new per-cell fragmentation path"
+    );
+    assert_eq!(key[0].text, "authorship");
+    let value = runs(named(&layout, "metadata/grid/row1/cell1/text").unwrap())
+        .iter()
+        .map(|r| r.text.as_str())
+        .collect::<String>();
+    assert!(
+        value.contains(&token),
+        "full cryptographic value is retained"
+    );
+    assert!(
+        Regions::retained(&layout)
+            .horizontal()
+            .iter()
+            .any(|r| r.key == "metadata/grid" && r.max > 0.)
+    );
+    assert_eq!(
+        doc.frontmatter.fields["authorship"],
+        serde_yaml::to_value(&metadata["authorship"]).unwrap()
+    );
+    assert_eq!(doc.source, source);
+}
+
 // keeps: spec document-viewer §Markdown — fitting never splits extended grapheme clusters.
 #[test]
 fn narrow_table_tokens_preserve_unicode_clusters_and_exact_text() {
