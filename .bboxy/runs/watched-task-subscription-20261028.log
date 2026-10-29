@@ -1,0 +1,18 @@
+ROLE: EXECUTOR — watched task durable-bus fixture isolation
+base: 14464fd07abbe253635a0d7ef3b7fba13ffebc88
+source_sha256: bf421008730cfae7ad91408a109f5f67f955e7ec38cdf1731802e77e48ef9caa
+failure: root target/ci-local.log:1094-1103 showed the expected original document/path/task subjects plus a different document's legitimate write_prepared event.
+mechanism: provenance/engine.rs:296-311 materializes observed artifacts through Index::apply_author; index.rs:875-890 appends their signed doc/{artifact_id}/write_prepared intent. A doc/> subscription includes those unrelated records.
+change: tests/logic.rs subscribes to all event kinds for the original doc ID, task.md path and task ID; preserves the exact three expected subjects, envelope verification, positive sequence and task stream/status assertions; additionally asserts document stream is index.
+regression: publishes and verifies an unrelated signed doc/{other_id}/write_prepared before the watched edit, so the old broad subscription fails deterministically rather than depending on observer timing.
+command: make fmt-spawn
+exit: 0
+command: git diff --check
+exit: 0
+command: make test-licenses
+exit: 0
+evidence: 6 license fixtures, 27 crate metadata/source notices checks and 9 negative integration fixtures held.
+command: make -n test-workspace-routing
+exit: 0
+evidence: canonical target already includes the full actual logic suite and strict mux all-target Clippy; no new Make target required.
+limits: no Cargo build/test run in this worktree per parent brief; parent owns warm-target actual logic suite and combined full gate after picking the signed fixture fix. No product edits, quarantine, new skips, global serialization, land or push.

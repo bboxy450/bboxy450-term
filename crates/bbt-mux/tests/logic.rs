@@ -183,6 +183,7 @@ fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
 #[test]
 fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_identity() {
     use bbt_mux::bus::{Consumer, Delivery};
+    use bbt_mux::store::events::Draft;
     let temp = tempfile::tempdir().unwrap();
     let runtime = runtime();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
@@ -206,13 +207,29 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
         runtime.handle(),
     )
     .unwrap();
-    let mut consumer = Consumer::gui("doc/>");
-    consumer.filter.push("task/>".into());
+    let id = Ulid::new();
+    let swarm = Ulid::new();
+    // Observed-artifact projections publish their own signed doc writes. Watch
+    // every kind for this task's identity/path, without counting other records.
+    let mut consumer = Consumer::gui(format!("doc/{id}/>"));
+    consumer.filter.push("doc/path/task.md/>".into());
+    consumer.filter.push(format!("task/{id}/>"));
     let subscription = runtime
         .block_on(logic.client.bus.subscribe(consumer))
         .unwrap();
-    let id = Ulid::new();
-    let swarm = Ulid::new();
+    // Force unrelated signed document traffic ahead of the watched edit so the
+    // subscription's isolation cannot pass merely because provenance was slow.
+    let unrelated = runtime
+        .block_on(logic.client.bus.publish(
+            "index",
+            Draft::new(
+                format!("doc/{}/write_prepared", Ulid::new()),
+                "fixture/unrelated-document",
+                json!({"fixture": true}),
+            ),
+        ))
+        .unwrap();
+    unrelated.verify().unwrap();
     std::fs::write(
         config.repository.join(".bboxy/task.md"),
         format!("---\nid: {id}\ntype: task\nnumber: 1\nstatus: running\nswarm_id: {swarm}\n---\nfixture\n"),
@@ -236,6 +253,8 @@ fn a_watched_task_edit_flows_through_the_durable_bus_with_its_original_doc_ident
             if envelope.event.subject.starts_with("task/") {
                 assert_eq!(stream, format!("swarm-{swarm}"));
                 assert_eq!(envelope.event.payload["to"], "running");
+            } else {
+                assert_eq!(stream, "index");
             }
             subjects.insert(envelope.event.subject.clone());
         }
