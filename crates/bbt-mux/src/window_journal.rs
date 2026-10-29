@@ -20,6 +20,34 @@ use ulid::Ulid;
 const STATE: &str = "gui/window/state";
 const EPOCH: &str = "gui/window/epoch";
 const MAX_BYTES: usize = 768 * 1024;
+
+/// A first name may follow a legacy window saved after bootstrap. Read that
+/// snapshot under the caller's account transaction, without probing its paths.
+/// Malformed legacy layout never prevents an otherwise valid metadata edit.
+pub(crate) fn saved_swarm_workdir(
+    tx: &rusqlite::Transaction<'_>,
+    swarm: Ulid,
+) -> Result<Option<String>> {
+    let bytes: Option<Vec<u8>> = tx
+        .query_row("SELECT value FROM kv WHERE key=?1", [STATE], |row| {
+            row.get(0)
+        })
+        .optional()?;
+    let Some(state) = bytes
+        .as_deref()
+        .filter(|bytes| bytes.len() <= MAX_BYTES)
+        .and_then(|bytes| serde_json::from_slice::<WindowState>(bytes).ok())
+        .filter(|state| validate(state).is_ok())
+    else {
+        return Ok(None);
+    };
+    Ok(state
+        .swarms
+        .into_iter()
+        .find(|row| row.id == swarm)
+        .and_then(|row| row.workdir))
+}
+
 #[derive(Clone)]
 pub(crate) struct Journal {
     store: SqliteStore,
@@ -234,6 +262,125 @@ mod tests {
             },
             scroll: vec![],
         }
+    }
+    fn legacy_swarm(id: Ulid, workdir: &str) -> bbt_proto::gui::WindowSwarm {
+        bbt_proto::gui::WindowSwarm {
+            id,
+            workdir: Some(workdir.into()),
+            launch_environment: None,
+            recent_directories: vec![],
+            tabs: vec![],
+        }
+    }
+    async fn registry_with_saved_window(
+        root: &std::path::Path,
+        state: WindowState,
+    ) -> crate::registry::Registry {
+        let journal = Journal::open(root).unwrap();
+        let claim = journal.claim().await.unwrap();
+        journal.save(claim.epoch, state).await.unwrap();
+        crate::registry::Registry::new(
+            SqliteStore::open(&object_dir(root, "account").unwrap()).unwrap(),
+        )
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn first_swarm_name_atomically_inherits_only_its_saved_legacy_cwd() {
+        let root = tempfile::tempdir().unwrap();
+        let target = Ulid::new();
+        let mut state = empty();
+        state.swarms = vec![
+            legacy_swarm(Ulid::new(), "/unavailable/other swarm"),
+            legacy_swarm(target, "/unavailable/legacy project"),
+        ];
+        let registry = registry_with_saved_window(root.path(), state).await;
+        assert_eq!(registry.swarm(target).unwrap(), None);
+        let named = registry.rename_swarm(target, "Build the cockpit").unwrap();
+        assert_eq!(
+            named.workdir.as_deref(),
+            Some("/unavailable/legacy project")
+        );
+        assert_eq!(named.name.as_deref(), Some("Build the cockpit"));
+        assert_eq!(named.revision, 1);
+        let unmatched = registry
+            .rename_swarm(Ulid::new(), "No legacy folder")
+            .unwrap();
+        assert_eq!(unmatched.workdir, None);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn explicit_swarm_cwd_reset_wins_over_a_later_legacy_save_and_first_name() {
+        let root = tempfile::tempdir().unwrap();
+        let journal = Journal::open(root.path()).unwrap();
+        let claim = journal.claim().await.unwrap();
+        let registry = crate::registry::Registry::new(
+            SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap(),
+        );
+        let id = Ulid::new();
+        assert_eq!(registry.update_swarm_workdir(id, None).unwrap().revision, 0);
+        let mut state = empty();
+        state
+            .swarms
+            .push(legacy_swarm(id, "/unavailable/stale project"));
+        journal.save(claim.epoch, state).await.unwrap();
+        let named = registry
+            .rename_swarm(id, "Use the default project")
+            .unwrap();
+        assert_eq!(named.workdir, None);
+        assert_eq!(named.revision, 1);
+        Journal::open(root.path()).unwrap();
+        assert_eq!(registry.swarm(id).unwrap(), Some(named));
+    }
+
+    #[test]
+    fn corrupt_legacy_window_does_not_block_a_first_swarm_name() {
+        for invalid_json in [true, false] {
+            let root = tempfile::tempdir().unwrap();
+            let store = SqliteStore::open(&object_dir(root.path(), "account").unwrap()).unwrap();
+            let id = Ulid::new();
+            let mut state = empty();
+            state.swarms.push(legacy_swarm(id, "relative-folder"));
+            let bytes = if invalid_json {
+                b"not JSON".to_vec()
+            } else {
+                serde_json::to_vec(&state).unwrap()
+            };
+            store.put(STATE, &bytes).unwrap();
+            let registry = crate::registry::Registry::new(store);
+            let named = registry.rename_swarm(id, "Keep working").unwrap();
+            assert_eq!(named.name.as_deref(), Some("Keep working"));
+            assert_eq!(named.workdir, None);
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn concurrent_first_name_and_cwd_edit_preserve_both_with_a_legacy_snapshot() {
+        let root = tempfile::tempdir().unwrap();
+        let id = Ulid::new();
+        let mut state = empty();
+        state
+            .swarms
+            .push(legacy_swarm(id, "/unavailable/legacy project"));
+        let registry = registry_with_saved_window(root.path(), state).await;
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let writer = registry.clone();
+        let started = barrier.clone();
+        let rename = std::thread::spawn(move || {
+            started.wait();
+            writer.rename_swarm(id, "Ship the new project").unwrap();
+        });
+        barrier.wait();
+        registry
+            .update_swarm_workdir(id, root.path().to_str())
+            .unwrap();
+        rename.join().unwrap();
+        let record = registry.swarm(id).unwrap().unwrap();
+        assert_eq!(record.name.as_deref(), Some("Ship the new project"));
+        assert_eq!(
+            record.workdir.as_deref(),
+            root.path().canonicalize().unwrap().to_str()
+        );
+        assert_eq!(record.revision, 2);
     }
     #[test]
     fn journal_accepts_legacy_and_current_schemas_but_rejects_invalid_sections() {

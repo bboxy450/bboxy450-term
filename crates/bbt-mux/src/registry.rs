@@ -69,7 +69,12 @@ impl Registry {
             .collect()
     }
     /// A no-op keeps its revision, but still records an explicit initial reset.
-    fn change_swarm(&self, id: Ulid, change: impl FnOnce(&mut SwarmRecord)) -> Result<SwarmRecord> {
+    fn change_swarm(
+        &self,
+        id: Ulid,
+        inherit_legacy_workdir: bool,
+        change: impl FnOnce(&mut SwarmRecord),
+    ) -> Result<SwarmRecord> {
         valid_swarm(id)?;
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -79,11 +84,16 @@ impl Registry {
                 row.get(0)
             })
             .optional()?;
-        let mut record = bytes
-            .as_deref()
-            .map(serde_json::from_slice)
-            .transpose()?
-            .unwrap_or_else(|| SwarmRecord::new(id));
+        let mut record = match bytes {
+            Some(bytes) => serde_json::from_slice(&bytes)?,
+            None => {
+                let mut record = SwarmRecord::new(id);
+                if inherit_legacy_workdir {
+                    record.workdir = crate::window_journal::saved_swarm_workdir(&tx, id)?;
+                }
+                record
+            }
+        };
         let previous = record.clone();
         change(&mut record);
         if record != previous {
@@ -101,11 +111,11 @@ impl Registry {
         if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
             return Err(invalid("a swarm name is 1 to 64 printable characters"));
         }
-        self.change_swarm(id, |record| record.name = Some(name.to_owned()))
+        self.change_swarm(id, true, |record| record.name = Some(name.to_owned()))
     }
     pub fn update_swarm_workdir(&self, id: Ulid, path: Option<&str>) -> Result<SwarmRecord> {
         let path = path.map(canonical_workdir).transpose()?;
-        self.change_swarm(id, |record| record.workdir = path)
+        self.change_swarm(id, false, |record| record.workdir = path)
     }
     /// Import only absent metadata without probing legacy folders at bootstrap.
     /// Root mounting resolves these paths; explicit metadata edits always win.
