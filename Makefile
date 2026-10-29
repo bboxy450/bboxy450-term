@@ -48,6 +48,8 @@ help:
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
+	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
+	  'make diagnose-fifty-seat-pty     Bounded Darwin syscall probe; nonzero if an allocation fails' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
@@ -274,6 +276,18 @@ test-boundaries:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::shell_path::tests -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib refresh_replaces_a_confirmed_failed_process -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
+
+.PHONY: test-fifty-seat-startup
+test-fifty-seat-startup:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test supervisor spawn_errors_name_the_failed_paths_without_arguments_or_environment -- --ignored --exact --nocapture; \
+	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test supervisor fifty_seats_share_one_supervisor_poller -- --ignored --exact --nocapture
+
+.PHONY: diagnose-fifty-seat-pty
+diagnose-fifty-seat-pty:
+	@set -eu; test "$$(uname -s)" = Darwin; mkdir -p '$(TARGET_DIR)/night-fifty-seat-startup'; \
+	xcrun clang -std=c11 -O2 -Wall -Wextra -Werror -pthread crates/bbt-supervisor/tests/fixtures/pty_syscall_probe.c -o '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'; \
+	python3 -c 'import subprocess,sys; sys.exit(subprocess.run([sys.argv[1]], timeout=30).returncode)' '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'
 
 bundle-files: check-licenses compile
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \

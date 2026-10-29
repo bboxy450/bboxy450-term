@@ -210,12 +210,23 @@ fn spawn_errors_name_the_failed_paths_without_arguments_or_environment() {
 #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn fifty_seats_share_one_supervisor_poller() {
+    // This fixture owns cwd/HOME until the supervisor has reaped its shells.
+    // No process-global environment or working directory changes are needed.
+    let root = tempfile::tempdir().unwrap();
     let supervisor = Supervisor::start(Config::default()).unwrap();
     let client = supervisor.connect().unwrap();
     let mut expected = HashMap::new();
     let mut output = HashMap::<Ulid, Vec<u8>>::new();
     for index in 0..50 {
-        let info = client.spawn(shell()).unwrap();
+        let mut spec = shell();
+        spec.cwd = root.path().to_owned();
+        for key in ["HOME", "ZDOTDIR"] {
+            spec.env
+                .insert(key.into(), root.path().to_string_lossy().into_owned());
+        }
+        let info = client
+            .spawn(spec)
+            .unwrap_or_else(|error| panic!("spawn index {index}/50: {error}"));
         let attachment = client.attach(info.seat, 1).unwrap();
         let marker = format!("BBT_SEAT_{index:02}_OK");
         client
