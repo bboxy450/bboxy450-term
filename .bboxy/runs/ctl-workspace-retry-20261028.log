@@ -1,0 +1,15 @@
+ROLE: EXECUTOR
+scope: retain CLI operation identity across pre-admission workspace preparation
+base: 249efd36 (combined swarm workspace implementation)
+
+ctl/workspace.rs: retry only workspace_pending, retaining the exact operation/action/scope. Existing read/write socket budgets bound the complete retry loop and are restored. Unknown, permanent and transport failures never trigger redispatch.
+ctl.rs: knowledge, task and record-write operations use the bounded helper; unrelated commands retain their original door behavior.
+tests/ctl.rs: the scripted harness retries only explicitly pending MCP requests with original metadata IDs, preserving successful sibling results and never repeating unknown effects.
+Makefile: test-ctl-workspaces runs actual socket guarantees, the existing operator CLI suite, and strict all-target app Clippy.
+
+make test-ctl-workspaces: exit 0 (6 socket tests, all 20 actual ctl tests, strict Clippy).
+raw_log: /Users/feral/Library/Logs/bboxy450-term/ctl-workspace-retry-20261028-transport.log
+First focused attempt: 19/20 ctl passed; scripted harness omitted its report after observing workspace_pending. Corrected only that explicit transient with the original request ID; the report/signature assertions remain unchanged.
+Review added failed-write/unrelated-reply and partial-frame trickle regressions. The deadline applies per read/write syscall, not per frame progress. A local write shutdown supplies the forced write failure; peer read-half shutdown silently accepted bytes on this platform and was not a valid fixture for that path.
+Initial integrated full CI249efd36 was red in logic/provenance/ctl. Backend follow-up b2c2d638 separately fixes event routing and provenance fixtures; this commit fixes CLI behavior. Final combined exact-source gate follows integration.
+No operator input, Keychain, OS keystroke injection, real SSH or user session changes.

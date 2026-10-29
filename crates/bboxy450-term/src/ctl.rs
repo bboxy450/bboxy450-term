@@ -27,6 +27,7 @@ mod records;
 mod seat;
 mod task;
 mod ui;
+mod workspace;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, GuiSeat, SpawnSpec, SwarmId, Where,
     messaging::{Request, Response, SendRequest, TaskRequest, TaskResponse, TaskVerification},
@@ -618,18 +619,48 @@ impl Client {
         &mut self,
         op: Option<Ulid>,
         action: GuiAction,
-        mut answer: impl FnMut(&GuiReply) -> bool,
+        answer: impl FnMut(&GuiReply) -> bool,
     ) -> Result<GuiReply, String> {
-        if let Err(write) = self.send(action) {
+        self.call_with_deadline(op, action, answer, None)
+    }
+    fn call_with_deadline(
+        &mut self,
+        op: Option<Ulid>,
+        action: GuiAction,
+        mut answer: impl FnMut(&GuiReply) -> bool,
+        deadline: Option<std::time::Instant>,
+    ) -> Result<GuiReply, String> {
+        let sent = match deadline {
+            Some(deadline) => workspace::send(self, action, deadline),
+            None => self.send(action),
+        };
+        if let Err(write) = sent {
             // The door can refuse and close before the request is written; its reason is
             // already in our buffer, so a seat reads the refusal, not a broken pipe.
-            return match self.reply() {
-                Ok(GuiReply::Error { reason, .. }) => Err(reason),
+            let reply = match deadline {
+                Some(deadline) => workspace::reply(self, deadline),
+                None => self.reply(),
+            };
+            return match reply {
+                Ok(GuiReply::Error { op: failed, reason })
+                    if deadline.is_none() || op == Some(failed) || failed.is_nil() =>
+                {
+                    if deadline.is_some() && reason.starts_with("workspace_pending:") {
+                        Err(format!(
+                            "unknown: {write}; a buffered pending response does not confirm a failed write"
+                        ))
+                    } else {
+                        Err(reason)
+                    }
+                }
                 _ => Err(write),
             };
         }
         loop {
-            let reply = self.reply()?;
+            let reply = match deadline {
+                Some(deadline) => workspace::reply(self, deadline)?,
+                None => self.reply()?,
+            };
             if let GuiReply::Identity(identity) = &reply {
                 self.identity = Some(identity.clone());
             }
@@ -712,8 +743,8 @@ impl Client {
         use bbt_mux::knowledge::data_source::CommandError;
         let id = self.mint();
         let reply = self
-            .call(
-                Some(id),
+            .call_workspace(
+                id,
                 GuiAction::Knowledge {
                     scope: None,
                     id,
@@ -771,8 +802,8 @@ impl Client {
     /// The operator's signed `e2e` record write: the data_source write result.
     pub fn record_write(&mut self, args: Value) -> Result<Value, String> {
         let id = self.mint();
-        match self.call(
-            Some(id),
+        match self.call_workspace(
+            id,
             GuiAction::RecordWrite {
                 scope: None,
                 id,
@@ -974,8 +1005,8 @@ impl Client {
     }
     pub fn task(&mut self, request: TaskRequest) -> Result<TaskResponse, String> {
         let id = self.mint();
-        match self.call(
-            Some(id),
+        match self.call_workspace(
+            id,
             GuiAction::Task {
                 scope: None,
                 id,

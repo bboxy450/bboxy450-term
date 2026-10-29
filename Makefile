@@ -50,6 +50,7 @@ help:
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
+	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
@@ -608,3 +609,10 @@ test-overlay-captures:
 	for theme in light dark; do \
 	  BBOXY_UI_OVERLAY_THEME="$$theme" BBOXY_UI_OVERLAY_EVIDENCE='$(abspath $(TARGET_DIR))/overlay-evidence/'"$$theme" cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	done
+
+.PHONY: test-ctl-workspaces
+test-ctl-workspaces:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::workspace; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
+	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings

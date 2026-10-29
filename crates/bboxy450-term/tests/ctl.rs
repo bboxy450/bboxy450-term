@@ -34,23 +34,40 @@ def ulid():
     n = (int(time.time() * 1000) << 80) | int.from_bytes(os.urandom(10), "big")
     return "".join("0123456789ABCDEFGHJKMNPQRSTVWXYZ"[(n >> (5 * i)) & 31] for i in range(25, -1, -1))
 def mcp(calls):
-    lines = [{"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-06-18",
+    initialize = [{"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": "2025-06-18",
              "capabilities": {}, "clientInfo": {"name": "fake-claude", "version": "0"}}},
              {"jsonrpc": "2.0", "method": "notifications/initialized"}]
+    pending = []
     for i, (name, args) in enumerate(calls, 1):
-        lines.append({"jsonrpc": "2.0", "id": i, "method": "tools/call",
+        pending.append({"jsonrpc": "2.0", "id": i, "method": "tools/call",
                       "params": {"name": name, "arguments": args, "_meta": {"bboxy450/op_id": ulid()}}})
-    p = subprocess.run([BIN, "mcp"], input="".join(json.dumps(l) + "\n" for l in lines),
-                       capture_output=True, text=True, timeout=20)
     out = {}
-    for line in p.stdout.splitlines():
-        try:
-            m = json.loads(line)
-        except ValueError:
-            continue
-        if "id" in m:
-            out[m["id"]] = m
-    return [out.get(i, {"stderr": p.stderr}) for i in range(1, len(calls) + 1)]
+    deadline = time.monotonic() + 15
+    while pending:
+        p = subprocess.run([BIN, "mcp"], input="".join(json.dumps(l) + "\n" for l in initialize + pending),
+                           capture_output=True, text=True, timeout=max(0.1, deadline-time.monotonic()))
+        current = {}
+        for line in p.stdout.splitlines():
+            try:
+                m = json.loads(line)
+            except ValueError:
+                continue
+            if "id" in m:
+                current[m["id"]] = m
+        again = []
+        for request in pending:
+            reply = current.get(request["id"], {"transport_unknown": True, "stderr": p.stderr})
+            out[request["id"]] = reply
+            result = reply.get("result", {})
+            if result.get("isError") is True and result.get("structuredContent", {}).get("error", {}).get("code") == "workspace_pending":
+                # Only this pre-admission result may repeat. Keep its exact
+                # metadata op ID; never resend successful messages or unknown effects.
+                again.append(request)
+        pending = again
+        if not pending or time.monotonic() >= deadline:
+            break
+        time.sleep(min(0.1, deadline-time.monotonic()))
+    return [out[i] for i in range(1, len(calls) + 1)]
 def text_of(env):
     body = env.get("body") or {}
     if isinstance(body, dict):
