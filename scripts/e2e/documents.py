@@ -369,12 +369,14 @@ def fitted_table_and_dismissal(app, style):
             require(current["document"] == layout["document"], "Find lost the open document while rebuilding")
             if current["frame_seq"] > after and current.get("document_observation") is not None:
                 painted = app.observation(current, record)
-                notices = [r for r in painted["texts"] if r["key"] == "notice" and r["text"] == "find is not available yet"]
-                for notice in notices:
-                    x,y,w,h = notice["rect"]
-                    clip = notice.get("clip") or [0,0,*current["size"]]
-                    if not visible or (min(x+w,clip[0]+clip[2]) > max(x,clip[0])
-                                       and min(y+h,clip[1]+clip[3]) > max(y,clip[1])):
+                notices = [r for r in painted["texts"] if r["key"] == "notice"]
+                if "".join(r["text"] for r in notices) == "find is not available yet":
+                    def visible_run(run):
+                        x,y,w,h = run["rect"]
+                        clip = run.get("clip") or [0,0,*current["size"]]
+                        return not run["text"].strip() or (min(x+w,clip[0]+clip[2]) > max(x,clip[0])
+                                                         and min(y+h,clip[1]+clip[3]) > max(y,clip[1]))
+                    if not visible or all(visible_run(run) for run in notices):
                         return current
             require(time.monotonic() < deadline, "Find did not produce its complete native notice in the visible document")
             time.sleep(0.05)
