@@ -1,0 +1,170 @@
+{
+  "tasks": [
+    328,
+    342,
+    345,
+    434,
+    437
+  ],
+  "executor": "Lumen Foxglove",
+  "recorded_utc": "2026-10-29T12:17:56.676693+00:00",
+  "canonical": "https://github.com/bboxy450/bboxy450-term",
+  "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "component_evidence_source": "92209679e3de0c99e6e47b432d5d46f2010d4b6d",
+  "current_signed_source_before_this_record": "32fbe58552904df794049d20f2ece91258a64ac4",
+  "claim": "Actual component results keep their original source identities. The final exact make test and signed author landing results are supplied by the handoff; this record does not preclaim them.",
+  "production_controls": {
+    "command": "make test-documents-controls TARGET_DIR=target/documents-night",
+    "exit_code": 0,
+    "native_verdict": "/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night/document-controls/20261029T120514Z/verdict.json",
+    "native_verdict_sha256": "0ebdc171ea75bc5d2c2bfe4db7bc8a3b5ba7befe6d36037a46825bf1b020ea02",
+    "actual_executables_retained_and_hash_verified": 5,
+    "original_source_bytes_restored_to_signed_head": true,
+    "checks": [
+      {
+        "mutation": "heading-level",
+        "path": "crates/bbt-doc/src/markdown/layout.rs",
+        "source_sha256": "91e1df5e2ef3acca88b36dcf7cbcae2e8249b0677cdb531dfcf5736ea57da5a8",
+        "build": {
+          "command": [
+            "make",
+            "build",
+            "TARGET_DIR=/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night"
+          ],
+          "exit": 0,
+          "sha256": "096d01fc2084bfd7ab4d28b360682d0661e59a1d1e3a5868892d25af933674a8"
+        },
+        "night_exit": 1,
+        "promise": "D1",
+        "failure": "AssertionError: H1 did not paint its baselined named style: {'baseline': 643.234375, 'clip': [310.0, 81.0, 980.0, 696.203125], 'clips': [0, 1], 'color': [0.9490196108818054, 0.9333333373069763, 0.9019607901573181, 1.0], 'font_size': 13.5, 'italic': False, 'key': 'block0', 'line_height': 21.59375, 'max_width': None, 'mono': False, 'origin': [328.0, 629.5812377929688], 'rect': [328.0, 628.234375, 97.2191162109375, 21.59375], 'text': 'HeadingLevel1', 'tracking_em': 0.0, 'weight': 700}",
+        "other": "D2",
+        "other_verdict": "pass"
+      },
+      {
+        "mutation": "task-glyph",
+        "path": "crates/bbt-doc/src/markdown/layout.rs",
+        "source_sha256": "6cdd47b4676c2232a882b0568a8475d3a304e2eefb249fab8d74c4557d25b17e",
+        "build": {
+          "command": [
+            "make",
+            "build",
+            "TARGET_DIR=/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night"
+          ],
+          "exit": 0,
+          "sha256": "caee61339d1aca94bdf09754d2ebf271bc4546630c7105c15a8568e582761bdf"
+        },
+        "night_exit": 1,
+        "promise": "D1",
+        "failure": "AssertionError: native modal omitted required fixture text",
+        "other": "D2",
+        "other_verdict": "pass"
+      },
+      {
+        "mutation": "edge-endpoint",
+        "path": "crates/bbt-doc/src/mermaid.rs",
+        "source_sha256": "6d240df88b9a731404bb346a1b907c9ae8f7aa3f91a3d2e14ecfe66c29b599d0",
+        "build": {
+          "command": [
+            "make",
+            "build",
+            "TARGET_DIR=/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night"
+          ],
+          "exit": 0,
+          "sha256": "e0aa72594de0ebb8c38305ae34a0b9e63d13afdb3795b65635c8b88f24135b80"
+        },
+        "night_exit": 1,
+        "promise": "D2",
+        "failure": "AssertionError: edge 0 starts away from Alpha's border: [410.126953125, 636.4296875]/[344.0, 620.234375, 60.126953125, 32.390625]",
+        "other": "D1",
+        "other_verdict": "pass"
+      },
+      {
+        "mutation": "glyph-paint-scale",
+        "path": "crates/bboxy450-term/src/scene.rs",
+        "source_sha256": "c36a37663589c8e445c2ed6c128cf80e0f6d568566c61a08de5c3f6d7be570a1",
+        "build": {
+          "command": [
+            "make",
+            "build",
+            "TARGET_DIR=/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night"
+          ],
+          "exit": 0,
+          "sha256": "873d81ac6ddfee31dcdcb188a90383e02cb0d648b41e38ab6bc032d3d0297279"
+        },
+        "night_exit": 1,
+        "promise": "D1",
+        "failure": "AssertionError: painted glyphs were scaled inside their logical line",
+        "other": "D2",
+        "other_verdict": "pass"
+      },
+      {
+        "restored": true,
+        "build": {
+          "command": [
+            "make",
+            "build",
+            "TARGET_DIR=/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night"
+          ],
+          "exit": 0,
+          "sha256": "38b4fa3e21f88aacfabcfe1b2140ded4066c8ba538e257eefe917e73476c43d8"
+        },
+        "night_exit": 0
+      }
+    ]
+  },
+  "parity": {
+    "command": "make parity-documents TARGET_DIR=target/documents-night",
+    "exit_code": 0,
+    "capture_source": "5aeb4e6face8252551872a5838ead1dc2471a2f9",
+    "cases": 152,
+    "complete": 152,
+    "unproven": 0,
+    "max_rect_error": 0.08508300781238631,
+    "max_baseline_error": 0.0078125,
+    "pixel_reviews": 16,
+    "pixel_review_scope": "All16 are the unchanged illustrative diagram-body advisory policy; strict document/figure geometry remains gating",
+    "report": "/Users/feral/mydev/bboxy450-term-night-gui-events/target/documents-night/parity-documents/report.json",
+    "report_sha256": "a4a602bbad72041bc33da8e71c223e4f4732bdaa86faa1919626175967c05504"
+  },
+  "boundary": {
+    "command": "make test-boundaries TARGET_DIR=target/documents-night",
+    "exit_code": 0,
+    "log": "/tmp/lumen-documents-boundaries.log",
+    "note": "Actual process/lifecycle, ctl, native-signing fixture, login shell, failed-owner refresh and ignored cockpit regressions; one native child is parent-owned and stays ignored by direct runner"
+  },
+  "licenses": {
+    "command": "make test-licenses",
+    "exit_code": 0,
+    "workspace_crates": 27,
+    "source_notices": "held; changed=0",
+    "log": "/tmp/lumen-documents-licenses.log"
+  },
+  "integration": {
+    "new_base": "71e47d85476a126b9e5efa0ba89e9ef361b78b3c",
+    "range_diff": "/tmp/lumen-documents-final-range-diff.log",
+    "markers": {
+      "main_mcp": 9,
+      "document_mcp": 10,
+      "main_ui": 7,
+      "document_ui": 8
+    },
+    "reserved_work": "Incoming input, sidebar, shutdown and typed-wake changes retained; no own semantic hunk altered by this rebase"
+  },
+  "retained_development_reds": [
+    "/tmp/lumen-documents-native-budget-red-zh29v5c5 (actual binary +licenses; repeated clips reached64KiB; no cap waiver)",
+    "target/documents-night/document-controls/20261029T115524Z (command2; list marker3. selected hidden provenance timestamp; fixed by native body scope; specific reds/restoration keep their original identities)"
+  ],
+  "limits_and_gaps": [
+    "D3/D4 remain separate unimplemented outer-night red; D1/D2 full/pass0 does not make the whole documents night green",
+    "Same-current-binary marker proof is not an actual earlier-executable compatibility claim",
+    "No release build, installation, live refresh or provider/account access performed",
+    "Issue39 historical EOF cause remains unproven; its quarantine row remains"
+  ],
+  "logs_sha256": {
+    "/tmp/lumen-documents-production-controls-2.log": "0ebdc171ea75bc5d2c2bfe4db7bc8a3b5ba7befe6d36037a46825bf1b020ea02",
+    "/tmp/lumen-documents-boundaries.log": "db79dacadeb04b0e0cc65d43dd102529c4cfe63395348c7cc89fe4fcc8640afe",
+    "/tmp/lumen-documents-licenses.log": "354adc7a76419db580c160f2d68d5c7123d66fa537101e70ff2337e7d005595a",
+    "/tmp/lumen-documents-final-range-diff.log": "e22cbece215e22bdc15d990e72222dee118e43a502dc7b1eb2b00cb94408eec7",
+    "/tmp/lumen-documents-parity.log": "677b52edc58f43e9fdef0c50bf56e6182296717e7aa7cd6ac00bf714574567c0"
+  }
+}
