@@ -46,7 +46,8 @@ impl Default for CurrentAttention {
 impl CurrentAttention {
     pub(crate) fn remove(&self, id: Ulid) -> Result<bool> {
         let mut state = self.state.write().unwrap_or_else(|e| e.into_inner());
-        if state.waiting.remove(&id).is_none() {
+        let known = state.generations.remove(&id).is_some();
+        if state.waiting.remove(&id).is_none() && !known {
             return Ok(false);
         }
         state.revision = state
@@ -84,7 +85,15 @@ impl CurrentAttention {
         {
             return Ok(false);
         }
-        state.generations.insert(id, row.state.generation);
+        // Generation fences for retained/removed seats stay in the registry,
+        // not an ever-growing observer tombstone map.
+        let permanent = matches!(row.record.lifecycle, bbt_proto::Lifecycle::ClosedRetained)
+            || matches!(row.state.process, ProcessStatus::Retained);
+        let generation_changed = if permanent {
+            state.generations.remove(&id).is_some()
+        } else {
+            state.generations.insert(id, row.state.generation) != Some(row.state.generation)
+        };
         let waiting = matches!(row.record.lifecycle, bbt_proto::Lifecycle::Open)
             && matches!(row.state.process, ProcessStatus::Running { .. })
             && matches!(row.state.activity, Activity::Waiting(_));
@@ -118,7 +127,7 @@ impl CurrentAttention {
             }
             state.waiting.insert(id, row.clone());
             seats.push(row);
-        } else if state.waiting.remove(&id).is_some() {
+        } else if state.waiting.remove(&id).is_some() || generation_changed {
             removed.push(id);
         } else {
             return Ok(false);
@@ -144,7 +153,12 @@ impl CurrentAttention {
             revision: state.revision,
             snapshot: true,
             seats: state.waiting.values().cloned().collect(),
-            removed: Vec::new(),
+            removed: state
+                .generations
+                .keys()
+                .filter(|id| !state.waiting.contains_key(id))
+                .copied()
+                .collect(),
         }
     }
     pub(crate) fn observe(self: &Arc<Self>) -> AttentionSubscription {
@@ -157,7 +171,12 @@ impl CurrentAttention {
             revision: state.revision,
             snapshot: true,
             seats: state.waiting.values().cloned().collect(),
-            removed: Vec::new(),
+            removed: state
+                .generations
+                .keys()
+                .filter(|id| !state.waiting.contains_key(id))
+                .copied()
+                .collect(),
         };
         AttentionSubscription {
             current: self.clone(),

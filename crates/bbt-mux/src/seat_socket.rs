@@ -1187,7 +1187,7 @@ async fn gui_session(
                                 let mut subscription=client.observe_attention();
                                 let update=subscription.next().await?;
                                 attention_observer=Some(subscription);
-                                Ok(GuiReply::Attention {op:Some(id),update})
+                                Ok(GuiReply::CurrentAttention {op:Some(id),update})
                             }
                             GuiAction::Ui {id,request}=> {
                                 if door!=crate::mcp::Door::Ctl {return Err(invalid("UI requests use the ctl operator door"));}
@@ -1503,7 +1503,7 @@ async fn gui_session(
                     if observer_reference.as_ref().map(|reference|reference.id)!=Some(client.gui_device().await?.id) {
                         return Err(invalid("attention observer device changed; reconnect"));
                     }
-                    send(&mut write,&GuiReply::Attention {op:None,update}).await?;
+                    send(&mut write,&GuiReply::CurrentAttention {op:None,update}).await?;
                 }
                 _=tick.tick(),if admitted && observer_mode!=Some(true)=> {
                     cursor_waits_for_tick=false;

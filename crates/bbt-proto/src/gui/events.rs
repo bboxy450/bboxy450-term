@@ -84,7 +84,7 @@ pub(super) use events_actions;
 macro_rules! events_replies {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
-            Attention { op: Option<Ulid>, update: AttentionUpdate },
+            CurrentAttention { op: Option<Ulid>, update: AttentionUpdate },
             /// Asynchronous attachment transitions, never a terminal action result.
             EventStatus {
                 attached: bool,
