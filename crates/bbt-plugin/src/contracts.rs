@@ -109,7 +109,7 @@ impl Contract {
 
     /// Authority comes from the contract; descriptor fields cannot override it.
     pub fn role(self, method: &str) -> Result<RoleClass, Refusal> {
-        if !self.methods().contains(&method) {
+        if !self.methods().contains(&method) && !(self == Self::DataSource && method == "commit") {
             return Err(Refusal::new(
                 "unknown_method",
                 format!("{} has no callable method {method}", self.name()),
@@ -118,6 +118,7 @@ impl Contract {
         Ok(if self == Self::EventSink {
             RoleClass::HostOnly
         } else if self == Self::DecisionModel
+            || self == Self::DataSource && method == "commit"
             || self == Self::TaskSystem
                 && matches!(method, "delegate" | "reassign" | "accept" | "reject")
         {
@@ -141,9 +142,7 @@ impl Contract {
         let schema: Value = serde_json::from_str(self.schema()).ok()?;
         let selected =
             schema["x-methods"][method][if result { "result" } else { "request" }].as_str()?;
-        Some(
-            serde_json::json!({"$schema":schema["$schema"],"$defs":schema["$defs"],"$ref":selected}),
-        )
+        standalone_schema(&schema, selected)
     }
 
     /// The sole JSON Schema document for this contract and version.
@@ -158,4 +157,44 @@ impl Contract {
             Self::Provider => include_str!("../schemas/provider-0.1.schema.json"),
         }
     }
+}
+
+// Adapted from bboxy450-term, crates/bbt-plugin/src/data_source.rs:
+// https://github.com/bboxy450/bboxy450-term
+// One projection of canonical definitions serves every contract and method.
+pub(crate) fn standalone_schema(schema: &Value, selected: &str) -> Option<Value> {
+    fn references(value: &Value, pending: &mut Vec<String>) {
+        match value {
+            Value::Object(fields) => {
+                if let Some(reference) = fields
+                    .get("$ref")
+                    .and_then(Value::as_str)
+                    .and_then(|r| r.strip_prefix("#/$defs/"))
+                {
+                    pending.push(reference.into());
+                }
+                for value in fields.values() {
+                    references(value, pending);
+                }
+            }
+            Value::Array(items) => {
+                for value in items {
+                    references(value, pending);
+                }
+            }
+            _ => (),
+        }
+    }
+    let canonical = schema.get("$defs")?.as_object()?;
+    let mut defs = serde_json::Map::new();
+    let mut pending = vec![selected.strip_prefix("#/$defs/")?.to_owned()];
+    while let Some(name) = pending.pop() {
+        if defs.contains_key(&name) {
+            continue;
+        }
+        let definition = canonical.get(&name)?.clone();
+        references(&definition, &mut pending);
+        defs.insert(name, definition);
+    }
+    Some(serde_json::json!({"$schema":schema["$schema"],"$defs":defs,"$ref":selected}))
 }

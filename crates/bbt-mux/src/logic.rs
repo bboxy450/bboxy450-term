@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
+mod knowledge_effects;
 mod role_catalog;
 mod task_import;
 #[cfg(test)]
@@ -23,7 +24,7 @@ mod native_reopen_tests;
 mod ring_batch_tests;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{
     Arc, OnceLock, Weak,
     atomic::{AtomicBool, AtomicU64, Ordering},
@@ -201,15 +202,24 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     ),
+    GuiKnowledgeCommit(
+        Ulid,
+        serde_json::Value,
+        Option<bbt_proto::gui::SwarmScope>,
+        crate::mcp::Origin,
+        oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ),
     GuiPlugin(
         Ulid,
         bbt_proto::gui::PluginRequest,
+        Option<bbt_proto::gui::SwarmScope>,
         crate::mcp::Origin,
         oneshot::Sender<Result<Vec<bbt_plugin::registry::Entry>>>,
     ),
     GuiKnowledgeControl(
         Ulid,
         bbt_proto::gui::KnowledgeRequest,
+        Option<bbt_proto::gui::SwarmScope>,
         crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::gui::KnowledgeStatus>>,
     ),
@@ -1165,15 +1175,46 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
+    pub async fn gui_knowledge_commit(
+        &self,
+        id: Ulid,
+        locators: Vec<String>,
+        message: String,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+    ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiKnowledgeCommit(
+                id,
+                serde_json::json!({"locators":locators,"message":message}),
+                scope,
+                origin,
+                tx,
+            ))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("commit outcome unavailable; retain operation ID"))
+    }
     pub async fn gui_plugin(
         &self,
         id: Ulid,
         request: bbt_proto::gui::PluginRequest,
         origin: crate::mcp::Origin,
     ) -> Result<Vec<bbt_plugin::registry::Entry>> {
+        self.gui_plugin_scoped(id, request, None, origin).await
+    }
+    pub async fn gui_plugin_scoped(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::PluginRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+    ) -> Result<Vec<bbt_plugin::registry::Entry>> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiPlugin(id, request, origin, tx))
+            .send(Command::GuiPlugin(id, request, scope, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -1186,9 +1227,19 @@ impl LogicClient {
         request: bbt_proto::gui::KnowledgeRequest,
         origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::gui::KnowledgeStatus> {
+        self.gui_knowledge_control_scoped(id, request, None, origin)
+            .await
+    }
+    pub async fn gui_knowledge_control_scoped(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::KnowledgeRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::gui::KnowledgeStatus> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiKnowledgeControl(id, request, origin, tx))
+            .send(Command::GuiKnowledgeControl(id, request, scope, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -2538,6 +2589,8 @@ struct Worker {
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
+    effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
+    effect_roots: BTreeSet<String>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     task_import_jobs: tokio::task::JoinSet<()>,
@@ -2692,19 +2745,35 @@ impl Worker {
         // A fresh validated Settings snapshot repairs it through ConfigureRoles.
         let role_catalog = role_catalog_store.load().map_err(|error| error.to_string());
         // The selected support/run namespace keeps custom and test runs private.
-        let plugin_roots = crate::plugins::DiscoveryRoots::new(
+        let mut plugin_roots = crate::plugins::DiscoveryRoots::new(
             config
                 .run_dir
                 .parent()
                 .ok_or_else(|| invalid("run directory has no support parent"))?,
             &config.repository,
         );
-        let plugin_registry = crate::plugins::Registry::with_config(
+        // Only the ordinary account discovers the operator's global plugins.
+        // A custom run namespace or fixture identity keeps explicit roots.
+        if identity.issued_by().is_none()
+            && crate::transport::default_socket_path()
+                .ok()
+                .and_then(|path| path.parent().map(Path::to_path_buf))
+                .is_some_and(|run| run == config.run_dir)
+            && let Some(home) = std::env::var_os("HOME")
+        {
+            plugin_roots = plugin_roots.with_home(Path::new(&home));
+        }
+        let mut plugin_registry = crate::plugins::Registry::with_config(
             account.clone(),
             plugin_roots,
             plugin_config.registry,
         )
         .map_err(|error| invalid(format!("{}: {}", error.code, error.message)))?;
+        if identity.issued_by().is_some() {
+            plugin_registry = plugin_registry
+                .with_private_home()
+                .map_err(|error| invalid(error.to_string()))?;
+        }
         let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
         let workspaces = WorkspaceRouter::new(
             Workspaces::open(WorkspaceConfig {
@@ -2759,6 +2828,8 @@ impl Worker {
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
+            effect_jobs: tokio::task::JoinSet::new(),
+            effect_roots: BTreeSet::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
             task_import_jobs: tokio::task::JoinSet::new(),
@@ -3635,7 +3706,7 @@ impl Worker {
         let journal = self.root_journal(journal, &port);
         match tool::prepare(call) {
             Ok(tool::Request::Fetch(locator)) => {
-                let source = BboxySource::new(&port.index);
+                let source = port.host.source(&port.index, &self.registry);
                 let value = match tool::fetch(&source, locator) {
                     Ok(record) => tool::bounded(
                         call.op_id,
@@ -3647,7 +3718,7 @@ impl Worker {
                 journal.checked(actor, call, value)
             }
             Ok(tool::Request::Search(request)) => {
-                let source = BboxySource::new(&port.index);
+                let source = port.host.source(&port.index, &self.registry);
                 let value = match source.search(request) {
                     Ok(page) => {
                         let empty = page.items.is_empty();
@@ -3662,247 +3733,18 @@ impl Worker {
                 };
                 journal.checked(actor, call, value)
             }
-            Ok(tool::Request::Write(request)) => journal.effect(actor, call, || {
-                self.knowledge_write(&port, actor, call, *request)
-            }),
+            Ok(tool::Request::Commit { .. } | tool::Request::Write(_)) => journal.checked(
+                actor,
+                call,
+                mcp::error(
+                    call.op_id,
+                    "rejected",
+                    "document effects require IO admission",
+                ),
+            ),
             Err(reason) => {
                 journal.checked(actor, call, mcp::error(call.op_id, "rejected", &reason))
             }
-        }
-    }
-    fn knowledge_write(
-        &mut self,
-        port: &WorkspacePort,
-        actor: &crate::mcp::SeatActor,
-        call: &crate::mcp::Call,
-        request: crate::knowledge::data_source::WriteRequest,
-    ) -> serde_json::Value {
-        if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
-            return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
-        }
-        use crate::{
-            knowledge::data_source as d,
-            mcp::{self, knowledge as tool},
-        };
-        if port.host.external() {
-            return mcp::error(
-                call.op_id,
-                "signed_writer_unavailable",
-                "Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write until the host signed-writer bridge is available.",
-            );
-        }
-        let source = BboxySource::new(&port.index);
-        let current = match request.reference.clone() {
-            Some(reference) => match source.fetch(d::FetchRequest { reference }) {
-                Ok(record) => {
-                    if request
-                        .etag
-                        .as_ref()
-                        .is_some_and(|etag| etag != &record.etag)
-                    {
-                        return mcp::error(
-                            call.op_id,
-                            "etag_mismatch",
-                            "etag does not match the current record",
-                        );
-                    }
-                    Some(record)
-                }
-                Err(error) => {
-                    return mcp::error(
-                        call.op_id,
-                        &error.code,
-                        "knowledge update reference is unavailable or stale",
-                    );
-                }
-            },
-            None => None,
-        };
-        let record_id = request.frontmatter["id"]
-            .as_str()
-            .expect("prepared knowledge id")
-            .to_owned();
-        let plan = match tool::write_plan(actor, call, request, current.as_ref()) {
-            Ok(plan) => plan,
-            Err(error) => return mcp::error(call.op_id, &error.code, &error.message),
-        };
-        let authority = crate::mcp::Actor::from(actor);
-        let result = match plan {
-            tool::WritePlan::Report(report) => {
-                let effect = match crate::mcp::work_items::prepare(
-                    &port.index,
-                    &self.registry,
-                    &authority,
-                    &report,
-                ) {
-                    Ok(crate::mcp::work_items::Prepared::Effect(effect)) => effect,
-                    Ok(_) => {
-                        return mcp::error(
-                            call.op_id,
-                            "task_field_protected",
-                            "task result write requires the existing Report transition",
-                        );
-                    }
-                    Err(reason) => return mcp::error(call.op_id, "task_field_protected", &reason),
-                };
-                if !matches!(effect.as_ref(), crate::mcp::work_items::Effect::Task { document, .. }
-                    if current.as_ref().is_some_and(|old| document.id == old.reference.id && document.path == old.reference.path && document.digest == old.reference.digest))
-                {
-                    return mcp::error(
-                        call.op_id,
-                        "stale_reference",
-                        "task changed before Report; fetch it again",
-                    );
-                }
-                let value = self.control_work_item(port, &authority, &report, *effect);
-                if value["isError"] == true {
-                    return value;
-                }
-                if self.scan_workspace(&port.binding).is_err() {
-                    return mcp::error(
-                        call.op_id,
-                        "unknown",
-                        "task Report applied; activity publication pending, inspect original operation",
-                    );
-                }
-                let current_port = match self.workspaces.port(port.binding.clone()) {
-                    Ok(current) => current,
-                    Err(error) => {
-                        return mcp::error(
-                            call.op_id,
-                            "unknown",
-                            &format!("task Report applied; readback unavailable: {error}"),
-                        );
-                    }
-                };
-                let source = BboxySource::new(&current_port.index);
-                let record = source.fresh_record(
-                    &current
-                        .as_ref()
-                        .expect("Report has current task")
-                        .reference
-                        .path,
-                );
-                match record {
-                    Ok(record) => d::WriteResult {
-                        record,
-                        lossy: false,
-                    },
-                    Err(_) => {
-                        return mcp::error(
-                            call.op_id,
-                            "unknown",
-                            "task Report applied; record readback unavailable, never redispatch it",
-                        );
-                    }
-                }
-            }
-            tool::WritePlan::Record(request) => {
-                if request.frontmatter["type"] == "task" {
-                    let document = crate::index::Document {
-                        id: record_id,
-                        path: request
-                            .reference
-                            .as_ref()
-                            .map(|reference| reference.path.as_str())
-                            .or(request.path.as_deref())
-                            .expect("prepared knowledge path")
-                            .to_owned(),
-                        metadata: request.frontmatter.clone(),
-                        body: request.body.clone(),
-                        digest: current
-                            .as_ref()
-                            .map(|old| old.reference.digest.clone())
-                            .unwrap_or_default(),
-                        error: current.as_ref().and_then(|old| old.parse_error.clone()),
-                        links: Vec::new(),
-                    };
-                    if let Err(reason) =
-                        crate::mcp::work_items::authorize(&document, &self.registry, &authority)
-                    {
-                        return mcp::error(call.op_id, "task_field_protected", &reason);
-                    }
-                }
-                let keys = self.identity.keys();
-                if let Some(reason) = keys.signing_hold() {
-                    return mcp::error(
-                        call.op_id,
-                        "held",
-                        &format!("knowledge signing held: {reason}"),
-                    );
-                }
-                let key = match keys.leaf(actor.seat_id, actor.process_generation) {
-                    Ok(key) if keys.ready_issuer().is_some() => key,
-                    _ => {
-                        return mcp::error(
-                            call.op_id,
-                            "held",
-                            "knowledge signing held: identity pending",
-                        );
-                    }
-                };
-                let context = crate::knowledge::WriteContext::seat(
-                    actor.seat_id,
-                    Some(actor.process_generation),
-                    &key,
-                );
-                let source = BboxySource::new(&port.index);
-                if request.reference.is_none() {
-                    match source.resolve(d::ResolveRequest {
-                        locator: call.op_id.to_string(),
-                    }) {
-                        Err(error) if error.code == "not_found" => (),
-                        _ => {
-                            return mcp::error(
-                                call.op_id,
-                                "rejected",
-                                "knowledge create id already exists or cannot be resolved uniquely",
-                            );
-                        }
-                    }
-                }
-                let result = match source.write(*request, &context) {
-                    Ok(result) => result,
-                    Err(error) if error.code == "decision_filename_required" => {
-                        return mcp::error(call.op_id, &error.code, &error.message);
-                    }
-                    Err(error)
-                        if matches!(
-                            error.code.as_str(),
-                            "write_not_confirmed" | "write_applied_result_unavailable"
-                        ) =>
-                    {
-                        return mcp::error(
-                            call.op_id,
-                            "unknown",
-                            "knowledge write outcome is not confirmed; inspect original operation, never redispatch it",
-                        );
-                    }
-                    Err(error) => {
-                        return mcp::error(
-                            call.op_id,
-                            &error.code,
-                            "knowledge write refused before application",
-                        );
-                    }
-                };
-                if self.scan_workspace(&port.binding).is_err() {
-                    return mcp::error(
-                        call.op_id,
-                        "unknown",
-                        "knowledge write applied; activity publication pending, inspect original operation",
-                    );
-                }
-                result
-            }
-        };
-        match serde_json::to_value(result) {
-            Ok(value) => tool::bounded(call.op_id, mcp::success(call.op_id, value), true),
-            Err(_) => mcp::error(
-                call.op_id,
-                "unknown",
-                "knowledge write applied; result serialization unavailable",
-            ),
         }
     }
     fn work_item_call(
@@ -3912,11 +3754,38 @@ impl Worker {
         call: &crate::mcp::Call,
         journal: &crate::mcp::journal::Journal,
     ) -> Result<serde_json::Value> {
+        if call.tool == "artifact_claim" && port.host.external() {
+            let value = match crate::mcp::tools::parse::<crate::mcp::work_items::Claim>(&call.args)
+            {
+                Ok(_) => crate::mcp::error(
+                    call.op_id,
+                    "unsupported_operation",
+                    "Artifact detector reconciliation is not supported by the selected external source.",
+                ),
+                Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
+            };
+            return journal.checked(actor, call, value);
+        }
         if crate::mcp::work_items::mutation(&call.tool) {
+            if self.effect_roots.contains(&port.binding.root_id) {
+                return Ok(crate::mcp::error(
+                    call.op_id,
+                    "provider_busy",
+                    "A document effect is already admitted for this root; no effect admitted.",
+                ));
+            }
             self.workspaces.write_ready(&self.registry, &port.binding)?;
         }
         let port = self.scan_port(&port.binding)?;
-        match crate::mcp::work_items::prepare(&port.index, &self.registry, actor, call) {
+        let source = port.host.source(&port.index, &self.registry);
+        let provider_revision = source
+            .revision()
+            .map_err(|error| invalid(error.to_string()))?;
+        let tasks = crate::mcp::work_items::ProviderTasks(
+            &source,
+            (!port.binding.swarm.is_nil()).then_some(port.binding.swarm),
+        );
+        match crate::mcp::work_items::prepare(&tasks, &self.registry, actor, call) {
             Ok(crate::mcp::work_items::Prepared::Read(value)) => {
                 let value = if call.tool == "task_list"
                     && let Some(seat) = actor.seat()
@@ -3932,7 +3801,7 @@ impl Worker {
                     crate::mcp::success(call.op_id, value),
                     |old| {
                         crate::mcp::work_items::retained_allowed(
-                            &port.index,
+                            &tasks,
                             &self.registry,
                             actor,
                             call,
@@ -3943,7 +3812,7 @@ impl Worker {
             }
             Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
                 journal.effect(actor, call, || {
-                    self.control_work_item(&port, actor, call, *effect)
+                    self.control_work_item(&port, actor, call, *effect, provider_revision)
                 })
             }
             Err(reason) => journal.checked(
@@ -3959,14 +3828,49 @@ impl Worker {
         actor: &crate::mcp::Actor,
         call: &crate::mcp::Call,
         effect: crate::mcp::work_items::Effect,
+        provider_revision: u64,
     ) -> serde_json::Value {
         if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
             return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
+        }
+        if port.host.external() && call.tool == "artifact_claim" {
+            return crate::mcp::error(
+                call.op_id,
+                "unsupported_operation",
+                "Artifact detector reconciliation is not supported by the selected external source.",
+            );
         }
         let mut plan = match crate::mcp::work_items::plan(effect, actor, call) {
             Ok(plan) => plan,
             Err(reason) => return crate::mcp::error(call.op_id, "rejected", &reason),
         };
+        for update in &mut plan.writes {
+            if matches!(
+                update.metadata["type"].as_str(),
+                Some("task" | "bug" | "epic")
+            ) {
+                let assignee = update.metadata["assignee"]
+                    .as_str()
+                    .and_then(|id| id.strip_prefix("seat:").unwrap_or(id).parse::<Ulid>().ok());
+                let swarm = assignee
+                    .and_then(|id| self.registry.get(id).ok())
+                    .map(|seat| seat.swarm)
+                    .unwrap_or(port.binding.swarm);
+                if !swarm.is_nil() {
+                    match self.workspaces.select(&self.registry, swarm, None) {
+                        Ok(target) if target.binding.root_id == port.binding.root_id => (),
+                        _ => {
+                            return crate::mcp::error(
+                                call.op_id,
+                                "task_workspace_mismatch",
+                                "Task assignee must use the captured knowledge workspace; select that context before delegating.",
+                            );
+                        }
+                    }
+                    update.metadata["swarm"] = serde_json::json!(swarm);
+                }
+            }
+        }
         if call.tool == "artifact_claim" {
             if self
                 .workspaces
@@ -4140,27 +4044,39 @@ impl Worker {
             };
             wake_swarms.push(swarm);
         }
-        // Validate every source before the first write of a multi-file claim.
+        // Resolve every update through the same provider epoch before the first effect.
+        let source = port
+            .host
+            .source_at(&port.index, &self.registry, provider_revision);
+        let mut references = Vec::new();
         for update in &plan.writes {
-            match port.index.current(&update.path) {
-                Ok(current) if current.as_ref().map(|d| &d.digest) == update.expected.as_ref() => {}
-                Ok(_) => {
+            use crate::knowledge::data_source as d;
+            match source.resolve(d::ResolveRequest {
+                locator: update.path.clone(),
+            }) {
+                Ok(reference) if update.expected.as_ref() == Some(&reference.digest) => {
+                    references.push(Some(reference))
+                }
+                Err(error) if error.code == "not_found" && update.expected.is_none() => {
+                    references.push(None)
+                }
+                _ => {
                     return crate::mcp::error(
                         call.op_id,
                         "conflict",
                         "document changed before write",
                     );
                 }
-                Err(error) => return crate::mcp::error(call.op_id, "rejected", &error.to_string()),
             }
         }
+        let context = crate::knowledge::WriteContext { author };
         let mut completed = Vec::new();
         let paths: Vec<_> = plan
             .writes
             .iter()
             .map(|w| format!(".bboxy/{}", w.path))
             .collect();
-        for update in plan.writes {
+        for (update, reference) in plan.writes.into_iter().zip(references) {
             let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
             let task_status = (update.metadata["type"] == "task").then(|| {
                 (
@@ -4170,7 +4086,14 @@ impl Worker {
                     update.metadata["status"].as_str().map(str::to_owned),
                 )
             });
-            if port.index.apply_author(update, &author).is_err() {
+            let request = crate::knowledge::data_source::WriteRequest {
+                path: reference.is_none().then_some(update.path),
+                reference,
+                frontmatter: update.metadata,
+                body: update.body,
+                etag: None,
+            };
+            if source.write(request, &context).is_err() {
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",
@@ -6170,26 +6093,7 @@ impl Worker {
         use bbt_proto::gui::SeatControl;
         match command {
             SeatControl::Restart => self.ctl_restart(id, generation, op, origin),
-            SeatControl::AssignTask { scope, task_path } => {
-                let record = self.controlled_seat(id, generation)?;
-                if scope.swarm != record.swarm {
-                    return Err(invalid("task target belongs to another swarm"));
-                }
-                let response = self.gui_task(
-                    op,
-                    bbt_proto::messaging::TaskRequest::Delegate {
-                        task_path,
-                        seat_id: id,
-                        role: None,
-                    },
-                    Some(scope),
-                    origin,
-                )?;
-                if !matches!(response, bbt_proto::messaging::TaskResponse::Applied) {
-                    return Err(invalid("unexpected task assignment response"));
-                }
-                Ok(())
-            }
+            SeatControl::AssignTask { .. } => Err(invalid("task assignment requires document IO dispatch")),
             SeatControl::Role { name } => {
                 let args = serde_json::json!({"seat":id,"generation":generation,"role":name});
                 let notice_origin = self.identity.bind_origin(origin.clone());
@@ -7860,6 +7764,7 @@ impl Worker {
                 workspace.acknowledge_provider_change(revision);
             }
         }
+        self.poll_document_effects();
         while let Some(joined) = self.gui_task_reads.try_join_next() {
             if let Ok(done) = joined {
                 let current = self.workspaces.current(&self.registry, &done.binding);
@@ -8735,25 +8640,22 @@ impl Worker {
             move || {
                 let _permit = permit;
                 let result = (|| -> Result<_> {
-                    let value = match crate::mcp::work_items::prepare(
-                        &port.index,
-                        &registry,
-                        &actor,
-                        &call,
-                    ) {
-                        Ok(crate::mcp::work_items::Prepared::Read(value)) => {
-                            crate::mcp::success(id, value)
-                        }
-                        Ok(_) => return Err(invalid("scheduled task read cannot mutate")),
-                        Err(reason) => crate::mcp::error(id, "rejected", &reason),
-                    };
+                    let source = port.host.source(&port.index, &registry);
+                    let tasks = crate::mcp::work_items::ProviderTasks(
+                        &source,
+                        (!port.binding.swarm.is_nil()).then_some(port.binding.swarm),
+                    );
+                    let value =
+                        match crate::mcp::work_items::prepare(&tasks, &registry, &actor, &call) {
+                            Ok(crate::mcp::work_items::Prepared::Read(value)) => {
+                                crate::mcp::success(id, value)
+                            }
+                            Ok(_) => return Err(invalid("scheduled task read cannot mutate")),
+                            Err(reason) => crate::mcp::error(id, "rejected", &reason),
+                        };
                     let value = journal.checked_authorized(&actor, &call, value, |old| {
                         crate::mcp::work_items::retained_allowed(
-                            &port.index,
-                            &registry,
-                            &actor,
-                            &call,
-                            old,
+                            &tasks, &registry, &actor, &call, old,
                         )
                     })?;
                     crate::mcp::work_items::response(&call.tool, value).map_err(invalid)
@@ -8766,213 +8668,6 @@ impl Worker {
             },
             &self.handle,
         );
-    }
-    fn gui_task(
-        &mut self,
-        id: Ulid,
-        request: bbt_proto::messaging::TaskRequest,
-        scope: Option<bbt_proto::gui::SwarmScope>,
-        origin: crate::mcp::Origin,
-    ) -> Result<bbt_proto::messaging::TaskResponse> {
-        let port = self.gui_workspace(scope)?;
-        let origin = self.identity.bind_origin(origin);
-        let device_id = self.operator_device_for_effect()?;
-        let actor = crate::mcp::Actor::Operator {
-            device_id,
-            door: origin.door,
-            issued_by: origin.issued_by.clone(),
-        };
-        let call = crate::mcp::work_items::call(id, request).map_err(invalid)?;
-        call.validate()?;
-        if crate::mcp::work_items::mutation(&call.tool) {
-            self.identity.operator_signing()?;
-        }
-        let journal = self.root_journal(&self.operator_journal, &port);
-        let result = self.work_item_call(&port, &actor, &call, &journal)?;
-        crate::mcp::work_items::response(&call.tool, result).map_err(invalid)
-    }
-    /// `ctl record write` and `ctl task create` (e2e acceptance §2, #266 addendum): the
-    /// operator's write of an `e2e` record or a new open task, signed by the operator device
-    /// under its issuer and journaled like every operator mutation. Other record types and
-    /// task edits keep their seat and task_* paths.
-    fn gui_record_write(
-        &mut self,
-        id: Ulid,
-        args: serde_json::Value,
-        scope: Option<bbt_proto::gui::SwarmScope>,
-        origin: crate::mcp::Origin,
-    ) -> crate::knowledge::data_source::Result<serde_json::Value> {
-        use crate::{
-            knowledge::data_source as d,
-            mcp::{self, knowledge as tool},
-        };
-        let port = self
-            .gui_workspace(scope)
-            .and_then(|port| self.scan_port(&port.binding))
-            .map_err(|error| workspace_command_error(error.as_ref()))?;
-        self.workspaces
-            .write_ready(&self.registry, &port.binding)
-            .map_err(|error| workspace_command_error(error.as_ref()))?;
-        let origin = self.identity.bind_origin(origin);
-        let device_id = self
-            .identity
-            .status()
-            .map_err(|e| d::CommandError::new("held", e.to_string()))?
-            .device_id
-            .ok_or_else(|| {
-                d::CommandError::new("held", "held: operator device custody is unavailable")
-            })?;
-        let actor = crate::mcp::Actor::Operator {
-            device_id,
-            door: origin.door,
-            issued_by: origin.issued_by.clone(),
-        };
-        let call = crate::mcp::Call {
-            op_id: id,
-            tool: "knowledge_write".into(),
-            args,
-        };
-        call.validate()
-            .map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
-        let journal = self.root_journal(&self.operator_journal, &port);
-        let value = match tool::prepare(&call) {
-            Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
-                self.operator_record_write(&port, &call, *request)
-            }),
-            Ok(_) => unreachable!("knowledge_write prepares a write"),
-            Err(reason) => journal.checked(&actor, &call, mcp::error(id, "rejected", &reason)),
-        }
-        .map_err(|e| d::CommandError::new("unknown", e.to_string()))?;
-        if value["isError"] == true {
-            let error = &value["structuredContent"]["error"];
-            return Err(d::CommandError::new(
-                error["code"].as_str().unwrap_or("unknown"),
-                error["message"].as_str().unwrap_or("record write refused"),
-            ));
-        }
-        Ok(value["structuredContent"].clone())
-    }
-    fn operator_record_write(
-        &mut self,
-        port: &WorkspacePort,
-        call: &crate::mcp::Call,
-        mut request: crate::knowledge::data_source::WriteRequest,
-    ) -> serde_json::Value {
-        if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
-            return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
-        }
-        use crate::{
-            knowledge::data_source as d,
-            mcp::{self, knowledge as tool},
-        };
-        if port.host.external() {
-            return mcp::error(
-                call.op_id,
-                "signed_writer_unavailable",
-                "Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write until the host signed-writer bridge is available.",
-            );
-        }
-        let task = request.frontmatter["type"] == "task";
-        if !task && request.frontmatter["type"] != "e2e" {
-            return mcp::error(
-                call.op_id,
-                "knowledge_write_denied",
-                "operator record write covers e2e records and new tasks",
-            );
-        }
-        let signing = match self.identity.operator_signing() {
-            Ok(signing) => signing,
-            Err(error) => {
-                return mcp::error(
-                    call.op_id,
-                    "held",
-                    &format!("knowledge signing held: {error}"),
-                );
-            }
-        };
-        if task && let Err(error) = tool::operator_task(&mut request, signing.device_id) {
-            return mcp::error(call.op_id, &error.code, &error.message);
-        }
-        let context = crate::knowledge::WriteContext::operator(
-            signing.device_id,
-            signing.issuer.kind,
-            &signing.key,
-        );
-        let source = BboxySource::new(&port.index);
-        match request.reference.clone() {
-            Some(reference) => match source.fetch(d::FetchRequest { reference }) {
-                Ok(record) if record.frontmatter["type"] != "e2e" => {
-                    return mcp::error(
-                        call.op_id,
-                        "type_immutable",
-                        "an update must retain the current record type",
-                    );
-                }
-                Ok(record)
-                    if request
-                        .etag
-                        .as_ref()
-                        .is_some_and(|etag| etag != &record.etag) =>
-                {
-                    return mcp::error(
-                        call.op_id,
-                        "etag_mismatch",
-                        "etag does not match the current record",
-                    );
-                }
-                Ok(_) => (),
-                Err(error) => {
-                    return mcp::error(
-                        call.op_id,
-                        &error.code,
-                        "knowledge update reference is unavailable or stale",
-                    );
-                }
-            },
-            None => match source.resolve(d::ResolveRequest {
-                locator: call.op_id.to_string(),
-            }) {
-                Err(error) if error.code == "not_found" => (),
-                _ => {
-                    return mcp::error(
-                        call.op_id,
-                        "rejected",
-                        "knowledge create id already exists or cannot be resolved uniquely",
-                    );
-                }
-            },
-        }
-        let result = match source.write(request, &context) {
-            Ok(result) => result,
-            Err(error)
-                if matches!(
-                    error.code.as_str(),
-                    "write_not_confirmed" | "write_applied_result_unavailable"
-                ) =>
-            {
-                return mcp::error(
-                    call.op_id,
-                    "unknown",
-                    "knowledge write outcome is not confirmed; inspect original operation, never redispatch it",
-                );
-            }
-            Err(error) => return mcp::error(call.op_id, &error.code, &error.message),
-        };
-        if self.scan_workspace(&port.binding).is_err() {
-            return mcp::error(
-                call.op_id,
-                "unknown",
-                "knowledge write applied; activity publication pending, inspect original operation",
-            );
-        }
-        match serde_json::to_value(result) {
-            Ok(value) => tool::bounded(call.op_id, mcp::success(call.op_id, value), true),
-            Err(_) => mcp::error(
-                call.op_id,
-                "unknown",
-                "knowledge write applied; result serialization unavailable",
-            ),
-        }
     }
     fn gui_spawn(
         &mut self,
@@ -9423,6 +9118,13 @@ impl Worker {
                             self.start_seat_task_import(id, generation, call, reply);
                         } else if crate::knowledge::seat_reads::handles(&call) {
                             self.start_knowledge_read(id, generation, call, reply);
+                        } else if matches!(
+                            call.tool.as_str(),
+                            "knowledge_write" | "knowledge_commit"
+                        ) || crate::mcp::work_items::mutation(&call.tool)
+                            && call.tool != "artifact_claim"
+                        {
+                            self.start_seat_effect(id, generation, call, reply);
                         } else if call.tool == "seat_focus" {
                             self.start_control_focus(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
@@ -9461,14 +9163,45 @@ impl Worker {
                             self.start_gui_task_read(id, request, scope, origin, reply, None);
                             continue;
                         }
-                        let result = self.gui_task(id, request, scope, origin);
-                        let _ = reply.send(result);
+                        match crate::mcp::work_items::call(id, request) {
+                            Ok(call) => self.start_operator_effect(
+                                scope,
+                                origin,
+                                call,
+                                knowledge_effects::EffectReply::Task(reply),
+                            ),
+                            Err(error) => {
+                                let _ = reply.send(Err(invalid(error)));
+                            }
+                        }
+                    }
+                    Command::GuiKnowledgeCommit(id, args, scope, origin, reply) => {
+                        let call = crate::mcp::Call {
+                            op_id: id,
+                            tool: "knowledge_commit".into(),
+                            args,
+                        };
+                        self.start_operator_effect(
+                            scope,
+                            origin,
+                            call,
+                            knowledge_effects::EffectReply::Knowledge(reply),
+                        );
                     }
                     Command::GuiRecordWrite(id, args, scope, origin, reply) => {
-                        let result = self.gui_record_write(id, args, scope, origin);
-                        let _ = reply.send(result);
+                        let call = crate::mcp::Call {
+                            op_id: id,
+                            tool: "knowledge_write".into(),
+                            args,
+                        };
+                        self.start_operator_effect(
+                            scope,
+                            origin,
+                            call,
+                            knowledge_effects::EffectReply::Knowledge(reply),
+                        );
                     }
-                    Command::GuiPlugin(id, request, origin, reply) => {
+                    Command::GuiPlugin(id, request, scope, origin, reply) => {
                         let prepared = (|| -> Result<_> {
                             let origin = self.identity.bind_origin(origin);
                             let device_id = self.operator_device_for_effect()?;
@@ -9486,15 +9219,22 @@ impl Worker {
                                 args: serde_json::to_value(&request)?,
                             };
                             call.validate()?;
-                            Ok((actor, call))
+                            let port = Some(self.gui_workspace(scope)?);
+                            Ok((actor, call, port))
                         })();
                         match prepared {
                             Err(error) => {
                                 let _ = reply.send(Err(error));
                             }
-                            Ok((actor, call)) => {
-                                let plugins = self.plugins.clone();
-                                let journal = self.operator_journal.clone();
+                            Ok((actor, call, port)) => {
+                                let plugins = port.as_ref().map_or_else(
+                                    || self.plugins.clone(),
+                                    |port| port.host.plugin_control(),
+                                );
+                                let journal = port.as_ref().map_or_else(
+                                    || self.operator_journal.clone(),
+                                    |port| self.root_journal(&self.operator_journal, port),
+                                );
                                 self.plugin_jobs.spawn_on(
                                     async move {
                                         let result =
@@ -9506,7 +9246,7 @@ impl Worker {
                             }
                         }
                     }
-                    Command::GuiKnowledgeControl(id, request, origin, reply) => {
+                    Command::GuiKnowledgeControl(id, request, scope, origin, reply) => {
                         let prepared = (|| -> Result<_> {
                             let origin = self.identity.bind_origin(origin);
                             let device_id = self.operator_device_for_effect()?;
@@ -9524,17 +9264,23 @@ impl Worker {
                                 args: serde_json::to_value(&request)?,
                             };
                             call.validate()?;
-                            Ok((actor, call))
+                            let port = Some(self.gui_workspace(scope)?);
+                            Ok((actor, call, port))
                         })();
                         match prepared {
                             Err(error) => {
                                 let _ = reply.send(Err(error));
                             }
-                            Ok((actor, call)) => {
+                            Ok((actor, call, port)) => {
+                                let selected =
+                                    port.as_ref().map(|port| port.binding.root_id.clone());
                                 let roots: Vec<_> = self
                                     .workspaces
                                     .cache
                                     .roots()
+                                    .filter(|root| {
+                                        selected.as_ref().is_none_or(|id| root.root_id() == id)
+                                    })
                                     .map(|root| {
                                         (
                                             root.root_id().to_owned(),
@@ -9543,7 +9289,10 @@ impl Worker {
                                         )
                                     })
                                     .collect();
-                                let journal = self.operator_journal.clone();
+                                let journal = port.as_ref().map_or_else(
+                                    || self.operator_journal.clone(),
+                                    |port| self.root_journal(&self.operator_journal, port),
+                                );
                                 let startup = self.workspaces.cache.startup().root_id().to_owned();
                                 self.plugin_jobs.spawn_on(
                                     async move {
@@ -9839,6 +9588,24 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::SeatControl(id, generation, op, command, origin, reply) => {
+                        if let bbt_proto::gui::SeatControl::AssignTask { scope, task_path } = command {
+                            let prepared = self.controlled_seat(id, generation).and_then(|record| {
+                                if scope.swarm != record.swarm {
+                                    return Err(invalid("task target belongs to another swarm"));
+                                }
+                                crate::mcp::work_items::call(op, bbt_proto::messaging::TaskRequest::Delegate {
+                                    task_path, seat_id: id, role: None,
+                                }).map_err(invalid)
+                            });
+                            match prepared {
+                                Ok(call) => self.start_operator_effect(
+                                    Some(scope), origin, call,
+                                    knowledge_effects::EffectReply::SeatControl { seat: id, generation, reply },
+                                ),
+                                Err(error) => { let _ = reply.send(Err(error)); }
+                            }
+                            continue;
+                        }
                         let result = self.seat_control(id, generation, op, command, origin);
                         let _ = reply.send(result);
                     }

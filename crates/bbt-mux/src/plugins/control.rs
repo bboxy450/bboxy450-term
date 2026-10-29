@@ -116,7 +116,23 @@ impl Control {
                 blocking(move || {
                     let _permit = permit;
                     let value = match result {
-                        Ok(entries) => {
+                        Ok(mut entries) => {
+                            // A successful inspection duplicates the exact trusted Shape.
+                            // Keep its complete schemas once, plus inspection timings/refusal.
+                            // Durable authority/inspection records are never modified here.
+                            for entry in &mut entries {
+                                if let Some(inspection) = entry
+                                    .activation
+                                    .as_mut()
+                                    .and_then(|a| a.inspection.as_mut())
+                                    && inspection.shape.as_ref().is_some_and(|shape| {
+                                        entry.trust.as_ref().and_then(|t| t.shape.as_ref())
+                                            == Some(shape)
+                                    })
+                                {
+                                    inspection.shape = None;
+                                }
+                            }
                             let value = serde_json::to_value(entries)?;
                             if serde_json::to_vec(&value)?.len() > 256 * 1024 {
                                 mcp::error(

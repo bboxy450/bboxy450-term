@@ -132,6 +132,11 @@ impl FixtureAccount {
         Ok(fixture)
     }
 
+    fn checker_root(&self) -> PathBuf {
+        // Match Client::spawn's private TMPDIR for every conformance contract.
+        Path::new(&self.record.data_dir).join("home/tmp/checker-knowledge/.bboxy")
+    }
+
     /// Every data-source fixture has a disposable root, distinct from its private cwd.
     pub(super) fn knowledge_root(&self) -> Result<Option<PathBuf>, Refusal> {
         if !self.record.shape.as_ref().is_some_and(|shape| {
@@ -142,7 +147,7 @@ impl FixtureAccount {
         }) {
             return Ok(None);
         }
-        let root = self._root.path().join("checker-knowledge/.bboxy");
+        let root = self.checker_root();
         if !root.exists() {
             fs::create_dir_all(&root).map_err(|e| failure("fixture_store_unavailable", e))?;
             fs::set_permissions(&root, fs::Permissions::from_mode(0o700))
@@ -160,7 +165,7 @@ impl FixtureAccount {
     pub fn signed_task_fixture(&self) -> Result<String, Refusal> {
         // Existing DSSE writer, an explicitly public fixture key, and a root we
         // own. This is a test vector, never a production task transition/key.
-        let root = self._root.path().join("checker-knowledge/.bboxy");
+        let root = self.checker_root();
         let index = crate::index::Index::open(&root, self.store.clone())
             .map_err(|e| failure("fixture_record_unavailable", e))?;
         let key = ed25519_dalek::SigningKey::from_bytes(&[73; 32]);

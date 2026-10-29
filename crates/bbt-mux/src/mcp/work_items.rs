@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Typed work-item transitions. Markdown is authority; MCP journals attempts.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
 
 use bbt_proto::messaging::{
@@ -19,9 +19,278 @@ use ulid::Ulid;
 
 use super::{Actor, Call, tools};
 use crate::index::{Document, Index, Update};
+use crate::knowledge::{DataSource, data_source as d};
 use crate::registry::{Class, Registry, SeatRecord};
 
 type Checked<T> = std::result::Result<T, String>;
+
+#[cfg(test)]
+#[path = "work_items_inventory_tests.rs"]
+mod inventory_tests;
+
+/// Task policy consumes the selected document source; the host still owns transitions.
+pub(crate) trait TaskDocuments {
+    fn import_root(&self) -> Checked<std::path::PathBuf>;
+    fn locate(&self, locator: &str) -> Checked<Document>;
+    /// Return an authorized page plus one lookahead, with no unrelated body reads.
+    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>>;
+}
+impl TaskDocuments for Index {
+    fn import_root(&self) -> Checked<std::path::PathBuf> {
+        Ok(self.knowledge_root().to_owned())
+    }
+    fn locate(&self, locator: &str) -> Checked<Document> {
+        locate_index(self, locator)
+    }
+    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+        let source = crate::knowledge::BboxySource::new(self);
+        ProviderTasks(&source, None).documents(registry, actor, args)
+    }
+}
+pub(crate) struct ProviderTasks<'a>(pub &'a dyn DataSource, pub Option<Ulid>);
+impl TaskDocuments for ProviderTasks<'_> {
+    fn import_root(&self) -> Checked<std::path::PathBuf> {
+        self.0.import_root().map_err(|error| error.to_string())
+    }
+    fn locate(&self, locator: &str) -> Checked<Document> {
+        let locator = locator.strip_prefix(".bboxy/").unwrap_or(locator);
+        let reference = self
+            .0
+            .resolve(d::ResolveRequest {
+                locator: locator.into(),
+            })
+            .map_err(|e| e.to_string())?;
+        self.fetch(reference)
+    }
+    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+        if self
+            .1
+            .is_some_and(|scope| args.swarm_id.is_some_and(|swarm| swarm != scope))
+        {
+            return Err("task list outside captured swarm".into());
+        }
+        let scope = self
+            .1
+            .or(args.swarm_id)
+            .or_else(|| actor.seat().map(|seat| seat.swarm_id));
+        let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
+        let limit = tools::page_limit(args.limit)?;
+        let mut candidates = BTreeMap::new();
+        if args.unassigned || assignee == Some(None) || scope.is_none() && assignee.is_none() {
+            // Classify wide or unassigned inventory from typed metadata,
+            // then read only the authorized output page, never every body.
+            for kind in ["task", "bug", "epic"] {
+                let mut cursor = None;
+                let mut seen = BTreeSet::new();
+                for page_number in 0..64 {
+                    let page = self
+                        .0
+                        .graph(d::GraphRequest {
+                            scope: d::Scope::Type {
+                                graph: d::DocumentGraph::Markdown,
+                                record_type: kind.into(),
+                            },
+                            cursor,
+                            limit: Some(d::MAX_PAGE),
+                        })
+                        .map_err(|e| e.to_string())?;
+                    for node in page.nodes {
+                        let Some(reference) = node.reference else {
+                            continue;
+                        };
+                        if node.id != reference.id {
+                            return Err("inconsistent task graph identity".into());
+                        }
+                        let metadata = Document {
+                            id: reference.id.clone(),
+                            path: reference.path.clone(),
+                            metadata: node.frontmatter,
+                            body: String::new(),
+                            digest: reference.digest.clone(),
+                            error: None,
+                            links: Vec::new(),
+                        };
+                        if metadata.metadata["type"].as_str().is_some() && !is_task(&metadata) {
+                            continue;
+                        }
+                        // Older graph providers may omit metadata; retain their
+                        // candidates and apply the same checks after fetching.
+                        let complete = metadata.metadata["id"].as_str()
+                            == Some(reference.id.as_str())
+                            && is_task(&metadata)
+                            && metadata.metadata["status"].as_str().is_some();
+                        if !complete || listed(&metadata, registry, actor, args, assignee, scope) {
+                            task_candidate(&mut candidates, reference, args.after)?;
+                        }
+                    }
+                    cursor = page.next;
+                    let Some(next) = &cursor else { break };
+                    if !seen.insert(next.clone()) {
+                        return Err("provider repeated a task-list cursor".into());
+                    }
+                    if page_number == 63 {
+                        return Err("task inventory exceeds its page bound".into());
+                    }
+                }
+            }
+        } else {
+            // Registry membership is authoritative even for legacy tasks with
+            // no swarm frontmatter. Do not scan other assignees' documents.
+            let seats = registry.list().map_err(|e| e.to_string())?;
+            let seats = seats.into_iter().filter(|seat| {
+                scope.is_none_or(|swarm| seat.swarm == swarm)
+                    && assignee.is_none_or(|id| id == Some(seat.id))
+                    && (actor.class() == Class::Oracle
+                        || actor.seat().is_some_and(|actor| actor.seat_id == seat.id))
+            });
+            for seat in seats {
+                // Bundled providers normalize these spellings, while external
+                // providers can expose legacy bare IDs as exact native values.
+                for selector in [format!("seat:{}", seat.id), seat.id.to_string()] {
+                    for kind in ["task", "bug", "epic"] {
+                        let mut cursor = None;
+                        let mut seen = BTreeSet::new();
+                        for page_number in 0..64 {
+                            let page = self
+                                .0
+                                .list(d::ListRequest {
+                                    filter: d::Filter {
+                                        record_type: Some(kind.into()),
+                                        status: args.status.clone(),
+                                        assignee: Some(selector.clone()),
+                                        ..Default::default()
+                                    },
+                                    cursor,
+                                    limit: Some(d::MAX_PAGE),
+                                })
+                                .map_err(|e| e.to_string())?;
+                            for reference in page.items {
+                                task_candidate(&mut candidates, reference, args.after)?;
+                            }
+                            cursor = page.next;
+                            let Some(next) = &cursor else { break };
+                            if !seen.insert(next.clone()) {
+                                return Err("provider repeated a task-list cursor".into());
+                            }
+                            if page_number == 63 {
+                                return Err("task inventory exceeds its page bound".into());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let mut result = Vec::new();
+        for reference in candidates.into_values() {
+            let document = self.fetch(reference)?;
+            if listed(&document, registry, actor, args, assignee, scope) {
+                result.push(document);
+                if result.len() > limit {
+                    break;
+                }
+            }
+        }
+        Ok(result)
+    }
+}
+impl ProviderTasks<'_> {
+    fn fetch(&self, reference: d::RecordRef) -> Checked<Document> {
+        let record = self
+            .0
+            .fetch(d::FetchRequest {
+                reference: reference.clone(),
+            })
+            .map_err(|e| e.to_string())?;
+        if record.reference != reference
+            || record.parse_error.is_some()
+            || reference.id.parse::<Ulid>().is_err()
+            || record.frontmatter["id"].as_str() != Some(reference.id.as_str())
+            || reference.number == Some(0)
+            || record.frontmatter["number"].as_u64() != reference.number
+            || Path::new(&reference.path).is_absolute()
+            || Path::new(&reference.path)
+                .components()
+                .any(|c| !matches!(c, Component::Normal(_)))
+        {
+            return Err("task requires a consistent confined record reference and valid id/type/number frontmatter".into());
+        }
+        let doc = Document {
+            id: reference.id,
+            path: reference.path,
+            metadata: record.frontmatter,
+            body: record.body,
+            digest: reference.digest,
+            error: record.parse_error,
+            links: Vec::new(),
+        };
+        if !is_task(&doc) {
+            return Err("record is not a task".into());
+        }
+        task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
+        Ok(doc)
+    }
+}
+
+fn task_candidate(
+    candidates: &mut BTreeMap<String, d::RecordRef>,
+    reference: d::RecordRef,
+    after: Option<Ulid>,
+) -> Checked<()> {
+    let id = reference
+        .id
+        .parse::<Ulid>()
+        .map_err(|_| "invalid task reference ID")?;
+    if after.is_some_and(|after| id <= after) {
+        return Ok(());
+    }
+    if let Some(old) = candidates.insert(reference.id.clone(), reference.clone())
+        && old != reference
+    {
+        return Err("provider returned conflicting task references".into());
+    }
+    if candidates.len() > 4096 {
+        return Err("task inventory exceeds bounded scope; narrow the source".into());
+    }
+    Ok(())
+}
+
+fn listed(
+    doc: &Document,
+    registry: &Registry,
+    actor: &Actor,
+    args: &List,
+    assignee: Option<Option<Ulid>>,
+    scope: Option<Ulid>,
+) -> bool {
+    is_task(doc)
+        && !scope.is_some_and(|scope| {
+            doc.metadata["swarm"]
+                .as_str()
+                .is_some_and(|value| value != scope.to_string())
+        })
+        && if args.unassigned {
+            doc.error.is_none()
+                && doc.metadata["status"] == "open"
+                && matches!(reference(doc, "assignee"), Ok(None))
+        } else {
+            authorize(doc, registry, actor).is_ok()
+        }
+        && (args.unassigned
+            || scope.is_none_or(|swarm| {
+                reference(doc, "assignee")
+                    .ok()
+                    .flatten()
+                    .and_then(|seat| registry.get(seat).ok())
+                    .is_some_and(|seat| seat.swarm == swarm)
+                    || assignee == Some(None) && actor.seat().is_some()
+            }))
+        && args
+            .status
+            .as_ref()
+            .is_none_or(|status| doc.metadata["status"] == *status)
+        && assignee.is_none_or(|id| reference(doc, "assignee").ok() == Some(id))
+        && args.after.is_none_or(|id| doc.id > id.to_string())
+}
 
 pub(crate) fn handles(tool: &str) -> bool {
     mutation(tool) || matches!(tool, "task_status" | "task_list" | "task_import_context")
@@ -64,7 +333,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_list",
-            "Page authorized tasks; only the account operator may request the read-only open unassigned inventory. Worker results contain only their current assignments.",
+            "Page tasks assigned to seats in the captured swarm; workers see only their current assignments. Only the account operator may request the read-only open unassigned inventory.",
             json!({"unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
@@ -107,7 +376,7 @@ struct Status {
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct List {
+pub(crate) struct List {
     #[serde(default)]
     unassigned: bool,
     swarm_id: Option<Ulid>,
@@ -330,7 +599,7 @@ pub(crate) fn response(tool: &str, result: Value) -> Checked<TaskResponse> {
 }
 
 pub(crate) fn prepare(
-    index: &Index,
+    index: &impl TaskDocuments,
     registry: &Registry,
     actor: &Actor,
     call: &Call,
@@ -350,11 +619,8 @@ pub(crate) fn prepare(
         return Err("task control requires oracle-class authority".into());
     }
     let task = |path: &str| -> Checked<Document> {
-        let doc = locate(index, path)?;
-        if actor.seat().is_none()
-            && call.tool == "task_delegate"
-            && reference(&doc, "assignee")?.is_none()
-        {
+        let doc = index.locate(path)?;
+        if oracle && call.tool == "task_delegate" && reference(&doc, "assignee")?.is_none() {
             let args: Delegate = tools::parse(&call.args)?;
             let target = target(registry, actor, args.seat_id)?;
             let mut scoped = doc.clone();
@@ -372,7 +638,7 @@ pub(crate) fn prepare(
             struct Context {}
             let _: Context = tools::parse(&call.args)?;
             return Ok(Prepared::Read(
-                json!({"expected_root":index.knowledge_root()}),
+                json!({"expected_root":index.import_root()?}),
             ));
         }
         "task_import" => {
@@ -381,7 +647,7 @@ pub(crate) fn prepare(
                 || Path::new(&args.expected_root)
                     .canonicalize()
                     .map_err(|e| e.to_string())?
-                    != index.knowledge_root()
+                    != index.import_root()?
             {
                 return Err("import expected_root differs from selected knowledge root".into());
             }
@@ -469,39 +735,25 @@ pub(crate) fn prepare(
                 return Err("workers list only their assigned tasks".into());
             }
             let limit = tools::page_limit(args.limit)?;
-            let mut docs: Vec<_> = index
-                .documents
-                .values()
-                .filter(|d| {
-                    is_task(d)
-                        && if args.unassigned {
-                            d.error.is_none()
-                                && d.metadata["status"] == "open"
-                                && matches!(reference(d, "assignee"), Ok(None))
-                        } else {
-                            authorize(d, registry, actor).is_ok()
-                        }
-                        && (actor.seat().is_some()
-                            || args.swarm_id.is_none_or(|swarm| {
-                                reference(d, "assignee")
-                                    .ok()
-                                    .flatten()
-                                    .and_then(|seat| registry.get(seat).ok())
-                                    .is_some_and(|seat| seat.swarm == swarm)
-                            }))
-                        && args
-                            .status
-                            .as_ref()
-                            .is_none_or(|s| d.metadata["status"] == *s)
-                        && assignee.is_none_or(|id| reference(d, "assignee").ok() == Some(id))
-                        && args.after.is_none_or(|id| d.id > id.to_string())
-                })
-                .collect();
+            let mut docs = index.documents(registry, actor, &args)?;
+            // Provider selection is an IO optimization, never read authority.
+            docs.retain(|doc| {
+                listed(
+                    doc,
+                    registry,
+                    actor,
+                    &args,
+                    assignee,
+                    args.swarm_id
+                        .or_else(|| actor.seat().map(|seat| seat.swarm_id)),
+                )
+            });
             docs.sort_by(|a, b| a.id.cmp(&b.id));
             let more = docs.len() > limit;
             docs.truncate(limit);
+            let items: Vec<_> = docs.iter().map(projection).collect();
             return Ok(Prepared::Read(
-                json!({"items":docs.iter().map(|d|projection(d)).collect::<Vec<_>>(),"next":if more { docs.last().map(|d|&d.id) } else { None }}),
+                json!({"items":items,"next":if more { docs.last().map(|d|&d.id) } else { None }}),
             ));
         }
         "task_report" => {
@@ -574,7 +826,7 @@ pub(crate) fn prepare(
 }
 
 pub(crate) fn retained_allowed(
-    index: &Index,
+    index: &impl TaskDocuments,
     registry: &Registry,
     actor: &Actor,
     call: &Call,
@@ -586,7 +838,7 @@ pub(crate) fn retained_allowed(
     let allowed = |item: &Value| {
         item["path"]
             .as_str()
-            .and_then(|path| locate(index, path).ok())
+            .and_then(|path| index.locate(path).ok())
             .is_some_and(|doc| authorize(&doc, registry, actor).is_ok())
     };
     match call.tool.as_str() {
@@ -599,7 +851,7 @@ pub(crate) fn retained_allowed(
 }
 
 fn is_task(doc: &Document) -> bool {
-    matches!(doc.metadata["type"].as_str(), Some("task" | "bug"))
+    matches!(doc.metadata["type"].as_str(), Some("task" | "bug" | "epic"))
 }
 fn number_handle(locator: &str) -> Checked<Option<u64>> {
     let Some(digits) = locator.strip_prefix('#') else {
@@ -612,7 +864,7 @@ fn number_handle(locator: &str) -> Checked<Option<u64>> {
         .map(Some)
         .ok_or_else(|| "invalid task number handle".into())
 }
-fn locate(index: &Index, locator: &str) -> Checked<Document> {
+fn locate_index(index: &Index, locator: &str) -> Checked<Document> {
     let doc = if let Some(number) = number_handle(locator)? {
         index
             .by_number(number)

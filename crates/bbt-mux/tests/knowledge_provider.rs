@@ -190,6 +190,7 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         version: bbt_proto::gui::VERSION,
         capability: endpoint.capability,
         action: GuiAction::KnowledgeControl {
+            scope: None,
             id: op,
             request: KnowledgeRequest::Select {
                 root: before.roots[0].id.clone(),

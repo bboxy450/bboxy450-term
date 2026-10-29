@@ -17,7 +17,7 @@ use crate::registry::Class;
 pub(crate) fn handles(tool: &str) -> bool {
     matches!(
         tool,
-        "knowledge_fetch" | "knowledge_search" | "knowledge_write"
+        "knowledge_fetch" | "knowledge_search" | "knowledge_write" | "knowledge_commit"
     )
 }
 pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
@@ -29,26 +29,29 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     write["$defs"] = json!({"RecordRef":contract["$defs"]["RecordRef"]});
     let definition = &mut write;
     definition["additionalProperties"] = json!(false);
+    definition["properties"]
+        .as_object_mut()
+        .unwrap()
+        .remove("signed_record");
     definition["properties"]["op_id"] =
         json!({"type":"string","pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"});
     definition["required"]
         .as_array_mut()
         .unwrap()
         .push(json!("op_id"));
-    let types = if actor.role.class == Class::Oracle {
-        ORACLE_TYPES
+    let type_schema = if actor.role.class == Class::Oracle {
+        json!({"type":"string","minLength":1,"maxLength":128,"pattern":"^\\S+$"})
     } else {
-        WORKER_TYPES
+        json!({"type":"string","enum":WORKER_TYPES})
     };
-    definition["properties"]["frontmatter"]["properties"] =
-        json!({"type":{"type":"string","enum":types}});
+    definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     let write_help = if actor.role.class == Class::Oracle {
         "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. For your assigned task preserve every other field and the body, changing only report.summary, report.commit and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
-    vec![
+    let mut tools = vec![
         json!({"name":"knowledge_fetch","description":"Read a knowledge-root document by path, #N, ID or unambiguous slug, with exact frontmatter, Markdown, etag and confined resource links.",
             "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096}},"required":["locator"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
@@ -60,7 +63,13 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         json!({"name":"knowledge_write","description":write_help,
             "inputSchema":write,"outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-    ]
+    ];
+    if actor.role.class == Class::Oracle {
+        tools.push(json!({"name":"knowledge_commit","description":"Commit only the explicitly named documents through this swarm's selected source. Requires Oracle authority; never pushes.",
+            "inputSchema":{"type":"object","additionalProperties":false,"properties":{"op_id":{"type":"string"},"locators":{"type":"array","minItems":1,"maxItems":32,"items":{"type":"string","minLength":1,"maxLength":4096}},"message":{"type":"string","minLength":1,"maxLength":4096}},"required":["op_id","locators","message"]},
+            "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":false,"idempotentHint":true,"destructiveHint":false,"openWorldHint":false}}));
+    }
+    tools
 }
 
 #[derive(Deserialize)]
@@ -91,6 +100,10 @@ pub(crate) enum Request {
     Fetch(String),
     Search(d::SearchRequest),
     Write(Box<d::WriteRequest>),
+    Commit {
+        locators: Vec<String>,
+        message: String,
+    },
 }
 
 fn permitted(path: &str) -> bool {
@@ -106,6 +119,30 @@ fn permitted(path: &str) -> bool {
 
 pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
     match call.tool.as_str() {
+        "knowledge_commit" => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Commit {
+                locators: Vec<String>,
+                message: String,
+            }
+            let args: Commit = super::tools::parse(&call.args)?;
+            if args.locators.is_empty()
+                || args.locators.len() > 32
+                || args
+                    .locators
+                    .iter()
+                    .any(|s| s.trim().is_empty() || s.len() > 4096)
+                || args.message.trim().is_empty()
+                || args.message.len() > 4096
+            {
+                return Err("commit requires explicit bounded locators and message".into());
+            }
+            Ok(Request::Commit {
+                locators: args.locators,
+                message: args.message,
+            })
+        }
         "knowledge_fetch" => {
             let args: Fetch = super::tools::parse(&call.args)?;
             if args.locator.is_empty() || args.locator.len() > 4096 {
@@ -200,18 +237,8 @@ pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> Result<d::Recor
     Ok(record)
 }
 
-const WORKER_TYPES: &[&str] = &["e2e", "comment", "research", "note", "artifact", "task"];
-const ORACLE_TYPES: &[&str] = &[
-    "e2e",
-    "comment",
-    "research",
-    "note",
-    "artifact",
-    "task",
-    "spec",
-    "decision",
-    "invariant",
-    "proposal",
+const WORKER_TYPES: &[&str] = &[
+    "e2e", "comment", "research", "note", "artifact", "task", "bug", "epic",
 ];
 
 pub(crate) enum WritePlan {
@@ -238,7 +265,9 @@ pub(crate) fn write_plan(
             "an update must retain the current record type",
         ));
     }
-    if !ORACLE_TYPES.contains(&kind)
+    if kind.is_empty()
+        || kind.len() > 128
+        || kind.chars().any(|c| c.is_whitespace() || c.is_control())
         || (actor.role.class == Class::Worker && !WORKER_TYPES.contains(&kind))
     {
         return Err(denied(
@@ -246,7 +275,7 @@ pub(crate) fn write_plan(
             "record type is outside the caller's write table",
         ));
     }
-    if kind == "task" {
+    if matches!(kind, "task" | "bug" | "epic") {
         if actor.role.class == Class::Worker {
             let old = current.ok_or_else(|| {
                 denied(
@@ -320,6 +349,7 @@ pub(crate) fn write_plan(
                 "delegated_by".into(),
                 json!(format!("seat:{}", actor.seat_id)),
             );
+            metadata.insert("swarm".into(), json!(actor.swarm_id));
         }
     } else if kind == "artifact" {
         artifact_fields(

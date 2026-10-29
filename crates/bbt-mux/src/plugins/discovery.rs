@@ -27,6 +27,7 @@ const MAX_ENTRIES: usize = 512;
 /// Explicit roots keep test-account discovery out of the operator's HOME.
 #[derive(Debug, Clone)]
 pub struct DiscoveryRoots {
+    global: Option<PathBuf>,
     application: PathBuf,
     repository: PathBuf,
 }
@@ -34,18 +35,55 @@ pub struct DiscoveryRoots {
 impl DiscoveryRoots {
     pub fn new(app_support: &Path, repository: &Path) -> Self {
         Self {
+            global: None,
             application: app_support.join("plugins"),
             repository: repository.join(".bboxy/plugins"),
         }
     }
 
+    /// Opt in explicitly; isolated/custom accounts never infer the operator's HOME.
+    pub fn with_home(mut self, home: &Path) -> Self {
+        self.global = Some(home.join(".bboxy/plugins"));
+        self
+    }
+
+    pub(super) fn for_repository(&self, repository: &Path) -> Self {
+        Self {
+            repository: repository.join(".bboxy/plugins"),
+            ..self.clone()
+        }
+    }
+
+    /// Account activations from another repository are neither visible nor revoked.
+    pub(super) fn contains(&self, scope: Scope, source: &Path) -> bool {
+        let roots = match scope {
+            Scope::Application => vec![Some(&self.application), self.global.as_ref()],
+            Scope::Repository => vec![Some(&self.repository)],
+        };
+        roots.into_iter().flatten().any(|root| {
+            source.parent()
+                == Some(
+                    root.canonicalize()
+                        .unwrap_or_else(|_| root.clone())
+                        .as_path(),
+                )
+        })
+    }
+
     pub(super) fn scan(&self, only_digest: Option<&str>) -> Result<Vec<Candidate>, Refusal> {
         bbt_rt::assert_not_ui_thread();
         let mut entries = Vec::new();
-        for (scope, root) in [
-            (Scope::Application, &self.application),
-            (Scope::Repository, &self.repository),
-        ] {
+        let mut seen = std::collections::BTreeSet::new();
+        for (scope, root) in self
+            .global
+            .as_ref()
+            .map(|root| (Scope::Application, root))
+            .into_iter()
+            .chain([
+                (Scope::Application, &self.application),
+                (Scope::Repository, &self.repository),
+            ])
+        {
             let metadata = match fs::symlink_metadata(root) {
                 Ok(metadata) => metadata,
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
@@ -57,6 +95,9 @@ impl DiscoveryRoots {
             let root = root
                 .canonicalize()
                 .map_err(|e| failure("plugin_discovery_failed", e))?;
+            if !seen.insert(root.clone()) {
+                continue;
+            }
             for item in fs::read_dir(root).map_err(|e| failure("plugin_discovery_failed", e))? {
                 if entries.len() == MAX_ENTRIES {
                     return Err(failure(

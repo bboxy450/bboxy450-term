@@ -44,20 +44,27 @@ pub(super) struct Client {
 
 impl Client {
     pub fn spawn(fixture: &FixtureAccount, shape: bool) -> Result<Self, Refusal> {
-        Self::spawn_verified(
+        let home = std::path::Path::new(&fixture.record.data_dir).join("home");
+        for directory in [&home, &home.join("tmp")] {
+            std::fs::create_dir_all(directory)
+                .map_err(|e| failure("fixture_store_unavailable", e))?;
+        }
+        Self::spawn_with_home(
             fixture.executable()?,
             std::path::Path::new(&fixture.record.data_dir),
             shape,
             HANDSHAKE,
+            Some(&home),
         )
     }
 
     // Both callers first reread their account authority and verify its pinned copy.
-    pub(super) fn spawn_verified(
+    pub(super) fn spawn_with_home(
         executable: std::path::PathBuf,
         data_dir: &std::path::Path,
         shape: bool,
         shape_timeout: Duration,
+        home: Option<&std::path::Path>,
     ) -> Result<Self, Refusal> {
         let mut command = Command::new(executable);
         command
@@ -68,6 +75,9 @@ impl Client {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .kill_on_drop(true);
+        if let Some(home) = home {
+            command.env("HOME", home).env("TMPDIR", home.join("tmp"));
+        }
         if shape {
             command.arg("--shape");
         }
@@ -283,7 +293,7 @@ impl Client {
             )
         })?;
         let root = fixture.knowledge_root()?;
-        self.initialize_root(shape, root.as_deref(), "bboxy450-plugin-check")
+        self.initialize_parameters(shape, root.as_deref(), "bboxy450-plugin-check", true)
             .await
     }
 
@@ -293,6 +303,16 @@ impl Client {
         shape: &bbt_plugin::shape::Shape,
         root: Option<&std::path::Path>,
         client_name: &str,
+    ) -> Result<(), Refusal> {
+        self.initialize_parameters(shape, root, client_name, false)
+            .await
+    }
+    async fn initialize_parameters(
+        &mut self,
+        shape: &bbt_plugin::shape::Shape,
+        root: Option<&std::path::Path>,
+        client_name: &str,
+        fixture: bool,
     ) -> Result<(), Refusal> {
         let contracts: serde_json::Map<String, Value> = shape
             .systems
@@ -306,9 +326,18 @@ impl Client {
                     .ok_or_else(|| failure("invalid_knowledge_root", "root path must be UTF-8"))?
             );
         }
-        let result = self
-            .request("initialize", params, self.handshake_timeout)
-            .await?;
+        let fixture_bootstrap = fixture && root.is_some() && shape.fixture_bootstrap;
+        if fixture_bootstrap {
+            params["fixture"] = json!({"version":1,"kind":"data_source_conformance"});
+        }
+        // A real disposable GitKB initialization measured 6.077 s (including
+        // its WAL checkpoint). This setup cap never applies to production calls.
+        let budget = if fixture_bootstrap {
+            Duration::from_secs(15)
+        } else {
+            self.handshake_timeout
+        };
+        let result = self.request("initialize", params, budget).await?;
         if !result["protocolVersion"]
             .as_str()
             .is_some_and(|v| VERSIONS.contains(&v))
@@ -364,10 +393,15 @@ impl Client {
             let code = result["structuredContent"]["code"]
                 .as_str()
                 .unwrap_or("unspecified");
+            let message = result["structuredContent"]["message"]
+                .as_str()
+                .filter(|message| !message.is_empty())
+                .map(|message| format!(": {}", message.chars().take(1024).collect::<String>()))
+                .unwrap_or_default();
             return Err(failure(
                 "command_error",
                 format!(
-                    "{name} returned isError ({})",
+                    "{name} returned isError ({}){message}",
                     code.chars().take(256).collect::<String>()
                 ),
             ));

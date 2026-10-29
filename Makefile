@@ -10,6 +10,10 @@ SHELL := /bin/sh
 APP := bboxy450-term
 PROFILE ?= release
 TARGET_DIR ?= target
+GITKB_BIN ?= $(shell command -v git-kb)
+GITKB_SCHEMA ?= crates/bbt-plugin/schemas/data_source-1.0.schema.json
+GITKB_SOURCE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+GITKB_PLUGIN := $(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
 # Each fixture owns real app/PTY/provider processes. Leave fixed provider deadlines
 # for its own scenario rather than unrelated GUI fixture startup.
 SWARM_TEST_THREADS ?= 2
@@ -113,6 +117,13 @@ help:
 	  'make test-notification-copy       Actual native request fields, real waiting/mute and copy mutations' \
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
+	  'make build-gitkb-plugin          Build self-contained GitKB provider, pin installed CLI' \
+	  'make check-gitkb-plugin          Unattended real GitKB private-fixture conformance' \
+	  'make probe-gitkb-harmony         Read-only Harmony resolution and paging timings' \
+	  'make test-harmony-host           Focused plugin, knowledge and Harmony host checks' \
+	  'make test-harmony-host-integration  Focused host integration without mux library suite' \
+	  'make test-harmony-host-gitkb     Real private GitKB host lifecycle integration' \
+	  'make install-gitkb-plugin-local  Install into the explicitly selected workspace' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make smoke-installed             Private smoke of the installed signed app' \
@@ -127,7 +138,8 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2'
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2' \
+	  'GitKB: GITKB_BIN=... GITKB_SCHEMA=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -1060,3 +1072,45 @@ check-terminal-selection:
 test-harness-vocabulary:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
+
+.PHONY: build-gitkb-plugin check-gitkb-plugin install-gitkb-plugin-local
+build-gitkb-plugin:
+	@python3 -I '$(GITKB_SOURCE_DIR)scripts/build-gitkb-plugin.py' --gitkb '$(GITKB_BIN)' --schema '$(abspath $(GITKB_SCHEMA))' --output '$(GITKB_PLUGIN)'
+
+check-gitkb-plugin: build-gitkb-plugin
+	@python3 -I scripts/test-gitkb-plugin.py --plugin '$(abspath $(GITKB_PLUGIN))' --gitkb '$(GITKB_BIN)' --schema '$(abspath $(GITKB_SCHEMA))' --evidence '$(abspath $(TARGET_DIR))/gitkb-plugin-check.json'
+
+.PHONY: probe-gitkb-harmony
+probe-gitkb-harmony: build-gitkb-plugin
+	@test -n '$(PLUGIN_WORKSPACE)' || { echo 'PLUGIN_WORKSPACE is required (explicit local project)' >&2; exit 2; }
+	@python3 -I scripts/probe-gitkb-plugin.py --plugin '$(abspath $(GITKB_PLUGIN))' --workspace '$(PLUGIN_WORKSPACE)' --evidence '$(abspath $(TARGET_DIR))/gitkb-harmony-readonly.json'
+
+install-gitkb-plugin-local: check-gitkb-plugin
+	@test -n '$(PLUGIN_WORKSPACE)' || { echo 'PLUGIN_WORKSPACE is required (explicit local project)' >&2; exit 2; }
+	@python3 -I scripts/install-gitkb-plugin.py '$(abspath $(GITKB_PLUGIN))' --workspace '$(PLUGIN_WORKSPACE)'
+
+.PHONY: test-harmony-host
+test-harmony-host:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --lib --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test plugin_registry --test knowledge_provider --test harmony_host --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-harmony-host-integration test-harmony-host-gitkb
+test-harmony-host-integration:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --test harmony_host --test plugin_registry --test knowledge_provider --test knowledge_views --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-harmony-host-ui
+test-harmony-host-ui:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' settings::registry; \
+	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' ctl::; \
+	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' live::tests
+
+test-harmony-host-gitkb: build-gitkb-plugin
+	@set -eu; . ./scripts/cache-env.sh; \
+	harmony_target=$$(rustc -vV | sed -n 's/^host: //p' | tr '[:lower:]-' '[:upper:]_'); \
+	env "CARGO_TARGET_$${harmony_target}_RUNNER=$(CURDIR)/scripts/run-private-gitkb-host.sh" \
+	BBOXY_GITKB_ADAPTER='$(abspath $(GITKB_PLUGIN))' BBOXY_GITKB_BIN='$(GITKB_BIN)' \
+	cargo test --locked -p bboxy450-mux --test harmony_host --target-dir '$(TARGET_DIR)' real_gitkb_host_lifecycle -- --ignored --exact --nocapture

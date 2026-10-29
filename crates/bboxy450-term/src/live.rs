@@ -450,8 +450,8 @@ enum ActionReply {
     Identity(Ulid),
     Attention(Ulid),
     Knowledge(Ulid),
-    Plugin(Ulid, bool),
-    Root(Ulid),
+    Plugin(Ulid, bool, Option<bbt_proto::gui::SwarmScope>),
+    Root(Ulid, Option<bbt_proto::gui::SwarmScope>),
     Roles(Ulid),
     Swarm(Ulid),
     Swarms(Ulid),
@@ -547,9 +547,13 @@ impl ActionReplies {
                 ActionReply::Attention(*id)
             }
             GuiAction::Identity(call) => ActionReply::Identity(call.id),
-            GuiAction::Knowledge { id, .. } => ActionReply::Knowledge(*id),
-            GuiAction::Plugin { id, request } => ActionReply::Plugin(*id, !request.mutation()),
-            GuiAction::KnowledgeControl { id, .. } => ActionReply::Root(*id),
+            GuiAction::Knowledge { id, .. }
+            | GuiAction::KnowledgeCommit { id, .. }
+            | GuiAction::RecordWrite { id, .. } => ActionReply::Knowledge(*id),
+            GuiAction::Plugin { id, request, scope } => {
+                ActionReply::Plugin(*id, !request.mutation(), *scope)
+            }
+            GuiAction::KnowledgeControl { id, scope, .. } => ActionReply::Root(*id, *scope),
             GuiAction::ConfigureRoles { id, .. } => ActionReply::Roles(*id),
             GuiAction::GetEvents { stream, .. } => ActionReply::Events {
                 stream: stream.clone(),
@@ -563,6 +567,7 @@ impl ActionReplies {
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let independent = match reply {
             GuiReply::SeatControlled{op}=>self.0.iter().position(|r|*r==ActionReply::SeatControl(*op)),
+            GuiReply::Task {op,..} => self.0.iter().position(|r|*r==ActionReply::Task(*op)),
             GuiReply::Swarm{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarm(*op)),
             GuiReply::Swarms{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarms(*op)),
             GuiReply::RolesConfigured { id } => self.0.iter().position(|r| *r == ActionReply::Roles(*id)),
@@ -570,13 +575,13 @@ impl ActionReplies {
                 .0
                 .iter()
                 .position(|r| *r == ActionReply::Knowledge(*op)),
-            GuiReply::KnowledgeControl {op,..} => self.0.iter().position(|r|*r==ActionReply::Root(*op)),
+            GuiReply::KnowledgeControl {op,..} => self.0.iter().position(|r|matches!(r,ActionReply::Root(id,_) if id==op)),
             GuiReply::Plugin { op, .. } => self
                 .0
                 .iter()
-                .position(|r| matches!(r,ActionReply::Plugin(id,_) if id==op)),
+                .position(|r| matches!(r,ActionReply::Plugin(id,_,_) if id==op)),
             GuiReply::Error { op, .. } => self.0.iter().position(
-                |r| matches!(r,ActionReply::SeatControl(id)|ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
+                |r| matches!(r,ActionReply::SeatControl(id)|ActionReply::Task(id)|ActionReply::Knowledge(id)|ActionReply::Plugin(id,_,_)|ActionReply::Root(id,_)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
             ),
             _ => None,
         };
@@ -586,9 +591,10 @@ impl ActionReplies {
         let at = self.0.iter().position(|r| {
             !matches!(
                 r,
-                ActionReply::Knowledge(_)
+                ActionReply::Task(_)
+                    | ActionReply::Knowledge(_)
                     | ActionReply::Plugin(..)
-                    | ActionReply::Root(_)
+                    | ActionReply::Root(..)
                     | ActionReply::Roles(_)
                     | ActionReply::Swarm(_)
                     | ActionReply::Swarms(_)
@@ -1255,7 +1261,21 @@ async fn run_with_control(
         let result:Result<()>=async {
             tokio::select! {
                 changed=commands.workspace.changed()=> {
-                    if changed.is_ok() && let Some(context)=commands.workspace.borrow_and_update().clone() {knowledge_watch.observe(context.enabled);knowledge_watch.bind_scope(context.scope);}
+                    if changed.is_ok() && let Some(context)=commands.workspace.borrow_and_update().clone() {
+                        let previous = knowledge_watch.scope();
+                        knowledge_watch.observe(context.enabled);
+                        knowledge_watch.bind_scope(context.scope);
+                        if previous != knowledge_watch.scope() {
+                            let current=Arc::make_mut(&mut model);
+                            current.plugin_registry=None;current.plugin_scope=None;
+                            current.knowledge_roots=None;current.knowledge_scope=None;
+                            updates.publish(model.clone());
+                            if let Some(scope)=knowledge_watch.scope() {
+                                queue_action(&mut outgoing,GuiAction::Plugin {id:Ulid::new(),scope:Some(scope),request:bbt_proto::gui::PluginRequest::List});
+                                queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:Ulid::new(),scope:Some(scope),request:bbt_proto::gui::KnowledgeRequest::Status});
+                            }
+                        }
+                    }
                 },
                 changed=commands.context.changed()=> {
                     if changed.is_ok() {
@@ -1332,9 +1352,9 @@ async fn run_with_control(
                             queue_action(&mut outgoing,GuiAction::SetAttention {id:*id,seat:*seat,edit:edit.clone()});
                         }
                     },
-                    UiMsg::PluginControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Plugin {id:*id,request:request.clone()}); } },
+                    UiMsg::PluginControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Plugin {id:*id,scope:knowledge_watch.scope(),request:request.clone()}); } },
                     UiMsg::ConfigureRoles {id,catalog}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::ConfigureRoles {id:*id,catalog:catalog.clone()}); } },
-                    UiMsg::KnowledgeControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:*id,request:request.clone()}); } },
+                    UiMsg::KnowledgeControl {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:*id,scope:knowledge_watch.scope(),request:request.clone()}); } },
                     UiMsg::IdentityControl {id,request}=>queue_action(&mut outgoing,GuiAction::Identity(bbt_proto::identity::IdentityCall {id:*id,request:*request})),
                     UiMsg::Input {seat,generation,id,bytes}=> {
                         if return_live(&mut history,&mut model,*seat) {
@@ -1483,7 +1503,7 @@ async fn run_with_control(
                             }
                             if subject=="activity/knowledge-provider" {
                                 knowledge_watch.source_changed();
-                                queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:Ulid::new(),request:bbt_proto::gui::KnowledgeRequest::Status});
+                                queue_action(&mut outgoing,GuiAction::KnowledgeControl {id:Ulid::new(),scope:knowledge_watch.scope(),request:bbt_proto::gui::KnowledgeRequest::Status});
                             }
                             if subject.starts_with("doc/") || subject.starts_with("activity/") || subject.starts_with("task/") {
                                 knowledge_watch.changed();
@@ -1518,19 +1538,20 @@ async fn run_with_control(
                             None
                         }
                         GuiReply::KnowledgeControl {op,status}=> {
-                            if terminal_reply==Some(ActionReply::Root(op)) {
+                            if let Some(ActionReply::Root(expected,scope))=terminal_reply && expected==op && scope==knowledge_watch.scope() {
                                 let previous=model.knowledge_roots.as_ref().and_then(|s|s.roots.first()).map(|r|r.revision);
                                 let next=status.roots.first().map(|r|r.revision);
                                 if previous.is_none() || next>=previous {
                                     if previous != next { knowledge_watch.source_changed(); }
-                                    Arc::make_mut(&mut model).knowledge_roots=Some(Arc::new(status));
+                                    let current=Arc::make_mut(&mut model);current.knowledge_roots=Some(Arc::new(status));current.knowledge_scope=scope;
                                 }
                                 operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::KnowledgeControl);
                             }
                             None
                         },
                         GuiReply::Plugin {op,entries}=> {
-                            if let Some(ActionReply::Plugin(expected,all)) = terminal_reply && expected==op {
+                            if let Some(ActionReply::Plugin(expected,all,scope)) = terminal_reply && expected==op && scope==knowledge_watch.scope() {
+                                Arc::make_mut(&mut model).plugin_scope=scope;
                                 publish_plugins(&mut model, &updates, op, entries, all);
                             }
                             None
@@ -1659,7 +1680,7 @@ async fn run_with_control(
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else { knowledge_watch.response(op,result); }
                             }
-                            let result = if matches!(terminal_reply,Some(ActionReply::SeatControl(_)|ActionReply::Plugin(..)|ActionReply::Root(_))) && (reason.starts_with("unknown:") || reason.contains("outcome unknown")) {
+                            let result = if matches!(terminal_reply,Some(ActionReply::SeatControl(_)|ActionReply::Plugin(..)|ActionReply::Root(..))) && (reason.starts_with("unknown:") || reason.contains("outcome unknown")) {
                                 bboxy450_term::messaging::Reply::Unknown(reason.clone())
                             } else { bboxy450_term::messaging::Reply::Refused(reason.clone()) };
                             operation_reply(&mut model,&updates,op,result);
@@ -2364,6 +2385,13 @@ mod tests {
         for action in &actions {
             replies.sent(action);
         }
+        let input = Ulid::new();
+        replies.sent(&GuiAction::Input {
+            seat: SeatId::from_u128(1),
+            generation: 1,
+            id: input,
+            bytes: vec![b'x'],
+        });
         assert_eq!(
             replies.take(&GuiReply::Messaging {
                 op: task,
@@ -2404,6 +2432,11 @@ mod tests {
             }),
             None,
             "the same terminal reply cannot release another slot"
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Ok { op: input }),
+            Some(ActionReply::Operation),
+            "a held task cannot retain the input reply slot"
         );
         assert_eq!(
             replies.take(&GuiReply::Task {
@@ -4527,6 +4560,7 @@ mod plugin_reply_tests {
         let op = Ulid::new();
         replies.sent(&GuiAction::ListSeats);
         replies.sent(&GuiAction::Plugin {
+            scope: None,
             id: op,
             request: bbt_proto::gui::PluginRequest::List,
         });
@@ -4535,7 +4569,7 @@ mod plugin_reply_tests {
                 op,
                 entries: vec![]
             }),
-            Some(ActionReply::Plugin(op, true))
+            Some(ActionReply::Plugin(op, true, None))
         );
         assert_eq!(
             replies.take(&GuiReply::Seats(vec![])),

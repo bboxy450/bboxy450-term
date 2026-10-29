@@ -56,7 +56,12 @@ pub struct KnowledgeStatus {
 macro_rules! record_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
-            KnowledgeControl { id: Ulid, request: KnowledgeRequest },
+            KnowledgeControl {
+                id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
+                request: KnowledgeRequest,
+            },
             /// An operator-signed knowledge write of an `e2e` record (`ctl record write`, e2e
             /// acceptance §2): `args` is the knowledge_write DTO (`path` or `ref`, `frontmatter`,
             /// `body`, `etag`). Logic signs it with the operator device under its issuer and journals
@@ -66,6 +71,13 @@ macro_rules! record_actions {
                 #[serde(default, skip_serializing_if = "Option::is_none")]
                 scope: Option<SwarmScope>,
                 args: serde_json::Value,
+            },
+            KnowledgeCommit {
+                id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
+                locators: Vec<String>,
+                message: String,
             },
             /// Read-only portable data_source call. `args` is the existing method DTO;
             /// admission is the same operator GUI admission as every other view read.

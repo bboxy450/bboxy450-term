@@ -82,16 +82,6 @@ impl<'a> BboxySource<'a> {
         }
         Ok(bytes)
     }
-    pub(crate) fn fresh_record(&self, path: &str) -> d::Result<d::Record> {
-        let document = self
-            .index
-            .current(path)
-            .map_err(command_io)?
-            .ok_or_else(|| error("not_found", "record disappeared after write"))?;
-        self.fetch(d::FetchRequest {
-            reference: reference(&document),
-        })
-    }
     fn open_resource(root: &Path, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
         use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
         if relative.as_os_str().is_empty()
@@ -386,7 +376,11 @@ impl<'a> BboxySource<'a> {
         })
     }
     fn matches(&self, doc: &Document, filter: &d::Filter) -> d::Result<bool> {
-        for (field, wanted) in [("type", &filter.record_type), ("status", &filter.status)] {
+        for (field, wanted) in [
+            ("type", &filter.record_type),
+            ("status", &filter.status),
+            ("swarm", &filter.swarm),
+        ] {
             if wanted
                 .as_deref()
                 .is_some_and(|value| doc.metadata[field].as_str() != Some(value))
@@ -756,6 +750,20 @@ fn kind(value: d::DocumentGraph) -> GraphKind {
 }
 
 impl DataSource for BboxySource<'_> {
+    fn import_root(&self) -> d::Result<PathBuf> {
+        Ok(self.index.knowledge_root().to_owned())
+    }
+    fn commit(
+        &self,
+        request: d::CommitRequest,
+        _context: &WriteContext<'_>,
+    ) -> d::Result<d::CommitResult> {
+        super::commit::validate(&request)?;
+        for reference in &request.refs {
+            self.document(reference)?;
+        }
+        super::commit::local(self.index.knowledge_root(), request)
+    }
     fn resolve(&self, request: d::ResolveRequest) -> d::Result<d::RecordRef> {
         bbt_rt::assert_not_ui_thread();
         if request.locator.len() > 4096 {

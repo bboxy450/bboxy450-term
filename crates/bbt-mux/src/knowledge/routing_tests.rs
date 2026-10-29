@@ -158,6 +158,44 @@ impl Fixture {
         let journal = self.worker.control_journal(actor.seat_id).unwrap();
         self.worker.knowledge_call(actor, &call, &journal).unwrap()
     }
+    // This routing fixture has no live process owner. Exercise the same captured
+    // source IO and root journal; harmony_host covers real owner admission/jobs.
+    fn write(&mut self, actor: &SeatActor, call: &Call) -> Value {
+        let port = self.ready(actor);
+        let journal = self.worker.control_journal(actor.seat_id).unwrap();
+        let journal = self.worker.root_journal(&journal, &port);
+        let authority = Actor::from(actor);
+        journal
+            .effect(&authority, call, || {
+                let source = port.host.source(&port.index, &self.worker.registry);
+                let mut prepared = crate::knowledge::effects::prepare(
+                    &source,
+                    &self.worker.registry,
+                    actor.swarm_id,
+                    &authority,
+                    call,
+                )
+                .unwrap();
+                let key = self
+                    .worker
+                    .identity
+                    .keys()
+                    .leaf(actor.seat_id, actor.process_generation)
+                    .unwrap();
+                crate::knowledge::effects::apply(
+                    &source,
+                    &mut prepared,
+                    call,
+                    &crate::knowledge::WriteContext::seat(
+                        actor.seat_id,
+                        Some(actor.process_generation),
+                        &key,
+                    ),
+                )
+                .value
+            })
+            .unwrap()
+    }
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
@@ -246,8 +284,7 @@ fn workspace_routing_actor_roots_isolate_colliding_records_tasks_writes_and_repl
         tool: "knowledge_write".into(),
         args: json!({"path":"notes/created.md","frontmatter":{"type":"note","title":"Only first"},"body":"created in first"}),
     };
-    let journal = fixture.worker.control_journal(a.seat_id).unwrap();
-    let written = fixture.worker.knowledge_call(&a, &call, &journal).unwrap();
+    let written = fixture.write(&a, &call);
     assert_ne!(written["isError"], true, "{written}");
     assert!(fixture.first.join(".bboxy/notes/created.md").is_file());
     assert!(!fixture.second.join(".bboxy/notes/created.md").exists());
@@ -308,7 +345,7 @@ fn workspace_routing_actor_roots_isolate_colliding_records_tasks_writes_and_repl
             .unwrap()
             .index
     ));
-    let replay = fixture.worker.knowledge_call(&a, &call, &journal).unwrap();
+    let replay = fixture.write(&a, &call);
     assert_eq!(
         replay["isError"], true,
         "operation replayed into a different root: {replay}"

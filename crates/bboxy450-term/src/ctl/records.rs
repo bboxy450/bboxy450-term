@@ -76,6 +76,7 @@ pub(super) fn changes(client: &mut Client, cursor: String) -> Result<Value, Stri
 /// This noun's rows of [`super::VERBS`], in parse order.
 pub(super) const VERBS: &[super::Verb] = &[
     ("record", "write", "RecordWrite"),
+    ("record", "commit", "KnowledgeCommit"),
     ("record", "fetch", "Knowledge"),
     ("record", "search", "Knowledge"),
     ("record", "changes", "Knowledge"),
@@ -89,6 +90,7 @@ macro_rules! record_commands {
             RecordWrite {
                 source: String,
             },
+            RecordCommit { locators: Vec<String>, message: String, swarm: Option<Ulid> },
             /// Fetch a record through the window's portable knowledge read path.
             RecordFetch {
                 locator: String,
@@ -111,6 +113,17 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     let flags = cx.flags;
     let flag = |name: &str| flags.get(name).cloned();
     Ok(Some(match *words {
+        ["record", "commit", ref locators @ ..] if !locators.is_empty() && locators.len() <= 32 => {
+            Command::RecordCommit {
+                locators: locators.iter().map(|s| s.to_string()).collect(),
+                swarm: cx.swarm,
+                message: flag("message")
+                    .filter(|s| !s.trim().is_empty())
+                    .ok_or_else(|| {
+                        format!("{USAGE_PREFIX}record commit requires --message TEXT")
+                    })?,
+            }
+        }
         ["record", "write", source] => Command::RecordWrite {
             source: source.into(),
         },
@@ -165,6 +178,11 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
         ..
     } = cx;
     let data = match command {
+        Command::RecordCommit {
+            locators,
+            message,
+            swarm,
+        } => client.knowledge_commit(locators, message, swarm)?,
         Command::RecordFetch { locator } => records::fetch(&mut client, locator)?,
         Command::RecordSearch { query, cursor } => records::search(&mut client, query, cursor)?,
         Command::RecordChanges { since } => records::changes(&mut client, since)?,
@@ -177,6 +195,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "record write -",
+    "record commit one --message example",
     "record fetch #1",
     "record search example",
     "record changes --since 0",

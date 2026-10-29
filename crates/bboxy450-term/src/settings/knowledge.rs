@@ -53,7 +53,7 @@ pub(super) fn project(out: &mut Records, status: &KnowledgeStatus) {
         {
             plugin.root = Some(".bboxy".into());
             plugin.health.say=Some(root.refusal.clone().unwrap_or_else(|| match root.process {
-                Some(pid)=>format!("Read-only root provider · last response from process {pid}; setup and external signed writing unavailable"),
+                Some(pid)=>format!("Last response from process {pid}, over stdio"),
                 None=>"Root selected; no stdio response observed".into(),
             }));
         }

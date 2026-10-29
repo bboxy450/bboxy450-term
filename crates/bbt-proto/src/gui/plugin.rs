@@ -39,7 +39,12 @@ impl PluginRequest {
 macro_rules! plugin_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
-            Plugin { id: Ulid, request: PluginRequest },
+            Plugin {
+                id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
+                request: PluginRequest,
+            },
         ] $($head)*);
     };
 }

@@ -6,12 +6,27 @@
   "properties": {
     "name": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 4096
+    },
+    "icon": {
+      "type": ["string", "null"],
+      "maxLength": 4096
+    },
+    "identity": {
+      "type": ["object", "null"],
+      "additionalProperties": true
     },
     "version": {
       "type": "string",
       "minLength": 1
     },
+    "signed_writer": { "type": "boolean" },
+    "fixture_bootstrap": { "type": "boolean" },
     "shape_version": {
       "type": "string",
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"

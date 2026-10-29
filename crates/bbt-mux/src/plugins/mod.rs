@@ -11,6 +11,7 @@ mod client;
 pub(crate) mod control;
 mod discovery;
 mod registry;
+mod signed;
 mod trust;
 
 pub use check::{CheckReport, Measurement, check, measure, run_cli};

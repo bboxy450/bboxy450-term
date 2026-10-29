@@ -22,6 +22,26 @@ updated: "2026-10-24T19:04:44Z"
 ---
 # Plugins
 
+## Harmony GitKB implementation scope (operator, 2026-10-28)
+
+The operator authorized the binary/Shape plugin system's first real GitKB
+provider. Discover global binaries in `~/.bboxy/plugins` and local binaries in
+`<workspace>/.bboxy/plugins`; preserve explicit trust, digest pinning and
+collision refusals. A local binary and its provider selection belong to that
+workspace. Installing it in Harmony must not select GitKB for another swarm.
+
+`bboxy450-term-data_source-gitkb` supplies documents and their task records from
+Harmony's actual GitKB source. Its Shape identifies its human name, description
+and optional icon. Existing descriptors remain valid. The built-in provider
+retains the same document contract and learns from GitKB's typed document,
+stable identity, links and explicit task intent semantics.
+
+The host owns admission, signing, delegation and acceptance. A provider stores
+the admitted document mutation; it does not become a second swarm supervisor.
+Document reads, writes and task transitions use the selected source together.
+Verification uses a private GitKB fixture for mutations and real Harmony for
+read-only evidence; no fixture records enter Harmony's knowledge base.
+
 Owner: Corvin Duskmantle <ARCHITECT>. **Status: draft, logged for later** (operator, 2026-10-23: "i dont want this to derail our work, but lets start planning plugin system … spec it out … then we will talk about it later … for now we have built in shit, and opinionated built in shit"). Nothing here is briefed until the operator and the Architect have talked. Decision [[d41-plugins|#41]] records the direction; [[plugins-sota]] is the research behind it.
 
 ## 0. The operator's design, verbatim and in order

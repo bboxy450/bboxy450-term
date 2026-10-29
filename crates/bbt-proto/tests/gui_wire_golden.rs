@@ -101,7 +101,14 @@ fn optional_swarm_scope_preserves_legacy_bytes_and_accepts_only_host_context_han
         swarm: ulid::Ulid::from(7_u128),
         revision: 0,
     };
-    for family in ["Knowledge", "Task", "RecordWrite"] {
+    for family in [
+        "Knowledge",
+        "Task",
+        "RecordWrite",
+        "KnowledgeCommit",
+        "Plugin",
+        "KnowledgeControl",
+    ] {
         let legacy = lines("action")
             .into_iter()
             .find(|line| serde_json::from_str::<serde_json::Value>(line).unwrap()["kind"] == family)
@@ -119,6 +126,15 @@ fn optional_swarm_scope_preserves_legacy_bytes_and_accepts_only_host_context_han
                 scope: Some(value), ..
             }
             | GuiAction::RecordWrite {
+                scope: Some(value), ..
+            }
+            | GuiAction::KnowledgeCommit {
+                scope: Some(value), ..
+            }
+            | GuiAction::Plugin {
+                scope: Some(value), ..
+            }
+            | GuiAction::KnowledgeControl {
                 scope: Some(value), ..
             } => assert_eq!(value, scope),
             _ => panic!("{family} did not retain its captured scope"),

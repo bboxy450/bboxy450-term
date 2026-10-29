@@ -69,6 +69,7 @@ pub struct Registry {
     root: PathBuf,
     roots: DiscoveryRoots,
     config: RegistryConfig,
+    private_home: Option<PathBuf>,
 }
 
 fn activation_key(id: &str) -> String {
@@ -171,6 +172,21 @@ fn private_dir(path: &Path) -> Result<(), Refusal> {
 }
 
 impl Registry {
+    pub(crate) fn with_private_home(mut self) -> Result<Self, Refusal> {
+        let home = self.root.join("plugin-home");
+        private_dir(&home)?;
+        let temp = home.join("tmp");
+        private_dir(&temp)?;
+        self.private_home = Some(home);
+        Ok(self)
+    }
+    /// Same account authority, with repository observations confined to one workspace.
+    pub fn for_repository(&self, repository: &Path) -> Self {
+        Self {
+            roots: self.roots.for_repository(repository),
+            ..self.clone()
+        }
+    }
     pub(crate) fn account(&self) -> &SqliteStore {
         &self.account
     }
@@ -202,6 +218,7 @@ impl Registry {
             root,
             roots,
             config,
+            private_home: None,
         })
     }
 
@@ -236,6 +253,13 @@ impl Registry {
             })
             .collect::<Result<_, _>>()?
         };
+        let activations: Vec<_> = activations
+            .into_iter()
+            .filter(|activation| {
+                self.roots
+                    .contains(activation.scope, Path::new(&activation.source))
+            })
+            .collect();
         for activation in &activations {
             if !candidates.iter().any(|c| c.id == activation.candidate) {
                 candidates.push(Candidate {
@@ -762,11 +786,12 @@ impl InspectionJob {
                 ));
             }
             let copy = self.registry.verify_copy(record)?;
-            let mut child = Client::spawn_verified(
+            let mut child = Client::spawn_with_home(
                 copy,
                 Path::new(&record.data_dir),
                 true,
                 self.registry.config.descriptor_timeout,
+                self.registry.private_home.as_deref(),
             )?;
             pid = Some(child.pid);
             let value = child.shape().await;

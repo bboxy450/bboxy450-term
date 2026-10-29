@@ -82,7 +82,7 @@ impl Fixture {
         with open({marker},'a') as f: f.write(json.dumps({{'kind':'initialize','pid':os.getpid(),'root':root,'cwd':os.getcwd()}})+'\n')
 {barrier}    elif method == 'tools/call':
         assert not any(key in req['params'].get('arguments',{{}}) for key in ['root','author','signer','device','account'])
-        with open({marker},'a') as f: f.write(json.dumps({{'kind':'call','name':req['params']['name']}})+'\n')"#
+        with open({marker},'a') as f: f.write(json.dumps({{'kind':'call','name':req['params']['name'],'arguments':req['params'].get('arguments',{{}})}})+'\n')"#
         );
         source = source.replace("    method=req.get(\"method\")", &instrumentation);
         fs::write(&f.path, source).unwrap();
@@ -389,6 +389,144 @@ async fn conformance_is_explicit_isolated_digest_bound_and_replayed_without_exec
         observations,
         "replay or cached success executed a child"
     );
+}
+
+// keeps: plugin-host — canonical enrichment is lossless; both write probes require disclosure of actual conversion loss.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn conformance_allows_metadata_enrichment_and_requires_reported_conversion_loss() {
+    for (fault, refused) in [
+        ("write_enrichment", false),
+        ("write_drop_title", true),
+        ("write_drop_title_minor", true),
+        ("write_change_body", true),
+        ("write_reported_loss", false),
+        ("write_identity_guard", false),
+    ] {
+        let f = Fixture::reference(Some(fault), None);
+        let trusted = f.trust_reference().await;
+        let result = f
+            .ask(
+                Ulid::new(),
+                PluginRequest::Check {
+                    candidate: trusted.candidate.id.clone(),
+                },
+            )
+            .await;
+        let checked = if refused {
+            let error = result.unwrap_err().to_string();
+            assert!(
+                error.contains("unreported_conversion_loss"),
+                "{fault}: {error}"
+            );
+            f.ask(Ulid::new(), PluginRequest::List)
+                .await
+                .unwrap()
+                .remove(0)
+        } else {
+            result.unwrap().remove(0)
+        };
+        let report = checked.conformance.as_ref().unwrap();
+        assert_eq!(report.ok, !refused, "{fault}: {report:?}");
+        assert_eq!(
+            report.refusal.as_ref().map(|failure| failure.code.as_str()),
+            refused.then_some("unreported_conversion_loss"),
+            "{fault}"
+        );
+        assert_eq!(checked.state(), State::Disabled);
+        let writes: Vec<_> = f
+            .observations()
+            .into_iter()
+            .filter(|row| row["kind"] == "call" && row["name"] == "data_source_write")
+            .map(|row| row["arguments"].clone())
+            .collect();
+        assert_eq!(
+            writes.len(),
+            2,
+            "{fault}: the original and additive write must both reach the private process"
+        );
+        let ids: Vec<_> = writes
+            .iter()
+            .map(|request| {
+                request["frontmatter"]["id"]
+                    .as_str()
+                    .unwrap()
+                    .parse::<Ulid>()
+                    .unwrap()
+            })
+            .collect();
+        assert_ne!(
+            ids[0], ids[1],
+            "{fault}: creates must not reuse native identity"
+        );
+        assert_ne!(writes[0]["path"], writes[1]["path"]);
+        for request in &writes {
+            assert_eq!(
+                request["frontmatter"]["slug"].as_str(),
+                request["path"]
+                    .as_str()
+                    .map(|path| path.trim_end_matches(".md"))
+            );
+        }
+        eprintln!(
+            "private conversion fixture {fault}: ok={}, refusal={:?}",
+            report.ok, report.refusal
+        );
+    }
+}
+
+// keeps: plugin-host — additive writes retain actual native conflict/deadline diagnostics without inferring a cause.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn additive_write_probe_preserves_backend_code_and_message() {
+    for (fault, code, message) in [
+        (
+            "write_backend_conflict",
+            "source_generation_mismatch",
+            "private native source changed before additive write",
+        ),
+        (
+            "write_backend_deadline",
+            "deadline_exceeded",
+            "private native fixture exceeded its write deadline",
+        ),
+    ] {
+        let f = Fixture::reference(Some(fault), None);
+        let trusted = f.trust_reference().await;
+        let error = f
+            .ask(
+                Ulid::new(),
+                PluginRequest::Check {
+                    candidate: trusted.candidate.id.clone(),
+                },
+            )
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("command_error") && error.contains(code) && error.contains(message),
+            "{fault}: {error}"
+        );
+        let entry = f
+            .ask(Ulid::new(), PluginRequest::List)
+            .await
+            .unwrap()
+            .remove(0);
+        let refusal = entry
+            .conformance
+            .as_ref()
+            .unwrap()
+            .refusal
+            .as_ref()
+            .unwrap();
+        assert_eq!(refusal.code, "command_error");
+        assert!(
+            refusal.message.contains("additive probe refused")
+                && refusal.message.contains(code)
+                && refusal.message.contains(message),
+            "{fault}: {refusal:?}"
+        );
+        assert_eq!(entry.state(), State::Disabled);
+        eprintln!("private additive backend refusal: {refusal:?}");
+    }
 }
 
 // keeps: plugin-host — a conformance refusal is durable and cannot survive a binary replacement as a current result.

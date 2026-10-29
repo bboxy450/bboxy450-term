@@ -1,0 +1,12 @@
+GitKB adapter — bboxy450-term
+https://github.com/bboxy450/bboxy450-term
+
+Uses the installed GitKB CLI as a separately installed, hash-pinned dependency.
+GitKB: https://github.com/gitkb/gitkb-core (MIT; its own notices apply).
+No GitKB source is copied or distributed in this adapter. GitKB's versioned
+document.read.v1/workspace.write.v1 contracts and source-aware workflow informed
+this integration; source references are beside the implementation.
+
+The embedded data_source schema is copied from bboxy450-term:
+crates/bbt-plugin/schemas/data_source-1.0.schema.json, under the project LICENSE.
+The executable embeds that schema so the host's pinned copy needs no side files.

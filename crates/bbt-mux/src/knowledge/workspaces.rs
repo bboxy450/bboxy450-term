@@ -130,7 +130,7 @@ impl Workspace {
             let _ = index.scan()?;
             let host = roots::Host::with_config(
                 index.knowledge_root(),
-                config.plugins.clone(),
+                config.plugins.for_repository(repository),
                 config.runtime.clone(),
                 config.provider,
             )?;

@@ -794,3 +794,67 @@ async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() 
         "deadline_exceeded"
     );
 }
+
+// keeps: plugins — explicit global discovery, repository isolation and account authority.
+#[test]
+fn global_and_legacy_plugins_are_shared_but_repository_activations_do_not_leak_or_revoke() {
+    let h = Harness::new();
+    let local = "bboxy450-term-data_source-local";
+    h.plugin(Scope::Repository, local, shape(&[Contract::DataSource]), "");
+    h.plugin(
+        Scope::Application,
+        "bboxy450-term-data_source-legacy",
+        shape(&[Contract::DataSource]),
+        "",
+    );
+    let trusted = h.trust(local);
+    let home = h.root.path().join("home");
+    fs::create_dir_all(home.join(".bboxy/plugins")).unwrap();
+    let global = home.join(".bboxy/plugins/bboxy450-term-data_source-global");
+    fs::write(&global, "#!/bin/sh\nexit 1\n").unwrap();
+    fs::set_permissions(&global, fs::Permissions::from_mode(0o700)).unwrap();
+    let repo_b = h.root.path().join("repo-b");
+    fs::create_dir_all(repo_b.join(".bboxy/plugins")).unwrap();
+    let other = repo_b.join(".bboxy/plugins").join(local);
+    fs::write(&other, "#!/bin/sh\nexit 2\n").unwrap();
+    fs::set_permissions(&other, fs::Permissions::from_mode(0o700)).unwrap();
+    let registry = Registry::new(
+        h.account.clone(),
+        Harness::roots(h.root.path()).with_home(&home),
+    )
+    .unwrap();
+    let a = registry.refresh().unwrap();
+    assert_eq!(a.len(), 3);
+    assert!(
+        a.iter()
+            .any(|e| e.candidate.source == global.canonicalize().unwrap().to_string_lossy())
+    );
+    let b = registry.for_repository(&repo_b);
+    let entries = b.refresh().unwrap();
+    assert_eq!(entries.len(), 3);
+    assert!(
+        entries
+            .iter()
+            .all(|e| e.candidate.id != trusted.candidate.id)
+    );
+    assert!(entries.iter().all(|e| e.candidate.refusal.is_none()));
+    assert_eq!(
+        b.executable(&trusted.candidate.id).unwrap_err().code,
+        "plugin_not_found"
+    );
+    let retained = registry
+        .refresh()
+        .unwrap()
+        .into_iter()
+        .find(|e| e.candidate.id == trusted.candidate.id)
+        .unwrap();
+    assert_eq!(
+        retained.activation, trusted.activation,
+        "opening B must not revoke A"
+    );
+    assert_eq!(
+        h.registry.refresh().unwrap().len(),
+        2,
+        "private discovery never infers HOME"
+    );
+}

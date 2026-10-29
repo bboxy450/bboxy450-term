@@ -81,8 +81,14 @@ impl Stub {
     }
 }
 impl DataSource for Stub {
-    fn resolve(&self, _: d::ResolveRequest) -> d::Result<d::RecordRef> {
-        self.no("resolve")
+    fn resolve(&self, request: d::ResolveRequest) -> d::Result<d::RecordRef> {
+        self.records
+            .values()
+            .find(|record| {
+                record.reference.id == request.locator || record.reference.path == request.locator
+            })
+            .map(|r| r.reference.clone())
+            .ok_or_else(|| d::CommandError::new("not_found", "missing fixture record"))
     }
     fn fetch(&self, request: d::FetchRequest) -> d::Result<d::Record> {
         self.records
@@ -93,8 +99,32 @@ impl DataSource for Stub {
     fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
         self.no("search")
     }
-    fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
-        self.no("list")
+    fn list(&self, request: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
+        let limit = request.limit.unwrap_or(32);
+        if self.oversize {
+            return Ok(d::Page {
+                items: vec![self.records.values().next().unwrap().reference.clone(); limit + 1],
+                next: None,
+            });
+        }
+        let rows: Vec<_> = self
+            .records
+            .values()
+            .filter(|record| {
+                request.filter.assignee.as_ref().is_none_or(|wanted| {
+                    record.frontmatter["assignee"]
+                        .as_str()
+                        .is_some_and(|actual| {
+                            actual.trim_start_matches("seat:") == wanted.trim_start_matches("seat:")
+                        })
+                })
+            })
+            .map(|r| r.reference.clone())
+            .collect();
+        Ok(d::Page {
+            next: (rows.len() > limit).then(|| "next".into()),
+            items: rows.into_iter().take(limit).collect(),
+        })
     }
     fn links(&self, _: d::FetchRequest) -> d::Result<d::Links> {
         self.no("links")

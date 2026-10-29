@@ -14,9 +14,53 @@ links:
   - { to: "[[d47-decision-nodes]]", rel: model }
   - { to: "[[d48-every-record-has-a-number]]", rel: model }
 created: "2026-10-24T04:28:04Z"
-updated: "2026-10-26T16:10:16Z"
+updated: "2026-10-29T17:28:15Z"
 ---
 # Knowledge base
+
+## Harmony GitKB provider (operator, 2026-10-28)
+
+The first writable external provider is GitKB, installed only under
+`~/work/gitkb/harmony/.bboxy/plugins`. The workspace's provider binding selects
+GitKB for its documents and task records. Other workspaces keep their own
+provider. The adapter uses the actual GitKB backend rather than treating
+checked-out Markdown as a second authoritative database.
+
+Selecting a swarm switches its workspace, plugin/provider binding, documents,
+tasks and message view together. Two roots may contain the same slug without
+sharing identity or data. Full slugs are valid first-class addresses for both
+documents and task delegation; native IDs preserve continuity across renames.
+GitKB text search uses its native all-terms keyword mode and adds current
+workspace documents, including uncommitted tasks, in bounded pages.
+Reads finishing after a swarm switch retain their captured context and cannot
+replace the newly selected swarm's view.
+
+CLI plugin and knowledge-provider controls accept `--swarm` and capture its
+workspace revision. Provider selection retains the supplied operation ID for
+the mutation after its read-only status preflight. Native bulk task import is
+bundled-only; an external selection refuses it before accessing local import
+files and a provider change fences publication.
+
+The explicit `knowledge_commit` action commits only the requested documents in
+the admitted swarm/root. The bundled provider uses local Git with explicit
+document paths; GitKB uses its native document commit operation with explicit
+slugs. A commit has a supplied message, preserves unrelated staged work and
+never pushes. Existing providers without commit support remain valid and
+return a named unavailable-capability refusal. Acceptance inspects the actual
+commit paths and confirms unrelated staged changes remain staged.
+
+Preserve native document identity, numbered addressing, type, frontmatter,
+Markdown, typed links and stale-reference checks. Provider-native identifiers
+remain available as `external_id` when the portable host identifier differs.
+The host admits mutations with its actual signer and enforces task assignment,
+reporting and evidence-gated acceptance. Selecting an external source must
+never silently mutate a bundled `.bboxy` task instead.
+
+This scope supersedes the earlier read-only-first restriction below when the
+signed writer bridge is available. An unsupported operation returns a named
+refusal. Private-fixture acceptance covers create, update, delegate, report and
+accept using the same source, plus proof that local installation/selection do
+not affect another workspace.
 
 Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-24 ([[d257-knowledge-base-first-plugin]]). Operator, verbatim: "so with plugin systems - start designing our document base or knowledge base or knowledge/document graph system as a bundled plugin as is, if you do it well we can then build others and swap them in settings, only that for now, later more will be added!"
 

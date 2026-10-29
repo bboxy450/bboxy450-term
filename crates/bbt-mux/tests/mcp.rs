@@ -2272,7 +2272,7 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
     assert_eq!(worker["tools"].as_array().unwrap().len(), 23);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 42);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 43);
     for tool in [
         "ch_link",
         "ch_pause",
@@ -5615,17 +5615,26 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
             .join(".bboxy/decisions/d999999-wrong.md")
             .exists()
     );
-    for actor in [f.own.id, f.oracle.id] {
-        knowledge_denied(
-            f.mutate(
-                actor,
-                Ulid::new(),
-                "knowledge_write",
-                knowledge_record_args("records/unknown.md", "unlisted-kind", "denied"),
-            ),
-            "knowledge_write_denied",
-        );
-    }
+    knowledge_denied(
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_write",
+            knowledge_record_args("records/unknown-worker.md", "unlisted-kind", "denied"),
+        ),
+        "knowledge_write_denied",
+    );
+    // Harmony addendum: Oracle may create typed native GitKB documents; workers
+    // keep the existing allow-list and every update retains its original type.
+    let custom = knowledge_create(
+        &f,
+        f.oracle.id,
+        "unlisted-kind",
+        "records/unknown.md",
+        "Oracle native custom type",
+    );
+    assert_eq!(custom["frontmatter"]["type"], "unlisted-kind");
+    verify_knowledge_record(&custom);
     let catalogue = f
         .runtime
         .block_on(f.client().control_catalogue(f.own.id, 1))

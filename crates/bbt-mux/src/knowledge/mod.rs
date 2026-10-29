@@ -7,6 +7,8 @@
 //! Knowledge contract inside the IO owner. This is the in-process default;
 //! transport, registry/Settings and foreign providers are later checkpoints.
 mod bboxy;
+pub(crate) mod commit;
+pub(crate) mod effects;
 mod read;
 pub(crate) mod roots;
 pub(crate) mod seat_reads;
@@ -43,6 +45,13 @@ impl<'a> WriteContext<'a> {
 /// will use. Calls run on IO; no method may block the UI thread. Read methods
 /// never acknowledge bus delivery or operator read state.
 pub trait DataSource {
+    /// Native bulk import is available only for the selected bundled source.
+    fn import_root(&self) -> d::Result<std::path::PathBuf> {
+        Err(d::CommandError::new(
+            "unsupported_operation",
+            "Task import requires the selected bundled knowledge source.",
+        ))
+    }
     /// Resolve one unambiguous record; candidates accompany ambiguity errors.
     fn resolve(&self, request: d::ResolveRequest) -> d::Result<d::RecordRef>;
     /// Fetch frontmatter, unrendered Markdown and confined resource links.
@@ -63,6 +72,17 @@ pub trait DataSource {
     ) -> d::Result<d::WriteResult>;
     /// Poll the existing activity log with no new ledger or consumer.
     fn changes_since(&self, request: d::ChangesRequest) -> d::Result<d::Changes>;
+    /// Optional explicit commit. Older providers remain conformant and refuse by name.
+    fn commit(
+        &self,
+        _request: d::CommitRequest,
+        _context: &WriteContext<'_>,
+    ) -> d::Result<d::CommitResult> {
+        Err(d::CommandError::new(
+            "unsupported_operation",
+            "Selected provider does not support explicit document commits.",
+        ))
+    }
 }
 
 /// Existing document-facing host projections, expressed only through the
@@ -192,24 +212,76 @@ pub mod views {
     }
     /// Own-task briefs retain the current limits and explicit truncation flags.
     pub fn orient(source: &dyn DataSource, seat: &SeatRecord) -> d::Result<Value> {
-        let all = catalogue(source, d::DocumentGraph::Markdown)?;
-        let mut selected: Vec<_> = all
-            .nodes
-            .values()
-            .filter(|node| node.reference.is_some() && owned(&node.frontmatter, &node.id, seat))
-            .collect();
-        selected.sort_by_key(|node| &node.reference.as_ref().expect("selected records").path);
-        let mut items = Vec::new();
-        for node in selected.iter().take(8) {
-            let record = source.fetch(d::FetchRequest {
-                reference: node.reference.clone().expect("selected records"),
+        let mut records = BTreeMap::new();
+        let mut cursor = None;
+        let mut seen = BTreeSet::new();
+        let mut more = false;
+        for _ in 0..64 {
+            let limit = 9 - records.len();
+            let page = source.list(d::ListRequest {
+                filter: d::Filter {
+                    assignee: Some(format!("seat:{}", seat.id)),
+                    ..Default::default()
+                },
+                cursor,
+                limit: Some(limit),
             })?;
+            if page.items.len() > limit {
+                return Err(d::CommandError::new(
+                    "invalid_provider_result",
+                    "own-task list ignored its page bound",
+                ));
+            }
+            for reference in page.items {
+                let record = source.fetch(d::FetchRequest {
+                    reference: reference.clone(),
+                })?;
+                if record.reference != reference
+                    || !owned(&record.frontmatter, &record.reference.id, seat)
+                {
+                    return Err(d::CommandError::new(
+                        "invalid_provider_result",
+                        "own-task list returned a foreign or changed record",
+                    ));
+                }
+                records.insert(reference.id, record);
+            }
+            more = page.next.is_some();
+            cursor = page.next;
+            if records.len() >= 9 || cursor.is_none() {
+                break;
+            }
+            if !seen.insert(cursor.clone()) {
+                return Err(d::CommandError::new(
+                    "invalid_cursor",
+                    "own-task list repeated a cursor",
+                ));
+            }
+        }
+        // Legacy registry assignments without an assignee field remain addressable.
+        for task in seat.tasks.iter().take(9) {
+            if records.contains_key(&task.to_string()) {
+                continue;
+            }
+            if let Ok(reference) = source.resolve(d::ResolveRequest {
+                locator: task.to_string(),
+            }) && let Ok(record) = source.fetch(d::FetchRequest { reference })
+                && owned(&record.frontmatter, &record.reference.id, seat)
+            {
+                records.insert(record.reference.id.clone(), record);
+            }
+        }
+        let mut selected: Vec<_> = records.into_values().collect();
+        selected.sort_by(|a, b| a.reference.path.cmp(&b.reference.path));
+        let truncated = more || selected.len() > 8 || seat.tasks.len() > 9;
+        let mut items = Vec::new();
+        for record in selected.iter().take(8) {
             let verify = &record.frontmatter["verify"];
             items.push(json!({"id":record.reference.id,"path":record.reference.path,"title":record.frontmatter["title"].as_str().map(|s|crate::mcp::tools::clip(s,512)),"status":record.frontmatter["status"],
                 "verify":if verify.to_string().len()<=4096 {verify.clone()}else{json!({"unavailable":"verify exceeds card bound; read the document"})},
                 "body":crate::mcp::tools::clip(&record.body,16384),"body_truncated":record.body.len()>16384,"parse_error":record.parse_error}));
         }
-        Ok(json!({"items":items,"truncated":selected.len()>8}))
+        Ok(json!({"items":items,"truncated":truncated}))
     }
     /// Revalidate cached read rows against the current provider snapshot.
     pub(crate) fn retained(
@@ -218,26 +290,25 @@ pub mod views {
         items: &Value,
         allow_virtual: bool,
     ) -> bool {
-        let Ok(all) = catalogue(source, d::DocumentGraph::Markdown) else {
-            return false;
-        };
         items.as_array().is_some_and(|items| {
-            items.iter().all(|item| {
-                if item["path"].is_null() {
-                    return allow_virtual
-                        && (item["id"] == seat.id.to_string()
-                            || item["id"] == format!("seat:{}", seat.id));
-                }
-                item["id"]
-                    .as_str()
-                    .and_then(|id| all.nodes.get(id))
-                    .is_some_and(|node| {
-                        node.reference
-                            .as_ref()
-                            .is_some_and(|reference| item["path"] == reference.path)
-                            && owned(&node.frontmatter, &node.id, seat)
-                    })
-            })
+            items.len() <= d::MAX_PAGE
+                && items.iter().all(|item| {
+                    if item["path"].is_null() {
+                        return allow_virtual
+                            && (item["id"] == seat.id.to_string()
+                                || item["id"] == format!("seat:{}", seat.id));
+                    }
+                    let Some(id) = item["id"].as_str() else {
+                        return false;
+                    };
+                    source
+                        .resolve(d::ResolveRequest { locator: id.into() })
+                        .and_then(|reference| source.fetch(d::FetchRequest { reference }))
+                        .is_ok_and(|record| {
+                            item["path"] == record.reference.path
+                                && owned(&record.frontmatter, &record.reference.id, seat)
+                        })
+                })
         })
     }
 }

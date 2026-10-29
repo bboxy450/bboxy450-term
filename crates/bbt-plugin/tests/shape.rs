@@ -122,26 +122,73 @@ fn unknown_contract_major_missing_method_and_budget_are_named_refusals() {
 // keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant() {
-    use bbt_plugin::{policy::Tier,trust::{Grants,TrustRecord}};
-    let mut value=fixture();
-    value["systems"][0]["tier"]=json!("read");
-    value["systems"][0]["commands"][0]["role_class"]=json!("worker");
-    let shape:Shape=serde_json::from_value(value).unwrap();
-    let mut record=TrustRecord{sha256:"a".repeat(64),source:"fixture".into(),copy:"pinned".into(),data_dir:"data".into(),
-        name:PluginName::parse("bboxy450-term","bboxy450-term-data_source-reference").unwrap(),scope:"fixture".into(),
-        approved_tier:Tier::Read,grants:Grants::default(),shape:None};
-    assert_eq!(record.validate_shape(&shape).unwrap_err().code,"tier_not_approved");
-    record.approved_tier=Tier::Export;record.validate_shape(&shape).unwrap();
-    let value=json!({"name":"repo","version":"1.0","shape_version":"1.0","health_command":"health",
+    use bbt_plugin::{
+        policy::Tier,
+        trust::{Grants, TrustRecord},
+    };
+    let mut value = fixture();
+    value["systems"][0]["tier"] = json!("read");
+    value["systems"][0]["commands"][0]["role_class"] = json!("worker");
+    let shape: Shape = serde_json::from_value(value).unwrap();
+    let mut record = TrustRecord {
+        sha256: "a".repeat(64),
+        source: "fixture".into(),
+        copy: "pinned".into(),
+        data_dir: "data".into(),
+        name: PluginName::parse("bboxy450-term", "bboxy450-term-data_source-reference").unwrap(),
+        scope: "fixture".into(),
+        approved_tier: Tier::Read,
+        grants: Grants::default(),
+        shape: None,
+    };
+    assert_eq!(
+        record.validate_shape(&shape).unwrap_err().code,
+        "tier_not_approved"
+    );
+    record.approved_tier = Tier::Export;
+    record.validate_shape(&shape).unwrap();
+    let value = json!({"name":"repo","version":"1.0","shape_version":"1.0","health_command":"health",
         "systems":[{"contract":"repo_graph","contract_version":"1.0","commands":Contract::RepoGraph.methods().iter().map(|name|json!({
             "name":name,"args":{},"result":{},"timeout_ms":1000})).collect::<Vec<_>>()}],
         "hooks":[{"event":"UserPromptSubmit","phase":"before","budget_ms":5000}]});
-    let shape:Shape=serde_json::from_value(value).unwrap();
-    record.name=PluginName::parse("bboxy450-term","bboxy450-term-repo_graph-reference").unwrap();
-    record.approved_tier=Tier::Read;
-    assert_eq!(record.validate_shape(&shape).unwrap_err().code,"tier_not_approved");
-    record.approved_tier=Tier::Export;
-    assert_eq!(record.validate_shape(&shape).unwrap_err().code,"payload_grant_required");
-    record.grants.payload_events.insert("UserPromptSubmit".into());
+    let shape: Shape = serde_json::from_value(value).unwrap();
+    record.name = PluginName::parse("bboxy450-term", "bboxy450-term-repo_graph-reference").unwrap();
+    record.approved_tier = Tier::Read;
+    assert_eq!(
+        record.validate_shape(&shape).unwrap_err().code,
+        "tier_not_approved"
+    );
+    record.approved_tier = Tier::Export;
+    assert_eq!(
+        record.validate_shape(&shape).unwrap_err().code,
+        "payload_grant_required"
+    );
+    record
+        .grants
+        .payload_events
+        .insert("UserPromptSubmit".into());
     record.validate_shape(&shape).unwrap();
+}
+
+// keeps: plugins — human identity survives descriptor caching without granting authority.
+#[test]
+fn presentation_metadata_round_trips_and_legacy_shapes_still_validate() {
+    let name = PluginName::parse("bboxy450-term", "bboxy450-term-data_source-gitkb").unwrap();
+    let legacy: Shape = serde_json::from_value(fixture()).unwrap();
+    legacy.validate(&name).unwrap();
+    assert!(legacy.description.is_empty());
+    assert!(legacy.icon.is_none());
+    assert!(legacy.identity.is_none());
+    let mut value = fixture();
+    value["name"] = json!("GitKB");
+    value["description"] = json!("Documents and task records for this workspace");
+    value["icon"] = json!("book");
+    value["identity"] = json!({"homepage":"https://gitkb.dev", "provider":"gitkb"});
+    let shape: Shape = serde_json::from_value(value.clone()).unwrap();
+    shape.validate(&name).unwrap();
+    let cached: Shape = serde_json::from_slice(&serde_json::to_vec(&shape).unwrap()).unwrap();
+    assert_eq!(cached, shape);
+    for field in ["name", "description", "icon", "identity"] {
+        assert_eq!(serde_json::to_value(&cached).unwrap()[field], value[field]);
+    }
 }

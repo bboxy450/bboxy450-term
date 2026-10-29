@@ -80,7 +80,11 @@ async fn admitted_plugin_inventory_never_executes_or_trusts_an_unapproved_file()
         let mut bytes = serde_json::to_vec(&GuiRequest {
             version: bbt_proto::gui::VERSION,
             capability: endpoint.capability,
-            action: GuiAction::Plugin { id, request },
+            action: GuiAction::Plugin {
+                scope: None,
+                id,
+                request,
+            },
         })
         .unwrap();
         bytes.push(b'\n');

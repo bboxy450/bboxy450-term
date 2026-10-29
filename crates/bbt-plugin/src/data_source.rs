@@ -131,6 +131,8 @@ pub struct SearchRequest {
 /// Frontmatter filters; absent fields impose no restriction.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Filter {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swarm: Option<String>,
     #[serde(default, rename = "type")]
     pub record_type: Option<String>,
     #[serde(default)]
@@ -268,6 +270,18 @@ pub struct WriteResult {
     pub record: Record,
     pub lossy: bool,
 }
+
+/// Explicit, bounded publication of current records, never a whole workspace.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommitRequest {
+    pub refs: Vec<RecordRef>,
+    pub message: String,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommitResult {
+    pub commit: String,
+    pub committed: Vec<RecordRef>,
+}
 /// Read through the existing activity log, without acknowledging delivery.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChangesRequest {
@@ -334,6 +348,13 @@ pub fn method_schema(method: &str, result: bool) -> Option<Value> {
                 "WriteRequest"
             }
         }
+        "commit" => {
+            if result {
+                "CommitResult"
+            } else {
+                "CommitRequest"
+            }
+        }
         "changes_since" => {
             if result {
                 "Changes"
@@ -344,7 +365,5 @@ pub fn method_schema(method: &str, result: bool) -> Option<Value> {
         _ => return None,
     };
     let schema: Value = serde_json::from_str(SCHEMA).expect("bundled data_source schema");
-    Some(
-        serde_json::json!({"$schema":schema["$schema"], "$defs":schema["$defs"], "$ref":format!("#/$defs/{name}")}),
-    )
+    crate::contracts::standalone_schema(&schema, &format!("#/$defs/{name}"))
 }

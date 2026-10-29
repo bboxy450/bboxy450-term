@@ -965,6 +965,7 @@ async fn gui_session(
     let mut debug_reads = tokio::task::JoinSet::new();
     let mut plugin_jobs = tokio::task::JoinSet::new();
     let mut root_jobs = tokio::task::JoinSet::new();
+    let mut document_jobs = tokio::task::JoinSet::new();
     let mut swarm_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
@@ -1046,23 +1047,47 @@ async fn gui_session(
                         }
                         continue;
                     }
-                    if let GuiAction::Plugin {id,request:query} = request.action {
+                    if matches!(&request.action, GuiAction::RecordWrite {..} | GuiAction::KnowledgeCommit {..} | GuiAction::Task {..}) {
+                        let id = match &request.action {
+                            GuiAction::RecordWrite {id,..} | GuiAction::KnowledgeCommit {id,..} | GuiAction::Task {id,..} => *id,
+                            _ => unreachable!(),
+                        };
+                        if document_jobs.len() >= 8 {
+                            send(&mut write, &GuiReply::Error {op:id,reason:"provider_busy: at most eight active document operations per connection; no effect admitted".into()}).await?;
+                        } else {
+                            let client=client.clone();
+                            let origin=crate::mcp::Origin {door,issued_by:issued_by.clone()};
+                            document_jobs.spawn(async move {
+                                let result: Result<GuiReply> = async {
+                                    match request.action {
+                                        GuiAction::RecordWrite {id,scope,args} => Ok(gui_knowledge_reply(id,client.gui_record_write_scoped(id,args,scope,origin).await)?),
+                                        GuiAction::KnowledgeCommit {id,scope,locators,message} => Ok(gui_knowledge_reply(id,client.gui_knowledge_commit(id,locators,message,scope,origin).await)?),
+                                        GuiAction::Task {id,scope,request} => Ok(GuiReply::Task {op:id,response:client.gui_task_scoped(id,request,scope,origin).await?}),
+                                        _ => unreachable!(),
+                                    }
+                                }.await;
+                                (id,result)
+                            });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::Plugin {id,scope,request:query} = request.action {
                         if plugin_jobs.len() >= 8 {
                             send(&mut write,&GuiReply::Error {op:id,reason:"plugin_busy: at most eight active plugin controls per connection".into()}).await?;
                         } else {
                             let client = client.clone();
                             let origin = crate::mcp::Origin {door,issued_by:issued_by.clone()};
-                            plugin_jobs.spawn(async move { (id,client.gui_plugin(id,query,origin).await) });
+                            plugin_jobs.spawn(async move { (id,client.gui_plugin_scoped(id,query,scope,origin).await) });
                         }
                         continue;
                     }
-                    if let GuiAction::KnowledgeControl {id,request:query} = request.action {
+                    if let GuiAction::KnowledgeControl {id,scope,request:query} = request.action {
                         if root_jobs.len() >= 8 {
                             send(&mut write,&GuiReply::Error {op:id,reason:"knowledge_busy: at most eight root controls per connection".into()}).await?;
                         } else {
                             let client=client.clone();
                             let origin=crate::mcp::Origin {door,issued_by:issued_by.clone()};
-                            root_jobs.spawn(async move { (id,client.gui_knowledge_control(id,query,origin).await) });
+                            root_jobs.spawn(async move { (id,client.gui_knowledge_control_scoped(id,query,scope,origin).await) });
                         }
                         continue;
                     }
@@ -1102,7 +1127,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::ConfigureRoles {id,..}|GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
-                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::SeatControl {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::SeatControl {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::KnowledgeCommit {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -1223,16 +1248,12 @@ async fn gui_session(
                                 }
                                 Ok(GuiReply::Messaging {op:id,response})
                             },
-                            GuiAction::Task {id,scope,request}=> {
-                                Ok(GuiReply::Task {op:id,response:client.gui_task_scoped(id,request,scope,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?})
-                            },
+                            GuiAction::Task {..}=>unreachable!("tasks dispatched independently"),
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
                             GuiAction::Plugin {..}=>unreachable!("plugins were dispatched independently"),
                             GuiAction::KnowledgeControl {..}=>unreachable!("root controls were dispatched independently"),
                             GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
-                            GuiAction::RecordWrite {id,scope,args}=> {
-                                Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write_scoped(id,args,scope,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?})
-                            },
+                            GuiAction::RecordWrite {..}|GuiAction::KnowledgeCommit {..}=>unreachable!("document effects dispatched independently"),
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}
                                 if views.len()>=1024&&!views.contains_key(&seat) {return Err(invalid("watch limit reached"));}
@@ -1388,6 +1409,11 @@ async fn gui_session(
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
                 }
                 _=tokio::time::sleep_until(tokio::time::Instant::from_std(input_at.unwrap_or_else(Instant::now))),if input_at.is_some()=> {}
+                Some(completed)=document_jobs.join_next(),if !document_jobs.is_empty()=> {
+                    let (op,result)=completed.map_err(|e|invalid(format!("document task stopped: {e}; admitted effects remain unknown")))?;
+                    let reply=result.unwrap_or_else(|error|GuiReply::Error {op,reason:error.to_string()});
+                    send(&mut write,&reply).await?;
+                }
                 Some(completed)=plugin_jobs.join_next(),if !plugin_jobs.is_empty()=> {
                     let (op,result)=completed.map_err(|_|invalid("plugin reply task interrupted"))?;
                     let reply=match result {

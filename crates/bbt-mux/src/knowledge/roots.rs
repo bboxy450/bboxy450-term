@@ -61,6 +61,84 @@ struct Inner {
 #[derive(Clone)]
 pub(crate) struct Host(Arc<Inner>);
 
+/// A multi-call operation retains one provider epoch; a swap cannot redirect its effect.
+pub(crate) struct BoundSource<'a> {
+    host: &'a Host,
+    index: &'a Index,
+    registry: &'a crate::registry::Registry,
+    revision: d::Result<u64>,
+}
+impl BoundSource<'_> {
+    pub(crate) fn revision(&self) -> d::Result<u64> {
+        self.revision.clone()
+    }
+    fn call<T>(&self, f: impl FnOnce(&dyn DataSource) -> d::Result<T>) -> d::Result<T> {
+        let revision = self.revision.clone()?;
+        self.host.current(revision)?;
+        let result = self
+            .host
+            .with_source_at(self.index, self.registry, Some(revision), f);
+        self.host.current(revision)?;
+        result
+    }
+}
+impl DataSource for BoundSource<'_> {
+    fn import_root(&self) -> d::Result<PathBuf> {
+        self.call(|source| source.import_root())
+    }
+    fn resolve(&self, r: d::ResolveRequest) -> d::Result<d::RecordRef> {
+        self.call(|s| s.resolve(r))
+    }
+    fn fetch(&self, r: d::FetchRequest) -> d::Result<d::Record> {
+        self.call(|s| s.fetch(r))
+    }
+    fn search(&self, r: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
+        self.call(|s| s.search(r))
+    }
+    fn list(&self, r: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
+        self.call(|s| s.list(r))
+    }
+    fn links(&self, r: d::FetchRequest) -> d::Result<d::Links> {
+        self.call(|s| s.links(r))
+    }
+    fn graph(&self, r: d::GraphRequest) -> d::Result<d::GraphPage> {
+        self.call(|s| s.graph(r))
+    }
+    fn changes_since(&self, r: d::ChangesRequest) -> d::Result<d::Changes> {
+        self.call(|s| s.changes_since(r))
+    }
+    fn write(&self, r: d::WriteRequest, c: &super::WriteContext<'_>) -> d::Result<d::WriteResult> {
+        self.host.current(self.revision.clone()?)?;
+        self.call(|s| s.write(r, c)).map_err(|error| {
+            if error.code == "root_changed" {
+                d::CommandError::new(
+                    "write_not_confirmed",
+                    "Provider changed during write; inspect the original operation before retry.",
+                )
+            } else {
+                error
+            }
+        })
+    }
+    fn commit(
+        &self,
+        r: d::CommitRequest,
+        c: &super::WriteContext<'_>,
+    ) -> d::Result<d::CommitResult> {
+        self.host.current(self.revision.clone()?)?;
+        self.call(|s| s.commit(r, c)).map_err(|error| {
+            if error.code == "root_changed" {
+                d::CommandError::new(
+                    "commit_not_confirmed",
+                    "Provider changed during commit; inspect the original operation before retry.",
+                )
+            } else {
+                error
+            }
+        })
+    }
+}
+
 fn load(db: &Connection, id: &str) -> Result<Option<Binding>> {
     let value: Option<Vec<u8>> = db
         .query_row(
@@ -113,6 +191,34 @@ pub(crate) fn refuse_mounted_disable(
 }
 
 impl Host {
+    pub(crate) fn source_at<'a>(
+        &'a self,
+        index: &'a Index,
+        registry: &'a crate::registry::Registry,
+        revision: u64,
+    ) -> BoundSource<'a> {
+        BoundSource {
+            host: self,
+            index,
+            registry,
+            revision: Ok(revision),
+        }
+    }
+    pub(crate) fn source<'a>(
+        &'a self,
+        index: &'a Index,
+        registry: &'a crate::registry::Registry,
+    ) -> BoundSource<'a> {
+        BoundSource {
+            host: self,
+            index,
+            registry,
+            revision: self.revision().map_err(portable),
+        }
+    }
+    pub(crate) fn plugin_control(&self) -> crate::plugins::control::Control {
+        crate::plugins::control::Control::new(self.0.plugins.clone())
+    }
     pub(crate) fn with_config(
         root: &std::path::Path,
         plugins: Registry,
@@ -265,9 +371,24 @@ impl Host {
         registry: &crate::registry::Registry,
         f: impl FnOnce(&dyn DataSource) -> d::Result<T>,
     ) -> d::Result<T> {
+        self.with_source_at(index, registry, None, f)
+    }
+    fn with_source_at<T>(
+        &self,
+        index: &Index,
+        registry: &crate::registry::Registry,
+        expected: Option<u64>,
+        f: impl FnOnce(&dyn DataSource) -> d::Result<T>,
+    ) -> d::Result<T> {
         bbt_rt::assert_not_ui_thread();
         let (revision, external) = {
             let selected = self.0.selected.lock().map_err(portable)?;
+            if expected.is_some_and(|revision| revision != selected.binding.revision) {
+                return Err(d::CommandError::new(
+                    "root_changed",
+                    "Provider changed before this operation; refresh its source.",
+                ));
+            }
             (selected.binding.revision, selected.external.clone())
         };
         let external = external.map_err(|r| d::CommandError::new(r.code, r.message))?;
@@ -356,7 +477,7 @@ impl Host {
             }],
         })
     }
-    fn select(&self, actor: &Actor, request: &KnowledgeRequest, index: &Index) -> Result<()> {
+    fn select(&self, actor: &Actor, request: &KnowledgeRequest, _index: &Index) -> Result<()> {
         let (root, provider, sha256, revision, force) = match request {
             KnowledgeRequest::Select {
                 root,
@@ -451,13 +572,7 @@ impl Host {
             }
             // No synthetic record in an empty root. Otherwise resolve an actual
             // known path; digests remain provider data, never a swap gate.
-            if let Some(known) = index
-                .documents
-                .keys()
-                .next()
-                .map(String::as_str)
-                .or_else(|| page.items.first().map(|r| r.path.as_str()))
-            {
+            if let Some(known) = page.items.first().map(|r| r.path.as_str()) {
                 let reference = source.resolve(d::ResolveRequest {
                     locator: known.into(),
                 })?;

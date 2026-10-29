@@ -9,6 +9,27 @@
 use super::*;
 use std::time::Instant;
 
+impl Client {
+    pub(super) fn workspace_scope(
+        &mut self,
+        swarm: Option<Ulid>,
+    ) -> Result<Option<bbt_proto::gui::SwarmScope>, String> {
+        let Some(swarm) = swarm else { return Ok(None) };
+        let op = Ulid::new();
+        match self.call(
+            Some(op),
+            GuiAction::SwarmGet { id: op, swarm },
+            |reply| matches!(reply, GuiReply::Swarm { op: id, .. } if *id == op),
+        )? {
+            GuiReply::Swarm { record, .. } => Ok(Some(bbt_proto::gui::SwarmScope {
+                swarm,
+                revision: record.map_or(0, |record| record.revision),
+            })),
+            _ => unreachable!(),
+        }
+    }
+}
+
 fn pending(result: &Result<GuiReply, String>) -> bool {
     match result {
         Err(reason) => reason.starts_with("workspace_pending:"),
@@ -171,6 +192,142 @@ mod tests {
     fn send(door: &mut UnixStream, reply: &GuiReply) {
         serde_json::to_writer(&mut *door, reply).unwrap();
         door.write_all(b"\n").unwrap();
+    }
+    #[test]
+    fn plugin_and_knowledge_controls_capture_swarm_revision_and_retry_only_pending() {
+        use bbt_proto::gui::{KnowledgeRequest, KnowledgeStatus, PluginRequest, SwarmScope};
+        for (noun, verb) in [
+            ("plugin", "list"),
+            ("knowledge", "status"),
+            ("knowledge", "select"),
+        ] {
+            let (_dir, mut client, mut door) = fixture();
+            let swarm = Ulid::new();
+            let op = Ulid::new();
+            client.op = Some(op);
+            let expected = Some(SwarmScope { swarm, revision: 7 });
+            let server = std::thread::spawn(move || {
+                let mut reader = BufReader::new(door.try_clone().unwrap());
+                let first = read(&mut reader);
+                let GuiAction::SwarmGet { id, swarm: actual } = first.action else {
+                    panic!("capture workspace first")
+                };
+                assert_eq!(actual, swarm);
+                send(&mut door, &serde_json::from_value(json!({"kind":"Swarm","body":{"op":id,"record":{"id":swarm,"name":null,"workdir":null,"revision":7}}})).unwrap());
+                if verb == "select" {
+                    let preflight = read(&mut reader);
+                    let GuiAction::KnowledgeControl {
+                        id,
+                        scope,
+                        request: KnowledgeRequest::Status,
+                    } = preflight.action
+                    else {
+                        panic!("provider selection needs a status preflight")
+                    };
+                    assert_ne!(id, op);
+                    assert_eq!(scope, expected);
+                    let status = serde_json::from_value(json!({"roots":[{"id":"root","path":"/private/project/.bboxy","provider":{"id":"native","name":"native","sha256":null},"revision":3,"records":null,"process":null,"refusal":null}],"offered":[{"id":"gitkb","name":"GitKB","sha256":"a".repeat(64)}]})).unwrap();
+                    send(&mut door, &GuiReply::KnowledgeControl { op: id, status });
+                }
+                let admitted = read(&mut reader);
+                let response = match &admitted.action {
+                    GuiAction::Plugin {
+                        id,
+                        scope,
+                        request: PluginRequest::List,
+                    } => {
+                        assert_eq!(*id, op);
+                        assert_eq!(*scope, expected);
+                        GuiReply::Plugin {
+                            op,
+                            entries: vec![],
+                        }
+                    }
+                    GuiAction::KnowledgeControl {
+                        id,
+                        scope,
+                        request: KnowledgeRequest::Status,
+                    } => {
+                        assert_eq!(*id, op);
+                        assert_eq!(*scope, expected);
+                        GuiReply::KnowledgeControl {
+                            op,
+                            status: KnowledgeStatus {
+                                roots: vec![],
+                                offered: vec![],
+                            },
+                        }
+                    }
+                    GuiAction::KnowledgeControl {
+                        id,
+                        scope,
+                        request:
+                            KnowledgeRequest::Select {
+                                root,
+                                provider,
+                                revision,
+                                ..
+                            },
+                    } => {
+                        assert_eq!(*id, op);
+                        assert_eq!(*scope, expected);
+                        assert_eq!(root, "root");
+                        assert_eq!(provider, "gitkb");
+                        assert_eq!(*revision, 3);
+                        GuiReply::KnowledgeControl {
+                            op,
+                            status: KnowledgeStatus {
+                                roots: vec![],
+                                offered: vec![],
+                            },
+                        }
+                    }
+                    _ => panic!("unexpected workspace control"),
+                };
+                send(
+                    &mut door,
+                    &GuiReply::Error {
+                        op,
+                        reason: "workspace_pending: preparing root".into(),
+                    },
+                );
+                assert_eq!(
+                    serde_json::to_value(read(&mut reader)).unwrap(),
+                    serde_json::to_value(admitted).unwrap()
+                );
+                send(&mut door, &response);
+            });
+            let mut args = vec![noun.into(), verb.into()];
+            if verb == "select" {
+                args.extend(["root".into(), "gitkb".into()]);
+            }
+            args.extend(["--swarm".into(), swarm.to_string()]);
+            let parsed = parse_full(&args).unwrap();
+            let mut tail = None;
+            let mut capture_seat = None;
+            let mut message_refusal = None;
+            with_stdout(|out| {
+                let cx = VerbCx {
+                    client,
+                    id: op,
+                    human: false,
+                    endpoint_file: PathBuf::new(),
+                    tail: &mut tail,
+                    capture_seat: &mut capture_seat,
+                    message_refusal: &mut message_refusal,
+                    out,
+                    noun,
+                    verb,
+                };
+                if noun == "plugin" {
+                    plugin::run_verb(cx, parsed.command)
+                } else {
+                    knowledge::run_verb(cx, parsed.command)
+                }
+            })
+            .unwrap();
+            server.join().unwrap();
+        }
     }
     #[test]
     fn pending_workspace_reuses_the_exact_task_operation_and_request() {

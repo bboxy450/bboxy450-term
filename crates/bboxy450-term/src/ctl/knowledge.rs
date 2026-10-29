@@ -15,29 +15,41 @@ pub(super) const VERBS: &[Verb] = &[
 macro_rules! knowledge_commands {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)* "knowledge": [
-            KnowledgeStatus,
-            KnowledgeSelect {root:String,provider:String},
-            KnowledgeReset {root:String},
+            KnowledgeStatus {swarm:Option<Ulid>},
+            KnowledgeSelect {root:String,provider:String,swarm:Option<Ulid>},
+            KnowledgeReset {root:String,swarm:Option<Ulid>},
         ]] $($head)*);
     };
 }
 pub(super) use knowledge_commands;
-pub(super) fn parse(words: &[&str], _cx: &ParseCx) -> Result<Option<Command>, String> {
+pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, String> {
     Ok(match *words {
-        ["knowledge", "status"] => Some(Command::KnowledgeStatus),
+        ["knowledge", "status"] => Some(Command::KnowledgeStatus { swarm: cx.swarm }),
         ["knowledge", "select", root, provider] => Some(Command::KnowledgeSelect {
             root: root.into(),
             provider: provider.into(),
+            swarm: cx.swarm,
         }),
-        ["knowledge", "reset", root] => Some(Command::KnowledgeReset { root: root.into() }),
+        ["knowledge", "reset", root] => Some(Command::KnowledgeReset {
+            root: root.into(),
+            swarm: cx.swarm,
+        }),
         _ => None,
     })
 }
-fn ask(client: &mut Client, request: KnowledgeRequest) -> Result<KnowledgeStatus, String> {
+fn ask(
+    client: &mut Client,
+    request: KnowledgeRequest,
+    scope: Option<bbt_proto::gui::SwarmScope>,
+) -> Result<KnowledgeStatus, String> {
     let op = client.mint();
-    match client.call(
-        Some(op),
-        GuiAction::KnowledgeControl { id: op, request },
+    match client.call_workspace(
+        op,
+        GuiAction::KnowledgeControl {
+            scope,
+            id: op,
+            request,
+        },
         |reply| matches!(reply,GuiReply::KnowledgeControl {op:id,..} if *id==op),
     )? {
         GuiReply::KnowledgeControl { status, .. } => Ok(status),
@@ -54,11 +66,22 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         human,
         ..
     } = cx;
+    let swarm = match &command {
+        Command::KnowledgeStatus { swarm }
+        | Command::KnowledgeReset { swarm, .. }
+        | Command::KnowledgeSelect { swarm, .. } => *swarm,
+        _ => return Err(no_flat_form()),
+    };
+    let scope = client.workspace_scope(swarm)?;
     let request = match command {
-        Command::KnowledgeStatus => KnowledgeRequest::Status,
-        Command::KnowledgeReset { root } => KnowledgeRequest::Reset { root },
-        Command::KnowledgeSelect { root, provider } => {
-            let status = ask(&mut client, KnowledgeRequest::Status)?;
+        Command::KnowledgeStatus { .. } => KnowledgeRequest::Status,
+        Command::KnowledgeReset { root, .. } => KnowledgeRequest::Reset { root },
+        Command::KnowledgeSelect { root, provider, .. } => {
+            // The explicit operation ID belongs to the mutation, not its status preflight.
+            let operation = client.op.take();
+            let status = ask(&mut client, KnowledgeRequest::Status, scope);
+            client.op = operation;
+            let status = status?;
             let root = status
                 .roots
                 .iter()
@@ -78,7 +101,7 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         }
         _ => return Err(no_flat_form()),
     };
-    let status = ask(&mut client, request)?;
+    let status = ask(&mut client, request, scope)?;
     print_reply(out, noun, verb, id, json!({"status":status}), human)
 }
 #[cfg(test)]

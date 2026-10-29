@@ -20,11 +20,19 @@ static REFERENCE: LazyLock<Vec<Plugin>> = LazyLock::new(|| {
 });
 pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
     if let Some(model) = model {
-        match &model.plugin_registry {
+        let scope = match model.ui.window.stage.swarm {
+            Some(s) => model.swarm_scope(s).ok().map(Some),
+            None => Some(None),
+        };
+        match model
+            .plugin_registry
+            .as_ref()
+            .filter(|_| Some(model.plugin_scope) == scope)
+        {
             Some(entries) => {
                 out.plugins = entries.iter().map(plugin).collect();
                 out.plugin_controls = true;
-                out.plugin_notice = Some("Production account registry. Trust pins one binary at its minimum tier with no additional grants; enable is separate. Run ctl plugin check before choosing a Knowledge provider. Setup, hooks and external signed writing remain unavailable.".into());
+                out.plugin_notice = Some("Workspace plugin registry. Trust pins one binary at its minimum tier; enable is separate. Run ctl plugin check before choosing a Knowledge provider.".into());
             }
             None => {
                 out.plugins.clear();
@@ -74,7 +82,15 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
     if let Some(model) = model {
         // A pending live snapshot cannot assert which provider is active.
         out.knowledge = Knowledge::default();
-        if let Some(status) = model.knowledge_roots.as_deref() {
+        let scope = match model.ui.window.stage.swarm {
+            Some(s) => model.swarm_scope(s).ok().map(Some),
+            None => Some(None),
+        };
+        if let Some(status) = model
+            .knowledge_roots
+            .as_deref()
+            .filter(|_| Some(model.knowledge_scope) == scope)
+        {
             super::knowledge::project(out, status);
         }
     }
@@ -113,11 +129,13 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
             state,
             State::Untrusted | State::NeedsRetrust | State::Disabled | State::Enabled
         ) && refusal.is_none(),
-        name: std::path::Path::new(&entry.candidate.source)
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into_owned(),
+        name: shape.map(|shape| shape.name.clone()).unwrap_or_else(|| {
+            std::path::Path::new(&entry.candidate.source)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned()
+        }),
         contract: Contract {
             name: named.map_or("unknown", |n| n.system.name()).into(),
             version: named.map_or("unknown", |n| n.system.version()).into(),
@@ -524,5 +542,63 @@ mod tests {
         assert!(
             matches!(requests.issue(&model,first).unwrap(),Some(crate::cockpit::UiMsg::PluginControl {id:next,..}) if next!=id)
         );
+    }
+    // keeps: workspace context — old provider and plugin snapshots disappear on a switch.
+    #[test]
+    fn settings_plugin_and_root_snapshots_are_fenced_by_swarm_and_revision() {
+        use bbt_proto::gui::{KnowledgeProvider, KnowledgeRoot, KnowledgeStatus, SwarmScope};
+        let a = bbt_ui_model::SwarmId::from_u128(1);
+        let b = bbt_ui_model::SwarmId::from_u128(2);
+        let mut model = crate::model::Model { swarm_metadata_loaded: true, ..Default::default() };
+        model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .push(bbt_ui_model::Swarm::new(a, "A", vec![]));
+        model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .push(bbt_ui_model::Swarm::new(b, "B", vec![]));
+        model.ui.window.stage.swarm = Some(a);
+        model.plugin_scope = Some(SwarmScope {
+            swarm: bbt_mux::Ulid(1),
+            revision: 0,
+        });
+        model.knowledge_scope = model.plugin_scope;
+        model.plugin_registry = Some(std::sync::Arc::new(vec![entry(None)]));
+        model.knowledge_roots = Some(std::sync::Arc::new(KnowledgeStatus {
+            roots: vec![KnowledgeRoot {
+                id: "a".into(),
+                path: "/private/a/.bboxy".into(),
+                provider: KnowledgeProvider {
+                    id: "source-a".into(),
+                    name: "A".into(),
+                    sha256: None,
+                },
+                revision: 1,
+                records: Some(1),
+                process: None,
+                refusal: None,
+            }],
+            offered: vec![],
+        }));
+        let mut visible = Records::default();
+        project(&mut visible, Some(&model));
+        assert_eq!(visible.plugins.len(), 2); // Selected source plus the bundled provider row.
+        assert_eq!(visible.knowledge.roots.len(), 1);
+        model.ui.window.stage.swarm = Some(b);
+        let mut switched = Records::default();
+        project(&mut switched, Some(&model));
+        assert!(switched.plugins.is_empty());
+        assert!(switched.knowledge.roots.is_empty());
+        model.ui.window.stage.swarm = Some(a);
+        model.swarm_metadata_pending.insert(a);
+        let mut pending = Records::default();
+        project(&mut pending, Some(&model));
+        assert!(pending.plugins.is_empty());
+        assert!(pending.knowledge.roots.is_empty());
     }
 }

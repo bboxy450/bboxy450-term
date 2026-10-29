@@ -211,13 +211,20 @@ async fn data_call(
         "argument_schema_mismatch",
     )?;
     let budget = Duration::from_millis(command.timeout_ms).min(client.call_limit());
-    let original_args = args.clone();
     let result = client.call(&wire, args.clone(), budget).await?;
-    let mut extended = args;
+    let mut extended = args.clone();
     // A stateful create cannot be replayed at the same path. Probe additive
     // fields on a second private record; retain the real path-exists guard.
     if method == "write" && extended.get("ref").is_none_or(Value::is_null) {
         extended["path"] = json!("p0-conformance-minor.md");
+        if let Some(fields) = extended["frontmatter"].as_object_mut() {
+            if let Some(id) = fields.get_mut("id") {
+                *id = json!(crate::Ulid::new());
+            }
+            if let Some(slug) = fields.get_mut("slug") {
+                *slug = json!("p0-conformance-minor");
+            }
+        }
     }
     extended["p0_future_minor_field"] = json!({"ignore":true});
     validate(&command.args, &extended, "unknown_field_rejected")?;
@@ -226,17 +233,24 @@ async fn data_call(
         &extended,
         "unknown_field_rejected",
     )?;
-    let extended_result = client.call(&wire, extended, budget).await.map_err(|e| {
-        if e.code == "command_error" {
-            failure(
-                "unknown_field_rejected",
-                format!("{wire} rejected an additive argument"),
-            )
-        } else {
-            e
-        }
-    })?;
-    for value in [&result, &extended_result] {
+    let extended_result = client
+        .call(&wire, extended.clone(), budget)
+        .await
+        .map_err(|e| {
+            if e.code == "command_error" {
+                failure(
+                    if method == "write" {
+                        "command_error"
+                    } else {
+                        "unknown_field_rejected"
+                    },
+                    format!("{wire} additive probe refused: {}", e.message),
+                )
+            } else {
+                e
+            }
+        })?;
+    for (request, value) in [(&args, &result), (&extended, &extended_result)] {
         validate(
             &contract.method_schema(method, true).expect("known result"),
             value,
@@ -256,8 +270,11 @@ async fn data_call(
         typed_data_result(method, &host_extension)?;
         if method == "write"
             && value["lossy"] != true
-            && (value["record"]["frontmatter"] != original_args["frontmatter"]
-                || value["record"]["body"] != original_args["body"])
+            && (request["frontmatter"].as_object().is_none_or(|fields| {
+                fields
+                    .iter()
+                    .any(|(key, field)| value["record"]["frontmatter"].get(key) != Some(field))
+            }) || value["record"]["body"] != request["body"])
         {
             return Err(failure(
                 "unreported_conversion_loss",
@@ -498,20 +515,10 @@ async fn exercise(
             ("changes_since", json!({"cursor":"0","limit":1})),
             (
                 "write",
-                json!({"path":"p0-conformance.md","frontmatter":{"type":"note","title":"Plugin conformance"},"body":"P-0 conformance\n"}),
+                json!({"path":"p0-conformance.md","frontmatter":{"id":crate::Ulid::new(),"slug":"p0-conformance","type":"note","title":"Plugin conformance"},"body":"P-0 conformance\n"}),
             ),
         ] {
-            let result = data_call(client, account, &catalogue, method, args.clone()).await?;
-            if method == "write"
-                && result["lossy"] != true
-                && (result["record"]["frontmatter"] != args["frontmatter"]
-                    || result["record"]["body"] != args["body"])
-            {
-                return Err(failure(
-                    "unreported_conversion_loss",
-                    "write changed Markdown/frontmatter without lossy:true",
-                ));
-            }
+            data_call(client, account, &catalogue, method, args).await?;
         }
         report.checks.push("eight data_source methods; provider and host additive-field tolerance; lossless write or explicit loss".into());
     }

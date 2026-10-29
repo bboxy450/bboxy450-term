@@ -87,10 +87,14 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   message inbox [--since SEQ]
   message receipts <message-id>
   message ack <message-id>
-  plugin list                             actual account registry; never executes untrusted files
+  plugin list [--swarm ID]                 workspace registry; never executes untrusted files
   plugin trust <path>                      pin and inspect a discovered binary; stays disabled
   plugin enable <candidate-id>
   plugin disable <candidate-id>
+  plugin check <candidate-id> [--swarm ID]  disposable conformance check
+  knowledge status [--swarm ID]
+  knowledge select <root-id> <candidate-id> [--swarm ID]
+  knowledge reset <root-id> [--swarm ID]    select the native local KB
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task status <#N|path|id>
@@ -110,6 +114,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   record fetch <#N|slug|path>              frontmatter, Markdown and confined resource links
   record search <query> [--type TYPE] [--cursor CURSOR]
   record changes --since CURSOR           changes and the cursor for the next read
+  record commit <slug|path>... --message TEXT [--swarm ID]
   events streams                          retained stream names, no consumer attached
   events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
   debug logs <app|logic|supervisor> [--since BYTE_OFFSET]   bounded page, next_since
@@ -528,6 +533,11 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
         return Err(format!("{USAGE_PREFIX}--to applies only to ui compose"));
     }
+    if flags.contains_key("message") && !matches!(&command, Command::RecordCommit { .. }) {
+        return Err(format!(
+            "{USAGE_PREFIX}--message applies only to record commit"
+        ));
+    }
     if (flags.contains_key("subagent") || flags.contains_key("grade"))
         && !matches!(&command, Command::Wait { .. })
     {
@@ -568,6 +578,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "subject",
             "summary",
             "commit",
+            "message",
             "verify-result",
             "reason",
             "disposition",
@@ -836,6 +847,32 @@ impl Client {
             }
         }
         Ok(data)
+    }
+    pub fn knowledge_commit(
+        &mut self,
+        locators: Vec<String>,
+        message: String,
+        swarm: Option<Ulid>,
+    ) -> Result<Value, String> {
+        let scope = self.workspace_scope(swarm)?;
+        let id = self.mint();
+        match self.call_workspace(
+            id,
+            GuiAction::KnowledgeCommit {
+                id,
+                scope,
+                locators,
+                message,
+            },
+            |r| matches!(r,GuiReply::Knowledge{op,..} if *op==id),
+        )? {
+            GuiReply::Knowledge { response, .. } => {
+                serde_json::from_value::<bbt_mux::knowledge::data_source::Result<Value>>(response)
+                    .map_err(|e| e.to_string())?
+                    .map_err(|e| e.to_string())
+            }
+            _ => unreachable!(),
+        }
     }
     /// The operator's signed `e2e` record write: the data_source write result.
     pub fn record_write(&mut self, args: Value) -> Result<Value, String> {
@@ -2188,10 +2225,12 @@ mod tests {
                 args: json!({}),
             },
             GuiAction::Plugin {
+                scope: None,
                 id,
                 request: bbt_proto::gui::PluginRequest::List,
             },
             GuiAction::KnowledgeControl {
+                scope: None,
                 id,
                 request: bbt_proto::gui::KnowledgeRequest::Status,
             },
@@ -2199,6 +2238,12 @@ mod tests {
                 scope: None,
                 id,
                 args: json!({}),
+            },
+            GuiAction::KnowledgeCommit {
+                scope: None,
+                id,
+                locators: vec!["notes/example.md".into()],
+                message: "explicit documents".into(),
             },
             GuiAction::RestartSeat {
                 id,
@@ -2280,6 +2325,29 @@ mod tests {
             // #320: the command a verb parses to is listed by that verb's own noun.
             assert_eq!(parsed.command.noun(), noun, "{line}");
         }
+    }
+    #[test]
+    fn document_commit_parses_explicit_paths_message_and_swarm_without_widening_other_verbs() {
+        let swarm = Ulid::new();
+        let parsed = parse_full(
+            &[
+                "record",
+                "commit",
+                "notes/one.md",
+                "tasks/two.md",
+                "--message",
+                "selected documents",
+                "--swarm",
+                &swarm.to_string(),
+            ]
+            .map(str::to_owned),
+        )
+        .unwrap();
+        assert!(
+            matches!(parsed.command, Command::RecordCommit { locators, message, swarm: Some(id) } if locators == ["notes/one.md", "tasks/two.md"] && message == "selected documents" && id == swarm)
+        );
+        assert!(parse_full(&args("record commit notes/one.md")).is_err());
+        assert!(parse_full(&args("record fetch notes/one.md --message ignored")).is_err());
     }
     #[test]
     fn task_verbs_parse_typed_evidence_and_require_their_own_flags() {

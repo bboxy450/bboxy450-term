@@ -8,7 +8,7 @@
 /// Independently versions the Swarm* verbs, without changing window layout data.
 pub const SWARM_METADATA_VERSION: u16 = 1;
 /// Scoped workspace calls require a root-aware control owner.
-pub const SWARM_WORKSPACE_VERSION: u16 = 1;
+pub const SWARM_WORKSPACE_VERSION: u16 = 2;
 
 /// Operator-selected swarm context; root identity and paths remain host-owned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

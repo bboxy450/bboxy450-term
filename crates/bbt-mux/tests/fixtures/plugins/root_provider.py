@@ -27,7 +27,19 @@ class Refused(Exception):
         if candidates: self.value["candidates"] = candidates
 
 def schema(method, result=False):
-    return {"$schema": SCHEMA["$schema"], "$defs": SCHEMA["$defs"], "$ref": "#/$defs/" + METHODS[method][int(result)]}
+    name=METHODS[method][int(result)];defs={};pending=[name]
+    def references(value):
+        if isinstance(value,dict):
+            ref=value.get('$ref','')
+            if ref.startswith('#/$defs/'): pending.append(ref[len('#/$defs/'):])
+            for child in value.values(): references(child)
+        elif isinstance(value,list):
+            for child in value: references(child)
+    while pending:
+        key=pending.pop()
+        if key in defs: continue
+        defs[key]=SCHEMA['$defs'][key];references(defs[key])
+    return {"$schema": SCHEMA["$schema"], "$defs": defs, "$ref": "#/$defs/" + name}
 
 def shape():
     return {"name":"root fixture", "version":"1.0", "shape_version":"1.0", "health_command":"health",
@@ -113,7 +125,7 @@ def exact(reference, rows):
     return found[0]
 
 def filtered(rows, filters):
-    return [r for r in rows if all(not v or str(r['frontmatter'].get(k,''))==str(v) for k,v in filters.items() if k!='since')
+    return [r for r in rows if all(not v or (str(r['frontmatter'].get(k,'')).removeprefix('seat:')==str(v).removeprefix('seat:') if k=='assignee' else str(r['frontmatter'].get(k,''))==str(v)) for k,v in filters.items() if k!='since')
         and (not filters.get('since') or str(r['frontmatter'].get('updated',r['frontmatter'].get('created','')))>=filters['since'])]
 
 def page(items, args, identity):

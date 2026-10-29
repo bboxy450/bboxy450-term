@@ -12,14 +12,33 @@ OTHER_SCHEMAS = json.loads('{"event_sink":{"$schema":"https://json-schema.org/dr
 ACTIVE_SCHEMA = TASK_SCHEMA if SYSTEM=="task_system" else OTHER_SCHEMAS.get(SYSTEM,SCHEMA)
 VERSION = "0.1" if SYSTEM in ("session","provider") else "1.0"
 METHODS = list(ACTIVE_SCHEMA["x-methods"]) if SYSTEM!="data_source" else [case["method"] for case in CASES]
+# Adapted from bboxy450-term, crates/bbt-mux/tests/fixtures/plugins/root_provider.py:
+# https://github.com/bboxy450/bboxy450-term
+def compact_schema(source, reference):
+    definitions = {}
+    pending = [reference.removeprefix("#/$defs/")]
+    def references(value):
+        if isinstance(value, dict):
+            ref = value.get("$ref", "")
+            if ref.startswith("#/$defs/"):
+                pending.append(ref.removeprefix("#/$defs/"))
+            for child in value.values(): references(child)
+        elif isinstance(value, list):
+            for child in value: references(child)
+    while pending:
+        name = pending.pop()
+        if name in definitions: continue
+        definitions[name] = source["$defs"][name]
+        references(definitions[name])
+    return {"$schema":source["$schema"],"$defs":definitions,"$ref":reference}
 def method_schema(method, result=False):
     if SYSTEM!="data_source":
-        return {"$schema":ACTIVE_SCHEMA["$schema"],"$defs":ACTIVE_SCHEMA["$defs"],"$ref":ACTIVE_SCHEMA["x-methods"][method]["result" if result else "request"]}
+        return compact_schema(ACTIVE_SCHEMA, ACTIVE_SCHEMA["x-methods"][method]["result" if result else "request"])
     names = {"resolve":("ResolveRequest","RecordRef"),"fetch":("FetchRequest","Record"),
       "search":("SearchRequest","SearchPage"),"list":("ListRequest","RefPage"),
       "links":("FetchRequest","Links"),"graph":("GraphRequest","GraphPage"),
       "write":("WriteRequest","WriteResult"),"changes_since":("ChangesRequest","Changes")}
-    return {"$schema":SCHEMA["$schema"],"$defs":SCHEMA["$defs"],"$ref":"#/$defs/"+names[method][int(result)]}
+    return compact_schema(SCHEMA, "#/$defs/"+names[method][int(result)])
 def shape():
     value={"name":"reference","version":"1.0","shape_version":"1.0","health_command":"health",
       "systems":[{"contract":SYSTEM,"contract_version":VERSION,"commands":[
@@ -36,12 +55,13 @@ if sys.argv[1:]==["--shape"]:
     print(json.dumps(shape()),flush=True)
     raise SystemExit(0)
 lock=threading.Lock()
+write_ids=set()
 def emit(value):
     with lock: print(json.dumps(value,separators=(",",":")),flush=True)
 def reply(req,result):
     emit({"jsonrpc":"2.0","id":req["id"]+(1 if FAULT=="wrong_id" else 0),"result":result,"future_minor_field":True})
-def command_error(req):
-    reply(req,{"isError":True,"structuredContent":{"code":"fixture_error","message":"fixture command refused","retry_after_ms":10}})
+def command_error(req,code="fixture_error",message="fixture command refused"):
+    reply(req,{"isError":True,"structuredContent":{"code":code,"message":message,"retry_after_ms":10}})
 def progress():
     while True:
         emit({"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"fixture","progress":1}})
@@ -113,8 +133,25 @@ for line in sys.stdin:
         if not matches: command_error(req);continue
         value=json.loads(json.dumps(matches[0]["result"]))
         if method=="write":
+            if FAULT=="write_identity_guard":
+                identity=args["frontmatter"].get("id")
+                if not identity or identity in write_ids: command_error(req,"immutable_id");continue
+                if args["frontmatter"].get("slug")!=args["path"].removesuffix(".md"): command_error(req,"slug_mismatch");continue
+                write_ids.add(identity)
+            if FAULT in ("write_backend_conflict","write_backend_deadline") and "p0_future_minor_field" in args:
+                code,message=("source_generation_mismatch","private native source changed before additive write") if FAULT=="write_backend_conflict" else ("deadline_exceeded","private native fixture exceeded its write deadline")
+                command_error(req,code,message);continue
             value["record"]["frontmatter"]=args["frontmatter"];value["record"]["body"]=args["body"]
             value["record"]["path"]=args.get("path",value["record"]["path"])
+            for field in ("id","slug"):
+                if field in args["frontmatter"]: value["record"][field]=args["frontmatter"][field]
+            if FAULT in ("write_enrichment","write_drop_title","write_drop_title_minor","write_change_body","write_reported_loss"):
+                value["record"]["frontmatter"].update({"id":value["record"]["id"],"slug":value["record"]["slug"],
+                    "updated":"2026-10-29T00:00:00Z","native_metadata":{"source":"private conformance fixture"}})
+                if FAULT in ("write_drop_title","write_reported_loss") or FAULT=="write_drop_title_minor" and "p0_future_minor_field" in args:
+                    value["record"]["frontmatter"].pop("title",None)
+                if FAULT=="write_change_body": value["record"]["body"]+="\n"
+                if FAULT=="write_reported_loss": value["lossy"]=True
         if FAULT=="bad_result": value={"missing":"required result fields"}
         value["p0_server_minor_field"]={"ignored":True}
         reply(req,{"structuredContent":value})

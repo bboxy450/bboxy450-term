@@ -19,33 +19,36 @@ pub(super) const VERBS: &[Verb] = &[
 macro_rules! plugin_commands {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)* "plugin": [
-            Plugin(bbt_proto::gui::PluginRequest),
+            Plugin { request: bbt_proto::gui::PluginRequest, swarm: Option<Ulid> },
         ]] $($head)*);
     };
 }
 pub(super) use plugin_commands;
 
-pub(super) fn parse(words: &[&str], _cx: &ParseCx) -> Result<Option<Command>, String> {
-    Ok(Some(Command::Plugin(match *words {
-        ["plugin", "list"] => PluginRequest::List,
-        ["plugin", "trust", path] => {
-            let path = std::path::absolute(path).map_err(|error| error.to_string())?;
-            PluginRequest::Trust {
-                path: path.to_str().ok_or("plugin path must be UTF-8")?.into(),
-                sha256: None,
+pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, String> {
+    Ok(Some(Command::Plugin {
+        swarm: cx.swarm,
+        request: match *words {
+            ["plugin", "list"] => PluginRequest::List,
+            ["plugin", "trust", path] => {
+                let path = std::path::absolute(path).map_err(|error| error.to_string())?;
+                PluginRequest::Trust {
+                    path: path.to_str().ok_or("plugin path must be UTF-8")?.into(),
+                    sha256: None,
+                }
             }
-        }
-        ["plugin", "enable", candidate] => PluginRequest::Enable {
-            candidate: candidate.into(),
+            ["plugin", "enable", candidate] => PluginRequest::Enable {
+                candidate: candidate.into(),
+            },
+            ["plugin", "disable", candidate] => PluginRequest::Disable {
+                candidate: candidate.into(),
+            },
+            ["plugin", "check", candidate] => PluginRequest::Check {
+                candidate: candidate.into(),
+            },
+            _ => return Ok(None),
         },
-        ["plugin", "disable", candidate] => PluginRequest::Disable {
-            candidate: candidate.into(),
-        },
-        ["plugin", "check", candidate] => PluginRequest::Check {
-            candidate: candidate.into(),
-        },
-        _ => return Ok(None),
-    })))
+    }))
 }
 
 pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
@@ -58,13 +61,18 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         human,
         ..
     } = cx;
-    let Command::Plugin(request) = command else {
+    let Command::Plugin { request, swarm } = command else {
         return Err(no_flat_form());
     };
+    let scope = client.workspace_scope(swarm)?;
     let op = client.mint();
-    let entries = match client.call(
-        Some(op),
-        GuiAction::Plugin { id: op, request },
+    let entries = match client.call_workspace(
+        op,
+        GuiAction::Plugin {
+            scope,
+            id: op,
+            request,
+        },
         |reply| matches!(reply, GuiReply::Plugin {op: id,..} if *id == op),
     )? {
         GuiReply::Plugin { entries, .. } => entries,

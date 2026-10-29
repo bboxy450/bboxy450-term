@@ -160,7 +160,21 @@ pub struct Auth {
 /// Unknown fields are intentionally ignored by the plugin boundary DTOs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Shape {
+    /// Human-facing name; executable and tool identity come from PluginName.
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    /// Presentation metadata only. The host never executes or trusts it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity: Option<Value>,
+    /// Opt-in to the host-signed data_source write extension.
+    #[serde(default)]
+    pub signed_writer: bool,
+    /// Checker-only bootstrap of a host-owned disposable data_source fixture.
+    #[serde(default)]
+    pub fixture_bootstrap: bool,
     pub version: String,
     pub shape_version: String,
     pub systems: Vec<System>,
@@ -179,6 +193,19 @@ impl Shape {
     /// Validate fixed contract identity and policy before any MCP method runs.
     pub fn validate(&self, name: &PluginName) -> Result<Tier, Refusal> {
         Version::compatible(&self.shape_version, SHAPE_VERSION)?;
+        if self.name.len() > 512
+            || self.description.len() > 4096
+            || self.icon.as_ref().is_some_and(|icon| icon.len() > 4096)
+            || self
+                .identity
+                .as_ref()
+                .is_some_and(|identity| !identity.is_object() || identity.to_string().len() > 4096)
+        {
+            return Err(Refusal::new(
+                "invalid_shape",
+                "presentation metadata exceeds its bounds",
+            ));
+        }
         if self.name.is_empty()
             || self.version.is_empty()
             || self.systems.is_empty()

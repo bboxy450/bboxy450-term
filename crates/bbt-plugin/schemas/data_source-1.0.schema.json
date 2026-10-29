@@ -262,6 +262,9 @@
             "string",
             "null"
           ]
+        },
+        "swarm": {
+          "type": "string"
         }
       },
       "required": [],
@@ -663,6 +666,10 @@
             "string",
             "null"
           ]
+        },
+        "signed_record": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -723,6 +730,10 @@
         },
         "lossy": {
           "type": "boolean"
+        },
+        "signed_record": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -770,6 +781,52 @@
       "required": [
         "changed",
         "next"
+      ],
+      "additionalProperties": true
+    },
+    "CommitRequest": {
+      "type": "object",
+      "properties": {
+        "refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/RecordRef"
+          }
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        }
+      },
+      "required": [
+        "refs",
+        "message"
+      ],
+      "additionalProperties": true
+    },
+    "CommitResult": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "committed": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/RecordRef"
+          }
+        }
+      },
+      "required": [
+        "commit",
+        "committed"
       ],
       "additionalProperties": true
     }

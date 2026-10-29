@@ -152,6 +152,11 @@ impl Worker {
                 return Err(invalid("task control requires oracle-class authority"));
             }
             self.workspaces.write_ready(&self.registry, &port.binding)?;
+            let provider_revision = port.host.revision()?;
+            port.host
+                .source_at(&port.index, &self.registry, provider_revision)
+                .import_root()
+                .map_err(|error| invalid(error.to_string()))?;
             let owner: Ulid = serde_json::from_value(call.args["owner_seat"].clone())?;
             let owner_record = self.registry.get(owner)?;
             if owner_record.role.class != Class::Oracle
@@ -231,9 +236,10 @@ impl Worker {
                 (inode.dev(), inode.ino()),
                 permit,
                 authority,
+                provider_revision,
             ))
         })();
-        let (owner, owner_record, owner_scope, key, issuer, root, inode, permit, authority) =
+        let (owner, owner_record, owner_scope, key, issuer, root, inode, permit, authority, provider_revision) =
             match prepared {
                 Ok(value) => value,
                 Err(error) => {
@@ -258,7 +264,7 @@ impl Worker {
         self.task_import_jobs.spawn_blocking_on(move || {
             let _permit=permit;
             let result=(|| -> Result<_> {
-                let effect = crate::mcp::work_items::prepare(&port.index,&registry,&actor,&call).map_err(invalid)?;
+                let effect = crate::mcp::work_items::prepare(port.index.as_ref(),&registry,&actor,&call).map_err(invalid)?;
                 let crate::mcp::work_items::Prepared::Effect(effect)=effect else {return Err(invalid("import is not a mutation"));};
                 let crate::mcp::work_items::Effect::Import{bundle,owner:prepared_owner}=*effect else {return Err(invalid("not a task import"));};
                 if prepared_owner!=owner {return Err(invalid("import custodian changed"));}
@@ -280,6 +286,7 @@ impl Worker {
                         rx.recv_timeout(Duration::from_secs(5))
                             .map_err(|_| invalid("import_authority_unavailable: recheck deadline exceeded; no publication"))?
                     },|| {
+                        port.host.current(provider_revision).map_err(|error| invalid(format!("import_provider_changed: {error}")))?;
                         let current=std::fs::metadata(&root)?;
                         let current_owner=registry.get(owner)?;
                         if (current.dev(),current.ino())!=inode || registry.swarm(owner_record.swarm)?!=owner_scope

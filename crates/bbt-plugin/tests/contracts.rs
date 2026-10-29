@@ -22,7 +22,12 @@ fn every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations() {
     for contract in Contract::ALL {
         let document: Value = serde_json::from_str(contract.schema()).unwrap();
         jsonschema::validator_for(&document).unwrap();
-        for method in contract.methods() {
+        for method in contract
+            .methods()
+            .iter()
+            .copied()
+            .chain((contract == Contract::DataSource).then_some("commit"))
+        {
             for result in [false, true] {
                 jsonschema::validator_for(&contract.method_schema(method, result).unwrap())
                     .unwrap();
@@ -53,6 +58,48 @@ fn every_versioned_method_has_two_valid_schemas_and_no_unbriefed_operations() {
         Contract::DecisionModel.role("choose").unwrap(),
         RoleClass::Oracle
     );
+}
+
+#[test]
+fn method_schemas_keep_canonical_definitions_without_unreachable_tables() {
+    for contract in Contract::ALL {
+        let canonical: Value = serde_json::from_str(contract.schema()).unwrap();
+        let mut bytes = 0;
+        for method in contract
+            .methods()
+            .iter()
+            .copied()
+            .chain((contract == Contract::DataSource).then_some("commit"))
+        {
+            for result in [false, true] {
+                let schema = contract.method_schema(method, result).unwrap();
+                for (name, definition) in schema["$defs"].as_object().unwrap() {
+                    assert_eq!(Some(definition), canonical["$defs"].get(name));
+                }
+                bytes += serde_json::to_vec(&schema).unwrap().len();
+            }
+        }
+        eprintln!("canonical {contract:?} method schemas: {bytes} bytes");
+    }
+    for (contract, method) in [
+        (Contract::DataSource, "resolve"),
+        (Contract::Session, "describe"),
+    ] {
+        assert_eq!(
+            contract.method_schema(method, false).unwrap()["$defs"]
+                .as_object()
+                .unwrap()
+                .len(),
+            1,
+            "unrelated methods must not inflate a standalone request"
+        );
+    }
+    let graph = Contract::DataSource.method_schema("graph", true).unwrap();
+    for dependency in ["GraphPage", "Node", "Edge", "RecordRef"] {
+        assert!(graph["$defs"].get(dependency).is_some());
+    }
+    assert!(graph["$defs"].get("WriteRequest").is_none());
+    assert!(graph["$defs"].get("CommitRequest").is_none());
 }
 
 // keeps: decision #278 — concrete contracts, additive wire and fixed host approval
@@ -164,8 +211,16 @@ fn task_methods_keep_native_arguments_and_require_an_etag_on_every_write() {
             .unwrap()
             .extend(extra.as_object().unwrap().clone());
         valid(Contract::TaskSystem, method, false, args.clone());
-        let mut no_signature=args.clone();no_signature.as_object_mut().unwrap().remove("signed_record");
-        assert!(!jsonschema::validator_for(&Contract::TaskSystem.method_schema(method,false).unwrap()).unwrap().is_valid(&no_signature));
+        let mut no_signature = args.clone();
+        no_signature
+            .as_object_mut()
+            .unwrap()
+            .remove("signed_record");
+        assert!(
+            !jsonschema::validator_for(&Contract::TaskSystem.method_schema(method, false).unwrap())
+                .unwrap()
+                .is_valid(&no_signature)
+        );
         args.as_object_mut().unwrap().remove("etag");
         assert!(
             !jsonschema::validator_for(&Contract::TaskSystem.method_schema(method, false).unwrap())
