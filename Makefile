@@ -252,8 +252,9 @@ test-make-isolation:
 test-signed-mentions:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto --tests --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --lib mentions --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --lib mentions --target-dir '$(TARGET_DIR)' -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --lib first_held_operator_delivers_an_authorless_intent_but_cannot_mute --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test identity --test identity_local --test identity_io --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --test messaging --test mcp mention --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --test attention_policy --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test messaging_flow --target-dir '$(TARGET_DIR)'; \

@@ -210,9 +210,9 @@ pub(super) fn first_device(account: &SqliteStore, keys: &dyn DeviceKeyStore) -> 
 }
 pub(super) fn decorate(
     account: &SqliteStore,
-    status: &mut super::IdentityStatus,
+    status: &mut impl super::status::IdentityView,
 ) -> crate::store::Result<()> {
-    if !status.bootstrapped {
+    if !status.bootstrapped() {
         let custody = if let Some(record) = record(account)? {
             Some(record.custody)
         } else {
@@ -221,8 +221,7 @@ pub(super) fn decorate(
                 .map(|bytes| serde_json::from_slice::<Hold>(&bytes).map(|hold| hold.custody))
                 .transpose()?
         };
-        status.custody = custody;
-        status.custody_label = custody.map(|c| c.label().into());
+        status.set_custody(custody);
     }
     Ok(())
 }

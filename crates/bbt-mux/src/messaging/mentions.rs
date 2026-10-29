@@ -11,12 +11,38 @@ use std::collections::{BTreeMap, BTreeSet};
 use bbt_proto::messaging::{MAX_MENTIONS, MessageRefusal};
 use ulid::Ulid;
 
+fn boundary(previous: Option<char>) -> bool {
+    !previous.is_some_and(|c| c.is_alphanumeric() || "_-.+@".contains(c))
+}
+
+fn token_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '_' || c == '-'
+}
+
+/// The same lexical rules as resolve, without touching a roster for ordinary prose.
+pub fn has_mention_token(text: &str) -> bool {
+    let mut chars = text.chars().peekable();
+    let mut previous = None;
+    while let Some(c) = chars.next() {
+        if c == '@'
+            && boundary(previous)
+            && chars
+                .peek()
+                .is_some_and(|&next| next == '{' || token_char(next))
+        {
+            return true;
+        }
+        previous = Some(c);
+    }
+    false
+}
+
 /// The caller supplies only the sending swarm's open seats. This grants no route.
 pub fn resolve<'a>(
     text: &str,
     seats: impl IntoIterator<Item = (Ulid, &'a str)>,
 ) -> Result<Vec<Ulid>, MessageRefusal> {
-    if !text.contains('@') {
+    if !has_mention_token(text) {
         return Ok(Vec::new());
     }
     let mut names: BTreeMap<&str, BTreeSet<Ulid>> = BTreeMap::new();
@@ -37,7 +63,7 @@ pub fn resolve<'a>(
     let mut chars = text.char_indices().peekable();
     let mut previous = None;
     while let Some((offset, c)) = chars.next() {
-        let boundary = !previous.is_some_and(|p: char| p.is_alphanumeric() || "_-.+@".contains(p));
+        let boundary = boundary(previous);
         previous = Some(c);
         if c != '@' || !boundary {
             continue;
@@ -60,7 +86,7 @@ pub fn resolve<'a>(
         } else {
             let mut end = start;
             while let Some(&(i, c)) = chars.peek() {
-                if !c.is_alphanumeric() && c != '_' && c != '-' {
+                if !token_char(c) {
                     break;
                 }
                 chars.next();
@@ -129,6 +155,29 @@ fn refusal(kind: &str, message: &str, names: &BTreeMap<&str, BTreeSet<Ulid>>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prose_without_mention_tokens_never_consumes_the_roster() {
+        for text in [
+            "ordinary prose",
+            "mail user@example.org; path/a@host; lone @",
+            "@@Peer @.",
+        ] {
+            assert!(!has_mention_token(text));
+            let unavailable = std::iter::once_with(|| -> (Ulid, &'static str) {
+                panic!("ordinary prose touched the roster")
+            });
+            assert!(resolve(text, unavailable).unwrap().is_empty());
+        }
+        for text in [
+            "@Peer",
+            "(@Peer)",
+            "@{Full Display Name}",
+            "@{missing close",
+        ] {
+            assert!(has_mention_token(text), "{text}");
+        }
+    }
 
     // keeps: ICD messaging-seats mention grammar, aliases, uniqueness and canonical IDs.
     #[test]

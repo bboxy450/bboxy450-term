@@ -514,7 +514,7 @@ impl Messaging {
         mute_state: Option<State>,
         now: u64,
     ) -> Result<super::api::Response> {
-        if swarm == Ulid::nil() || !self.registry.list()?.iter().any(|seat| seat.swarm == swarm) {
+        if swarm == Ulid::nil() || !self.registry.has_swarm_seats(swarm)? {
             return Err(invalid("unknown operator messaging swarm"));
         }
         self.set_operator_device(authority.device_id)?;
@@ -541,7 +541,7 @@ impl Messaging {
         request: super::api::Request,
         now: u64,
     ) -> Result<super::api::Response> {
-        if swarm == Ulid::nil() || !self.registry.list()?.iter().any(|seat| seat.swarm == swarm) {
+        if swarm == Ulid::nil() || !self.registry.has_swarm_seats(swarm)? {
             return Err(invalid("unknown operator messaging swarm"));
         }
         let reference = self.operator_reference(device)?;
@@ -810,6 +810,7 @@ impl Messaging {
             CREATE INDEX IF NOT EXISTS msg_held_fifo ON msg_held(state,position);")?;
         pin_issuer(&account, keys.as_ref())?;
         let registry = Registry::new(account.clone());
+        registry.prepare_swarm_index()?;
         let mut messaging = Self {
             root: root.into(),
             account,

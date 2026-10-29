@@ -258,7 +258,7 @@ impl super::IdentityRuntime {
     /// Admission-only ID: this never decorates or changes the public held status.
     pub(crate) fn custody_operator_device(&self) -> crate::store::Result<Ulid> {
         if let Some(id) =
-            super::status::read(&self.account, crate::store::now_ms() / 1000)?.device_id
+            super::status::read_fields(&self.account, crate::store::now_ms() / 1000)?.device_id
         {
             return Ok(id);
         }
@@ -342,7 +342,7 @@ impl super::IdentityRuntime {
             .clone();
         let mut status = match cached {
             Some(status) => status,
-            None => super::status::read(&self.account, crate::store::now_ms() / 1000)?,
+            None => super::status::read_fields(&self.account, crate::store::now_ms() / 1000)?,
         };
         super::local::decorate(&self.account, &mut status)?;
         if let Some(reason) = self.pending {

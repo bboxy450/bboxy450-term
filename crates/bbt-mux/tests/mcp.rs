@@ -6337,6 +6337,141 @@ fn composer_mentions_replace_proposed_ids_and_replay_original_identity_after_ren
     );
 }
 
+// keeps: scoped mention reads isolate foreign corruption; ordinary prose has no roster dependency.
+#[test]
+fn mentions_ignore_foreign_corruption_and_email_only_messages_do_not_read_the_roster() {
+    use bbt_proto::messaging::{Request, Response, SendRequest};
+    let f = Fixture::new();
+    f.prepare_operator();
+    let destination = format!("seats/{}/inbox", f.own.id);
+    let send_mcp = |text: &str| {
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "message_send",
+            json!({"destination":destination,"text":text}),
+        )
+    };
+    let send_gui = |text: &str| {
+        let message = SendRequest::text(&destination, text);
+        let id = message.id;
+        match f.gui_once(
+            id,
+            bbt_proto::GuiAction::Messaging {
+                id,
+                swarm_id: bbt_proto::SwarmId::from_u128(f.own.swarm.0),
+                request: Request::Send { message },
+            },
+        ) {
+            bbt_proto::GuiReply::Messaging { response, .. } => Ok(response),
+            reply => Err(format!("{reply:?}")),
+        }
+    };
+    data(send_mcp("prime private recipient route"));
+    assert!(matches!(
+        send_gui("prime private operator route"),
+        Ok(Response::Stored { .. })
+    ));
+    let account = SqliteStore::open(&f.config.run_dir.join("account")).unwrap();
+    let mut seeded = Vec::new();
+    {
+        let mut db = account.connection().unwrap();
+        let tx = db.transaction().unwrap();
+        for id in 100u128..1124 {
+            let seat = SeatRecord::new(Ulid::from(id), f.outside.swarm, "Foreign", "zsh");
+            let key = format!("seat/{}", seat.id);
+            tx.execute(
+                "INSERT INTO kv VALUES(?1,?2)",
+                rusqlite::params![key, serde_json::to_vec(&seat).unwrap()],
+            )
+            .unwrap();
+            seeded.push(key);
+        }
+        for (key, bytes) in [
+            ("seat/foreign-invalid-json", b"{invalid-json".to_vec()),
+            (
+                "seat/foreign-invalid-record",
+                serde_json::to_vec(
+                    &json!({"swarm":f.outside.swarm,"lifecycle":"open","role":false}),
+                )
+                .unwrap(),
+            ),
+        ] {
+            tx.execute(
+                "INSERT INTO kv VALUES(?1,?2)",
+                rusqlite::params![key, bytes],
+            )
+            .unwrap();
+            seeded.push(key.into());
+        }
+        tx.commit().unwrap();
+    }
+    let sent = send_mcp("@Peer local mention with many corrupt foreign records");
+    let composed = send_gui("@Peer local GUI mention with corrupt foreign records");
+    let foreign_card = f.runtime.block_on(f.client().identity_status());
+    {
+        let mut db = account.connection().unwrap();
+        let tx = db.transaction().unwrap();
+        for key in seeded {
+            tx.execute("DELETE FROM kv WHERE key=?1", [key]).unwrap();
+        }
+        tx.commit().unwrap();
+    }
+    assert_eq!(
+        sent["isError"], false,
+        "local mention must ignore foreign records: {sent}"
+    );
+    let envelope: bbt_proto::messaging::Envelope =
+        serde_json::from_value(data(sent)["message"]["envelope"].clone()).unwrap();
+    assert_eq!(envelope.mentions, [f.peer.id]);
+    envelope.verify_signature().unwrap();
+    // An unreadable open local non-recipient makes genuine resolution unavailable.
+    // Emails and lone @ must still send their original text with no signed IDs.
+    let key = "seat/local-invalid-record";
+    account
+        .put(
+            key,
+            &serde_json::to_vec(&json!({"swarm":f.own.swarm,"lifecycle":"open","role":false}))
+                .unwrap(),
+        )
+        .unwrap();
+    let text = "mail user@example.org; path/a@host; lone @";
+    let email = send_mcp(text);
+    let gui_email = send_gui(text);
+    let genuine = send_mcp("@Peer genuine mention needs its roster");
+    let local_card = f.runtime.block_on(f.client().identity_status());
+    account
+        .connection()
+        .unwrap()
+        .execute("DELETE FROM kv WHERE key=?1", [key])
+        .unwrap();
+    assert_eq!(
+        email["isError"], false,
+        "email-only message must not read the roster: {email}"
+    );
+    let envelope: bbt_proto::messaging::Envelope =
+        serde_json::from_value(data(email)["message"]["envelope"].clone()).unwrap();
+    assert!(envelope.mentions.is_empty());
+    assert_eq!(envelope.body.text(), Some(text));
+    envelope.verify_signature().unwrap();
+    let Ok(Response::Stored { message }) = composed else {
+        panic!("local GUI mention must ignore foreign records: {composed:?}")
+    };
+    assert_eq!(message.view().mentions, [f.peer.id]);
+    message.envelope().unwrap().verify_signature().unwrap();
+
+    let Ok(Response::Stored { message }) = gui_email else {
+        panic!("email-only GUI message must not read the roster: {gui_email:?}")
+    };
+    assert!(message.view().mentions.is_empty());
+    assert_eq!(message.envelope().unwrap().body.text(), Some(text));
+    assert_eq!(genuine["structuredContent"]["error"]["code"], "unavailable");
+    assert!(
+        foreign_card.is_err() && local_card.is_err(),
+        "full count-bearing status must preserve count errors"
+    );
+}
+
 // keeps: MA-10 unknown/ambiguous names refuse before effects and reveal only open same-swarm names.
 #[test]
 fn mcp_and_composer_mentions_share_typed_refusals_before_message_or_signing_effects() {
@@ -6367,15 +6502,19 @@ fn mcp_and_composer_mentions_share_typed_refusals_before_message_or_signing_effe
     let hint = error["hint"].as_str().unwrap();
     assert!(hint.contains("Peer"));
     assert!(!hint.contains("Outside"));
-    f.registry().update(f.own.id, |seat| {
-        seat.name = "Outside".into();
-        Ok(())
-    }).unwrap();
+    f.registry()
+        .update(f.own.id, |seat| {
+            seat.name = "Outside".into();
+            Ok(())
+        })
+        .unwrap();
     assert_eq!(f.mutate(f.own.id, unknown, "message_send", args), rejected);
-    f.registry().update(f.own.id, |seat| {
-        seat.name = "Own".into();
-        Ok(())
-    }).unwrap();
+    f.registry()
+        .update(f.own.id, |seat| {
+            seat.name = "Own".into();
+            Ok(())
+        })
+        .unwrap();
     let mut message = SendRequest::text(
         format!("seats/{}/inbox", f.own.id),
         "@Outside same composer rule",
@@ -6415,12 +6554,25 @@ fn mcp_and_composer_mentions_share_typed_refusals_before_message_or_signing_effe
         ))
         .unwrap();
     assert!(matches!(response, Response::Refused { error } if error.kind == "ambiguous_mention"));
-    f.registry().update(f.peer.id, |seat| {
-        seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
-        Ok(())
-    }).unwrap();
-    let message = SendRequest::text(format!("seats/{}/inbox", f.own.id), "@{Peer} is no longer open");
-    let response = f.runtime.block_on(f.client().gui_messaging(message.id, f.own.swarm, Request::Send { message }, Default::default())).unwrap();
+    f.registry()
+        .update(f.peer.id, |seat| {
+            seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    let message = SendRequest::text(
+        format!("seats/{}/inbox", f.own.id),
+        "@{Peer} is no longer open",
+    );
+    let response = f
+        .runtime
+        .block_on(f.client().gui_messaging(
+            message.id,
+            f.own.swarm,
+            Request::Send { message },
+            Default::default(),
+        ))
+        .unwrap();
     assert!(matches!(response, Response::Refused { error } if error.kind == "unknown_mention"));
     assert_eq!(counters(), before);
 }

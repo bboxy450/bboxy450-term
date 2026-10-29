@@ -1,0 +1,130 @@
+{
+  "task_numbers": [
+    241,
+    248,
+    272,
+    284,
+    291,
+    293
+  ],
+  "executor": "Lumen Foxglove",
+  "recorded_utc": "2026-10-29T09:15:16.870691+00:00",
+  "scope": "One combined owned branch/worktree; corrective precommit source blobs below, not a claim about a future rebased or landed SHA.",
+  "parent_source": "74c22d9261941f42918ea841088e9790b74de32c",
+  "observed_origin_main": "59c5b251f9fed19a17589813c4fdffd0cbc972fa",
+  "mechanisms": {
+    "roster": "Native bootstrap creates a guarded additive partial JSON-expression index. Production lookup requires that index and selects only the sending swarm/open lifecycle. Operator existence checks use the same scoped index, including closed history. Registry.list is unchanged.",
+    "no_token": "The resolver and sender guard share exact boundary/token predicates. Ordinary prose, inside-word emails and lone @ do not read any roster.",
+    "authority": "Internal verified IdentityFields/IdentityAdmission omit all-seat counts. Root/head/device verification, expiry, custody readiness, outer holds and reopen checks are shared with the truthful full card. Public device attribution remains count-free and survives holds.",
+    "custody": "The existing observation cache holds verified count-free fields, refreshed by both card and admission reads. Native custody controls consume that metadata and cold-read public fields without a new key attempt. Only the existing pure local custody decorator was generalized; unlock/key/enrollment policy is unchanged.",
+    "full_card": "Full identity status still collects its real count and returns an error on malformed count input; no placeholder count or swallowed corruption."
+  },
+  "restored_focused": {
+    "command": "make test-signed-mentions TARGET_DIR=target/night-signed-mentions",
+    "exit_code": 0,
+    "log": "/tmp/lumen-signed-mentions-roster-restored-green.log",
+    "sha256": "eeedc8d1cc5757f35b9017dbe8556150ef4c76f0ad99ce8eab5dc6d79afebd7b",
+    "passed": 122,
+    "failed": 0,
+    "ignored": 3,
+    "query_plan": [
+      "mention roster query plan: [\"SEARCH kv USING INDEX registry_seat_swarm_lifecycle (<expr>=? AND <expr>=? AND key>? AND key<?)\"]"
+    ],
+    "runtime_witness": [
+      "advertised-old MCP7 -> 8; same current binary both launches; supervisor=83405 old_logic=83406 new_logic=84712; generation/process/native-session and real shell state retained; signed mention admitted wake=now"
+    ],
+    "assertions": [
+      "Indexed SEARCH, no SCAN kv; version and user_version remain1; legacy raw connection writes rename/move/open/closed state and fresh lookups observe them.",
+      "1024 foreign seats plus malformed JSON/record cannot break local signed mention through real MCP and Unix GUI sockets.",
+      "Unreadable local non-recipient refuses genuine mention lookup but email/lone-@ sends keep original text and empty IDs through both sockets.",
+      "Corrupt counts fail full cards while root/device/head forgery, expiry, holds and reopen still refuse signing.",
+      "Cached, initially empty and held custody control reads perform no additional DeviceKeyStore.load operation.",
+      "Unchanged native two-item regrant, pending-order, held/reopen and local custody suites pass."
+    ]
+  },
+  "mutation_controls": {
+    "command": [
+      "make",
+      "test-signed-mentions",
+      "TARGET_DIR=target/night-signed-mentions"
+    ],
+    "source": "/Users/feral/mydev/bboxy450-term-night-gui-events/crates/bbt-mux/src/logic.rs",
+    "original_source_sha256": "0c85a97de289896b9a5f2b5ea0d23467b33a8041fdfa89957cd31072717eaf4b",
+    "runs": [
+      {
+        "name": "global-roster-mutation-red",
+        "exit_code": 2,
+        "log": "/tmp/lumen-signed-mentions-global-roster-mutation-red.log",
+        "sha256": "a9f8ae67ef744f369279c033d94619e03d79c31c614bc6afa37cbf28854b09a2",
+        "seconds": 122.95588583301287,
+        "required_witness": "local mention must ignore foreign records",
+        "witness_present": true
+      },
+      {
+        "name": "email-roster-mutation-red",
+        "exit_code": 2,
+        "log": "/tmp/lumen-signed-mentions-email-roster-mutation-red.log",
+        "sha256": "af273ed209b2c659d291ec44e216c29d3bd33994381eaabeb5a5e99b43a5cf82",
+        "seconds": 78.81266233394854,
+        "required_witness": "email-only message must not read the roster",
+        "witness_present": true
+      },
+      {
+        "name": "roster-restored-green",
+        "exit_code": 0,
+        "log": "/tmp/lumen-signed-mentions-roster-restored-green.log",
+        "sha256": "eeedc8d1cc5757f35b9017dbe8556150ef4c76f0ad99ce8eab5dc6d79afebd7b",
+        "seconds": 146.98711300001014,
+        "required_witness": "test signed_mentions_refresh_retains_sessions_and_shell_state ... ok",
+        "witness_present": true
+      }
+    ],
+    "restored_source_sha256": "0c85a97de289896b9a5f2b5ea0d23467b33a8041fdfa89957cd31072717eaf4b"
+  },
+  "earlier_failures": [
+    {
+      "log": "/tmp/lumen-signed-mentions-scoped-focused.log",
+      "exit_code": 2,
+      "sha256": "0c74d097cc403ba36b7aff7b97f8d13f1bf4c1c7a9a62e4f71af798a84d871ab",
+      "mechanism": "Scoped lookup exposed a second boundary: real GUI attribution still called full identity status, whose unrelated global seat count failed on foreign corruption."
+    },
+    {
+      "log": "/tmp/lumen-signed-mentions-identity-focused.log",
+      "exit_code": 2,
+      "sha256": "fa795e5f377c7e23896a9dcead9e6b17272870bfa714352718a2251d0c965043",
+      "mechanism": "Extraction initially omitted the existing count-bearing read shim; compile failure E0425, restored without changing its corruption semantics."
+    },
+    {
+      "log": "/tmp/lumen-signed-mentions-authority-guards.log",
+      "exit_code": 2,
+      "sha256": "63fb469583de5c22f10372cdcd65af0f130183a0ed2977fdc2922819ac738cc4",
+      "mechanism": "Native two-item regrant lost response.hold at identity.rs:319 because count-free admission no longer refreshed the old full-card observation used by custody controls."
+    }
+  ],
+  "earlier_source_gate": {
+    "source": "74c22d9261941f42918ea841088e9790b74de32c",
+    "command": "make test",
+    "exit_code": 0,
+    "log": "/tmp/lumen-signed-mentions-ci.log",
+    "sha256": "845ea1163a0d136a2fa14b37047f31475339496893450bc847ab7372379ddba5",
+    "disposition": "Preserved as its actual uncorrected source proof; not reused for this corrected source or landing."
+  },
+  "corrective_source_sha256": {
+    "Makefile": "e8c7fae64b79b044ed7bc28eb16041d70f822489892a56da1bf80cdc66d50055",
+    "crates/bbt-mux/src/identity/chain.rs": "801f5b94d0c6a29881052fff482fe4efb38fb2f94e266fefe752269f1146e238",
+    "crates/bbt-mux/src/identity/local.rs": "7a60e335fa930a916e9e006be1347234f8d503b3dda95767159b8c87291bf398",
+    "crates/bbt-mux/src/identity/status.rs": "d75160d5fb4415f4289e2a6d0dc52adcbddec42d75e1889fd74fe44396fb31a8",
+    "crates/bbt-mux/src/identity/unlock.rs": "04ee107350094bd2c84b9dc353a139bb7f5357a744be7c5218f4e58b8f9bc986",
+    "crates/bbt-mux/src/logic.rs": "0c85a97de289896b9a5f2b5ea0d23467b33a8041fdfa89957cd31072717eaf4b",
+    "crates/bbt-mux/src/messaging/mentions.rs": "7c48a591dfc47ce4316ea20439e778b1fbed5bbf70682bfeaf781e60750b4140",
+    "crates/bbt-mux/src/messaging/service.rs": "e7fe765dfff5c1e22104c19fd2b65db70b4bc81d988ad3ee8490de6025574926",
+    "crates/bbt-mux/src/registry.rs": "fc2e3a29cb236e8776f0ef08dc4a459ce2955d5047a0da7d840fab1728edf587",
+    "crates/bbt-mux/tests/mcp.rs": "6020bb8078d81da82d632cb51962c60d4c4f00e974d2f694e5822499bd9fa916"
+  },
+  "final_gate": "Final task reports carry exact signed-source make test exit, full log hashes and normal scripts/land.sh author landing evidence. This precommit record does not claim those future results.",
+  "limits": [
+    "Activation fixture runs the same current binary before/after advertising the earlier marker, not an actual older binary.",
+    "No store schema-version/table change, key copying, credential/account access, live application restart, release or peer cleanup.",
+    "Original issue39 restart EOF cause remains unproven, quarantine retained."
+  ]
+}

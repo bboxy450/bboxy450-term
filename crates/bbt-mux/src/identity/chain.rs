@@ -183,19 +183,23 @@ impl ChainSeatKeys {
     /// Safe identity-card snapshot on the logic/IO owner; never root signing.
     pub fn status_at(&self, now: u64) -> Result<super::IdentityStatus> {
         bbt_rt::assert_not_ui_thread();
-        let mut status = super::status::read(&self.account, now)?;
-        if status.custody == Some(self.custody.custody()) {
-            status.custody_label = Some(self.custody.custody_label().into());
+        let mut fields = super::status::read_fields(&self.account, now)?;
+        let count = super::status::seat_count(&self.account)?;
+        self.decorate_fields(&mut fields, now);
+        Ok(fields.with_count(count))
+    }
+    pub(super) fn decorate_fields(&self, fields: &mut super::status::IdentityFields, now: u64) {
+        if fields.custody == Some(self.custody.custody()) {
+            fields.custody_label = Some(self.custody.custody_label().into());
         }
-        if status.bootstrapped
+        if fields.bootstrapped
             && let Some(reason) = self.signing_hold(now)
         {
-            status.hold(reason);
+            fields.hold(reason);
         }
         if let Some(label) = &self.test_label {
-            status.label = format!("{label} · {}", status.label);
+            fields.label = format!("{label} · {}", fields.label);
         }
-        Ok(status)
     }
     pub(super) fn signing_hold(&self, now: u64) -> Option<super::PendingReason> {
         use super::PendingReason as E;

@@ -21,6 +21,14 @@ pub struct Registry {
     store: SqliteStore,
 }
 
+// Native account bootstrap builds this additive index before any sending lookup.
+// Its predicate also keeps malformed/unrelated KV values out of JSON extraction.
+const SWARM_SEATS: &str = "key GLOB 'seat/*' AND json_valid(CAST(value AS TEXT))";
+const OPEN_SWARM_SEATS: &str = "SELECT value FROM kv INDEXED BY registry_seat_swarm_lifecycle
+    WHERE key GLOB 'seat/*' AND json_valid(CAST(value AS TEXT))
+      AND json_extract(CAST(value AS TEXT),'$.swarm')=?1
+      AND json_extract(CAST(value AS TEXT),'$.lifecycle')='open' ORDER BY key";
+
 fn valid_swarm(id: Ulid) -> Result<()> {
     if id == Ulid::nil() {
         Err(invalid("invalid swarm identity"))
@@ -53,6 +61,37 @@ fn canonical_workdir(path: &str) -> Result<String> {
 impl Registry {
     pub fn new(store: SqliteStore) -> Self {
         Self { store }
+    }
+    /// Off the UI and first-send paths; old version-1 clients keep their tables and writes.
+    pub(crate) fn prepare_swarm_index(&self) -> Result<()> {
+        self.store.connection()?.execute_batch(&format!(
+            "CREATE INDEX IF NOT EXISTS registry_seat_swarm_lifecycle ON kv(
+                json_extract(CAST(value AS TEXT),'$.swarm'),
+                json_extract(CAST(value AS TEXT),'$.lifecycle'),key) WHERE {SWARM_SEATS};"
+        ))?;
+        Ok(())
+    }
+    /// Fresh open members only. A missing index refuses instead of falling back to an account scan.
+    pub(crate) fn open_in_swarm(&self, swarm: Ulid) -> Result<Vec<SeatRecord>> {
+        valid_swarm(swarm)?;
+        let db = self.store.connection()?;
+        let mut query = db.prepare(OPEN_SWARM_SEATS)?;
+        query
+            .query_map([swarm.to_string()], |row| row.get::<_, Vec<u8>>(0))?
+            .map(|bytes| Ok(serde_json::from_slice(&bytes?)?))
+            .collect()
+    }
+    /// Operator history remains admissible even when every member is closed.
+    pub(crate) fn has_swarm_seats(&self, swarm: Ulid) -> Result<bool> {
+        valid_swarm(swarm)?;
+        let db = self.store.connection()?;
+        Ok(db.query_row(
+            "SELECT EXISTS(SELECT 1 FROM kv INDEXED BY registry_seat_swarm_lifecycle
+             WHERE key GLOB 'seat/*' AND json_valid(CAST(value AS TEXT))
+               AND json_extract(CAST(value AS TEXT),'$.swarm')=?1)",
+            [swarm.to_string()],
+            |row| row.get(0),
+        )?)
     }
     pub fn swarm(&self, id: Ulid) -> Result<Option<SwarmRecord>> {
         valid_swarm(id)?;
@@ -320,6 +359,153 @@ impl Registry {
             }
             Ok(())
         })
+    }
+}
+
+#[cfg(test)]
+mod mentions_tests {
+    use super::*;
+
+    // keeps: scoped mentions use a native index, ignore foreign corruption and see legacy writes.
+    #[test]
+    fn mentions_roster_is_indexed_scoped_and_current_without_a_schema_version_change() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let registry = Registry::new(store.clone());
+        let swarm = Ulid::from(20);
+        let foreign = Ulid::from(21);
+        let local = SeatRecord::new(Ulid::from(1), swarm, "Local", "zsh");
+        let mut closed = SeatRecord::new(Ulid::from(2), swarm, "Closed", "zsh");
+        closed.lifecycle = Lifecycle::ClosedRetained;
+        let mut moved = SeatRecord::new(Ulid::from(3), foreign, "Moved", "zsh");
+        for record in [&local, &closed, &moved] {
+            registry.insert(record).unwrap();
+        }
+        {
+            let mut db = store.connection().unwrap();
+            let tx = db.transaction().unwrap();
+            for id in 100u128..1124 {
+                let seat = SeatRecord::new(Ulid::from(id), foreign, "Foreign", "zsh");
+                tx.execute(
+                    "INSERT INTO kv VALUES(?1,?2)",
+                    rusqlite::params![
+                        format!("seat/{}", seat.id),
+                        serde_json::to_vec(&seat).unwrap()
+                    ],
+                )
+                .unwrap();
+            }
+            tx.execute(
+                "INSERT INTO kv VALUES(?1,?2)",
+                rusqlite::params![
+                    "seat/malformed-foreign",
+                    serde_json::to_vec(
+                        &serde_json::json!({"swarm":foreign,"lifecycle":"open","role":false})
+                    )
+                    .unwrap()
+                ],
+            )
+            .unwrap();
+            tx.execute(
+                "INSERT INTO kv VALUES(?1,?2)",
+                rusqlite::params!["seat/invalid-json", b"{invalid-json".as_slice()],
+            )
+            .unwrap();
+            tx.commit().unwrap();
+        }
+        assert!(
+            registry.list().is_err(),
+            "ordinary list retains its existing semantics"
+        );
+        // This is an existing unindexed version-1 account, including bad foreign data.
+        registry.prepare_swarm_index().unwrap();
+        assert_eq!(registry.open_in_swarm(swarm).unwrap(), [local.clone()]);
+        let db = store.connection().unwrap();
+        let plan: Vec<String> = db
+            .prepare(&format!("EXPLAIN QUERY PLAN {OPEN_SWARM_SEATS}"))
+            .unwrap()
+            .query_map([swarm.to_string()], |row| row.get(3))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        assert!(
+            plan.iter()
+                .any(|line| line.contains("SEARCH kv USING INDEX registry_seat_swarm_lifecycle")),
+            "{plan:?}"
+        );
+        assert!(
+            plan.iter().all(|line| !line.contains("SCAN kv")),
+            "{plan:?}"
+        );
+        println!("mention roster query plan: {plan:?}");
+        drop(db);
+        // A retained old client knows only kv/version and never rebuilds a name cache.
+        let legacy = rusqlite::Connection::open(&store.path).unwrap();
+        assert_eq!(
+            legacy
+                .pragma_query_value::<i64, _>(None, "user_version", |row| row.get(0))
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            legacy
+                .query_row("SELECT version FROM version", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let mut renamed = local.clone();
+        renamed.name = "Renamed local".into();
+        legacy
+            .execute(
+                "UPDATE kv SET value=?2 WHERE key=?1",
+                rusqlite::params![
+                    format!("seat/{}", local.id),
+                    serde_json::to_vec(&renamed).unwrap()
+                ],
+            )
+            .unwrap();
+        assert_eq!(
+            registry.open_in_swarm(swarm).unwrap()[0].name,
+            "Renamed local"
+        );
+        registry
+            .update(local.id, |seat| {
+                seat.lifecycle = Lifecycle::ClosedGrace;
+                Ok(())
+            })
+            .unwrap();
+        assert!(registry.open_in_swarm(swarm).unwrap().is_empty());
+        assert!(
+            registry.has_swarm_seats(swarm).unwrap(),
+            "closed history remains admitted"
+        );
+        moved.swarm = swarm;
+        legacy
+            .execute(
+                "UPDATE kv SET value=?2 WHERE key=?1",
+                rusqlite::params![
+                    format!("seat/{}", moved.id),
+                    serde_json::to_vec(&moved).unwrap()
+                ],
+            )
+            .unwrap();
+        assert_eq!(registry.open_in_swarm(swarm).unwrap(), [moved.clone()]);
+        registry
+            .update(moved.id, |seat| {
+                seat.swarm = foreign;
+                Ok(())
+            })
+            .unwrap();
+        assert!(registry.open_in_swarm(swarm).unwrap().is_empty());
+        registry
+            .update(closed.id, |seat| {
+                seat.lifecycle = Lifecycle::Open;
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(registry.open_in_swarm(swarm).unwrap()[0].id, closed.id);
+        assert!(!registry.has_swarm_seats(Ulid::from(22)).unwrap());
     }
 }
 

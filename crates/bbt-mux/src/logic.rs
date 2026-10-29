@@ -2418,6 +2418,7 @@ impl Worker {
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
+        registry.prepare_swarm_index()?;
         let role_catalog_store = role_catalog::CatalogStore::new(account.clone());
         // A corrupt derived cache refuses role admissions, not PTY ownership.
         // A fresh validated Settings snapshot repairs it through ConfigureRoles.
@@ -4757,18 +4758,15 @@ impl Worker {
         request: &mut crate::messaging::api::Request,
     ) -> Result<Option<bbt_proto::messaging::MessageRefusal>> {
         if let crate::messaging::api::Request::Send { message } = request {
-            // Do not scan the registry for ordinary messages without mentions.
-            if !message.text.contains('@') {
+            // Ordinary prose, emails and lone @ never depend on the mention roster.
+            if !crate::messaging::mentions::has_mention_token(&message.text) {
                 message.mentions.clear();
                 return Ok(None);
             }
-            let seats = self.registry.list()?;
+            let seats = self.registry.open_in_swarm(swarm)?;
             match crate::messaging::mentions::resolve(
                 &message.text,
-                seats
-                    .iter()
-                    .filter(|seat| seat.swarm == swarm && seat.lifecycle == Lifecycle::Open)
-                    .map(|seat| (seat.id, seat.name.as_str())),
+                seats.iter().map(|seat| (seat.id, seat.name.as_str())),
             ) {
                 Ok(mentions) => message.mentions = mentions,
                 Err(error) => return Ok(Some(error)),
@@ -6192,7 +6190,7 @@ impl Worker {
         })
     }
     fn operator_device_for_effect(&self) -> Result<Ulid> {
-        let status = self.identity.status()?;
+        let status = self.identity.admission()?;
         status.device_id.ok_or_else(|| {
             invalid(format!(
                 "held: {}; clear with {} or {}",
@@ -7999,7 +7997,7 @@ impl Worker {
     fn gui_identity(&self) -> Result<bbt_proto::GuiIdentity> {
         use crate::identity::IdentityState;
         use bbt_proto::GuiIdentityState;
-        let status = self.identity.status()?;
+        let status = self.identity.admission()?;
         Ok(bbt_proto::GuiIdentity {
             state: match status.state {
                 IdentityState::LocalDev => GuiIdentityState::LocalDev,
