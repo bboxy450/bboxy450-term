@@ -1,0 +1,31 @@
+{
+  "code_source": "ea0d75daff394fae3a566dd6efd66afc0cd7ae0b",
+  "commands": [
+    {
+      "command": "make test-chat-sections test-gui-events test-boundaries test-scene-template test-scene-template-phase test-licenses test-task-contract",
+      "exit": 0,
+      "sha256": "71e6fe038fc74b06299c3f6b85bd6bf922d810f66e879e332248ba4d07c231aa",
+      "source": "ea0d75daff394fae3a566dd6efd66afc0cd7ae0b"
+    },
+    {
+      "command": "cmp /tmp/issue-49-baseline-paint.json /tmp/issue-49-candidate-paint.json",
+      "exit": 0,
+      "sha256": "ef00fcf93b151c6bdd8052460d1c0ab75b460f63875f2d03a4a99d8656245180"
+    },
+    {
+      "command": "BBOXY_SCENE_TEMPLATE_PAINT=/tmp/issue-49-candidate-paint.json make test-scene-template test-scene-template-phase",
+      "exit": 0,
+      "sha256": "ffe5b24542d34d172df083b7a856ed1e465f01920a4d5d007b38ecd232791c89"
+    }
+  ],
+  "artifacts": [
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/scene-template-phase-sblG5g/report.json",
+      "sha256": "8ce08cf0ad332be1ebca8e6483cb50e6cd311bb7b54738ee863ffd38c4c7ee8a"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/scene-template-phase-sblG5g/report.capture.json",
+      "sha256": "13637b48b053d72ff4983af96a85a0ba65fba01634dfa8839fa050197b0a52db"
+    }
+  ]
+}
