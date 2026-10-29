@@ -300,30 +300,38 @@ def fitted_table_and_dismissal(app, style):
             "| x | 123 | 45 |\n")
     record = app.fixture("fitted-table", body)
     layout, image = app.open(record, ["Path", "Center", "Right", "123", "45"])
-    observed = app.observation(layout, record)
-    keyed = {key:node for key,node in nodes(layout) if node["kind"].startswith("named:")}
-    panel, table = keyed["document"]["rect"], keyed["block0"]["rect"]
-    require(table[2] > 576 and table[0]+table[2] <= panel[0]+panel[2]+0.01,
-            "table did not use the actual modal column beyond readable prose width")
-    ink = []
-    for row, expected in [(1, values), (2, ["x", "123", "45"])]:
-        heights = []
-        for col, value in enumerate(expected):
-            cell = keyed[f"block0/row{row}/cell{col}"]["rect"]
-            text_key = f"block0/row{row}/cell{col}/text"
-            painted = [r for r in observed["texts"] if r["key"] == text_key or r["key"].startswith(text_key+"/")]
-            require("".join(r["text"] for r in painted) == value,
-                    f"fitted cell {row}/{col} changed or lost rich source text")
-            require(cell[0] >= table[0]-0.01 and cell[0]+cell[2] <= table[0]+table[2]+0.01,
-                    "fitted table cell exceeds its offered native viewport")
-            heights.append(cell[3])
-            for run in painted:
-                require(abs(run["font_size"]-style["body"]) < 0.001,
-                        "table fit changed the native Body font size")
-                require(run["rect"][0] >= cell[0]-0.01 and run["rect"][0]+run["rect"][2] <= cell[0]+cell[2]+0.01,
-                        "table text paints outside its retained cell")
-                ink.append({"key":run["key"], "text":run["text"], "ink":ink_bounds(image,run["rect"],run["color"])})
-        require(max(heights)-min(heights) < 0.01, "fitted cells lost shared row heights")
+    def fitted_paint(layout, image):
+        observed = app.observation(layout, record)
+        keyed = {key:node for key,node in nodes(layout) if node["kind"].startswith("named:")}
+        panel, table = keyed["document"]["rect"], keyed["block0"]["rect"]
+        offered = keyed["body"]["rect"]
+        require(table[0] >= panel[0]-0.01 and table[0]+table[2] <= panel[0]+panel[2]+0.01
+                and abs(table[2]-offered[2]) < 0.01,
+                "table did not fit its actual offered modal column")
+        ink, row_heights = [], {}
+        for row, expected in [(1, values), (2, ["x", "123", "45"])]:
+            heights = []
+            for col, value in enumerate(expected):
+                cell = keyed[f"block0/row{row}/cell{col}"]["rect"]
+                text_key = f"block0/row{row}/cell{col}/text"
+                painted = [r for r in observed["texts"] if r["key"] == text_key or r["key"].startswith(text_key+"/")]
+                require("".join(r["text"] for r in painted) == value,
+                        f"fitted cell {row}/{col} changed or lost rich source text")
+                require(cell[0] >= table[0]-0.01 and cell[0]+cell[2] <= table[0]+table[2]+0.01,
+                        "fitted table cell exceeds its offered native viewport")
+                heights.append(cell[3])
+                for run in painted:
+                    require(abs(run["font_size"]-style["body"]) < 0.001,
+                            "table fit changed the native Body font size")
+                    require(run["rect"][0] >= cell[0]-0.01 and run["rect"][0]+run["rect"][2] <= cell[0]+cell[2]+0.01,
+                            "table text paints outside its retained cell")
+                    ink.append({"key":run["key"], "text":run["text"], "ink":ink_bounds(image,run["rect"],run["color"])})
+            require(max(heights)-min(heights) < 0.01, "fitted cells lost shared row heights")
+            row_heights[row] = heights[0]
+        return observed, keyed, panel, table, ink, row_heights
+
+    observed, keyed, panel, table, ink, _ = fitted_paint(layout, image)
+    require(table[2] > 576, "wide table did not use the modal column beyond readable prose width")
     app.checks.append({"feature":"fitted-rich-table", "frame":layout["frame_seq"], "panel":panel, "table":table, "native_ink":ink})
 
     def logical_point(rect, at=None):
@@ -373,6 +381,31 @@ def fitted_table_and_dismissal(app, style):
     app.checks.append({"feature":"modal-dismissal", "inside_frame":inside["frame_seq"], "body_frame":selected["frame_seq"],
                        "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
                        "focus_anchor":{k:dismissed[k] for k in anchor}})
+
+    # Resize after dismissal guards so every preceding click used its own frame.
+    try:
+        app.ctl("app", "resize", "100x64")
+        narrow, narrow_image = app.open(record, ["Path", "Center", "Right", "123", "45"])
+        _, _, narrow_panel, narrow_table, narrow_ink, heights = fitted_paint(narrow, narrow_image)
+        require(narrow["size"][0] < layout["size"][0] and narrow_table[2] < table[2],
+                "responsive table proof did not reduce the actual offered width")
+        require(heights[1] > heights[2]+style["body"]*0.8,
+                "long native cells did not wrap beyond the short numeric row")
+        wide_probe = next(run for run in ink if run["text"] == "123")
+        narrow_probe = next(run for run in narrow_ink if run["text"] == "123")
+        require(all(abs(wide_probe["ink"][i]-narrow_probe["ink"][i]) <= 1 for i in [2,3]),
+                "responsive table fit scaled the actual numeric glyph ink")
+        app.checks.append({"feature":"responsive-rich-table", "frame":narrow["frame_seq"],
+                           "size":narrow["size"], "panel":narrow_panel, "table":narrow_table,
+                           "long_row_height":heights[1], "short_row_height":heights[2],
+                           "wide_probe":wide_probe, "narrow_probe":narrow_probe, "native_ink":narrow_ink})
+    finally:
+        app.ctl("ui", "key", "esc")
+        app.ctl("app", "resize", "200x64")
+    restored = app.ctl("ui", "layout")
+    require(restored["document"] is None and restored["size"] == layout["size"]
+            and all(restored[k] == before[k] for k in anchor),
+            "responsive table proof left a modal, changed size or lost the focus anchor")
 
 
 def point(path, value):
