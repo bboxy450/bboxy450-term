@@ -12,3 +12,60 @@ source and nested policy: exactly the latter two must be found.
 make test-harness-vocabulary test-licenses: EXIT 0, vocabulary 2/2,
 license negative fixtures 6/6, package policy 27 crates, integration 9/9.
 Raw log: ~/Library/Logs/bboxy450-term/harness-vocabulary-integration-20261028.log
+
+Final focused source: f1168782cbe2cbb288e63a1fb151a3e92a0040d7
+make test-swarm check-terminal-font: EXIT 0.
+All 22 real private ctl app scenarios passed in 80.48s; one child fixture excluded
+by its existing settings_codex_service_fixture filter. Strict all-target font/app/
+desktop/proto/UI Clippy passed. No operator input or general clipboard access.
+Raw: ~/Library/Logs/bboxy450-term/combined-ui-final-swarm-bounded-20261028.log
+
+Selection acceptance: actual drawn Unicode/wide/combining lines -> ctl drag ->
+Cmd-C/private clipboard; multiline, unrelated PTY output and cross-pane fences.
+Font acceptance: global 13->15, inactive swarm, Settings transition, saved reload,
+old-control logic refresh, 256 on large retained grids; all process identities kept.
+Settings role picker: full pointer down/up plus model publication, saved default,
+and subsequent launch. Emoji: native color/flag clusters and persisted swarm rename.
+Images: atomic marker bracket deletion removes only unsent owned PNG; a signed
+recipient envelope supplies its exact path; a later durable plain send has no
+attachments; recipient verifies PNG size/SHA256 before/after UI and logic restart.
+Seat controls: actual background-tab/captured-target role/task/kill; same PID/session
+on role change. A GUI-only committed Seat prelude precedes the operation receipt;
+CTL stays correlated-only. FIFO and unknown/disconnect no-auto-retry tests passed.
+Backend/private GUI-boundary evidence: combined-ui-seat-swarm-verified-20261028.log
+in ~/Library/Logs/bboxy450-term. That command completed seat-actions before its
+older font-transition test exposed the subsequently corrected frame fence.
+
+make test-terminal-selection test-settings-role-picker test-color-emoji-swarm:
+each completed successfully before the earlier combined seat-action failure.
+Raw: ~/Library/Logs/bboxy450-term/combined-ui-focused-second-20261028.log
+make check-seat-actions: EXIT 0 (strict all-target plugin/proto/mux/app/book).
+Raw: ~/Library/Logs/bboxy450-term/combined-ui-strict-preflight-20261028.log
+make test-terminal-replay: completed successfully in the first focused command;
+Busy idle echo 15987us, zero false checkpoint pauses; 100MiB debt bound and private
+four-PTY killed-logic recovery passed. Raw: combined-ui-focused-20261028.log.
+
+make test-boundaries parity-chat parity-settings parity-swarm: EXIT 0.
+960 cases: chat416/0 reviews; settings+launcher472/48 advisory pixel reviews;
+swarm72/0 reviews. All 904 required geometries measured, zero mismatches/unproven.
+All 48 advisory reviews are isolated harness-icon fixtures (max mean_error
+0.00028111); native/web Codex dark logo pair visually inspected, no threshold edits.
+Renderer/UI component source unchanged after these captures. Raw:
+~/Library/Logs/bboxy450-term/combined-ui-boundaries-parity-20261028.log
+Settings report retained at ~/Library/Logs/bboxy450-term/parity-settings-20261028-report.json.
+
+Two integration races were corrected, not hidden by sleeps: committed role
+metadata now precedes success, and a font receipt requires desired/live/prepared/
+drawn source and geometry to agree at presentation with the original deadline.
+The 16-way independent-app fixture run also exhausted a held provider's fixed
+production call deadline (diagnostics deadline_exceeded, release socket EPIPE).
+Make now defaults SWARM_TEST_THREADS=2; all 22 tests, hold/release assertions and
+production timeouts are unchanged. No retries/timeout increases or test skips added.
+Make's publishing identity default now matches the approved bboxy450 account.
+
+Limits: kill means exact seat process/relay, not a native turn-cancel guarantee for
+a borrowed shared Codex server. Role instructions are signed targeted messages;
+future explicit Restart applies the new startup prompt. No all-latency claim,
+remote image transport, native Linux runtime test, or slow scale-gate claim.
+Final exact-source make test, signed landing, install and installed smoke follow
+this evidence commit; their authoritative raw result/source lines remain outside Git.
