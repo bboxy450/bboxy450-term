@@ -9,8 +9,10 @@ use super::*;
 
 /// Logical input verbs; old logic is refreshed without replacing live PTYs.
 /// Versions 3/4 add image paste and captured seat controls; version 5 adds
-/// terminal selection/copy and private test clipboard receipts.
-pub const UI_CONTROL_VERSION: u16 = 5;
+/// terminal selection/copy and private test clipboard receipts. Version 6 adds
+/// independent chat/task section wheel controls and produced-frame scroll receipts.
+pub const UI_CONTROL_VERSION: u16 = 6;
+pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,7 +24,7 @@ pub struct FocusFrame {
 }
 
 /// Chrome input, relayed to the GUI owner; never terminal bytes or OS input.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body", rename_all = "snake_case")]
 pub enum UiRequest {
     /// Set a swarm's default launch folder; None restores the app default.
@@ -64,6 +66,10 @@ pub enum UiRequest {
     LauncherWheel {
         lines: i32,
     },
+    /// Logical pixels in the chat section; positive moves toward newer messages.
+    ChatWheel { dy: f32 },
+    /// Logical pixels in the independent task section; positive moves downward.
+    TaskWheel { dy: f32 },
     Focus {
         seat: Ulid,
     },
@@ -101,6 +107,11 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::ChatWheel { dy } | Self::TaskWheel { dy }
+                if !dy.is_finite() || dy.abs() > MAX_SECTION_WHEEL_DY =>
+            {
+                Err("invalid_ui_section_wheel: expected finite logical pixels within +/-32768")
+            }
             Self::SidebarWheel { lines } | Self::LauncherWheel { lines }
                 if lines.unsigned_abs() > 1000 =>
             {
@@ -445,6 +456,42 @@ pub struct UiLayout {
     /// Included only for `UiRequest::Seats`; ordinary layout replies keep it absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seats: Option<Vec<GuiSeat>>,
+    /// Actual clamped section geometry sampled from this produced frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sidebar_sections: Option<UiSidebarSections>,
+}
+
+/// A section's actual pixel offset and extent; following is a chat behavior flag.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "UiSectionScrollFields")]
+pub struct UiSectionScroll { pub offset: f32, pub max: f32, pub following: bool }
+impl UiSectionScroll {
+    pub fn valid(self) -> bool { self.offset.is_finite() && self.max.is_finite() && self.offset >= 0. && self.max >= 0. && self.offset <= self.max }
+}
+#[derive(Deserialize)]
+struct UiSectionScrollFields { offset: f32, max: f32, following: bool }
+impl TryFrom<UiSectionScrollFields> for UiSectionScroll {
+    type Error = &'static str;
+    fn try_from(fields: UiSectionScrollFields) -> Result<Self,Self::Error> {
+        let value = Self {offset:fields.offset,max:fields.max,following:fields.following};
+        if value.valid() {Ok(value)} else {Err("invalid_ui_section_scroll: expected finite clamped offsets")}
+    }
+}
+/// Independent chat/task section receipts. Tasks never inherit chat tail following.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "UiSidebarSectionsFields")]
+pub struct UiSidebarSections { pub chat: UiSectionScroll, pub tasks: UiSectionScroll }
+impl UiSidebarSections {
+    pub fn valid(self) -> bool { self.chat.valid() && self.tasks.valid() && !self.tasks.following }
+}
+#[derive(Deserialize)]
+struct UiSidebarSectionsFields { chat: UiSectionScroll, tasks: UiSectionScroll }
+impl TryFrom<UiSidebarSectionsFields> for UiSidebarSections {
+    type Error = &'static str;
+    fn try_from(fields: UiSidebarSectionsFields) -> Result<Self,Self::Error> {
+        let value = Self {chat:fields.chat,tasks:fields.tasks};
+        if value.valid() {Ok(value)} else {Err("invalid_ui_sidebar_sections: tasks do not follow chat")}
+    }
 }
 
 /// Completed private PNG copy, bound to the marker in the produced composer frame.

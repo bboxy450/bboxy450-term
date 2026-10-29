@@ -20,6 +20,8 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "clipboard-read", "Ui"),
     ("ui", "sidebar-scroll", "Ui"),
     ("ui", "launcher-scroll", "Ui"),
+    ("ui", "chat-wheel", "Ui"),
+    ("ui", "task-wheel", "Ui"),
     ("ui", "focus", "Ui"),
     ("ui", "scroll", "Ui"),
     ("ui", "layout", "Ui"),
@@ -93,6 +95,13 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             request
                 .validate()
                 .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
+        ["ui", section @ ("chat-wheel" | "task-wheel"), dy] => {
+            let dy = dy.parse::<f32>().map_err(|_| format!("{USAGE_PREFIX}{section} requires finite logical pixels"))?;
+            let request = if section == "chat-wheel" { bbt_proto::gui::UiRequest::ChatWheel {dy} }
+                else { bbt_proto::gui::UiRequest::TaskWheel {dy} };
+            request.validate().map_err(|error|format!("{USAGE_PREFIX}{error}"))?;
             Command::Ui(request)
         }
         ["ui", "sidebar-scroll", lines] => {
@@ -295,6 +304,8 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui clipboard-read",
     "ui sidebar-scroll -3",
     "ui launcher-scroll -3",
+    "ui chat-wheel -28.5",
+    "ui task-wheel 56",
     "ui open graph",
     "ui key cmd-t esc",
     "ui focus s",
@@ -324,6 +335,21 @@ pub(super) fn compose(client: &mut Client, to: String, text: String) -> Result<V
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn section_wheel_parses_signed_pixels_and_refuses_nonfinite_or_oversized_values() {
+        let parse = |words: &[&str]| super::super::parse_full(&words.iter().map(|word|(*word).to_owned()).collect::<Vec<_>>());
+        let parsed = parse(&["ui","chat-wheel","-28.5"]).unwrap();
+        assert!(matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::ChatWheel {dy}) if dy == -28.5));
+        let parsed = parse(&["ui","task-wheel","56"]).unwrap();
+        assert!(matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::TaskWheel {dy}) if dy == 56.));
+        for section in ["chat-wheel","task-wheel"] {
+            for dy in ["NaN","inf","-inf","32769","-32769","1e100","pixels"] {
+                assert!(parse(&["ui",section,dy]).is_err(),"{section} accepted {dy}");
+            }
+            assert!(parse(&["ui",section]).is_err());
+        }
+    }
+
     #[test]
     fn image_paste_parses_an_operator_path_without_opening_it() {
         let words = ["ui","paste-image","missing-fixture.png"].map(str::to_string);

@@ -1,0 +1,10 @@
+ROLE: EXECUTOR
+Worktree: /Users/feral/mydev/bboxy450-term-chat-scroll
+Branch: exec/chat-scroll-20261029
+Base: 86da80e59ebc210641341fe4fd31da518c50b311
+Scope: pure scoped chat_scroll State; library export; UI6 typed chat/task pixel wheel controls; optional finite actual section receipts; CLI parsers and ctl spec. Root owns all native/main/headless/layout/persistence integration and UiLayout literal updates.
+API: State::bind(bbt_ui_model::SwarmId,&str)->Result<bool,&'static str>; layout_offset()->f32; following()->bool; requested_offset()->f32; wheel(actual,max,dy)->bool; follow_latest()->bool. Positive dy moves down. Invalid binding clears active state to default following. At most 128 recently used (swarm,channel) records; keys bounded to 512 bytes. Layout never overwrites requested offsets while loading/reflow clamps the actual display.
+Wire: UiRequest::ChatWheel{dy:f32}, TaskWheel{dy:f32}, finite +/-32768 logical pixels; UiRequest retains PartialEq without Eq. UiLayout.sidebar_sections: Option<UiSidebarSections>, omitted/default None; UiSectionScroll{offset,max,following}, UiSidebarSections{chat,tasks}. Deserialization rejects nonfinite/unclamped geometry and task following=true. Existing terminal UiScrollPosition stays unchanged. UI_CONTROL_VERSION=6.
+Checks: make test-image-paste-wire check-image-paste-wire — exit 0; legacy+new exact GUI action/reply bytes passed; strict proto all-target Clippy compiled all proto test targets. Raw /private/tmp/bboxy450-chat-scroll-wire.log.
+Checks: rustfmt of new pure/controller and proto unit test files; git diff --check — exit 0.
+Remaining root warm checks: run six chat_scroll unit tests, CLI section_wheel parser test, three ui_sidebar_sections protocol unit tests, then native/shared host handlers and real produced-frame behavior/geometry E2E plus full gate. No app compilation, operator session, OS input, account or main/scene/sidebar edits performed here.

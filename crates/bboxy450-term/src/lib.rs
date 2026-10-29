@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! App process boundaries, IO-owned terminal models and worker-prepared frames.
 pub mod attention;
+pub mod chat_scroll;
 pub mod close;
 pub mod close_frame;
 pub mod cockpit;

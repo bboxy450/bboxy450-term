@@ -222,3 +222,8 @@ action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"0
 action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"kill"}}}
 action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"restart"}}}
 reply	{"kind":"SeatControlled","body":{"op":"00000000000000000000000007"}}
+
+# UI control v6: section wheel controls and additive actual scroll receipts.
+action	{"kind":"Ui","body":{"id":"00000000000000000000000001","request":{"kind":"chat_wheel","body":{"dy":-28.5}}}}
+action	{"kind":"Ui","body":{"id":"00000000000000000000000001","request":{"kind":"task_wheel","body":{"dy":56.0}}}}
+reply	{"kind":"Ui","body":{"op":"00000000000000000000000001","layout":{"frame_seq":1,"layout_revision":null,"size":[800.0,600.0],"swarm":null,"tab":null,"focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[],"sidebar_sections":{"chat":{"offset":120.0,"max":120.0,"following":true},"tasks":{"offset":20.0,"max":80.0,"following":false}}}}}

@@ -55,6 +55,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui launcher-scroll <lines>             Scroll the launcher; same wheel convention
   ui focus <seat>                        select its pane through the GUI owner
   ui scroll <seat> <top|bottom|page-up|page-down|row N>   zero-based GUI history
+  ui chat-wheel <DY> / task-wheel <DY>    section scroll in logical pixels; positive moves down
   ui layout                              solved window tree, pane grids, focus and tab
   ui clock freeze|advance <ms>|resume     test-account animation time, acknowledged by its frame
   ui compose --to <seat|role:r|channel:c> --text <text>   send through the window composer
