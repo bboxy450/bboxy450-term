@@ -82,9 +82,11 @@ code, .mono { font-family: var(--font-mono); }
 }
 .seat-row:hover { background: var(--surface-2); }
 .seat-row.focused { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--seat); }
-.seat-row .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.seat-row .title { color: var(--fg-dim); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-.seat-row .right { margin-left: auto; display: flex; align-items: center; gap: var(--gap); }
+.identity-role { flex: none; white-space: nowrap; font-family: inherit; font-size: inherit; font-weight: var(--t-weight_name, 600); opacity: 1; }
+.seat-row .identity-role { color: var(--identity-role); font-size: inherit; }
+.seat-row .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.seat-row .title { color: var(--fg-dim); font-size: var(--font-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.seat-row .right { margin-left: auto; display: flex; align-items: center; gap: var(--gap); flex: none; }
 .seat-row .sub { position: absolute; left: calc(var(--pad-x) + var(--icon) + var(--gap)); bottom: 2px; font-size: var(--t-small); color: var(--fg-dim); }
 .density-compact .seat-row .title { display: none; }
 .badge {
@@ -165,7 +167,8 @@ code, .mono { font-family: var(--font-mono); }
   background: var(--seat); color: var(--on-accent); font-size: var(--t-caption); flex: none; overflow: hidden;
 }
 .strip .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
-.strip .title { opacity: .8; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip .identity-role { font-size: inherit; }
+.strip .title { opacity: .8; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .strip .kbd { color: rgba(255,255,255,.75); }
 .strip .close { width: 12px; height: 12px; border-radius: 50%; background: #FF5F57; border: var(--hair-w) solid rgba(0,0,0,.25); flex: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: rgba(0,0,0,0); font-size: var(--t-micro); line-height: 1; font-weight: 700; }
 .strip .close:hover { color: rgba(0,0,0,.6); }
@@ -218,9 +221,10 @@ code, .mono { font-family: var(--font-mono); }
 .msg.creativity .rail { background: repeating-linear-gradient(to bottom, var(--role) 0 4px, transparent 4px 7px); }
 .msg .body { flex: 1; min-width: 0; }
 .msg .head { display: flex; align-items: center; gap: var(--s3); font-size: var(--t-section); color: var(--fg-dim); }
-.msg .head .who { color: var(--fg); font-weight: 600; }
+.msg .head .who { color: var(--fg); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
 .msg .head .role { font-family: var(--font-mono); color: var(--role); font-size: var(--t-caption); }
-.msg .head .time { margin-left: auto; font-family: var(--font-mono); font-size: var(--t-small); }
+.msg .head .identity-role { font-family: var(--font-mono); font-size: inherit; }
+.msg .head .time { margin-left: auto; font-family: var(--font-mono); font-size: var(--t-small); flex: none; white-space: nowrap; }
 .msg .text { margin-top: var(--s2); color: var(--fg); line-height: 1.5; word-wrap: break-word; }
 .msg.oracle { background: var(--surface); }
 .msg.oracle .text { font-weight: 400; }
@@ -1213,6 +1217,10 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
 .msg.rejected { background: transparent; margin-bottom: 0; gap: var(--s3); align-items: center; padding: var(--s1) var(--s4); border: var(--hair-w) dashed color-mix(in srgb, var(--c-errored) 45%, transparent); border-radius: var(--r-row); font-size: var(--t-small); color: var(--fg-dim); flex-wrap: wrap; }
 .msg.rejected .rj-x { color: var(--c-errored); }
 .msg.rejected b { color: var(--fg); font-weight: 500; }
+.msg.rejected .rj-identity { display: inline-flex; max-width: 100%; align-items: baseline; color: var(--fg); vertical-align: bottom; }
+.msg.rejected .identity-role { font-weight: 500; }
+.msg.rejected .identity-sep { white-space: pre; flex: none; }
+.msg.rejected .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg.rejected .rj-hint { color: var(--accent); font-weight: 500; }
 .msg.rejected .time { margin-left: auto; }
 .seat-row .noise { font-size: var(--t-tiny); line-height: 14px; padding: 0 5px; border-radius: var(--r-tag); color: var(--c-waiting); border: var(--hair-w) dashed color-mix(in srgb, var(--c-waiting) 60%, transparent); white-space: nowrap; }

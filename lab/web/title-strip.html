@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 const seat = (st, i) => ({ key: 'pane' + (i || 0), name: ['Vesper Greywind', 'Nyx Copperwing', 'Lumen Foxglove'][i || 0], harness: ['claude', 'codex', 'claude'][i || 0], role: ['oracle', 'executor', 'creativity'][i || 0], title: ['gpu research', 'messaging spec', 'ux divergence'][i || 0], state: st });
-Lab.page({ title: 'title strip + border', wide: true, note: 'Full-width ' + TOKENS.strip.height + ' px strip in the seat colour, same icon · name · role · title · ⌘N · glyph as the sidebar row. Border glow per the operator spec: idle very mild static, active pulsating, waiting pulsating amber at 1 Hz, errored static red, focused brighter at every state. The dots along the edge are a canvas fake of the particle emitter; the real one is a wgpu shader. Count and speed scale with activity.',
+Lab.page({ title: 'title strip + border', wide: true, note: 'Full-width ' + TOKENS.strip.height + ' px strip in the seat colour, same icon · ROLE · first name · title · ⌘N · glyph as the sidebar row. The role stays visible and the full canonical name remains in its tooltip. Border glow per the operator spec: idle very mild static, active pulsating, waiting pulsating amber at 1 Hz, errored static red, focused brighter at every state. The dots along the edge are a canvas fake of the particle emitter; the real one is a wgpu shader. Count and speed scale with activity.',
   states: ['idle', 'active', 'waiting', 'errored', 'focused vs unfocused', 'row + pane breathe together', 'three seats, one focused', 'stop · operator', 'interrupt sent', 'worker view', 'authority · revoked'],
   render(s, body) {
     const stage = el('div', { style: 'background:var(--navy);padding:28px;border-radius:var(--r-pill)' });

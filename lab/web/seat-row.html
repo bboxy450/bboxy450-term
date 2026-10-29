@@ -6,7 +6,7 @@
 </head><body><script>
 const el = Lab.el;
 const base = i => ({ key: 'row' + i, name: ['Vesper Greywind', 'Nyx Copperwing', 'Lumen Foxglove', 'Rook Ashwhisker'][i % 4], harness: ['claude', 'codex', 'claude', 'codex'][i % 4], role: ['oracle', 'executor', 'creativity', 'executor'][i % 4], title: ['gpu research', 'messaging spec', 'ux divergence', 'harness hooks'][i % 4] });
-Lab.page({ title: 'seat row', note: 'Icon · name in seat colour · role mark · title · ⌘N · glyph. Row carries the border glow at reduced radius so it breathes with its pane. Compact density hides the title. Rows never reorder on state change.',
+Lab.page({ title: 'seat row', note: 'Icon · ROLE · first name in seat colour · title · ⌘N · glyph. The full canonical name remains in the name tooltip; ROLE stays visible while the first name and title yield. Row carries the border glow at reduced radius so it breathes with its pane. Compact density hides the title. Rows never reorder on state change.',
   states: ['active', 'idle', 'waiting', 'errored', 'focused × state', 'unread badge', 'unread · more', 'subtitle opt-in', 'zsh seat', 'long names', 'muted · held', 'unmuted · still held', 'digest pending', 'subagents · claude', 'subagents · codex', 'subagents · 12', 'restarted', 'listeners', 'row menu · operator', 'row menu · role flyout', 'row menu · worker', 'subagent menu', 'authority · expired', 'authority · revoked', 'authority · forked', 'bug rows', 'invariant chips', 'noise hint', 'remote links'],
   render(s, body) {
     const col = el('div', { style: 'display:flex;flex-direction:column;gap:4px;max-width:300px' });
