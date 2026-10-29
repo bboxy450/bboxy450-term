@@ -3,6 +3,11 @@
 Every app action uses ctl. Native hook review is scripted only in this throwaway
 identity. No operator daemon, credentials, GUI input or external model is used.
 """
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 import argparse
 import http.server
 import json
@@ -56,6 +61,8 @@ def main():
     parser.add_argument("binary", type=Path)
     parser.add_argument("--cold", action="store_true")
     parser.add_argument("--render-check", action="store_true")
+    parser.add_argument("--color-check", action="store_true",
+                        help="prove real Codex foreground colors despite inherited automation settings")
     parser.add_argument("--codex", help="Codex executable (defaults to PATH)")
     parser.add_argument("--shim", action="store_true", help="exercise a private forwarding shim")
     options = parser.parse_args()
@@ -76,6 +83,10 @@ def main():
                PATH=os.path.dirname(codex) + ":/usr/bin:/bin:/usr/sbin:/sbin",
                TERM="xterm-256color", LANG="en_US.UTF-8", BBOXY_RUN_DIR=str(run))
     env["BBOXY_CODEX_PREFLIGHT_TRACE"] = "1"
+    if options.color_check:
+        # Contaminate the app/supervisor parent, never the explicit launch map.
+        # The warm private daemon also inherits this, testing TUI-local colors.
+        env.update(NO_COLOR="1", COLORTERM="monochrome", CLICOLOR="0")
     shim_log = root / "shim-calls.jsonl"
     if options.shim:
         # Resolve through the login shell's PATH, preserving argv, environment
@@ -172,6 +183,26 @@ def main():
 
     def screen(seat):
         return command([str(binary), "ctl", "seat", "screen", seat, "--human"]).stdout
+
+    color_observations = {}
+
+    def colored_screen(seat):
+        snapshot = ctl("seat", "screen", seat, "--cells")["data"]
+        runs = [run for row in snapshot["cells"] for run in row]
+        # Default foreground brightness is not proof of chromatic SGR output.
+        defaults = [{"Named": name} for name in
+                    ("Foreground", "BrightForeground", "DimForeground")]
+        colored = [run for run in runs if run["fg"] not in defaults and run["text"].strip()]
+        observation = dict(generation=snapshot["generation"], sequence=snapshot["sequence"],
+                           styled_runs=len(runs), nondefault_foreground_runs=len(colored),
+                           nonblank_foreground_chars=sum(sum(not char.isspace() for char in run["text"])
+                                                         for run in colored),
+                           foregrounds=sorted({json.dumps(run["fg"], sort_keys=True) for run in colored}))
+        color_observations[seat] = observation
+        (root / "color-evidence.json").write_text(json.dumps(dict(
+            parent={key: env[key] for key in ("NO_COLOR", "COLORTERM", "CLICOLOR")},
+            seats=color_observations), indent=2) + "\n")
+        return observation
 
     def seats():
         return {row["record"]["id"]: row for row in ctl("seat", "ls")["data"]}
@@ -273,6 +304,12 @@ def main():
             daemon_pid = json.loads((home / ".codex/app-server-daemon/daemon.pid").read_text())["pid"]
             record_updater()
         b = spawn("B")
+        if options.color_check:
+            for seat in (a, b):
+                wait(lambda: colored_screen(seat),
+                     lambda row: row["nonblank_foreground_chars"] > 0,
+                     "real Codex emits nondefault foreground colors: " + seat, seconds=10)
+            print("Color observations: " + json.dumps(color_observations), flush=True)
         rows = seats()
         threads = [rows[seat]["record"]["harness_session_id"] for seat in (a, b)]
         assert all(threads) and len(set(threads)) == 2, rows
@@ -369,6 +406,8 @@ def main():
                      requests=Provider.requests, wake_operation=sent["op"],
                      daemon_survived_seat_close_and_app_stop=True,
                      external_model_calls=0, operator_input=0)
+        if options.color_check:
+            proof["color_observations"] = color_observations
         (root / "evidence.json").write_text(json.dumps(proof, indent=2) + "\n")
         print(json.dumps(proof), flush=True)
         succeeded = True
