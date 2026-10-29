@@ -41,8 +41,9 @@ impl AtlasTexture {
         let y = u32::from(rect.y);
         let width = u32::from(rect.width);
         let height = u32::from(rect.height);
-        let start = (y * self.size + x) as usize;
-        let end = start + ((height - 1) * self.size + width) as usize;
+        let channels = atlas.channels();
+        let start = ((y * self.size + x) * channels) as usize;
+        let end = start + (((height - 1) * self.size + width) * channels) as usize;
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
                 texture: &self.texture,
@@ -53,7 +54,7 @@ impl AtlasTexture {
             &atlas.pixels()[start..end],
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(self.size),
+                bytes_per_row: Some(self.size * channels),
                 rows_per_image: Some(height),
             },
             wgpu::Extent3d {
@@ -63,7 +64,7 @@ impl AtlasTexture {
             },
         );
         self.writes += 1;
-        self.bytes += u64::from(width) * u64::from(height);
+        self.bytes += u64::from(width) * u64::from(height) * u64::from(channels);
     }
 }
 pub(super) fn sync_glyphs(
@@ -81,8 +82,12 @@ pub(super) fn sync_glyphs(
             queue,
             cpu.size(),
             cpu.pixels(),
-            wgpu::TextureFormat::R8Unorm,
-            1,
+            if cpu.channels() == 4 {
+                wgpu::TextureFormat::Bgra8Unorm
+            } else {
+                wgpu::TextureFormat::R8Unorm
+            },
+            cpu.channels(),
             generation,
         ));
         // New storage contains the complete CPU atlas, including all pending

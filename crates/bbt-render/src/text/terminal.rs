@@ -8,11 +8,7 @@
 #[cfg(not(target_os = "macos"))]
 use crate::{FontConfig, FontMetrics, Result};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Format {
-    Mask,
-    Bgra,
-}
+pub use super::Format;
 
 pub struct Glyph {
     pub width: u32,

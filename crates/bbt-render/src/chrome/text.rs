@@ -4,8 +4,8 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! CoreText lines use the same grayscale shelf atlas as the terminal pass.
-//! Line shaping/fallback is CoreText-owned; colour emoji is intentionally grayscale here.
+//! CoreText owns line shaping, fallback and composed-character boundaries.
+//! The retained glyph renderer preserves native color; this reference API returns coverage.
 use crate::Result;
 use bbt_ui_model::draw::TextStyle;
 
@@ -319,12 +319,24 @@ fn logical_line(
     if let Some(limit) = max_width.filter(|n| n.is_finite()) {
         let limit = limit.max(0.0);
         if measure(&line) > limit {
-            let chars: Vec<char> = value.chars().collect();
+            // CoreFoundation supplies the same composed-sequence boundaries as
+            // native shaping: never leave a half flag, modifier or ZWJ family.
+            let native = CFString::from_str(&value);
+            let units: Vec<_> = value.encode_utf16().collect();
+            let mut chars = Vec::new();
+            let mut index = 0;
+            while index < units.len() {
+                // SAFETY: index is inside this retained string's UTF-16 range.
+                let range = unsafe { native.range_of_composed_characters_at_index(index as isize) };
+                let end = (range.location + range.length) as usize;
+                chars.push(String::from_utf16(&units[index..end]).map_err(|e| e.to_string())?);
+                index = end;
+            }
             let mut lo = 0;
             let mut hi = chars.len();
             while lo < hi {
                 let mid = (lo + hi).div_ceil(2);
-                let trial: String = chars[..mid].iter().chain(std::iter::once(&'…')).collect();
+                let trial = chars[..mid].concat() + "…";
                 let trial_line = make(&trial)?;
                 if measure(&trial_line) <= limit {
                     lo = mid;
@@ -332,7 +344,7 @@ fn logical_line(
                     hi = mid - 1;
                 }
             }
-            value = chars[..lo].iter().chain(std::iter::once(&'…')).collect();
+            value = chars[..lo].concat() + "…";
             line = make(&value)?;
             if measure(&line) > limit {
                 line = make("")?;
@@ -431,22 +443,36 @@ pub fn rasterize_at(
     use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
     use std::ptr::NonNull;
     let line = shape_at(text, style, max_width, scale, phase_x)?;
-    let mut mask = vec![0; line.width as usize * line.height as usize];
-    let gray = CGColorSpace::new_device_gray().ok_or("grayscale colour space")?;
-    // SAFETY: fixed grayscale allocation; all native objects outlive the draw.
+    let color = line.runs.iter().any(|run| {
+        unsafe { run.font.symbolic_traits() }
+            .contains(objc2_core_text::CTFontSymbolicTraits::TraitColorGlyphs)
+    });
+    let channels = if color { 4 } else { 1 };
+    let mut mask = vec![0; line.width as usize * line.height as usize * channels];
+    let space = if color {
+        CGColorSpace::with_name(Some(unsafe { objc2_core_graphics::kCGColorSpaceSRGB }))
+    } else {
+        CGColorSpace::new_device_gray()
+    }
+    .ok_or("chrome line colour space")?;
+    // SAFETY: fixed channel-sized allocation; all native objects outlive the draw.
     let context = unsafe {
         CGBitmapContextCreate(
             mask.as_mut_ptr().cast(),
             line.width as usize,
             line.height as usize,
             8,
-            line.width as usize,
-            Some(&gray),
-            0,
+            line.width as usize * channels,
+            Some(&space),
+            if color { 0x2002 } else { 0 },
         )
     }
     .ok_or("chrome text bitmap")?;
-    CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+    if color {
+        CGContext::set_rgb_fill_color(Some(&context), 1., 1., 1., 1.);
+    } else {
+        CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+    }
     CGContext::set_should_antialias(Some(&context), true);
     CGContext::set_should_smooth_fonts(Some(&context), false);
     CGContext::set_allows_font_smoothing(Some(&context), false);
@@ -467,6 +493,9 @@ pub fn rasterize_at(
         }
     }
     drop(context);
+    if color {
+        mask = mask.as_chunks::<4>().0.iter().map(|p| p[3]).collect();
+    }
     Ok(LineMask {
         width: line.width,
         height: line.height,
@@ -488,6 +517,48 @@ pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Re
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: Unicode chrome ellipsis — native clusters are never split for available width.
+    #[test]
+    fn emoji_sequences_shape_as_one_native_glyph_and_truncate_only_between_clusters() {
+        let style = TextStyle::default();
+        for cluster in ["🦊", "👩🏽‍💻", "👨‍👩‍👧‍👦", "🇺🇦", "❤️", "1️⃣", "🏳️‍🌈"]
+        {
+            let shaped = shape_at(cluster, style, None, 2., 0.).unwrap();
+            assert_eq!(
+                shaped.runs.iter().map(|r| r.glyphs.len()).sum::<usize>(),
+                1,
+                "{cluster}"
+            );
+            assert!(
+                shaped
+                    .runs
+                    .iter()
+                    .all(|r| unsafe { r.font.symbolic_traits() }
+                        .contains(objc2_core_text::CTFontSymbolicTraits::TraitColorGlyphs)),
+                "{cluster}"
+            );
+            let limit = measure(&format!("{cluster}…"), style, None)
+                .unwrap()
+                .advance
+                - 0.25;
+            let actual = shape_at(&format!("{cluster}swarm"), style, Some(limit), 2., 0.).unwrap();
+            let expected = shape_at("…", style, None, 2., 0.).unwrap();
+            assert_eq!(
+                actual
+                    .runs
+                    .iter()
+                    .flat_map(|r| &r.glyphs)
+                    .collect::<Vec<_>>(),
+                expected
+                    .runs
+                    .iter()
+                    .flat_map(|r| &r.glyphs)
+                    .collect::<Vec<_>>(),
+                "split cluster {cluster}"
+            );
+        }
+    }
+
     // keeps: spec renderer §1a and text-rendering Recommendation — native font metrics, shaping and coverage
     #[test]
     fn native_fonts_are_reused_per_thread_and_keyed_by_every_input() {

@@ -47,6 +47,7 @@ pub struct ChromeRenderer {
     icons: icons::IconAtlas,
     icon_gpu: atlas_gpu::AtlasTexture,
     glyph_gpu: Option<atlas_gpu::AtlasTexture>,
+    color_glyph_gpu: Option<atlas_gpu::AtlasTexture>,
     glyph_reset_pending: bool,
     image_sampler: wgpu::Sampler,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
@@ -109,6 +110,7 @@ impl ChromeRenderer {
             icons,
             icon_gpu,
             glyph_gpu: None,
+            color_glyph_gpu: None,
             glyph_reset_pending: false,
             image_sampler,
             pipelines: HashMap::new(),
@@ -591,7 +593,11 @@ impl ChromeRenderer {
                         {
                             continue;
                         }
-                        let mut item = make(Rect::default(), *color, 2.0, clip);
+                        let mut item = if part.format == crate::text::Format::Bgra {
+                            make(Rect::default(), Color([1., 1., 1., color.0[3]]), 6.0, clip)
+                        } else {
+                            make(Rect::default(), *color, 2.0, clip)
+                        };
                         item.rect = [x, y, (x1 - x0) as f32, (y1 - y0) as f32];
                         glyph_instances.push((
                             instances.len(),
@@ -672,6 +678,15 @@ impl ChromeRenderer {
             dirty,
             self.glyph_reset_pending,
         );
+        let (atlas, dirty) = self.text.upload_color();
+        atlas_gpu::sync_glyphs(
+            &mut self.color_glyph_gpu,
+            &self.context.device,
+            &self.context.queue,
+            atlas,
+            dirty,
+            self.glyph_reset_pending,
+        );
         self.glyph_reset_pending = false;
         for [x, y, width, height] in self.icons.dirty.drain(..) {
             let start = ((y * self.icons.size + x) * 4) as usize;
@@ -739,6 +754,16 @@ impl ChromeRenderer {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::TextureView(icons),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(
+                        &self
+                            .color_glyph_gpu
+                            .as_ref()
+                            .expect("synchronized color glyph atlas")
+                            .view,
+                    ),
                 },
                 wgpu::BindGroupEntry {
                     binding: 5,

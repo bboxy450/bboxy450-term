@@ -82,6 +82,7 @@ impl Key {
 
 pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     let empty = || Mask {
+        format: crate::text::Format::Mask,
         bounds: [0; 4],
         merge_bounds: [0; 4],
         pixels: vec![],
@@ -176,6 +177,7 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     // The shared text atlas uses y-up bounds and top-down scanlines.
     let bounds = [left, -bottom, right, -top];
     Ok(Mask {
+        format: crate::text::Format::Mask,
         bounds,
         merge_bounds: bounds,
         pixels: pixmap

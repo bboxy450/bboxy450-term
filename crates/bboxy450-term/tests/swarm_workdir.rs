@@ -2934,20 +2934,21 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     assert!(!text(&cancelled).contains("cancelled purpose"));
     right_click(&fixture, &format!("toggle-swarm:{swarm}"));
     fixture.ctl(&["ui", "key", "enter"]);
-    type_keys(&fixture, "render crew");
+    type_keys(&fixture, "🦊 render crew 👩🏽‍💻 🇺🇦");
     fixture.ctl(&["ui", "key", "enter"]);
     let until = Instant::now() + Duration::from_secs(10);
     loop {
         let frame = fixture.ctl(&["ui", "layout"]);
-        if frame["regions"]["app-dialog:input"].is_null() && text(&frame).contains("RENDER CREW") {
+        if frame["regions"]["app-dialog:input"].is_null() && text(&frame).contains("🦊 RENDER CREW 👩🏽‍💻 🇺🇦") {
             break;
         }
         assert!(Instant::now() < until, "rename never completed: {frame}");
         std::thread::sleep(Duration::from_millis(20));
     }
+    evidence(&fixture, "emoji-swarm-renamed", &fixture.ctl(&["ui", "layout"]));
     let screen = fixture.ctl(&["seat", "screen", &seat]);
     assert!(
-        !screen.to_string().contains("render crew")
+        !screen.to_string().contains("🦊 render crew 👩🏽‍💻 🇺🇦")
             && !screen.to_string().contains("cancelled purpose"),
         "dialog input leaked to PTY: {screen}"
     );
@@ -2962,7 +2963,7 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     let until = Instant::now() + Duration::from_secs(10);
     loop {
         let frame = fixture.ctl(&["ui", "layout"]);
-        if text(&frame).contains("RENDER CREW") {
+        if text(&frame).contains("🦊 RENDER CREW 👩🏽‍💻 🇺🇦") {
             break;
         }
         assert!(
@@ -2971,6 +2972,7 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
         );
         std::thread::sleep(Duration::from_millis(20));
     }
+    evidence(&fixture, "emoji-swarm-restored", &fixture.ctl(&["ui", "layout"]));
     // The UI-control wire marker independently refreshes old logic, preserving
     // supervisor, live harness identity and durable swarm metadata.
     let mut ui = fixture.app.take().unwrap();
@@ -2990,7 +2992,7 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     let until = Instant::now() + Duration::from_secs(10);
     loop {
         let frame = fixture.ctl(&["ui", "layout"]);
-        if text(&frame).contains("RENDER CREW") {
+        if text(&frame).contains("🦊 RENDER CREW 👩🏽‍💻 🇺🇦") {
             break;
         }
         assert!(

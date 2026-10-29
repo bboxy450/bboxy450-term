@@ -53,6 +53,10 @@ help:
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-terminal-font          Global terminal font chords, native menu and retained PTY geometry' \
+	  'make test-color-emoji            Native chrome/terminal color glyphs and Unicode clusters' \
+	  'make test-color-emoji-swarm      Private Unicode swarm rename, storage and UI restart' \
+	  'make check-color-emoji-all       Strict Clippy for color rendering and its dependents' \
+	  'make check-color-emoji           Strict all-target Clippy for shared color rendering' \
 	  'make check-terminal-font         Strict all-target Clippy for terminal font paths' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
@@ -713,3 +717,22 @@ test-image-paste-e2e:
 check-image-paste:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-color-emoji check-color-emoji
+test-color-emoji:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_EMOJI_EVIDENCE='$(abspath $(TARGET_DIR))/emoji-evidence' cargo test --locked -p bboxy450-render --target-dir '$(TARGET_DIR)'
+
+check-color-emoji:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-render --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-color-emoji-swarm check-color-emoji-all
+test-color-emoji-swarm:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata; \
+	BBOXY_UI_OVERLAY_EVIDENCE='$(abspath $(TARGET_DIR))/emoji-evidence/app' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture
+
+check-color-emoji-all:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-render -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

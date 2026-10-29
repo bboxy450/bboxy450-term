@@ -83,6 +83,22 @@ fn invalid_swarm_names_and_folders_never_mutate_metadata() {
     );
 }
 
+// keeps: native emoji names — Unicode sequences survive authoritative storage verbatim.
+#[test]
+fn emoji_swarm_names_preserve_variations_joiners_flags_and_modifiers_after_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("account");
+    let id = Ulid::new();
+    let name = "🦊 crew 👩🏽‍💻 🇺🇦 👨‍👩‍👧‍👦 ❤️ 1️⃣";
+    let registry = Registry::new(SqliteStore::open(&path).unwrap());
+    let named = registry.rename_swarm(id, &format!("  {name}  ")).unwrap();
+    assert_eq!(named.name.as_deref(), Some(name));
+    assert_eq!(registry.rename_swarm(id, name).unwrap(), named);
+    drop(registry);
+    let reopened = Registry::new(SqliteStore::open(&path).unwrap());
+    assert_eq!(reopened.swarm(id).unwrap().unwrap(), named);
+}
+
 #[test]
 fn independent_name_and_folder_writers_preserve_both_atomic_changes() {
     let root = tempfile::tempdir().unwrap();

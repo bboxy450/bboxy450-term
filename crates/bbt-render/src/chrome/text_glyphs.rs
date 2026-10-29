@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Native glyph coverage, with no line bitmap cache.
-use crate::Result;
+use crate::{Result, text::Format};
 use bbt_ui_model::draw::TextStyle;
 
 #[cfg(target_os = "macos")]
@@ -55,11 +55,31 @@ pub(super) struct Shape {
 /// Bounds are integer device coordinates, y upwards, relative to the key origin.
 /// Pixels retain the bitmap's top-to-bottom row order.
 pub(super) struct Mask {
+    pub format: Format,
     pub bounds: [i32; 4],
     pub merge_bounds: [i32; 4],
     pub pixels: Vec<u8>,
 }
 impl Mask {
+    pub fn alpha(&self, pixel: usize) -> u8 {
+        match self.format {
+            Format::Mask => self.pixels[pixel],
+            Format::Bgra => self.pixels[pixel * 4 + 3],
+        }
+    }
+    pub fn into_alpha(mut self) -> Self {
+        if self.format == Format::Bgra {
+            self.pixels = self
+                .pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .map(|p| p[3])
+                .collect();
+            self.format = Format::Mask;
+        }
+        self
+    }
     pub fn width(&self) -> u32 {
         (self.bounds[2] - self.bounds[0]) as u32
     }
@@ -203,6 +223,7 @@ pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
     }
     if mask.empty() {
         return Ok(Mask {
+            format: Format::Mask,
             bounds: mask.bounds,
             merge_bounds: mask.merge_bounds,
             pixels: vec![],
@@ -234,7 +255,7 @@ pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
             for (tap, weight) in weights.iter().enumerate() {
                 let source_x = x as isize + tap as isize - 2 * pad as isize;
                 if (0..source_width as isize).contains(&source_x) {
-                    value += f32::from(mask.pixels[y * source_width + source_x as usize]) * weight;
+                    value += f32::from(mask.alpha(y * source_width + source_x as usize)) * weight;
                 }
             }
             horizontal[y * width + x] = value;
@@ -256,6 +277,7 @@ pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
     let pad = pad as i32;
     let expand = |b: [i32; 4]| [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad];
     Ok(Mask {
+        format: Format::Mask,
         bounds: expand(mask.bounds),
         merge_bounds: expand(mask.merge_bounds),
         pixels,
@@ -265,8 +287,8 @@ pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
 #[cfg(target_os = "macos")]
 pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     use objc2_core_foundation::CGPoint;
-    use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
-    use objc2_core_text::CTFontOrientation;
+    use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext, kCGColorSpaceSRGB};
+    use objc2_core_text::{CTFontOrientation, CTFontSymbolicTraits};
     use std::ptr::{self, NonNull};
     let scale = f64::from(f32::from_bits(key.scale));
     let mut geometry: Option<[i32; 4]> = None;
@@ -302,6 +324,7 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     }
     let Some(geometry) = geometry else {
         return Ok(Mask {
+            format: Format::Mask,
             bounds: [0; 4],
             merge_bounds: [0; 4],
             pixels: vec![],
@@ -318,8 +341,18 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     if width > 16_384 || height > 2_048 {
         return Err("chrome glyph component too large".into());
     }
-    let mut pixels = vec![0; width * height];
-    let gray = CGColorSpace::new_device_gray().ok_or("grayscale colour space")?;
+    let color = key.glyphs.iter().any(|g| {
+        unsafe { g.font.0.symbolic_traits() }.contains(CTFontSymbolicTraits::TraitColorGlyphs)
+    });
+    let format = if color { Format::Bgra } else { Format::Mask };
+    let channels = format.channels();
+    let mut pixels = vec![0; width * height * channels];
+    let space = if color {
+        CGColorSpace::with_name(Some(unsafe { kCGColorSpaceSRGB }))
+    } else {
+        CGColorSpace::new_device_gray()
+    }
+    .ok_or("chrome glyph colour space")?;
     // The allocation stays fixed and inaccessible until the synchronous context is dropped.
     let context = unsafe {
         CGBitmapContextCreate(
@@ -327,14 +360,18 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
             width,
             height,
             8,
-            width,
-            Some(&gray),
-            0,
+            width * channels,
+            Some(&space),
+            if color { 0x2002 } else { 0 },
         )
     }
     .ok_or("chrome glyph bitmap")?;
     // These settings are identical to the line reference in text.rs.
-    CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+    if color {
+        CGContext::set_rgb_fill_color(Some(&context), 1., 1., 1., 1.);
+    } else {
+        CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+    }
     CGContext::set_should_antialias(Some(&context), true);
     CGContext::set_should_smooth_fonts(Some(&context), false);
     CGContext::set_allows_font_smoothing(Some(&context), false);
@@ -370,8 +407,8 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     }
     drop(context);
     let mut crop = [width, height, 0, 0];
-    for (i, &value) in pixels.iter().enumerate() {
-        if value == 0 {
+    for (i, pixel) in pixels.chunks_exact(channels).enumerate() {
+        if pixel[channels - 1] == 0 {
             continue;
         }
         let x = i % width;
@@ -383,6 +420,7 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     }
     if crop[2] == 0 {
         return Ok(Mask {
+            format: Format::Mask,
             bounds: [0; 4],
             merge_bounds: [0; 4],
             pixels: vec![],
@@ -397,13 +435,15 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     // Keep ink away from the quad's antialiased rectangle edge, just as the
     // original padded line bitmap did. Otherwise interpolation error at an
     // exactly half-pixel edge can reduce coverage by one output level.
-    let stride = crop[2] - crop[0] + 2;
+    let stride = (crop[2] - crop[0] + 2) * channels;
     let mut trimmed = Vec::with_capacity(stride * (crop[3] - crop[1] + 2));
     trimmed.resize(stride, 0);
     for y in crop[1]..crop[3] {
-        trimmed.push(0);
-        trimmed.extend_from_slice(&pixels[y * width + crop[0]..y * width + crop[2]]);
-        trimmed.push(0);
+        trimmed.resize(trimmed.len() + channels, 0);
+        trimmed.extend_from_slice(
+            &pixels[(y * width + crop[0]) * channels..(y * width + crop[2]) * channels],
+        );
+        trimmed.resize(trimmed.len() + channels, 0);
     }
     trimmed.resize(trimmed.len() + stride, 0);
     let merge_bounds = [
@@ -413,6 +453,7 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
         ink[3].max(geometry[3]),
     ];
     Ok(Mask {
+        format,
         bounds: [ink[0] - 1, ink[1] - 1, ink[2] + 1, ink[3] + 1],
         merge_bounds,
         pixels: trimmed,
@@ -431,6 +472,7 @@ mod shadow_tests {
     #[test]
     fn gaussian_shadow_keeps_a_zero_atlas_border_and_rejects_unbounded_inputs() {
         let point = Mask {
+            format: Format::Mask,
             bounds: [0, 0, 3, 3],
             merge_bounds: [1, 1, 2, 2],
             pixels: vec![0, 0, 0, 0, 255, 0, 0, 0, 0],
@@ -458,6 +500,7 @@ mod shadow_tests {
             assert!(blur(&point, sigma).is_err());
         }
         let empty = Mask {
+            format: Format::Mask,
             bounds: [0; 4],
             merge_bounds: [0; 4],
             pixels: vec![],
@@ -504,7 +547,7 @@ mod tests {
                     if dx < 0 || dy < 0 || dx >= shape.width as i32 || dy >= shape.height as i32 {
                         continue;
                     }
-                    let source = mask.pixels[(row as u32 * mask.width() + column as u32) as usize];
+                    let source = mask.alpha((row as u32 * mask.width() + column as u32) as usize);
                     let at = (dy as u32 * shape.width + dx as u32) as usize;
                     assert!(
                         pixels[at] == 0 || source == 0,

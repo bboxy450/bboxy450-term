@@ -9,6 +9,7 @@ struct Instance {rect:vec4f,fill:vec4f,stroke:vec4f,radii:vec4f,params:vec4f,uv:
 @group(0) @binding(1) var<storage,read> items:array<Instance>;
 @group(0) @binding(2) var masks:texture_2d<f32>;
 @group(0) @binding(3) var images:texture_2d<f32>;
+@group(0) @binding(4) var color_glyphs:texture_2d<f32>;
 @group(0) @binding(5) var image_sampler:sampler;
 struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
 @vertex fn vs(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->Vertex {
@@ -33,6 +34,13 @@ fn shade(v:Vertex)->vec4f {
             // chrome source-over blend. Hidden RGB must not fringe the edge.
             c*=vec4f(image.rgb/max(image.a,0.000001),image.a);
         }
+    }
+    if kind==6u {
+        let unit=clamp((p-i.rect.xy)/max(i.rect.zw,vec2f(0.001)),vec2f(0),vec2f(0.99999));
+        let image=textureLoad(color_glyphs,vec2i(i.uv.xy+unit*i.uv.zw),0);
+        // CoreText color fonts supply premultiplied sRGB; retain native hue and
+        // apply only the text opacity before the shared source-over blend.
+        c*=vec4f(image.rgb/max(image.a,0.000001),image.a);
     }
     // CSS inset highlights start inside the border and paint beneath its stroke.
     if i.params.w>0.0&&p.y<i.rect.y+i.params.y+1.5&&d< -i.params.y {c=vec4f(mix(c.rgb,vec3f(1),i.params.w),c.a);}

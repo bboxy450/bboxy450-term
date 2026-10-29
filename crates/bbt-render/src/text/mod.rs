@@ -7,6 +7,23 @@
 //! Shared font settings and the legacy ASCII fixture font.
 //! Current terminal cluster shaping and colour glyphs are in [`terminal`].
 
+/// Portable glyph storage contract shared by cell text and proportional chrome.
+/// Color pixels are native premultiplied BGRA, without a UI foreground tint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Format {
+    Mask,
+    Bgra,
+}
+
+impl Format {
+    pub fn channels(self) -> usize {
+        match self {
+            Self::Mask => 1,
+            Self::Bgra => 4,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct FontConfig {
     pub family: String,

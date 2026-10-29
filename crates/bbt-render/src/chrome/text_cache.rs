@@ -14,6 +14,7 @@ use super::{
 use crate::{
     Result,
     atlas::{AtlasRect, GlyphAtlas},
+    text::Format,
 };
 use bbt_ui_model::draw::TextStyle;
 use std::{
@@ -25,6 +26,8 @@ use std::{
 pub struct Stats {
     pub atlas_size: u32,
     pub atlas_mask_pixels: usize,
+    pub color_entries: usize,
+    pub color_atlas_size: u32,
     pub cached_mask_bytes: usize,
     pub glyph_entries: usize,
     pub overlap_entries: usize,
@@ -49,6 +52,7 @@ pub(super) struct Part {
     /// Device-pixel offset from the original line bitmap's top-left.
     pub offset: [i32; 2],
     pub size: [u32; 2],
+    pub format: Format,
 }
 pub(super) struct Line {
     pub width: u32,
@@ -77,6 +81,7 @@ const SHAPE_BUDGET: usize = 512;
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum MaskKey {
     Glyph(Key),
+    Alpha(Key),
     Path(path_masks::Key),
 }
 impl From<Key> for MaskKey {
@@ -92,13 +97,13 @@ impl From<path_masks::Key> for MaskKey {
 impl MaskKey {
     fn blur_sigma(&self) -> u32 {
         match self {
-            Self::Glyph(k) => k.blur_sigma,
+            Self::Glyph(k) | Self::Alpha(k) => k.blur_sigma,
             Self::Path(k) => k.blur_sigma,
         }
     }
     fn set_blur_sigma(&mut self, sigma: u32) {
         match self {
-            Self::Glyph(k) => k.blur_sigma = sigma,
+            Self::Glyph(k) | Self::Alpha(k) => k.blur_sigma = sigma,
             Self::Path(k) => k.blur_sigma = sigma,
         }
     }
@@ -111,7 +116,9 @@ struct Entry {
 }
 pub(super) struct Cache {
     atlas: GlyphAtlas,
+    color_atlas: GlyphAtlas,
     dirty: Vec<AtlasRect>,
+    color_dirty: Vec<AtlasRect>,
     entries: HashMap<MaskKey, Entry>,
     ids: HashMap<u64, MaskKey>,
     bytes: usize,
@@ -141,7 +148,9 @@ impl Cache {
         }
         Ok(Self {
             atlas: GlyphAtlas::new(initial_size, atlas_limit)?,
+            color_atlas: GlyphAtlas::new_color(initial_size, atlas_limit)?,
             dirty: vec![],
+            color_dirty: vec![],
             entries: HashMap::new(),
             ids: HashMap::new(),
             bytes: 0,
@@ -169,6 +178,7 @@ impl Cache {
         let mask = if key.blur_sigma() == 0 {
             Arc::new(match &key {
                 MaskKey::Glyph(key) => glyphs::rasterize(key)?,
+                MaskKey::Alpha(key) => glyphs::rasterize(key)?.into_alpha(),
                 MaskKey::Path(key) => path_masks::rasterize(key)?,
             })
         } else {
@@ -220,7 +230,25 @@ impl Cache {
             atoms.push(atom);
         }
         let mut parts = Vec::new();
-        for group in glyphs::connected(&bounds) {
+        // Native color ink and foreground-tinted coverage cannot share a
+        // component: overlapping text must retain its own foreground color.
+        let mut groups = Vec::new();
+        for format in [Format::Mask, Format::Bgra] {
+            let same_format: Vec<_> = bounds
+                .iter()
+                .zip(&atoms)
+                .map(|(bounds, (_, mask))| {
+                    if mask.format == format {
+                        *bounds
+                    } else {
+                        [0; 4]
+                    }
+                })
+                .collect();
+            groups.extend(glyphs::connected(&same_format));
+        }
+        groups.sort_by_key(|group| group[0]);
+        for group in groups {
             self.totals.component_requests += 1;
             self.totals.max_component_glyphs = self.totals.max_component_glyphs.max(group.len());
             let (key, origin) = glyphs::component(&shape, &group);
@@ -240,6 +268,7 @@ impl Cache {
                     shape.height as i32 - origin[1] - mask.bounds[3],
                 ],
                 size: [mask.width(), mask.height()],
+                format: mask.format,
             });
         }
         Ok(Line {
@@ -265,18 +294,21 @@ impl Cache {
         }
         self.totals.shadow_requests += 1;
         let mut line = self.line(value, style, max_width, scale, phase)?;
-        if sigma == 0. {
-            return Ok(line);
-        }
         for part in &mut line.parts {
             let mut key = self.ids[&part.id].clone();
             let original = self.entries[&key].mask.bounds;
+            if part.format == Format::Bgra
+                && let MaskKey::Glyph(glyph) = key
+            {
+                key = MaskKey::Alpha(glyph);
+            }
             key.set_blur_sigma(sigma.to_bits());
             let (id, mask) = self.get(key)?;
             part.id = id;
             part.offset[0] += mask.bounds[0] - original[0];
             part.offset[1] += original[3] - mask.bounds[3];
             part.size = [mask.width(), mask.height()];
+            part.format = mask.format;
         }
         Ok(line)
     }
@@ -288,6 +320,7 @@ impl Cache {
             id,
             offset: [mask.bounds[0], -mask.bounds[3]],
             size: [mask.width(), mask.height()],
+            format: mask.format,
         }))
     }
 
@@ -380,13 +413,15 @@ impl Cache {
                 if entry.rect.is_some() {
                     continue;
                 }
-                match self
-                    .atlas
-                    .insert(entry.mask.width(), entry.mask.height(), &entry.mask.pixels)
-                {
+                let (atlas, dirty) = if entry.mask.format == Format::Bgra {
+                    (&mut self.color_atlas, &mut self.color_dirty)
+                } else {
+                    (&mut self.atlas, &mut self.dirty)
+                };
+                match atlas.insert(entry.mask.width(), entry.mask.height(), &entry.mask.pixels) {
                     Ok(rect) => {
                         entry.rect = Some(rect);
-                        self.dirty.push(rect);
+                        dirty.push(rect);
                     }
                     Err(_) => {
                         repack = true;
@@ -413,10 +448,16 @@ impl Cache {
                 )
             });
             let mut atlas = GlyphAtlas::new(self.initial_size, self.atlas_limit)?;
+            let mut color_atlas = GlyphAtlas::new_color(self.initial_size, self.atlas_limit)?;
             let mut rectangles = Vec::with_capacity(retained.len());
             let mut fits = true;
             for (id, mask) in retained {
-                match atlas.insert(mask.width(), mask.height(), &mask.pixels) {
+                let target = if mask.format == Format::Bgra {
+                    &mut color_atlas
+                } else {
+                    &mut atlas
+                };
+                match target.insert(mask.width(), mask.height(), &mask.pixels) {
                     Ok(rect) => rectangles.push((id, rect)),
                     Err(_) => {
                         fits = false;
@@ -433,7 +474,9 @@ impl Cache {
                     self.entries.get_mut(key).unwrap().rect = Some(rect);
                 }
                 self.atlas = atlas;
+                self.color_atlas = color_atlas;
                 self.dirty.clear();
+                self.color_dirty.clear();
                 self.totals.rebuilds += 1;
                 return Ok(true);
             }
@@ -453,12 +496,19 @@ impl Cache {
     pub fn upload(&mut self) -> (&GlyphAtlas, &mut Vec<AtlasRect>) {
         (&self.atlas, &mut self.dirty)
     }
+    pub fn upload_color(&mut self) -> (&GlyphAtlas, &mut Vec<AtlasRect>) {
+        (&self.color_atlas, &mut self.color_dirty)
+    }
     pub fn stats(&self) -> Stats {
         let mut stats = self.totals;
         stats.shape_entries = self.shapes.len();
         stats.atlas_size = self.atlas.size();
+        stats.color_atlas_size = self.color_atlas.size();
         stats.cached_mask_bytes = self.bytes;
         for (key, entry) in &self.entries {
+            if entry.mask.format == Format::Bgra {
+                stats.color_entries += 1;
+            }
             if key.blur_sigma() != 0 {
                 stats.shadow_mask_bytes += entry.mask.pixels.len();
             }
@@ -481,6 +531,45 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: shared native color cache — independent atlas coordinates survive LRU repacks.
+    #[test]
+    fn color_and_mask_working_sets_repack_together_without_losing_native_pixels() {
+        let mut cache = Cache::with_limits(32, 256, 16_384, 6).unwrap();
+        for emoji in ["👩🏽‍💻", "👨‍👩‍👧‍👦", "🇺🇦", "❤️", "1️⃣", "🏳️‍🌈", "😀", "👍🏽"]
+        {
+            let line = cache
+                .line(&format!("🦊 A {emoji}"), TextStyle::default(), None, 1., 0.)
+                .unwrap();
+            let pins: Vec<_> = line.parts.iter().map(|p| p.id).collect();
+            cache.finish(&pins).unwrap();
+            assert!(line.parts.iter().any(|part| part.format == Format::Bgra));
+            assert!(line.parts.iter().any(|part| part.format == Format::Mask));
+            for part in &line.parts {
+                let rect = cache.rect(part.id).unwrap();
+                let mask = &cache.entries[&cache.ids[&part.id]].mask;
+                let atlas = if part.format == Format::Bgra {
+                    &cache.color_atlas
+                } else {
+                    &cache.atlas
+                };
+                let channels = part.format.channels();
+                for row in 0..usize::from(rect.height) {
+                    let start = ((usize::from(rect.y) + row) * atlas.size() as usize
+                        + usize::from(rect.x))
+                        * channels;
+                    let width = usize::from(rect.width) * channels;
+                    assert_eq!(
+                        &atlas.pixels()[start..start + width],
+                        &mask.pixels[row * width..(row + 1) * width]
+                    );
+                }
+            }
+        }
+        assert!(cache.stats().evictions > 0);
+        assert!(cache.stats().rebuilds > 0);
+        assert!(cache.entries.len() <= 6);
+    }
+
     // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn path_and_text_masks_share_pins_eviction_and_repacked_uvs() {

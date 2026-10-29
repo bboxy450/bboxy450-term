@@ -403,6 +403,9 @@ mod tests {
                 "👨\u{200d}👩\u{200d}👧\u{200d}👦",
                 "🏳️\u{200d}🌈",
                 "👍🏽",
+                "🇺🇦",
+                "❤️",
+                "1️⃣",
             ] {
                 let glyph = fonts.rasterize(text, false, false, 2).unwrap().unwrap();
                 assert_eq!(glyph.format, Format::Bgra);

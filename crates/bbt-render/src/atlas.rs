@@ -53,6 +53,9 @@ impl GlyphAtlas {
     pub fn pixels(&self) -> &[u8] {
         &self.pixels
     }
+    pub fn channels(&self) -> u32 {
+        self.channels
+    }
 
     fn grow(&mut self) -> Result<()> {
         let next = self.size * 2;
