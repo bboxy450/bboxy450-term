@@ -7,10 +7,107 @@
 #![allow(clippy::disallowed_methods)] // Private sockets, no operator daemon or UI.
 
 use bboxy450_harness_wake_up::{launch::CodexLaunch, native};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
 use serde_json::json;
-use std::time::Duration;
+use std::{
+    panic::AssertUnwindSafe,
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 use tokio_tungstenite::tungstenite::{Message, protocol::WebSocketConfig};
+
+// Private fixture observations contain static stage labels and elapsed times,
+// never frames, panic payloads, capabilities or environment values.
+#[derive(Clone)]
+struct ProxyProbe {
+    started: Instant,
+    data: Arc<Mutex<ProxyProbeData>>,
+}
+#[derive(Debug, Default)]
+struct ProxyProbeData {
+    stages: Vec<(&'static str, u128)>,
+    dropped: usize,
+    tasks: Vec<(&'static str, &'static str)>,
+}
+impl ProxyProbe {
+    fn new() -> Self {
+        Self { started: Instant::now(), data: Default::default() }
+    }
+    fn stage(&self, stage: &'static str) {
+        let mut data = self.data.lock().unwrap();
+        if data.stages.len() < 64 {
+            data.stages.push((stage, self.started.elapsed().as_millis()));
+        } else {
+            data.dropped += 1;
+        }
+    }
+    fn task(&self, name: &'static str, outcome: &'static str) {
+        let mut data = self.data.lock().unwrap();
+        if let Some(task) = data.tasks.iter_mut().find(|task| task.0 == name) {
+            task.1 = outcome;
+        } else {
+            assert!(data.tasks.len() < 2, "private fixture child bound");
+            data.tasks.push((name, outcome));
+        }
+    }
+    fn emit(&self) {
+        use std::io::Write;
+        // Write directly so successful focused runs retain observations too.
+        let _ = writeln!(std::io::stderr().lock(), "proxy fixture elapsed_ms={} {:?}",
+                         self.started.elapsed().as_millis(), *self.data.lock().unwrap());
+    }
+}
+struct ProxyReport(ProxyProbe);
+impl Drop for ProxyReport {
+    fn drop(&mut self) { self.0.emit(); }
+}
+struct ProxyChild {
+    probe: ProxyProbe,
+    name: &'static str,
+    finished: bool,
+}
+impl Drop for ProxyChild {
+    fn drop(&mut self) {
+        if !self.finished {
+            self.probe.task(self.name, "cancelled");
+            self.probe.emit();
+        }
+    }
+}
+fn proxy_child(
+    tasks: &mut tokio::task::JoinSet<(&'static str, bool)>,
+    probe: &ProxyProbe,
+    name: &'static str,
+    future: impl std::future::Future<Output = ()> + Send + 'static,
+) {
+    probe.task(name, "spawned");
+    let child = ProxyChild { probe: probe.clone(), name, finished: false };
+    tasks.spawn(async move {
+        let mut child = child;
+        let success = AssertUnwindSafe(future).catch_unwind().await.is_ok();
+        child.probe.task(name, if success { "completed" } else { "panicked" });
+        child.finished = true;
+        (name, success)
+    });
+}
+async fn stop_proxy_children(
+    tasks: &mut tokio::task::JoinSet<(&'static str, bool)>,
+    probe: &ProxyProbe,
+) -> bool {
+    let mut no_panics = true;
+    tasks.abort_all();
+    while let Some(result) = tasks.join_next().await {
+        match result {
+            Ok((_, success)) => no_panics &= success,
+            Err(error) => {
+                no_panics &= error.is_cancelled();
+                probe.stage(if error.is_cancelled() { "child cancellation joined" } else { "child panic joined" });
+            }
+        }
+    }
+    probe.stage("all children joined");
+    no_panics
+}
 
 // keeps: interface app-harness — a composed launcher can deliver natively beside its live TUI
 #[tokio::test]
@@ -82,8 +179,14 @@ async fn a_native_client_reaches_the_backend_while_the_tui_stays_connected() {
 // connection alive for subsequent requests, rather than make the TUI reconnect.
 #[tokio::test]
 async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
-    tokio::time::timeout(Duration::from_secs(20), async {
-        let root = tempfile::tempdir().unwrap();
+    let probe = ProxyProbe::new();
+    let _report = ProxyReport(probe.clone());
+    let mut tasks = tokio::task::JoinSet::new();
+    let mut directory = None;
+    let result = AssertUnwindSafe(tokio::time::timeout(Duration::from_secs(20), async {
+        probe.stage("fixture construction");
+        directory = Some(tempfile::tempdir().unwrap());
+        let root = directory.as_ref().unwrap();
         let frontend = root.path().join("front");
         let backend = root.path().join("back");
         let listener = tokio::net::UnixListener::bind(&backend).unwrap();
@@ -92,28 +195,38 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
                 .max_message_size(Some(128 << 20))
                 .max_frame_size(Some(128 << 20))
         };
+        probe.stage("payload construction");
         let catalog = json!({"id":42,"result":{"catalog":"x".repeat(23 << 20)}}).to_string();
         let expected = catalog.clone();
-        let server = tokio::spawn(async move {
+        probe.stage("payload constructed");
+        let server_probe = probe.clone();
+        proxy_child(&mut tasks, &probe, "server", async move {
             // The proxy's readiness probe opens a plain connection first.
             let mut ws = loop {
+                server_probe.stage("server accept");
                 let (stream, _) = listener.accept().await.unwrap();
+                server_probe.stage("server handshake");
                 if let Ok(ws) =
                     tokio_tungstenite::accept_async_with_config(stream, Some(config())).await
                 {
                     break ws;
                 }
+                server_probe.stage("server plain readiness probe closed");
             };
-            assert_eq!(
-                ws.next().await.unwrap().unwrap().into_text().unwrap(),
-                expected
-            );
+            server_probe.stage("server read catalog");
+            let received = ws.next().await.unwrap().unwrap().into_text().unwrap();
+            assert!(received.as_bytes() == expected.as_bytes(), "server catalog bytes differ");
+            drop(received);
+            server_probe.stage("server echo catalog");
             ws.send(Message::Text(expected.into())).await.unwrap();
+            server_probe.stage("server read final exchange");
             assert_eq!(
                 ws.next().await.unwrap().unwrap().into_text().unwrap(),
                 "still connected"
             );
+            server_probe.stage("server send confirmation");
             ws.send(Message::Text("confirmed".into())).await.unwrap();
+            server_probe.stage("server complete");
         });
         let launch = CodexLaunch {
             name: "private fixture".into(),
@@ -122,42 +235,83 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             resume: None,
             host: "/unused".into(),
         };
-        let proxy = tokio::spawn(async move {
+        let proxy_probe = probe.clone();
+        proxy_child(&mut tasks, &probe, "proxy", async move {
+            proxy_probe.stage("proxy serving");
             native::codex_proxy(&frontend, &backend, &launch, "/must-not-start-a-daemon")
                 .await
                 .unwrap();
         });
         let path = root.path().join("front");
+        probe.stage("client wait for frontend");
         while !path.exists() {
             tokio::task::yield_now().await;
         }
+        probe.stage("client connect");
         let stream = tokio::net::UnixStream::connect(path).await.unwrap();
+        probe.stage("client handshake");
         let (mut client, _) =
             tokio_tungstenite::client_async_with_config("ws://localhost/", stream, Some(config()))
                 .await
                 .unwrap();
+        probe.stage("client send catalog");
         client
             .send(Message::Text(catalog.clone().into()))
             .await
             .unwrap();
-        assert_eq!(
-            client.next().await.unwrap().unwrap().into_text().unwrap(),
-            catalog
-        );
+        probe.stage("client read catalog echo");
+        let received = client.next().await.unwrap().unwrap().into_text().unwrap();
+        assert!(received.as_bytes() == catalog.as_bytes(), "client catalog bytes differ");
+        drop(received);
+        probe.stage("client send final exchange");
         client
             .send(Message::Text("still connected".into()))
             .await
             .unwrap();
+        probe.stage("client read confirmation");
         assert_eq!(
             client.next().await.unwrap().unwrap().into_text().unwrap(),
             "confirmed"
         );
-        server.await.unwrap();
-        proxy.abort();
-        let _ = proxy.await;
-    })
-    .await
-    .expect("large catalog relay stalled");
+        probe.stage("client exchange complete");
+        loop {
+            let (name, success) = tasks.join_next().await.unwrap().unwrap();
+            assert!(success, "private {name} task panicked");
+            if name == "server" { break; }
+        }
+        assert!(stop_proxy_children(&mut tasks, &probe).await, "private proxy task panicked");
+        drop(directory.take());
+    })).catch_unwind().await;
+    probe.stage(match &result {
+        Ok(Ok(())) => "relay complete",
+        Ok(Err(_)) => "outer deadline elapsed",
+        Err(_) => "driver panicked",
+    });
+    if !tasks.is_empty() {
+        stop_proxy_children(&mut tasks, &probe).await;
+    }
+    match result {
+        Ok(Ok(())) => {},
+        Ok(Err(error)) => panic!("large catalog relay stalled: {error}"),
+        Err(error) => std::panic::resume_unwind(error),
+    }
+}
+
+// keeps: task 278 — cancellation and panic observations are executable controls.
+#[tokio::test]
+async fn proxy_diagnostics_retain_child_panic_and_join_cancelled_tasks() {
+    let probe = ProxyProbe::new();
+    let mut tasks = tokio::task::JoinSet::new();
+    proxy_child(&mut tasks, &probe, "server", async { panic!("private diagnostic control"); });
+    assert_eq!(tasks.join_next().await.unwrap().unwrap(), ("server", false));
+    proxy_child(&mut tasks, &probe, "proxy", std::future::pending());
+    probe.stage("control waiting for native read");
+    assert!(tokio::time::timeout(Duration::ZERO, std::future::pending::<()>()).await.is_err());
+    assert!(stop_proxy_children(&mut tasks, &probe).await);
+    let data = probe.data.lock().unwrap();
+    assert_eq!(data.tasks, [("server", "panicked"), ("proxy", "cancelled")]);
+    assert!(data.stages.iter().any(|(stage, _)| *stage == "control waiting for native read"));
+    assert!(tasks.is_empty());
 }
 
 // keeps: interface app-harness — compose shim hooks; seat policy applies only to the first launch

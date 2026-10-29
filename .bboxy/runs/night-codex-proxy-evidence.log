@@ -1,0 +1,9 @@
+2026-10-29 — Pip Hollow, task278 supplemental evidence retention for221/229.
+Original signed source7c0e6520 and source bytes preserved at target/codex-proxy-evidence/original-codex_proxy.rs, SHA2561854cdd6724a83f1044d52f6916ebac173d967e91cb9e0eaf76f752580286d09.
+Author gate on7c0e6520: land.sh77, Cargo101,20s large-catalog timeout; two proxy siblings passed. Raw commands.log SHA2564f75a566372dd0b18dd14ffe020d36d2eaddac6d07504f23d1f1c74e6d5ccb8c retained in landing/presubmits/7c0e6520f840d8dff80ce8a9ec8e461168f39135-d7d6c795 and canonical-7109 evidence archive.
+Earlier exact make test7109e746 passed the unchanged proxy test in7.36s. This does not explain or erase the timeout; its cause remains unproven.
+Private fixture only: bounded static stage/elapsed observations, named child completed/panicked/cancelled states, joined abort cleanup after timeout/panic, and a bounded direct diagnostic on successful/cancelled runs.
+Original23MiB payload, byte equality in both directions, same-connection final exchange and20s outer deadline retained. Normal task joining/aborting and temporary-directory cleanup remain within that deadline. Failure cleanup retains the decided timeout rather than changing its verdict.
+Large equality assertions retain the byte predicate but omit raw payloads from their panic output. Sibling test bodies and production files remain unchanged.
+The new negative control exercises a real child panic and an immediate private timeout/cancellation with all children joined. No operator, provider, sleeps/retries, deadline/payload reduction, quarantine or host-contention explanation is introduced.
+Focused make test-harness-proxy, exact-source make test and author self-landing results are not yet established for this instrumented source; actual statuses/log hashes follow in retained evidence and task reports.
