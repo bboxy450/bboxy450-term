@@ -487,6 +487,7 @@ mod notification_foreground_tests {
         use bbt_proto::{GuiIdentity, GuiIdentityState};
         let mut identity = GuiIdentity {
             state: GuiIdentityState::LocalDev,
+            private_test_run: None,
             reason: Some(format!("test-account:{}", bbt_mux::Ulid(1))),
         };
         assert!(notification_test_account(true, Some(&identity)));
