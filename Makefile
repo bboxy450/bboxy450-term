@@ -17,6 +17,7 @@ GITKB_PLUGIN := $(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
 # Each fixture owns real app/PTY/provider processes. Leave fixed provider deadlines
 # for its own scenario rather than unrelated GUI fixture startup.
 SWARM_TEST_THREADS ?= 2
+export RUST_TEST_THREADS ?= 2
 INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app
@@ -143,7 +144,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2' \
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... GITKB_SCHEMA=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 build:
@@ -199,6 +200,7 @@ test-task-import-transport:
 	python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
 	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
 	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_migration -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp $(TASK_IMPORT_FILTER) -- --nocapture; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
 
