@@ -673,6 +673,8 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
             _ => unreachable!(),
         };
         let message_position = message.metadata.reference.position.clone();
+        gui.send(GuiAction::EventAck {stream:message_position.stream.clone(), seq:message_position.sequence}).await;
+        assert!(matches!(gui.messaging(Request::Acknowledge {message:message_id,agent:None}).await, Response::Applied));
         let receipt = match gui.until(|reply| matches!(reply,
             GuiReply::Event {subject,envelope,..} if subject.ends_with("/receipt")
                 && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id)
@@ -681,13 +683,8 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
             _ => unreachable!(),
         };
         assert_ne!(receipt.metadata.reference.position, message_position);
-        let seat = match gui.until(|reply| matches!(reply,
-            GuiReply::Event {envelope,..} if matches!(&envelope.payload, GuiEventPayload::Seat {..})
-        )).await {
-            GuiReply::Event {envelope,..} => *envelope,
-            _ => unreachable!(),
-        };
-        for (expected, messaging) in [(message, true), (receipt, true), (seat, false)] {
+        gui.send(GuiAction::EventAck {stream:receipt.metadata.reference.position.stream.clone(), seq:receipt.metadata.reference.position.sequence}).await;
+        for expected in [message, receipt] {
             let position = &expected.metadata.reference.position;
             let before = gui.cursor(&position.stream).await;
             gui.send(GuiAction::GetEvents {
@@ -706,7 +703,6 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
             };
             assert_eq!(actual.metadata, expected.metadata, "canonical position and proof unchanged");
             assert!(actual.cursor.is_none());
-            if messaging {
                 let GuiEventPayload::Message {row} = &actual.payload else {
                     panic!("retained message/receipt did not hydrate MessageRow");
                 };
@@ -717,12 +713,25 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
                 let bus = row.bus.as_ref().unwrap();
                 assert_eq!(bus.stream, message_position.stream);
                 assert_eq!(bus.seq, message_position.sequence, "receipt is not the message position");
-            } else {
-                assert!(matches!(actual.payload, GuiEventPayload::Activity {..}),
-                    "historical seat state must remain activity, not a live pane replacement");
-            }
             assert_eq!(gui.cursor(&position.stream).await.read, before.read);
         }
+        // The seat started before attachment, so its original state is retained
+        // history rather than a promised new live transition.
+        let stream = format!("seat-{SEAT}");
+        let before = gui.cursor(&stream).await;
+        gui.send(GuiAction::GetEvents {stream:stream.clone(),after:0,limit:128}).await;
+        let GuiReply::Events {page} = gui.until(|reply| matches!(reply,
+            GuiReply::Events {page} if page.cursor.stream == stream
+        )).await else { unreachable!() };
+        assert_eq!(page.cursor.read,before.read);
+        assert!(page.records.iter().any(|record| matches!(record,
+            bbt_proto::events::GuiEventRecord::Event(event) if event.metadata.subject.ends_with("/state")
+                && matches!(event.payload,GuiEventPayload::Activity {..})
+        )), "retained seat state remains activity");
+        assert!(page.records.iter().all(|record| !matches!(record,
+            bbt_proto::events::GuiEventRecord::Event(event) if matches!(event.payload,
+                GuiEventPayload::Seat {..}|GuiEventPayload::Identity {..}|GuiEventPayload::Host {..})
+        )));
         drop(gui);
     });
     process.stop();
