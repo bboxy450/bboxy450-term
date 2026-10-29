@@ -1105,7 +1105,7 @@ test-harmony-host-integration:
 test-harmony-host-ui:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' settings::registry; \
-	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' ctl::; \
+	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' ctl::; \
 	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' live::tests
 
 test-harmony-host-gitkb: build-gitkb-plugin
