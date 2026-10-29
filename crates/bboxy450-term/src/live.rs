@@ -3641,6 +3641,8 @@ mod tests {
             },
             composer: editor.view.clone(),
             scroll: 0.,
+            tasks: None,
+            task_scroll: 0.,
         };
         let layout = crate::scene::Scene::new()
             .conversation_layout([1400., 1000.], &conversation)

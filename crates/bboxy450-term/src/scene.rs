@@ -100,7 +100,8 @@ pub struct ConversationLayout {
     pub layout: c::Layout,
     pub regions: ui::modules::composer::Regions,
     pub height: f32,
-    pub splitters: [Rect; 2],
+    pub splitters: [Rect; 3],
+    pub tasks_height: f32,
     pub available_height: f32,
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
@@ -1654,11 +1655,12 @@ impl Scene {
         let height =
             (available * self.sidebar_layout.conversation_fraction).clamp(minimum, maximum);
         let element = view
-            .element_bounded(
+            .element_sidebar(
                 ctx,
                 [width, height],
                 &self.metrics,
                 self.sidebar_layout.composer_body_height,
+                self.sidebar_layout.tasks_height,
             )
             .map_err(|e| e.to_string())?;
         let layout = element
@@ -1681,8 +1683,21 @@ impl Scene {
                 8_f32.min((size[1] - footer - y + 4.).max(0.)),
             )
         };
-        let splitters = [handle(layout.rect.y), handle(body_top)];
+        let tasks = named(&layout, "conversation/task-section").filter(|part| part.rect.h > 0.);
+        let tasks_height = tasks.map_or(0., |part| part.rect.h);
+        let splitters = [
+            handle(layout.rect.y),
+            handle(body_top),
+            tasks.map_or(Rect::new(0., 0., 0., 0.), |part| handle(part.rect.y)),
+        ];
         let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
+        if let Some(tasks) = &view.tasks {
+            actions.extend(ui::modules::stream_dock::Regions::dock_from(
+                &layout,
+                tasks,
+                view.stream.entries.len(),
+            ));
+        }
         actions.record_text_links(&layout, &self.metrics);
         actions.attachments("composer/attachments", &view.composer.attach);
         Ok(ConversationLayout {
@@ -1691,6 +1706,7 @@ impl Scene {
             regions,
             height,
             splitters,
+            tasks_height,
             available_height: available,
             actions,
         })

@@ -84,6 +84,7 @@ help:
 	  'make test-image-paste             Private clipboard, atomic markers, custody and local recipient restart' \
 	  'make check-image-paste            Strict all-target Clippy for image-paste crates and dependents' \
 	  'make test-chat-ux                Chat controls, local times, quiet status and saved vertical splits' \
+	  'make test-chat-sections          Independent Chat/Tasks, incoming tail follow and expiring notices' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
@@ -154,7 +155,22 @@ test-cursors:
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
 
-.PHONY: test-chat-ux parity-chat
+.PHONY: test-chat-sections test-chat-notices check-chat-sections test-chat-ux parity-chat
+test-chat-notices:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test chat_notices -- --ignored --nocapture
+
+test-chat-sections:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden --test ui_sidebar_sections; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl
+
+check-chat-sections:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-doc -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
 test-chat-ux:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \

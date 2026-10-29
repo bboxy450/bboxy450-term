@@ -474,11 +474,17 @@ impl App {
             regions.insert("sidebar-resize".into(), [r.x, r.y, r.w, r.h]);
         }
         if let Some(layout) = &self.conversation_layout {
-            for (name, r) in ["sidebar-conversation-resize", "sidebar-composer-resize"]
-                .into_iter()
-                .zip(layout.splitters)
+            for (name, r) in [
+                "sidebar-conversation-resize",
+                "sidebar-composer-resize",
+                "sidebar-tasks-resize",
+            ]
+            .into_iter()
+            .zip(layout.splitters)
             {
-                regions.insert(name.into(), [r.x, r.y, r.w, r.h]);
+                if r.w > 0. && r.h > 0. {
+                    regions.insert(name.into(), [r.x, r.y, r.w, r.h]);
+                }
             }
         }
         if let Some(settings) = self

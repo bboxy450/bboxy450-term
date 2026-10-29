@@ -300,6 +300,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         dirty |= app.begin_ui(id, request, size, submitted, prior_spawns);
                     }
                     UiEvent::UiDeadline(id) => app.ui_deadline(id),
+                    UiEvent::ChatNoticeExpiry(id) => app.chat_notice_expired(id),
                     UiEvent::StartingDeadline(id) => app.starting_deadline(id),
                     UiEvent::FocusFor(ask) => {
                         app.begin_focus(ask);

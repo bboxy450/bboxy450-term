@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: "2026-10-28T22:09:11Z"
+updated: "2026-10-29T07:11:40Z"
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }
@@ -217,6 +217,18 @@ The same solver draws the **mini-grid** (components.js:169-183) at `sidebar.mini
 ### 2.4 Sidebar, narrow and phone
 
 Desktop: the sidebar is a `Column` of `[Scroll(SwarmCards + NewSwarmButton), StreamDock]` at `Sidebar::width`, dragged at its right edge in an 8 px zone between 160 and 520 (showcase.js:341-346), persisted by the app. The stream dock caps at 38 % of the sidebar height (showcase.html:69).
+
+Operator update, 2026-10-29: the native sidebar has separate navigation,
+Chat (history plus composer), and Tasks sections. Drag the separators to resize
+navigation against the dock, the composer within Chat, and Tasks against Chat.
+Each history/task viewport scrolls independently; saved sidebar preferences
+include `tasks_height`. Small windows fit these requests without overwriting them.
+Incoming chat follows the latest message while at the bottom. Scrolling up
+holds that view; returning to the bottom or sending a message resumes following.
+Chat position is retained per swarm and channel. A confirmed harness close
+appears once as a timestamped chat notice for eight seconds, then disappears
+through a one-shot redraw deadline. This expiry does not delete retained seat
+history or extend the separate close/undo grace period.
 
 The scroll body is **virtualised**: each swarm card's height is a pure function of its state (`band + rows × row_h + closed × tab_h + newseat + shadows × row_h + padding`), so the column computes offsets from counts, lays out only cards intersecting the viewport, and rows only inside those. Focus scrolls the row into view inside the sidebar, never the window (showcase.js:374-378).
 

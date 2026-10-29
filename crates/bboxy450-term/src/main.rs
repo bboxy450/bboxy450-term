@@ -26,6 +26,7 @@ mod scene;
 mod settings_destinations;
 mod settings_roles;
 mod sidebar;
+mod sidebar_chat;
 mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
@@ -99,6 +100,7 @@ pub enum UiEvent {
     },
     UiDeadline(bbt_mux::Ulid),
     StartingDeadline(bbt_mux::Ulid),
+    ChatNoticeExpiry(bbt_mux::Ulid),
     Wake,
     CommandsReady(command_retry::Ready),
     Settings(Arc<preferences::Snapshot>),
@@ -139,7 +141,10 @@ pub enum UiEvent {
     NotificationError(String),
     ErrorCount(u64),
     LocalTimeReady,
-    ComposerImageReady { id: String, result: Result<bboxy450_term::composer_images::OwnedImage, String> },
+    ComposerImageReady {
+        id: String,
+        result: Result<bboxy450_term::composer_images::OwnedImage, String>,
+    },
     DesktopAction(bboxy450_term_desktop::Action, Option<u32>),
     TitlebarDoubleClick,
 }
@@ -1155,8 +1160,10 @@ fn spawn_pick(
 
 /// Classify first: ordinary keys never inspect or allocate a terminal selection string.
 fn terminal_copy_chord(input: &keyboard::Input<'_>, selected: impl FnOnce() -> bool) -> bool {
-    input.state.is_pressed() && input.modifiers.state == ModifiersState::SUPER
-        && keyboard::shortcut_key(input) == Some('c') && selected()
+    input.state.is_pressed()
+        && input.modifiers.state == ModifiersState::SUPER
+        && keyboard::shortcut_key(input) == Some('c')
+        && selected()
 }
 
 /// This is the same routing entry point used by winit and the synthetic tests.
@@ -1566,8 +1573,16 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     let mods = input.modifiers.state;
     let command = mods.super_key();
     if (command || cfg!(not(target_os = "macos")) && mods.control_key())
-        && !mods.alt_key() && !mods.shift_key() && keyboard::shortcut_key(input) == Some('v')
-    { return if input.repeat { RoutedKey::Local } else { RoutedKey::ComposerPaste }; }
+        && !mods.alt_key()
+        && !mods.shift_key()
+        && keyboard::shortcut_key(input) == Some('v')
+    {
+        return if input.repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::ComposerPaste
+        };
+    }
     let navigation = match &input.logical_key {
         Key::Named(NamedKey::ArrowLeft) => NavigationKey::Arrow(Direction::Left),
         Key::Named(NamedKey::ArrowRight) => NavigationKey::Arrow(Direction::Right),
@@ -2090,7 +2105,10 @@ struct App {
     reject_report: Option<composer::Report>,
     reject_focus: bool,
     conversation: bbt_ui::modules::stream_dock::StreamDock,
-    conversation_scroll: f32,
+    chat_scroll: bboxy450_term::chat_scroll::State,
+    task_stream: bbt_ui::modules::stream_dock::StreamDock,
+    task_scroll: f32,
+    chat_notice_timer: Option<sidebar_chat::NoticeTimer>,
     conversation_layout: Option<scene::ConversationLayout>,
     composer_dragging: bool,
     terminal_selection: bboxy450_term::terminal_selection::SelectionState,
@@ -2299,7 +2317,14 @@ impl App {
                 ..Default::default()
             },
             conversation_layout: None,
-            conversation_scroll: 0.,
+            chat_scroll: Default::default(),
+            task_stream: bbt_ui::modules::stream_dock::StreamDock {
+                dock: true,
+                framed: false,
+                ..Default::default()
+            },
+            task_scroll: 0.,
+            chat_notice_timer: None,
             composer_dragging: false,
             terminal_selection: Default::default(),
             private_clipboard: None,
@@ -3118,7 +3143,7 @@ impl App {
             self.reject = None;
             self.reject_report = None;
             self.reject_focus = false;
-            self.conversation_scroll = 0.;
+            self.task_scroll = 0.;
         }
         self.conversation_events();
         for (folder, title, kind) in [
@@ -3244,6 +3269,11 @@ impl App {
         }
     }
     fn refresh_conversation(&mut self) {
+        if let Some(scope) = self.composer_scope {
+            let _ = self
+                .chat_scroll
+                .bind(scope, self.message_history.selected());
+        }
         let Some(model) = self.live_state.as_deref() else {
             return;
         };
@@ -3291,19 +3321,18 @@ impl App {
                     }
                 }));
         }
-        self.conversation.entries.extend(
-            self.task_records
-                .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view))),
-        );
+        self.task_stream.entries = self
+            .task_records
+            .entries(model, self.reject.as_ref().map(|(id, r)| (*id, &r.view)));
         if let Some((id, editor)) = &self.reject
-            && !self.conversation.entries.iter().any(|entry| matches!(entry, bbt_ui::modules::stream_dock::Entry::Report {id: actual,..} if actual == &id.to_string()))
+            && !self.task_stream.entries.iter().any(|entry| matches!(entry, bbt_ui::modules::stream_dock::Entry::Report {id: actual,..} if actual == &id.to_string()))
             && let Some(snapshot) = &self.reject_report {
             let mut report = snapshot.clone();
             if let Some(card) = self.task_records.task(*id) { report.status = card.status.clone(); report.task = card.title.clone(); }
             let mut reason = editor.view.clone();
             if reason.notice.is_none() { reason.notice = Some(composer::Notice {kind:"refused".into(),text:"Previous report · refreshing · reason kept".into()}); }
             report.reject = Some(reason);
-            self.conversation.entries.push(bbt_ui::modules::stream_dock::Entry::Report {id:id.to_string(),data:report,review:false});
+            self.task_stream.entries.push(bbt_ui::modules::stream_dock::Entry::Report {id:id.to_string(),data:report,review:false});
         }
         self.scene.set_tasks(
             self.task_records
@@ -3324,6 +3353,8 @@ impl App {
             .map(|(id, _)| (*id, self.message_history.seat_unread(&id.to_string())))
             .collect();
         self.scene.set_unread(&unread);
+        self.append_close_notices();
+        self.schedule_chat_notice_expiry();
         self.conversation_layout = None;
     }
     fn task_action(&mut self, action: bbt_ui::modules::stream_dock::Action) {
@@ -3413,7 +3444,6 @@ impl App {
                 } else {
                     format!("channels/{}", name.trim_start_matches("channels/"))
                 });
-                self.conversation_scroll = 0.;
                 self.conversation_reads(true);
             }
         }
@@ -3691,7 +3721,10 @@ impl App {
                 _ => {}
             }
         }
-        self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
+        self.composer_images.reconcile(
+            &self.composer.view.attach,
+            &self.composer_client.protected_image_paths(),
+        );
         self.composer_notice();
         if let Some(window) = &self.window {
             window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
@@ -3700,6 +3733,7 @@ impl App {
     }
     /// Native sends and the UI relay admit the same prepared composer batch.
     fn admit_composer(&mut self, batch: messaging::Batch) -> Vec<bbt_mux::Ulid> {
+        self.chat_scroll.follow_latest();
         let commands = self.composer_client.admitted(batch);
         let ids = commands
             .iter()
@@ -3740,9 +3774,15 @@ impl App {
         let batch = self.composer_client.prepare_for(model, stage, draft)?;
         self.composer_catalog();
         self.composer = controller;
-        self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
-        let messages = self.admit_composer(batch);
+        self.composer_images.reconcile(
+            &self.composer.view.attach,
+            &self.composer_client.protected_image_paths(),
+        );
         self.message_history.channel("all");
+        if let Some(scope) = self.composer_scope {
+            let _ = self.chat_scroll.bind(scope, "all");
+        }
+        let messages = self.admit_composer(batch);
         self.conversation_reads(false);
         self.composer_notice();
         self.ui_collect
@@ -5376,7 +5416,9 @@ impl App {
                 );
                 self.document_layout = None;
             }
-            let (completed, follow_up, committed_images) = self.composer_client.replies_with_images(&state.operation_results);
+            let (completed, follow_up, committed_images) = self
+                .composer_client
+                .replies_with_images(&state.operation_results);
             self.composer_images.committed(&committed_images);
             if let Some(draft) = completed {
                 if draft.delegate {
@@ -5385,7 +5427,10 @@ impl App {
                 self.composer.stored(&draft);
                 self.conversation_layout = None;
             }
-            self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
+            self.composer_images.reconcile(
+                &self.composer.view.attach,
+                &self.composer_client.protected_image_paths(),
+            );
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             {
@@ -5844,7 +5889,13 @@ impl App {
                 .ok_or_else(|| "swarm_unavailable".into()),
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
             UiEffect::ImagePaste(id) => {
-                let image = self.composer.view.attach.iter().find(|a| a.kind == "image" && a.id == *id).ok_or("image_paste_unavailable: paste failed or its marker was removed")?;
+                let image = self
+                    .composer
+                    .view
+                    .attach
+                    .iter()
+                    .find(|a| a.kind == "image" && a.id == *id)
+                    .ok_or("image_paste_unavailable: paste failed or its marker was removed")?;
                 Ok(!image.path.is_empty())
             }
             UiEffect::Spawn(id) => {
@@ -6448,6 +6499,12 @@ impl App {
             UiRequest::SidebarWheel { lines } => {
                 self.scroll_sidebar(-(lines as f32) * 28.);
             }
+            UiRequest::ChatWheel { dy } => {
+                self.scroll_sidebar_section(false, dy)?;
+            }
+            UiRequest::TaskWheel { dy } => {
+                self.scroll_sidebar_section(true, dy)?;
+            }
             UiRequest::Drag { from, to } => {
                 let vertical = self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
                 if let Some(effects) = &mut self.ui_collect {
@@ -6491,9 +6548,13 @@ impl App {
                 self.pointer_released();
             }
             UiRequest::Compose(request) => self.compose_ui(request)?,
-            UiRequest::PasteImage {path} => {
-                let pasted = self.composer_start_image_paste(bboxy450_term::composer_images::Source::File(path.into()))?;
-                if let Some(effects) = &mut self.ui_collect { effects.push(UiEffect::ImagePaste(pasted)); }
+            UiRequest::PasteImage { path } => {
+                let pasted = self.composer_start_image_paste(
+                    bboxy450_term::composer_images::Source::File(path.into()),
+                )?;
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::ImagePaste(pasted));
+                }
             }
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
@@ -6727,6 +6788,7 @@ impl App {
             },
         );
         let layout = UiLayout {
+            sidebar_sections: self.sidebar_section_positions(),
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             test_clipboard: None,
@@ -6783,11 +6845,24 @@ impl App {
             spawned: None,
             starting: self.starting_layout(layouts),
             seats: None,
-            pasted_image: self.ui_wait.as_ref().and_then(|wait| wait.effects.iter().find_map(|effect| {
-                let UiEffect::ImagePaste(id) = effect else {return None};
-                let image = self.composer.view.attach.iter().find(|a| a.kind == "image" && a.id == *id && !a.path.is_empty())?;
-                Some(bbt_proto::gui::UiImagePaste {id:id.clone(),marker:image.title.clone(),path:image.path.clone()})
-            })),
+            pasted_image: self.ui_wait.as_ref().and_then(|wait| {
+                wait.effects.iter().find_map(|effect| {
+                    let UiEffect::ImagePaste(id) = effect else {
+                        return None;
+                    };
+                    let image = self
+                        .composer
+                        .view
+                        .attach
+                        .iter()
+                        .find(|a| a.kind == "image" && a.id == *id && !a.path.is_empty())?;
+                    Some(bbt_proto::gui::UiImagePaste {
+                        id: id.clone(),
+                        marker: image.title.clone(),
+                        path: image.path.clone(),
+                    })
+                })
+            }),
             composed: self.ui_wait.as_ref().and_then(|wait| {
                 wait.effects.iter().find_map(|effect| {
                     if let UiEffect::Compose(sent) = effect {
@@ -6827,29 +6902,19 @@ impl App {
                 logical,
                 &composer::Conversation {
                     stream: self.conversation.clone(),
+                    tasks: Some(self.task_stream.clone()),
+                    task_scroll: self.task_scroll,
                     composer: self.composer.view.clone(),
                     scroll: if sending {
                         f32::MAX
                     } else {
-                        self.conversation_scroll
+                        self.chat_scroll.layout_offset()
                     },
                 },
             )?)
         } else {
             None
         };
-        if sending {
-            self.conversation_scroll = self
-                .conversation_layout
-                .as_ref()
-                .and_then(|layout| {
-                    bbt_ui::modules::stream_dock::Regions::scroll_extent(
-                        &layout.layout,
-                        "conversation/rows",
-                    )
-                })
-                .map_or(0., |extent| extent[1]);
-        }
         let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
         self.scene.sidebar_scroll = self.sidebar_scroll.unwrap_or_else(|| {
             self.live_state
@@ -7462,6 +7527,7 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::SeatTaskRetry(op) => {
                 self.retry_seat_tasks(op);
             }
+            UiEvent::ChatNoticeExpiry(id) => self.chat_notice_expired(id),
             UiEvent::TaskRetry(epoch) => {
                 if self.task_records.retry_ready(epoch) {
                     self.task_reads();
@@ -7486,7 +7552,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::TitlebarDoubleClick => self.titlebar_double_click(),
-            UiEvent::ComposerImageReady { id, result } => self.composer_image_ready(id,result),
+            UiEvent::ComposerImageReady { id, result } => self.composer_image_ready(id, result),
             UiEvent::LocalTimeReady => {
                 self.refresh_conversation();
                 self.request_redraw();
@@ -8175,6 +8241,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.launcher.is_none()
                     && self.conversation_layout.as_ref().is_some_and(|layout| {
                         layout.actions.contains("conversation/rows", self.pointer)
+                            || layout.actions.contains("conversation/tasks", self.pointer)
                     }) =>
             {
                 let dy = match delta {
@@ -8183,24 +8250,10 @@ impl ApplicationHandler<UiEvent> for App {
                         p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
                     }
                 };
-                let max = self
-                    .conversation_layout
-                    .as_ref()
-                    .and_then(|layout| {
-                        bbt_ui::modules::stream_dock::Regions::scroll_extent(
-                            &layout.layout,
-                            "conversation/rows",
-                        )
-                    })
-                    .map_or(0., |r| r[1]);
-                self.conversation_scroll = (self.conversation_scroll - dy).clamp(0., max);
-                if dy < 0. {
-                    self.message_history.more();
-                    self.task_records.more_tasks();
-                    self.task_reads();
-                }
-                self.conversation_reads(true);
-                self.request_redraw();
+                let tasks = self.conversation_layout.as_ref().is_some_and(|layout| {
+                    layout.actions.contains("conversation/tasks", self.pointer)
+                });
+                let _ = self.scroll_sidebar_section(tasks, -dy);
             }
             WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
                 if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
@@ -11992,11 +12045,27 @@ mod composer_host_tests {
     #[test]
     fn image_paste_shortcut_is_owned_by_composer_and_repeat_is_suppressed() {
         let v = Key::Character("v".into());
-        let input = test_key(&v,PhysicalKey::Code(KeyCode::KeyV),Some("v"),ModifiersState::SUPER,false);
-        assert_eq!(route_composer(&input,0,ComposeField::Body),RoutedKey::ComposerPaste);
-        let mut repeat = input.clone(); repeat.repeat = true;
-        assert_eq!(route_composer(&repeat,0,ComposeField::Body),RoutedKey::Local);
-        assert!(!matches!(route_key(&input,0,None),RoutedKey::ComposerPaste));
+        let input = test_key(
+            &v,
+            PhysicalKey::Code(KeyCode::KeyV),
+            Some("v"),
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(
+            route_composer(&input, 0, ComposeField::Body),
+            RoutedKey::ComposerPaste
+        );
+        let mut repeat = input.clone();
+        repeat.repeat = true;
+        assert_eq!(
+            route_composer(&repeat, 0, ComposeField::Body),
+            RoutedKey::Local
+        );
+        assert!(!matches!(
+            route_key(&input, 0, None),
+            RoutedKey::ComposerPaste
+        ));
     }
 
     #[test]
@@ -12389,15 +12458,21 @@ mod ctl_ui_key_tests {
         assert!(terminal_copy_chord(&input, || true));
         assert!(!terminal_copy_chord(&input, || false));
         input.modifiers.state = ModifiersState::CONTROL;
-        assert!(!terminal_copy_chord(&input, || panic!("Ctrl-C must not inspect selection")));
+        assert!(!terminal_copy_chord(&input, || panic!(
+            "Ctrl-C must not inspect selection"
+        )));
         assert_eq!(route_key(&input, 0, None), RoutedKey::Terminal(vec![3]));
         input.modifiers.state = ModifiersState::SUPER;
         input.state = ElementState::Released;
-        assert!(!terminal_copy_chord(&input, || panic!("release must not inspect selection")));
+        assert!(!terminal_copy_chord(&input, || panic!(
+            "release must not inspect selection"
+        )));
         input.state = ElementState::Pressed;
         input.logical_key = Key::Character("x".into());
         input.unmodified_key = Key::Character("x".into());
-        assert!(!terminal_copy_chord(&input, || panic!("another key must not inspect selection")));
+        assert!(!terminal_copy_chord(&input, || panic!(
+            "another key must not inspect selection"
+        )));
     }
     #[test]
     #[allow(

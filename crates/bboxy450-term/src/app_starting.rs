@@ -245,6 +245,7 @@ impl App {
             Ok(bbt_proto::gui::UiLayout {
                 regions: Default::default(),
                 test_clipboard: None,
+                sidebar_sections: None,
                 swarm_workdirs: Default::default(),
                 sidebar_open: Default::default(),
                 frame_seq: self.submitted_frame,

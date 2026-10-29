@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Two retained horizontal handles share native and unattended ctl pointer input.
+//! Retained navigation, composer and Tasks handles share native and ctl input.
 use crate::*;
 use bbt_ui::modules::composer::SidebarLayout;
 
@@ -41,10 +41,10 @@ impl App {
             index,
             from_y: point[1],
             available: layout.available_height,
-            value: if index == 0 {
-                layout.height
-            } else {
-                layout.regions.body.h
+            value: match index {
+                0 => layout.height,
+                1 => layout.regions.body.h,
+                _ => layout.tasks_height,
             },
         });
         self.sidebar_layout_preview = Some(self.preferences.preferences.sidebar);
@@ -74,8 +74,10 @@ impl App {
         let value = drag.value - (point[1] - drag.from_y);
         if drag.index == 0 {
             layout.conversation_fraction = (value / drag.available.max(1.)).clamp(0.05, 0.95);
-        } else {
+        } else if drag.index == 1 {
             layout.composer_body_height = Some(value.clamp(0., 4096.));
+        } else {
+            layout.tasks_height = Some(value.clamp(0., 4096.));
         }
         self.pointer = point;
         self.request_redraw();
@@ -91,6 +93,7 @@ impl App {
         let patch = settings_controller::Patch::SidebarLayout {
             conversation_fraction: layout.conversation_fraction,
             composer_body_height: layout.composer_body_height,
+            tasks_height: layout.tasks_height,
         };
         match self.preferences.edit(patch) {
             Ok(request) => match &self.preferences_io {
