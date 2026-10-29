@@ -99,6 +99,22 @@ pub struct Consumer {
     pub max_deliver: u32,
 }
 
+// The device-bound GUI retains exact subjects for the account's historical
+// memberships. Allow the 1000-seat design plus namespace margin without
+// granting broader patterns or increasing the public peer subscription budget.
+// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+const GUI_FILTERS: usize = 4096;
+
+fn validate_filters(filters: &[String], maximum: usize) -> Result<()> {
+    if filters.is_empty() || filters.len() > maximum {
+        return Err(invalid("invalid consumer bounds"));
+    }
+    for pattern in filters {
+        validate_subject(pattern, true)?;
+    }
+    Ok(())
+}
+
 impl Consumer {
     pub fn gui(filter: impl Into<String>) -> Self {
         Self {
@@ -116,17 +132,16 @@ impl Consumer {
         self.filter.iter().any(|p| matches(p, subject))
     }
     fn validate(&self) -> Result<()> {
-        if self.filter.is_empty()
-            || self.filter.len() > 64
-            || !(1..=4096).contains(&self.queue_max)
+        self.validate_with_filter_limit(64)
+    }
+    fn validate_with_filter_limit(&self, maximum: usize) -> Result<()> {
+        validate_filters(&self.filter, maximum)?;
+        if !(1..=4096).contains(&self.queue_max)
             || self.ack_wait_ms == 0
             || self.max_deliver == 0
             || self.max_deliver > 100
         {
             return Err(invalid("invalid consumer bounds"));
-        }
-        for pattern in &self.filter {
-            validate_subject(pattern, true)?;
         }
         if self
             .name
@@ -868,6 +883,9 @@ impl Broker {
     }
     pub fn subscribe(&mut self, consumer: Consumer) -> Result<String> {
         consumer.validate()?;
+        self.subscribe_validated(consumer)
+    }
+    fn subscribe_validated(&mut self, consumer: Consumer) -> Result<String> {
         let id = consumer
             .name
             .clone()
@@ -1062,7 +1080,8 @@ impl Broker {
         config.filter = filter;
         config.start = Start::New;
         config.ack = Ack::Explicit;
-        self.subscribe(config)?;
+        config.validate_with_filter_limit(GUI_FILTERS)?;
+        self.subscribe_validated(config)?;
         if !versions.iter().any(|(_, old)| old == &name) {
             versions.push((previous.map_or(0, |(version, _)| version + 1), name.clone()));
         }
@@ -1355,6 +1374,9 @@ impl Broker {
         after: u64,
         limit: usize,
     ) -> Result<RetainedPage> {
+        // This crate-private read is filtered by the same admitted operator
+        // subject catalogue as gui_attach; it creates no peer subscription.
+        validate_filters(filter, GUI_FILTERS)?;
         let Some(stream) = self.streams.get(name) else {
             return Ok((vec![], None, after));
         };
@@ -2161,6 +2183,177 @@ mod gui_tests {
                 Delivery::Gap { .. } => None,
             })
             .collect()
+    }
+
+    // keeps: spec events — retained membership history must not hold the GUI lane.
+    #[test]
+    fn gui_retained_memberships_keep_exact_filters_delivery_and_reopen_anchors() {
+        use crate::{
+            messaging::{Messaging, keys::LocalSeatKeys},
+            registry::{Lifecycle, Registry, SeatRecord},
+        };
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let registry =
+            Registry::new(SqliteStore::open(&object_dir(&fixture.0, "account").unwrap()).unwrap());
+        let mut memberships = Vec::new();
+        for i in 0..43_u128 {
+            let swarm = Ulid::from(20_000 + i % 7);
+            let mut seat = SeatRecord::new(Ulid::from(10_000 + i), swarm, "retained", "zsh");
+            seat.lifecycle = Lifecycle::ClosedRetained;
+            registry.insert(&seat).unwrap();
+            memberships.push((
+                format!("swarm-{swarm}"),
+                format!("swarms/{swarm}/{}/message", seat.id),
+            ));
+        }
+        let mut messaging = Messaging::open(
+            &fixture.0,
+            Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[83; 32]))),
+        )
+        .unwrap();
+        let device = Ulid::new();
+        messaging.set_operator_device(device).unwrap();
+        let filters = crate::gui_events::filters(messaging.operator_subjects().unwrap());
+        assert_eq!(
+            filters.len(),
+            65,
+            "43 retained members + seven swarms + fixed subjects"
+        );
+        assert!(
+            memberships
+                .iter()
+                .all(|(_, subject)| filters.contains(subject))
+        );
+        let mut peer = Consumer::gui("seat/*/state");
+        peer.name = Some(format!("gui-{device}"));
+        peer.filter = filters.clone();
+        assert!(
+            broker.subscribe(peer).is_err(),
+            "a GUI-looking peer name grants no larger budget"
+        );
+
+        let lease = broker.gui_attach(device, filters.clone()).unwrap();
+        assert_eq!(broker.consumers[&lease.consumer].filter, filters);
+        for (stream, subject) in &memberships {
+            broker.publish(stream, event(subject)).unwrap();
+        }
+        let first_stream = &memberships[0].0;
+        broker
+            .publish(first_stream, event("swarms/not-admitted/other/message"))
+            .unwrap();
+        let task = broker
+            .publish(
+                "index",
+                Draft::new(
+                    "task/fixture/status",
+                    "fixture",
+                    serde_json::json!({"status":"claimed"}),
+                ),
+            )
+            .unwrap();
+        let delivered = broker
+            .gui_poll(&lease, 128, crate::gui_events::PAGE_BYTES, 1)
+            .unwrap();
+        assert_eq!(delivered.len(), 44);
+        for delivery in &delivered {
+            let Delivery::Event {
+                stream, envelope, ..
+            } = delivery
+            else {
+                panic!("bounded fixture unexpectedly gapped")
+            };
+            envelope.verify().unwrap();
+            let projected = crate::gui_events::metadata(stream, envelope).unwrap();
+            assert_eq!(projected.reference.hash, envelope.hash().unwrap());
+            assert!(
+                filters
+                    .iter()
+                    .any(|pattern| matches(pattern, &projected.subject))
+            );
+            if stream == "index" {
+                assert_eq!(envelope.seq, task.seq);
+                assert_eq!(
+                    crate::gui_events::summary(envelope)
+                        .unwrap()
+                        .status
+                        .as_deref(),
+                    Some("claimed")
+                );
+            }
+            broker.gui_ack(&lease, stream, envelope.seq).unwrap();
+        }
+        let (retained, _, through) = broker.read_page(first_stream, &filters, 0, 128).unwrap();
+        assert_eq!(retained.len(), 7);
+        assert_eq!(
+            through, 8,
+            "the excluded subject advances scanning, never projection"
+        );
+        assert!(
+            retained
+                .iter()
+                .all(|row| row.event.subject != "swarms/not-admitted/other/message")
+        );
+        let before = broker.gui_cursor(&lease, first_stream).unwrap();
+        broker.gui_detach(&lease).unwrap();
+        drop(broker);
+        let mut broker = fixture.open();
+        let reopened = broker.gui_attach(device, filters.clone()).unwrap();
+        assert_eq!(
+            reopened.consumer, lease.consumer,
+            "reopen reuses the durable consumer"
+        );
+        let after = broker.gui_cursor(&reopened, first_stream).unwrap();
+        assert_eq!(after.admitted, before.admitted);
+        assert_eq!(after.published, before.published);
+        assert_eq!(after.read, before.read);
+        assert_eq!(broker.consumers[&reopened.consumer].filter, filters);
+        let mut expanded = filters;
+        expanded.push("channels/new-authorized/message".into());
+        let refreshed = broker.gui_refresh(&reopened, expanded).unwrap();
+        assert_ne!(refreshed.consumer, reopened.consumer);
+        broker
+            .publish(first_stream, event("channels/new-authorized/message"))
+            .unwrap();
+        assert!(broker.gui_poll(&refreshed, 128, crate::gui_events::PAGE_BYTES, 2).unwrap().iter().any(|delivery| matches!(delivery, Delivery::Event {envelope,..} if envelope.event.subject == "channels/new-authorized/message")));
+    }
+
+    // keeps: spec events — only the trusted device GUI receives the bounded larger catalogue.
+    #[test]
+    fn gui_filter_budget_is_bounded_and_peer_budget_stays_64() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        let filters: Vec<_> = (0..=GUI_FILTERS).map(|i| format!("topic/{i}")).collect();
+        let mut peer = Consumer::gui("topic/0");
+        peer.filter = filters[..65].to_vec();
+        assert!(broker.subscribe(peer.clone()).is_err());
+        peer.filter.pop();
+        assert!(broker.subscribe(peer).is_ok());
+        let device = Ulid::new();
+        assert!(broker.gui_attach(device, filters.clone()).is_err());
+        assert!(!broker.gui_attachments.contains_key(&device));
+        assert!(broker.read_page("account", &filters, 0, 128).is_err());
+        let lease = broker
+            .gui_attach(device, filters[..GUI_FILTERS].to_vec())
+            .unwrap();
+        assert_eq!(broker.consumers[&lease.consumer].filter.len(), GUI_FILTERS);
+        assert!(broker.gui_refresh(&lease, filters.clone()).is_err());
+        assert!(
+            broker.gui_attachment(&lease).is_ok(),
+            "refused refresh preserves the original lease"
+        );
+        assert!(
+            broker
+                .read_page("account", &filters[..GUI_FILTERS], 0, 128)
+                .is_ok()
+        );
+        let mut invalid = Consumer::gui("topic/0");
+        invalid.filter = vec!["topic/0".into(); 65];
+        invalid.queue_max = 0;
+        assert!(invalid.validate_with_filter_limit(GUI_FILTERS).is_err());
+        invalid.queue_max = 128;
+        invalid.filter[0] = "invalid//subject".into();
+        assert!(invalid.validate_with_filter_limit(GUI_FILTERS).is_err());
     }
 
     // keeps: spec events

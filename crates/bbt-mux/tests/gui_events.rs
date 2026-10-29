@@ -647,6 +647,22 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
     let root = FixtureRoot::new();
     std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     std::fs::create_dir_all(root.path().join("repository/.bboxy")).unwrap();
+    // Adapted from bboxy450-term's retained GUI fixture: preserve historical
+    // memberships while one real seat keeps canonical message/receipt delivery.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    let registry = bbt_mux::registry::Registry::new(
+        SqliteStore::open(&root.path().join("run/account")).unwrap(),
+    );
+    for i in 0..42_u128 {
+        let mut seat = SeatRecord::new(
+            Ulid::from(10_000 + i),
+            Ulid::from(SWARM.0 + i % 7),
+            "retained",
+            "zsh",
+        );
+        seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+        registry.insert(&seat).unwrap();
+    }
     let supervisor = Supervisor::start(Config {
         socket_path: Some(root.path().join("supervisor.sock")),
         journal_directory: Some(root.path().join("journal")),
@@ -662,6 +678,7 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
     rt.block_on(async {
         let mut gui = Gui::open(root.path(), &process).await;
         gui.attach().await;
+        assert_eq!(registry.list().unwrap().len(), 43, "65 exact GUI subjects across seven swarms");
         let message = SendRequest::text("operator/inbox", "latest retained message body");
         let message_id = message.id;
         assert!(matches!(gui.messaging(Request::Send { message }).await, Response::Stored { .. }));
@@ -715,6 +732,22 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
                 assert_eq!(bus.seq, message_position.sequence, "receipt is not the message position");
             assert_eq!(gui.cursor(&position.stream).await.read, before.read);
         }
+        let read = Ulid::new();
+        gui.send(GuiAction::EventsRead {
+            id: read,
+            stream: message_position.stream.clone(),
+            after: message_position.sequence - 1,
+            limit: 1,
+            wait_ms: None,
+        }).await;
+        let GuiReply::EventsRead {events, through, ..} = gui.until(|reply| matches!(reply,
+            GuiReply::EventsRead {op,..} if *op == read
+        )).await else {unreachable!()};
+        assert_eq!(events.len(), 1, "ctl retained reads use the same >64 authorized subjects");
+        assert_eq!(events[0].seq, message_position.sequence);
+        assert_eq!(through, message_position.sequence);
+        assert_eq!(serde_json::from_value::<Ulid>(events[0].payload["id"].clone()).unwrap(), message_id);
+
         // The seat started before attachment, so its original state is retained
         // history rather than a promised new live transition.
         let stream = format!("seat-{SEAT}");
