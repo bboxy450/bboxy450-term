@@ -7,7 +7,7 @@
 #![allow(clippy::disallowed_methods)] // Disposable protocol fixtures, never UI.
 use bboxy450_harness_wake_up::{
     Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Priority, Readiness, Session,
-    State, Ulid, WakeCause, hook,
+    State, Ulid, WaitingKind, WakeCause, hook,
     launch::{LaunchContext, plan},
     native,
 };
@@ -162,6 +162,156 @@ fn adapters_codex_native_readiness_and_hooks_only_subagents() {
             )
             .is_err()
     );
+}
+
+#[test]
+fn claude_question_hooks_wait_and_resolve_only_the_bound_parent_tool() {
+    let mut session = session("claude");
+    let native_id = session.binding.session.clone();
+    let event = |name: &str, tool: &str, child: Option<&str>| {
+        let mut raw = json!({
+            "hook_event_name": name,
+            "session_id": native_id,
+            "tool_name": "AskUserQuestion",
+            "tool_use_id": tool,
+            "tool_input": {"questions": [{"question": "Which workspace should I use?\nPrivate extra context"}]}
+        });
+        if let Some(child) = child {
+            raw["agent_id"] = child.into();
+        }
+        hook::prepare(raw, "claude").unwrap()
+    };
+    let ask = hook::project(
+        &mut session,
+        &event("PreToolUse", "parent-tool", None),
+        1,
+        100,
+    )
+    .unwrap();
+    assert_eq!(ask.state, State::Waiting);
+    assert_eq!(ask.waiting_kind, Some(WaitingKind::Question));
+    assert_eq!(ask.detail.as_deref(), Some("Which workspace should I use?"));
+    session.apply(ask);
+
+    let unrelated = hook::project(
+        &mut session,
+        &event("PostToolUse", "different-tool", None),
+        2,
+        200,
+    )
+    .unwrap();
+    assert!(!unrelated.resolves);
+    session.apply(unrelated);
+    assert_eq!(session.status.state, State::Waiting);
+
+    let child_ask = hook::project(
+        &mut session,
+        &event("PreToolUse", "child-tool", Some("child-1")),
+        3,
+        300,
+    )
+    .unwrap();
+    session.apply(child_ask);
+    assert_eq!(session.status.state, State::Waiting);
+    assert_eq!(session.status.subagents[0].state, State::Waiting);
+    assert_eq!(
+        session.status.subagents[0].waiting_kind,
+        Some(WaitingKind::Question)
+    );
+    let child_answered = hook::project(
+        &mut session,
+        &event("PostToolUse", "child-tool", Some("child-1")),
+        4,
+        400,
+    )
+    .unwrap();
+    session.apply(child_answered);
+    assert_eq!(session.status.subagents[0].state, State::Active);
+    assert_eq!(session.status.state, State::Waiting);
+
+    let answered = hook::project(
+        &mut session,
+        &event("PostToolUse", "parent-tool", None),
+        5,
+        500,
+    )
+    .unwrap();
+    assert!(
+        answered.resolves,
+        "the child must not replace the parent's key"
+    );
+    session.apply(answered);
+    assert_eq!(session.status.state, State::Active);
+    assert_eq!(session.status.waiting_kind, None);
+}
+
+#[test]
+fn claude_question_hooks_reject_foreign_or_unbound_tools_and_keep_a_safe_fallback() {
+    let mut session = session("claude");
+    let raw = json!({
+        "hook_event_name":"PreToolUse", "session_id":session.binding.session,
+        "tool_name":"AskUserQuestion", "tool_use_id":"question-tool", "tool_input":{}
+    });
+    for (key, value) in [
+        ("session_id", json!("different-session")),
+        ("session_id", serde_json::Value::Null),
+        ("tool_use_id", serde_json::Value::Null),
+        ("tool_use_id", json!("")),
+    ] {
+        let mut foreign = raw.clone();
+        foreign[key] = value;
+        let event = hook::prepare(foreign, "claude").unwrap();
+        assert!(hook::project(&mut session, &event, 1, 100).is_none());
+        assert_eq!(session.status.state, State::Idle);
+    }
+    let foreign_harness = hook::prepare(raw.clone(), "codex").unwrap();
+    assert!(hook::project(&mut session, &foreign_harness, 1, 100).is_none());
+    let event = hook::prepare(raw, "claude").unwrap();
+    let obs = hook::project(&mut session, &event, 2, 200).unwrap();
+    assert_eq!(obs.detail.as_deref(), Some("Question needs your input."));
+    assert_eq!(obs.waiting_kind, Some(WaitingKind::Question));
+    let mut codex = self::session("codex");
+    assert!(hook::project(&mut codex, &event, 2, 200).is_none());
+}
+
+#[test]
+fn codex_user_input_requests_and_shared_status_are_current_thread_questions() {
+    for snapshot in [false, true] {
+        let mut session = session("codex");
+        let thread = session.binding.session.clone();
+        let event = if snapshot {
+            json!({"source":"snapshot", "method":"thread/status/changed", "params":{
+                "threadId":thread, "status":{"type":"active", "activeFlags":["waitingOnUserInput"]}
+            }})
+        } else {
+            json!({"id":7, "method":"item/tool/requestUserInput", "params":{"threadId":thread}})
+        };
+        let mut foreign = event.clone();
+        foreign["params"]["threadId"] = "other-thread".into();
+        assert!(session.on_native(&foreign, 1, 100).is_err());
+        assert_eq!(session.status.state, State::Idle);
+        let observations = session.on_native(&event, 2, 200).unwrap();
+        assert_eq!(observations.len(), 1);
+        assert_eq!(session.status.state, State::Waiting);
+        assert_eq!(session.status.waiting_kind, Some(WaitingKind::Question));
+        assert_eq!(
+            observations[0].source,
+            if snapshot {
+                "app_server_snapshot"
+            } else {
+                "app_server"
+            }
+        );
+        session
+            .on_native(
+                &json!({"method":"serverRequest/resolved", "params":{"threadId":thread}}),
+                3,
+                300,
+            )
+            .unwrap();
+        assert_eq!(session.status.state, State::Active);
+        assert_eq!(session.status.waiting_kind, None);
+    }
 }
 
 // keeps: spec harness-kits §5

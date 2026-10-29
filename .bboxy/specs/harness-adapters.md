@@ -216,7 +216,8 @@ Vocabulary: seat `state ∈ active | idle | waiting | errored` (SD (a); canonica
 | pi/omp `tool_execution_end.isError` | errored (transient: cleared by next active) | none | error | true | HTE |
 | Shim `SessionStart` | idle | none | "" | false | SD (d) |
 | Shim `UserPromptSubmit` | active | none | keep | true | SD (d) |
-| Shim `PreToolUse`/`PostToolUse`, no `agent_id` | active | none | summary (IHP §3 rules) | true | SD (d) |
+| Shim Claude `PreToolUse AskUserQuestion`, bound session and tool-use id | waiting | question | first question line, or a generic input request; child rows keep their parent's resolution key | true | Operator attention direction, 2026-10-29 |
+| Shim `PreToolUse`/`PostToolUse`, no `agent_id` (except the question entry above) | active | none | summary (IHP §3 rules) | true | SD (d) |
 | Shim `PermissionRequest` | waiting | permission | "Allow " + summary / question / "Review proposed plan?" | true | IHP §3-4, SD (d) |
 | Shim `Notification permission_prompt` | waiting | permission | message | true | SD (d) |
 | Shim `Notification agent_needs_input` / `elicitation_*` | waiting | question | message | true | SD (d), IHP §9 |

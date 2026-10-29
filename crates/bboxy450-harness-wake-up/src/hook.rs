@@ -177,6 +177,20 @@ pub fn project(
         return None;
     }
     let raw = &event.raw;
+    // Claude's question tool opens a dialog even when permission checks are bypassed.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    let asks_user = raw["tool_name"] == "AskUserQuestion"
+        && matches!(event.event.as_str(), "PreToolUse" | "PostToolUse");
+    if asks_user
+        && (session.record.kind != "claude"
+            || raw["harness"] != "claude"
+            || raw["session_id"].as_str() != Some(session.binding.session.as_str())
+            || raw["tool_use_id"]
+                .as_str()
+                .is_none_or(|id| id.is_empty() || id.len() > 256))
+    {
+        return None;
+    }
     if matches!(event.event.as_str(), "SessionStart" | "session_start")
         && matches!(session.record.kind.as_str(), "claude" | "codex")
         && let Some(id) = raw["session_id"]
@@ -192,6 +206,7 @@ pub fn project(
         }
     }
     let (state, waiting) = match event.event.as_str() {
+        "PreToolUse" if asks_user => (State::Waiting, Some(WaitingKind::Question)),
         "PermissionRequest" | "approval-requested" | "plan-mode-prompt" => {
             (State::Waiting, Some(WaitingKind::Permission))
         }
@@ -232,7 +247,8 @@ pub fn project(
     let mut obs = session.observation(sequence, now_ms, "7502", Grade::Shim, state);
     obs.waiting_kind = waiting;
     let tool = raw["tool_use_id"].as_str();
-    if state == State::Waiting {
+    if state == State::Waiting && raw["agent_id"].as_str().is_none() {
+        // A child question must not replace its parent's tool-resolution key.
         session.dialog_key = tool.map(str::to_owned);
     }
     obs.resolves = matches!(
@@ -293,11 +309,25 @@ pub fn project(
             row.title = title;
         }
     }
-    obs.detail = raw["message"]
-        .as_str()
-        .or_else(|| raw["last_assistant_message"].as_str())
-        .or_else(|| raw["last_message"].as_str())
-        .or_else(|| raw["tool_name"].as_str())
+    let question = (asks_user && state == State::Waiting).then(|| {
+        raw["tool_input"]["questions"]
+            .as_array()
+            .and_then(|questions| questions.first())
+            .and_then(|question| question["question"].as_str())
+            .or_else(|| raw["tool_input"]["question"].as_str())
+            .and_then(|question| question.lines().next())
+            .map(str::trim)
+            .filter(|question| !question.is_empty())
+            .unwrap_or("Question needs your input.")
+    });
+    obs.detail = question
+        .or_else(|| {
+            raw["message"]
+                .as_str()
+                .or_else(|| raw["last_assistant_message"].as_str())
+                .or_else(|| raw["last_message"].as_str())
+                .or_else(|| raw["tool_name"].as_str())
+        })
         .map(|s| super::observe::short(s, 192));
     Some(obs)
 }
