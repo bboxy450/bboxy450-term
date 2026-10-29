@@ -53,7 +53,7 @@ impl Fixture {
         fs::write(
             root.join("repository/.bboxy/tasks/gui-events.md"),
             format!(
-                "---\nid: {}\ntype: task\ntitle: {TASK}\nstatus: open\nverify: 'true'\n---\nPrivate GUI events fixture.\n",
+                "---\nid: {}\nnumber: 1\ntype: task\ntitle: {TASK}\nstatus: open\nverify: 'true'\n---\nPrivate GUI events fixture.\n",
                 Ulid::new()
             ),
         )
