@@ -3262,16 +3262,64 @@ fn image_paste_ctl_owns_atomic_marker_and_recipient_png_survives_ui_and_logic_re
             .to_string();
         f.ctl(&["ui", "click", &x, &y]);
     }
+    fn recipient_envelope(
+        f: &Fixture,
+        swarm: &str,
+        seat: &str,
+        body: &str,
+    ) -> Option<bbt_proto::messaging::Envelope> {
+        use bbt_mux::messaging::wire::EnvelopeExt;
+        // A display row is a projection, not an attachment receipt. Read only this
+        // fixture's durable recipient route, then verify the original signed bytes.
+        let database = f.root.join(format!("run/swarm-{swarm}/object.sqlite"));
+        let output = Command::new("python3").args(["-I", "-c", r#"
+import json, pathlib, sqlite3, sys
+connection = sqlite3.connect(pathlib.Path(sys.argv[1]).as_uri() + '?mode=ro', uri=True, timeout=2)
+rows = connection.execute('SELECT m.envelope,d.evidence FROM msg_messages m JOIN msg_deliveries d ON d.message=m.seq WHERE d.recipient=? ORDER BY m.seq DESC LIMIT 128', (sys.argv[2],))
+for raw, evidence in rows:
+    envelope = json.loads(raw)
+    if envelope.get('body', {}).get('text') == sys.argv[3]:
+        print(json.dumps({'envelope': envelope, 'evidence': evidence}))
+        break
+else:
+    print('null')
+"#]).arg(database).arg(seat).arg(body).output().unwrap();
+        assert!(
+            output.status.success(),
+            "read-only recipient evidence: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let result: Value = serde_json::from_slice(&output.stdout).unwrap();
+        if result.is_null() {
+            return None;
+        }
+        assert!(
+            matches!(
+                result["evidence"].as_str(),
+                Some(
+                    "recipient-stored"
+                        | "native-queued"
+                        | "native-written"
+                        | "native-unknown"
+                        | "application-acknowledged"
+                )
+            ),
+            "recipient storage evidence: {result}"
+        );
+        let envelope: bbt_proto::messaging::Envelope =
+            serde_json::from_value(result["envelope"].clone()).unwrap();
+        envelope
+            .verify_signature()
+            .expect("the recipient's image envelope must verify");
+        assert_eq!(envelope.context, format!("seats/{seat}/inbox"));
+        assert_eq!(envelope.body.text(), Some(body));
+        Some(envelope)
+    }
     fn recipient_reads(f: &Fixture, seat: &str, path: &Path, nonce: &str, png: &[u8]) {
         let command = format!("READ_IMAGE:{nonce}:{}", path.display());
         f.ctl(&["seat", "type", seat, &command]);
         f.ctl(&["seat", "key", seat, "enter"]);
-        let expected = format!(
-            "PNG_READ:{nonce}:{}",
-            png.iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>()
-        );
+        let expected = format!("PNG:{nonce}:{}:{}", png.len(), bbt_mux::store::digest(png));
         f.ctl(&[
             "seat",
             "wait",
@@ -3299,14 +3347,14 @@ fn image_paste_ctl_owns_atomic_marker_and_recipient_png_survives_ui_and_logic_re
     fs::write(
         f.root.join("bin/claude"),
         r#"#!/usr/bin/env python3
-import os, pathlib, sys
+import hashlib, os, pathlib, sys
 print('CWD:'+os.getcwd(),flush=True)
 for line in sys.stdin:
     if line.startswith('READ_IMAGE:'):
         _,nonce,path=line.rstrip('\r\n').split(':',2)
         data=pathlib.Path(path).read_bytes()
         assert data[:8] == bytes([137,80,78,71,13,10,26,10])
-        print('PNG_READ:'+nonce+':'+data.hex(),flush=True)
+        print('PNG:'+nonce+':'+str(len(data))+':'+hashlib.sha256(data).hexdigest(),flush=True)
 "#,
     )
     .unwrap();
@@ -3364,30 +3412,68 @@ for line in sys.stdin:
     let pasted = f.ctl(&["ui", "paste-image", source.to_str().unwrap()]);
     let sent = PathBuf::from(pasted["pasted_image"]["path"].as_str().unwrap());
     assert_ne!(sent, first);
+    let submitted_text = text(body(&pasted));
+    let marker = pasted["pasted_image"]["marker"].as_str().unwrap();
+    let reference = format!("[[{}|{}]]", sent.display(), marker.trim_matches(['[', ']']));
     f.ctl(&["ui", "key", "enter"]);
     let deadline = Instant::now() + Duration::from_secs(10);
-    loop {
-        let frame = f.ctl(&["ui", "layout"]);
-        if frame["tree"].to_string().contains(sent.to_str().unwrap()) {
-            break;
+    let accepted = loop {
+        if let Some(envelope) = recipient_envelope(&f, &swarm, &seat, &submitted_text) {
+            break envelope;
         }
         assert!(
             Instant::now() < deadline,
-            "sent attachment reference not projected: {frame}"
+            "signed image message not durably stored for recipient"
         );
         std::thread::sleep(Duration::from_millis(20));
-    }
+    };
+    assert_eq!(accepted.attachments, vec![reference.clone()]);
+    let received_path = PathBuf::from(
+        accepted.attachments[0]
+            .strip_prefix("[[")
+            .unwrap()
+            .split_once('|')
+            .unwrap()
+            .0,
+    );
+    assert_eq!(
+        received_path, sent,
+        "recipient reads the exact signed attachment path"
+    );
     type_keys(&f, "Later plain text");
     f.ctl(&["ui", "key", "enter"]);
-    assert_eq!(fs::read(&sent).unwrap(), png, "a later text send must not release a prior image file");
-    recipient_reads(&f, &seat, &sent, "before-ui-restart", &png);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let later = loop {
+        if let Some(envelope) = recipient_envelope(&f, &swarm, &seat, "Later plain text") {
+            break envelope;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "later plain-text message not durably stored for recipient"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert!(
+        later.attachments.is_empty(),
+        "later text send has no image attachment"
+    );
+    assert_eq!(
+        fs::read(&sent).unwrap(),
+        png,
+        "a later text send must not release a prior image file"
+    );
+    recipient_reads(&f, &seat, &received_path, "pre", &png);
     let mut ui = f.app.take().unwrap();
     ui.kill().unwrap();
     ui.wait().unwrap();
     f.start();
     assert_eq!(f.owners(), owners);
     assert_eq!(identity(&f, &seat), original);
-    recipient_reads(&f, &seat, &sent, "after-ui-restart", &png);
+    assert_eq!(
+        recipient_envelope(&f, &swarm, &seat, &submitted_text).unwrap(),
+        accepted
+    );
+    recipient_reads(&f, &seat, &received_path, "ui", &png);
     // Advertised older UI control refreshes logic alone, retaining the same recipient process.
     let mut ui = f.app.take().unwrap();
     ui.kill().unwrap();
@@ -3402,7 +3488,11 @@ for line in sys.stdin:
     assert_eq!(upgraded[0], owners[0]);
     assert_ne!(upgraded[1], owners[1]);
     assert_eq!(identity(&f, &seat), original);
-    recipient_reads(&f, &seat, &sent, "after-logic-upgrade", &png);
+    assert_eq!(
+        recipient_envelope(&f, &swarm, &seat, &submitted_text).unwrap(),
+        accepted
+    );
+    recipient_reads(&f, &seat, &received_path, "logic", &png);
     assert_eq!(fs::read(&sent).unwrap(), png);
     assert_eq!(fs::read(&source).unwrap(), png);
     fs::remove_file(sent).unwrap();
