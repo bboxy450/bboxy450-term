@@ -1875,14 +1875,14 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(json.loads((output/"requested.json").read_text()),self.cases[2:])
         self.assertFalse(any(c[0]=="cargo" for c in self.calls))
 
-    def test_lab_recheck_skips_unchanged_records_and_invariants(self):
+    def test_lab_recheck_keeps_formal_while_skipping_unchanged_records_and_invariants(self):
         data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
         plan=self.root/"recheck.json"
         plan.write_text(json.dumps({"affected":[],"parity_pages":["lab/web/settings.html"]}))
         with patch.object(landing,"repository",return_value=self.root),patch.object(landing,"affected",return_value=data),patch.object(landing,"records_checks") as records,patch.object(landing,"scoped_parity") as parity:
             self.assertEqual(landing.presubmit_worker("base",self.root/"result.json",plan),0)
         records.assert_not_called();parity.assert_called_once()
-        self.assertEqual(self.calls,[])
+        self.assertEqual(self.calls,[["make", "test-formal"]])
 
     def test_recheck_rejects_page_paths_outside_lab(self):
         data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
