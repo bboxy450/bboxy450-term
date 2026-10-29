@@ -271,7 +271,6 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
             .count(),
         1
     );
-    fixture.ctl(&["seat", "attention", seat, "direct", "conversation", "inbox"]);
     let cards = fixture.ctl(&["task", "list", "--unassigned"]);
     assert_eq!(cards.as_array().unwrap().len(), 1, "{cards}");
     assert_eq!(cards[0]["title"], TASK);
@@ -297,8 +296,18 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
     let receipts = fixture.ctl(&["message", "receipts", message]);
     assert!(
         receipts.as_array().unwrap().iter().any(|row| {
+            // Receipts expose the latest phase; a real delivery can advance
+            // after durable recipient storage before this read arrives.
+            use bbt_proto::messaging::Evidence;
+            let durable = matches!(
+                serde_json::from_value::<Evidence>(row["receipt"]["evidence"].clone()),
+                Ok(Evidence::RecipientStored
+                    | Evidence::NativeQueued
+                    | Evidence::NativeWritten
+                    | Evidence::ApplicationAcknowledged)
+            );
             row["receipt"]["recipient"] == seat
-                && row["receipt"]["evidence"] == "recipient-stored"
+                && durable
                 && row["receipt"]["held"].is_null()
         }),
         "recipient lacks a real stored receipt: {receipts}"
