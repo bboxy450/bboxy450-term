@@ -2248,7 +2248,7 @@ mod gui_tests {
                 Draft::new(
                     "task/fixture/status",
                     "fixture",
-                    serde_json::json!({"status":"claimed"}),
+                    serde_json::json!({"from":"open","to":"claimed"}),
                 ),
             )
             .unwrap();

@@ -82,6 +82,15 @@ Pushes to the app, all of them, travel on **Kestrel's W2.6b lane**: `GuiReply::E
 
 **Two bounds, from the bus as built** (2026-10-23, after Kestrel's W2.6b reading of `M/bus.rs:167, 459`: the router attaches every consumer to every stream, one persisted cursor row per stream): (1) the GUI consumer's **filter is narrow**, exactly the subjects listed above, never a wildcard over seat output or every subchannel; (2) **browsing** a selected stream or subchannel in the stream dock is a read-through **page** of the retained log by cursor (request/reply, like `GetHistory` for terminals), never a second consumer; **a page read may wait** ([[d328-a-page-read-may-wait]]): `EventsRead` takes an optional `wait_ms`, at most 60 000, and blocks until an event exists after the cursor or the deadline passes, holding no cursor row, lock or bus slot, woken by one broadcast notify per append; waiting is not consuming. The per-stream cost of the one consumer (a subscription and a cursor row per stream) is measured in the 1000-seat bus gate ([[seats-1000-bus]]) when W2.6b lands; if it fails the budget, the consumer's streams are limited to the operator's own swarms and the account, not the design changed.
 
+The trusted device GUI's exact subject catalogue has its own bounded budget of
+4096 filters, including retained seat memberships and namespace subjects. This
+covers the 1000-seat design with namespace margin; historical memberships must
+not exhaust the peer subscription limit and hold the GUI event lane. Ordinary
+peer subscriptions remain limited to 64 filters. Live attachment, refresh and
+retained reads use the same exact authorized catalogue, without truncation or
+broader wildcard grants; the existing page, queue and acknowledgement budgets
+remain in force.
+
 ## 4. The UI, from the lab
 
 - **Compose** (`compose.html`): a DM to a seat, a post to a channel or the swarm stream with `kind`, routed through the messaging tree; decision [[d26-terminal-key-ownership|#26]] keyboard rules apply (the composer is a text field). **The role chip fans out at send time** (decision [[d38-messaging-task-rulings|#38]] (h), Oracle ruling for L9-M-c, 2026-10-23): the W2.4 tree has no role sink, so a send to a role resolves to the exact seats holding that role in the current registry membership and issues one `Messaging` request per seat, each with its own id, receipt and ledger row; the UI shows one role send with N receipts. Above 32 seats the send is refused with a named reason. No invented role path, no new tree sink; groups stay their own destination, as `Ls` lists them.
