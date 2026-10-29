@@ -374,6 +374,12 @@ impl History {
                 merged.issuer_kind = confirmed.issuer_kind;
                 merged.signature_reason = confirmed.signature_reason.clone();
             }
+            if merged.signature == wire::SignatureState::Signed && merged.upgrade_of.is_none() {
+                merged.upgrade_of = [&old.row, row]
+                    .into_iter()
+                    .filter(|row| row.signature == wire::SignatureState::Signed)
+                    .find_map(|row| row.upgrade_of.clone());
+            }
             observed_at = observed_at.max(old.projected_at);
         }
         let row = &merged;
@@ -1134,6 +1140,10 @@ mod quiet_history_tests {
         let mut acknowledged = latest_row(scope, 90);
         acknowledged.receipts.acked = 1;
         acknowledged.receipts.delivered = 1;
+        acknowledged.upgrade_of = Some(wire::IntentBinding {
+            id: acknowledged.id,
+            digest: "0".repeat(64),
+        });
         history.row(&acknowledged, Some("operator/inbox"), 100);
         let mut older = acknowledged.clone();
         older.receipts.acked = 0;
@@ -1143,12 +1153,14 @@ mod quiet_history_tests {
             "timestamp is not authority to revoke ACK"
         );
         older.signature = wire::SignatureState::Pending;
+        older.upgrade_of = None;
         older.issuer_kind = None;
         older.signature_reason = Some("checking older projection".into());
         history.row(&older, None, 300);
         assert_eq!(history.rows[0].row.signature, wire::SignatureState::Signed);
         assert_eq!(history.rows[0].row.issuer_kind, acknowledged.issuer_kind);
         assert_eq!(history.rows[0].row.signature_reason, acknowledged.signature_reason);
+        assert_eq!(history.rows[0].row.upgrade_of, acknowledged.upgrade_of);
         history.refresh_wanted = Some(vec![Committed {
             id: Ulid(91),
             sequence: 9,

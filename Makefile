@@ -401,7 +401,8 @@ test-chat-backlog:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests -- --nocapture
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui -- --nocapture
 
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
