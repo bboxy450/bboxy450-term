@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T05:40:01Z"
+updated: "2026-10-29T19:17:39Z"
 ---
 # ICD: logic ↔ GUI
 
@@ -76,8 +76,27 @@ or invalid prompt refuses before any authority/context write, without truncation
 | Failure | an unavailable baseline means a fresh snapshot; stale generations are ignored; a starting pane with no reply by the spawn deadline becomes a named refusal |
 | Versioning | the wire golden proves byte identity; additive fields with defaults; one module per noun |
 | Verified by | invariants ui-never-waits, watched-replay-priority, restart-keeps-state, seats-967-frame; `tests/gui_wire_golden.rs`; promises T1 to T3, S1 to S4, the K group, F1 and up |
-| Open | the 967-seat frame is over budget (CPU p99 292 ms, input to GPU 1 076 ms against 8.33 ms) |
+| Open | issue73 selected existing-seam read-after-commit agreement below; implementation witness pending; the 967-seat frame is over budget (CPU p99 292 ms, input to GPU 1 076 ms against 8.33 ms) |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+
+## Retained-backlog read after commit — 2026-10-29 (#388)
+
+Producer Lumen Foxglove, GUI consumer Vesper Greywind (Oracle), contract owner
+Nyx Copperwing. Reason: historical receipt backlog can hide a fresh committed
+composer row while its actual canonical message and receipt already exist.
+Selected agreement: [[l9-messaging-tasks]] “Retained-backlog read after known
+commit” uses existing scoped Recent request/reply and canonical row validation,
+triggered/coalesced after known send completion. Older pagination, historical
+cursor/pending/explicit ACK/operator read marks, single durable Event lane and
+all existing deadlines/fairness remain unchanged. Later receipt refresh uses
+existing Event/read/state-change signals; it is not an unbounded polling loop.
+
+No new MessageProjection variant, KB-root revision, source fields, tracking
+protocol, wire version or budget is selected. Those in signed 9b3769a3 remain
+unselected pending a real counterexample. Identity/snapshot/failure/restart and
+retained-348000/16384 produced-frame/mutation witnesses are specified in #156.
+Implementation supplement #447 and independently verified results remain open.

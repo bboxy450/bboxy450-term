@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T19:56:04Z"
+updated: "2026-10-29T19:17:39Z"
 ---
 # ICD: messaging ↔ seats
 
@@ -28,3 +28,22 @@ updated: "2026-10-26T19:56:04Z"
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+
+## Existing-seam fresh composer read — 2026-10-29 (#388)
+
+Producer Lumen Foxglove and consumer Vesper Greywind (Oracle), contract owner
+Nyx Copperwing, select existing canonical Recent readback after a known commit
+under [[l9-messaging-tasks]] and [[logic-gui]]. Messaging operator/swarm/context
+read authority and the returned StoredMessage bind the row; no fabricated
+composer envelope, broader subject/grant or new wire source field is allowed.
+Actual receipt summaries remain snapshots, and storage/native delivery is never
+model acknowledgement. Coalesced refresh preserves canonical messages/history,
+older pagination, the single Event lane and cursor/pending/ACK/read semantics.
+
+The retained-348000 produced-frame witness and independent direct-subject,
+no-effect dedup and refresh mutations must prove the selected existing seam.
+Later receipt-only freshness is a separate measured assertion, using existing
+Event/explicit read or changed-high triggers; it does not justify protocol
+expansion without a counterexample and both owners' recorded agreement.
+Implementation/acceptance evidence remains open under supplement #447 / issue73.

@@ -1,0 +1,10 @@
+{
+  "source": "7684bbbf741edbe57671d6e960a499249cef7077",
+  "source_signature": "G 9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "producer_disposition": "Agrees: existing Recent only, known Stored identity/ledger sequence, one read plus bounded dirty demand, no event/read/ACK or older-page cursor mutation. Local composer operation correlation uses the existing fan-out bound, not new producer push tracking. projected_at remains observational; confirmed signature/application ACK evidence is retained. Full frame/mutation/freshness and composed source gates remain required.",
+  "sha256": {
+    ".bboxy/specs/l9-messaging-tasks.md": "062477233ccfa4564cbe00e48560fce8243c382e5e703c1b4dc4fd3fba13fb19",
+    ".bboxy/interfaces/logic-gui.md": "02702b95b3863a269044bd820b883679e1ae088ad0b0a1e14a70358fd6980765",
+    ".bboxy/interfaces/messaging-seats.md": "eb7c09203fa884c0b1449b7c6da601e91cb45da8a7958071e2de0a60799b1852"
+  }
+}

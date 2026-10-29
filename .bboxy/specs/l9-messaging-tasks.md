@@ -22,7 +22,7 @@ links:
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[ux-prototype]]", rel: ui }
 created: 2026-10-23T18:28:25Z
-updated: "2026-10-25T21:45:42Z"
+updated: "2026-10-29T19:17:39Z"
 ---
 # L9-M — messaging and tasks in the app
 
@@ -127,3 +127,119 @@ Remote GUIs, operator-to-operator messaging across machines (cloud phase), new m
 ## 5. A custody hold never holds delivery ([[d285-no-gated-communications]], 2026-10-24)
 
 **Delivery and wake are separate** ([[messaging-attention]]): a stored message becomes a model turn only by the receiver's wake policy per destination and class (`wake`, `inbox`, `digest`), events never wake under default policy, and the policy times the wake without ever holding the message. Signing can be held; delivery cannot. While custody is unavailable, local delivery continues with `signature: pending` and the hold's reason on the envelope, shown as pending in receipts and the native frame, journaled in order and signed in order when custody returns, with the recipients' grade upgraded then; nothing is dropped, nothing carries a placeholder signature; an envelope for a pinned remote receiver waits and says so. On a first-ever held startup with no public author at all, the pending row is a logical intent (sender as known, request, hold reason, admission order) with no author claim; on custody return its signed envelope is materialised and appended as a grade-upgrade event bound to the intent's id and digest, bytes preserved, no second delivery ([[d285-no-gated-communications]], first-ever held startup). `GuiEventsHeld` as a lane-wide stop is retired: the hold is a per-row grade. Invariant [[messaging-never-held]].
+
+
+## Retained-backlog read after known commit — 2026-10-29 (#388 / issue73)
+
+**Selected disposition: use the existing Recent request/reply seam. No wire,
+bus, consumer, ACK or polling protocol change.** Producer Lumen Foxglove and
+consumer Vesper Greywind (Oracle for the GUI) identified and reviewed this seam;
+Nyx Copperwing records the agreement. Native implementation supplement #447
+covers the app/History change. Signed `9b3769a3`'s optional MessageProjection,
+new source fields, 32-key tracking, new wire version and work allocation are
+**unselected alternatives**, not prerequisites. No causal counterexample has
+shown that a committed-row read cannot satisfy the fresh composer promise.
+A later receipt-only freshness question is a separate assertion, not proof that
+this initial read requires a new push protocol.
+
+**Source/reason.** At `6bf202a8`, `main.rs:5563` consumes known successful
+composer completion but does not request current canonical rows.
+`messaging/history.rs:401,475` already issues/validates Recent replies, and
+`messaging/service.rs:627` reads canonical messages plus current receipt-backed
+MessageRows without the durable GUI consumer. Each stream's bus scan is capped
+at 32 metadata rows per turn within the global 128-row/256-KiB quantum; a 348k
+old-event gap cannot be made timely merely by stopping new failed-wake receipts.
+The existing message-ledger query can read the fresh message directly. #156 §3
+already allows request/reply read-through pages, so its single Events lane and
+no-app-polling-loop rules remain intact.
+
+### Existing request, identity and snapshot semantics
+
+After a **known committed** composer send, request a scoped bounded Recent read
+through existing `GuiAction::Messaging` and `GuiReply::Messaging`. Use the actual
+StoredMessage returned under the matching send operation, never draft text or
+an invented signed envelope. A targeted existing request may use
+`Recent {channel, before:Some(stored.sequence+1), limit:1}` with checked addition;
+require the returned item to equal the expected message ID and ledger sequence,
+not merely the nearest older row. If overflow, absence or filtering prevents the
+match, label the view unavailable/stale; do not display another message as it.
+Existing newest-page reads remain bounded at 128 messages and 512 KiB.
+
+Authority is the admitted **messaging operator principal and captured swarm /
+context**, using existing read grants and request correlation. Messaging is not
+implicitly a KB document-root operation: no guessed knowledge-root revision or
+new signature/revision field is required. Recheck the current selected swarm /
+conversation when applying a late result. Existing History validation binds
+row count, order, item ID, bus position and swarm to the canonical page; retain
+those checks and the source's pending/signed/intent-upgrade semantics. Do not
+construct a row from the composer on a successful operation alone.
+
+A Recent response is a canonical **snapshot** at that source read, with the
+actual receipt summary then observed. `projected_at` is an observation clock,
+not proof of globally ordered receipt commits or model consumption. Correlate
+requests/completion serials in the existing client, reject stale scope/results,
+and merge by canonical message identity. Preserve confirmed signature / actual
+application-ACK evidence when older history arrives; no transport, native
+submission, pixel or stored-message grade may manufacture model acknowledgement.
+No new per-message wire revision is required for this selected seam.
+
+### Coalescing, pages, failure and lifecycle
+
+A committed send schedules a current-row refresh independently of Event cursor
+catch-up. Coalesce repeated completion observations, send fan-out and an already
+pending current-view refresh; keep one in-flight current refresh and one dirty
+indication for its current context, with a subsequent read only for new work.
+No per-frame/timer polling, global scan, consumer recreation or effect retry.
+This refresh must not overwrite the older-history continuation, selected page,
+Event cursor, pending admissions, explicit ACK or operator read marks. Preserve
+existing page/byte/control bounds and terminal/command/history fairness; do not
+raise a timeout or add a new global queue/slot. Reading is not consuming.
+
+Later receipts normally arrive through the existing Event projection/replay or
+an explicit canonical read. A changed **observed current stream high** may
+coalesce another bounded Recent refresh for the selected context; repeated
+unchanged high values do not schedule reads. This is an existing state-change
+trigger, not a new periodic poll, subscription or push. Later receipt-only
+freshness must be tested separately from initial real receipt visibility. If
+that assertion fails despite these existing triggers, record the exact cause
+and propose the smallest invalidation/read amendment; no new protocol is
+implicitly approved. A snapshot never promises an unobserved future ACK.
+
+On read failure/timeout/mismatch keep the original send outcome and ID plus an
+honest stale/unavailable view. Do not resend, clear a draft twice, invent a
+receipt, reset pagination or advance read state. On GUI/logic reconnect use
+existing attachment and bounded authorized Recent bootstrap; pending refresh
+work is disposable, canonical messages and consumer state survive. Same send-op
+replay remains idempotent and at most causes a coalesced read. A late result for
+a previous selection cannot publish into the new conversation.
+
+### Timing and executable evidence
+
+The next produced frame after a validated canonical response is applied shows
+that actual row/receipt. The full fresh-compose/read/frame witness must meet the
+existing 15-second control deadline unchanged while the old consumer remains
+behind; a successful send result or transport write is insufficient. No new
+latency threshold or claim of immediate model consumption is introduced.
+
+`make test-chat-sections test-gui-events test-boundaries` must retain:
+
+1. A private real consumer >=348000 retained events behind, plus the smaller
+   >=16384 labelled fixture-signed legacy receipt workload. Label synthetic
+   history as such; it is not native effect evidence. Preserve a seed canonical
+   message/receipt and show a fresh actual persisted send plus its real receipt
+   in an actual produced frame while admitted/ACK cursors remain behind.
+   Bind visible message ID/swarm/context/ledger sequence/bus position/receipt
+   grade to the private source and actual Recent response; include terminal echo.
+2. Mutation disabling the known-commit refresh must fail that retained-backlog
+   frame witness. Independently disable exact authorized direct subjects and
+   persistent no-effect receipt dedup to fail their own production assertions.
+   Stopping future receipt noise alone must not satisfy the fresh-frame test.
+3. Concurrent older pagination/refresh, duplicate completion, fan-out, same-op
+   replay, changed selection, mismatch/absence/timeout, custody pending/signature
+   upgrade, reconnect and late history preserve identity/grades, cursor/pending/
+   ACK/read state and work bounds. Test later receipt-only changes separately;
+   report any freshness limitation without upgrading native evidence to model ACK.
+
+The signed draft/current focused gate proves documentation and catalogue
+integrity only. Implementation source/mutation/produced-frame witnesses and
+`make test` remain required for issue73 acceptance; no issue is closed here.
