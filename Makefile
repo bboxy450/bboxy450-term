@@ -62,6 +62,9 @@ help:
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make test-input-backend          Admission wake, watched echo latency and replay safety' \
+	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
+	  'make profile-input-ui            Repeatable CPU host-layout profile (no GPU latency claim)' \
 	  'make check-terminal-replay       Strict all-target Clippy for mux and app' \
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
@@ -521,9 +524,24 @@ test-checkpoint-resize:
 	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
 
-.PHONY: test-input-latency profile-input-ui test-terminal-replay check-terminal-replay
+.PHONY: test-input-latency test-input-backend test-input-ui profile-input-ui check-input test-terminal-replay check-terminal-replay
 test-input-latency:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test input_latency -- --nocapture
+
+test-input-backend:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib logic::idle_command_tests; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::input_check_tests
+	$(MAKE) test-input-latency test-terminal-replay
+
+test-input-ui:
+	$(MAKE) test-cursors test-terminal-selection test-sidebar-resize test-chat-sections
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib chat_scroll::tests; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) sidebar_chat::tests
+
+check-input:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 profile-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
