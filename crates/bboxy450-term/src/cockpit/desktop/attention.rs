@@ -403,6 +403,7 @@ async fn receive_context(
                 if peer != Some(owner.process.pid())
                     || owner.ready.supervisor_pid != supervisor
                     || !owners::frontend_running(&config.run_dir)?.unwrap_or(false)
+                    || !peer.is_some_and(|pid| outside_supervisor(pid, supervisor))
                 {
                     return Err(invalid("desktop context peer refused"));
                 }
@@ -790,5 +791,18 @@ mod tests {
             Some(Event::Detached(ended)) if ended == attachment
         ));
         task.abort();
+    }
+
+    #[test]
+    fn context_lineage_rejects_a_seat_even_with_a_matching_owner_record() {
+        let parent = |pid| match pid {
+            40 => Some(20), // A forged seat owner still descends from supervisor.
+            30 => Some(10), // A UI reattached by the desktop owner.
+            10 | 20 | 50 => Some(1),
+            _ => None,
+        };
+        assert!(!outside_supervisor_with(40, 20, 10, parent));
+        assert!(outside_supervisor_with(30, 20, 10, parent));
+        assert!(outside_supervisor_with(50, 20, 10, parent));
     }
 }
