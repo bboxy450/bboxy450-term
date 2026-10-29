@@ -1124,6 +1124,12 @@ async fn gui_session(
                             }
                             GuiAction::SeatControl {id,seat,generation,command}=> {
                                 client.seat_control(seat,generation,id,command,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                if door==crate::mcp::Door::Gui {
+                                    // The GUI's cached listing must observe its own
+                                    // committed metadata before the correlated receipt.
+                                    let current=client.gui_seat(seat).await.map_err(|error|invalid(format!("unknown: seat control committed; current seat state unavailable: {error}; retain operation ID {id}")))?;
+                                    send(&mut write,&GuiReply::Seat(current)).await?;
+                                }
                                 Ok(GuiReply::SeatControlled {op:id})
                             }
                             action @ (GuiAction::CloseSeat {..}|GuiAction::UndoCloseSeat {..})=> {
@@ -1617,6 +1623,139 @@ mod gui_tests {
             read_gui_line(&mut gui_reader).await.unwrap().unwrap().len(),
             bytes.len() - 1
         );
+    }
+
+    // keeps: SeatControl metadata is authoritative before receipt without event/model publication.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[ignore = "private real supervisor/GUI role boundary; make test-seat-actions-backend"]
+    async fn seat_control_role_snapshot_precedes_receipt_without_events() {
+        struct Keys;
+        impl crate::identity::DeviceKeyStore for Keys {
+            fn custody(&self) -> crate::identity::Custody {
+                crate::identity::Custody::Memory
+            }
+            fn load(&self, _: Ulid) -> crate::identity::Result<Option<ed25519_dalek::SigningKey>> {
+                Ok(Some(ed25519_dalek::SigningKey::from_bytes(&[92; 32])))
+            }
+            fn create(
+                &self,
+                _: Ulid,
+                _: &ed25519_dalek::SigningKey,
+            ) -> crate::identity::Result<()> {
+                Err(crate::identity::PendingReason::JournalConflict)
+            }
+        }
+        let root = tempfile::tempdir().unwrap();
+        let repository = root.path().join("repository");
+        let home = root.path().join("home");
+        std::fs::create_dir(&repository).unwrap();
+        std::fs::create_dir(&home).unwrap();
+        let run = root.path().join("run");
+        assert!(matches!(
+            crate::identity::local_dev_issuer_with_store(&run, &Keys),
+            crate::identity::LocalIssuerOutcome::Ready(_)
+        ));
+        let supervisor = Supervisor::start(crate::Config {
+            journal_directory: Some(root.path().join("supervisor-journal")),
+            ..Default::default()
+        })
+        .unwrap();
+        let logic = Logic::start(
+            supervisor.connect().unwrap(),
+            LogicConfig {
+                run_dir: run,
+                repository: repository.clone(),
+                ring: Default::default(),
+            },
+            ed25519_dalek::SigningKey::from_bytes(&[92; 32]),
+            &tokio::runtime::Handle::current(),
+        )
+        .unwrap();
+        let mut catalog = bbt_proto::gui::RoleCatalog::builtin();
+        let prompt = catalog.roles["executor"].prompt.clone();
+        catalog.harnesses.insert(
+            "cat".into(),
+            bbt_proto::gui::HarnessRoles {
+                default_role: "executor".into(),
+                available_roles: vec!["executor".into(), "architect".into()],
+            },
+        );
+        logic
+            .client
+            .configure_roles(Ulid::new(), catalog, crate::mcp::Origin::default())
+            .await
+            .unwrap();
+        let seat = Ulid::new();
+        let swarm = Ulid::new();
+        let mut harness = crate::adapters::HarnessRecord::builtin("cat").unwrap();
+        harness.command = vec!["/bin/cat".into()];
+        let info = logic
+            .client
+            .spawn_harness(
+                SeatRecord::new(seat, swarm, "role fixture", "cat"),
+                harness,
+                crate::adapters::launch::LaunchOptions {
+                    env: vec![("PATH".into(), "/usr/bin:/bin".into())],
+                    cwd: repository,
+                    role_prompt: prompt,
+                    executable: std::env::current_exe().unwrap(),
+                    user_home: home.clone(),
+                    user_zdotdir: Some(home),
+                    resume: false,
+                },
+            )
+            .await
+            .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(30), async {
+            for door in [crate::mcp::Door::Gui, crate::mcp::Door::Ctl] {
+                let capability = [75; 32];
+                let (peer, server) = tokio::net::UnixStream::pair()?;
+                let session = tokio::spawn(gui_session(server, logic.client.clone(), capability, door));
+                let (read, mut write) = peer.into_split();
+                let mut read = BufReader::new(read);
+                let checked: Result<()> = async {
+                    // No AttachEvents and no GUI Model exist in this fixture.
+                    for role in ["architect", "executor"] {
+                        let id = Ulid::new();
+                        let next = Ulid::new();
+                        send(&mut write, &GuiRequest { version: bbt_proto::gui::VERSION, capability, action: GuiAction::SeatControl { id, seat, generation: 1, command: bbt_proto::gui::SeatControl::Role { name: role.into() } } }).await?;
+                        send(&mut write, &GuiRequest { version: bbt_proto::gui::VERSION, capability, action: GuiAction::RenameSeat { id: next, seat, name: "role fixture".into() } }).await?;
+                        let mut snapshot = false;
+                        let mut receipt = false;
+                        loop {
+                            let line = read_line(&mut read).await?.ok_or_else(|| invalid("role connection closed"))?;
+                            match serde_json::from_slice::<GuiReply>(&line)? {
+                                GuiReply::Identity(_) => {},
+                                GuiReply::Seat(current) => {
+                                    if door != crate::mcp::Door::Gui || receipt || current.record.id != seat || current.record.role.name != role || current.record.generation != 1 || current.state.process != (bbt_proto::ProcessStatus::Running { pid: info.pid }) {
+                                        return Err(invalid("role metadata prelude was absent, stale, late or sent to ctl"));
+                                    }
+                                    snapshot = true;
+                                },
+                                GuiReply::SeatControlled { op } if op == id => {
+                                    if (door == crate::mcp::Door::Gui) != snapshot { return Err(invalid("role receipt preceded GUI metadata, or ctl gained a prelude")); }
+                                    receipt = true;
+                                },
+                                GuiReply::Ok { op } if op == next => {
+                                    if !receipt { return Err(invalid("following operation overtook the role receipt")); }
+                                    break;
+                                },
+                                other => return Err(invalid(format!("unexpected role boundary reply: {other:?}"))),
+                            }
+                        }
+                        if logic.client.record(seat).await?.role.name != role { return Err(invalid("role prelude was not committed registry authority")); }
+                    }
+                    Ok(())
+                }.await;
+                drop(read); drop(write);
+                let stopped = session.await.map_err(|_| invalid("role session interrupted"))?;
+                checked?; stopped?;
+            }
+            Ok::<_, crate::store::Error>(())
+        }).await;
+        logic.shutdown().unwrap();
+        supervisor.shutdown().unwrap();
+        result.expect("role receipt hang guard").unwrap();
     }
 
     // keeps: spec e2e-acceptance M6 (a committed mute is visible without draining the event lane).

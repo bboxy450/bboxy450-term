@@ -224,6 +224,11 @@ impl Gui {
         generation: u64,
         command: bbt_proto::gui::SeatControl,
     ) -> Result<(), String> {
+        let expected_role = match &command {
+            bbt_proto::gui::SeatControl::Role { name } => Some(name.clone()),
+            _ => None,
+        };
+        let mut observed_role = false;
         self.send(GuiAction::SeatControl {
             id,
             seat,
@@ -233,7 +238,22 @@ impl Gui {
         .await;
         loop {
             match self.recv().await {
-                GuiReply::SeatControlled { op } if op == id => return Ok(()),
+                GuiReply::Seat(current)
+                    if current.record.id == seat
+                        && expected_role
+                            .as_ref()
+                            .is_some_and(|name| current.record.role.name == *name) =>
+                {
+                    observed_role = true
+                }
+                GuiReply::SeatControlled { op } if op == id => {
+                    if expected_role.is_some() && !observed_role {
+                        return Err(
+                            "seat role receipt preceded its authoritative GUI metadata".into()
+                        );
+                    }
+                    return Ok(());
+                }
                 GuiReply::Error { op, reason } if op == id => return Err(reason),
                 _ => {}
             }

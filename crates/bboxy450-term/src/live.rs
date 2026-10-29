@@ -586,8 +586,7 @@ impl ActionReplies {
         let at = self.0.iter().position(|r| {
             !matches!(
                 r,
-                ActionReply::SeatControl(_)
-                    | ActionReply::Knowledge(_)
+                ActionReply::Knowledge(_)
                     | ActionReply::Plugin(..)
                     | ActionReply::Root(_)
                     | ActionReply::Roles(_)
@@ -605,6 +604,7 @@ impl ActionReplies {
             }
             GuiReply::Error { op, .. } => match expected {
                 ActionReply::Messaging(id)
+                | ActionReply::SeatControl(id)
                 | ActionReply::Task(id)
                 | ActionReply::Knowledge(id)
                 | ActionReply::Identity(id)
@@ -2473,6 +2473,40 @@ mod tests {
                 response: bbt_proto::messaging::Response::Muted { notice: None },
             }),
             Some(ActionReply::Messaging(op))
+        );
+        assert_eq!(
+            replies.take(&GuiReply::Ok { op: input }),
+            Some(ActionReply::Operation)
+        );
+        assert_eq!(replies.take(&GuiReply::Ok { op: input }), None);
+        // SeatControl's metadata prelude has the same ordering contract. It
+        // cannot consume the next ordinary operation's slot before its receipt.
+        replies.sent(&GuiAction::SeatControl {
+            id: op,
+            seat: Ulid(42),
+            generation: 1,
+            command: bbt_proto::gui::SeatControl::Role {
+                name: "architect".into(),
+            },
+        });
+        replies.sent(&GuiAction::Input {
+            seat,
+            generation: 1,
+            id: input,
+            bytes: vec![b'x'],
+        });
+        assert_eq!(replies.take(&snapshot), None);
+        assert_eq!(
+            replies.take(&GuiReply::Error {
+                op: Ulid::new(),
+                reason: "unrelated".into()
+            }),
+            None
+        );
+        assert_eq!(replies.take(&GuiReply::Ok { op: input }), None);
+        assert_eq!(
+            replies.take(&GuiReply::SeatControlled { op }),
+            Some(ActionReply::SeatControl(op))
         );
         assert_eq!(
             replies.take(&GuiReply::Ok { op: input }),

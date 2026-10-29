@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T04:52:48Z"
+updated: "2026-10-29T05:40:01Z"
 ---
 # ICD: logic ↔ GUI
 
@@ -20,6 +20,14 @@ kill outcome retains that ID and never becomes a new automatic kill. Kill uses
 the supervisor's exact owned child attachment, keeps the seat/history, and is
 distinct from reversible close. `UI_CONTROL_VERSION = 4` requires an old logic
 owner to refresh before these controls are sent.
+
+On the GUI door, a committed SeatControl returns the current authoritative
+`GuiReply::Seat` before `SeatControlled {op}`. The GUI applies that metadata before
+publishing completion, so its cached seat listing observes its own write without
+waiting for event delivery. The prelude consumes no request slot; the pending
+SeatControl retains the FIFO boundary for the next ordinary operation. The ctl
+door receives only the correlated result, without an unsolicited Seat prelude.
+Failure to read committed metadata reports unknown with the original operation ID.
 
 Live role change is the implementation default under the standing session
 preservation order and the operator's continuation, not an answer to the pending
