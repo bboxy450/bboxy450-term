@@ -15,6 +15,8 @@ UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app
 DIST_DIR ?= $(TARGET_DIR)/dist
 RELEASE_REPO := bboxy450/bboxy450-term-releases
+PUSH_IDENTITY ?= Gonzih
+CODEX_BIN ?= codex
 SIGNING_IDENTITY := 3943AF130A015B36824B7FBC86AA672E7B25F3C4
 GPG_KEY := 9B07E849480C68328CA20684844ECC0587DE7AB0
 REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "UQB3368A84"
@@ -38,7 +40,9 @@ help:
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
-	  'make test-harness-native         Real Codex shared daemon, local model, warm and cold startup' \
+	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
+	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
+	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
@@ -79,7 +83,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=...'
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=...'
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -290,7 +294,7 @@ publish-release: release
 	gh release create "$$tag" --repo '$(RELEASE_REPO)' '$(ARCHIVE)' '$(ARCHIVE).sha256' '$(ARCHIVE).asc' --title '$(APP) $(APP_VERSION)' --notes "Source: https://github.com/bboxy450/bboxy450-term/commit/$$(git rev-parse HEAD)"
 
 push:
-	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
+	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; test -z "$$(git status --porcelain)"; \
 	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
@@ -307,7 +311,7 @@ check-spawn:
 
 .PHONY: test-harness-startup check-harness-startup fmt-harness-startup
 fmt-harness-startup:
-	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bbt-mux/src/adapters/launch.rs crates/bbt-mux/src/adapters/mapping.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ring_batch_tests.rs
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bboxy450-harness-wake-up/tests/codex_proxy.rs crates/bbt-mux/src/adapters/launch.rs crates/bbt-mux/src/adapters/mapping.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ring_batch_tests.rs
 
 test-harness-startup:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -326,12 +330,23 @@ test-cli-error-isolation:
 
 .PHONY: test-harness-native
 test-harness-native: build
-	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)'
-	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --cold
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim
+
+.PHONY: test-harness-fixture
+test-harness-fixture: build
+	@set -eu; test -n '$(HARNESS_FIXTURE)' && test -x '$(HARNESS_FIXTURE)' || { echo 'Set HARNESS_FIXTURE to a local executable driver' >&2; exit 2; }; \
+	'$(HARNESS_FIXTURE)' '$(abspath $(TARGET_DIR))/debug/$(APP)'
+
+.PHONY: test-harness-proxy fmt-harness-proxy
+fmt-harness-proxy:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/codex_proxy.rs
+
+test-harness-proxy:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
 
 .PHONY: test-codex-rendering
-test-codex-rendering: build
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
+test-codex-rendering: build test-harness-proxy
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --render-check
 
 .PHONY: test-checkpoint-resize

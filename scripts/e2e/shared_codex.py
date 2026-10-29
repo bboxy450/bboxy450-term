@@ -3,11 +3,13 @@
 Every app action uses ctl. Native hook review is scripted only in this throwaway
 identity. No operator daemon, credentials, GUI input or external model is used.
 """
+import argparse
 import http.server
 import json
 import os
 from pathlib import Path
 import re
+import shlex
 import signal
 import shutil
 import struct
@@ -50,22 +52,48 @@ def objects(value):
 
 
 def main():
-    binary = Path(sys.argv[1]).resolve()
-    cold = "--cold" in sys.argv[2:]
-    render_check = "--render-check" in sys.argv[2:]
-    codex = shutil.which("codex")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("binary", type=Path)
+    parser.add_argument("--cold", action="store_true")
+    parser.add_argument("--render-check", action="store_true")
+    parser.add_argument("--codex", help="Codex executable (defaults to PATH)")
+    parser.add_argument("--shim", action="store_true", help="exercise a private forwarding shim")
+    options = parser.parse_args()
+    binary = options.binary.resolve()
+    cold, render_check = options.cold, options.render_check
+    codex = shutil.which(options.codex or "codex")
     assert binary.is_file() and codex, "build the app and install Codex first"
     root = Path(tempfile.mkdtemp(prefix="bbt-shared-codex-", dir="/tmp")).resolve()
     print("Private shared-daemon fixture: " + str(root), flush=True)
     home, work, run = (root / name for name in ("home", "work", "run"))
-    for directory in [home / ".codex", work, root / "repository"]:
+    for directory in [home / ".codex", work, root / "repository", root / "tmp"]:
         directory.mkdir(parents=True)
+    (root / "tmp").chmod(0o700)
     env = dict(HOME=str(home), CODEX_HOME=str(home / ".codex"),
                CLAUDE_CONFIG_DIR=str(home / ".claude"),
                XDG_CONFIG_HOME=str(home / ".config"), XDG_CACHE_HOME=str(home / ".cache"),
+               XDG_DATA_HOME=str(home / ".local/share"), TMPDIR=str(root / "tmp") + "/",
                PATH=os.path.dirname(codex) + ":/usr/bin:/bin:/usr/sbin:/sbin",
                TERM="xterm-256color", LANG="en_US.UTF-8", BBOXY_RUN_DIR=str(run))
     env["BBOXY_CODEX_PREFLIGHT_TRACE"] = "1"
+    shim_log = root / "shim-calls.jsonl"
+    if options.shim:
+        # Resolve through the login shell's PATH, preserving argv, environment
+        # and the harness PID with exec. No third-party shim is required.
+        shim = root / "forwarding shim"
+        shim.mkdir(mode=0o700)
+        driver = shim / "forward.py"
+        driver.write_text("import json, os, sys\n"
+                          "with open(" + repr(str(shim_log)) + ", 'a') as log:\n"
+                          "    log.write(json.dumps(dict(args=sys.argv[1:], home=os.environ['HOME'])) + '\\n')\n"
+                          "real = " + repr(codex) + "\n"
+                          "os.execv(real, [real, *sys.argv[1:]])\n")
+        wrapper = shim / "codex"
+        wrapper.write_text("#!/bin/sh\nexec " + shlex.quote(sys.executable) + " -I -B " +
+                           shlex.quote(str(driver)) + ' "$@"\n')
+        wrapper.chmod(0o700)
+        env["PATH"] = str(shim) + ":" + env["PATH"]
+        codex = str(wrapper)
     os.environ.update(BBT=str(binary), E2E_WORK=str(work))
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import first_turn
@@ -120,7 +148,7 @@ def main():
                       'wire_api="responses"\nrequires_openai_auth=false\n'
                       'supports_websockets=false\n[projects.' + json.dumps(str(work)) + ']\n'
                       'trust_level="trusted"\n')
-    (home / ".zprofile").write_text("export PATH=" + env["PATH"] + "\n")
+    (home / ".zprofile").write_text("export PATH=" + shlex.quote(env["PATH"]) + "\n")
     (home / ".zshrc").write_text("PROMPT='%# '\n")
     app = None
     daemon_started = False
@@ -148,33 +176,62 @@ def main():
     def seats():
         return {row["record"]["id"]: row for row in ctl("seat", "ls")["data"]}
 
+    def ready(seat):
+        deadline = time.monotonic() + 35
+
+        def observe(accept, label):
+            return wait(lambda: screen(seat), accept, label,
+                        seconds=max(0, deadline - time.monotonic()))
+
+        # Both client startup and the per-thread overlay can request review.
+        # Approve only this throwaway HOME's hooks, through the native chooser.
+        while True:
+            plain = observe(lambda text: "Hooks need review" in text or
+                            ("Ask Codex to do anything" in text and
+                             "fixture-model" in text and "loading" not in text) or
+                            "Lifecycle hooks from config" in text, "Codex startup")
+            if "Hooks need review" in plain:
+                count = re.search(r"(\d+) hooks? are new or changed", plain)
+                assert count and int(count[1]) > 0, plain
+                selected = re.search(r"› ([123])\.", plain)
+                assert selected and "2. Trust all and continue" in plain, plain
+                if selected[1] != "2":
+                    ctl("seat", "key", seat, "down" if selected[1] == "1" else "up")
+                    observe(lambda text: "› 2. Trust all and continue" in text,
+                            "private hook review selects trust")
+                ctl("seat", "key", seat, "enter")
+                observe(lambda text: "Hooks need review" not in text, "private hook chooser closed")
+                continue
+            if "Lifecycle hooks from config" in plain:
+                break  # A deferred /hooks command can open after the chooser.
+            ctl("seat", "key", seat, "ctrl-u")
+            ctl("seat", "type", seat, "/hooks")
+            plain = observe(lambda text: "› /hooks" in text or "Hooks need review" in text,
+                            "private hook command is rendered")
+            if "Hooks need review" in plain:
+                continue
+            ctl("seat", "key", seat, "enter")
+            plain = observe(lambda text: "Lifecycle hooks from config" in text or "Hooks need review" in text,
+                            "private hook drawer")
+            if "Hooks need review" not in plain:
+                break
+        if re.search(r"\d+ hooks need review", plain):
+            assert "t trust all" in plain, plain
+            ctl("seat", "type", seat, "t")
+            observe(lambda text: not re.search(r"\d+ hooks need review", text), "private hooks trusted")
+        ctl("seat", "key", seat, "escape")
+        observe(lambda text: "Ask Codex to do anything" in text and "fixture-model" in text and
+                "Hooks need review" not in text and "Lifecycle hooks from config" not in text,
+                "private hook drawer closed")
+        ctl("seat", "key", seat, "ctrl-u")
+
     def spawn(label):
         seat = ctl("seat", "spawn", "codex", "--place", "tab", "--cwd", str(work),
                    "--name", "Shared Codex " + label)["data"]["seat"]
-        plain = wait(lambda: screen(seat), lambda text: "Hooks need review" in text or
-                     "Ask Codex to do anything" in text, "Codex startup")
-        if "Hooks need review" in plain:
-            assert re.search(r"10 hooks? are new or changed", plain), plain
-            assert "2. Trust all and continue" in plain, plain
-            ctl("seat", "key", seat, "down", "enter")
-        wait(lambda: screen(seat), lambda text: "Ask Codex to do anything" in text,
-             "Codex ready after private hook review")
-        # Review this fixture's ten private hooks explicitly. A second thread on
-        # the same daemon can defer changed-hook review until its first input.
-        ctl("seat", "type", seat, "/hooks")
-        ctl("seat", "key", seat, "enter")
-        plain = wait(lambda: screen(seat), lambda text: "Lifecycle hooks from config" in text,
-                     "private hook drawer")
-        if "10 hooks need review" in plain:
-            assert "t trust all" in plain, plain
-            ctl("seat", "type", seat, "t")
-            wait(lambda: screen(seat), lambda text: "10 hooks need review" not in text,
-                 "private hooks trusted")
-        ctl("seat", "key", seat, "escape")
-        ctl("seat", "key", seat, "ctrl-u")
-        wait(lambda: screen(seat), lambda text: "Ask Codex to do anything" in text,
-             "private hook drawer closed")
+        ready(seat)
         ctl("seat", "type", seat, "Introduce yourself and orient first.")
+        wait(lambda: screen(seat), lambda text: "Introduce yourself and orient first." in text,
+             "private first prompt is rendered")
         ctl("seat", "key", seat, "enter")
         wait(lambda: screen(seat), lambda text: "INTRO_OK_" + label in text, "orient first turn")
         return seat
@@ -221,6 +278,16 @@ def main():
         assert all(threads) and len(set(threads)) == 2, rows
         wait(lambda: seats(), lambda rows: all(rows[seat]["state"]["grade"] == "reported"
                                               for seat in (a, b)), "shared native binding")
+        before = seats()
+        ctl("seat", "restart", a)
+        wait(lambda: seats(), lambda rows: rows[a]["record"]["generation"] == before[a]["record"]["generation"] + 1,
+             "seat restarts its generation")
+        ready(a)
+        after = seats()
+        assert after[a]["record"]["harness_session_id"] == threads[0], after[a]
+        assert after[b]["state"]["process"] == before[b]["state"]["process"], after[b]
+        assert after[b]["record"]["generation"] == before[b]["record"]["generation"]
+        os.kill(daemon_pid, 0)
         def captured_output(seat):
             chunks = []
             for path in sorted((run / ("seat-" + seat) / "ring-1").glob("data-*.log")):
@@ -291,7 +358,14 @@ def main():
         ctl("app", "stop")
         app.wait(timeout=15)
         os.kill(daemon_pid, 0)
+        if options.shim:
+            calls = [json.loads(line) for line in shim_log.read_text().splitlines()]
+            assert all(call["home"] == str(home) for call in calls), calls
+            assert any("--remote" in call["args"] for call in calls), calls
+            assert any("resume" in call["args"] for call in calls), calls
         proof = dict(cold_start=cold, daemon_pid=daemon_pid, seats=[a, b], threads=threads,
+                     forwarding_shim=options.shim,
+                     seat_restart_resumed=True,
                      requests=Provider.requests, wake_operation=sent["op"],
                      daemon_survived_seat_close_and_app_stop=True,
                      external_model_calls=0, operator_input=0)

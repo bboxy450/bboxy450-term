@@ -161,7 +161,9 @@ fn codex_config(args: &[String]) -> Result<BTreeMap<String, serde_json::Value>> 
 
 fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
     if matches!(kind, "claude" | "codex") && args.iter().any(|arg| arg == "--") {
-        return Err(invalid("Managed harness launches always add required options; remove the -- separator that would disable them"));
+        return Err(invalid(
+            "Managed harness launches always add required options; remove the -- separator that would disable them",
+        ));
     }
     match kind {
         "claude" => {
@@ -231,6 +233,42 @@ fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
         _ => {}
     }
     Ok(())
+}
+
+// Remote resume rejects CLI permission selectors. Their effective values have
+// already been captured in CodexLaunch and are enforced by the seat proxy.
+fn remote_tui_args(args: Vec<String>) -> Result<Vec<String>> {
+    fn permission(value: &str) -> bool {
+        let Some((key, _)) = value.split_once('=') else {
+            return false;
+        };
+        toml::from_str::<toml::Table>(&format!("{key}=true")).is_ok_and(|table| {
+            table.len() == 1
+                && (table.contains_key("approval_policy") || table.contains_key("sandbox_mode"))
+        })
+    }
+    let mut original = args.into_iter();
+    let mut client = Vec::new();
+    while let Some(argument) = original.next() {
+        if argument == "--yolo" {
+            continue;
+        }
+        if argument == "-c" || argument == "--config" {
+            let value = original
+                .next()
+                .ok_or_else(|| invalid("Codex config override needs key=value"))?;
+            if !permission(&value) {
+                client.extend([argument, value]);
+            }
+        } else if !argument
+            .strip_prefix("--config=")
+            .or_else(|| argument.strip_prefix("-c"))
+            .is_some_and(permission)
+        {
+            client.push(argument);
+        }
+    }
+    Ok(client)
 }
 
 /// Release a launch overlay and its optional owned short socket alias.
@@ -639,6 +677,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                     record.command.len() - 1..record.command.len() - 1,
                     ["--remote".into(), format!("unix://{}", proxy.display())],
                 );
+                spec.args = remote_tui_args(std::mem::take(&mut spec.args))?;
                 let mut proxy_env = spec.env.clone();
                 proxy_env.insert("BBOXY_HOOK_SOCKET_ONLY".into(), "1".into());
                 spec.runtime = Some(RuntimePlan {

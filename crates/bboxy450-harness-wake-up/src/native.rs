@@ -489,10 +489,12 @@ async fn codex_handshake(path: &Path, thread: &str, owner: Option<u32>) -> Resul
 }
 
 /// Relay a seat's TUI to Codex's shared daemon, adding startup configuration to
-/// that connection's first thread start/resume only. Never owns the daemon.
+/// each connection's first thread start/resume only. Native clients can connect
+/// alongside the TUI. Never owns the daemon.
 ///
 /// # Errors
-/// Returns private listener, daemon startup, protocol or admission failures.
+/// Returns private listener setup/accept failures. A failed client is closed and
+/// reported without disconnecting other clients or stopping the borrowed daemon.
 pub async fn codex_proxy(
     frontend: &Path,
     backend: &Path,
@@ -500,6 +502,33 @@ pub async fn codex_proxy(
     program: &str,
 ) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
+    let listener = tokio::net::UnixListener::bind(frontend)?;
+    std::fs::set_permissions(frontend, std::fs::Permissions::from_mode(0o600))?;
+    // Futures remain owned by this proxy; dropping it closes clients only.
+    let thread = std::sync::Mutex::new(launch.resume.clone());
+    let mut clients = futures_util::stream::FuturesUnordered::new();
+    loop {
+        tokio::select! {
+            accepted = listener.accept(), if clients.len() < 16 => {
+                let (stream, _) = accepted?;
+                clients.push(codex_proxy_client(stream, backend, launch, program, &thread));
+            }
+            completed = clients.next(), if !clients.is_empty() => {
+                if let Some(Err(error)) = completed {
+                    eprintln!("Codex proxy client failed: {error}");
+                }
+            }
+        }
+    }
+}
+
+async fn codex_proxy_client(
+    stream: UnixStream,
+    backend: &Path,
+    launch: &super::launch::CodexLaunch,
+    program: &str,
+    bound_thread: &std::sync::Mutex<Option<String>>,
+) -> Result<()> {
     // Match Codex's remote transport, including large plugin/skill catalogs.
     // Tungstenite's default 16 MiB frame cap otherwise causes a reconnect loop.
     let transport_config = || {
@@ -519,94 +548,123 @@ pub async fn codex_proxy(
             *into = from;
         }
     }
-    let listener = tokio::net::UnixListener::bind(frontend)?;
-    std::fs::set_permissions(frontend, std::fs::Permissions::from_mode(0o600))?;
-    loop {
-        let (stream, _) = listener.accept().await?;
-        let accepted = tokio::time::timeout(
-            Duration::from_secs(5),
-            tokio_tungstenite::accept_async_with_config(stream, Some(transport_config())),
-        )
-        .await;
-        let Ok(Ok(mut client)) = accepted else {
-            continue;
-        }; // readiness probes are not WebSockets
-        super::launch::ensure_codex_daemon(backend, program)?;
-        own_socket(backend)?;
-        let stream = UnixStream::connect(backend).await?;
-        let (mut server, _) = tokio_tungstenite::client_async_with_config(
-            "ws://localhost/",
-            stream,
-            Some(transport_config()),
-        )
-        .await?;
-        let mut pending: Option<(Value, Option<String>)> = None;
-        let mut configured = false;
-        let mut internal: Option<Value> = None;
-        loop {
-            tokio::select! {
-                frame = client.next() => {
-                    let Some(Ok(mut frame)) = frame else { break; };
-                    if !configured && pending.is_none()
-                        && let Message::Text(text) = &frame
-                        && let Ok(mut call) = serde_json::from_str::<Value>(text)
-                        && matches!(call["method"].as_str(), Some("thread/start" | "thread/resume"))
-                    {
-                        let expected = call["params"]["threadId"].as_str().map(str::to_owned);
-                        if launch.resume.as_ref().is_some_and(|id| expected.as_ref() != Some(id)) {
-                            return Err(invalid("Codex TUI resumed a different thread"));
-                        }
-                        overlay(&mut call["params"]["config"], serde_json::to_value(&launch.config)?);
-                        if let Some(instructions) = launch.config.get("developer_instructions") {
-                            call["params"]["developerInstructions"] = instructions.clone();
-                        }
-                        for (key, parameter) in [("approval_policy", "approvalPolicy"), ("sandbox_mode", "sandbox")] {
-                            if let Some(value) = launch.config.get(key) {
-                                call["params"][parameter] = value.clone();
-                            }
-                        }
-                        call["params"]["cwd"] = json!(launch.cwd);
-                        pending = Some((call["id"].clone(), expected));
-                        frame = Message::Text(serde_json::to_string(&call)?.into());
+    // Another launcher may have added session-scoped hooks before this proxy.
+    // Retain exact groups once; ordinary arrays still use the seat overlay.
+    fn retain_client_hooks(client: &Value, seat: &mut Value) {
+        let (Some(existing), Some(added)) = (
+            client.get("hooks").and_then(Value::as_object),
+            seat.get_mut("hooks").and_then(Value::as_object_mut),
+        ) else {
+            return;
+        };
+        for (event, groups) in added {
+            if let (Some(existing), Value::Array(groups)) =
+                (existing.get(event).and_then(Value::as_array), groups)
+            {
+                let mut combined = existing.clone();
+                for group in groups.iter() {
+                    if !combined.contains(group) {
+                        combined.push(group.clone());
                     }
-                    if server.send(frame).await.is_err() { break; }
                 }
-                frame = server.next() => {
-                    let Some(Ok(frame)) = frame else { break; };
-                    // Unrelated catalog responses can be tens of MiB. Relay
-                    // them directly instead of allocating a second JSON tree.
-                    if (pending.is_some() || internal.is_some())
-                        && let Message::Text(text) = &frame
-                        && let Ok(response) = serde_json::from_str::<Value>(text)
-                    {
-                        if internal.as_ref().is_some_and(|id| response.get("id") == Some(id)) {
-                            internal = None;
-                            continue;
-                        }
-                        if let Some((id, expected)) = &pending
-                            && response.get("id") == Some(id)
-                        {
-                            if let Some(thread) = response["result"]["thread"]["id"].as_str() {
-                                if expected.as_ref().is_some_and(|id| id != thread) {
-                                    return Err(invalid("Codex returned a different thread"));
-                                }
-                                let registration = std::process::Command::new(&launch.host)
-                                    .args(["hook", "--agent", "codex", &json!({"hook_event_name":"SessionStart","session_id":thread,"bboxy_proxy":true}).to_string()])
-                                    .env("BBOXY_HOOK_SOCKET_ONLY", "1").status()?;
-                                if !registration.success() { return Err(invalid("Codex thread registration failed")); }
-                                let name_id = json!(format!("bboxy-name-{}", Ulid::new()));
-                                server.send(Message::Text(json!({"id":name_id,"method":"thread/name/set","params":{"threadId":thread,"name":launch.name}}).to_string().into())).await?;
-                                internal = Some(name_id);
-                                configured = true;
-                            }
-                            pending = None;
-                        }
-                    }
-                    if client.send(frame).await.is_err() { break; }
-                }
+                *groups = combined;
             }
         }
     }
+    let accepted = tokio::time::timeout(
+        Duration::from_secs(5),
+        tokio_tungstenite::accept_async_with_config(stream, Some(transport_config())),
+    )
+    .await;
+    let Ok(Ok(mut client)) = accepted else {
+        return Ok(());
+    }; // readiness probes are not WebSockets
+    super::launch::ensure_codex_daemon(backend, program)?;
+    own_socket(backend)?;
+    let stream = UnixStream::connect(backend).await?;
+    let (mut server, _) = tokio_tungstenite::client_async_with_config(
+        "ws://localhost/",
+        stream,
+        Some(transport_config()),
+    )
+    .await?;
+    let mut pending: Option<(Value, Option<String>)> = None;
+    let mut configured = false;
+    let mut internal: Option<Value> = None;
+    loop {
+        tokio::select! {
+            frame = client.next() => {
+                let Some(Ok(mut frame)) = frame else { break; };
+                if !configured && pending.is_none()
+                    && let Message::Text(text) = &frame
+                    && let Ok(mut call) = serde_json::from_str::<Value>(text)
+                    && matches!(call["method"].as_str(), Some("thread/start" | "thread/resume"))
+                {
+                    let expected = call["params"]["threadId"].as_str().map(str::to_owned);
+                    let bound = bound_thread.lock().map_err(|_| invalid("Codex proxy thread binding unavailable"))?.clone();
+                    if bound.as_ref().is_some_and(|id| expected.as_ref() != Some(id)) {
+                        return Err(invalid("Codex TUI resumed a different thread"));
+                    }
+                    let mut config = serde_json::to_value(&launch.config)?;
+                    retain_client_hooks(&call["params"]["config"], &mut config);
+                    overlay(&mut call["params"]["config"], config);
+                    if let Some(instructions) = launch.config.get("developer_instructions") {
+                        call["params"]["developerInstructions"] = instructions.clone();
+                    }
+                    for (key, parameter) in [("approval_policy", "approvalPolicy"), ("sandbox_mode", "sandbox")] {
+                        if let Some(value) = launch.config.get(key) {
+                            call["params"][parameter] = value.clone();
+                        }
+                    }
+                    call["params"]["cwd"] = json!(launch.cwd);
+                    pending = Some((call["id"].clone(), expected));
+                    frame = Message::Text(serde_json::to_string(&call)?.into());
+                }
+                if server.send(frame).await.is_err() { break; }
+            }
+            frame = server.next() => {
+                let Some(Ok(frame)) = frame else { break; };
+                // Unrelated catalog responses can be tens of MiB. Relay
+                // them directly instead of allocating a second JSON tree.
+                if (pending.is_some() || internal.is_some())
+                    && let Message::Text(text) = &frame
+                    && let Ok(response) = serde_json::from_str::<Value>(text)
+                {
+                    if internal.as_ref().is_some_and(|id| response.get("id") == Some(id)) {
+                        internal = None;
+                        continue;
+                    }
+                    if let Some((id, expected)) = &pending
+                        && response.get("id") == Some(id)
+                    {
+                        if let Some(thread) = response["result"]["thread"]["id"].as_str() {
+                            if expected.as_ref().is_some_and(|id| id != thread) {
+                                return Err(invalid("Codex returned a different thread"));
+                            }
+                            {
+                                let mut bound = bound_thread.lock().map_err(|_| invalid("Codex proxy thread binding unavailable"))?;
+                                if bound.as_ref().is_some_and(|id| id != thread) {
+                                    return Err(invalid("Codex returned a different thread"));
+                                }
+                                *bound = Some(thread.to_owned());
+                            }
+                            let registration = std::process::Command::new(&launch.host)
+                                .args(["hook", "--agent", "codex", &json!({"hook_event_name":"SessionStart","session_id":thread,"bboxy_proxy":true}).to_string()])
+                                .env("BBOXY_HOOK_SOCKET_ONLY", "1").status()?;
+                            if !registration.success() { return Err(invalid("Codex thread registration failed")); }
+                            let name_id = json!(format!("bboxy-name-{}", Ulid::new()));
+                            server.send(Message::Text(json!({"id":name_id,"method":"thread/name/set","params":{"threadId":thread,"name":launch.name}}).to_string().into())).await?;
+                            internal = Some(name_id);
+                            configured = true;
+                        }
+                        pending = None;
+                    }
+                }
+                if client.send(frame).await.is_err() { break; }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Pin a borrowed daemon to its kernel peer and this already authenticated thread.

@@ -223,7 +223,11 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
     assert!(prompt.contains("ROLE: EXECUTOR"));
     assert!(prompt.contains("First call the bboxy MCP `orient` tool, before other work"));
     assert!(prompt.contains(&serde_json::to_string(temp.path()).unwrap()));
-    assert!(plan.args.iter().any(|arg| arg == "--dangerously-skip-permissions"));
+    assert!(
+        plan.args
+            .iter()
+            .any(|arg| arg == "--dangerously-skip-permissions")
+    );
     assert_eq!(std::fs::read(settings).unwrap(), b"operator-config");
     let mut codex_record = HarnessRecord::builtin("codex").unwrap();
     let other_approval = "mcp_servers.other.default_tools_approval_mode=\"prompt\"";
@@ -245,13 +249,12 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
         approval_overrides,
         [
             other_approval,
-            "approval_policy=\"never\"",
             "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"",
             "check_for_update_on_startup=false"
         ]
     );
     assert_eq!(std::fs::read(config).unwrap(), original);
-    assert!(codex.args.iter().any(|arg| arg == "--yolo"));
+    assert!(!codex.args.iter().any(|arg| arg == "--yolo"));
     let hooks = codex.args.iter().find(|s| s.starts_with("hooks=")).unwrap();
     assert!(hooks.contains("SessionStart="));
     assert!(hooks.contains("SubagentStart="));
@@ -316,7 +319,8 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
 fn fresh_and_resumed_custom_launches_always_carry_permission_bypass() {
     let root = tempfile::tempdir().unwrap();
     for kind in ["claude", "codex"] {
-        for (resume, preconfigured) in [(false, false), (false, true), (true, false), (true, true)] {
+        for (resume, preconfigured) in [(false, false), (false, true), (true, false), (true, true)]
+        {
             let context = LaunchContext {
                 id: Ulid::new(),
                 generation: 1,
@@ -347,6 +351,14 @@ fn fresh_and_resumed_custom_launches_always_carry_permission_bypass() {
                 } else {
                     flag.into()
                 });
+                if kind == "codex" {
+                    record.command.extend([
+                        "--config=approval_policy=\"never\"".into(),
+                        "-csandbox_mode=\"danger-full-access\"".into(),
+                        "-c".into(),
+                        "model=\"literal --yolo approval_policy=never\"".into(),
+                    ]);
+                }
             }
             let launch = plan(&record, &context).unwrap();
             assert_eq!(
@@ -355,7 +367,7 @@ fn fresh_and_resumed_custom_launches_always_carry_permission_bypass() {
                     .iter()
                     .filter(|arg| arg.as_str() == flag)
                     .count(),
-                1,
+                usize::from(kind != "codex"),
                 "{kind} resume={resume} preconfigured={preconfigured}"
             );
             if kind == "codex" {
@@ -366,6 +378,17 @@ fn fresh_and_resumed_custom_launches_always_carry_permission_bypass() {
                 assert_eq!(config["config"]["approval_policy"], "never");
                 assert_eq!(config["config"]["sandbox_mode"], "danger-full-access");
                 assert_eq!(config["resume"].is_string(), resume);
+                assert!(!launch.args.iter().any(
+                    |argument| argument.starts_with("approval_policy=")
+                        || argument.starts_with("sandbox_mode=")
+                        || argument.starts_with("--config=approval_policy=")
+                        || argument.starts_with("-csandbox_mode=")
+                ));
+                if preconfigured {
+                    assert!(launch.args.iter().any(
+                        |argument| argument == "model=\"literal --yolo approval_policy=never\""
+                    ));
+                }
             }
             launch.cleanup().unwrap();
         }
