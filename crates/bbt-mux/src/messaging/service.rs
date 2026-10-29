@@ -3379,13 +3379,24 @@ mod reference_tests {
             .next
             .expect("byte-bounded scan must not traverse every unrelated body");
         assert!(cursor > 1 && cursor < 36);
-        let Response::Recent { page, rows, .. } =
-            recent(&mut messaging, recipient.swarm, channel, Some(cursor), 128)
-        else {
-            unreachable!()
-        };
-        assert!(page.items.is_empty() && rows.is_empty());
-        assert_eq!(page.next, None);
+        let mut before = Some(cursor);
+        let mut pages = 0;
+        while let Some(cursor) = before {
+            let Response::Recent { page, rows, .. } = recent(
+                &mut messaging,
+                recipient.swarm,
+                channel.clone(),
+                Some(cursor),
+                128,
+            ) else {
+                unreachable!()
+            };
+            assert!(page.items.is_empty() && rows.is_empty());
+            assert!(page.next.is_none_or(|next| next < cursor));
+            before = page.next;
+            pages += 1;
+            assert!(pages <= ids.len(), "filtered scan must finish");
+        }
         let hidden = messaging
             .swarm(recipient.swarm)
             .unwrap()
@@ -3398,14 +3409,21 @@ mod reference_tests {
             Some(cursor),
             "visibility filtering also obeys the physical scan budget"
         );
-        let older_hidden = messaging
-            .swarm(recipient.swarm)
-            .unwrap()
-            .ledger
-            .recent_for(Some(Recipient::Seat(other.id)), None, hidden.next, 128)
-            .unwrap();
-        assert!(older_hidden.items.is_empty());
-        assert_eq!(older_hidden.next, None);
+        let mut before = hidden.next;
+        let mut pages = 0;
+        while let Some(cursor) = before {
+            let older = messaging
+                .swarm(recipient.swarm)
+                .unwrap()
+                .ledger
+                .recent_for(Some(Recipient::Seat(other.id)), None, Some(cursor), 128)
+                .unwrap();
+            assert!(older.items.is_empty());
+            assert!(older.next.is_none_or(|next| next < cursor));
+            before = older.next;
+            pages += 1;
+            assert!(pages <= ids.len(), "invisible scan must finish");
+        }
     }
 
     // keeps: spec messaging
