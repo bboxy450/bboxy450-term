@@ -239,6 +239,7 @@ impl Markdown {
             diagrams: &[],
             record_links: None,
             scrolls: None,
+            provenance_expanded: false,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -280,6 +281,7 @@ impl Markdown {
             diagrams,
             record_links: None,
             scrolls: None,
+            provenance_expanded: false,
         };
         r.blocks(self.display_blocks(title), "")
     }
@@ -302,6 +304,7 @@ impl Markdown {
             diagrams,
             record_links: Some(links),
             scrolls: None,
+            provenance_expanded: false,
         }
         .blocks(self.display_blocks(title), "")
     }
@@ -325,7 +328,35 @@ impl Markdown {
             diagrams: &[],
             record_links: Some(links),
             scrolls: Some(scrolls),
+            provenance_expanded: false,
         };
+        self.hosted_body(title, &r)
+    }
+    /// The native host retains disclosure and horizontal-scroll state together.
+    /// Presentation never removes or rewrites the provider's evidence values.
+    pub fn hosted_body_element_with_controller(
+        &self,
+        title: &str,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+        links: &ui::modules::document_modal::controller::RecordLinks,
+        control: &ui::modules::document_modal::controller::Controller,
+    ) -> c::Element {
+        let r = Render {
+            ctx,
+            m,
+            width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
+            table_width: finite_width(width),
+            fragment_words: false,
+            diagrams: &[],
+            record_links: Some(links),
+            scrolls: Some(control.horizontal()),
+            provenance_expanded: control.provenance_expanded,
+        };
+        self.hosted_body(title, &r)
+    }
+    fn hosted_body(&self, title: &str, r: &Render<'_>) -> c::Element {
         let typed = self.frontmatter.fields.contains_key("type");
         let extra: Vec<_> = self
             .frontmatter
@@ -421,6 +452,7 @@ impl Markdown {
                     diagrams: &[],
                     record_links: None,
                     scrolls: None,
+                    provenance_expanded: false,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -480,6 +512,7 @@ struct Render<'a> {
     diagrams: &'a [Diagram],
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
     scrolls: Option<&'a std::collections::BTreeMap<String, f32>>,
+    provenance_expanded: bool,
 }
 #[derive(Clone)]
 enum Piece {
@@ -1366,12 +1399,22 @@ impl Render<'_> {
         [minimum.max(word), preferred.max(line), hard]
     }
     fn metadata(&self, front: &Frontmatter, keys: &[String]) -> c::Element {
+        // Display only: full nested evidence stays in Frontmatter and source.
+        // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let evidence = |key: &str| matches!(key, "provenance" | "authorship");
+        let has_evidence = front
+            .fields
+            .keys()
+            .any(|key| evidence(key) && (keys.is_empty() || keys.contains(key)));
         let mut rows = vec![];
         for (key, value) in front
             .fields
             .iter()
             .filter(|(k, _)| keys.is_empty() || keys.contains(k))
         {
+            if evidence(key) {
+                continue;
+            }
             let value = match value {
                 serde_yaml::Value::String(s) => s.clone(),
                 _ => serde_yaml::to_string(value)
@@ -1395,6 +1438,37 @@ impl Render<'_> {
                 .into(),
             );
             children.push(self.code("metadata/source", &front.source, 1.6).into());
+        }
+        if has_evidence {
+            children.push(
+                named(
+                    "metadata/provenance/toggle",
+                    text(
+                        "metadata/provenance/label",
+                        if self.provenance_expanded {
+                            "⌄ Hide provenance details"
+                        } else {
+                            "› Provenance details"
+                        },
+                        font(ui::TypeStep::Caption, 500, false, ui::Color::Accent),
+                    ),
+                )
+                .into(),
+            );
+            if self.provenance_expanded {
+                let fields: std::collections::BTreeMap<_, _> = front
+                    .fields
+                    .iter()
+                    .filter(|(key, _)| evidence(key) && (keys.is_empty() || keys.contains(key)))
+                    .collect();
+                let details = serde_json::to_value(&fields)
+                    .and_then(|value| serde_json::to_string_pretty(&value))
+                    .unwrap_or_else(|_| serde_yaml::to_string(&fields).unwrap_or_default());
+                children.push(
+                    self.code("metadata/provenance/details", &details, 1.6)
+                        .into(),
+                );
+            }
         }
         if !rows.is_empty() {
             children.push(

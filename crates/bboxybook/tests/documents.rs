@@ -35,6 +35,8 @@ fn document_matrix_covers_all_types_and_both_modal_presentations_and_source() {
     assert_eq!(cases.len(), (documents::STATES.len() + 1) * 8);
     assert!(documents::STATES.contains(&"link · resolved"));
     assert!(documents::STATES.contains(&"link · missing"));
+    assert!(documents::STATES.contains(&"provenance details"));
+    assert!(documents::STATES.contains(&"provenance details expanded"));
     assert!(documents::legacy_cases().is_empty());
     assert_eq!(
         cases.iter().filter(|c| c.slug == "as-modal-source").count(),

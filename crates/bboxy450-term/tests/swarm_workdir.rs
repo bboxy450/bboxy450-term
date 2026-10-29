@@ -3639,7 +3639,7 @@ fn document_observations_refresh_independent_markers_and_retain_native_sessions(
 // keeps: document-viewer — provenance disclosure changes only presentation;
 // exact private source evidence survives expansion, collapse and reopening.
 #[test]
-#[ignore = "private ctl document disclosure; make test-documents-night"]
+#[ignore = "private ctl document disclosure; make test-document-provenance"]
 fn document_provenance_disclosure_is_quiet_clickable_and_preserves_evidence() {
     use serde_json::json;
     const LOCATOR: &str = "tasks/provenance-disclosure.md";

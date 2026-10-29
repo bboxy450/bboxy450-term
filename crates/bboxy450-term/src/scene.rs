@@ -2058,13 +2058,13 @@ impl Scene {
         };
         let element = shell.element_with_body(ctx, &self.metrics, size, &|width| {
             if let Some(prepared) = &host.prepared {
-                prepared.markdown.hosted_body_element(
+                prepared.markdown.hosted_body_element_with_controller(
                     &prepared.document.title,
                     ctx,
                     &self.metrics,
                     width,
                     &host.links,
-                    host.scroll.horizontal(),
+                    &host.scroll,
                 )
             } else {
                 c::Element::Text(c::Text::new(

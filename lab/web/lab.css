@@ -880,8 +880,9 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 .doc-fm .v { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s3); min-width: 0; align-items: center; }
 .doc-fm .v code { font-size: var(--t-note); color: var(--fg); }
 .doc-fm .seatchip { font-weight: 600; }
-.doc-provenance-details { margin-bottom: var(--s7); }
-.doc-provenance-toggle { font: inherit; font-size: var(--t-section); color: var(--fg-dim); background: transparent; border: 0; border-radius: var(--r-row, 6px); padding: var(--s1) var(--s3); cursor: pointer; }
+.doc-provenance-details { display: flex; flex-direction: column; gap: var(--s2); margin-bottom: var(--s7); }
+.doc-provenance-details pre { margin: 0; }
+.doc-provenance-toggle { align-self: flex-start; display: block; font: inherit; font-size: var(--t-caption); font-weight: 500; line-height: 1.6; color: var(--accent); background: transparent; border: 0; border-radius: var(--r-row, 6px); padding: 0; cursor: pointer; }
 .doc-provenance-toggle:hover, .doc-provenance-toggle:active { color: var(--fg); background: var(--sel, var(--surface-2)); }
 .doc-provenance-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .md, .doc-provenance-details { line-height: 1.6; max-width: var(--doc-measure); }  /* a pixel token, never ch: ch is the browser's font metric */

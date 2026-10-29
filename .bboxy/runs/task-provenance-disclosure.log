@@ -1,0 +1,7 @@
+operator: compact task provenance in the built-in KB document viewer; hide verbose hashes and signatures behind a disclosure.
+scope: presentation only; provenance/authorship collapsed per document; native clipped click/pointer handler; full semantic values on demand; source/provider metadata unchanged.
+focused pre-e2e make test-document-provenance — exit0 (doc layout/record host, UI documents/controller, app document host).
+source checks — rustfmt and git diff --check exit0.
+visual gate attempts1/2 — exit2, 16 new-case geometry mismatches; browser references use committed HEAD, so uncommitted label-style edits were not consumed. Rerun after committing the matching candidate; existing152 cases had no geometry mismatch.
+full ctl e2e, strict all-target Clippy, updated parity and full normal CI: pending final candidate checks; raw logs remain outsideGit.
+focused_log /Users/feral/Library/Logs/bboxy450-term/task-provenance-focused-pass3-20261029.log sha256 a235dc40fda2bf130930f3d7cd0d330d52a0c3f1681bce226f516c345dc6e6f4

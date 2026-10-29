@@ -33,6 +33,8 @@ pub const STATES: &[&str] = &[
     "modal · plain markdown",
     "title in body",
     "different first heading",
+    "provenance details",
+    "provenance details expanded",
     "link · resolved",
     "link · missing",
 ];
@@ -94,7 +96,15 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let mut view: DocumentModal = serde_json::from_value(frame["view"].clone())?;
             let host = &frame["host"];
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
-            let markdown = bbt_doc::parse(&view.document.body);
+            let mut markdown = bbt_doc::parse(&view.document.body);
+            let evidence = &frame["view"]["document"]["provenanceDetails"];
+            if evidence.is_object() {
+                markdown.set_metadata(evidence)?;
+            }
+            let mut control = bbt_ui::modules::document_modal::controller::Controller::default();
+            control.provenance_expanded = frame["view"]["provenance_expanded"]
+                .as_bool()
+                .unwrap_or(false);
             if let Some(index) = frame["record_index"]
                 .as_array()
                 .filter(|index| !index.is_empty())
@@ -149,6 +159,16 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                 } else {
                     &view.document.title
                 });
+                if evidence.is_object() {
+                    return markdown.hosted_body_element_with_controller(
+                        title.unwrap_or_default(),
+                        ctx,
+                        &metrics,
+                        width,
+                        view.record_links.as_ref().unwrap_or(&Default::default()),
+                        &control,
+                    );
+                }
                 if let Some(links) = &view.record_links {
                     return markdown.body_element_with_links(
                         title,

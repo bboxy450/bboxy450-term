@@ -226,7 +226,7 @@
         }
         if(parent===root)break;
       }
-      return {view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams},host,clip,record_index:[...(C.RECORDS?.values()||[])],parts:diagnostics,textBounds,probes,ch};
+      return {view:{document:call.args[0],modal,seat_name:call.args[1]?.seat?.name||null,viewport:[innerWidth,innerHeight],diagrams,provenance_expanded:!!call.args[1]?.provenanceDetailsOpen},host,clip,record_index:[...(C.RECORDS?.values()||[])],parts:diagnostics,textBounds,probes,ch};
       });
       return JSON.parse(JSON.stringify({version:1,layer:'documents',frames}));
     }
