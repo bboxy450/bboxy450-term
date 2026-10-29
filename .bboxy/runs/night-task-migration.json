@@ -1,0 +1,86 @@
+{
+  "project": "bboxy450-term",
+  "canonical_url": "https://github.com/bboxy450/bboxy450-term",
+  "attribution_policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "task": "tasks/2026-10-29-night-task-migration.md",
+  "base": "618df56faccffce46dfec3d1d525b8d115b5d35a",
+  "files": [
+    ".bboxy/specs/work-items.md",
+    "Makefile",
+    "crates/bbt-proto/src/messaging.rs",
+    "crates/bbt-proto/tests/messaging.rs",
+    "crates/bbt-mux/src/mcp/work_items.rs",
+    "crates/bbt-mux/src/index.rs",
+    "crates/bbt-mux/src/index/migration.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/logic/task_import.rs",
+    "crates/bbt-mux/tests/mcp.rs",
+    "crates/bboxy450-term/src/ctl.rs",
+    "crates/bboxy450-term/src/ctl/task.rs",
+    "scripts/test-task-migration.py"
+  ],
+  "verification": [
+    {
+      "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-migration",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-targeted-final.log",
+      "sha256": "0ece123412ec921995494bead78bde6c6f228b7b3f9902483fe1aa37964b22f1"
+    },
+    {
+      "command": "make check-workspace-boundary",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-clippy-final.log",
+      "sha256": "68332cb1b22109702f13f69f147665fc2c2878900ee98e281be3f98774f37fe8"
+    },
+    {
+      "command": "make test-boundaries",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-boundaries.log",
+      "sha256": "8a2ea39f178d5b9bbd978596d439ed85c648ddad95125db9c9b24281d313d33d"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-licenses.log",
+      "sha256": "879514703cd323f769df856f6b70fc5077cc5f510ef6d233074b7da5747d71ea"
+    }
+  ],
+  "private_proof": {
+    "command": "make test-task-migration",
+    "records": 250,
+    "dependencies": 209,
+    "seeds": 41,
+    "published": 251,
+    "live_tasks": 7,
+    "source_revision": "3ef27cf85f3f63fe49b2061a0c966b0ee212e264",
+    "bundle_sha256": "c025b21f11d2b082ca00f90c80ecfd11acbae6debff0a7959de1b319d0a254e9",
+    "dispositions": "independently checked",
+    "raw_hashes": "250/250",
+    "links": 2742,
+    "disposition_counts": {
+      "close_completed": 24,
+      "close_superseded": 8,
+      "retain_deferred": 1,
+      "retain_narrowed": 3,
+      "retain_active": 2,
+      "already_done": 1,
+      "retain_followup": 1,
+      "archive_note": 1
+    },
+    "task171_sha256": "df2414f47c6d838cd6e8c572b17b4a0a92c87d384efc58367e9e18dd4c6f36ae",
+    "historical_wakes": 0,
+    "duplicate_prevention": true,
+    "known_no_effect_attempts": 2
+  },
+  "evidence_directory": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i",
+  "source_packet": {
+    "lossless-import-manifest.json": "fceea2a978283fc46466270dca315ee2193092599696a04364021f5b21d566b8",
+    "checked-audit.json": "53acec13a5c04412b6c15fcad50cc8cf8ea9e6e730739b95cbe2e57fbab2c134"
+  },
+  "workflow": {
+    "discovery": "Authenticated Oracle task_import_context {} returns only the selected canonical expected_root; ctl task import-context is the operator equivalent.",
+    "import_command": "bboxy450-term ctl task import /tmp/nyx-task-reconciliation-qzzo4m5p/lossless-import-manifest.json --audit /tmp/nyx-task-reconciliation-qzzo4m5p/checked-audit.json --source-dir /tmp/nyx-task-reconciliation-qzzo4m5p/dependency-source --expected-root ROOT_FROM_AUTHENTICATED_CONTEXT --owner-seat ADMITTED_ORACLE_SEAT_ID",
+    "recovery": "Query an unknown original operation. Known no-effect stale-allocation/busy results may use a fresh operation with the identical pinned bundle; an existing signed receipt reuses its mapping without reimport.",
+    "live_application": "Not attempted. No backing-store edits, live daemon refresh/restart, historical delegation or issue closure. New actions require the Oracle safe-rollout step in live ICD201."
+  }
+}

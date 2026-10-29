@@ -26,6 +26,17 @@ use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::Sqlite
 
 const MAX_DOCUMENT: u64 = 2 * 1024 * 1024;
 
+pub mod migration;
+
+#[derive(Debug)]
+pub(crate) struct IndexBusy;
+impl std::fmt::Display for IndexBusy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("index_busy: root publication is occupied; retry without waiting")
+    }
+}
+impl std::error::Error for IndexBusy {}
+
 /// A decision name refused before any intent, file or number is committed.
 #[derive(Debug)]
 pub(crate) struct DecisionFilenameRequired {
@@ -801,7 +812,7 @@ impl Index {
     }
     fn write_inner(
         &self,
-        mut update: Update,
+        update: Update,
         author: &crate::provenance::author::Author<'_>,
         guarded: bool,
     ) -> Result<String> {
@@ -811,14 +822,30 @@ impl Index {
         // an error or process exit; no counter/reservation state is needed.
         let number_lock = std::fs::File::open(&self.root)?;
         number_lock.lock()?;
+        self.write_locked(update, author, guarded, None)
+    }
+    // Inactive import staging uses a provisional number range; the importer
+    // checks it again under the active root's short publication lock.
+    fn write_locked(
+        &self,
+        mut update: Update,
+        author: &crate::provenance::author::Author<'_>,
+        guarded: bool,
+        imported_number: Option<u64>,
+    ) -> Result<String> {
         let key = author.key;
         self.destination(&update.path)?;
         if guarded {
             self.unchanged(&update)?;
         }
         let current = self.current(&update.path)?;
-        self.assign_number(&mut update, current.as_ref())?;
-        let decision_birth = current.is_none() && update.metadata["type"] == "decision";
+        if let Some(number) = imported_number {
+            update.metadata["number"] = json!(number);
+        } else {
+            self.assign_number(&mut update, current.as_ref())?;
+        }
+        let decision_birth =
+            imported_number.is_none() && current.is_none() && update.metadata["type"] == "decision";
         if decision_birth {
             update.path = decision_birth_path(
                 &update.path,
@@ -887,19 +914,33 @@ impl Index {
         }
         intent.seat = author.seat;
         intent.generation = author.generation;
-        let prepared = self.append_activity(intent, key)?;
-        let mut projection = self.project_activity()?;
-        for _ in 0..64 {
-            if projection.cursor() >= prepared.seq {
-                break;
+        let prepared = if imported_number.is_some() {
+            // The batch's signed receipt binds every staged document hash. It
+            // publishes with the documents; no inactive per-file intent leaks
+            // into the live root's activity/projection cursor.
+            metadata["provenance"]["log"] = json!(format!(
+                ".bboxy/{}/receipt.json",
+                path.parent()
+                    .and_then(Path::to_str)
+                    .ok_or_else(|| invalid("import path missing batch"))?
+            ));
+            None
+        } else {
+            let prepared = self.append_activity(intent, key)?;
+            let mut projection = self.project_activity()?;
+            for _ in 0..64 {
+                if projection.cursor() >= prepared.seq {
+                    break;
+                }
+                projection = self.project_activity()?;
             }
-            projection = self.project_activity()?;
-        }
-        metadata["provenance"]["log"] = json!(
-            projection
-                .reference(&prepared, &self.store)?
-                .ok_or_else(|| invalid("activity projection backlog; write intent retained"))?
-        );
+            metadata["provenance"]["log"] = json!(
+                projection
+                    .reference(&prepared, &self.store)?
+                    .ok_or_else(|| invalid("activity projection backlog; write intent retained"))?
+            );
+            Some(prepared)
+        };
         let document_id = metadata["id"].as_str().unwrap_or("legacy").to_owned();
         let temp = parent.join(format!(".{}.tmp", Ulid::new()));
         struct Temporary(PathBuf);
@@ -934,18 +975,20 @@ impl Index {
             std::fs::rename(&temp, &destination)?;
         }
         std::fs::File::open(parent)?.sync_all()?;
-        let mut completed = Draft::new(
-            format!("doc/{document_id}/written"),
-            "mux/document",
-            json!({"activity":"write_applied","prepared":prepared.event.id,"generated":[format!("sha256:{body_digest}")]}),
-        );
-        if let Some(artifact) = artifact {
-            completed.payload["artifact"] = artifact;
+        if let Some(prepared) = prepared {
+            let mut completed = Draft::new(
+                format!("doc/{document_id}/written"),
+                "mux/document",
+                json!({"activity":"write_applied","prepared":prepared.event.id,"generated":[format!("sha256:{body_digest}")]}),
+            );
+            if let Some(artifact) = artifact {
+                completed.payload["artifact"] = artifact;
+            }
+            completed.seat = author.seat;
+            completed.generation = author.generation;
+            self.append_activity(completed, key)?;
+            self.project_activity()?;
         }
-        completed.seat = author.seat;
-        completed.generation = author.generation;
-        self.append_activity(completed, key)?;
-        self.project_activity()?;
         Ok(update.path)
     }
 }

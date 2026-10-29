@@ -11,6 +11,27 @@ use serde_json::{Value, json};
 
 const ID: &str = "00000000000000000000000001";
 
+#[test]
+fn historical_task_actions_are_additive_and_accept_still_has_no_bypass_fields() {
+    use bbt_proto::messaging::TaskRequest;
+    for value in [
+        json!({"op":"import_context"}),
+        json!({"op":"reconcile","task_path":"#171","disposition":"superseded","reason":"Retained audit","evidence":["source.rs:12"]}),
+        json!({"op":"import","expected_root":"/tmp/private/.bboxy","manifest_path":"/tmp/manifest.json","audit_path":"/tmp/audit.json",
+            "source_dir":"/tmp/raw","bundle_sha256":"a".repeat(64),"owner_seat":ID}),
+        json!({"op":"accept","task_path":"#171"}),
+    ] {
+        let decoded: TaskRequest = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(decoded).unwrap(), value);
+    }
+    assert!(
+        serde_json::from_value::<TaskRequest>(
+            json!({"op":"accept","task_path":"#171","historical":true})
+        )
+        .is_err()
+    );
+}
+
 fn envelope() -> Value {
     json!({
         "version":1,"id":ID,"issuer_kind":"local-dev","issuer":"issuer",
@@ -274,7 +295,7 @@ fn receipt_wake_keeps_legacy_bytes_and_uses_the_pinned_flat_states() {
     let until = "2026-10-26T00:10:00Z";
     for (fields, state) in [
         (json!({"wake":"now"}), ReceiptWake::Now),
-        (json!({"wake":"none"}), ReceiptWake::None {reason:None}),
+        (json!({"wake":"none"}), ReceiptWake::None { reason: None }),
         (
             json!({"wake":"deferred","until":until}),
             ReceiptWake::Deferred {

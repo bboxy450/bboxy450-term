@@ -939,6 +939,7 @@ pub enum Response {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TaskRequest {
+    ImportContext {},
     List {
         #[serde(default, skip_serializing_if = "is_false")]
         unassigned: bool,
@@ -967,6 +968,22 @@ pub enum TaskRequest {
     Reject {
         task_path: String,
         reason: String,
+    },
+    /// Historical closure is deliberately distinct from freshly verified acceptance.
+    Reconcile {
+        task_path: String,
+        disposition: String,
+        reason: String,
+        evidence: Vec<String>,
+    },
+    /// Inputs are local, bounded files, pinned by a digest and an exact root.
+    Import {
+        expected_root: String,
+        manifest_path: String,
+        audit_path: String,
+        source_dir: String,
+        bundle_sha256: String,
+        owner_seat: Ulid,
     },
     Report {
         task_path: String,
@@ -1033,6 +1050,15 @@ pub struct TaskDoc {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TaskResponse {
+    ImportContext {
+        expected_root: String,
+    },
+    Imported {
+        receipt: String,
+        bundle_sha256: String,
+        source_records: usize,
+        published_records: usize,
+    },
     Items {
         items: Vec<TaskCard>,
         next: Option<Ulid>,

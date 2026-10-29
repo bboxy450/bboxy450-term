@@ -40,6 +40,7 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
+	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
@@ -130,6 +131,18 @@ test check:
 
 test-parity:
 	@$(MAKE) test CI_ARGS=--parity
+
+.PHONY: test-task-migration
+test-task-migration:
+	@set -eu; . ./scripts/cache-env.sh; \
+	python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
+	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
+	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib migration -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration -- --nocapture; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test messaging; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib task_migration_verbs; \
+	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
 
 .PHONY: parity-settings
 .PHONY: test-cursors

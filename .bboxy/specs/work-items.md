@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-25T01:04:37Z"
+updated: "2026-10-29T06:34:57Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -57,6 +57,82 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 A record is one file and the file is the object: one decision, one comment, one research record, one spec, one task. The git tree under `.bboxy/` is the store, the first and for now the only backend. The schema never assumes a path: identity is the ULID `id`, addressing is the slug, the id or the **number** (`number: N`, one global sequence across every type, allocated as max + 1 at creation, unique or the records push fails; `[[#N]]` resolves to it; [[d48-every-record-has-a-number]]), a version is the content digest, a relation is a link by slug or by `#N`. A binary or remote store can hold the same objects later behind the same reads and writes; nothing pluggable is built now ("KISS for now so we can keep developing our system").
 
 ## Types
+
+### Authenticated historical reconciliation and lossless import (issue 43)
+
+`task_reconcile` is Oracle-class task control under the existing ownership/swarm
+checks. It requires `task_path`, `disposition` (`implemented`, `superseded`, or
+`cancelled`), a nonempty `reason`, and retained `evidence` references. It records
+the previous state, actor and operation in `reconciliation`, sets `done`, and
+sends no task wake. It refuses to replace `accepted`. Historical `done` does not
+assert fresh verification: `task_accept` still requires `reported`, the exact
+declared command, exit zero, and evidence for every acceptance criterion.
+
+`task_import` uses the scoped task/Index boundary, without a provider/plugin
+contract change. Inputs are the lossless manifest (`rows`, `links`, source
+revision and counts), checked audit (`decisions.index` in seed-row order), and
+the source directory with paths relative to `.bboxy/`. It requires the canonical
+`expected_root`, an Oracle-class `owner_seat` in that root, and `bundle_sha256`.
+The digest is SHA-256 over `bboxy450/task-import/v1\0`, followed by the exact
+manifest, audit and row-ordered source bytes, each prefixed with its unsigned
+64-bit big-endian byte length. Bounds: 512 source records, 32 MiB total, existing
+2 MiB document limit, 32,768 declared links. Source identities/hashes and every
+seed disposition are validated before publication; source symlinks are refused.
+
+The authenticated operation stages on a bounded worker for this root, so it does
+not hold the logic loop or other roots. A short initial root number lock chooses
+fresh IDs and a provisional max-plus-one range for the complete mapping. Bulk
+staging/signing/fsync runs without that lock. A short final try-lock revalidates
+the range, IDs/dedupe, caller and root before publication. An ordinary write can
+complete during staging; a changed allocation returns `import_allocation_stale`
+with no active imported records. Retry that pinned bundle with a fresh operation
+ID. A busy final lock returns `index_busy`, never a wait. Resolved links use
+destination IDs. Unknown/ambiguous references become labelled plain text, never
+legacy `#N` links. Exact source bytes, manifest and audit are read-only retained
+files; signed projections retain source identity, number, path, revision, SHA-256
+and dedupe key. Source assignees/reports/signatures remain in the raw archive and
+never become live delegation or fresh acceptance.
+
+The whole `imports/<bundle-digest>` directory is published by one rename from
+inactive sibling staging. Interruption before publication leaves no active
+subset; replay can stage again. Interruption after publication is recoverable
+from its signed receipt, including the complete mapping and original projection
+hashes. Same-root repeats reuse that mapping; overlapping source dedupe keys
+under a changed bundle are refused. Root identity, swarm revision and caller
+authority are checked again before publication. Existing files, including task
+171, are never overwritten. Historical implemented/superseded/already-done
+records become `done`; six unfinished seed tasks remain open with narrowed
+scope. MA-7 accounting is historical `done` with one separately open issue-40
+adapter-startup follow-up, giving seven live tasks. The board remains a note.
+
+Discover the root through authenticated `task_import_context {}` first. This
+read is Oracle-class only, takes no root selector, and returns `expected_root`
+from the caller's exact selected Index. Worker calls and extra selector fields
+are refused; another swarm's context returns only its own root. Ctl exposes the
+same read as `bboxy450-term ctl task import-context`. Never infer it from cwd or
+probe backing files. Supported operator invocation after discovery and after
+the daemon contains this implementation:
+
+```sh
+bboxy450-term ctl task import /tmp/nyx-task-reconciliation-qzzo4m5p/lossless-import-manifest.json \
+  --audit /tmp/nyx-task-reconciliation-qzzo4m5p/checked-audit.json \
+  --source-dir /tmp/nyx-task-reconciliation-qzzo4m5p/dependency-source \
+  --expected-root /absolute/selected/project/.bboxy --owner-seat ORACLE_SEAT_ID
+```
+
+Ctl hashes the inputs read-only, then sends the pinned authenticated request;
+the daemon reloads and checks every byte. The reply identifies the signed receipt
+and counts. An admitted Oracle can use the same `task_import` MCP action with
+the explicit digest. This does not grant a worker use of the operator ctl door.
+An old daemon cannot apply these new actions: report its missing catalogue and
+arrange rollout separately; never edit its backing files or restart live work
+to simulate application.
+
+`make test-task-migration` generates a private portable 250-record fixture.
+`TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-migration`
+uses the historical packet instead. Both run authenticated authority/acceptance,
+interruption/replay and collision tests, then a separate Python byte/hash/link/
+disposition/duplicate verifier. Products stay in `target/task-migration/`.
 
 | Type | What it is | Status set | Typical links |
 |---|---|---|---|

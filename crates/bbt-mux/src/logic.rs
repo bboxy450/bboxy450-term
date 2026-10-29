@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 mod role_catalog;
+mod task_import;
 #[cfg(test)]
 #[path = "knowledge/routing_tests.rs"]
 mod workspace_routing_tests;
@@ -228,6 +229,8 @@ enum Command {
     ),
     #[cfg(test)]
     KnowledgeFixture(Arc<dyn DataSource + Send + Sync>, oneshot::Sender<()>),
+    #[cfg(test)]
+    TaskImportFixture(Arc<dyn Fn() + Send + Sync>, oneshot::Sender<()>),
     GuiMessageRow(
         Ulid,
         Ulid,
@@ -2321,6 +2324,10 @@ struct Worker {
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
+    task_import_jobs: tokio::task::JoinSet<()>,
+    task_import_capacity: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
+    #[cfg(test)]
+    task_import_hook: Option<Arc<dyn Fn() + Send + Sync>>,
     debug_reads: Arc<tokio::sync::Semaphore>,
     plugins: crate::plugins::control::Control,
     plugin_jobs: tokio::task::JoinSet<()>,
@@ -2479,6 +2486,10 @@ impl Worker {
             knowledge_jobs: tokio::task::JoinSet::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
+            task_import_jobs: tokio::task::JoinSet::new(),
+            task_import_capacity: BTreeMap::new(),
+            #[cfg(test)]
+            task_import_hook: None,
             debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             plugins,
             plugin_jobs: tokio::task::JoinSet::new(),
@@ -7586,6 +7597,13 @@ impl Worker {
                 eprintln!("plugin task interrupted; admitted operation remains unknown");
             }
         }
+        while let Some(result) = self.task_import_jobs.try_join_next() {
+            if result.is_err() {
+                eprintln!(
+                    "task import worker interrupted; replay pinned bundle to inspect publication"
+                );
+            }
+        }
         use crate::adapters::{Evidence, Priority, WakeMethod, WakeOutcome};
         while let Some(result) = self.control_deliveries.try_join_next() {
             let delivery = match result {
@@ -9048,7 +9066,9 @@ impl Worker {
                         } else {
                             call
                         };
-                        if crate::knowledge::seat_reads::handles(&call) {
+                        if call.tool == "task_import" {
+                            self.start_seat_task_import(id, generation, call, reply);
+                        } else if crate::knowledge::seat_reads::handles(&call) {
                             self.start_knowledge_read(id, generation, call, reply);
                         } else if call.tool == "seat_focus" {
                             self.start_control_focus(id, generation, call, reply);
@@ -9075,10 +9095,15 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::GuiTask(id, request, scope, origin, reply) => {
+                        if matches!(request, bbt_proto::messaging::TaskRequest::Import { .. }) {
+                            self.start_gui_task_import(id, request, scope, origin, reply);
+                            continue;
+                        }
                         if matches!(
                             request,
                             bbt_proto::messaging::TaskRequest::List { .. }
                                 | bbt_proto::messaging::TaskRequest::Status { .. }
+                                | bbt_proto::messaging::TaskRequest::ImportContext {}
                         ) {
                             self.start_gui_task_read(id, request, scope, origin, reply, None);
                             continue;
@@ -9408,6 +9433,11 @@ impl Worker {
                     #[cfg(test)]
                     Command::KnowledgeFixture(source, reply) => {
                         self.knowledge_fixture = Some(source);
+                        let _ = reply.send(());
+                    }
+                    #[cfg(test)]
+                    Command::TaskImportFixture(hook, reply) => {
+                        self.task_import_hook = Some(hook);
                         let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {

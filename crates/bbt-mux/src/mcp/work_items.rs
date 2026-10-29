@@ -24,7 +24,7 @@ use crate::registry::{Class, Registry, SeatRecord};
 type Checked<T> = std::result::Result<T, String>;
 
 pub(crate) fn handles(tool: &str) -> bool {
-    mutation(tool) || matches!(tool, "task_status" | "task_list")
+    mutation(tool) || matches!(tool, "task_status" | "task_list" | "task_import_context")
 }
 pub(crate) fn mutation(tool: &str) -> bool {
     matches!(
@@ -34,6 +34,8 @@ pub(crate) fn mutation(tool: &str) -> bool {
             | "task_reassign"
             | "task_accept"
             | "task_reject"
+            | "task_reconcile"
+            | "task_import"
             | "artifact_claim"
     )
 }
@@ -75,10 +77,13 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     ];
     if actor.class() == Class::Oracle {
         definitions.extend([
+            ("task_import_context", "Read the exact selected bundled knowledge root for an authenticated import; Oracle-class only, no other root is exposed.", json!({}), vec![]),
             ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128,"description":"The target's exact current role, or an authorized legacy executor/oracle/creativity override."}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
             ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero and evidence for every declared criterion.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),
+            ("task_reconcile", "Record an evidenced historical disposition as done, without fresh acceptance or historical wakes.", json!({"task_path":path,"disposition":{"enum":["implemented","superseded","cancelled"]},"reason":text,"evidence":{"type":"array","minItems":1,"maxItems":128,"items":text}}), vec!["task_path","disposition","reason","evidence"]),
+            ("task_import", "Atomically import pinned local source records and audited dispositions into the exact selected knowledge root; no historical wakes.", json!({"expected_root":path,"manifest_path":path,"audit_path":path,"source_dir":path,"bundle_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"owner_seat":id}), vec!["expected_root","manifest_path","audit_path","source_dir","bundle_sha256","owner_seat"]),
         ]);
     }
     definitions.into_iter().map(|(name,description,mut properties,mut required)| {
@@ -143,6 +148,24 @@ struct Reject {
     task_path: String,
     reason: String,
 }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct Reconcile {
+    task_path: String,
+    disposition: String,
+    reason: String,
+    evidence: Vec<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Import {
+    expected_root: String,
+    manifest_path: String,
+    audit_path: String,
+    source_dir: String,
+    bundle_sha256: String,
+    owner_seat: Ulid,
+}
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct Verification {
@@ -172,6 +195,10 @@ pub(crate) enum Prepared {
     Effect(Box<Effect>),
 }
 pub(crate) enum Effect {
+    Import {
+        bundle: Box<crate::index::migration::Bundle>,
+        owner: Ulid,
+    },
     Task {
         document: Document,
         action: Box<Action>,
@@ -187,6 +214,7 @@ pub(crate) enum Action {
     Reassign(SeatRecord),
     Accept,
     Reject(String),
+    Reconcile(Reconcile),
 }
 pub(crate) struct Wake {
     pub id: Ulid,
@@ -204,6 +232,7 @@ pub(crate) struct Plan {
 
 pub(crate) fn call(op_id: Ulid, request: TaskRequest) -> Checked<Call> {
     let tool = match &request {
+        TaskRequest::ImportContext {} => "task_import_context",
         TaskRequest::List { .. } => "task_list",
         TaskRequest::Status { .. } => "task_status",
         TaskRequest::Delegate { .. } => "task_delegate",
@@ -211,6 +240,8 @@ pub(crate) fn call(op_id: Ulid, request: TaskRequest) -> Checked<Call> {
         TaskRequest::Accept { .. } => "task_accept",
         TaskRequest::Reject { .. } => "task_reject",
         TaskRequest::Report { .. } => "task_report",
+        TaskRequest::Reconcile { .. } => "task_reconcile",
+        TaskRequest::Import { .. } => "task_import",
     };
     let mut args = serde_json::to_value(request).map_err(|e| e.to_string())?;
     args.as_object_mut()
@@ -236,6 +267,28 @@ pub(crate) fn response(tool: &str, result: Value) -> Checked<TaskResponse> {
     }
     let data = &result["structuredContent"];
     match tool {
+        "task_import_context" => Ok(TaskResponse::ImportContext {
+            expected_root: data["expected_root"]
+                .as_str()
+                .ok_or("import context root missing")?
+                .into(),
+        }),
+        "task_import" => Ok(TaskResponse::Imported {
+            receipt: data["receipt"]
+                .as_str()
+                .ok_or("import receipt missing")?
+                .into(),
+            bundle_sha256: data["bundle_sha256"]
+                .as_str()
+                .ok_or("import digest missing")?
+                .into(),
+            source_records: data["source_records"]
+                .as_u64()
+                .ok_or("import count missing")? as usize,
+            published_records: data["published_records"]
+                .as_u64()
+                .ok_or("published count missing")? as usize,
+        }),
         "task_status" => Ok(TaskResponse::Item {
             item: serde_json::from_value::<TaskDoc>(data.clone()).map_err(|e| e.to_string())?,
         }),
@@ -285,7 +338,13 @@ pub(crate) fn prepare(
     let oracle = actor.class() == Class::Oracle;
     if matches!(
         call.tool.as_str(),
-        "task_delegate" | "task_reassign" | "task_accept" | "task_reject"
+        "task_delegate"
+            | "task_reassign"
+            | "task_accept"
+            | "task_reject"
+            | "task_reconcile"
+            | "task_import"
+            | "task_import_context"
     ) && !oracle
     {
         return Err("task control requires oracle-class authority".into());
@@ -307,6 +366,62 @@ pub(crate) fn prepare(
         Ok(doc)
     };
     let effect = match call.tool.as_str() {
+        "task_import_context" => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Context {}
+            let _: Context = tools::parse(&call.args)?;
+            return Ok(Prepared::Read(
+                json!({"expected_root":index.knowledge_root()}),
+            ));
+        }
+        "task_import" => {
+            let args: Import = tools::parse(&call.args)?;
+            if !Path::new(&args.expected_root).is_absolute()
+                || Path::new(&args.expected_root)
+                    .canonicalize()
+                    .map_err(|e| e.to_string())?
+                    != index.knowledge_root()
+            {
+                return Err("import expected_root differs from selected knowledge root".into());
+            }
+            let owner = target(registry, actor, args.owner_seat)?;
+            if owner.role.class != Class::Oracle {
+                return Err("import owner must be an oracle-class seat".into());
+            }
+            let bundle = crate::index::migration::Bundle::load(
+                Path::new(&args.manifest_path),
+                Path::new(&args.audit_path),
+                Path::new(&args.source_dir),
+            )
+            .map_err(|e| e.to_string())?;
+            if bundle.digest != args.bundle_sha256 {
+                return Err("import bundle digest changed".into());
+            }
+            Effect::Import {
+                bundle: Box::new(bundle),
+                owner: owner.id,
+            }
+        }
+        "task_reconcile" => {
+            let args: Reconcile = tools::parse(&call.args)?;
+            bounded(&args.reason, 16384, "reconciliation reason")?;
+            if !matches!(
+                args.disposition.as_str(),
+                "implemented" | "superseded" | "cancelled"
+            ) || args.evidence.is_empty()
+                || args.evidence.len() > 128
+            {
+                return Err("historical disposition and evidence required".into());
+            }
+            for reference in &args.evidence {
+                bounded(reference, 2048, "reconciliation evidence")?;
+            }
+            Effect::Task {
+                document: task(&args.task_path)?,
+                action: Box::new(Action::Reconcile(args)),
+            }
+        }
         "task_status" => {
             let args: Status = tools::parse(&call.args)?;
             let locator = match (args.task_path, args.task_id) {
@@ -687,6 +802,7 @@ impl Verification {
 
 pub(crate) fn plan(effect: Effect, actor: &Actor, call: &Call) -> Checked<Plan> {
     match effect {
+        Effect::Import { .. } => Err("import requires atomic Index publication".into()),
         Effect::Artifact { claim, task } => artifact(
             claim,
             task,
@@ -703,6 +819,29 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
     let mut notices = vec![];
     let current = doc.metadata["status"].as_str().unwrap_or_default();
     match action {
+        Action::Reconcile(reconciliation) => {
+            if current == "accepted" {
+                return Err(
+                    "fresh accepted verification cannot be replaced by historical reconciliation"
+                        .into(),
+                );
+            }
+            let entry = json!({"kind":"historical","fresh_accepted":false,"previous_status":current,"disposition":reconciliation.disposition,
+                "reason":reconciliation.reason,"evidence":reconciliation.evidence,"by":actor.reference(),"op_id":call.op_id});
+            let previous = doc
+                .metadata
+                .as_object_mut()
+                .unwrap()
+                .remove("reconciliation");
+            let mut history = match previous {
+                Some(Value::Array(xs)) => xs,
+                Some(value) => vec![value],
+                None => vec![],
+            };
+            history.push(entry);
+            doc.metadata["reconciliation"] = json!(history);
+            doc.metadata["status"] = json!("done");
+        }
         Action::Report(report) => {
             let delegator = delegator(&doc)?.ok_or("task has no delegator")?;
             if matches!(current, "accepted" | "done") {

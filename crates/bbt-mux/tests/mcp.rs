@@ -3042,6 +3042,323 @@ impl Fixture {
 fn verification(command: &str, exit: i32, evidence: Value) -> Value {
     json!({"command":command,"exit_code":exit,"evidence":evidence})
 }
+
+#[test]
+fn task_migration_reconciliation_preserves_acceptance_and_refuses_workers() {
+    let f = Fixture::new();
+    let mut metadata = f.task_metadata();
+    metadata["acceptance"] = json!(["actual evidence"]);
+    f.task_file(metadata);
+    let args = json!({"task_path":f.task_path(),"disposition":"implemented","reason":"Historical audited implementation",
+        "evidence":["source.rs:12 — retained mechanism"]});
+    let unauthorized = f.call(f.own.id, Ulid::new(), "task_reconcile", args.clone());
+    assert_eq!(unauthorized["isError"], true);
+    assert_eq!(f.task_document().metadata["status"], "running");
+    let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+    data(f.mutate(f.oracle.id, Ulid::new(), "task_reconcile", args.clone()));
+    let doc = f.task_document();
+    assert_eq!(doc.metadata["status"], "done");
+    assert_eq!(doc.metadata["reconciliation"][0]["fresh_accepted"], false);
+    assert!(doc.metadata.get("verify_result").is_none());
+    assert_eq!(
+        inbox["page"],
+        data(f.call(f.own.id, Ulid::new(), "message_list", json!({})))["page"]
+    );
+    assert_eq!(
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()})
+        )["isError"],
+        true
+    );
+
+    let mut metadata = f.task_metadata();
+    metadata["acceptance"] = json!(["actual evidence"]);
+    f.task_file(metadata);
+    for result in [
+        verification("wrong", 0, json!([])),
+        verification("true", 1, json!([])),
+        verification("true", 0, json!([])),
+    ] {
+        data(f.report(result));
+        assert_eq!(
+            f.mutate(
+                f.oracle.id,
+                Ulid::new(),
+                "task_accept",
+                json!({"task_path":f.task_path()})
+            )["isError"],
+            true
+        );
+    }
+    data(f.report(verification(
+        "true",
+        0,
+        json!([{"criterion":"actual evidence","reference":"test output: exit 0"}]),
+    )));
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":f.task_path()}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+    assert_eq!(
+        f.mutate(f.oracle.id, Ulid::new(), "task_reconcile", args)["isError"],
+        true
+    );
+}
+
+fn migration_files(root: &std::path::Path) -> std::collections::BTreeMap<String, String> {
+    fn visit(
+        root: &std::path::Path,
+        path: &std::path::Path,
+        out: &mut std::collections::BTreeMap<String, String>,
+    ) {
+        if !path.exists() {
+            return;
+        }
+        for entry in std::fs::read_dir(path).unwrap() {
+            let entry = entry.unwrap();
+            if entry.file_type().unwrap().is_dir() {
+                visit(root, &entry.path(), out);
+            } else {
+                out.insert(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .into_owned(),
+                    bbt_mux::store::digest(&std::fs::read(entry.path()).unwrap()),
+                );
+            }
+        }
+    }
+    let mut out = std::collections::BTreeMap::new();
+    visit(root, root, &mut out);
+    out
+}
+
+// A provisional range may legitimately lose to ordinary work. Only these
+// explicitly no-effect results permit a fresh operation; unknown never does.
+fn migration_import(f: &Fixture, args: &Value) -> (Ulid, Value, usize) {
+    for attempt in 0..8 {
+        let op = Ulid::new();
+        let result = f.mutate(f.oracle.id, op, "task_import", args.clone());
+        let code = result["structuredContent"]["error"]["code"].as_str();
+        if matches!(
+            code,
+            Some("import_allocation_stale" | "index_busy" | "task_import_busy")
+        ) {
+            if code == Some("import_allocation_stale") {
+                assert!(
+                    !PathBuf::from(args["expected_root"].as_str().unwrap())
+                        .join("imports")
+                        .join(args["bundle_sha256"].as_str().unwrap())
+                        .exists(),
+                    "stale allocation exposed an active import"
+                );
+            }
+            eprintln!(
+                "private import known no-effect attempt {}: {}",
+                attempt + 1,
+                code.unwrap()
+            );
+            continue;
+        }
+        return (op, data(result), attempt);
+    }
+    panic!(
+        "private importer did not obtain a stable provisional range in eight explicit no-effect operations"
+    );
+}
+
+#[test]
+fn task_migration_250_records_authenticated_collision_restart_and_replay() {
+    let private = tempfile::tempdir().unwrap();
+    let input = std::env::var_os("BBOXY_TASK_MIGRATION_INPUT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            let script = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../scripts/test-task-migration.py");
+            assert!(
+                std::process::Command::new("python3")
+                    .arg(script)
+                    .arg("prepare")
+                    .arg(private.path())
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+            private.path().join("task-migration/input")
+        });
+    let mut f = Fixture::new();
+    let mut metadata = f.task_metadata();
+    metadata["number"] = json!(171);
+    f.task_file(metadata);
+    let root = f.config.repository.join(".bboxy").canonicalize().unwrap();
+    let context = data(f.call(f.oracle.id, Ulid::new(), "task_import_context", json!({})));
+    assert_eq!(context["expected_root"], json!(root));
+    assert_eq!(
+        f.call(f.own.id, Ulid::new(), "task_import_context", json!({}))["isError"],
+        true
+    );
+    assert_eq!(
+        f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "task_import_context",
+            json!({"expected_root":"/another/root"})
+        )["isError"],
+        true
+    );
+    std::fs::write(
+        root.join("collision999.md"),
+        format!(
+            "---\nid: {}\nnumber: 999\ntype: note\n---\nUnrelated collision control.\n",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    let task171_path = format!("tasks/{}.md", f.task);
+    let task171_before = std::fs::read(root.join(&task171_path)).unwrap();
+    let unrelated = root.join(format!("tasks/{}.md", f.foreign_task));
+    let unrelated_before = std::fs::read(&unrelated).unwrap();
+    let manifest = input.join("lossless-import-manifest.json");
+    let audit = input.join("checked-audit.json");
+    let sources = input.join("dependency-source");
+    let digest = bbt_mux::index::migration::bundle_digest(&manifest, &audit, &sources).unwrap();
+    let args = json!({"expected_root":context["expected_root"],"manifest_path":manifest,"audit_path":audit,"source_dir":sources,"bundle_sha256":digest,"owner_seat":f.oracle.id});
+    let mut denied = args.clone();
+    denied["expected_root"] = json!(private.path());
+    assert_eq!(
+        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        true
+    );
+    assert!(!root.join("imports").exists());
+    assert_eq!(
+        f.call(f.own.id, Ulid::new(), "task_import", args.clone())["isError"],
+        true
+    );
+    let mut denied = args.clone();
+    denied["owner_seat"] = json!(f.own.id);
+    assert_eq!(
+        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        true
+    );
+    let mut denied = args.clone();
+    denied["bundle_sha256"] = json!("0".repeat(64));
+    assert_eq!(
+        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        true
+    );
+    let inboxes: Vec<_> = [&f.own, &f.peer, &f.oracle, &f.outside]
+        .iter()
+        .map(|s| data(f.call(s.id, Ulid::new(), "message_list", json!({})))["page"].clone())
+        .collect();
+    let (op, first, no_effect_attempts) = migration_import(&f, &args);
+    assert_eq!(first["source_records"], 250);
+    assert_eq!(first["published_records"], 251);
+    let published = migration_files(&root.join("imports"));
+    let mut changed = args.clone();
+    changed["expected_root"] = json!(format!("{}/.", root.display()));
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "task_import", changed)["structuredContent"]["error"]["code"],
+        "op_id_reused"
+    );
+    data(f.mutate(f.oracle.id, op, "task_import", args.clone()));
+    assert_eq!(published, migration_files(&root.join("imports")));
+    f.restart();
+    let (_, _, restart_no_effect_attempts) = migration_import(&f, &args);
+    f.prepare_operator(); // This fixture's existing memory-only custody; no real account or prompt.
+    let bbt_proto::GuiReply::Task {
+        response: context_response,
+        ..
+    } = f.gui_task(bbt_proto::messaging::TaskRequest::ImportContext {})
+    else {
+        panic!("operator import context unavailable");
+    };
+    assert!(
+        matches!(context_response,bbt_proto::messaging::TaskResponse::ImportContext{expected_root} if expected_root==root.to_string_lossy())
+    );
+    let mut gui_args = args;
+    gui_args["op"] = json!("import");
+    let request = serde_json::from_value(gui_args).unwrap();
+    let bbt_proto::GuiReply::Task { response, .. } = f.gui_task(request) else {
+        panic!("operator import replay unavailable");
+    };
+    assert!(matches!(
+        response,
+        bbt_proto::messaging::TaskResponse::Imported {
+            source_records: 250,
+            published_records: 251,
+            ..
+        }
+    ));
+    assert_eq!(published, migration_files(&root.join("imports")));
+    for (seat, before) in [&f.own, &f.peer, &f.oracle, &f.outside].iter().zip(inboxes) {
+        assert_eq!(
+            before,
+            data(f.call(seat.id, Ulid::new(), "message_list", json!({})))["page"]
+        );
+    }
+    assert_eq!(
+        task171_before,
+        std::fs::read(root.join(&task171_path)).unwrap()
+    );
+    assert_eq!(unrelated_before, std::fs::read(&unrelated).unwrap());
+    // Task reads consume the published root, not a migration-only result packet.
+    let mut total = Vec::new();
+    let mut after = Value::Null;
+    loop {
+        let page = data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "task_list",
+            json!({"limit":128,"after":after}),
+        ));
+        total.extend(page["items"].as_array().unwrap().iter().cloned());
+        after = page["next"].clone();
+        if after.is_null() {
+            break;
+        }
+    }
+    assert_eq!(
+        total
+            .iter()
+            .filter(|d| d["metadata"]["status"] == "open")
+            .count(),
+        7
+    );
+    if let Some(output) = std::env::var_os("BBOXY_TASK_MIGRATION_OUTPUT").map(PathBuf::from) {
+        fn copy(source: &std::path::Path, dest: &std::path::Path) {
+            std::fs::create_dir_all(dest).unwrap();
+            for entry in std::fs::read_dir(source).unwrap() {
+                let entry = entry.unwrap();
+                let target = dest.join(entry.file_name());
+                if entry.file_type().unwrap().is_dir() {
+                    copy(&entry.path(), &target);
+                } else {
+                    std::fs::copy(entry.path(), target).unwrap();
+                }
+            }
+        }
+        let dest = output.join("published");
+        std::fs::create_dir_all(dest.join("tasks")).unwrap();
+        copy(&root.join("imports"), &dest.join("imports"));
+        std::fs::copy(root.join(&task171_path), dest.join(&task171_path)).unwrap();
+        let proof = json!({"task171_path":task171_path,"task171_before":bbt_mux::store::digest(&task171_before),"task171_after":bbt_mux::store::digest(&std::fs::read(root.join(&task171_path)).unwrap()),
+            "unrelated_before":bbt_mux::store::digest(&unrelated_before),"unrelated_after":bbt_mux::store::digest(&std::fs::read(unrelated).unwrap()),"historical_wakes":0,"replay_unchanged":true,"known_no_effect_attempts":no_effect_attempts+restart_no_effect_attempts});
+        std::fs::write(
+            output.join("proof.json"),
+            serde_json::to_vec_pretty(&proof).unwrap(),
+        )
+        .unwrap();
+    }
+}
 fn assert_item_signature(doc: &bbt_mux::index::Document, seat: Ulid) {
     use base64::Engine;
     use bbt_mux::messaging::keys::{LocalSeatKeys, SeatKeys};

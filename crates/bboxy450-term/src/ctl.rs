@@ -97,6 +97,11 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
                                           JSON: command, exit_code, optional evidence entries
   task accept <#N|path|id>
   task reject <#N|path|id> --reason TEXT
+  task reconcile <#N|path|id> --disposition implemented|superseded|cancelled --reason TEXT --evidence JSON
+                                          historical done, never fresh acceptance; no wakes
+  task import <manifest.json> --audit FILE --source-dir DIR --expected-root ROOT --owner-seat ID
+                                          bounded pinned source, atomic publication; no wakes
+  task import-context                    exact selected root for the import; no cwd inference
   task delegate <#N|path|id> <seat>
   task create <title> --verify CMD [--brief TEXT]
                                           an open, unassigned task, signed by the operator
@@ -489,9 +494,34 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--summary, --commit and --verify-result apply only to task report"
         ));
     }
-    if flags.contains_key("reason") && !matches!(&command, Command::TaskReject { .. }) {
+    if flags.contains_key("reason")
+        && !matches!(
+            &command,
+            Command::TaskReject { .. } | Command::TaskReconcile { .. }
+        )
+    {
         return Err(format!(
             "{USAGE_PREFIX}--reason applies only to task reject"
+        ));
+    }
+    if flags
+        .keys()
+        .any(|key| matches!(key.as_str(), "disposition" | "evidence"))
+        && !matches!(&command, Command::TaskReconcile { .. })
+    {
+        return Err(format!(
+            "{USAGE_PREFIX}--disposition and --evidence apply only to task reconcile"
+        ));
+    }
+    if flags.keys().any(|key| {
+        matches!(
+            key.as_str(),
+            "audit" | "source-dir" | "expected-root" | "owner-seat"
+        )
+    }) && !matches!(&command, Command::TaskImport { .. })
+    {
+        return Err(format!(
+            "{USAGE_PREFIX}import flags apply only to task import"
         ));
     }
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
@@ -539,6 +569,12 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "commit",
             "verify-result",
             "reason",
+            "disposition",
+            "evidence",
+            "audit",
+            "source-dir",
+            "expected-root",
+            "owner-seat",
         ]
         .contains(&k.as_str())
     }) {
@@ -2278,6 +2314,26 @@ mod tests {
         ] {
             let error = parse_full(&args(line)).unwrap_err();
             assert_eq!(classify(&error).exit, 2, "{line}: {error}");
+        }
+    }
+    #[test]
+    fn task_migration_verbs_require_pinned_root_inputs_and_explicit_history() {
+        let parsed=parse_full(&args("task reconcile #171 --disposition superseded --reason obsolete --evidence [\"audit:173\"]")).unwrap();
+        assert!(
+            matches!(parsed.command,Command::TaskReconcile{ref task,ref evidence,..} if task=="#171" && evidence==&["audit:173"])
+        );
+        let parsed=parse_full(&args("task import /tmp/manifest.json --audit /tmp/audit.json --source-dir /tmp/source --expected-root /tmp/project/.bboxy --owner-seat 01M630JKTP20TAX8FN05X4GMEX")).unwrap();
+        assert!(
+            matches!(parsed.command,Command::TaskImport{ref expected_root,..} if expected_root=="/tmp/project/.bboxy")
+        );
+        for line in [
+            "task import /tmp/m",
+            "task reconcile #171 --reason x",
+            "task accept #171 --disposition implemented",
+            "task accept #171 --expected-root /tmp/project/.bboxy",
+            "task reconcile #171 --disposition implemented --reason x --evidence nope",
+        ] {
+            assert!(parse_full(&args(line)).is_err(), "{line}");
         }
     }
     #[test]

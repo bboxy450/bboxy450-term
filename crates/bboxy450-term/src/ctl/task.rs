@@ -15,6 +15,9 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("task", "report", "Task"),
     ("task", "accept", "Task"),
     ("task", "reject", "Task"),
+    ("task", "reconcile", "Task"),
+    ("task", "import", "Task"),
+    ("task", "import-context", "Task"),
     ("task", "delegate", "Task"),
     ("task", "create", "RecordWrite"),
 ];
@@ -60,6 +63,9 @@ macro_rules! task_commands {
                 task: String,
                 reason: String,
             },
+            TaskReconcile { task: String, disposition: String, reason: String, evidence: Vec<String> },
+            TaskImport { manifest: String, audit: String, source_dir: String, expected_root: String, owner_seat: Ulid },
+            TaskImportContext {},
         ]] $($head)*);
     };
 }
@@ -89,6 +95,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             status: flag("status"),
         },
         ["task", "get" | "status", task] => Command::TaskGet { task: task.into() },
+        ["task", "import-context"] => Command::TaskImportContext {},
         ["task", "report", task] => Command::TaskReport {
             task: task.into(),
             summary: flag("summary")
@@ -106,6 +113,31 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             task: task.into(),
             reason: flag("reason")
                 .ok_or_else(|| format!("{USAGE_PREFIX}task reject needs --reason TEXT"))?,
+        },
+        ["task", "reconcile", task] => Command::TaskReconcile {
+            task: task.into(),
+            disposition: flag("disposition")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task reconcile needs --disposition"))?,
+            reason: flag("reason")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task reconcile needs --reason"))?,
+            evidence: serde_json::from_str(
+                &flag("evidence")
+                    .ok_or_else(|| format!("{USAGE_PREFIX}task reconcile needs --evidence JSON"))?,
+            )
+            .map_err(|e| format!("{USAGE_PREFIX}{e}"))?,
+        },
+        ["task", "import", manifest] => Command::TaskImport {
+            manifest: manifest.into(),
+            audit: flag("audit")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task import needs --audit"))?,
+            source_dir: flag("source-dir")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task import needs --source-dir"))?,
+            expected_root: flag("expected-root")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task import needs --expected-root"))?,
+            owner_seat: flag("owner-seat")
+                .ok_or_else(|| format!("{USAGE_PREFIX}task import needs --owner-seat"))?
+                .parse()
+                .map_err(|_| format!("{USAGE_PREFIX}invalid owner seat"))?,
         },
         ["task", "create", title] => Command::TaskCreate {
             title: title.into(),
@@ -284,6 +316,45 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             })?)
             .map_err(|e| e.to_string())?
         }
+        Command::TaskReconcile {
+            task,
+            disposition,
+            reason,
+            evidence,
+        } => serde_json::to_value(client.task(TaskRequest::Reconcile {
+            task_path: task,
+            disposition,
+            reason,
+            evidence,
+        })?)
+        .map_err(|e| e.to_string())?,
+        Command::TaskImport {
+            manifest,
+            audit,
+            source_dir,
+            expected_root,
+            owner_seat,
+        } => {
+            let bundle_sha256 = bbt_mux::index::migration::bundle_digest(
+                Path::new(&manifest),
+                Path::new(&audit),
+                Path::new(&source_dir),
+            )
+            .map_err(|e| e.to_string())?;
+            serde_json::to_value(client.task(TaskRequest::Import {
+                expected_root,
+                manifest_path: manifest,
+                audit_path: audit,
+                source_dir,
+                bundle_sha256,
+                owner_seat,
+            })?)
+            .map_err(|e| e.to_string())?
+        }
+        Command::TaskImportContext {} => {
+            serde_json::to_value(client.task(TaskRequest::ImportContext {})?)
+                .map_err(|e| e.to_string())?
+        }
         command => super::flat_reply(&mut client, command, verb)?,
     };
     super::print_reply(out, noun, verb, id, data, human)
@@ -298,6 +369,9 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "task report #1 --summary proof",
     "task accept #1",
     "task reject #1 --reason incomplete",
+    "task reconcile #1 --disposition superseded --reason obsolete --evidence [\"record:1\"]",
+    "task import m --audit a --source-dir s --expected-root /tmp/k --owner-seat 01M630JKTP20TAX8FN05X4GMEX",
+    "task import-context",
     "task delegate #1 s",
     "task create t --verify true",
 ];
