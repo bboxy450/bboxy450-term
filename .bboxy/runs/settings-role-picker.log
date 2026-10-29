@@ -13,5 +13,6 @@ Unverified here: private complete-click/model-publication/new-launch e2e, app/de
 Root owns warm app verification; no cold app build, OS input, signing prompt, install, merge or push run.
 Raw log (local only): target/settings-role-picker/red.log; sha256=51a8402c1e92c9b307f0295f3e4dd2bd9fbfdf8d4386cf95ebbb9f0b6ceedf60
 Raw log (local only): target/settings-role-picker/green.log; sha256=18669880fa391dfffa8119137fae98fae992caf998d30c3ce8bc9d391b4bab3a
-Raw log (local only): target/settings-role-picker/verified.log; sha256=39f65f18a2492ea2d785ef254f8f82969d9f89a07fb072ab41ece95898fb16ae
+Raw log (local only): target/settings-role-picker/verified.log; sha256=a612aa928bb561450a39094444b909f6b2d49e6c7acb7f1b287660a613d5e263
 Raw log (local only): target/settings-role-picker/licenses.log; sha256=70c400b42981235ee0ffb1c6d628400425cc13c2130264a1663fd930ee0b162d
+Follow-up verification: same 10 tests plus strict ui Clippy passed after adding the explicit retained-choice Pointer cursor assertion.

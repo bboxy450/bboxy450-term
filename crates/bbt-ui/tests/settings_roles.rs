@@ -380,10 +380,7 @@ fn pointer_release_keeps_the_harness_picker_and_its_retained_choice_hits() {
     let choice = named(&frame, "settings/choice/1").unwrap().rect;
     let at = [choice.x + choice.w / 2., choice.y + choice.h / 2.];
     let regions = Regions::new(&frame, &view).unwrap();
-    assert!(matches!(
-        regions.hit(at),
-        Some(Hit::Toggle(Field::Choice(1)))
-    ));
+    assert_eq!(regions.cursor(at), ui::cursor::Cursor::Pointer);
     assert!(matches!(
         regions.hit(at),
         Some(Hit::Toggle(Field::Choice(1)))
