@@ -645,7 +645,7 @@ impl Style {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Context {
     pub theme: Theme,
     pub density: Density,

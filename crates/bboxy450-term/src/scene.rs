@@ -1646,6 +1646,20 @@ impl Scene {
         ops.extend(self.foreground(size, launcher, overlay));
         ops
     }
+    pub(super) fn conversation_geometry(
+        &self,
+        size: [f32; 2],
+        requested_width: Option<f32>,
+        sidebar: ui::modules::composer::SidebarLayout,
+    ) -> crate::conversation_cache::Geometry {
+        crate::conversation_cache::Geometry {
+            size,
+            width: Self::fitted_sidebar_width(requested_width.unwrap_or(self.sidebar_width), size),
+            footer: self.identity.is_some(),
+            sidebar,
+            context: self.ui_context(),
+        }
+    }
     pub fn conversation_layout(
         &self,
         size: [f32; 2],

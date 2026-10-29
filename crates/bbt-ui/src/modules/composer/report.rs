@@ -13,19 +13,19 @@ use crate::{self as ui, components as c};
 use bbt_ui_model::{STYLE, TOKENS, layout::Axis};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Verification {
     pub command: String,
     pub exit_code: i32,
     pub evidence: Vec<Criterion>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Criterion {
     pub criterion: String,
     pub reference: String,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Report {
     pub task: String,
@@ -35,7 +35,7 @@ pub struct Report {
     pub verify_result: Option<Verification>,
     pub reject: Option<Reject>,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Reject {
     pub reason: String,

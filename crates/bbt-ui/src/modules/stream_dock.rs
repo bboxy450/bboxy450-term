@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 mod actions;
 pub use actions::{Action, Regions};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Message {
     /// Retained message identities for host frame receipts; no visual effect.
@@ -56,21 +56,21 @@ pub struct Message {
     pub review: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Author {
     pub kind: String,
     pub id: String,
     pub name: String,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Receipts {
     pub delivered: usize,
     pub acked: usize,
     pub held: usize,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Audit {
     pub actor: String,
@@ -79,13 +79,13 @@ pub struct Audit {
     pub op: String,
     pub outcome: String,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Group {
     pub name: String,
     pub n: usize,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WorkItem {
     pub id: String,
@@ -99,7 +99,7 @@ pub struct WorkItem {
     #[serde(rename = "type")]
     pub kind: String,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Epic {
     pub title: String,
@@ -107,7 +107,7 @@ pub struct Epic {
     pub items: Vec<WorkItem>,
     pub delegate: bool,
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct External {
     pub source: String,
@@ -161,14 +161,14 @@ impl<'de> Deserialize<'de> for UnreadCount {
         }
     }
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Channel {
     pub name: String,
     pub unread: UnreadCount,
     pub muted: bool,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum Entry {
     Message {
@@ -206,7 +206,7 @@ pub enum Entry {
         padding: [f32; 4],
     },
 }
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct StreamDock {
     pub dock: bool,
     #[serde(default = "framed")]

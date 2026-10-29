@@ -12,6 +12,7 @@ mod assets;
 mod budget;
 mod capture;
 mod command_retry;
+mod conversation_cache;
 mod desktop_menu;
 mod desktop_window;
 mod display_link;
@@ -2199,6 +2200,7 @@ struct App {
     task_wheel: bboxy450_term::chat_scroll::WheelIntent,
     chat_notice_timer: Option<sidebar_chat::NoticeTimer>,
     conversation_layout: Option<scene::ConversationLayout>,
+    conversation_cache: conversation_cache::Cache,
     composer_dragging: bool,
     terminal_selection: bboxy450_term::terminal_selection::SelectionState,
     private_clipboard: Option<String>,
@@ -2407,6 +2409,7 @@ impl App {
                 ..Default::default()
             },
             conversation_layout: None,
+            conversation_cache: Default::default(),
             chat_scroll: Default::default(),
             task_stream: bbt_ui::modules::stream_dock::StreamDock {
                 dock: true,
@@ -3447,7 +3450,9 @@ impl App {
         self.scene.set_unread(&unread);
         self.append_close_notices();
         self.schedule_chat_notice_expiry();
-        self.conversation_layout = None;
+        if !self.conversation_cache_matches(self.solved_size) {
+            self.conversation_layout = None;
+        }
     }
     fn task_action(&mut self, action: bbt_ui::modules::stream_dock::Action) {
         use bbt_ui::modules::stream_dock::Action;
@@ -7054,29 +7059,7 @@ impl App {
         for (key, open) in &self.sidebar_accordion_overrides {
             self.scene.set_sidebar_open(key, *open);
         }
-        let sending = self.ui_wait.as_ref().is_some_and(|wait| {
-            wait.effects
-                .iter()
-                .any(|effect| matches!(effect, UiEffect::Compose(_)))
-        });
-        self.conversation_layout = if self.live_state.is_some() || self.compose_startup {
-            Some(self.scene.conversation_layout(
-                logical,
-                &composer::Conversation {
-                    stream: self.conversation.clone(),
-                    tasks: Some(self.task_stream.clone()),
-                    task_scroll: self.task_scroll,
-                    composer: self.composer.view.clone(),
-                    scroll: if sending {
-                        f32::MAX
-                    } else {
-                        self.chat_scroll.layout_offset()
-                    },
-                },
-            )?)
-        } else {
-            None
-        };
+        self.solve_conversation(logical)?;
         let dock = self.conversation_layout.as_ref().map_or(0., |l| l.height);
         self.scene.sidebar_scroll = self.sidebar_scroll.unwrap_or_else(|| {
             self.live_state

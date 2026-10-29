@@ -53,7 +53,7 @@ pub struct Attachment {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PickGroup {
     pub title: String,
@@ -68,7 +68,7 @@ pub enum Field {
     Body,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Composer {
     pub mode: String,
@@ -93,7 +93,7 @@ pub struct Composer {
     pub body_scroll: Option<f32>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Notice {
     pub kind: String,
     pub text: String,
