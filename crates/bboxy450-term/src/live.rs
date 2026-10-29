@@ -1275,7 +1275,7 @@ async fn run_with_control(
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     },
                     UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
-                    UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,request:request.clone()}); } },
+                    UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task { scope: None,id:*id,request:request.clone()}); } },
                     UiMsg::GetAttention {id,seat,generation}=> {
                         if operation_admit(&mut model,&updates,*id) {
                             queue_action(&mut outgoing,GuiAction::GetAttention {id:*id,seat:*seat,generation:*generation});
@@ -1946,6 +1946,7 @@ mod tests {
         let mut replies = ActionReplies::default();
         let id = Ulid::new();
         replies.sent(&GuiAction::Knowledge {
+            scope: None,
             id,
             method: "list".into(),
             args: serde_json::json!({}),
@@ -1984,6 +1985,7 @@ mod tests {
         let seat = SeatId::from_u128(42);
         for action in [
             GuiAction::Knowledge {
+                scope: None,
                 id: a,
                 method: "list".into(),
                 args: serde_json::json!({}),
@@ -2000,6 +2002,7 @@ mod tests {
                 bytes: vec![b'x'],
             },
             GuiAction::Knowledge {
+                scope: None,
                 id: b,
                 method: "fetch".into(),
                 args: serde_json::json!({}),
@@ -2184,6 +2187,7 @@ mod tests {
                 },
             },
             GuiAction::Task {
+                scope: None,
                 id: Ulid::new(),
                 request: bbt_proto::messaging::TaskRequest::Accept {
                     task_path: ".bboxy/tasks/exact.md".into(),
@@ -2218,6 +2222,7 @@ mod tests {
                 },
             },
             GuiAction::Task {
+                scope: None,
                 id: task,
                 request: TaskRequest::Accept {
                     task_path: ".bboxy/tasks/fixture.md".into(),

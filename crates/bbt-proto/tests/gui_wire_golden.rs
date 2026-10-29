@@ -65,3 +65,43 @@ fn every_gui_action_kind_keeps_its_exact_bytes() {
 fn every_gui_reply_kind_keeps_its_exact_bytes() {
     assert_eq!(pinned::<GuiReply>("reply"), declared::<GuiReply>());
 }
+
+#[test]
+fn optional_swarm_scope_preserves_legacy_bytes_and_accepts_only_host_context_handles() {
+    use bbt_proto::gui::SwarmScope;
+    let scope = SwarmScope {
+        swarm: ulid::Ulid::from(7_u128),
+        revision: 0,
+    };
+    for family in ["Knowledge", "Task", "RecordWrite"] {
+        let legacy = lines("action")
+            .into_iter()
+            .find(|line| serde_json::from_str::<serde_json::Value>(line).unwrap()["kind"] == family)
+            .unwrap();
+        let parsed: GuiAction = serde_json::from_str(legacy).unwrap();
+        assert_eq!(serde_json::to_string(&parsed).unwrap(), legacy);
+        let mut scoped: serde_json::Value = serde_json::from_str(legacy).unwrap();
+        scoped["body"]["scope"] = serde_json::to_value(scope).unwrap();
+        let parsed: GuiAction = serde_json::from_value(scoped.clone()).unwrap();
+        match parsed {
+            GuiAction::Knowledge {
+                scope: Some(value), ..
+            }
+            | GuiAction::Task {
+                scope: Some(value), ..
+            }
+            | GuiAction::RecordWrite {
+                scope: Some(value), ..
+            } => assert_eq!(value, scope),
+            _ => panic!("{family} did not retain its captured scope"),
+        }
+        for injected in ["path", "root_id"] {
+            let mut invalid = scoped.clone();
+            invalid["body"]["scope"][injected] = serde_json::json!("caller-controlled");
+            assert!(
+                serde_json::from_value::<GuiAction>(invalid).is_err(),
+                "{family} accepted {injected}"
+            );
+        }
+    }
+}

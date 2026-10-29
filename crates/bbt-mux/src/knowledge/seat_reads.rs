@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Pure document read jobs; the logic owner revalidates seat/root authority on completion.
-use super::{data_source as d, roots::Host};
+use super::{data_source as d, roots::Host, workspaces::RootBinding};
 use crate::{
     index::Index,
     mcp::{self, Call, SeatActor, journal::Journal, tools},
@@ -18,9 +18,28 @@ use tokio::sync::{OwnedSemaphorePermit, oneshot};
 
 pub(crate) struct Completion {
     pub actor: SeatActor,
+    pub binding: RootBinding,
     pub revision: u64,
     pub reply: oneshot::Sender<Result<Value>>,
     pub result: Result<Value>,
+}
+impl Completion {
+    pub(crate) fn current_binding(&self, current: &RootBinding) -> Result<()> {
+        if &self.binding != current || self.binding.swarm != self.actor.swarm_id {
+            return Err(invalid(
+                "swarm_root_changed: workspace changed during knowledge read",
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn retained_context(value: &Value, binding: &RootBinding, provider_revision: u64) -> bool {
+    let context = &value["structuredContent"];
+    context["knowledge_root_id"] == json!(binding.root_id)
+        && context["swarm_workspace_id"] == json!(binding.swarm)
+        && context["swarm_workspace_revision"] == json!(binding.revision)
+        && context["knowledge_root_revision"] == json!(provider_revision)
 }
 pub(crate) fn handles(call: &Call) -> bool {
     matches!(
@@ -34,6 +53,7 @@ pub(crate) struct Job {
     pub index: Arc<Index>,
     pub registry: Registry,
     pub actor: SeatActor,
+    pub binding: RootBinding,
     pub record: SeatRecord,
     pub call: Call,
     pub journal: Journal,
@@ -74,6 +94,7 @@ impl Job {
             index,
             registry,
             actor,
+            binding,
             record,
             call,
             journal,
@@ -83,8 +104,15 @@ impl Job {
             permit,
         } = self;
         let _permit = permit;
-        let result = host
-            .with_source(&index, &registry, |source| {
+        let result = if host.root_id() != binding.root_id.as_str()
+            || journal.root_id() != Some(binding.root_id.as_str())
+            || actor.swarm_id != binding.swarm
+        {
+            Err(invalid(
+                "swarm_root_changed: knowledge read root does not match admission",
+            ))
+        } else {
+            host.with_source(&index, &registry, |source| {
                 let result: std::result::Result<Value, ReadFailure> = (|| match call.tool.as_str() {
                     "knowledge_fetch" => {
                         let mcp::knowledge::Request::Fetch(locator) =
@@ -136,21 +164,128 @@ impl Job {
                 };
                 if value["isError"] != true {
                     value["structuredContent"]["knowledge_root_revision"] = json!(revision);
+                    value["structuredContent"]["knowledge_root_id"] = json!(binding.root_id);
+                    value["structuredContent"]["swarm_workspace_id"] = json!(binding.swarm);
+                    value["structuredContent"]["swarm_workspace_revision"] =
+                        json!(binding.revision);
                 }
                 value = mcp::knowledge::bounded(call.op_id, value, false);
                 journal
                     .checked_authorized(&actor, &call, value, |old| {
-                        old["structuredContent"]["knowledge_root_revision"] == json!(revision)
+                        retained_context(old, &binding, revision)
                             && tools::retained_documents(source, &actor, &record, &call, old)
                     })
                     .map_err(|e| d::CommandError::new("journal_unavailable", e.to_string()))
             })
-            .map_err(|e| invalid(e.to_string()));
+            .map_err(|e| invalid(e.to_string()))
+        };
         Completion {
             actor,
+            binding,
             revision,
             reply,
             result,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        Ulid,
+        messaging::wire::IssuerKind,
+        registry::{Class, Role},
+    };
+
+    fn binding() -> RootBinding {
+        RootBinding {
+            swarm: Ulid::from(1_u128),
+            revision: 7,
+            root_id: "root-A".into(),
+        }
+    }
+    fn completion(binding: RootBinding) -> Completion {
+        let (reply, _) = oneshot::channel();
+        Completion {
+            actor: SeatActor {
+                seat_id: Ulid::from(2_u128),
+                process_generation: 1,
+                swarm_id: Ulid::from(1_u128),
+                role: Role {
+                    name: "executor".into(),
+                    class: Class::Worker,
+                },
+                grant_epoch: 1,
+                issuer_kind: IssuerKind::LocalDev,
+            },
+            binding,
+            revision: 0,
+            reply,
+            result: Ok(json!({})),
+        }
+    }
+    #[test]
+    fn equal_provider_revisions_do_not_authorize_another_root_or_stale_swarm_binding() {
+        let captured = binding();
+        let done = completion(captured.clone());
+        assert!(done.current_binding(&captured).is_ok());
+        for current in [
+            RootBinding {
+                root_id: "root-B".into(),
+                ..captured.clone()
+            },
+            RootBinding {
+                revision: captured.revision + 1,
+                ..captured.clone()
+            },
+            RootBinding {
+                swarm: Ulid::from(3_u128),
+                ..captured.clone()
+            },
+        ] {
+            assert!(
+                done.current_binding(&current)
+                    .unwrap_err()
+                    .to_string()
+                    .contains("swarm_root_changed")
+            );
+        }
+        let wrong_actor = RootBinding {
+            swarm: Ulid::from(3_u128),
+            ..captured
+        };
+        assert!(
+            completion(wrong_actor.clone())
+                .current_binding(&wrong_actor)
+                .is_err()
+        );
+    }
+    #[test]
+    fn retained_read_context_covers_root_swarm_binding_and_provider_revision() {
+        let captured = binding();
+        let mut value = json!({"structuredContent": {
+            "knowledge_root_id":captured.root_id,
+            "swarm_workspace_id":captured.swarm,
+            "swarm_workspace_revision":captured.revision,
+            "knowledge_root_revision":0,
+        }});
+        assert!(retained_context(&value, &captured, 0));
+        let other = RootBinding {
+            root_id: "root-B".into(),
+            ..captured.clone()
+        };
+        assert!(!retained_context(&value, &other, 0));
+        let stale = RootBinding {
+            revision: captured.revision + 1,
+            ..captured.clone()
+        };
+        assert!(!retained_context(&value, &stale, 0));
+        assert!(!retained_context(&value, &captured, 1));
+        value["structuredContent"]
+            .as_object_mut()
+            .unwrap()
+            .remove("knowledge_root_id");
+        assert!(!retained_context(&value, &captured, 0));
     }
 }

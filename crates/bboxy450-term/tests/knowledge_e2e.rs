@@ -262,7 +262,13 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     let source = BboxySource::new(&fixture.index);
     let drive = |watch: &mut Watch| {
         let mut calls = 0;
-        while let Some(GuiAction::Knowledge { id, method, args }) = watch.next_action() {
+        while let Some(GuiAction::Knowledge {
+            scope: None,
+            id,
+            method,
+            args,
+        }) = watch.next_action()
+        {
             assert!(calls < 1024);
             assert!(watch.next_action().is_none());
             watch.response(id, read(&source, &method, args));
@@ -299,6 +305,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     );
     watch.connection(true);
     let GuiAction::Knowledge {
+        scope: None,
         id: fresh,
         method,
         args,
@@ -320,7 +327,13 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     );
 
     watch.changed();
-    let GuiAction::Knowledge { id, method, args } = watch.next_action().unwrap() else {
+    let GuiAction::Knowledge {
+        scope: None,
+        id,
+        method,
+        args,
+    } = watch.next_action().unwrap()
+    else {
         unreachable!()
     };
     watch.observe(false);

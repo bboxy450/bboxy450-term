@@ -2988,9 +2988,19 @@ impl Worker {
             self.scan()?;
             let journal = self.control_journal(id)?;
             let revision = self.knowledge_host.revision()?;
-            Ok((actor, record, journal, revision))
+            let binding = crate::knowledge::workspaces::RootBinding {
+                swarm: actor.swarm_id,
+                revision: self
+                    .registry
+                    .swarm(actor.swarm_id)?
+                    .map_or(0, |record| record.revision),
+                root_id: self.knowledge_host.root_id().to_owned(),
+            };
+            let journal =
+                journal.with_root(self.knowledge_host.root_id(), self.knowledge_host.root_id());
+            Ok((actor, record, journal, revision, binding))
         })();
-        let (actor, record, journal, revision) = match prepared {
+        let (actor, record, journal, revision, binding) = match prepared {
             Ok(prepared) => prepared,
             Err(error) => {
                 let _ = reply.send(Err(error));
@@ -3047,6 +3057,7 @@ impl Worker {
             index: self.index.clone(),
             registry: self.registry.clone(),
             actor,
+            binding,
             record,
             call,
             journal,
@@ -6777,6 +6788,14 @@ impl Worker {
                             }
                         })
                         .and_then(|_| {
+                            done.current_binding(&crate::knowledge::workspaces::RootBinding {
+                                swarm: done.actor.swarm_id,
+                                revision: self
+                                    .registry
+                                    .swarm(done.actor.swarm_id)?
+                                    .map_or(0, |record| record.revision),
+                                root_id: self.knowledge_host.root_id().to_owned(),
+                            })?;
                             self.knowledge_host
                                 .current(done.revision)
                                 .map_err(|e| invalid(e.to_string()))

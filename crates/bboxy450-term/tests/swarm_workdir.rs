@@ -2123,6 +2123,7 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
         "mcp_control_version",
         "swarm_metadata_version",
         "ui_control_version",
+        "swarm_workspace_version",
     ] {
         let old_owners = fixture.owners();
         let mut ui = fixture.app.take().unwrap();

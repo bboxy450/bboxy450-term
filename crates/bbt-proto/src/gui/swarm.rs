@@ -7,6 +7,16 @@
 //! Authoritative swarm metadata through the admitted operator GUI/ctl door.
 /// Independently versions the Swarm* verbs, without changing window layout data.
 pub const SWARM_METADATA_VERSION: u16 = 1;
+/// Scoped workspace calls require a root-aware control owner.
+pub const SWARM_WORKSPACE_VERSION: u16 = 1;
+
+/// Operator-selected swarm context; root identity and paths remain host-owned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SwarmScope {
+    pub swarm: ulid::Ulid,
+    pub revision: u64,
+}
 
 macro_rules! swarm_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {

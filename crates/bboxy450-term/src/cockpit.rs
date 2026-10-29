@@ -503,6 +503,10 @@ pub struct LogicReady {
     pub swarm_metadata_version: u16,
     #[serde(default)]
     pub ui_control_version: u16,
+
+    /// Scoped records/tasks need a root-aware owner even on the same layout wire.
+    #[serde(default)]
+    pub swarm_workspace_version: u16,
     /// Private environment compatibility hint; never exports the environment.
     #[serde(default)]
     pub launch_path_fingerprint: Option<String>,
@@ -778,6 +782,8 @@ async fn logic_main() -> Result<()> {
         gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
         swarm_metadata_version: bbt_proto::gui::SWARM_METADATA_VERSION,
         ui_control_version: bbt_proto::gui::UI_CONTROL_VERSION,
+
+        swarm_workspace_version: bbt_proto::gui::SWARM_WORKSPACE_VERSION,
         launch_path_fingerprint: std::env::var_os("PATH")
             .as_deref()
             .map(shell_path::fingerprint),
@@ -930,6 +936,7 @@ impl Session {
                 || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
                 || record.ready.swarm_metadata_version != bbt_proto::gui::SWARM_METADATA_VERSION
                 || record.ready.ui_control_version != bbt_proto::gui::UI_CONTROL_VERSION
+                || record.ready.swarm_workspace_version != bbt_proto::gui::SWARM_WORKSPACE_VERSION
                 || record.ready.launch_path_fingerprint.as_deref()
                     != Some(shell_path::fingerprint(&launch_path).as_str())
         }) {
@@ -1557,6 +1564,10 @@ mod gui_io_tests {
         assert_eq!(legacy.ui_control_version, 0);
         value["swarm_metadata_version"] = serde_json::json!(bbt_proto::gui::SWARM_METADATA_VERSION);
         value["ui_control_version"] = serde_json::json!(bbt_proto::gui::UI_CONTROL_VERSION);
+
+        assert_eq!(legacy.swarm_workspace_version, 0);
+        value["swarm_workspace_version"] =
+            serde_json::json!(bbt_proto::gui::SWARM_WORKSPACE_VERSION);
         value["future_ready_hint"] = serde_json::json!(true);
         let current: LogicReady = serde_json::from_value(value).unwrap();
         assert_eq!(
@@ -1566,6 +1577,10 @@ mod gui_io_tests {
         assert_eq!(
             current.swarm_metadata_version,
             bbt_proto::gui::SWARM_METADATA_VERSION
+        );
+        assert_eq!(
+            current.swarm_workspace_version,
+            bbt_proto::gui::SWARM_WORKSPACE_VERSION
         );
     }
 

@@ -210,3 +210,6 @@ action	{"kind":"SwarmWorkdir","body":{"id":"00000000000000000000000001","swarm":
 reply	{"kind":"Swarms","body":{"op":"00000000000000000000000001","records":[{"id":"00000000000000000000000001","name":"Ship terminal","workdir":"/private/project","revision":2}]}}
 reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":{"id":"00000000000000000000000001","name":null,"workdir":null,"revision":0}}}
 reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":null}}
+action	{"kind":"Knowledge","body":{"id":"01M5SQSKQK628DK5YRWHB1B8WC","scope":{"swarm":"00000000000000000000000007","revision":0},"method":"list","args":{}}}
+action	{"kind":"Task","body":{"id":"01M5SQM23YD30ZA5E2XDVDJWN1","scope":{"swarm":"00000000000000000000000007","revision":0},"request":{"op":"list","unassigned":true,"swarm_id":null,"status":"open","assignee":null,"after":null,"limit":128}}}
+action	{"kind":"RecordWrite","body":{"id":"01M5SQMEZD1NHC4S4RCABKAK19","scope":{"swarm":"00000000000000000000000007","revision":0},"args":{"body":"x\n","frontmatter":{"title":"x","type":"note"},"path":"notes/x.md"}}}

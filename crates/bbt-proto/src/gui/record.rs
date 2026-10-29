@@ -63,12 +63,16 @@ macro_rules! record_actions {
             /// it; the reply is `Knowledge` with the serialized data_source result.
             RecordWrite {
                 id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
                 args: serde_json::Value,
             },
             /// Read-only portable data_source call. `args` is the existing method DTO;
             /// admission is the same operator GUI admission as every other view read.
             Knowledge {
                 id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
                 method: String,
                 args: serde_json::Value,
             },

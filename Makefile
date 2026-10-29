@@ -49,6 +49,7 @@ help:
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
+	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
@@ -554,3 +555,22 @@ test-app-overlays:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-workspace-boundary check-workspace-boundary format-workspace-boundary
+test-workspace-boundary:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib mcp::journal; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::seat_reads; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::responsiveness_tests; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge_provider; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test knowledge_e2e --test documents --test ctl_records --test messaging_flow; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses -- --ignored --exact --nocapture
+
+check-workspace-boundary:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+format-workspace-boundary:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/gui/swarm.rs crates/bbt-proto/src/gui/mod.rs crates/bbt-proto/src/gui/record.rs crates/bbt-proto/src/gui/task.rs crates/bbt-proto/tests/gui_wire_golden.rs crates/bbt-mux/src/mcp/journal.rs crates/bbt-mux/src/knowledge/seat_reads.rs crates/bbt-mux/src/knowledge/responsiveness_tests.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/documents.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/knowledge_e2e.rs crates/bboxy450-term/tests/messaging_flow.rs crates/bboxy450-term/tests/swarm_workdir.rs

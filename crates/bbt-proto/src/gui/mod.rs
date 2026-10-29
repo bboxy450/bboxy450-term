@@ -45,7 +45,7 @@ use self::plugin::{plugin_actions, plugin_replies};
 use self::record::{record_actions, record_replies};
 use self::roles::{role_actions, role_replies};
 use self::seat::{seat_actions, seat_replies};
-pub use self::swarm::SWARM_METADATA_VERSION;
+pub use self::swarm::{SWARM_METADATA_VERSION, SWARM_WORKSPACE_VERSION, SwarmScope};
 use self::swarm::{swarm_actions, swarm_replies};
 use self::task::{task_actions, task_replies};
 use self::ui::{ui_actions, ui_replies};

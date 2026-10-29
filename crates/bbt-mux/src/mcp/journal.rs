@@ -17,6 +17,12 @@ use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 #[derive(Clone)]
 pub(crate) struct Journal {
     store: SqliteStore,
+    root: Option<RootContext>,
+}
+#[derive(Clone)]
+struct RootContext {
+    id: String,
+    startup: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,6 +31,8 @@ struct Entry {
     tool: String,
     args_digest: String,
     result: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    root_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_unlock: Option<NativeAttempt>,
 }
@@ -65,7 +73,34 @@ enum Mode {
 
 impl Journal {
     pub fn new(store: SqliteStore) -> Self {
-        Self { store }
+        Self { store, root: None }
+    }
+    /// Root IDs come only from the backend's admitted workspace, never tool args.
+    /// Operation keys remain global so a cwd change cannot repeat an old effect.
+    pub(crate) fn with_root(&self, root_id: &str, startup_root_id: &str) -> Self {
+        Self {
+            store: self.store.clone(),
+            root: Some(RootContext {
+                id: root_id.into(),
+                startup: startup_root_id.into(),
+            }),
+        }
+    }
+    pub(crate) fn root_id(&self) -> Option<&str> {
+        self.root.as_ref().map(|root| root.id.as_str())
+    }
+    fn accepts_root(&self, stored: Option<&str>) -> bool {
+        match (&self.root, stored) {
+            (None, None) => true,
+            (Some(root), Some(stored)) => root.id == stored,
+            (Some(root), None) => root.id == root.startup,
+            (None, Some(_)) => false,
+        }
+    }
+    fn root_audit(&self, event: &mut Draft) {
+        if let Some(root) = self.root_id() {
+            event.payload["knowledge_root_id"] = json!(root);
+        }
     }
     /// Probe a retained operator operation before applying an in-flight admission cap.
     pub(crate) fn retained(&self, actor: &Principal, call: &Call) -> Result<Option<Value>> {
@@ -86,6 +121,7 @@ impl Journal {
             if old.actor.same_authority(actor)
                 && old.tool == call.tool
                 && old.args_digest == digest(&serde_json::to_vec(&call.args)?)
+                && self.accepts_root(old.root_id.as_deref())
             {
                 old.result
             } else {
@@ -275,6 +311,7 @@ impl Journal {
         if admitted.actor != actor
             || admitted.tool != call.tool
             || admitted.args_digest != digest(&serde_json::to_vec(&call.args)?)
+            || !self.accepts_root(admitted.root_id.as_deref())
         {
             return Err(crate::store::invalid(
                 "control completion admission mismatch",
@@ -285,6 +322,7 @@ impl Journal {
             tool: call.tool.clone(),
             args_digest: digest(&serde_json::to_vec(&call.args)?),
             result: result.clone(),
+            root_id: self.root_id().map(str::to_owned),
             native_unlock: admitted.native_unlock,
         };
         if tx.execute(
@@ -299,7 +337,8 @@ impl Journal {
                 "control admission disappeared; effect outcome is unknown",
             ));
         }
-        let event = audit(&actor, call, &entry.args_digest, &result, false, false);
+        let mut event = audit(&actor, call, &entry.args_digest, &result, false, false);
+        self.root_audit(&mut event);
         tx.execute(
             "INSERT INTO kv VALUES(?1,?2)",
             params![
@@ -338,7 +377,10 @@ impl Journal {
         let fresh = retained.is_none();
         let (result, replay) = if let Some(bytes) = retained {
             let old: Entry = serde_json::from_slice(&bytes)?;
-            if !old.actor.same_authority(actor) || old.tool != call.tool || old.args_digest != hash
+            if !old.actor.same_authority(actor)
+                || old.tool != call.tool
+                || old.args_digest != hash
+                || !self.accepts_root(old.root_id.as_deref())
             {
                 (
                     error(
@@ -383,6 +425,7 @@ impl Journal {
             replay,
             fresh && mode == Mode::Effect,
         );
+        self.root_audit(&mut event);
         let native_unlock = if fresh {
             native.map(|(hold, reference)| {
                 event.payload["signature"] = json!("pending");
@@ -426,6 +469,7 @@ impl Journal {
                         tool: call.tool.clone(),
                         args_digest: hash,
                         result: result.clone(),
+                        root_id: self.root_id().map(str::to_owned),
                         native_unlock,
                     })?
                 ],
@@ -705,7 +749,10 @@ fn audit(
         ),
         Principal::OperatorLocal { door, .. } => (
             "account/control".into(),
-            match door { super::Door::Gui => "gui", super::Door::Ctl => "ctl" },
+            match door {
+                super::Door::Gui => "gui",
+                super::Door::Ctl => "ctl",
+            },
         ),
     };
     let mut event = Draft::new(
@@ -750,6 +797,135 @@ mod tests {
             args: json!({"folder":"channels/fixture","name":"own"}),
         };
         (temp, store, actor, call)
+    }
+
+    #[test]
+    fn root_bound_read_replay_cannot_cross_global_operation_contexts() {
+        let (_temp, store, actor, mut call) = effect_fixture();
+        call.tool = "knowledge_fetch".into();
+        call.args = json!({"locator":"#1"});
+        let principal = Principal::Seat(actor.clone());
+        let journal = Journal::new(store.clone());
+        let first = journal.with_root("root-A", "startup");
+        let other = journal.with_root("root-B", "startup");
+        let expected = super::super::success(call.op_id, json!({"body":"root-A document"}));
+        assert_eq!(
+            first.call(&actor, &call, || expected.clone()).unwrap(),
+            expected
+        );
+        let refused = other.retained(&principal, &call).unwrap().unwrap();
+        assert_eq!(
+            refused["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
+        let refused = other
+            .call(&actor, &call, || panic!("cross-root read dispatched"))
+            .unwrap();
+        assert_eq!(refused["isError"], true);
+        assert!(refused["structuredContent"].get("body").is_none());
+        assert_eq!(
+            first
+                .call(&actor, &call, || panic!("same-root read repeated"))
+                .unwrap(),
+            expected
+        );
+        let unscoped = journal.retained(&principal, &call).unwrap().unwrap();
+        assert_eq!(
+            unscoped["isError"], true,
+            "dropping root context must not authorize replay"
+        );
+        let saved: Value = serde_json::from_slice(
+            &store
+                .get(&format!("control/op/{}", call.op_id))
+                .unwrap()
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(saved["root_id"], "root-A");
+        assert_eq!(
+            first.pending(128).unwrap()[0].payload["knowledge_root_id"],
+            "root-A"
+        );
+    }
+
+    #[test]
+    fn root_bound_admit_and_completion_never_repeat_or_replace_another_roots_effect() {
+        let (_temp, store, actor, mut call) = effect_fixture();
+        call.tool = "knowledge_write".into();
+        let journal = Journal::new(store.clone());
+        let first = journal.with_root("root-A", "startup");
+        let other = journal.with_root("root-B", "startup");
+        let expected = super::super::success(call.op_id, json!({"written":"A"}));
+        assert_eq!(
+            first.effect(&actor, &call, || expected.clone()).unwrap(),
+            expected
+        );
+        let refused = other
+            .effect(&actor, &call, || panic!("effect reapplied in root-B"))
+            .unwrap();
+        assert_eq!(
+            refused["structuredContent"]["error"]["code"],
+            "op_id_reused"
+        );
+        assert!(
+            other
+                .complete(
+                    &actor,
+                    &call,
+                    super::super::success(call.op_id, json!({"written":"B"}))
+                )
+                .is_err()
+        );
+        let mut pending = call.clone();
+        pending.op_id = Ulid::new();
+        assert!(first.admit(&actor, &pending).unwrap().1);
+        assert!(!other.admit(&actor, &pending).unwrap().1);
+        assert!(other.complete(&actor, &pending, json!({})).is_err());
+        let finished = super::super::success(pending.op_id, json!({"written":"A pending"}));
+        assert_eq!(
+            first.complete(&actor, &pending, finished.clone()).unwrap(),
+            finished
+        );
+        assert_eq!(
+            first
+                .effect(&actor, &call, || panic!("original effect repeated"))
+                .unwrap(),
+            expected
+        );
+    }
+
+    #[test]
+    fn legacy_rootless_entries_are_accepted_only_by_trusted_startup_or_unscoped_context() {
+        let (_temp, store, actor, call) = effect_fixture();
+        let expected = super::super::success(call.op_id, json!({"legacy":true}));
+        let old = json!({"actor":actor,"tool":call.tool,"args_digest":digest(&serde_json::to_vec(&call.args).unwrap()),"result":expected});
+        store
+            .put(
+                &format!("control/op/{}", call.op_id),
+                &serde_json::to_vec(&old).unwrap(),
+            )
+            .unwrap();
+        let journal = Journal::new(store);
+        let project = journal.with_root("project", "startup");
+        let refused = project
+            .effect(&actor, &call, || {
+                panic!("legacy effect reapplied elsewhere")
+            })
+            .unwrap();
+        assert_eq!(refused["isError"], true);
+        let startup = journal.with_root("startup", "startup");
+        assert_eq!(
+            startup
+                .effect(&actor, &call, || panic!("legacy startup effect repeated"))
+                .unwrap(),
+            expected
+        );
+        assert_eq!(
+            journal
+                .effect(&actor, &call, || panic!("unscoped legacy effect repeated"))
+                .unwrap(),
+            expected
+        );
     }
 
     fn native_fixture() -> (

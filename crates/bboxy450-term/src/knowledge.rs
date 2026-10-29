@@ -35,7 +35,10 @@ enum Work {
 }
 
 pub fn promises() -> Result<Vec<Promise>, String> {
-    parse_promises(include_str!(concat!(env!("BBOXY_INPUT_ROOT"), "/.bboxy/specs/e2e-acceptance.md")))
+    parse_promises(include_str!(concat!(
+        env!("BBOXY_INPUT_ROOT"),
+        "/.bboxy/specs/e2e-acceptance.md"
+    )))
 }
 fn value<T: Serialize>(value: T) -> Value {
     serde_json::to_value(value).expect("portable DataSource request DTO")
@@ -407,6 +410,7 @@ impl Watch {
         let id = bbt_mux::Ulid::new();
         self.pending = Some(id);
         Some(bbt_proto::GuiAction::Knowledge {
+            scope: None,
             id,
             method: call.method.into(),
             args: call.args,

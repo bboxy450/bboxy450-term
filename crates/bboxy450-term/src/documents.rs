@@ -26,6 +26,7 @@ impl Read {
             Self::Fetch(reference) => ("fetch", serde_json::json!({"ref":reference})),
         };
         bbt_proto::GuiAction::Knowledge {
+            scope: None,
             id,
             method: method.into(),
             args,

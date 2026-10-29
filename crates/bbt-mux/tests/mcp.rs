@@ -376,7 +376,14 @@ impl Fixture {
     }
     fn gui_task(&self, request: bbt_proto::messaging::TaskRequest) -> bbt_proto::GuiReply {
         let id = Ulid::new();
-        self.gui(id, bbt_proto::GuiAction::Task { id, request })
+        self.gui(
+            id,
+            bbt_proto::GuiAction::Task {
+                scope: None,
+                id,
+                request,
+            },
+        )
     }
 }
 
@@ -628,6 +635,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     assert_eq!(report["isError"], false, "{report}");
     let accept_id = Ulid::new();
     let accept = GuiAction::Task {
+        scope: None,
         id: accept_id,
         request: TaskRequest::Accept {
             task_path: f.task_path(),

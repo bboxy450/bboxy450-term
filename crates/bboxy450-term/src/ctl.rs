@@ -715,6 +715,7 @@ impl Client {
             .call(
                 Some(id),
                 GuiAction::Knowledge {
+                    scope: None,
                     id,
                     method: call.method.into(),
                     args: call.args.clone(),
@@ -772,7 +773,11 @@ impl Client {
         let id = self.mint();
         match self.call(
             Some(id),
-            GuiAction::RecordWrite { id, args },
+            GuiAction::RecordWrite {
+                scope: None,
+                id,
+                args,
+            },
             |r| matches!(r, GuiReply::Knowledge { op, .. } if *op == id),
         )? {
             GuiReply::Knowledge { response, .. } => {
@@ -971,7 +976,11 @@ impl Client {
         let id = self.mint();
         match self.call(
             Some(id),
-            GuiAction::Task { id, request },
+            GuiAction::Task {
+                scope: None,
+                id,
+                request,
+            },
             |r| matches!(r, GuiReply::Task { op, .. } if *op == id),
         )? {
             GuiReply::Task { response, .. } => Ok(response),
@@ -2096,6 +2105,7 @@ mod tests {
                 },
             },
             GuiAction::Task {
+                scope: None,
                 id,
                 request: TaskRequest::Status {
                     task_path: None,
@@ -2103,6 +2113,7 @@ mod tests {
                 },
             },
             GuiAction::Knowledge {
+                scope: None,
                 id,
                 method: "list".into(),
                 args: json!({}),
@@ -2116,6 +2127,7 @@ mod tests {
                 request: bbt_proto::gui::KnowledgeRequest::Status,
             },
             GuiAction::RecordWrite {
+                scope: None,
                 id,
                 args: json!({}),
             },

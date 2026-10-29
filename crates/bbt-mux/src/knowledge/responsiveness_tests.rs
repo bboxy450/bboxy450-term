@@ -181,6 +181,7 @@ async fn held_read(same_session: bool) {
     rx.await.unwrap();
     let read_id = Ulid::new();
     gui.send(GuiAction::Knowledge {
+        scope: None,
         id: read_id,
         method: "list".into(),
         args: json!({"limit":1}),
@@ -252,6 +253,7 @@ async fn held_read(same_session: bool) {
         .unwrap();
         if same_session {
             gui.send(GuiAction::Knowledge {
+                scope: None,
                 id: second_id,
                 method: "list".into(),
                 args: json!({}),
@@ -260,6 +262,7 @@ async fn held_read(same_session: bool) {
             held.entered(2).await;
             let refused = Ulid::new();
             gui.send(GuiAction::Knowledge {
+                scope: None,
                 id: refused,
                 method: "list".into(),
                 args: json!({}),

@@ -12,6 +12,8 @@ macro_rules! task_actions {
         $cb!(@next $rest [$($acc)*
             Task {
                 id: Ulid,
+                #[serde(default, skip_serializing_if = "Option::is_none")]
+                scope: Option<SwarmScope>,
                 request: crate::messaging::TaskRequest,
             },
         ] $($head)*);
