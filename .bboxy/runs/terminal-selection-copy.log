@@ -26,3 +26,10 @@ Added executable acceptance workflow: make test-terminal-selection TARGET_DIR=<w
 - bin selection tests: Ctrl-C remains PTY byte3, no empty-selection copy interception, native Copy key release suppression
 - actual private headless ctl fixture: rendered terminal Unicode drag -> Cmd-C -> private clipboard receipt; unrelated real PTY output; multiline hard-line padding; native Copy dispatch; cross-pane fence
 Not run in this Executor worktree: full app compile, above app tests/e2e, full CI. Parent owns the warm integration target and final gates; cold app builds prohibited in this brief.
+
+command: make test-desktop TARGET_DIR=target/selection-small
+exit: 0
+result: layering/cross-os held; core2 + mac clipboard2 tests passed; all-target desktop Clippy -D warnings passed
+native probe: assertions verified all17 menu callbacks (including Copy), tray4, owned-window Fill/Zoom/Minimize/Show, disposal, runloop stop
+raw: /tmp/bboxy-selection-native.log
+sha256: 0ce863fbd1efe8a150661ac23552a5f0fc4e56dd49e18a6edc29b7eca656ef18
