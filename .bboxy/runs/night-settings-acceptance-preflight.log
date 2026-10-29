@@ -1,0 +1,17 @@
+Project bboxy450-term https://github.com/bboxy450/bboxy450-term; policy https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Tasks226/231/239: Settings acceptance and confined logical foreground control. Development observations below precede the final signed cut.
+Mechanism: rendered navigation and row labels resolve actual controls; every edit uses the existing Settings controller/writer.
+R2 development individual exit0: /tmp/bset-af8dktrg/work/r2-result.json and r2-persistence.json; gutter2/4/8, six insets1/2/4, stable title/sidebar/content offsets, persisted8 after restart; wrong section and wrong geometry rejected.
+G1 development individual exit0: /tmp/bset-8klkqbhh/work/g1-result.json; fresh4, all2..8, endpoint clamps, no depth, saved/restored8; wrong default rejected.
+G2 development individual exit0: /tmp/bset-8f8i8kz8/work/g2-result.json; real zsh/private Claude PTYs, defaults, per-harness off, faded/retained disabled controls, foreground/background admission, persisted restart, ordinary memory/non-recording refusals, inverted-policy witnesses. No provider/model or OS presentation.
+Production focus events and private control call the same App::set_frontmost. Admission requires debug, test-account selector, recording backend, no native window. UI control capability6; optional produced-frame observation preserves old decoding.
+The recording plan is coalesced: tests wait on the actual post-frame submitted/processed fence, never assume a new revision for an unchanged desired plan.
+Fixture restarts join the exact immutable app process identity after stop, then issue one start. Earlier app_already_running output remains retained; no product retry was added.
+make test-licenses exit0: target/night-settings-acceptance/final-source-licenses.log;27 crate notices and9 source-notice fixtures held.
+Full-history development preflight:2240 valid G signatures, approved9B07 key except exact historical618df56f/B9AB fingerprint; target/night-settings-acceptance/signature-preflight.json. No trust/config change performed by this Executor.
+Old red startup gates and Settings development failures remain under target/night-fifty-seat-startup and target/night-settings-acceptance. Original issue38 ENOENT/root repair remain unproven; quarantine retained.
+Final signed-cut commands: make test-settings-night; make test-licenses; make test; scripts/land.sh. Their actual results and landing SHA are reported through task_report with raw log pointers; this preflight record does not claim those future results.
+target/night-settings-acceptance/g2-complete-boundary-check/G2.json sha256=3c01bd6c62f431c9322227cd921ee56ef46e8a9a2fec346a9efaf47177907e42
+target/night-settings-acceptance/g2-complete-boundary-check/invocation.json sha256=f49a6e82084defcdbc832bccc00bd6ecc5ae9ab21bc925cbf7b1fd17c9769deb
+target/night-settings-acceptance/signature-preflight.json sha256=35a5e0df3feb6e367dd914f623484cd006d896ca82dc1a1d4c9250b09440fadc
+target/night-settings-acceptance/final-source-licenses.log sha256=220876e1c3313273a448737252e2336b3a6db96be05473a2b01d1bdd332baa0a

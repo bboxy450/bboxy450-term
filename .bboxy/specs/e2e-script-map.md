@@ -41,7 +41,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | Cmd-click on a .md path or a wikilink opens the document modal | |
 | R1 | `scripts/e2e/R1.sh` | full | | |
-| R2 | `scripts/e2e/R2.sh` | full | — | |
+| R2 | `scripts/e2e/R2.sh` | full | — | #226 |
 | R3 | `scripts/e2e/R3.sh` | full | | |
 | R4 | `scripts/e2e/R4.sh` | partial | cards carry the rim and the swell out of the box | |
 | R5 | `scripts/e2e/R5.sh` | full | | |
@@ -57,8 +57,8 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | F2 | `scripts/e2e/F2.sh` | partial | script not implemented: unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read | |
 | F3 | `scripts/e2e/F3.sh` | partial | script not implemented: killing logic and restarting resumes the events lane at its cursors: no duplicate row, no lost event | |
 | F4 | `scripts/e2e/F4.sh` | partial | script not implemented: a filter change while attached migrates the consumer: pending rows for still-granted subjects are delivered, revoked ones dropped unprojected, one audit line on account/control | |
-| G1 | `scripts/e2e/G1.sh` | partial | script not implemented: Settings › Appearance: Rim size 2 to 8 default 4; depth is no longer a setting | |
-| G2 | `scripts/e2e/G2.sh` | partial | script not implemented: Settings › Notifications: on by default, per-harness off, only-when-not-frontmost | |
+| G1 | `scripts/e2e/G1.sh` | full | — | #226 |
+| G2 | `scripts/e2e/G2.sh` | full | — | #226 |
 | G3 | `scripts/e2e/G3.sh` | partial | script not implemented: Settings › Plugins lists every discovered plugin with trust state, tier, shape, health and the call-and-hook timeline; a 10 s hook shows the warning | |
 | G4 | `scripts/e2e/G4.sh` | partial | script not implemented: Settings › Knowledge lists roots with their provider; swapping to a stub provider and back moves no file | |
 | G5 | `scripts/e2e/G5.sh` | partial | script not implemented: theme is data: a token change in design/tokens.toml changes the look without a code change | |
@@ -771,7 +771,13 @@ No script starts an app outside the runner, reads credentials or attaches a seco
 
 ## Additional rim scripts — 2026-10-25
 
-R2 changes Rim size through the actual Settings keyboard controls and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, all four edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. It captures the actual window after each setting. The private test-account config path is used; the script never edits the operator's config or bypasses Settings with a direct file write.
+R2 resolves the rendered Appearance navigation label and Rim size row/control by name, then changes the real slider and reads the produced stage. At 2/4/8 it asserts gaps 2/4/8, all edge insets 1/2/4, unchanged title/sidebar geometry and unchanged content-padding offsets. Each setting has a window capture and saved-TOML assertion; restart reopens 8. Wrong-section and wrong-rim witnesses must fail. The script uses the private account's config and actual Settings writer.
+
+G1 uses those same named controls in a fresh private account. It checks default 4, every integer 2–8 against saved TOML and solved geometry, both endpoint clamps, no visible/persisted depth setting, and retained 8 after orderly restart. The actual slider clamps boundary keys; it has no free-form numeric input to invent an invalid-input refusal. A wrong-default witness must fail.
+
+G2 drives named Notifications controls, with real zsh and a private Claude PTY producer that makes no provider/model call. It checks default on, per-harness off, global disable with retained values and faded controls, and both foreground policy states through the confined recording control in ICD201. It waits for the actual submitted/processed plan fence, checks inverted-policy witnesses, then restarts and repeats foreground suppression/background admission. Non-recording and ordinary memory accounts refuse the private focus verb; the boundary matrix also excludes native and release contexts. This is logical policy evidence, with no OS presentation claim.
+
+`make test-settings-night` builds the private app, checks legacy wire compatibility and boundary admission, and runs exactly these three scripts with private HOME/config/run/socket and closed stdin. Its verdict is red unless each individual coverage is full, script exit is 0, and its negative witnesses reject. Raw command receipts, captures, binary/script hashes and individual verdicts remain under the named private roots and target result directory.
 
 R4 uses the shared UI-clock driver for rendered row/tab rim and focus-swell samples, including a resting idle row. Samples must exclude the other surface's 40px reach and the pane's halo before they can prove independent row/tab behaviour. Card focus has no exposed app control path; that clause remains partial (Wren's lab reference09660b51). The row/tab fixture uses actual split tabs, asserts the intended focused seat, and samples the tab gutter outside the active row’s rim. The clock-enabled R2/R4 development run passed full/partial respectively; all raw failures and captures remain in the run evidence.
 

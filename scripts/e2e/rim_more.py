@@ -8,58 +8,35 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def r2():
-    from ui import App, nodes, require
-    app = App()
-    first = app.spawn("R2 left")
-    second = app.ctl("seat", "spawn", "zsh", "--place", "right",
-                     "--cwd", app.work, "--name", "R2 right")["seat"]
-    for seat in (first, second):
-        app.line(seat, "printf '\\033[?25l\\nR2_READY\\n'; exec cat")
-        app.wait(seat, "(?m)^R2_READY$")
+    from settings import SettingsApp, control, geometry, negative, rim_value, two_panes
+    from ui import require
+    app = SettingsApp()
+    first = two_panes(app, "R2")
     initial = app.ctl("ui", "layout")
     chrome = [node["rect"] for node in initial["tree"][:2]]
+    wrong_page = app.section("Notifications")
+    negative(app.work, "wrong-Settings-section", lambda: control(wrong_page, "Rim size"))
     measured = []
     for rim in (2, 4, 8):
-        app.ctl("ui", "open", "settings", label=f"r2-settings-{rim}")
-        # Search -> navigation; wrap backwards from Account through Shortcuts
-        # and Notifications to Appearance. Additional sections precede these.
-        page = app.ctl("ui", "key", "tab", "tab", "up", "up", "up")
-        require(any(n["kind"] == "named:card0/r2/ctl" for n in nodes(page)),
-                "Settings keyboard did not reach Appearance / Rim size")
-        app.ctl("ui", "key", "tab", "tab", "tab")
-        app.ctl("ui", "key", *("left",) * 6)
-        if rim > 2:
-            app.ctl("ui", "key", *("right",) * (rim - 2))
+        page = app.rim(rim)
+        named_control = control(page, "Rim size")
+        require(app.persisted()["appearance"]["rim"] == rim, "R2 control did not persist its value")
         app.ctl("ui", "key", "esc")
         layout = app.ctl("ui", "focus", first, label=f"r2-layout-{rim}")
-        require(layout["page"] is None and len(layout["panes"]) == 2,
-                "Settings did not return to the original two panes")
-        require([node["rect"] for node in layout["tree"][:2]] == chrome,
-                "Rim size moved titlebar or sidebar")
-        outer = sorted([n["rect"] for n in nodes(layout) if n["kind"] == "named:pane"])
-        require(len(outer) == 2, "expected two actual pane borders")
-        left, right = outer
-        sidebar_right = chrome[1][0] + chrome[1][2]
-        gap = right[0] - (left[0] + left[2])
-        title_bottom = chrome[0][1] + chrome[0][3]
-        insets = [left[0] - sidebar_right, layout["size"][0] - right[0] - right[2]]
-        insets += [rect[1] - title_bottom for rect in outer]
-        insets += [layout["size"][1] - rect[1] - rect[3] for rect in outer]
-        require(abs(gap - rim) < .01 and all(abs(v - rim / 2) < .01 for v in insets),
-                f"Rim {rim}: gutter={gap}, insets={insets}")
-        # Content padding and the title-strip offset do not become extra glow space.
-        offsets = []
-        for pane in layout["panes"]:
-            center = pane["rect"][0] + pane["rect"][2] / 2
-            border = next(rect for rect in outer if rect[0] < center < rect[0] + rect[2])
-            offsets.append([pane["rect"][0] - border[0], pane["rect"][1] - border[1]])
-        if measured:
-            require(offsets == measured[0]["content_offsets"], "Rim size changed content padding")
+        observation = geometry(layout, rim, chrome,
+                               measured[0]["content_offsets"] if measured else None)
+        negative(app.work, f"wrong-rim-{rim}", lambda: geometry(layout, rim + 1, chrome))
         path = app.capture("window", f"r2-rim-{rim}", layout["frame_seq"])
-        measured.append({"rim": rim, "gutter": gap, "insets": insets,
-                         "content_offsets": offsets, "layout": layout, "capture": str(path)})
+        measured.append({**observation, "layout": layout, "capture": str(path),
+                         "named_control": named_control["kind"],
+                         "control_frame": page["frame_seq"]})
     (app.work / "r2-result.json").write_text(json.dumps(measured, indent=2) + "\n")
-    print("R2: real Settings keyboard at 2/4/8 gives gutters 2/4/8 and insets 1/2/4; title/sidebar and content padding unchanged")
+    app.restart()
+    restored = app.section("Appearance")
+    require(rim_value(restored) == 8, "R2 did not reopen its persisted Rim size")
+    (app.work / "r2-persistence.json").write_text(json.dumps({"rim": rim_value(restored),
+        "config": app.persisted(), "frame_seq": restored["frame_seq"]}, indent=2) + "\n")
+    print("R2: named Appearance / Rim size at 2/4/8 gives gutters 2/4/8 and insets 1/2/4; title/sidebar and content padding unchanged")
 
 
 def r4(run):

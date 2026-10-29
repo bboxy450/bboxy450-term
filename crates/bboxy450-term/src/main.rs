@@ -451,6 +451,57 @@ fn notification_recording(args: &[String]) -> Result<bool, String> {
     Ok(selected)
 }
 
+/// The logical probe cannot reach the native notification account or OS focus.
+fn notification_foreground_admission(
+    debug: bool,
+    test_account: bool,
+    recording: bool,
+    native_window: bool,
+) -> Result<(), String> {
+    if debug && test_account && recording && !native_window {
+        Ok(())
+    } else {
+        Err("notification_foreground_refused: requires a debug headless recording test account".into())
+    }
+}
+
+#[cfg(test)]
+mod notification_foreground_tests {
+    use super::notification_foreground_admission;
+
+    #[test]
+    fn foreground_control_refuses_every_non_private_recording_context() {
+        assert!(notification_foreground_admission(true, true, true, false).is_ok());
+        for (context, debug, test_account, recording, native_window) in [
+            ("release", false, true, true, false),
+            ("ordinary account", true, false, true, false),
+            ("non-recording", true, true, false, false),
+            ("native window", true, true, true, true),
+        ] {
+            let refusal = notification_foreground_admission(
+                debug, test_account, recording, native_window,
+            ).expect_err(context);
+            assert!(refusal.starts_with("notification_foreground_refused:"), "{context}: {refusal}");
+        }
+    }
+
+    #[test]
+    fn foreground_control_has_a_versioned_state_setting_wire() {
+        use bbt_proto::gui::{UI_CONTROL_VERSION, UiRequest};
+        assert!(UI_CONTROL_VERSION >= 6);
+        for frontmost in [false, true] {
+            let request = UiRequest::NotificationForeground { frontmost };
+            assert!(request.validate().is_ok());
+            let wire = serde_json::to_value(&request).unwrap();
+            assert_eq!(
+                wire,
+                serde_json::json!({"kind":"notification_foreground", "body":{"frontmost":frontmost}})
+            );
+            assert_eq!(serde_json::from_value::<UiRequest>(wire).unwrap(), request);
+        }
+    }
+}
+
 /// Both GUI owners derive close requests from the same retained scene.
 fn close_request(
     scene: &scene::Scene,
@@ -771,6 +822,7 @@ impl UiVisible {
 }
 #[derive(Debug)]
 enum UiEffect {
+    NotificationForeground(bool),
     LaunchDirectory(bbt_mux::Ulid),
     NewSwarm(bbt_proto::SwarmId),
     SwarmWorkdir(bbt_proto::SwarmId, Option<String>),
@@ -4440,6 +4492,7 @@ impl App {
                     state["plan_revision"] = serde_json::json!(submitted);
                     state["processed_revision"] = serde_json::json!(processed);
                     state["settled"] = serde_json::json!(submitted == processed);
+                    state["frontmost"] = serde_json::json!(self.frontmost);
                     state["waiting"]=serde_json::json!(self.live_state.as_ref().map(|model|model.attention.iter().take(64).map(|(seat,attention)|serde_json::json!({"seat":bbt_mux::Ulid(seat.0.0),"muted":attention.muted})).collect::<Vec<_>>()).unwrap_or_default());
                     state["focused"] = serde_json::json!(
                         self.focus
@@ -4534,6 +4587,21 @@ impl App {
                 .collect();
             worker.submit(model.notifications(&policy, self.frontmost, focused), known);
         }
+    }
+    /// Native focus events and the private recording probe share every effect.
+    fn set_frontmost(&mut self, focused: bool) {
+        self.frontmost = focused;
+        if !focused {
+            self.end_sidebar_resize();
+            if self.rim_preview.take().is_some() {
+                self.apply_preferences();
+            }
+            if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
+                self.settings_action(settings_controller::Action::Blur);
+            }
+        }
+        self.update_cursor();
+        self.sync_notifications();
     }
     fn notification_clicked(&mut self, id: bboxy450_desktop_notifications::NotificationId) {
         match id.0.parse::<bbt_mux::Ulid>() {
@@ -5869,6 +5937,13 @@ impl App {
             return Ok(false);
         };
         match effect {
+            UiEffect::NotificationForeground(frontmost) => {
+                if self.frontmost == *frontmost {
+                    Ok(true)
+                } else {
+                    Err("ui_frame_refused: notification foreground state was superseded".into())
+                }
+            }
             UiEffect::LaunchDirectory(token) => Ok(self.launch_directory_pending != Some(*token)),
             UiEffect::NewSwarm(id) => {
                 Ok(model.ui.window.sidebar.swarms.iter().any(|s| s.id == *id))
@@ -6167,6 +6242,11 @@ impl App {
             let wait = self.ui_wait.take().expect("qualifying UI frame");
             let result = layout.and_then(|mut layout| {
                 for effect in &wait.effects {
+                    if let UiEffect::NotificationForeground(frontmost) = effect
+                        && layout.notification_frontmost != Some(*frontmost)
+                    {
+                        return Err("ui_frame_refused: produced frame has a different notification foreground state".into());
+                    }
                     if let UiEffect::SidebarSection { key, open } = effect
                         && (self.sidebar_accordion_overrides.get(key) != Some(open)
                             || layout.sidebar_open.get(key) != Some(open))
@@ -6267,6 +6347,17 @@ impl App {
         self.submitted_frame = submitted;
         if let Err(reason) = request.validate() {
             self.answer_ui(id, Err(reason.into()));
+            return false;
+        }
+        if matches!(request, UiRequest::NotificationForeground { .. })
+            && let Err(reason) = notification_foreground_admission(
+                cfg!(debug_assertions),
+                self.test_account,
+                self.recording_active(),
+                self.window.is_some(),
+            )
+        {
+            self.answer_ui(id, Err(reason));
             return false;
         }
         if matches!(request, UiRequest::Seats) {
@@ -6492,6 +6583,18 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::NotificationForeground { frontmost } => {
+                notification_foreground_admission(
+                    cfg!(debug_assertions),
+                    self.test_account,
+                    self.recording_active(),
+                    self.window.is_some(),
+                )?;
+                self.set_frontmost(frontmost);
+                if let Some(effects) = &mut self.ui_collect {
+                    effects.push(UiEffect::NotificationForeground(frontmost));
+                }
+            }
             UiRequest::SwarmWorkdir { swarm, path } => {
                 self.set_swarm_workdir(bbt_proto::SwarmId::from_u128(swarm.0), path)?;
             }
@@ -6789,6 +6892,9 @@ impl App {
         );
         let layout = UiLayout {
             sidebar_sections: self.sidebar_section_positions(),
+            notification_frontmost: (self.test_account
+                && self.recording_active()
+                && self.window.is_none()).then_some(self.frontmost),
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             test_clipboard: None,
@@ -7988,20 +8094,7 @@ impl ApplicationHandler<UiEvent> for App {
         }
         match event {
             WindowEvent::Focused(focused) => {
-                self.frontmost = focused;
-                if !focused {
-                    self.end_sidebar_resize();
-                }
-                if !focused {
-                    if self.rim_preview.take().is_some() {
-                        self.apply_preferences();
-                    }
-                    if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
-                        self.settings_action(settings_controller::Action::Blur);
-                    }
-                }
-                self.update_cursor();
-                self.sync_notifications();
+                self.set_frontmost(focused);
             }
             WindowEvent::ThemeChanged(theme) => {
                 self.system_theme = if theme == winit::window::Theme::Light {

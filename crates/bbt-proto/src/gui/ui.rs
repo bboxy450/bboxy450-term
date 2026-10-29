@@ -11,7 +11,8 @@ use super::*;
 /// Versions 3/4 add image paste and captured seat controls; version 5 adds
 /// terminal selection/copy and private test clipboard receipts. Version 6 adds
 /// independent chat/task section wheel controls and produced-frame scroll receipts.
-pub const UI_CONTROL_VERSION: u16 = 6;
+/// Version 7 adds the headless recording account's logical notification foreground control.
+pub const UI_CONTROL_VERSION: u16 = 7;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -83,6 +84,10 @@ pub enum UiRequest {
     NotificationClick {
         seat: Ulid,
     },
+    /// Debug headless recording test accounts only; never changes OS focus.
+    NotificationForeground {
+        frontmost: bool,
+    },
     /// The GUI's retained real-seat metadata and operation-keyed starting panes.
     /// Reading this never waits for a harness launch or a logic-worker query.
     Seats,
@@ -134,7 +139,7 @@ impl UiRequest {
             Self::Compose(compose) => compose.validate(),
             Self::PasteImage { path } if !valid_workdir(path) => {
                 Err("invalid_ui_image_path: expected a bounded absolute printable image path")
-            },
+            }
             Self::Spawn(pick)
                 if pick.harness.is_empty()
                     || pick.harness.len() > 256
@@ -414,6 +419,9 @@ pub enum UiTarget {
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
+    /// Private recording account state sampled with this produced frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_frontmost: Option<bool>,
     /// Visible retained input regions in logical window coordinates.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub regions: std::collections::BTreeMap<String, [f32; 4]>,

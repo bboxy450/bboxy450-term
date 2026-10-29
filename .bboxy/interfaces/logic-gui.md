@@ -31,6 +31,17 @@ bridges, selected-root context and actual shell output. The fixture advertises
 the older contract in its private owner record; it does not run an old binary
 or authorize a live application restart.
 
+UI control version 6 adds `NotificationForeground {frontmost}` for debug,
+verified private test accounts with an active recording backend and no native
+window. Every other context refuses before mutation. It and native focus events
+invoke the same App focus transition, including blur effects and notification
+sync; it never changes OS focus. The produced-frame `notification_frontmost`
+observation is optional and confined to that private recording context. Recording
+readback includes `frontmost` and retains the actual submitted/processed revision
+fence; a frame reply does not claim the notification worker has settled. G2 waits
+for that real completion before checking policy. Owners: Rook (contract), Sable
+(GUI control/Settings proof), under live ICD201 and task231.
+
 On the GUI door, a committed SeatControl returns the current authoritative
 `GuiReply::Seat` before `SeatControlled {op}`. The GUI applies that metadata before
 publishing completion, so its cached seat listing observes its own write without

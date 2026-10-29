@@ -27,6 +27,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "layout", "Ui"),
     ("ui", "clock", "Ui"),
     ("ui", "notification-click", "Ui"),
+    ("ui", "notification-foreground", "Ui"),
     ("ui", "compose", "Ui"),
     ("ui", "paste-image", "Ui"),
     ("ui", "swarm-workdir", "Ui"),
@@ -224,6 +225,18 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             })?),
         },
         ["ui", "notification-click", seat] => Command::UiNotificationClick(seat.into()),
+        ["ui", "notification-foreground", state] => {
+            let frontmost = match state {
+                "true" => true,
+                "false" => false,
+                _ => {
+                    return Err(format!(
+                        "{USAGE_PREFIX}ui notification-foreground true|false"
+                    ));
+                }
+            };
+            Command::Ui(bbt_proto::gui::UiRequest::NotificationForeground { frontmost })
+        }
         ["ui", "open", target] => Command::Ui(bbt_proto::gui::UiRequest::Open(match target {
             "graph" => bbt_proto::gui::UiTarget::Graph,
             "settings" => bbt_proto::gui::UiTarget::Settings,

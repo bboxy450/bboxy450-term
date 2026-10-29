@@ -371,6 +371,7 @@ mod tests {
             captures.ui_answer(
                 id,
                 Ok(UiLayout {
+                    notification_frontmost: None,
                     regions: Default::default(),
                     test_clipboard: None,
                     sidebar_sections: None,

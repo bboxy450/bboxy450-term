@@ -96,6 +96,7 @@ help:
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
+	  'make test-settings-night          Private full R2/G1/G2 Settings proofs and negative controls' \
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
@@ -547,6 +548,14 @@ test-spawn-wire:
 .PHONY: test-swarm-switch check-swarm-switch
 .PHONY: test-sidebar-accordions check-sidebar-accordions
 .PHONY: test-settings-role-picker-ui test-settings-role-picker check-settings-role-picker
+.PHONY: test-settings-night
+test-settings-night:
+	@$(MAKE) compile PROFILE=debug
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_notification_foreground; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) notification_foreground_tests; \
+	python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-acceptance/verdicts'
+
 test-settings-role-picker-ui:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings_roles; \
