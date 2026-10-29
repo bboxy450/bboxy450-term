@@ -228,11 +228,14 @@ impl Markdown {
         width: f32,
         title: Option<&str>,
     ) -> c::Element {
-        let width = finite_width(width).min(STYLE.spacing.doc_measure as f32);
+        let table_width = finite_width(width);
+        let width = table_width.min(STYLE.spacing.doc_measure as f32);
         let r = Render {
             ctx,
             m,
             width,
+            table_width,
+            fragment_words: false,
             diagrams: &[],
             record_links: None,
             scrolls: None,
@@ -266,11 +269,14 @@ impl Markdown {
         width: f32,
         diagrams: &[Diagram],
     ) -> c::Element {
-        let width = finite_width(width).min(STYLE.spacing.doc_measure as f32);
+        let table_width = finite_width(width);
+        let width = table_width.min(STYLE.spacing.doc_measure as f32);
         let r = Render {
             ctx,
             m,
             width,
+            table_width,
+            fragment_words: false,
             diagrams,
             record_links: None,
             scrolls: None,
@@ -291,6 +297,8 @@ impl Markdown {
             ctx,
             m,
             width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
+            table_width: finite_width(width),
+            fragment_words: false,
             diagrams,
             record_links: Some(links),
             scrolls: None,
@@ -312,6 +320,8 @@ impl Markdown {
             ctx,
             m,
             width: finite_width(width).min(STYLE.spacing.doc_measure as f32),
+            table_width: finite_width(width),
+            fragment_words: false,
             diagrams: &[],
             record_links: Some(links),
             scrolls: Some(scrolls),
@@ -400,11 +410,14 @@ impl Markdown {
             if shell.document.kind.is_none() {
                 self.element_with_title(ctx, m, w, Some(title))
             } else {
-                let width = finite_width(w).min(STYLE.spacing.doc_measure as f32);
+                let table_width = finite_width(w);
+                let width = table_width.min(STYLE.spacing.doc_measure as f32);
                 let r = Render {
                     ctx,
                     m,
                     width,
+                    table_width,
+                    fragment_words: false,
                     diagrams: &[],
                     record_links: None,
                     scrolls: None,
@@ -462,6 +475,8 @@ struct Render<'a> {
     ctx: ui::Context,
     m: &'a dyn c::Measure,
     width: f32,
+    table_width: f32,
+    fragment_words: bool,
     diagrams: &'a [Diagram],
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
     scrolls: Option<&'a std::collections::BTreeMap<String, f32>>,
@@ -484,6 +499,17 @@ enum Piece {
 }
 impl Render<'_> {
     fn blocks(&self, blocks: &[Block], prefix: &str) -> c::Element {
+        // Tables use their actual enclosing column. Keep ordinary prose and
+        // true-size figure viewports on their existing readable measure.
+        // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let wide_tables = blocks
+            .iter()
+            .any(|b| matches!(&b.kind, BlockKind::Table { .. }));
+        let width = if wide_tables {
+            self.table_width
+        } else {
+            self.width
+        };
         let mut children = vec![];
         let mut previous_bottom = 0.;
         for (i, b) in blocks.iter().enumerate() {
@@ -493,6 +519,16 @@ impl Render<'_> {
                 format!("{prefix}/block{i}")
             };
             let (e, top, bottom) = self.block(b, &key);
+            let e = if width > self.width && !matches!(&b.kind, BlockKind::Table { .. }) {
+                row(
+                    format!("{key}/measure"),
+                    plain([0.; 4]),
+                    0.,
+                    vec![fixed(e, self.width)],
+                )
+            } else {
+                e
+            };
             if i > 0 {
                 children.push(spacer(f32::max(previous_bottom, top)))
             }
@@ -500,7 +536,7 @@ impl Render<'_> {
             previous_bottom = bottom;
         }
         let mut s = plain([0.; 4]);
-        s.overrides.width = Some(ui::Length::Px(self.width));
+        s.overrides.width = Some(ui::Length::Px(width));
         row(
             if prefix.is_empty() {
                 "body-slot".into()
@@ -520,7 +556,7 @@ impl Render<'_> {
                     0.,
                     children,
                 ),
-                self.width,
+                width,
             )],
         )
     }
@@ -591,6 +627,7 @@ impl Render<'_> {
                 let indent = STYLE.spacing.s9 as f32;
                 let inner = Render {
                     width: (self.width - indent).max(0.),
+                    table_width: (self.width - indent).max(0.),
                     ..*self
                 };
                 let mut rows = vec![];
@@ -635,6 +672,7 @@ impl Render<'_> {
                 let pad = STYLE.spacing.s6 as f32;
                 let inner = Render {
                     width: (self.width - pad * 2. - 2.).max(0.),
+                    table_width: (self.width - pad * 2. - 2.).max(0.),
                     ..*self
                 };
                 let mut s = plain([STYLE.spacing.s2 as f32, pad, STYLE.spacing.s2 as f32, pad]);
@@ -660,7 +698,11 @@ impl Render<'_> {
                 header,
                 rows,
             } => (
-                self.table(key, align, header, rows),
+                Render {
+                    width: self.table_width,
+                    ..*self
+                }
+                .table(key, align, header, rows),
                 STYLE.spacing.s4 as f32,
                 STYLE.spacing.s4 as f32,
             ),
@@ -677,7 +719,12 @@ impl Render<'_> {
                         STYLE.spacing.s1 as f32,
                         vec![
                             heading.into(),
-                            self.blocks(blocks, &format!("{key}/note")).into(),
+                            Render {
+                                table_width: self.width,
+                                ..*self
+                            }
+                            .blocks(blocks, &format!("{key}/note"))
+                            .into(),
                         ],
                     ),
                     STYLE.spacing.s4 as f32,
@@ -771,21 +818,24 @@ impl Render<'_> {
     fn rich(&self, key: &str, values: &[Inline], f: ui::Text) -> c::Element {
         let mut pieces = vec![];
         Self::pieces(values, f, false, false, &mut pieces);
-        if pieces.iter().all(|p| {
-            matches!(
-                p,
-                Piece::Text {
-                    strike: false,
-                    underline: false,
-                    ..
-                } | Piece::Break
-            )
-        }) && !pieces.iter().any(|p| match p {
-            Piece::Text { value, font, .. } => value
-                .split_whitespace()
-                .any(|word| self.m.width(word, &measure_style(*font)) > self.width),
-            _ => false,
-        }) {
+        if !self.fragment_words
+            && pieces.iter().all(|p| {
+                matches!(
+                    p,
+                    Piece::Text {
+                        strike: false,
+                        underline: false,
+                        ..
+                    } | Piece::Break
+                )
+            })
+            && !pieces.iter().any(|p| match p {
+                Piece::Text { value, font, .. } => value
+                    .split_whitespace()
+                    .any(|word| self.m.width(word, &measure_style(*font)) > self.width),
+                _ => false,
+            })
+        {
             let mut t = c::Text::new("", f);
             t.runs.clear();
             for p in pieces {
@@ -1096,6 +1146,7 @@ impl Render<'_> {
         let available = (self.width - 2.).max(0.);
         let content_limit = (available - 2. * pad - 2.).max(1.);
         let mut minima = vec![2. * pad + 2.; n];
+        let mut hard_minima = minima.clone();
         let mut preferred = minima.clone();
         for (ri, cells) in std::iter::once(header)
             .chain(rows.iter().map(Vec::as_slice))
@@ -1108,11 +1159,25 @@ impl Render<'_> {
                 ui::Color::Foreground,
             );
             for (i, cell) in cells.iter().enumerate() {
-                let [min, max] = self.cell_widths(cell, f);
-                // Like CSS auto tables, a column keeps its longest unbreakable
-                // word. Only a word wider than the entire table may fragment.
-                minima[i] = minima[i].max(min.min(content_limit) + 2. * pad + 2.);
+                let [min, max, hard] = self.cell_widths(cell, f);
+                hard_minima[i] = hard_minima[i].max(hard + 2. * pad + 2.);
+                minima[i] = minima[i]
+                    .max(min.min(content_limit) + 2. * pad + 2.)
+                    .max(hard_minima[i]);
                 preferred[i] = preferred[i].max(max + 2. * pad + 2.);
+            }
+        }
+        // Text tokens may use rich()'s existing grapheme wrapping. Only atomic
+        // chips, individual glyph clusters and cell padding are hard minima.
+        // Proportionally shrink soft minima before the ordinary preferred solve.
+        // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let word_minima = minima.clone();
+        let minimum: f32 = minima.iter().sum();
+        let hard_minimum: f32 = hard_minima.iter().sum();
+        if minimum > available && minimum > hard_minimum {
+            let fraction = ((available - hard_minimum).max(0.) / (minimum - hard_minimum)).min(1.);
+            for (min, hard) in minima.iter_mut().zip(&hard_minima) {
+                *min = hard + (*min - hard) * fraction;
             }
         }
         let minimum: f32 = minima.iter().sum();
@@ -1147,6 +1212,7 @@ impl Render<'_> {
                 let width = widths[i];
                 let render = Render {
                     width: (width - 2. * pad - 2.).max(0.),
+                    fragment_words: width + 0.01 < word_minima[i],
                     ..*self
                 };
                 let f = font(
@@ -1219,13 +1285,17 @@ impl Render<'_> {
         b.gap = ui::Length::Px(0.);
         named(key, c::Element::Box(b))
     }
-    fn cell_widths(&self, values: &[Inline], f: ui::Text) -> [f32; 2] {
+    fn cell_widths(&self, values: &[Inline], f: ui::Text) -> [f32; 3] {
         let mut pieces = vec![];
         Self::pieces(values, f, false, false, &mut pieces);
         let (mut minimum, mut preferred, mut word, mut line) = (0_f32, 0_f32, 0_f32, 0_f32);
+        let mut hard = 0_f32;
         for piece in pieces {
             match piece {
                 Piece::Text { value, font, .. } => {
+                    for cluster in value.graphemes(true) {
+                        hard = hard.max(self.m.width(cluster, &measure_style(font)));
+                    }
                     for part in value.split_inclusive(char::is_whitespace) {
                         let content = part.trim_end_matches(char::is_whitespace);
                         word += self.m.width(content, &measure_style(font));
@@ -1254,6 +1324,7 @@ impl Render<'_> {
                     );
                     let width = size(&chip, f32::INFINITY, self.ctx, self.m)[0];
                     minimum = minimum.max(width);
+                    hard = hard.max(width);
                     line += width;
                 }
                 Piece::Break => {
@@ -1264,7 +1335,7 @@ impl Render<'_> {
                 }
             }
         }
-        [minimum.max(word), preferred.max(line)]
+        [minimum.max(word), preferred.max(line), hard]
     }
     fn metadata(&self, front: &Frontmatter, keys: &[String]) -> c::Element {
         let mut rows = vec![];

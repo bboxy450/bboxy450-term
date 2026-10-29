@@ -2079,7 +2079,7 @@ impl Scene {
         let layout = element
             .layout(rect, ctx, &self.metrics)
             .map_err(|e| e.to_string())?;
-        let regions = ui::modules::document_modal::controller::Regions::retained(&layout);
+        let regions = ui::modules::document_modal::controller::Regions::retained_modal(&layout);
         Ok(DocumentLayout {
             layout,
             regions,

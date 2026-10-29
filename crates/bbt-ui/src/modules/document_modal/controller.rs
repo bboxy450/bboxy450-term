@@ -67,6 +67,7 @@ pub struct Horizontal {
 #[derive(Default)]
 pub struct Regions {
     links: Vec<(Rect, Action)>,
+    panel: Option<Rect>,
     pub viewport: Option<Rect>,
     pub extent: [f32; 2],
     horizontal: Vec<Horizontal>,
@@ -83,6 +84,15 @@ pub fn intersection(a: Rect, b: Rect) -> Rect {
     )
 }
 impl Regions {
+    /// A modal alone owns backdrop dismissal; embedded/pinned documents keep
+    /// ordinary retained links without claiming clicks elsewhere in the window.
+    /// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub fn retained_modal(layout: &c::Layout) -> Self {
+        Self {
+            panel: Some(layout.rect),
+            ..Self::retained(layout)
+        }
+    }
     pub fn retained(layout: &c::Layout) -> Self {
         fn visit<'a>(
             n: &'a c::Layout,
@@ -180,6 +190,14 @@ impl Regions {
         &self.horizontal
     }
     pub fn hit(&self, at: [f32; 2]) -> Option<Action> {
+        if !at.into_iter().all(f32::is_finite) {
+            return None;
+        }
+        if self.panel.is_some_and(|r| {
+            at[0] < r.x || at[0] >= r.right() || at[1] < r.y || at[1] >= r.bottom()
+        }) {
+            return Some(Action::Close);
+        }
         self.links
             .iter()
             .rev()
