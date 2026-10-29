@@ -24,6 +24,7 @@ struct Calls {
 struct Corpus {
     rows: Vec<d::Record>,
     calls: Mutex<Calls>,
+    native: bool,
 }
 fn record(n: u128, kind: &str, assignee: Option<Value>) -> d::Record {
     let id = Ulid::from(n).to_string();
@@ -67,6 +68,7 @@ impl Corpus {
         Self {
             rows,
             calls: Mutex::default(),
+            native: false,
         }
     }
     fn reset(&self) {
@@ -74,6 +76,16 @@ impl Corpus {
     }
 }
 impl DataSource for Corpus {
+    fn import_root(&self) -> d::Result<std::path::PathBuf> {
+        if self.native {
+            Ok("/private/native-task-fixture/.bboxy".into())
+        } else {
+            Err(d::CommandError::new(
+                "unsupported_operation",
+                "external corpus",
+            ))
+        }
+    }
     fn resolve(&self, request: d::ResolveRequest) -> d::Result<d::RecordRef> {
         self.calls.lock().unwrap().resolves += 1;
         self.rows
@@ -316,6 +328,42 @@ fn task_inventory_large_corpus_pushes_scope_and_fetches_only_page_and_lookahead(
     assert_eq!(next["items"].as_array().unwrap().len(), 1);
     assert!(next["next"].is_null());
     assert_eq!(f.source.calls.lock().unwrap().fetches.len(), 1);
+}
+
+#[test]
+fn native_inventory_keeps_scoped_unassigned_tasks_without_foreign_body_reads() {
+    let mut f = Fixture::new();
+    f.source.native = true;
+    for row in &mut f.source.rows {
+        if (20_004_u128..=20_006).any(|id| row.reference.id == Ulid::from(id).to_string()) {
+            row.frontmatter["delegated_by"] = json!(format!("seat:{}", f.oracle.id));
+        }
+    }
+    let mut foreign = record(20_007, "task", None);
+    foreign.frontmatter["delegated_by"] = json!(format!("seat:{}", f.foreign.id));
+    f.source.rows.push(foreign);
+    let page = f.read(
+        &Fixture::actor(&f.oracle),
+        "task_list",
+        json!({"limit":128}),
+    );
+    let ids: Vec<_> = page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["id"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(
+        ids,
+        (20_001_u128..=20_006)
+            .map(|id| Ulid::from(id).to_string())
+            .collect::<Vec<_>>()
+    );
+    let calls = f.source.calls.lock().unwrap();
+    assert_eq!(calls.fetches.len(), 6);
+    assert!(calls.fetches.iter().all(|id| ids.contains(id)));
+    assert!(calls.lists.is_empty());
+    assert!(calls.graphs > 0 && calls.graphs <= 12);
 }
 
 #[test]

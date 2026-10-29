@@ -52,6 +52,8 @@ help:
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
+	  'make build-recovery-test         Retain the exact-HEAD recovery test executable' \
+	  'make test-recovery-built         Run the retained recovery test after source/hash checks' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
@@ -1114,3 +1116,21 @@ test-harmony-host-gitkb: build-gitkb-plugin
 	env "CARGO_TARGET_$${harmony_target}_RUNNER=$(CURDIR)/scripts/run-private-gitkb-host.sh" \
 	BBOXY_GITKB_ADAPTER='$(abspath $(GITKB_PLUGIN))' BBOXY_GITKB_BIN='$(GITKB_BIN)' \
 	cargo test --locked -p bboxy450-mux --test harmony_host --target-dir '$(TARGET_DIR)' real_gitkb_host_lifecycle -- --ignored --exact --nocapture
+
+.PHONY: build-recovery-test test-recovery-built
+build-recovery-test:
+	@set -eu; . ./scripts/cache-env.sh; \
+	test -z "$$(git status --porcelain)"; recovery_source=$$(git rev-parse HEAD); \
+	mkdir -p '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test recovery --no-run --message-format=json --target-dir '$(TARGET_DIR)' >'$(TARGET_DIR)/recovery-build.jsonl'; \
+	recovery_binary=$$(python3 -c 'import json,sys; print(next(r["executable"] for line in sys.stdin if (r := json.loads(line)).get("reason") == "compiler-artifact" and r["target"]["name"] == "recovery" and r.get("executable")))' <'$(TARGET_DIR)/recovery-build.jsonl'); \
+	cp "$$recovery_binary" '$(TARGET_DIR)/recovery-test'; \
+	test "$$recovery_source" = "$$(git rev-parse HEAD)"; test -z "$$(git status --porcelain)"; \
+	printf '%s\n' "$$recovery_source" >'$(TARGET_DIR)/recovery-test.source'; \
+	shasum -a 256 '$(TARGET_DIR)/recovery-test' >'$(TARGET_DIR)/recovery-test.sha256'
+
+test-recovery-built:
+	@set -eu; test -z "$$(git status --porcelain)"; \
+	test "$$(cat '$(TARGET_DIR)/recovery-test.source')" = "$$(git rev-parse HEAD)"; \
+	shasum -a 256 -c '$(TARGET_DIR)/recovery-test.sha256'; \
+	'$(abspath $(TARGET_DIR))/recovery-test' --exact checkpoint_bounded_recovery --nocapture

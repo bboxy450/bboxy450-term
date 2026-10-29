@@ -14,7 +14,7 @@ links:
   - { to: "[[d47-decision-nodes]]", rel: model }
   - { to: "[[d48-every-record-has-a-number]]", rel: model }
 created: "2026-10-24T04:28:04Z"
-updated: "2026-10-29T17:28:15Z"
+updated: "2026-10-29T18:31:33Z"
 ---
 # Knowledge base
 
@@ -40,6 +40,12 @@ workspace revision. Provider selection retains the supplied operation ID for
 the mutation after its read-only status preflight. Native bulk task import is
 bundled-only; an external selection refuses it before accessing local import
 files and a provider change fences publication.
+The bundled source retains scoped unassigned tasks created by native import;
+their delegator or explicit swarm supplies membership. Its cached metadata
+inventory does not read unrelated document bodies. External providers keep
+bounded assignee queries for ordinary scoped lists. The existing CLI
+`record write` stays limited to signed `e2e` records; the host's typed document
+and task APIs retain their own authorization rules.
 
 The explicit `knowledge_commit` action commits only the requested documents in
 the admitted swarm/root. The bundled provider uses local Git with explicit

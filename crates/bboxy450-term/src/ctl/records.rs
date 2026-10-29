@@ -154,8 +154,11 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 std::fs::File::open(&source).and_then(|mut f| f.read_to_string(&mut text))
             }
             .map_err(|e| format!("record write {source}: {e}"))?;
-            let args = serde_json::from_str(&text)
+            let args: Value = serde_json::from_str(&text)
                 .map_err(|e| format!("record write {source}: not JSON: {e}"))?;
+            if args["frontmatter"]["type"] != "e2e" {
+                return Err("knowledge_write_denied: ctl record write accepts only e2e records".into());
+            }
             let mut row = client.record_write(args)?;
             row["kind"] = json!("record");
             vec![row]

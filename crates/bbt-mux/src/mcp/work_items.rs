@@ -76,7 +76,17 @@ impl TaskDocuments for ProviderTasks<'_> {
         let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
         let limit = tools::page_limit(args.limit)?;
         let mut candidates = BTreeMap::new();
-        if args.unassigned || assignee == Some(None) || scope.is_none() && assignee.is_none() {
+        // Native imports retain unassigned tasks with a scoped delegator. Their
+        // metadata is already in the bundled Index; external sources retain the
+        // assignee queries below rather than scanning unrelated documents.
+        let native_inventory = assignee.is_none()
+            && actor.class() == Class::Oracle
+            && self.0.import_root().is_ok();
+        if args.unassigned
+            || assignee == Some(None)
+            || scope.is_none() && assignee.is_none()
+            || native_inventory
+        {
             // Classify wide or unassigned inventory from typed metadata,
             // then read only the authorized output page, never every body.
             for kind in ["task", "bug", "epic"] {
@@ -283,6 +293,14 @@ fn listed(
                     .and_then(|seat| registry.get(seat).ok())
                     .is_some_and(|seat| seat.swarm == swarm)
                     || assignee == Some(None) && actor.seat().is_some()
+                    || actor.class() == Class::Oracle
+                        && reference(doc, "assignee").ok() == Some(None)
+                        && (doc.metadata["swarm"] == json!(swarm)
+                            || reference(doc, "delegated_by")
+                                .ok()
+                                .flatten()
+                                .and_then(|seat| registry.get(seat).ok())
+                                .is_some_and(|seat| seat.swarm == swarm))
             }))
         && args
             .status
