@@ -18,6 +18,7 @@ use std::{
     collections::BTreeSet,
     fs,
     io::Write,
+    os::unix::fs::DirBuilderExt,
     path::PathBuf,
     process::{Child, Command, Output, Stdio},
     time::{Duration, Instant},
@@ -42,6 +43,10 @@ impl Fixture {
             .tempdir()
             .unwrap();
         let root = directory.path().canonicalize().unwrap();
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(root.join("run"))
+            .unwrap();
         fs::create_dir(root.join("home")).unwrap();
         fs::write(root.join("home/.zshrc"), "PROMPT='%# '\n").unwrap();
         fs::create_dir_all(root.join("repository/.bboxy/tasks")).unwrap();
