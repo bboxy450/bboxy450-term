@@ -1,0 +1,14 @@
+Source before integration fixes: 35dd542a
+make test: EXIT 2. Strict workspace all-target Clippy passed; workspace tests found
+three exact contract mismatches: host legal inventory vocabulary, task delegate
+role property description, and four ctl selection verb parse cases.
+Raw log: ~/Library/Logs/bboxy450-term/combined-ui-20261028-ci-final.log
+Detailed log: target/ci-local.log (preserve before later exact-source gate).
+
+Host audit fix: exempt only the root ATTRIBUTION.md legal inventory. Sources,
+README, manifests, tests, and nested attribution documents remain scanned.
+New negative fixture puts the same forbidden token into root legal inventory,
+source and nested policy: exactly the latter two must be found.
+make test-harness-vocabulary test-licenses: EXIT 0, vocabulary 2/2,
+license negative fixtures 6/6, package policy 27 crates, integration 9/9.
+Raw log: ~/Library/Logs/bboxy450-term/harness-vocabulary-integration-20261028.log

@@ -768,3 +768,8 @@ test-terminal-selection:
 
 check-terminal-selection:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-harness-vocabulary
+test-harness-vocabulary:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
