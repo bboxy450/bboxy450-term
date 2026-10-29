@@ -102,11 +102,27 @@ class SignatureTests(unittest.TestCase):
             cwd=repo, env=self.env)
         return run(["git", "rev-parse", "HEAD"], cwd=repo, env=self.env).decode().strip()
 
-    def policy(self, *, legacy=None, approved=None, keys=None):
+    def policy(self, *, legacy=None, approved=None, keys=None, additional=()):
         approved = approved or self.approved
-        identities = [approved, *([self.legacy] if legacy is not None else [])]
+        identities = [approved, *additional, *([self.legacy] if legacy is not None else [])]
         public = tuple(self.root / f"{identity.fingerprint}.asc" for identity in identities)
-        return verifier.Policy(approved, keys or public, self.legacy if legacy is not None else None, legacy)
+        return verifier.Policy(approved, keys or public, self.legacy if legacy is not None else None, legacy, additional)
+
+    def test_additional_pin_accepts_new_commits_without_a_historical_exception(self):
+        repo = self.repository()
+        self.commit(repo)
+        self.commit(repo, self.legacy)
+        self.commit(repo, self.legacy)
+        policy = self.policy(additional=(self.legacy,))
+        self.assertEqual(verifier.verify(repo, policy=policy), {"commits": 3, "historical": 0})
+
+    def test_additional_pin_cannot_sign_for_another_approved_author(self):
+        repo = self.repository()
+        run(["git", "-c", f"user.signingkey={self.legacy.fingerprint}", "commit", "-q", "--allow-empty",
+             "--author", f"{self.approved.name} <{self.approved.email}>", "-m", "crossed pinned identities"],
+            cwd=repo, env=self.env)
+        with self.assertRaisesRegex(verifier.Refusal, "author outside"):
+            verifier.verify(repo, policy=self.policy(additional=(self.legacy,)))
 
     def test_valid_untrusted_pin_passes_and_empty_range_refuses(self):
         repo = self.repository()
@@ -222,7 +238,7 @@ class ProjectHistoryTests(unittest.TestCase):
         root = SOURCE.parent.parent
         expected = int(run(["git", "rev-list", "--count", "HEAD"], cwd=root))
         self.assertGreaterEqual(expected, 2202)
-        self.assertEqual(verifier.verify(root), {"commits": expected, "historical": 1})
+        self.assertEqual(verifier.verify(root), {"commits": expected, "historical": 0})
         provenance = json.loads((verifier.KEYS / "provenance.json").read_text())
         for key in provenance["keys"]:
             self.assertEqual(hashlib.sha256((verifier.KEYS / key["file"]).read_bytes()).hexdigest(), key["sha256"])

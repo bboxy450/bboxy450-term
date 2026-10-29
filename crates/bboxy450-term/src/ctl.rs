@@ -114,6 +114,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   events tail --stream NAME [--since SEQ] [--subject GLOB] [--timeout MS]
   debug logs <app|logic|supervisor> [--since BYTE_OFFSET]   bounded page, next_since
   debug errors [--since UNIX_MS] [--seat ID] failures; unfiltered reads mark retained errors read
+  debug report                            offline hints for evidence gathering and gh issue reporting
   debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
   debug metrics                           logic + GUI history heap/page counters
   debug fault ring-gap <seat> <from>..<to>  test-account retained-history gap mask
@@ -468,7 +469,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         Command::Debug { .. } | Command::DebugFault { .. } | Command::DebugSpawnGate(_) => {
             Some(&[])
         }
-        Command::DebugNotifications | Command::UiNotificationClick(_) => Some(&[]),
+        Command::DebugReport | Command::DebugNotifications | Command::UiNotificationClick(_) => {
+            Some(&[])
+        }
         _ => None,
     };
     if let Some(allowed) = read_flags {
@@ -1778,6 +1781,16 @@ fn run_verb(
 ) -> Result<(), String> {
     with_stdout(|out| {
         let (noun, verb) = parsed.verb.expect("a noun-verb form");
+        if matches!(&parsed.command, Command::DebugReport) {
+            return print_reply(
+                out,
+                noun,
+                verb,
+                parsed.op.unwrap_or_else(fresh),
+                debug::report(),
+                parsed.human,
+            );
+        }
         let endpoint_file = parsed
             .endpoint
             .clone()

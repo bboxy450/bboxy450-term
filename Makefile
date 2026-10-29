@@ -568,7 +568,11 @@ publish-release: release
 	GIT_TERMINAL_PROMPT=0 git push 'https://github.com/$(RELEASE_REPO).git' "refs/tags/$$tag:refs/tags/$$tag"; \
 	gh release create "$$tag" --repo '$(RELEASE_REPO)' '$(ARCHIVE)' '$(ARCHIVE).sha256' '$(ARCHIVE).asc' --title '$(APP) $(APP_VERSION)' --notes "Source: https://github.com/bboxy450/bboxy450-term/commit/$$(git rev-parse HEAD)"
 
+# Harnesses: use this gate to check the existing source-bound evidence first.
+# Reuse valid results; run only missing/stale required checks once. Do not run
+# the entire suite separately and then repeat it merely because this is a push.
 push:
+	@printf '%s\n' 'push: reuse completed source-bound checks; run only missing/stale checks, never the entire suite twice.'
 	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; test -z "$$(git status --porcelain)"; \
 	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
@@ -629,7 +633,7 @@ check-harness-startup:
 .PHONY: test-cli-error-isolation
 test-cli-error-isolation:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics --test ctl; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics --test ctl --test ctl_report; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless notification_recording_requires_a_test_account_before_startup -- --exact
 
 .PHONY: test-harness-native

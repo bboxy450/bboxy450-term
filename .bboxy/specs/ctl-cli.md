@@ -19,6 +19,13 @@ updated: "2026-10-26T13:15:19Z"
 ---
 # ctl
 
+`ctl debug report` returns offline harness instructions in `data.hint` for
+deduplicating and reporting bugs with `gh` in `bboxy450/bboxy450-term`. It opens
+no endpoint, gathers no diagnostics and submits nothing. The instructions cover
+installed and running build provenance, authorized bounded diagnostics, private
+reproduction, redaction, report format and verification of the submitted issue.
+Data-bearing commands retain their existing admission rules.
+
 Owner: Corvin Duskmantle <ARCHITECT>. Decided 2026-10-24 (operator via the Oracle: "ask architect to design this cleanly"; the authority is #260, #269 and #270, already decided). `bboxy450-term ctl` is the operator's door from outside the window: an ICQ session, a shell, a script. It is one grammar over the actions the window already issues, and nothing more.
 
 Lens: the window is the authority; `ctl` is a second keyboard and a second pair of eyes on the same seats. Assumes the GUI wire of [[c1-live-seats]] §2a and the operator principal of [[l9-messaging-tasks]]. Breaks when a verb would need an action the window does not have; then the window gains the action first, and `ctl` follows.
