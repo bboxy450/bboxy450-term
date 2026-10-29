@@ -201,6 +201,7 @@ mod tests {
                     };
                     let seat = GuiSeat {
                         attention: None,
+                        notification_episode: None,
                         record: SeatRecord::new(Ulid::from(1), Ulid::from(2), "zsh", "zsh"),
                         state,
                     };

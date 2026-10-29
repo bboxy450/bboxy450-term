@@ -7,6 +7,10 @@
 //! App lifecycle relayed to the GUI owner: `ctl app …`.
 use super::*;
 
+pub(super) fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 /// Lifecycle operations relayed to the attached GUI owner, including headless.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -59,7 +63,13 @@ macro_rules! app_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
             /// Discover or claim the native GUI attachment after the former GUI died.
-            GuiHello { id: Ulid, claim: bool },
+            GuiHello {
+                id: Ulid,
+                claim: bool,
+                /// A restricted current-attention connection; never a GUI owner.
+                #[serde(default, skip_serializing_if = "app::is_false")]
+                observer: bool,
+            },
             /// Coalesced native GUI frame data; no terminal bytes or authority.
             WindowSave { id: Ulid, epoch: Ulid, state: WindowState },
             /// Ask the app owner through the same admitted operator endpoint.

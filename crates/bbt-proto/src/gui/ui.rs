@@ -13,7 +13,7 @@ use super::*;
 /// independent chat/task section wheel controls and produced-frame scroll receipts.
 /// Version 7 adds the headless recording account's logical notification foreground control.
 /// Version 8 adds bounded private native document paint observations.
-pub const UI_CONTROL_VERSION: u16 = 8;
+pub const UI_CONTROL_VERSION: u16 = 9;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.

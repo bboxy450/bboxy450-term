@@ -7,6 +7,7 @@
 //! Portable sidebar state. The mux maps observations into these values; clients
 //! never infer process lifetime from harness activity.
 use serde::{Deserialize, Serialize};
+use ulid::Ulid;
 
 use crate::registry::SeatRecord;
 pub use bbt_ui_model::{
@@ -20,6 +21,16 @@ pub struct GuiSeat {
     /// Full policy on an explicit read; small digest observations on ordinary state.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attention: Option<serde_json::Value>,
+    /// Current logic-owned waiting identity; absent on older or replay-only rows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_episode: Option<NotificationEpisode>,
+}
+/// One live waiting episode, shared by the window and desktop notification owner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationEpisode {
+    pub epoch: Ulid,
+    pub generation: u64,
+    pub ordinal: u64,
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SeatState {

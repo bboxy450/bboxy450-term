@@ -7,6 +7,16 @@
 //! The durable events drain and read-only paging of retained streams.
 use super::*;
 
+/// A current-state bootstrap or ordered per-seat change, never retained history.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AttentionUpdate {
+    pub epoch: Ulid,
+    pub revision: u64,
+    pub snapshot: bool,
+    pub seats: Vec<GuiSeat>,
+    pub removed: Vec<Ulid>,
+}
+
 /// One retained event as `EventsRead` pages it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RetainedEvent {
@@ -21,6 +31,8 @@ pub struct RetainedEvent {
 macro_rules! events_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
+            /// Subscribe to current waiting state without a durable events cursor.
+            ObserveAttention { id: Ulid },
             /// Start the one device-bound durable events drain on this connection.
             AttachEvents {
                 id: Ulid,
@@ -72,6 +84,7 @@ pub(super) use events_actions;
 macro_rules! events_replies {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
+            Attention { op: Option<Ulid>, update: AttentionUpdate },
             /// Asynchronous attachment transitions, never a terminal action result.
             EventStatus {
                 attached: bool,

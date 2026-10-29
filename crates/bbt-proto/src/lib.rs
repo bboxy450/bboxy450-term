@@ -19,7 +19,7 @@ pub use gui::{GuiAction, GuiIdentity, GuiIdentityState, GuiReply, GuiRequest, Ro
 pub use hosts::{GuiHost, HostState};
 pub use registry::SeatRecord;
 pub use seat_state::{
-    Activity, Grade, GuiSeat, Lifecycle, ProcessStatus, Role, RoleClass, SeatState, SpawnSpec,
-    SubagentRow, WaitKind, Where,
+    Activity, Grade, GuiSeat, Lifecycle, NotificationEpisode, ProcessStatus, Role, RoleClass,
+    SeatState, SpawnSpec, SubagentRow, WaitKind, Where,
 };
 pub use streams::{Delta, Screen, Snapshot, Update, View};

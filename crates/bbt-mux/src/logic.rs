@@ -815,6 +815,7 @@ impl GuiWatchInterests {
 }
 
 #[derive(Clone)]
+type AttentionObserverGuard = Arc<dyn Fn(u32) -> bool + Send + Sync>;
 pub struct LogicClient {
     tx: mpsc::Sender<Command>,
     pub bus: BusHandle,
@@ -823,12 +824,39 @@ pub struct LogicClient {
     /// Set while `ctl` is open (decision #260): who may come through `gui.sock` and by which
     /// door. None: the window is the only client, as before.
     gui_peers: Arc<std::sync::RwLock<Option<crate::ctl_door::Peers>>>,
+    attention_observer_guard: Arc<std::sync::RwLock<Option<AttentionObserverGuard>>>,
+    pub(crate) current_attention: Arc<crate::attention_observer::CurrentAttention>,
     /// Captures asked of the window on the operator's behalf.
     pub(crate) captures: Arc<crate::gui_capture::Captures>,
     gui_watch_epoch: Arc<AtomicU64>,
     pub(crate) window_journal: Option<Arc<crate::window_journal::Journal>>,
 }
 impl LogicClient {
+    /// The app supplies its birth-checked desktop/supervisor owner admission.
+    /// No observer is admitted until this guard is installed.
+    pub fn set_attention_observer_guard(&self, guard: Arc<dyn Fn(u32) -> bool + Send + Sync>) {
+        *self
+            .attention_observer_guard
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = Some(guard);
+    }
+    pub(crate) fn admit_attention_observer(&self, pid: u32) -> Result<()> {
+        let guard = self
+            .attention_observer_guard
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        if guard.is_some_and(|guard| guard(pid)) {
+            Ok(())
+        } else {
+            Err(invalid(
+                "attention observer requires the recorded desktop owner",
+            ))
+        }
+    }
+    pub(crate) fn observe_attention(&self) -> crate::attention_observer::AttentionSubscription {
+        self.current_attention.observe()
+    }
     pub(crate) fn gui_watch_session(&self) -> GuiWatchSession {
         GuiWatchSession {
             id: Ulid::new(),
@@ -1936,6 +1964,8 @@ impl Logic {
             exit_cause: Arc::new(OnceLock::new()),
             capture_diagnostics: Arc::new(Recorder::default()),
             gui_peers: Arc::default(),
+            attention_observer_guard: Arc::default(),
+            current_attention: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: Some(Arc::new(crate::window_journal::Journal::open(
@@ -5103,7 +5133,16 @@ impl Worker {
         }
     }
     fn publish(&self, stream: &str, event: Draft) -> Result<()> {
+        let seat = event
+            .subject
+            .strip_prefix("seat/")
+            .and_then(|tail| tail.split_once('/'))
+            .filter(|(_, kind)| *kind == "state")
+            .and_then(|(seat, _)| seat.parse::<Ulid>().ok());
         self.handle.block_on(self.bus.publish(stream, event))?;
+        if let Some(seat) = seat.filter(|seat| self.views.contains_key(seat)) {
+            self.refresh_attention(seat, false)?;
+        }
         Ok(())
     }
     fn scan_workspace(&mut self, binding: &RootBinding) -> Result<()> {
@@ -5608,6 +5647,7 @@ impl Worker {
             if info.exited.is_some() { b"0" } else { b"1" },
         )?;
         self.persist_native_session(info.seat)?;
+        self.refresh_attention(info.seat, live_start)?;
         // Historical frames have no live effects or visible intermediate state.
         // Cold capture no longer needs checkpoint progress to keep reading, so
         // publish one recovered tail instead of syncing every replay page.
@@ -7068,10 +7108,18 @@ impl Worker {
         let now = now_ms();
         view.adapter.output(now);
         let mut provenance_frames = Vec::new();
+        let mut live_wait = false;
         match view.tap.drain() {
             Ok(frames) => {
                 for params in frames {
-                    view.adapter.on_osc(&params, seq, now);
+                    live_wait |= view
+                        .adapter
+                        .on_osc(&params, seq, now)
+                        .iter()
+                        .any(|observation| {
+                            observation.agent_id.is_none()
+                                && observation.state == crate::adapters::State::Waiting
+                        });
                     provenance_frames.push(params);
                 }
             }
@@ -7146,7 +7194,8 @@ impl Worker {
         draft.generation = Some(generation);
         self.publish(&format!("seat-{id}"), draft)?;
         let status = self.views[&id].adapter.status.clone();
-        if !status.same_value(&before) {
+        let promoted = self.promote_attention(id, live_wait)?;
+        if !status.same_value(&before) || promoted {
             self.publish_adapter(id, status)?;
         }
         Ok(true)
@@ -7519,6 +7568,7 @@ impl Worker {
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             let view = self.views.get_mut(&id).unwrap();
             let before = view.adapter.status.clone();
+            let mut live_wait = false;
             if view.adapter.status.source != "exit" {
                 if view.adapter.record.kind == "claude" {
                     let root = std::env::var_os("CLAUDE_CONFIG_DIR")
@@ -7540,11 +7590,15 @@ impl Worker {
                                         crate::adapters::Endpoint::Claude { path: path.clone() };
                                     view.delivery_failure = None;
                                 }
-                                let _ = view.adapter.observe_claude_session(
+                                if let Ok(observations) = view.adapter.observe_claude_session(
                                     &file,
                                     view.state.sequence,
                                     now,
-                                );
+                                ) {
+                                    live_wait |= observations.iter().any(|observation| {
+                                        observation.state == crate::adapters::State::Waiting
+                                    });
+                                }
                             }
                             Err(error) => {
                                 view.adapter.invalidate();
@@ -7698,7 +7752,10 @@ impl Worker {
                 view.adapter.tick(view.state.sequence, now);
             }
             let status = view.adapter.status.clone();
-            if !status.same_value(&before) {
+            live_wait |= status.state == crate::adapters::State::Waiting
+                && before.state != crate::adapters::State::Waiting;
+            let promoted = self.promote_attention(id, live_wait)?;
+            if !status.same_value(&before) || promoted {
                 self.publish_adapter(id, status)?;
             }
             self.flush_protocol_replies(id)?;
@@ -7892,8 +7949,12 @@ impl Worker {
         // publish followed by a crash is deduplicated by its original bus id.
         for (stream, draft) in self.messaging.events()? {
             let id = draft.id;
+            let changed_seat = draft.seat.filter(|seat| self.views.contains_key(seat));
             let published = self.handle.block_on(self.bus.publish(&stream, draft))?;
             self.messaging.event_published(&stream, id, published.seq)?;
+            if let Some(seat) = changed_seat {
+                self.refresh_attention(seat, false)?;
+            }
         }
         for (swarm, seat) in targets {
             if self.deliveries.len() >= 32 {
@@ -8112,6 +8173,26 @@ impl Worker {
             ),
         )
     }
+    fn refresh_attention(&self, id: Ulid, live_wait: bool) -> Result<bool> {
+        match self.gui_seat(id) {
+            Ok(row) => self.client.current_attention.update(row, live_wait),
+            Err(_) => self.client.current_attention.remove(id),
+        }
+    }
+    fn promote_attention(&self, id: Ulid, live_wait: bool) -> Result<bool> {
+        let generation = self.views[&id].generation;
+        if live_wait
+            && self
+                .client
+                .current_attention
+                .episode(id, generation)
+                .is_none()
+        {
+            self.refresh_attention(id, true)
+        } else {
+            Ok(false)
+        }
+    }
     fn seal_active_hold(&mut self) -> Result<()> {
         if let Some(run) = self.bus_window.take() {
             let ranges = self.handle.block_on(self.bus.hold_ranges())?;
@@ -8277,6 +8358,10 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
+            notification_episode: self
+                .client
+                .current_attention
+                .episode(id, view.info.generation),
             attention: self
                 .messaging
                 .deferred_view(&record)
@@ -9720,6 +9805,7 @@ impl Worker {
                     }
                     Command::Hook(id, generation, event, reply) => {
                         let before = self.views.get(&id).map(|v| v.adapter.status.clone());
+                        let mut live_wait = false;
                         let result = self
                             .views
                             .get_mut(&id)
@@ -9737,6 +9823,8 @@ impl Worker {
                                     view.state.sequence,
                                     now_ms(),
                                 ) {
+                                    live_wait = obs.agent_id.is_none()
+                                        && obs.state == crate::adapters::State::Waiting;
                                     view.adapter.apply(obs);
                                 }
                                 if event.raw["bboxy_proxy"] == true
@@ -9758,10 +9846,11 @@ impl Worker {
                             self.register_claude_socket(id, generation, &event)?;
                             Ok(status)
                         });
-                        if let (Some(before), Ok(status)) = (&before, &result)
-                            && !status.same_value(before)
-                        {
-                            self.publish_adapter(id, status.clone())?;
+                        if let (Some(before), Ok(status)) = (&before, &result) {
+                            let promoted = self.promote_attention(id, live_wait)?;
+                            if !status.same_value(before) || promoted {
+                                self.publish_adapter(id, status.clone())?;
+                            }
                         }
                         if result.is_ok() {
                             if let Some(root) = self.provenance_binding(id, generation)
@@ -9806,6 +9895,11 @@ impl Worker {
                         })();
                         if matches!(result, Ok(true)) {
                             self.persist_native_session(id)?;
+                            self.promote_attention(
+                                id,
+                                self.views[&id].adapter.status.state
+                                    == crate::adapters::State::Waiting,
+                            )?;
                             self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                         }
                         let _ = reply.send(result);
@@ -9856,20 +9950,29 @@ impl Worker {
                     }
                     Command::Native(id, generation, event, reply) => {
                         let before = self.views.get(&id).map(|v| v.adapter.status.clone());
+                        let mut live_wait = false;
                         let result = self
                             .views
                             .get_mut(&id)
                             .filter(|v| v.generation == generation)
                             .ok_or_else(|| invalid("stale native generation"))
                             .and_then(|view| {
-                                view.adapter
-                                    .on_native(&event, view.state.sequence, now_ms())?;
+                                let observations = view.adapter.on_native(
+                                    &event,
+                                    view.state.sequence,
+                                    now_ms(),
+                                )?;
+                                live_wait = observations.iter().any(|observation| {
+                                    observation.agent_id.is_none()
+                                        && observation.state == crate::adapters::State::Waiting
+                                });
                                 Ok(view.adapter.status.clone())
                             });
-                        if let (Some(before), Ok(status)) = (&before, &result)
-                            && !status.same_value(before)
-                        {
-                            self.publish_adapter(id, status.clone())?;
+                        if let (Some(before), Ok(status)) = (&before, &result) {
+                            let promoted = self.promote_attention(id, live_wait)?;
+                            if !status.same_value(before) || promoted {
+                                self.publish_adapter(id, status.clone())?;
+                            }
                         }
                         let _ = reply.send(result);
                     }
@@ -10857,6 +10960,8 @@ mod identity_retry_clock_tests {
             exit_cause: Arc::new(OnceLock::new()),
             capture_diagnostics: Arc::new(Recorder::default()),
             gui_peers: Arc::default(),
+            attention_observer_guard: Arc::default(),
+            current_attention: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: None,

@@ -17,6 +17,7 @@
 compile_error!("bbt-mux currently requires Unix PTYs and Unix sockets");
 
 pub mod adapters;
+mod attention_observer;
 pub mod bus;
 mod checkpoint;
 pub mod ctl_door;

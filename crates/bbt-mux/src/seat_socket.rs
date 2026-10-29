@@ -930,6 +930,11 @@ async fn gui_session(
     }
     let _reader = Reader(task);
     let mut admitted = false;
+    // The first request selects a legacy/window connection or a permanently
+    // restricted observer. An observer never subscribes to capture relays.
+    let mut observer_mode: Option<bool> = None;
+    let mut observer_reference: Option<bbt_proto::messaging::OperatorReference> = None;
+    let mut attention_observer: Option<crate::attention_observer::AttentionSubscription> = None;
     let mut phase = "admission";
     let mut requests = 0_u64;
     let mut last_action = "none";
@@ -953,7 +958,7 @@ async fn gui_session(
     let mut tick = tokio::time::interval(Duration::from_millis(20));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // Only the window captures: its session relays the operator's asks.
-    let mut capture_asks = (door == crate::mcp::Door::Gui).then(|| client.captures.subscribe());
+    let mut capture_asks = None;
     // Who issues this connection's operator requests, once it says (decision #269).
     let mut issued_by: Option<String> = None;
     // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.
@@ -1003,6 +1008,32 @@ async fn gui_session(
                         return Err(invalid("GUI socket version mismatch"));
                     }
                     let request:GuiRequest=serde_json::from_slice(&line)?;
+                    let wants_observer=matches!(&request.action,GuiAction::GuiHello {observer:true,..});
+                    if wants_observer {
+                        let GuiAction::GuiHello {id,claim,..}=&request.action else {unreachable!()};
+                        let allowed=if *claim || observer_mode==Some(false) {
+                            Err(invalid("attention observer cannot claim or replace a GUI connection"))
+                        } else {
+                            peer_pid.ok_or_else(||invalid("attention observer peer PID unavailable"))
+                                .and_then(|pid|client.admit_attention_observer(pid))
+                        };
+                        if let Err(error)=allowed {
+                            send(&mut write,&GuiReply::Error {op:*id,reason:error.to_string()}).await?;
+                            return Err(error);
+                        }
+                        observer_mode=Some(true);
+                    } else if observer_mode==Some(true) {
+                        if !matches!(&request.action,GuiAction::ObserveAttention {..}) {
+                            send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:"attention observer is read-only".into()}).await?;
+                            continue;
+                        }
+                    } else if matches!(&request.action,GuiAction::ObserveAttention {..}) {
+                        send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:"ObserveAttention requires an observer hello".into()}).await?;
+                        continue;
+                    } else if observer_mode.is_none() {
+                        observer_mode=Some(false);
+                        if door==crate::mcp::Door::Gui {capture_asks=Some(client.captures.subscribe());}
+                    }
                     last_action=match &request.action {
                         GuiAction::AttachEvents {..}=>"attach-events",
                         GuiAction::EventAck {..}=>"event-ack",
@@ -1126,7 +1157,7 @@ async fn gui_session(
                     }
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
-                        GuiAction::ConfigureRoles {id,..}|GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
+                        GuiAction::ConfigureRoles {id,..}|GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::ObserveAttention {id}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
                         GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::SeatControl {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::KnowledgeCommit {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
@@ -1135,7 +1166,8 @@ async fn gui_session(
                         match request.action {
                             GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}=>unreachable!("swarm metadata dispatched independently"),
                             GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
-                            GuiAction::GuiHello {id,claim}=> {
+                            GuiAction::GuiHello {id,claim,observer}=> {
+                                if observer {observer_reference=Some(client.gui_device().await?);}
                                 if claim {
                                     client.claim_gui(peer_pid.ok_or_else(||invalid("native GUI peer PID unavailable"))?)?;
                                     door=crate::mcp::Door::Gui;
@@ -1146,6 +1178,16 @@ async fn gui_session(
                                     hello.window=Some(client.window_journal.as_ref().ok_or_else(||invalid("window journal unavailable"))?.claim().await?);
                                 }
                                 Ok(GuiReply::GuiHello {op:id,hello})
+                            }
+                            GuiAction::ObserveAttention {id}=> {
+                                client.admit_attention_observer(peer_pid.ok_or_else(||invalid("attention observer peer PID unavailable"))?)?;
+                                if observer_reference.as_ref().map(|reference|reference.id)!=Some(client.gui_device().await?.id) {
+                                    return Err(invalid("attention observer device changed; reconnect"));
+                                }
+                                let mut subscription=client.observe_attention();
+                                let update=subscription.next().await?;
+                                attention_observer=Some(subscription);
+                                Ok(GuiReply::Attention {op:Some(id),update})
                             }
                             GuiAction::Ui {id,request}=> {
                                 if door!=crate::mcp::Door::Ctl {return Err(invalid("UI requests use the ctl operator door"));}
@@ -1455,7 +1497,15 @@ async fn gui_session(
                         Err(tokio::sync::broadcast::error::RecvError::Closed)=>capture_asks=None,
                     }
                 }
-                _=tick.tick(),if admitted=> {
+                update=async {attention_observer.as_mut().unwrap().next().await},if admitted&&attention_observer.is_some()=> {
+                    let update=update?;
+                    client.admit_attention_observer(peer_pid.ok_or_else(||invalid("attention observer peer PID unavailable"))?)?;
+                    if observer_reference.as_ref().map(|reference|reference.id)!=Some(client.gui_device().await?.id) {
+                        return Err(invalid("attention observer device changed; reconnect"));
+                    }
+                    send(&mut write,&GuiReply::Attention {op:None,update}).await?;
+                }
+                _=tick.tick(),if admitted && observer_mode!=Some(true)=> {
                     cursor_waits_for_tick=false;
                     if (refresh_retry||filters_at.elapsed()>=Duration::from_secs(1)) && let Some(active)=&mut lane {
                         refresh_retry=false;
