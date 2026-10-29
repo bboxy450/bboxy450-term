@@ -47,6 +47,7 @@ help:
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
+	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
@@ -246,6 +247,17 @@ test-swarm:
 test-make-isolation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test native_signing
+
+.PHONY: test-signed-mentions
+test-signed-mentions:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --lib mentions --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --lib first_held_operator_delivers_an_authorless_intent_but_cannot_mute --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test messaging --test mcp mention --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --test attention_policy --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test messaging_flow --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test swarm_workdir signed_mentions_refresh_retains_sessions_and_shell_state --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 .PHONY: test-gui-events
 test-gui-events:

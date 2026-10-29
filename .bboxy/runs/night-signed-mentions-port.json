@@ -1,0 +1,161 @@
+{
+  "task": "241 + runtime activation248",
+  "executor": "Lumen Foxglove",
+  "recorded_utc": "2026-10-29T07:45:10.431808+00:00",
+  "source_base": "6fa8abb654458dabe2b98ff1021769fcf80dc083",
+  "origin": {
+    "adapted_from": "bboxy450-term signed MA-10 component0885ac378f162c6dfddadb9a7117957d68751bbd",
+    "prior_evidence": "3aa1aae03c736d5f632569a249ab99a4bbae9737 read as historical only",
+    "canonical": "https://github.com/bboxy450/bboxy450-term",
+    "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md"
+  },
+  "mechanism": {
+    "sender": "MCP and GUI resolve only in Journal::effect from open same-swarm seats; IDs deduplicate/sort/bound32 and replace caller proposals; names grant no route",
+    "receiver": "Attention reads signed/pending IDs only, never prose; pin admission and honor receiver policy",
+    "replay": "Successful and refused journal results survive rename/reopen without resolution; pending binding and upgrade content preserve original IDs and attachment links",
+    "wire": "Empty/absent mentions omit bytes; nonempty IDs enter the canonical signed payload",
+    "activation": "Independent MCP marker8; test advertises7 on a private current-binary owner then uses normal attach/logic-only refresh; supervisor, real seat PIDs/generations, generated native Claude --session-id and zsh export survive; refreshed real seat MCP send signs IDs and admits wake=now"
+  },
+  "compatibility": {
+    "base": "6fa8abb654458dabe2b98ff1021769fcf80dc083",
+    "parked_source": "0885ac378f162c6dfddadb9a7117957d68751bbd",
+    "signatures": [
+      "0885ac378f162c6dfddadb9a7117957d68751bbd G 9B07E849480C68328CA20684844ECC0587DE7AB0 9B07E849480C68328CA20684844ECC0587DE7AB0 Boxy <bboxy450@gmail.com>",
+      "3aa1aae03c736d5f632569a249ab99a4bbae9737 G 9B07E849480C68328CA20684844ECC0587DE7AB0 9B07E849480C68328CA20684844ECC0587DE7AB0 Boxy <bboxy450@gmail.com>"
+    ],
+    "preexisting_golden_bytes": 67469,
+    "preexisting_golden_sha256": "7a0582f7f07bdac11468ef89c7c8aeddd30115cf87afd76f28960bf7cddf1417",
+    "new_cases": 2,
+    "old_golden_prefix_identical": true,
+    "fixed_legacy_vector_sha256": "e80260987e61821c542a5796a0dbbc13ab01d69f58d86327783b270e856cc56b",
+    "legacy_vectors_identical_to_parked": true,
+    "legacy_vector_count": 4
+  },
+  "verification": {
+    "focused_command": "make test-signed-mentions TARGET_DIR=target/night-signed-mentions",
+    "focused_exit_code": 0,
+    "passed": 90,
+    "failed": 0,
+    "ignored": 1,
+    "ignored_reason": "preexisting composed_decision_and_task_delegation night-only test remains unchanged",
+    "runtime_witness": [
+      "advertised-old MCP7 -> 8; same current binary both launches; supervisor=79618 old_logic=79621 new_logic=79814; generation/process/native-session and real shell state retained; signed mention admitted wake=now"
+    ],
+    "licenses_command": "make test-licenses",
+    "licenses_exit_code": 0,
+    "mutation_controls": {
+      "command": [
+        "make",
+        "test-signed-mentions",
+        "TARGET_DIR=target/night-signed-mentions"
+      ],
+      "original_source_sha256": {
+        "crates/bbt-mux/src/messaging/service.rs": "ca605cd10a31fbd51f174295c2da6a8a042c16b0b1edf6f723e2480c16a2de76",
+        "crates/bboxy450-term/src/cockpit.rs": "4ab2507f2b569e5238c75e72df0f2d3dd16568d5449303b346b4618534e343e8"
+      },
+      "runs": [
+        {
+          "name": "receiver-mutation-red",
+          "exit_code": 2,
+          "log": "/tmp/lumen-signed-mentions-receiver-mutation-red.log",
+          "sha256": "1e4d99ed0135c7adffe5a3f0cb468a011771a6f2b744b82a46a074e57a21bcfc",
+          "seconds": 107.88993783295155,
+          "required_witness": "channel_mentions_wake_only_named_members_and_remain_pinned_after_reopen ... FAILED",
+          "witness_present": true
+        },
+        {
+          "name": "marker-mutation-red",
+          "exit_code": 2,
+          "log": "/tmp/lumen-signed-mentions-marker-mutation-red.log",
+          "sha256": "b273a9be564c10bb63a298443d2725a1cdd3900d74dc07b421571c80cf526306",
+          "seconds": 178.08696829201654,
+          "required_witness": "signed mentions need their own activation marker",
+          "witness_present": true
+        },
+        {
+          "name": "restored-green",
+          "exit_code": 0,
+          "log": "/tmp/lumen-signed-mentions-restored-green.log",
+          "sha256": "d564ef4934e9d848a81e96adb6fde3d96d1f0db48f2740529ae4056b3bca5f31",
+          "seconds": 43.63649795798119,
+          "required_witness": "test signed_mentions_refresh_retains_sessions_and_shell_state ... ok",
+          "witness_present": true
+        }
+      ],
+      "restored_source_sha256": {
+        "crates/bbt-mux/src/messaging/service.rs": "ca605cd10a31fbd51f174295c2da6a8a042c16b0b1edf6f723e2480c16a2de76",
+        "crates/bboxy450-term/src/cockpit.rs": "4ab2507f2b569e5238c75e72df0f2d3dd16568d5449303b346b4618534e343e8"
+      }
+    },
+    "full_normal_gate": "Final task_report carries actual make test result and signed author landing for the resulting clean HEAD; this record covers precommit source blobs/focused checks."
+  },
+  "initial_failures": [
+    {
+      "log": "/tmp/lumen-signed-mentions-initial.log",
+      "exit_code": 2,
+      "cause": "New event test incorrectly used the ordinary Presence send API, which correctly refuses typed producers; no production relaxation."
+    },
+    {
+      "log": "/tmp/lumen-signed-mentions-focused.log",
+      "exit_code": 2,
+      "cause": "New event fixture then used Withdrawn with mention content, correctly refused; corrected to a valid signed typed Presence envelope at the actual recipient attention boundary."
+    },
+    {
+      "log": "/tmp/lumen-signed-mentions-licenses.log",
+      "exit_code": 2,
+      "cause": "New adapted-source credit interrupted the required six-line owned notice; moved credit after intact standard notice and reran successfully."
+    }
+  ],
+  "logs": {
+    "/tmp/lumen-signed-mentions-initial.log": {
+      "sha256": "52f812f85c87e40bf4b2809835c799537525087c0b16dafd5a39a69f6e48bf85"
+    },
+    "/tmp/lumen-signed-mentions-focused.log": {
+      "sha256": "569a9c5848903bf501e4d07cfaefa9d29fa3655a4af52d99e10e94a09fef4977"
+    },
+    "/tmp/lumen-signed-mentions-focused-fixed.log": {
+      "sha256": "9448ddefeb3caaff3d669b42e14434175144764c5ed44b73fee6161bd7d95ae0"
+    },
+    "/tmp/lumen-signed-mentions-activation.log": {
+      "sha256": "aa03dd9754eaae6cfe49312813d12e692c2d52a28f4c4d75f00187cbb3b2fe6c"
+    },
+    "/tmp/lumen-signed-mentions-licenses.log": {
+      "sha256": "8f8363f09da4be06cda5238c1c5f7d5fdbb51b3fbcaee5404075263974dc0351"
+    },
+    "/tmp/lumen-signed-mentions-licenses-fixed.log": {
+      "sha256": "ff6bb09f427988c7daa68b3f722f8cf9f1f652a1dcd27eb01c61e0d5e8981b3a"
+    },
+    "/tmp/lumen-signed-mentions-restored-green.log": {
+      "sha256": "d564ef4934e9d848a81e96adb6fde3d96d1f0db48f2740529ae4056b3bca5f31"
+    }
+  },
+  "source_sha256": {
+    ".bboxy/interfaces/messaging-seats.md": "c81e1a1b001cf8f842201961cb2f02783046ad94bcd4349172238019f835d982",
+    "Makefile": "15b46b396ad53bbbe0ba2cb395b0c0b1c4e513332fff750555f556277d64ade2",
+    "crates/bboxy450-term/src/cockpit.rs": "4ab2507f2b569e5238c75e72df0f2d3dd16568d5449303b346b4618534e343e8",
+    "crates/bboxy450-term/src/messaging.rs": "fac19059bc9d6219a617bbee91224be94667aebf355779912b524011397ffb87",
+    "crates/bboxy450-term/tests/messaging_flow.rs": "0161341d18c1a117f03382c0b068c213cb5103ee5acede06f828733a58aa697e",
+    "crates/bboxy450-term/tests/swarm_workdir.rs": "c837a4f56ae96c6b8112187599855bf65dfafe911aadea210bc231699fece263",
+    "crates/bbt-mux/src/logic.rs": "4e4986f1dc8d1499b411df38c3397d032fcdc3495c7cfc327651b5bd99b47a71",
+    "crates/bbt-mux/src/mcp/messaging.rs": "6190b5fb4ec09dd76f36b027cf8c619de4bc68462f7b6e68fef6e6378489b123",
+    "crates/bbt-mux/src/messaging/mentions.rs": "4eb5c48f2f28b7c9290ee8e430402f0b20937ce64ec265925034fbbdf37e4334",
+    "crates/bbt-mux/src/messaging/mentions_tests.rs": "cd09fb83b29b12f39b5ec0f39aeb7f0163b502303ba7c10408be71f7fc5def84",
+    "crates/bbt-mux/src/messaging/mod.rs": "292c960946ba100ce97e62e5aa6c67e55822bab743d3f3c05b0dd8f8ba70ec56",
+    "crates/bbt-mux/src/messaging/pending.rs": "1ab45ed64aa956fe2218b4360e9fa668319fd0f13f25b3fdd6d32e3e2b67c029",
+    "crates/bbt-mux/src/messaging/service.rs": "ca605cd10a31fbd51f174295c2da6a8a042c16b0b1edf6f723e2480c16a2de76",
+    "crates/bbt-mux/src/messaging/wire.rs": "bed3cdc2605c584221e787047d50414a2b526d9267d35f6ec9f6d02b17b2c743",
+    "crates/bbt-mux/src/plugins/check.rs": "4a2e7b92cd0ee217cf70b0155bf1f41aa577e382ae5b144a9c6c7a041138c3ed",
+    "crates/bbt-mux/tests/fixtures/mentions-legacy-signing.json": "e80260987e61821c542a5796a0dbbc13ab01d69f58d86327783b270e856cc56b",
+    "crates/bbt-mux/tests/mcp.rs": "b220795ec049761a55920d78e2d6a78a47c54be6b0e6bed8ee7a93d60c8666b6",
+    "crates/bbt-mux/tests/messaging.rs": "031cca5bb491dd80d16d675b29a896d1bc76a5f3cb7f2a2de2494215c3fb6c81",
+    "crates/bbt-proto/src/messaging.rs": "be6d0d9def3a098d13f6784607a604b0a69040b1d69935a7f3c5e33a54366722",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "9b331d33774e9c4b6ab2367323822f77f2ef9f83f641733ca3dbed7ae61455b7",
+    "crates/bbt-proto/tests/messaging_mentions.rs": "30bf2d2b03226ec48027f6959f945f9b54f534910ad3540834439cc9441fa292",
+    "crates/bbt-proto/tests/messaging_pending.rs": "005bf54642b6b6de7a4116b672621809996e93a2539669c234674a7716f6b852"
+  },
+  "limits": [
+    "Activation test executes the same current binary before/after the advertised-old marker; it does not execute an actual older binary.",
+    "No release/install/live app refresh, KB/provider/input/sidebar change, night-scale or visual parity claim.",
+    "Historical issue39 remains unproven; its quarantine and open issue are retained."
+  ]
+}

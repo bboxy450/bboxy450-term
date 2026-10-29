@@ -87,6 +87,7 @@ fn signed_stored_messages_keep_their_legacy_bytes_without_a_new_tag() {
         thread_id: id,
         reply_to: None,
         supersedes: None,
+        mentions: Vec::new(),
         timestamp: 1,
         priority: 0,
         kind: bbt_proto::messaging::MessageKind::Text,

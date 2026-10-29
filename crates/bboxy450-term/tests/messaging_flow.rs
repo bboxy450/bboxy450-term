@@ -451,3 +451,78 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
     f.task_refresh(&mut records, &mut results).await;
     assert_eq!(records.task(f.task).unwrap().status, "accepted");
 }
+
+// keeps: MA-10 the real composer sender resolves aliases, signs IDs, and retains an unresolved draft with its hint.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn composer_mentions_resolve_on_the_gui_sender_and_unknown_names_keep_the_draft() {
+    use bbt_mux::messaging::wire::EnvelopeExt;
+    let mut f = Fixture::new().await;
+    let make_editor = |text: &str| {
+        Controller::new(composer::Composer {
+            focus: true,
+            kind: "text".into(),
+            text: text.into(),
+            to: vec![Address {
+                kind: "channel".into(),
+                destination: format!("swarms/{}", f.own.swarm),
+                ..Default::default()
+            }],
+            ..Default::default()
+        })
+    };
+    let mut editor = make_editor("@missing please review");
+    let mut valid_editor = make_editor("@aCtUaL please review");
+    let mut client = Client::default();
+    let mut results = Results::default();
+    let Outcome::Submit(draft) = editor.handle(Command::Send) else {
+        panic!("composer draft");
+    };
+    let batch = client.prepare(Some(f.scope), draft).unwrap();
+    let command = client.admitted(batch).pop().unwrap();
+    f.command(command, &mut results).await;
+    assert!(client.replies(&results).0.is_none());
+    assert_eq!(editor.view.text, "@missing please review");
+    assert!(matches!(&client.status, messaging::Status::Refused(reason)
+        if reason.contains("unknown_mention") && reason.contains("Actual executor")));
+
+    let mut client = Client::default();
+    let Outcome::Submit(draft) = valid_editor.handle(Command::Send) else {
+        panic!("composer draft");
+    };
+    let batch = client.prepare(Some(f.scope), draft).unwrap();
+    let command = client.admitted(batch).pop().unwrap();
+    let id = f.command(command, &mut results).await;
+    let stored = client.replies(&results).0.expect("correlated stored group");
+    valid_editor.stored(&stored);
+    assert!(valid_editor.view.text.is_empty());
+    let op = Ulid::new();
+    let reply = f
+        .action(
+            op,
+            GuiAction::Messaging {
+                id: op,
+                swarm_id: f.scope,
+                request: Request::List {
+                    thread: None,
+                    channel: Some(format!("swarms/{}/*", f.own.swarm)),
+                    after: 0,
+                    limit: 128,
+                },
+            },
+        )
+        .await;
+    let GuiReply::Messaging {
+        response: Response::Messages { page },
+        ..
+    } = reply
+    else {
+        panic!("{reply:?}");
+    };
+    let message = page
+        .items
+        .iter()
+        .find(|message| message.view().id == id)
+        .unwrap();
+    assert_eq!(message.view().mentions, [f.own.id]);
+    message.envelope().unwrap().verify_signature().unwrap();
+}

@@ -53,7 +53,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "message_send",
-            "Send within your current W2.4 destination grants as this seat. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). A DM is for questions and feedback; work arrives only as a delegated task. Set supersedes to one of your own message ids to replace it; kind withdrawn requires empty text/attachments and supersedes. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
+            "Send within your current W2.4 destination grants as this seat. @name names a unique open seat in your swarm by display name or first word (case-insensitive); use @{Full Display Name} for spaces. Names resolve to signed seat IDs at send time; unknown/ambiguous names refuse with valid names in the hint. To answer a message, pass reply_to and omit destination: the reply goes to its sender (the operator is operator/inbox). A DM is for questions and feedback; work arrives only as a delegated task. Set supersedes to one of your own message ids to replace it; kind withdrawn requires empty text/attachments and supersedes. Stored/held means durable acceptance, not model receipt; use message_receipts for delivery evidence.",
             json!({"destination":path,"text":{"type":"string","maxLength":16384},"thread_id":id,"reply_to":id,"supersedes":id,
              "priority":{"type":"integer","minimum":0,"maximum":9},"kind":{"enum":["text","chunk","decision","withdrawn"]},
              "attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":512}}}),
@@ -287,6 +287,10 @@ pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<
         Request::Grant { .. } => "ch_grant",
         Request::Mute { .. } => unreachable!(),
     };
+    let mentions = match &value {
+        Request::Send { message } => message.mentions.clone(),
+        _ => Vec::new(),
+    };
     let mut args = match value {
         Request::Send { message } => {
             if message.id != op_id {
@@ -296,6 +300,9 @@ pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<
             args.as_object_mut()
                 .ok_or("message request is not an object")?
                 .remove("id");
+            args.as_object_mut()
+                .expect("message request is an object")
+                .remove("mentions");
             args
         }
         other => serde_json::to_value(other).map_err(|e| e.to_string())?,
@@ -303,7 +310,7 @@ pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<
     args.as_object_mut()
         .ok_or("messaging request is not an object")?
         .remove("op");
-    request(
+    let mut request = request(
         actor,
         &Call {
             op_id,
@@ -311,7 +318,12 @@ pub(crate) fn gui_request(actor: &Actor, op_id: Ulid, value: Request) -> Result<
             args,
         },
     )?
-    .ok_or_else(|| "unsupported messaging operation".into())
+    .ok_or_else(|| "unsupported messaging operation".to_owned())?;
+    if let Request::Send { message } = &mut request {
+        message.mentions = mentions;
+        message.validate().map_err(|e| e.to_string())?;
+    }
+    Ok(request)
 }
 pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, String> {
     if matches!(call.tool.as_str(), "ch_link" | "ch_pause" | "ch_grant")
@@ -338,6 +350,7 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Option<Request>, Str
                 thread_id: a.thread_id,
                 reply_to: a.reply_to,
                 supersedes: a.supersedes,
+                mentions: Vec::new(),
                 priority: a.priority.unwrap_or(0),
                 kind: a.kind.unwrap_or(MessageKind::Text),
                 text: a.text,

@@ -118,6 +118,7 @@ pub fn check_upgrade_content(
         || envelope.thread_id != intent.request.thread_id.unwrap_or(intent.id)
         || envelope.reply_to != intent.request.reply_to
         || envelope.supersedes != intent.request.supersedes
+        || envelope.mentions != intent.request.mentions
         || envelope.attachments != intent.request.attachments
         || envelope.timestamp != intent.admitted_ms / 1000
         || !origin

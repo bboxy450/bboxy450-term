@@ -1,0 +1,148 @@
+[
+  {
+    "envelope": {
+      "version": 1,
+      "id": "00000000000000000000000001",
+      "issuer_kind": "local-dev",
+      "issuer": "issuer",
+      "account": "account",
+      "device": "device",
+      "seat": "00000000000000000000000001",
+      "author": "author",
+      "swarm_id": "00000000000000000000000001",
+      "process_generation": "1",
+      "context": "seats/target/inbox",
+      "role": {
+        "name": "executor",
+        "class": "worker"
+      },
+      "role_grant_id": "grant",
+      "role_epoch": "1",
+      "priority_class": "worker",
+      "sender_sequence": "1",
+      "thread_id": "00000000000000000000000001",
+      "reply_to": null,
+      "timestamp": 1,
+      "priority": 0,
+      "kind": "text",
+      "body": {
+        "type": "text",
+        "text": "@Peer named conversation"
+      },
+      "attachments": [],
+      "signature": ""
+    },
+    "sha256": "82a9f238d5a70475f205667c03a2530f8c4765e28234d69603d854085af2c396"
+  },
+  {
+    "envelope": {
+      "version": 1,
+      "id": "00000000000000000000000001",
+      "issuer_kind": "local-dev",
+      "issuer": "issuer",
+      "account": "account",
+      "device": "device",
+      "seat": "00000000000000000000000001",
+      "author": "author",
+      "swarm_id": "00000000000000000000000001",
+      "process_generation": "1",
+      "context": "seats/target/inbox",
+      "role": {
+        "name": "executor",
+        "class": "worker"
+      },
+      "role_grant_id": "grant",
+      "role_epoch": "1",
+      "priority_class": "worker",
+      "sender_sequence": "1",
+      "thread_id": "00000000000000000000000001",
+      "reply_to": null,
+      "timestamp": 1,
+      "priority": 0,
+      "kind": "text",
+      "body": {
+        "type": "text",
+        "text": "@Peer named conversation"
+      },
+      "attachments": [],
+      "signature": "",
+      "door": "ctl",
+      "issued_by": "legacy fixture"
+    },
+    "sha256": "b019b3a25bd675987d5a059d17480a5ef8ec9c8af09814a43a43b298f566e143"
+  },
+  {
+    "envelope": {
+      "version": 1,
+      "id": "00000000000000000000000001",
+      "issuer_kind": "local-dev",
+      "issuer": "issuer",
+      "account": "account",
+      "device": "device",
+      "seat": "00000000000000000000000001",
+      "author": "author",
+      "swarm_id": "00000000000000000000000001",
+      "process_generation": "1",
+      "context": "seats/target/inbox",
+      "role": {
+        "name": "executor",
+        "class": "worker"
+      },
+      "role_grant_id": "grant",
+      "role_epoch": "1",
+      "priority_class": "worker",
+      "sender_sequence": "1",
+      "thread_id": "00000000000000000000000001",
+      "reply_to": null,
+      "timestamp": 1,
+      "priority": 0,
+      "kind": "text",
+      "body": {
+        "type": "text",
+        "text": "@Peer named conversation"
+      },
+      "attachments": [],
+      "signature": "",
+      "supersedes": "00000000000000000000000002"
+    },
+    "sha256": "85bb2bf594c8d2401d1e2e1106c6d99e282e7b822c9cf45dc7baed96e3fddbba"
+  },
+  {
+    "envelope": {
+      "version": 1,
+      "id": "00000000000000000000000001",
+      "issuer_kind": "local-dev",
+      "issuer": "issuer",
+      "account": "account",
+      "device": "device",
+      "seat": "00000000000000000000000001",
+      "author": "author",
+      "swarm_id": "00000000000000000000000001",
+      "process_generation": "1",
+      "context": "seats/target/inbox",
+      "role": {
+        "name": "executor",
+        "class": "worker"
+      },
+      "role_grant_id": "grant",
+      "role_epoch": "1",
+      "priority_class": "worker",
+      "sender_sequence": "1",
+      "thread_id": "00000000000000000000000001",
+      "reply_to": null,
+      "timestamp": 1,
+      "priority": 0,
+      "kind": "text",
+      "body": {
+        "type": "text",
+        "text": "@Peer named conversation"
+      },
+      "attachments": [],
+      "signature": "",
+      "supersedes": "00000000000000000000000002",
+      "door": "ctl",
+      "issued_by": "legacy fixture"
+    },
+    "sha256": "9b663ef7d45b118c90a4bde95b51ce95631a0a90750ba84306afd7a07e309158"
+  }
+]

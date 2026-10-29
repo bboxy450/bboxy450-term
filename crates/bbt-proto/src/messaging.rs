@@ -14,6 +14,7 @@ use ulid::Ulid;
 use crate::registry::{Class, Role};
 
 pub const MAX_TEXT: usize = 16 * 1024;
+pub const MAX_MENTIONS: usize = 32;
 /// The longest `issued_by` label an operator envelope carries (decision #269).
 pub const MAX_ISSUER: usize = 128;
 
@@ -207,6 +208,9 @@ pub struct SendRequest {
     pub reply_to: Option<Ulid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub supersedes: Option<Ulid>,
+    /// Sender-resolved seat IDs; never inferred from prose by a receiver.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mentions: Vec<Ulid>,
     pub priority: u8,
     pub kind: MessageKind,
     pub text: String,
@@ -221,6 +225,7 @@ impl SendRequest {
             thread_id: None,
             reply_to: None,
             supersedes: None,
+            mentions: Vec::new(),
             priority: 0,
             kind: MessageKind::Text,
             text: text.into(),
@@ -255,6 +260,9 @@ pub struct Envelope {
     pub reply_to: Option<Ulid>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub supersedes: Option<Ulid>,
+    /// Signed when nonempty; absence preserves the original v1 signing bytes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mentions: Vec<Ulid>,
     pub timestamp: u64,
     pub priority: u8,
     pub kind: MessageKind,
@@ -542,6 +550,7 @@ pub struct MessageView<'a> {
     pub thread_id: Ulid,
     pub reply_to: Option<Ulid>,
     pub supersedes: Option<Ulid>,
+    pub mentions: &'a [Ulid],
     pub attachments: &'a [String],
     pub timestamp: u64,
     pub issuer_kind: Option<IssuerKind>,
@@ -585,6 +594,7 @@ impl StoredMessage {
                 thread_id: e.thread_id,
                 reply_to: e.reply_to,
                 supersedes: e.supersedes,
+                mentions: &e.mentions,
                 attachments: &e.attachments,
                 timestamp: e.timestamp,
                 issuer_kind: Some(e.issuer_kind),
@@ -617,6 +627,7 @@ impl StoredMessage {
                     thread_id: i.request.thread_id.unwrap_or(i.id),
                     reply_to: i.request.reply_to,
                     supersedes: i.request.supersedes,
+                    mentions: &i.request.mentions,
                     attachments: &i.request.attachments,
                     timestamp: i.admitted_ms / 1000,
                     issuer_kind: None,

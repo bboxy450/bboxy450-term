@@ -6186,6 +6186,245 @@ fn unknown_thread_mcp_refusal_keeps_the_visible_hint_and_replays_without_a_send(
     assert_eq!(replay, refused);
 }
 
+// keeps: MA-10 real MCP tool signs resolved IDs; only named channel members wake; replay never resolves again.
+#[test]
+fn mcp_channel_mentions_sign_ids_and_pin_each_receivers_wake() {
+    let mut f = Fixture::new();
+    let channel = "channels/mention-proof";
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "ch_link",
+        json!({"node":{"path":channel,"kind":"folder"}}),
+    ));
+    for seat in [f.own.id, f.peer.id] {
+        data(f.mutate(f.oracle.id, Ulid::new(), "ch_link", json!({"node":{
+            "path":format!("{channel}/{seat}"),"kind":"link","target":format!("seats/{seat}/inbox")
+        }})));
+    }
+    let op = Ulid::new();
+    let args = json!({"destination":format!("{channel}/*"),"text":"@pEeR please review this; mail user@outside.example"});
+    let result = f.mutate(f.oracle.id, op, "message_send", args.clone());
+    let sent = data(result.clone());
+    assert_eq!(sent["message"]["envelope"]["mentions"], json!([f.peer.id]));
+    let envelope: bbt_proto::messaging::Envelope =
+        serde_json::from_value(sent["message"]["envelope"].clone()).unwrap();
+    envelope.verify_signature().unwrap();
+    let receipts = data(f.call(
+        f.oracle.id,
+        Ulid::new(),
+        "message_receipts",
+        json!({"message":op}),
+    ));
+    let rows = receipts["page"]["items"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    let peer = rows
+        .iter()
+        .find(|row| row["recipient"] == json!(f.peer.id))
+        .unwrap();
+    let own = rows
+        .iter()
+        .find(|row| row["recipient"] == json!(f.own.id))
+        .unwrap();
+    assert_eq!(peer["wake"], "now");
+    assert_eq!(own["wake"], "deferred");
+    f.registry()
+        .update(f.peer.id, |seat| {
+            seat.name = "Renamed Peer".into();
+            Ok(())
+        })
+        .unwrap();
+    f.restart();
+    assert_eq!(
+        f.mutate(f.oracle.id, op, "message_send", args.clone()),
+        result
+    );
+    let refused = f.mutate(f.oracle.id, Ulid::new(), "message_send", args);
+    assert_eq!(
+        refused["structuredContent"]["error"]["kind"],
+        "unknown_mention"
+    );
+    assert!(
+        refused["structuredContent"]["error"]["hint"]
+            .as_str()
+            .unwrap()
+            .contains("Renamed Peer")
+    );
+}
+
+// keeps: caller IDs grant no mention authority; GUI journal replay pins both signed and refused results.
+#[test]
+fn composer_mentions_replace_proposed_ids_and_replay_original_identity_after_rename() {
+    use bbt_proto::{
+        GuiAction, GuiReply,
+        messaging::{Request, Response, SendRequest},
+    };
+    let mut f = Fixture::new();
+    f.prepare_operator();
+    let send = |f: &Fixture, message: SendRequest| {
+        let id = message.id;
+        match f.gui_once(
+            id,
+            GuiAction::Messaging {
+                id,
+                swarm_id: bbt_proto::SwarmId::from_u128(f.own.swarm.0),
+                request: Request::Send { message },
+            },
+        ) {
+            GuiReply::Messaging { response, .. } => response,
+            reply => panic!("{reply:?}"),
+        }
+    };
+    let destination = format!("seats/{}/inbox", f.own.id);
+    let mut ordinary = SendRequest::text(&destination, "ordinary prose");
+    ordinary.mentions = vec![f.outside.id];
+    let Response::Stored { message } = send(&f, ordinary) else {
+        panic!("ordinary stored")
+    };
+    assert!(
+        message.view().mentions.is_empty(),
+        "unsigned caller IDs must be cleared"
+    );
+
+    let mut request = SendRequest::text(&destination, "@pEeR review user@example.org");
+    request.mentions = vec![f.outside.id];
+    request.attachments = vec!["[[images/custody-fixture]]".into()];
+    let first = send(&f, request.clone());
+    let Response::Stored { message } = &first else {
+        panic!("{first:?}")
+    };
+    assert_eq!(message.view().mentions, [f.peer.id]);
+    assert_eq!(message.view().attachments, request.attachments);
+    message.envelope().unwrap().verify_signature().unwrap();
+    f.registry()
+        .update(f.peer.id, |seat| {
+            seat.name = "Renamed peer".into();
+            Ok(())
+        })
+        .unwrap();
+    f.restart();
+    assert_eq!(
+        serde_json::to_value(send(&f, request.clone())).unwrap(),
+        serde_json::to_value(first).unwrap()
+    );
+
+    request.id = Ulid::new();
+    let refused = send(&f, request.clone());
+    assert!(matches!(&refused, Response::Refused { error } if error.kind == "unknown_mention"));
+    f.registry()
+        .update(f.peer.id, |seat| {
+            seat.name = "Peer".into();
+            Ok(())
+        })
+        .unwrap();
+    f.restart();
+    assert_eq!(
+        serde_json::to_value(send(&f, request)).unwrap(),
+        serde_json::to_value(refused).unwrap()
+    );
+
+    let supplied = f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "message_send",
+        json!({
+            "destination": destination, "text":"ordinary prose", "mentions":[f.peer.id]
+        }),
+    );
+    assert_eq!(
+        supplied["isError"], true,
+        "MCP accepts names, never caller-resolved IDs"
+    );
+}
+
+// keeps: MA-10 unknown/ambiguous names refuse before effects and reveal only open same-swarm names.
+#[test]
+fn mcp_and_composer_mentions_share_typed_refusals_before_message_or_signing_effects() {
+    use bbt_proto::messaging::{Request, Response, SendRequest};
+    let f = Fixture::new();
+    f.prepare_operator();
+    let counters = || {
+        let store = SqliteStore::open(&f.config.run_dir.join("account")).unwrap();
+        let db = store.connection().unwrap();
+        let sequences: i64 = db
+            .query_row(
+                "SELECT coalesce(sum(sequence),0) FROM msg_counters",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let held: i64 = db
+            .query_row("SELECT count(*) FROM msg_held", [], |row| row.get(0))
+            .unwrap();
+        (sequences, held)
+    };
+    let before = counters();
+    let args = json!({"destination":format!("seats/{}/inbox", f.own.id),"text":"@Outside cannot address another swarm"});
+    let unknown = Ulid::new();
+    let rejected = f.mutate(f.own.id, unknown, "message_send", args.clone());
+    let error = &rejected["structuredContent"]["error"];
+    assert_eq!(error["kind"], "unknown_mention");
+    let hint = error["hint"].as_str().unwrap();
+    assert!(hint.contains("Peer"));
+    assert!(!hint.contains("Outside"));
+    f.registry().update(f.own.id, |seat| {
+        seat.name = "Outside".into();
+        Ok(())
+    }).unwrap();
+    assert_eq!(f.mutate(f.own.id, unknown, "message_send", args), rejected);
+    f.registry().update(f.own.id, |seat| {
+        seat.name = "Own".into();
+        Ok(())
+    }).unwrap();
+    let mut message = SendRequest::text(
+        format!("seats/{}/inbox", f.own.id),
+        "@Outside same composer rule",
+    );
+    let id = message.id;
+    let response = f
+        .runtime
+        .block_on(f.client().gui_messaging(
+            id,
+            f.own.swarm,
+            Request::Send {
+                message: message.clone(),
+            },
+            Default::default(),
+        ))
+        .unwrap();
+    let Response::Refused { error } = response else {
+        panic!("{response:?}");
+    };
+    assert_eq!(error.kind, "unknown_mention");
+    assert!(error.hint.contains("Peer"));
+    f.registry()
+        .update(f.own.id, |seat| {
+            seat.name = "Peer Second".into();
+            Ok(())
+        })
+        .unwrap();
+    message.id = Ulid::new();
+    message.text = "@Peer ambiguous first word".into();
+    let response = f
+        .runtime
+        .block_on(f.client().gui_messaging(
+            message.id,
+            f.own.swarm,
+            Request::Send { message },
+            Default::default(),
+        ))
+        .unwrap();
+    assert!(matches!(response, Response::Refused { error } if error.kind == "ambiguous_mention"));
+    f.registry().update(f.peer.id, |seat| {
+        seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+        Ok(())
+    }).unwrap();
+    let message = SendRequest::text(format!("seats/{}/inbox", f.own.id), "@{Peer} is no longer open");
+    let response = f.runtime.block_on(f.client().gui_messaging(message.id, f.own.swarm, Request::Send { message }, Default::default())).unwrap();
+    assert!(matches!(response, Response::Refused { error } if error.kind == "unknown_mention"));
+    assert_eq!(counters(), before);
+}
+
 // keeps: #334 a real admitted sender can withdraw through message_send, never another seat.
 #[test]
 fn mcp_withdrawal_uses_the_signed_sender_and_preserves_its_cancelled_receipt() {

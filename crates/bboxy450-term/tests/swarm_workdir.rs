@@ -2797,6 +2797,202 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     );
 }
 
+// keeps: MA-10 independently activates on attach, preserving real PTYs and native launch sessions.
+#[test]
+#[ignore = "private signed-mentions retained-session upgrade; make test-signed-mentions"]
+fn signed_mentions_refresh_retains_sessions_and_shell_state() {
+    use bbt_mux::{
+        mcp::bridge::{Bridge, Config},
+        messaging::wire::EnvelopeExt,
+    };
+    use serde_json::json;
+    fn row(f: &Fixture, seat: &str) -> Value {
+        f.ctl(&["seat", "ls"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()
+            .clone()
+    }
+    fn identity(row: &Value) -> Value {
+        json!({"generation":row["record"]["generation"],
+            "process":row["state"]["process"],
+            "native_session":row["record"]["harness_session_id"]})
+    }
+    fn detach(f: &mut Fixture) {
+        let mut ui = f.app.take().unwrap();
+        ui.kill().unwrap();
+        ui.wait().unwrap();
+    }
+    let mut f = Fixture::new();
+    // Only this throwaway harness admission is retained; never print its capability.
+    fs::write(f.root.join("bin/claude"),
+        "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '%s\\n' \"$@\" > \"$HOME/$BBOXY_SEAT_ID.argv\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
+    f.start();
+    let swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let sender = f.spawn("claude", &swarm, None);
+    f.expect_cwd(&sender, &f.root.join("repository"));
+    let receiver = f.spawn("zsh", &swarm, None);
+    f.ctl(&["seat", "rename", &receiver, "Mention Receiver"]);
+    f.ctl(&[
+        "seat",
+        "type",
+        &receiver,
+        "export MENTION_STATE=retained-private-shell; printf 'BEFORE:%s\\n' \"$MENTION_STATE\"",
+    ]);
+    f.ctl(&["seat", "key", &receiver, "enter"]);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &receiver,
+        "--text",
+        "BEFORE:retained-private-shell",
+        "--timeout",
+        "10000",
+    ]);
+    let before_sender = row(&f, &sender);
+    let before_receiver = row(&f, &receiver);
+    assert_eq!(before_receiver["record"]["role"]["class"], "worker");
+    let session = before_sender["record"]["harness_session_id"]
+        .as_str()
+        .expect("real native launch session");
+    assert!(!session.is_empty());
+    let argv = fs::read_to_string(f.root.join(format!("home/{sender}.argv"))).unwrap();
+    assert!(
+        argv.lines()
+            .collect::<Vec<_>>()
+            .windows(2)
+            .any(|pair| pair == ["--session-id", session]),
+        "native launch session must reach the owned harness"
+    );
+    let owners = f.owners();
+    detach(&mut f);
+    f.start();
+    assert_eq!(
+        f.owners(),
+        owners,
+        "same-marker attach preserves healthy logic"
+    );
+    assert_eq!(identity(&row(&f, &sender)), identity(&before_sender));
+    assert_eq!(identity(&row(&f, &receiver)), identity(&before_receiver));
+
+    detach(&mut f);
+    let owner_path = f.root.join("run/logic.owner.json");
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    let current_marker = owner["ready"]["mcp_control_version"].as_u64().unwrap();
+    const PRE_MENTION_MARKER: u64 = 7;
+    assert!(
+        current_marker > PRE_MENTION_MARKER,
+        "signed mentions need their own activation marker"
+    );
+    // Advertise the old contract on this private owner. Both processes execute
+    // the current test binary: this proves marker-driven refresh, not old-binary compatibility.
+    owner["ready"]["mcp_control_version"] = json!(PRE_MENTION_MARKER);
+    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    f.start();
+    let refreshed = f.owners();
+    assert_eq!(refreshed[0], owners[0]);
+    assert_ne!(
+        refreshed[1], owners[1],
+        "old control marker must refresh only logic"
+    );
+    assert_eq!(identity(&row(&f, &sender)), identity(&before_sender));
+    assert_eq!(identity(&row(&f, &receiver)), identity(&before_receiver));
+    let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    assert_eq!(owner["ready"]["mcp_control_version"], current_marker);
+    f.ctl(&[
+        "seat",
+        "type",
+        &receiver,
+        "printf 'AFTER:%s\\n' \"$MENTION_STATE\"",
+    ]);
+    f.ctl(&["seat", "key", &receiver, "enter"]);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &receiver,
+        "--text",
+        "AFTER:retained-private-shell",
+        "--timeout",
+        "10000",
+    ]);
+
+    let admission = fs::read_to_string(f.root.join(format!("home/{sender}.admission"))).unwrap();
+    let admission: std::collections::BTreeMap<_, _> = admission
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .collect();
+    let cap = admission["BBOXY_CAPABILITY"];
+    let capability =
+        std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
+    let mut bridge = Bridge::new(Config {
+        socket: admission["BBOXY_SOCK"].into(),
+        seat: sender.parse().unwrap(),
+        generation: 1,
+        capability,
+    });
+    let rpc = |bridge: &mut Bridge, method: &str, params: Value| {
+        bridge
+            .handle(
+                &serde_json::to_vec(
+                    &json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+    };
+    let initialized = rpc(
+        &mut bridge,
+        "initialize",
+        json!({"protocolVersion":"2025-11-25","clientInfo":{"name":"mention-upgrade-fixture","version":"1"},"capabilities":{}}),
+    );
+    assert!(initialized.get("error").is_none());
+    let op = bbt_mux::Ulid::new();
+    let sent = rpc(
+        &mut bridge,
+        "tools/call",
+        json!({"name":"message_send","arguments":{
+            "op_id":op, "destination":format!("swarms/{swarm}/*"), "text":"@{mEnTiOn rEcEiVeR} refreshed sender"
+        }}),
+    );
+    assert_eq!(sent["result"]["isError"], false, "{sent}");
+    let envelope: bbt_proto::messaging::Envelope =
+        serde_json::from_value(sent["result"]["structuredContent"]["message"]["envelope"].clone())
+            .unwrap();
+    assert_eq!(
+        envelope.mentions,
+        [receiver.parse::<bbt_mux::Ulid>().unwrap()]
+    );
+    let account =
+        bbt_mux::identity::TestAccount::open(&f.root.join("account"), &f.root.join("run")).unwrap();
+    envelope
+        .verify_signature_in_account(Some(account.issued_by()))
+        .unwrap();
+    let receipts = rpc(
+        &mut bridge,
+        "tools/call",
+        json!({"name":"message_receipts","arguments":{"message":op}}),
+    );
+    assert_eq!(receipts["result"]["isError"], false, "{receipts}");
+    let receipt = receipts["result"]["structuredContent"]["page"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["recipient"] == receiver)
+        .unwrap();
+    assert_eq!(receipt["wake"], "now", "named default Executor admission");
+    assert_eq!(identity(&row(&f, &sender)), identity(&before_sender));
+    assert_eq!(identity(&row(&f, &receiver)), identity(&before_receiver));
+    println!(
+        "advertised-old MCP{PRE_MENTION_MARKER} -> {current_marker}; same current binary both launches; supervisor={} old_logic={} new_logic={}; generation/process/native-session and real shell state retained; signed mention admitted wake=now",
+        owners[0], owners[1], refreshed[1]
+    );
+}
+
 // keeps: spec c1-live-seats; a desktop-size snapshot must reach the painted pane
 #[test]
 #[ignore = "private large-window GUI/PTY boundary; make test-large-gui-frame"]

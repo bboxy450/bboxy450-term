@@ -42,6 +42,7 @@ fn envelope(keys: &LocalSeatKeys, seat: Ulid, swarm: Ulid) -> Envelope {
         thread_id: Ulid::new(),
         reply_to: None,
         supersedes: None,
+        mentions: Vec::new(),
         timestamp: 1_792_694_400,
         priority: 0,
         kind: MessageKind::Text,
@@ -106,6 +107,70 @@ fn add_sink(tree: &mut Tree, seat: Ulid) {
     tree.put(Actor::Operator, Node::folder(format!("seats/{seat}")))
         .unwrap();
     tree.put(Actor::Operator, Node::sink(seat)).unwrap();
+}
+
+// keeps: ICD messaging-seats; the four original signing formats stay byte-identical.
+#[test]
+fn mentions_are_signed_and_empty_mentions_keep_all_legacy_signing_bytes() {
+    let fixtures: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/mentions-legacy-signing.json")).unwrap();
+    for fixture in fixtures.as_array().unwrap() {
+        let original: Envelope = serde_json::from_value(fixture["envelope"].clone()).unwrap();
+        assert_eq!(
+            digest(&original.signing_bytes().unwrap()),
+            fixture["sha256"]
+        );
+        let mut explicit_empty = fixture["envelope"].clone();
+        explicit_empty["mentions"] = serde_json::json!([]);
+        let explicit_empty: Envelope = serde_json::from_value(explicit_empty).unwrap();
+        assert_eq!(
+            explicit_empty.signing_bytes().unwrap(),
+            original.signing_bytes().unwrap()
+        );
+        assert_eq!(
+            serde_json::to_vec(&explicit_empty).unwrap(),
+            serde_json::to_vec(&original).unwrap()
+        );
+
+        let keys = LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32]));
+        let mut signed = envelope(&keys, Ulid::from(1), Ulid::from(2));
+        signed.supersedes = original.supersedes;
+        signed.mentions = vec![Ulid::from(3)];
+        if original.door.is_some() {
+            let device = SigningKey::from_bytes(&[42; 32]);
+            signed.seat = Ulid::nil();
+            signed.process_generation = 0;
+            signed.author = public(&device.verifying_key().to_bytes());
+            signed.role = Role {
+                name: "operator".into(),
+                class: Class::Oracle,
+            };
+            signed.priority_class = Class::Oracle;
+            signed.door = original.door;
+            signed.issued_by = original.issued_by;
+            signed.sign(&device).unwrap();
+        } else {
+            signed.sign(&keys.leaf(signed.seat, 1).unwrap()).unwrap();
+        }
+        keys.verify(&signed).unwrap();
+        for mentions in [vec![], vec![Ulid::from(4)]] {
+            let mut forged = signed.clone();
+            forged.mentions = mentions;
+            assert!(keys.verify(&forged).is_err(), "mentions must be signed");
+        }
+    }
+}
+
+// keeps: ICD messaging-seats canonical bound applies equally to requests and signed receiver input.
+#[test]
+fn mention_ids_are_bounded_non_nil_unique_and_sorted_before_signing() {
+    let mut request = SendRequest::text("channels/review/*", "named message");
+    for invalid in [vec![Ulid::nil()], vec![Ulid::from(2), Ulid::from(1)], vec![Ulid::from(1); 2], (1u128..=33).map(Ulid::from).collect()] {
+        request.mentions = invalid;
+        assert!(request.validate().is_err());
+    }
+    request.mentions = (1u128..=32).map(Ulid::from).collect();
+    request.validate().unwrap();
 }
 
 // keeps: spec messaging

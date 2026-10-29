@@ -11,6 +11,7 @@ pub mod api;
 pub mod attention;
 pub mod keys;
 pub mod ledger;
+pub mod mentions;
 pub mod pending;
 pub mod service;
 pub mod tree;

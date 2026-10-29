@@ -426,6 +426,7 @@ fn signed_envelope_fixture() -> Result<Value, Refusal> {
         thread_id: id,
         reply_to: None,
         supersedes: None,
+        mentions: Vec::new(),
         timestamp: 1,
         priority: 0,
         kind: MessageKind::Text,

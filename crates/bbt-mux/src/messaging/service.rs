@@ -27,6 +27,10 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+#[path = "mentions_tests.rs"]
+mod mentions_tests;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Grant {
     seat: Ulid,
@@ -46,6 +50,7 @@ struct Attention<'a> {
     reply_to: Option<Ulid>,
     operator: bool,
     delegated: bool,
+    mentions: &'a [Ulid],
 }
 impl<'a> Attention<'a> {
     fn signed(envelope: &'a Envelope) -> Self {
@@ -56,6 +61,7 @@ impl<'a> Attention<'a> {
             reply_to: envelope.reply_to,
             operator: envelope.seat == Ulid::nil(),
             delegated: matches!(&envelope.body, Body::Task { event, .. } if event == "delegate"),
+            mentions: &envelope.mentions,
         }
     }
     fn pending(intent: &'a bbt_proto::messaging::PendingIntent) -> Self {
@@ -69,6 +75,7 @@ impl<'a> Attention<'a> {
                 bbt_proto::messaging::LogicalSender::Seat { .. }
             ),
             delegated: matches!(&intent.body, Body::Task { event, .. } if event == "delegate"),
+            mentions: &intent.request.mentions,
         }
     }
     fn message(message: &'a StoredMessage) -> Self {
@@ -468,7 +475,7 @@ impl Messaging {
                         operator: input.operator,
                         delegated: delegated_to == Some(seat),
                         own_thread_reply: root_sender == Some(route.recipient),
-                        addressed_by_name: false,
+                        addressed_by_name: input.mentions.contains(&seat),
                     },
                 )?
             } else {
@@ -3007,6 +3014,7 @@ fn mint_operator(
         thread_id: request.thread_id.unwrap_or(request.id),
         reply_to: request.reply_to,
         supersedes: request.supersedes,
+        mentions: request.mentions.clone(),
         timestamp: now / 1000,
         priority: request.priority,
         kind: request.kind,
@@ -3085,6 +3093,7 @@ fn mint(
         thread_id: request.thread_id.unwrap_or(request.id),
         reply_to: request.reply_to,
         supersedes: request.supersedes,
+        mentions: request.mentions.clone(),
         timestamp: now / 1000,
         priority: request.priority,
         kind: request.kind,
@@ -3450,8 +3459,10 @@ mod reference_tests {
             .unwrap();
 
         let mut messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
-        let request =
+        let mut request =
             SendRequest::text(format!("seats/{}/inbox", recipient.id), "first operator DM");
+        request.mentions = vec![recipient.id];
+        request.attachments = vec!["[[images/pending-custody]]".into()];
         let id = request.id;
         let Response::Stored { message } = messaging
             .request_operator_pending(
@@ -3466,6 +3477,7 @@ mod reference_tests {
             panic!("local operator message must be stored");
         };
         let intent = message.intent().unwrap();
+        assert_eq!(intent.request.mentions, [recipient.id]);
         assert_eq!(intent.role_epoch, None);
         let LogicalSender::OperatorLocal {
             reference, device, ..
@@ -3516,6 +3528,12 @@ mod reference_tests {
         let reference = *reference;
         let binding = super::super::pending::binding(intent).unwrap();
         let original = serde_json::to_vec(intent).unwrap();
+        registry
+            .update(recipient.id, |seat| {
+                seat.name = "Renamed recipient".into();
+                Ok(())
+            })
+            .unwrap();
         drop(messaging);
         let mut messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
         assert_eq!(messaging.operator_reference(None).unwrap(), reference);
@@ -3573,6 +3591,12 @@ mod reference_tests {
             .items
             .remove(0);
         assert_eq!(row.upgrade_of(), Some(&binding));
+        assert_eq!(row.view().mentions, [recipient.id]);
+        assert_eq!(row.view().attachments, ["[[images/pending-custody]]"]);
+        let original_intent = serde_json::from_slice(&original).unwrap();
+        let mut forged = row.envelope().unwrap().clone();
+        forged.mentions.clear();
+        assert!(super::super::pending::check_upgrade_content(&original_intent, &forged).is_err());
         row.envelope().unwrap().verify_signature().unwrap();
         assert!(
             messaging

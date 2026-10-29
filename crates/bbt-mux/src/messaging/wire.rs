@@ -39,6 +39,9 @@ impl SendRequestExt for SendRequest {
             || self.supersedes == Some(self.id)
             || self.priority > 9
             || self.text.len() > MAX_TEXT
+            || self.mentions.len() > bbt_proto::messaging::MAX_MENTIONS
+            || self.mentions.contains(&Ulid::nil())
+            || self.mentions.windows(2).any(|ids| ids[0] >= ids[1])
             || self.attachments.len() > 32
             || self
                 .text
@@ -57,7 +60,10 @@ impl SendRequestExt for SendRequest {
             ));
         }
         if self.kind == MessageKind::Withdrawn
-            && (self.supersedes.is_none() || !self.text.is_empty() || !self.attachments.is_empty())
+            && (self.supersedes.is_none()
+                || !self.text.is_empty()
+                || !self.attachments.is_empty()
+                || !self.mentions.is_empty())
         {
             return Err(invalid("withdrawal requires supersedes and no content"));
         }
@@ -112,11 +118,22 @@ impl EnvelopeExt for Envelope {
         let payload = match (
             self.supersedes,
             self.door.is_none() && self.issued_by.is_none(),
+            self.mentions.is_empty(),
         ) {
-            (None, true) => serde_json::to_vec(&fields)?,
-            (None, false) => serde_json::to_vec(&(fields, (self.door, &self.issued_by)))?,
-            (Some(id), true) => serde_json::to_vec(&(fields, id))?,
-            (Some(id), false) => serde_json::to_vec(&(fields, (self.door, &self.issued_by), id))?,
+            (None, true, true) => serde_json::to_vec(&fields)?,
+            (None, false, true) => serde_json::to_vec(&(fields, (self.door, &self.issued_by)))?,
+            (Some(id), true, true) => serde_json::to_vec(&(fields, id))?,
+            (Some(id), false, true) => {
+                serde_json::to_vec(&(fields, (self.door, &self.issued_by), id))?
+            }
+            (None, true, false) => serde_json::to_vec(&(fields, &self.mentions))?,
+            (None, false, false) => {
+                serde_json::to_vec(&(fields, (self.door, &self.issued_by), &self.mentions))?
+            }
+            (Some(id), true, false) => serde_json::to_vec(&(fields, id, &self.mentions))?,
+            (Some(id), false, false) => {
+                serde_json::to_vec(&(fields, (self.door, &self.issued_by), id, &self.mentions))?
+            }
         };
         let mut bytes = b"bboxy450/message/v1\0".to_vec();
         bytes.extend_from_slice(&(payload.len() as u64).to_be_bytes());
@@ -151,6 +168,7 @@ impl EnvelopeExt for Envelope {
             thread_id: Some(self.thread_id),
             reply_to: self.reply_to,
             supersedes: self.supersedes,
+            mentions: self.mentions.clone(),
             priority: self.priority,
             kind: self.kind,
             text: self.body.text().unwrap_or_default().to_string(),

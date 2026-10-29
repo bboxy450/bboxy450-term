@@ -4694,8 +4694,21 @@ impl Worker {
         actor: &crate::mcp::SeatActor,
         record: &SeatRecord,
         call: &crate::mcp::Call,
-        request: crate::messaging::api::Request,
+        mut request: crate::messaging::api::Request,
     ) -> serde_json::Value {
+        // This is the sending MCP tool, inside Journal::effect. A retained
+        // operation returns before this closure, so names are never resolved on replay.
+        match self.resolve_send_mentions(record.swarm, &mut request) {
+            Ok(Some(error)) => return crate::mcp::messaging::refused(call.op_id, error),
+            Err(_) => {
+                return crate::mcp::error(
+                    call.op_id,
+                    "unavailable",
+                    "mention names are unavailable; nothing was sent",
+                );
+            }
+            Ok(None) => {}
+        }
         // A peer is never the trusted in-process operator composer.
         match self
             .messaging
@@ -4736,6 +4749,32 @@ impl Worker {
                 "messaging outcome unavailable; retain the operation ID and check receipts",
             ),
         }
+    }
+    /// Shared by the composer and MCP sending adapters, never the receiving path.
+    fn resolve_send_mentions(
+        &self,
+        swarm: Ulid,
+        request: &mut crate::messaging::api::Request,
+    ) -> Result<Option<bbt_proto::messaging::MessageRefusal>> {
+        if let crate::messaging::api::Request::Send { message } = request {
+            // Do not scan the registry for ordinary messages without mentions.
+            if !message.text.contains('@') {
+                message.mentions.clear();
+                return Ok(None);
+            }
+            let seats = self.registry.list()?;
+            match crate::messaging::mentions::resolve(
+                &message.text,
+                seats
+                    .iter()
+                    .filter(|seat| seat.swarm == swarm && seat.lifecycle == Lifecycle::Open)
+                    .map(|seat| (seat.id, seat.name.as_str())),
+            ) {
+                Ok(mentions) => message.mentions = mentions,
+                Err(error) => return Ok(Some(error)),
+            }
+        }
+        Ok(None)
     }
     fn control_seat(&self, record: &SeatRecord) -> serde_json::Value {
         serde_json::json!({"record":record,"adapter":self.views.get(&record.id).filter(|v|v.generation==record.generation).map(|v|&v.adapter.status)})
@@ -8154,33 +8193,52 @@ impl Worker {
                 | crate::messaging::api::Request::Receipts { .. }
                 | crate::messaging::api::Request::Ls { .. }
         );
-        let dispatch = || match match authority.as_ref() {
-            Some(authority) => {
-                self.messaging
-                    .request_operator(authority, swarm, request, mute_state, now_ms())
+        let dispatch = || {
+            let mut request = request;
+            // Composer/ctl share this sending adapter. Resolve after journal
+            // admission and before any message, signing counter or delivery effect.
+            match self.resolve_send_mentions(swarm, &mut request) {
+                Ok(Some(error)) => return crate::mcp::messaging::refused(id, error),
+                Err(_) => {
+                    return crate::mcp::error(
+                        id,
+                        "unavailable",
+                        "mention names are unavailable; nothing was sent",
+                    );
+                }
+                Ok(None) => {}
             }
-            None => {
-                self.messaging
-                    .request_operator_pending(device, &origin, swarm, request, now_ms())
-            }
-        } {
-            Ok(crate::messaging::api::Response::Refused { error }) => {
-                crate::mcp::messaging::refused(id, error)
-            }
-            Ok(response) => match serde_json::to_value(response) {
-                Ok(value) => crate::mcp::success(id, value),
-                Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),
-            },
-            Err(error) => {
-                let reason = error.to_string();
-                let code = if reason.starts_with("unknown:") {
-                    "unknown"
-                } else if reason.starts_with("held:") {
-                    "held"
-                } else {
-                    "rejected"
-                };
-                crate::mcp::error(id, code, &reason)
+            match match authority.as_ref() {
+                Some(authority) => {
+                    self.messaging
+                        .request_operator(authority, swarm, request, mute_state, now_ms())
+                }
+                None => self.messaging.request_operator_pending(
+                    device,
+                    &origin,
+                    swarm,
+                    request,
+                    now_ms(),
+                ),
+            } {
+                Ok(crate::messaging::api::Response::Refused { error }) => {
+                    crate::mcp::messaging::refused(id, error)
+                }
+                Ok(response) => match serde_json::to_value(response) {
+                    Ok(value) => crate::mcp::success(id, value),
+                    Err(error) => crate::mcp::error(id, "unknown", &error.to_string()),
+                },
+                Err(error) => {
+                    let reason = error.to_string();
+                    let code = if reason.starts_with("unknown:") {
+                        "unknown"
+                    } else if reason.starts_with("held:") {
+                        "held"
+                    } else {
+                        "rejected"
+                    };
+                    crate::mcp::error(id, code, &reason)
+                }
             }
         };
         let result = if mutation {

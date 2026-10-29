@@ -1151,6 +1151,7 @@ fn send(
                 thread_id: None,
                 reply_to: None,
                 supersedes: None,
+                mentions: Vec::new(),
             },
         },
     }
