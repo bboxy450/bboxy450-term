@@ -24,6 +24,7 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 import uuid
 
 # Running a gate must not leave bytecode among a candidate's source paths.
@@ -584,11 +585,22 @@ def command_tools(argv, root):
                 part.append(token)
         return result
     if executable == "make" and "test-formal" in words:
+        sources = set()
+        coverage = root / "verification/coverage.toml"
+        if coverage.is_file():
+            sources.update(p for row in tomllib.loads(coverage.read_text())["crate"] for p in row["sources"])
+        contracts = root / "verification/contracts.toml"
+        if contracts.is_file():
+            sources.update(p for row in tomllib.loads(contracts.read_text())["contract"]
+                           for field in ["sources", "implementation_tests"] for p in row[field])
         return {"Makefile", "scripts/formal.py", "scripts/test-formal.py",
                 "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
                 "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs",
                 "crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
-                "crates/bbt-yarn-macros/src/lib.rs"}
+                "crates/bbt-yarn-macros/src/lib.rs", "verification/contracts.toml",
+                "crates/bboxy450-term/tests/formal_contracts.rs",
+                "crates/bboxy450-term/tests/formal_contracts/models.rs",
+                "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"} | sources
     if executable in {"sh", "bash", "dash", "python", "python3", "node"}:
         entries = [word for word in words[1:] if not word.startswith("-")]
         if not entries:

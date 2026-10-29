@@ -4,10 +4,10 @@
 
 [[crate]]
 name = "bboxy450-term-desktop-core"
-status = "implementation-tests"
-models = []
-scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
-sources = ["crates/bboxy450-term-desktop-core/src/lib.rs"]
+status = "contract-model"
+models = ["LifecycleOwnership"]
+scope = "UI detach versus explicit stop at the host boundary. Native event delivery and platform lifecycle still require private app tests."
+sources = ["crates/bboxy450-term-desktop-core/src/lib.rs", "crates/bboxy450-term/src/cockpit/owners.rs"]
 
 [[crate]]
 name = "bboxy450-term-desktop-macos"
@@ -18,10 +18,10 @@ sources = ["crates/bboxy450-term-desktop-macos/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-term-desktop"
-status = "implementation-tests"
-models = []
-scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
-sources = ["crates/bboxy450-term-desktop/src/lib.rs"]
+status = "contract-model"
+models = ["LifecycleOwnership"]
+scope = "Retained owner lifecycle contract at the app boundary; native window implementations are not modeled."
+sources = ["crates/bboxy450-term-desktop/src/lib.rs", "crates/bboxy450-term/src/cockpit/owners.rs"]
 
 [[crate]]
 name = "bboxy450-keychain-windows"
@@ -39,10 +39,10 @@ sources = ["crates/bboxy450-keychain-file/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-keychain"
-status = "implementation-tests"
-models = []
-scope = "OS/file custody and credential access are verified with private unattended fixtures. OS authorization and failure transitions remain a formal coverage gap."
-sources = ["crates/bboxy450-keychain/src/lib.rs"]
+status = "contract-model"
+models = ["CustodyDelivery"]
+scope = "Host local-delivery behavior while custody is unavailable. OS secret storage, encryption and key material remain implementation-tested; no cryptographic proof."
+sources = ["crates/bboxy450-keychain/src/lib.rs", "crates/bbt-mux/src/messaging/service.rs"]
 
 [[crate]]
 name = "bboxy450-desktop-notifications-macos"
@@ -67,17 +67,17 @@ sources = ["crates/bboxy450-desktop-notifications-linux/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-desktop-notifications"
-status = "implementation-tests"
-models = []
-scope = "Notification submission/completion and OS adapter effects use private recording fixtures; worker revision semantics remain a formal coverage gap."
-sources = ["crates/bboxy450-desktop-notifications/src/lib.rs"]
+status = "contract-model"
+models = ["NotificationReplace"]
+scope = "Capacity-one host worker and replacement after authorization; no OS presentation or permission proof."
+sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-term/src/notifications.rs"]
 
 [[crate]]
 name = "bboxy450-plugin"
-status = "implementation-tests"
-models = []
-scope = "Plugin admission/version and execution lifecycle remain a formal coverage gap; current plugin fixtures still gate."
-sources = ["crates/bbt-plugin/src/lib.rs"]
+status = "contract-model"
+models = ["PluginActivation"]
+scope = "Host activation generation/source-digest contract; guest execution, ABI and cryptographic implementation use fixtures."
+sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs"]
 
 [[crate]]
 name = "bboxy450-yarn-macros"
@@ -95,17 +95,17 @@ sources = ["crates/bbt-yarn/src/model.rs"]
 
 [[crate]]
 name = "bboxy450-term-core"
-status = "implementation-tests"
-models = []
-scope = "Terminal parser and checkpoint bytes need parser/replay/property fixtures; no TLA model currently captures those byte semantics."
+status = "contract-model"
+models = ["CheckpointRestore"]
+scope = "Checkpoint restore preserves data without replaying queued effects; terminal byte semantics remain parser/replay fixtures."
 sources = ["crates/bbt-core/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-harness-wake-up"
-status = "implementation-tests"
-models = []
-scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
-sources = ["crates/bboxy450-harness-wake-up/src/lib.rs"]
+status = "contract-model"
+models = ["HarnessToken"]
+scope = "Readiness, input ownership epoch and ambiguous outcome fence for one delivery; expiry, terminal modes and OS state use real guard fixtures."
+sources = ["crates/bboxy450-harness-wake-up/src/guard.rs"]
 
 [[crate]]
 name = "bboxy450-mermaid"
@@ -124,9 +124,9 @@ sources = ["crates/bbt-supervisor/src/supervisor.rs"]
 [[crate]]
 name = "bboxy450-mux"
 status = "contract-model"
-models = ["CheckpointFence", "InputReceipt"]
-scope = "Immutable save cursor and current-generation confirmation; stable input identity. No complete mux or on-disk refinement proof."
-sources = ["crates/bbt-mux/src/checkpoint.rs"]
+models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness"]
+scope = "Checkpoint/input fences, workspace and plugin stale-completion guards, local delivery/suppression and fair seat ingestion. Finite contract projections; no whole-mux refinement proof."
+sources = ["crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bbt-mux/src/logic.rs"]
 
 [[crate]]
 name = "bboxy450-proto"
@@ -137,31 +137,31 @@ sources = ["crates/bbt-proto/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-rt"
-status = "implementation-tests"
-models = []
-scope = "Runtime cancellation and IO scheduling remain an explicit formal coverage gap; real process and Tokio tests remain required."
-sources = ["crates/bbt-rt/src/lib.rs"]
+status = "contract-model"
+models = ["DirtyWake"]
+scope = "Immediate dirty-set lost-wakeup interleavings. Weak memory, retained/deferred modes, arbitrary Tokio cancellation and IO scheduling remain implementation/tool coverage gaps."
+sources = ["crates/bbt-rt/src/wake.rs"]
 
 [[crate]]
 name = "bboxy450-render"
-status = "implementation-tests"
-models = []
-scope = "GPU rendering, fonts and geometry need image/geometry/performance tests; no formal GPU execution model exists here."
-sources = ["crates/bbt-render/src/lib.rs"]
+status = "contract-model"
+models = ["RenderSubmission"]
+scope = "GPU arena flush, disjoint-slice and submission-boundary discipline. Pixels, alignment, growth/fallback and GPU execution require geometry/image/GPU tests."
+sources = ["crates/bbt-render/src/chrome/arena.rs"]
 
 [[crate]]
 name = "bboxy450-ui-core"
-status = "implementation-tests"
-models = []
-scope = "Pure layout and model reducers use unit/property/parity tests; a complete UI transition specification has not been modeled."
-sources = ["crates/bbt-ui-model/src/lib.rs"]
+status = "contract-model"
+models = ["FocusFrame"]
+scope = "Host focus-generation and completed-frame contract; pure layout/reducers still use property and parity tests."
+sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-ui"
-status = "implementation-tests"
-models = []
-scope = "UI controls and reducers require scripted interaction and parity; asynchronous boundary contracts must be added when changed."
-sources = ["crates/bbt-ui/src/lib.rs"]
+status = "contract-model"
+models = ["FocusFrame", "WindowDurability"]
+scope = "Host focus acknowledgement and durable UI-reply boundaries; control geometry, layout and all UI transitions are not formally proven."
+sources = ["crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
 [[crate]]
 name = "bboxy450-doc"
@@ -180,9 +180,9 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["InputReceipt"]
-scope = "Retained operation identity on unknown input outcomes; rendering, GUI event ordering and all other operations are not modeled by this contract."
-sources = ["crates/bboxy450-term/src/live.rs"]
+models = ["InputReceipt", "LifecycleOwnership", "NotificationReplace", "WindowDurability", "FocusFrame", "CustodyDelivery"]
+scope = "Stable input, retained process ownership, notification replacement, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
+sources = ["crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-term-firehose"

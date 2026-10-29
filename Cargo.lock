@@ -419,6 +419,7 @@ dependencies = [
  "bboxy450-rt",
  "bboxy450-term-core",
  "bboxy450-term-desktop",
+ "bboxy450-tlc",
  "bboxy450-ui",
  "bboxy450-ui-core",
  "block2 0.6.2",

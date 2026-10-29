@@ -48,7 +48,9 @@ TLA+/TLC and Yarn verification are mandatory for this codebase and every crate
 `make test` includes it. Every workspace crate must occur in
 `verification/coverage.toml` with its model/source mapping or an explicit account
 of behavior still checked only by implementation tests. A new crate cannot pass
-by omission. Changes to concurrency, lifecycle, persistence, ownership, retries
+by omission. Project contracts, assumptions and implementation witnesses live in
+`verification/contracts.toml`; `make test-formal-contracts` runs their native
+checks. Changes to concurrency, lifecycle, persistence, ownership, retries
 or event-loop arbitration update the relevant model and its negative controls.
 Yarn is the constrained frontend; native Rust and pinned Java TLC run side by
 side. Java remains the reference until separately recorded conformance evidence

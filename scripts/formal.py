@@ -91,6 +91,46 @@ def coverage(root, models):
     return records
 
 
+def contracts(root, models):
+    """Require paired, bounded project contracts with concrete source/test mappings."""
+    path = root / "verification/contracts.toml"
+    if not path.is_file() and not (root / "crates/bboxy450-term").exists():
+        return []  # Independently exported checker has its own conformance corpus.
+    rows = tomllib.loads(path.read_text())["contract"]
+    seen = set()
+    for row in rows:
+        name = row["name"]
+        pair = {name, "Broken" + name}
+        if name in seen or set(row["models"]) != pair or not pair.issubset(models):
+            raise ValueError(f"missing, duplicate or unexecuted contract pair: {name}")
+        seen.add(name)
+        for field in ["assumptions", "property", "title"]:
+            if not row.get(field, "").strip():
+                raise ValueError(f"missing contract {field}: {name}")
+        for field in ["sources", "implementation_tests"]:
+            if not row.get(field) or any(not (root / p).is_file() for p in row[field]):
+                raise ValueError(f"missing contract {field}: {name}")
+        if row.get("checks") != ["make test-formal", "make test"]:
+            raise ValueError(f"missing mandatory checks: {name}")
+    if not rows:
+        raise ValueError("project contract inventory is empty")
+    return rows
+
+
+def contract_metadata(root, name):
+    path = root / f"{name}.metadata.json"
+    data = json.loads(path.read_text())
+    if not data.get("variables") or not data.get("actions") or not (
+            data.get("invariants") or data.get("responses")):
+        raise ValueError(f"incomplete contract metadata: {name}")
+    if data.get("implementation_refinement_proven") is not False:
+        raise ValueError(f"unsupported refinement claim: {name}")
+    for v in data["variables"]:
+        if not v["min"] <= v["initial"] <= v["max"]:
+            raise ValueError(f"invalid contract bounds: {name}")
+    return data
+
+
 def dot_graph(path, width):
     """Normalize TLC's labeled DOT graph to exact integer states and edge pairs."""
     nodes = {}
@@ -168,16 +208,26 @@ def main():
     if len(expected_corpus) != len(required) or {r[0]: r[1] for r in rows} != expected_corpus:
         raise ValueError("formal corpus differs from required independent expectations")
     records = coverage(ROOT, names)
+    contract_records = contracts(ROOT, names)
+    contract_names = {name for row in contract_records for name in row["models"]}
+    if not {row["name"] for row in contract_records}.issubset(
+            {name for row in records for name in row["models"]}):
+        raise ValueError("project contract missing from crate coverage")
     java, jar, pins = tools(target)
     evidence = {"source": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "tlc": pins["tlc"], "java": pins["java"][f"{platform.system()}-{platform.machine()}"],
-                "crates": records, "models": [], "complete_tlc_replacement": False,
+                "crates": records, "contracts": contract_records, "models": [], "complete_tlc_replacement": False,
                 "dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)),
                 "input_sha256": {str(p): hashlib.sha256((ROOT / p).read_bytes()).hexdigest()
                     for p in sorted({"crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
                         "crates/bbt-yarn-macros/src/lib.rs", "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs", "verification/coverage.toml", "verification/corpus.toml",
-                        "verification/tools.lock.json", "scripts/formal.py"} |
-                        {p for row in records for p in row["sources"]}) if (ROOT / p).is_file()}}
+                        "verification/tools.lock.json", "scripts/formal.py", "verification/contracts.toml",
+                        "crates/bboxy450-term/tests/formal_contracts.rs",
+                        "crates/bboxy450-term/tests/formal_contracts/models.rs",
+                        "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"} |
+                        {p for row in records for p in row["sources"]} |
+                        {p for row in contract_records for field in ["sources", "implementation_tests"]
+                         for p in row[field]}) if (ROOT / p).is_file()}}
     for name, expected, count, width in rows:
         if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
             raise ValueError("invalid model manifest")
@@ -192,8 +242,10 @@ def main():
         actual = verdict(checked)
         if actual != expected:
             raise ValueError(f"native/TLC verdict mismatch: {name}: {expected}/{actual}")
+        metadata = contract_metadata(root, name) if name in contract_names else None
         evidence["models"].append({"name": name, "expected": expected, "states": len(actual_states),
                                    "edges": len(actual_edges), "tlc_exit": checked.returncode, "graph_equal": True,
+                                   "contract_metadata": metadata,
                                    "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()})
         print(f"formal: {name}: {actual}, {len(actual_states)} states, {len(actual_edges)} edges match", flush=True)
     (target / "evidence.json").write_text(json.dumps(evidence, indent=2) + '\n')

@@ -41,6 +41,7 @@ help:
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
 	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
 	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
@@ -1125,7 +1126,7 @@ test-harness-vocabulary:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
 
-.PHONY: test-formal test-yarn-model
+.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts
 
 test-yarn-model:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1135,11 +1136,20 @@ test-yarn-model:
 	cargo check --locked -p bboxy450-yarn --no-default-features --features model --target-dir '$(TARGET_DIR)'; \
 	cargo clippy --locked -p bboxy450-tlc -p bboxy450-yarn -p bboxy450-yarn-macros --features bboxy450-yarn/model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
+test-formal-contracts:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' -- -D warnings
+
+format-formal-contracts:
+	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
+
 test-formal: test-yarn-model
 	@python3 -I scripts/test-formal.py
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
 
 .PHONY: format-yarn-model

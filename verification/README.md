@@ -57,6 +57,53 @@ its actual source path and its modeled scope or remaining implementation-only
 coverage. Missing, duplicate and stale crate entries fail the gate. A contract
 model is a design check, not a proof that its mapped Rust implements it.
 
+## Project contracts
+
+The project corpus adds 13 contract families and 13 broken controls to the
+14 checker/Yarn conformance cases: **40 models** in total. The declarations live
+in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
+integration consumer of the published native checker. No Java or model checker
+is added to the terminal runtime.
+
+| Boundary | Property checked |
+| --- | --- |
+| Immediate dirty wake | Rechecking after clearing pending prevents a lost wake |
+| Notification replacement | A queued replacement wins after slow authorization |
+| Workspace reads | Root, revision and authority still match at publication, including A → B → A |
+| Plugin inspection | Source digest, approval and activation generation still match |
+| Harness readiness | Input ownership and single-use proof remain current; unknown outcomes fence retries |
+| Local messaging custody | Delivery progresses without assuming signing custody recovers |
+| Message suppression | Events, muted recipients and resolved/superseded receipts never wake |
+| Retained process ownership | UI detach preserves owners; explicit stop checks process birth |
+| Window persistence | Only the matching durable version releases a fenced reply |
+| Focus receipt | A completed frame has the current visible, focused process generation |
+| Terminal checkpoint | Restore excludes queued output effects |
+| Seat ingestion | The watched quota permits background progress and pauses stay local |
+| Render arena | Live slices are disjoint, uploads precede submit, rewind follows its boundary |
+
+`contracts.toml` records source and implementation-test paths, assumptions and
+properties for each family. The gate refuses missing pairs, unmapped contracts
+and missing evidence paths. Generated per-model metadata records variable names,
+initial values and bounds, action names, invariants, response properties and weak
+fairness groups in `evidence.json`. Source and witness hashes invalidate stale
+verification receipts. Broken variants must produce the prescribed safety or
+liveness violation in **both** engines, with identical full graphs.
+
+`make test-formal-contracts` runs all native project models plus five unattended
+real-API witnesses: exhaustive short dirty-bit histories, notification replacement
+across an authorization barrier, stale GUI save completion, partial-parser
+checkpoint restoration, and superseded focus timeout correlation. `make test`
+also runs the mapped existing guard, workspace, plugin, messaging, lifecycle,
+ring-ingestion and GPU tests. Witnesses exercise selected implementation behavior;
+there is no mechanical refinement proof from arbitrary Rust to these models.
+
+Platform key storage/notification internals, byte parsers, document/diagram layout,
+glyph rendering, reference-gallery pixels and load-generator throughput retain
+implementation, property, golden, process or performance tests. Their inventory
+entries state that scope. Adding a synthetic state machine to a pure layout
+algorithm would not establish its correctness. New asynchronous document or UI
+protocols still need their own model when introduced.
+
 ## Changing a crate
 
 For a change to a stateful boundary, update its finite model and add the smallest

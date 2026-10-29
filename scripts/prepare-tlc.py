@@ -51,7 +51,7 @@ def main():
     (mirror / "verification").mkdir()
     shutil.copyfile(ROOT / "verification/tools.lock.json", mirror / "verification/tools.lock.json")
     catalog = tomllib.loads((ROOT / "verification/corpus.toml").read_text())["model"]
-    catalog = [row for row in catalog if not row["name"].startswith("Yarn")]
+    catalog = [row for row in catalog if row["frontend"] == "checker"]
     (mirror / "verification/corpus.toml").write_text('\n'.join(
         '[[model]]\nname = '+json.dumps(row["name"])+ '\nexpected = '+json.dumps(row["expected"])+ '\n' for row in catalog))
     (mirror / "verification/coverage.toml").write_text('''[[crate]]

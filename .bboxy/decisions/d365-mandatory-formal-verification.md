@@ -11,6 +11,7 @@ operator:
   - "implement TLC runtime in yarn crate in pure rust"
   - "for a while we can run java + our rust implementation side by side"
   - "until we provee to ourselves that our implementation is complete"
+  - "use tla+ and tlc in entire bboxy450-term codebase where it makes sense!"
 links:
   - { to: "[[yarn]]", rel: amends }
   - { to: "[[d33-yarn-macro]]", rel: builds-on }
@@ -77,3 +78,16 @@ Rejected: reimplementing all of TLA+ before delivering a checked subset;
 replacing TLC on a handful of green tests; running Java inside a proc macro or
 the product; declaring arbitrary Rust correct from scheduling metadata; hiding
 unmodeled crates; treating elapsed-time budgets as established by a finite model.
+
+
+**Codebase adoption, 2026-10-29:** apply this mandate at stateful boundaries,
+with 13 project contract families and paired broken controls, alongside the
+checker/Yarn corpus (40 cases total). Cover dirty wake admission, notification
+replacement, workspace/plugin completion fences, harness readiness, local custody
+continuity, message suppression, retained lifecycle, GUI durability and focus,
+checkpoint effect isolation, seat fairness and render submission discipline.
+`verification/contracts.toml` is the source/test/assumption matrix. Every crate
+remains in `verification/coverage.toml`; platform internals, parsing, layout and
+performance retain their appropriate executable tests and explicit model limits.
+Five real-API witnesses supplement native/reference agreement. These projections
+are contract specifications, not a proof of whole-codebase Rust refinement.
