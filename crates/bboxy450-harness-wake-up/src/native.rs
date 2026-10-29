@@ -47,9 +47,21 @@ pub fn process_start(pid: u32) -> Result<String> {
     let output = std::process::Command::new("/bin/ps")
         .args(["-o", "lstart=", "-p", &pid.to_string()])
         .output()?;
+    process_start_output(pid, output)
+}
+
+fn process_start_output(pid: u32, output: std::process::Output) -> Result<String> {
     let stamp = std::str::from_utf8(&output.stdout)?.trim();
     if !output.status.success() || stamp.is_empty() {
-        return Err(invalid("harness process unavailable"));
+        // A failed query alone does not prove that the harness exited. Retain
+        // only ps metadata and its bounded diagnostic, never process arguments
+        // or environment. The caller that owns the child can join exit/PTY data.
+        let stderr = String::from_utf8_lossy(&output.stderr[..output.stderr.len().min(512)]);
+        return Err(invalid(format!(
+            "harness process lookup unavailable: pid={pid} ps_status={} stdout_bytes={} stderr={stderr:?}",
+            output.status,
+            output.stdout.len(),
+        )));
     }
     Ok(stamp.into())
 }
@@ -1088,6 +1100,60 @@ pub async fn codex_hook_observer(binding: &Binding) -> Result<CodexHookObserver>
 #[cfg(test)]
 mod registration_tests {
     use super::*;
+
+    #[test]
+    fn process_start_retains_failed_query_metadata_without_claiming_child_exit() {
+        use std::os::unix::process::ExitStatusExt;
+        for (raw_status, stdout) in [(256, b"".as_slice()), (0, b""), (256, b"a stamp")] {
+            let error = process_start_output(
+                1234,
+                std::process::Output {
+                    status: std::process::ExitStatus::from_raw(raw_status),
+                    stdout: stdout.to_vec(),
+                    stderr: b"fixture query failure".to_vec(),
+                },
+            )
+            .unwrap_err()
+            .to_string();
+            assert!(
+                error.contains("lookup unavailable: pid=1234 ps_status="),
+                "{error}"
+            );
+            assert!(
+                error.contains(&format!("stdout_bytes={}", stdout.len())),
+                "{error}"
+            );
+            assert!(error.contains("fixture query failure"), "{error}");
+            assert!(!error.contains("child exited"), "{error}");
+        }
+        let stamp = process_start_output(
+            1234,
+            std::process::Output {
+                status: std::process::ExitStatus::from_raw(0),
+                stdout: b"  Wed Oct 28 22:00:00 2026\n".to_vec(),
+                stderr: Vec::new(),
+            },
+        )
+        .unwrap();
+        assert_eq!(stamp, "Wed Oct 28 22:00:00 2026");
+    }
+
+    #[test]
+    fn process_start_bounds_query_stderr() {
+        use std::os::unix::process::ExitStatusExt;
+        let error = process_start_output(
+            1234,
+            std::process::Output {
+                status: std::process::ExitStatus::from_raw(256),
+                stdout: Vec::new(),
+                stderr: [vec![b'x'; 512], b"not retained".to_vec()].concat(),
+            },
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(error.contains(&"x".repeat(512)));
+        assert!(!error.contains("not retained"));
+    }
 
     fn binding() -> Binding {
         Binding {

@@ -21,6 +21,148 @@ use bbt_mux::{Event, InputState, Supervisor, Ulid};
 use serde_json::json;
 use std::time::{Duration, Instant};
 
+struct ZshStartupDiagnostics<'a> {
+    root: Option<tempfile::TempDir>,
+    client: &'a bbt_mux::Client,
+    pid: u32,
+    lookup: std::cell::RefCell<String>,
+    events: std::cell::RefCell<Vec<Event>>,
+}
+impl ZshStartupDiagnostics<'_> {
+    fn process_start(&self) -> bboxy450_harness_wake_up::Result<String> {
+        let result = native::process_start(self.pid);
+        *self.lookup.borrow_mut() = format!("{result:?}");
+        result
+    }
+
+    fn recv(&self) -> Result<Event, std::sync::mpsc::RecvTimeoutError> {
+        let event = self.client.recv_timeout(Duration::from_millis(50))?;
+        self.events.borrow_mut().push(event.clone());
+        Ok(event)
+    }
+
+    fn retain(&mut self) -> std::path::PathBuf {
+        let until = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < until {
+            if self
+                .events
+                .borrow()
+                .iter()
+                .any(|event| matches!(event, Event::Exited { .. }))
+            {
+                break;
+            }
+            if self.recv().is_err() {
+                break;
+            }
+        }
+        let seats = self.client.request(bbt_mux::Action::ListOwnedSeats);
+        let events = self.events.borrow();
+        let pty: Vec<u8> = events
+            .iter()
+            .flat_map(|event| match event {
+                Event::Output { bytes, .. } => bytes.as_slice(),
+                _ => &[],
+            })
+            .copied()
+            .collect();
+        let retained = self.root.take().unwrap().keep();
+        let diagnostics = format!(
+            "pid={}\nlookup={}\nretained={seats:?}\nevents={events:?}\n",
+            self.pid,
+            self.lookup.borrow()
+        );
+        let metadata_write = std::fs::write(retained.join("startup-diagnostics.log"), &diagnostics);
+        let pty_write = std::fs::write(retained.join("startup-pty.log"), &pty);
+        eprintln!(
+            "zsh startup diagnostics at {} (metadata={metadata_write:?}, pty={pty_write:?}): {diagnostics}\nPTY: {:?}",
+            retained.display(),
+            String::from_utf8_lossy(&pty)
+        );
+        retained
+    }
+}
+
+#[test]
+fn adapters_zsh_startup_retains_exit_and_stderr_when_lookup_fails() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().to_owned();
+    let user = root.join("user");
+    std::fs::create_dir(&user).unwrap();
+    // Controlled startup failure, not an assertion about the historical cause.
+    std::fs::write(
+        user.join(".zshenv"),
+        "print -ru2 -- BBOXY_STARTUP_EXIT_41\nexit 41\n",
+    )
+    .unwrap();
+    let record = SeatRecord::new(Ulid::new(), Ulid::new(), "startup exit fixture", "zsh");
+    let mut plan = plan(
+        &HarnessRecord::builtin("zsh").unwrap(),
+        &LaunchContext {
+            seat: &record,
+            cwd: &root,
+            role_prompt: "",
+            executable: std::path::Path::new("/tmp/bboxy450-term"),
+            overlay_parent: &root,
+            user_home: &user,
+            user_zdotdir: Some(&user),
+            socket: std::path::Path::new("/tmp/fixture.sock"),
+            capability: [9; 32],
+            resume: false,
+        },
+    )
+    .unwrap();
+    plan.spec
+        .env
+        .insert("HOME".into(), user.to_string_lossy().into_owned());
+    let supervisor = Supervisor::start(common::capture_config(&root)).unwrap();
+    let client = supervisor.connect().unwrap();
+    let info = client.spawn(plan.spec.clone()).unwrap();
+    client.attach(info.seat, info.generation).unwrap();
+    let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let diagnostics = ZshStartupDiagnostics {
+            root: Some(temp),
+            client: &client,
+            pid: info.pid,
+            lookup: Default::default(),
+            events: Default::default(),
+        };
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            assert!(Instant::now() < until, "startup exit not observed");
+            if let Ok(Event::Exited { status, .. }) = diagnostics.recv() {
+                assert_eq!(status.code, 41);
+                assert!(status.signal.is_none());
+                break;
+            }
+        }
+        let error = diagnostics.process_start().unwrap_err();
+        assert!(error.to_string().contains("ps_status="));
+        panic!("intentional startup failure exercises unwind retention");
+    }));
+    assert!(failed.is_err());
+    let log = std::fs::read_to_string(root.join("startup-diagnostics.log")).unwrap();
+    assert!(log.contains("lookup=Err("));
+    assert!(log.contains("ps_status=exit status: 1"));
+    assert!(log.contains("code: 41, signal: None"));
+    let pty = std::fs::read_to_string(root.join("startup-pty.log")).unwrap();
+    assert!(
+        pty.contains("BBOXY_STARTUP_EXIT_41"),
+        "stderr was lost: {pty:?}"
+    );
+    assert!(!log.contains("BBOXY_CAPABILITY"));
+    supervisor.shutdown().unwrap();
+    plan.cleanup().unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+}
+impl Drop for ZshStartupDiagnostics<'_> {
+    fn drop(&mut self) {
+        if std::thread::panicking() && self.root.is_some() {
+            self.retain();
+        }
+    }
+}
+
 fn binding() -> Binding {
     Binding {
         seat: Ulid::new(),
@@ -383,11 +525,18 @@ fn adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary() {
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let client = supervisor.connect().unwrap();
     let info = client.spawn(plan.spec.clone()).unwrap();
+    let diagnostics = ZshStartupDiagnostics {
+        root: Some(temp),
+        client: &client,
+        pid: info.pid,
+        lookup: Default::default(),
+        events: Default::default(),
+    };
     let att = client.attach(record.id, 1).unwrap();
     let mut bind = binding();
     bind.seat = record.id;
     bind.pid = info.pid;
-    bind.process_start = native::process_start(info.pid).unwrap();
+    bind.process_start = diagnostics.process_start().unwrap();
     let mut session = Session::new(HarnessRecord::builtin("zsh").unwrap(), bind).unwrap();
     let mut term = bbt_core::Term::new(80, 24, 0);
     let tap = OscTap::install(&mut term);
@@ -395,8 +544,7 @@ fn adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary() {
     let mut prompt = false;
     while !prompt {
         assert!(Instant::now() < until, "zsh prompt marker missing");
-        if let Ok(Event::Output { seq, bytes, .. }) = client.recv_timeout(Duration::from_millis(50))
-        {
+        if let Ok(Event::Output { seq, bytes, .. }) = diagnostics.recv() {
             term.advance(&bytes);
             for params in tap.drain().unwrap() {
                 session.on_osc(&params, seq, 1000);
@@ -420,8 +568,7 @@ fn adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary() {
     let mut active = false;
     while !active {
         assert!(Instant::now() < until, "zsh preexec marker missing");
-        if let Ok(Event::Output { seq, bytes, .. }) = client.recv_timeout(Duration::from_millis(50))
-        {
+        if let Ok(Event::Output { seq, bytes, .. }) = diagnostics.recv() {
             term.advance(&bytes);
             for params in tap.drain().unwrap() {
                 for obs in session.on_osc(&params, seq, 1200) {

@@ -1,0 +1,13 @@
+# Issue 40 diagnostic cut — Pip Hollow, 2026-10-29 UTC
+Base: fresh origin/main 618df56faccffce46dfec3d1d525b8d115b5d35a; worktree exec/night-adapter-startup-20261029.
+Historical 4810620a lookup failure remains unclassified: no retained child exit/PTY data exists for it. No root-cause fix or quarantine removal is claimed by this diagnostic cut.
+native::process_start retains ps status, stdout length and at most 512 stderr bytes on failure; the stamp format, single query, refusal and process-binding checks are unchanged.
+The real-zsh fixture now retains lookup result, supervisor SeatInfo, observed Output/Exited events and PTY stderr on every assertion unwind, before supervisor teardown. No launch environment or capability is logged.
+Deterministic private .zshenv exit41: stderr marker BBOXY_STARTUP_EXIT_41, supervisor exit41/no signal, then actual ps exit1/empty stdout; the regression asserts all three survive unwind retention. This controlled cause does not explain the historical failure.
+Native error regression covers unsuccessful/nonempty output, successful/empty output and bounded stderr without claiming the harness exited.
+make test-licenses test-adapter-startup — exit0; license fixtures6/0, source-notice fixtures9/0, native diagnostics2/0, retained-exit1/0, unchanged original real-zsh prompt/command1/0. Raw target/adapter-startup/focused-final.log SHA256 7cbee57aef2a595f58ee2419fe0140a910bbd1de743a08a8e7e6ee55a8953d5a.
+make test-harness-startup (before native diagnostic change) — exit0; kit suite, concurrent adapters10/0, login-shell exact1/0. Raw target/adapter-startup/concurrent-adapters.log SHA256 cede00657075662dd8c74bfda099888012bfbc89f5b2e99df858cbce72604d8b.
+First focused baseline — make exit2/Rust101 at unchanged five-second prompt assertion, after process lookup succeeded. Its early instrumentation retained only lookup failures, so child state for that prompt failure is unknown. Raw target/adapter-startup/baseline.log SHA256 b1de14070759bf17f4bb752d4c1a2a46fd5fe1470344061e2eca58fd3d83db19.
+Development regression first omitted writer attachment: retained SeatInfo exit41 but no events/PTY; fixture attachment fixed, then the diagnostic regression passed. Raw target/adapter-startup/diagnostics-regression.log SHA256 76808c0b59077c71a3bba14a59c76f9f2d377f5200d6347e400228768de933c3.
+No MA-7 accounting, reserved workstreams, product retry/sleep/deadline, prompt/command assertion or quarantine row changed. No operator account or live app used.
+Exact-source canonical and landing evidence is reported separately through the assigned authenticated task report; this pre-gate record makes no claim for those commands.

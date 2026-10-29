@@ -46,6 +46,7 @@ help:
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
+	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
 	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
@@ -386,7 +387,14 @@ test-spawn-unit:
 check-spawn:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mermaid -p bboxy450-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: test-harness-startup check-harness-startup fmt-harness-startup
+.PHONY: test-adapter-startup test-harness-startup check-harness-startup fmt-harness-startup
+ADAPTER_STARTUP_TEST ?= adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary
+test-adapter-startup:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib process_start_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters adapters_zsh_startup_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters '$(ADAPTER_STARTUP_TEST)' -- --exact --nocapture
+
 fmt-harness-startup:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bboxy450-harness-wake-up/tests/codex_proxy.rs crates/bbt-mux/src/adapters/launch.rs crates/bbt-mux/src/adapters/mapping.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ring_batch_tests.rs
 
