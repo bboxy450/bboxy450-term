@@ -1,0 +1,104 @@
+{
+  "project": "bboxy450-term",
+  "canonical_url": "https://github.com/bboxy450/bboxy450-term",
+  "credit_policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "task": 305,
+  "disposition": "diagnostic-only; historical causal repair UNFULFILLED",
+  "oracle_ruling": "01M63FH34YYY9ZAHZNZCS13VRT",
+  "historical_failure": {
+    "unknown_operation": "01M63E80QGZKPJDH33NFGCQQ26",
+    "historical_source": "e5c2841d3a2a5209fe42461fdfab17905e8ad3ce",
+    "source_signature": "G / Boxy <bboxy450@gmail.com>",
+    "original_operation_query": "unqueryable: supplied failure does not identify original TempDir; Fixture Drop closes logic and releases its private temporary root",
+    "original_replayed": false,
+    "historical_cause": "unproven",
+    "files": {
+      "e5-red-make-test-result.json": "431e7ec603e95e05f8bab738867571eb5f4dae0c7cd4799835535051a5410796",
+      "e5-red-ci-local.log": "75e7e833b41992ee930a3db8a3fa7c657c10a31a7d2d53af8115b3b0e00548bd"
+    }
+  },
+  "focused_before_controls": {
+    "command": "make test-task-import-transport",
+    "exit_code": 0,
+    "tests": 2,
+    "log": "target/task-import-transport/focused-instrumented.log"
+  },
+  "affected_before_controls": {
+    "command": "make test-task-import-transport TASK_IMPORT_FILTER=",
+    "exit_code": 0,
+    "passed": 54,
+    "ignored": 9,
+    "log": "target/task-import-transport/affected-mcp-instrumented.log"
+  },
+  "negative": {
+    "command": [
+      "make",
+      "test-task-import-transport",
+      "TARGET_DIR=target/task-import-transport/build"
+    ],
+    "exit_code": 2,
+    "seconds": 54.36121887504123,
+    "mutation": "Classify a real completed-reply EOF as connect; no deadline/authority change",
+    "source_before_sha256": "1d9995f4450ee053298cfa67876c167c6024c42d69f38aff3479c721abf0d45c",
+    "source_after_sha256": "1d9995f4450ee053298cfa67876c167c6024c42d69f38aff3479c721abf0d45c"
+  },
+  "restored_migration": {
+    "command": [
+      "make",
+      "test-task-migration",
+      "TARGET_DIR=target/task-import-transport/build"
+    ],
+    "source_head": "59c5b251f9fed19a17589813c4fdffd0cbc972fa",
+    "source_diff_sha256": "7f5a49fa9e55d7e2dafe4d8cd559f79eda885217e08429630f37d93b81a1efab",
+    "exit_code": 0,
+    "seconds": 400.6437630839646,
+    "peak_own_target_bytes": 2006622208,
+    "min_free_bytes": 19137003520,
+    "resource_stop": null,
+    "log_sha256": "447e1c5c87f2697a08ae9674a29a44592f6c38b6d9df254a2e1efb7fa593f57a"
+  },
+  "independent_verification": {
+    "command": "make test-task-migration",
+    "records": 250,
+    "dependencies": 209,
+    "seeds": 41,
+    "published": 251,
+    "live_tasks": 7,
+    "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "bundle_sha256": "b8479d5dc60e0943e0784dc9f794cc7b2e797c615cc26c5b3d10315d534cba96",
+    "dispositions": "independently checked",
+    "raw_hashes": "250/250",
+    "links": 500,
+    "disposition_counts": {
+      "close_completed": 32,
+      "retain_deferred": 1,
+      "retain_narrowed": 3,
+      "retain_active": 2,
+      "already_done": 1,
+      "retain_followup": 1,
+      "archive_note": 1
+    },
+    "task171_sha256": "e6e51b03773b10e10b0ce56d90916162e3e5a666e6eb5929a6afc5693c977ac9",
+    "historical_wakes": 0,
+    "duplicate_prevention": true,
+    "known_no_effect_attempts": 2,
+    "transport_controls": [
+      "completed_reply_delivered",
+      "completed_reply_lost"
+    ]
+  },
+  "limits": [
+    "Old failure has no retained fixture path; its operation was never replayed.",
+    "Controlled lost receipt establishes unknown caller result with imported original operation; it does not establish the historical cause.",
+    "Phase classifier lives in newly built bridge processes. Existing live bridges, accounts and logic remain untouched.",
+    "Exact signed-source make test and normal author landing follow this precheck record; external logs and task report carry their final results."
+  ],
+  "paused_records_stash": "02089b7d0166e7f0788b749762b8c6add1b3cb29",
+  "restored_precheck_source_hashes": {
+    "Makefile": "a29f9695b5fabe6715800eaa32a1fc2d42f14c86c2172daa05c7d5c84177e49d",
+    "crates/bbt-mux/src/mcp/bridge.rs": "1d9995f4450ee053298cfa67876c167c6024c42d69f38aff3479c721abf0d45c",
+    "crates/bbt-mux/tests/mcp.rs": "f4df4385c499ab913ab92bba52ef4d0a868d8f3fb5967ddbfb6b24085c5ccc26",
+    "scripts/test-task-migration.py": "a0907f2cd6f59c85d0f52ec94c271eee5adc958d71d722806683e4ffeea16cb8"
+  },
+  "rebase_resolution": "Additive Make help and target entries; retain upstream public-only signature/landing workflows."
+}

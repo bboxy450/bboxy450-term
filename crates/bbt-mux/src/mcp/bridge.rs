@@ -9,7 +9,7 @@
 use std::io::{self, BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 use ulid::Ulid;
@@ -103,6 +103,28 @@ pub struct Bridge {
     config: Config,
     initialized: bool,
 }
+/// Only fixed phase names and OS categories cross the diagnostic boundary;
+/// paths, request bytes and the admission capability never do.
+struct TransportFailure {
+    phase: &'static str,
+    kind: io::ErrorKind,
+    os: Option<i32>,
+    elapsed_ms: u128,
+}
+impl TransportFailure {
+    fn at(phase: &'static str, started: Instant, error: io::Error) -> Self {
+        Self {
+            phase,
+            kind: error.kind(),
+            os: error.raw_os_error(),
+            elapsed_ms: started.elapsed().as_millis(),
+        }
+    }
+    fn diagnostic(&self) -> Value {
+        json!({"phase":self.phase,"kind":format!("{:?}",self.kind),
+            "os":self.os,"elapsed_ms":self.elapsed_ms})
+    }
+}
 impl Bridge {
     pub fn new(config: Config) -> Self {
         Self {
@@ -110,10 +132,17 @@ impl Bridge {
             initialized: false,
         }
     }
-    fn forward(&self, action: Action) -> io::Result<Value> {
-        let mut stream = UnixStream::connect(&self.config.socket)?;
-        stream.set_read_timeout(Some(Duration::from_secs(10)))?;
-        stream.set_write_timeout(Some(Duration::from_secs(2)))?;
+    fn forward(&self, action: Action) -> Result<Value, TransportFailure> {
+        let started = Instant::now();
+        let failure = |phase, error| TransportFailure::at(phase, started, error);
+        let mut stream =
+            UnixStream::connect(&self.config.socket).map_err(|e| failure("connect", e))?;
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .map_err(|e| failure("configure_read", e))?;
+        stream
+            .set_write_timeout(Some(Duration::from_secs(2)))
+            .map_err(|e| failure("configure_write", e))?;
         let request = Request {
             version: 1,
             seat: self.config.seat,
@@ -121,18 +150,33 @@ impl Bridge {
             capability: self.config.capability,
             action,
         };
-        let mut bytes = serde_json::to_vec(&request).map_err(io::Error::other)?;
+        let mut bytes = serde_json::to_vec(&request)
+            .map_err(|e| failure("encode_request", io::Error::other(e)))?;
         if bytes.len() + 1 > MAX_FRAME {
-            return Err(io::Error::other("seat request exceeds bound"));
+            return Err(failure(
+                "request_bound",
+                io::Error::other("seat request exceeds bound"),
+            ));
         }
         bytes.push(b'\n');
-        stream.write_all(&bytes)?;
-        let raw = read_frame(&mut BufReader::new(stream))?
-            .ok_or_else(|| io::Error::other("seat response unavailable"))?;
-        let value: Value =
-            serde_json::from_slice(&raw).map_err(|_| io::Error::other("invalid seat response"))?;
+        stream
+            .write_all(&bytes)
+            .map_err(|e| failure("write_request", e))?;
+        let raw = read_frame(&mut BufReader::new(stream))
+            .map_err(|e| failure("read_response", e))?
+            .ok_or_else(|| {
+                failure(
+                    "response_eof",
+                    io::Error::other("seat response unavailable"),
+                )
+            })?;
+        let value: Value = serde_json::from_slice(&raw)
+            .map_err(|_| failure("decode_response", io::Error::other("invalid seat response")))?;
         if value["kind"] == "Rejected" {
-            return Err(io::Error::other("seat control request rejected"));
+            return Err(failure(
+                "seat_rejected",
+                io::Error::other("seat control request rejected"),
+            ));
         }
         Ok(value)
     }
@@ -275,13 +319,14 @@ impl Bridge {
                 }
                 match self.forward(Action::Call { call }) {
                     Ok(result) => Ok(result),
-                    Err(_) => {
+                    Err(error) => {
                         let mut response = rpc_error(
                             id,
                             -32001,
                             "Seat control transport unavailable; retain this operation ID before retry",
                         );
-                        response["error"]["data"] = json!({"op_id":op_id,"status":"unknown"});
+                        response["error"]["data"] = json!({"op_id":op_id,"status":"unknown",
+                            "transport":error.diagnostic()});
                         return Some(response);
                     }
                 }
@@ -290,11 +335,15 @@ impl Bridge {
         };
         Some(match result {
             Ok(result) => json!({"jsonrpc":"2.0","id":id,"result":result}),
-            Err(_) => rpc_error(
-                id,
-                -32001,
-                "Seat control transport unavailable; query the original operation before retry",
-            ),
+            Err(error) => {
+                let mut response = rpc_error(
+                    id,
+                    -32001,
+                    "Seat control transport unavailable; query the original operation before retry",
+                );
+                response["error"]["data"] = json!({"transport":error.diagnostic()});
+                response
+            }
         })
     }
 

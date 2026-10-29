@@ -144,12 +144,30 @@ def verify(base):
     assert proof["task171_before"] == proof["task171_after"] == sha((root / proof["task171_path"]).read_bytes())
     assert proof["unrelated_before"] == proof["unrelated_after"]
     assert proof["historical_wakes"] == 0 and proof["replay_unchanged"] is True
+    controls = proof["transport_controls"]
+    assert len(controls) == 2 and len({row["op_id"] for row in controls}) == 2
+    for row in controls:
+        assert row["actual"]["isError"] is False
+        assert row["actual"]["structuredContent"]["status"] == "imported"
+        assert row["actual"]["structuredContent"]["source_records"] == 250
+        assert row["read_only_original"] == dict(tool="task_import",status="imported",
+                                                error_code=None,source_records=250)
+        assert row["unknown_retried"] is False
+        if row["phase"] == "completed_reply_lost":
+            error = row["observed"]["error"]
+            assert error["code"] == -32001
+            assert error["data"]["op_id"] == row["op_id"] and error["data"]["status"] == "unknown"
+            assert error["data"]["transport"]["phase"] == "response_eof"
+        else:
+            assert row["phase"] == "completed_reply_delivered"
+            assert row["observed"]["result"] == row["actual"]
     summary = dict(command="make test-task-migration",records=250,dependencies=209,seeds=41,published=251,
                    live_tasks=7,source_revision=manifest["source_revision"],bundle_sha256=batch,
                    dispositions="independently checked",raw_hashes="250/250",links=len(manifest["links"]),
                    disposition_counts=dict(Counter(d["disposition"] for d in audit["decisions"])),
                    task171_sha256=proof["task171_after"],historical_wakes=0,duplicate_prevention=True)
     summary["known_no_effect_attempts"]=proof.get("known_no_effect_attempts",0)
+    summary["transport_controls"] = [row["phase"] for row in controls]
     (base / "verification.json").write_text(json.dumps(summary,indent=2)+"\n")
     print(json.dumps(summary,sort_keys=True))
 

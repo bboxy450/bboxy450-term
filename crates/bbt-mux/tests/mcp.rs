@@ -191,7 +191,21 @@ impl Fixture {
     fn registry(&self) -> Registry {
         Registry::new(SqliteStore::open(&self.config.run_dir.join("account")).unwrap())
     }
-    fn mutate(&self, seat: Ulid, op_id: Ulid, tool: &str, mut args: Value) -> Value {
+    fn mutate(&self, seat: Ulid, op_id: Ulid, tool: &str, args: Value) -> Value {
+        self.mutate_at("mutation", seat, op_id, tool, args)
+    }
+    fn mutate_at(
+        &self,
+        phase: &str,
+        seat: Ulid,
+        op_id: Ulid,
+        tool: &str,
+        mut args: Value,
+    ) -> Value {
+        let started = Instant::now();
+        if tool == "task_import" {
+            eprintln!("import call started: tool={tool}, phase={phase}, op={op_id}");
+        }
         args["op_id"] = json!(op_id);
         let mut bridge = self.bridge(seat);
         initialize(&mut bridge);
@@ -203,9 +217,25 @@ impl Fixture {
                 "tools/call",
                 json!({"name":tool,"arguments":args}),
             );
-            assert!(reply.get("error").is_none(), "{reply}");
+            if reply.get("error").is_some() {
+                // Inspect this exact operation without calling it again. Opening the
+                // existing private database read-only cannot create/admit an effect.
+                let retained = self.original_operation(seat, op_id);
+                panic!(
+                    "MCP mutation failed: tool={tool}, phase={phase}, op={op_id}, elapsed_ms={}, original_reply={reply}, read_only_original_operation={retained}",
+                    started.elapsed().as_millis()
+                );
+            }
             let value = reply["result"].clone();
             if value["structuredContent"]["error"]["code"] != "workspace_pending" {
+                if tool == "task_import" {
+                    eprintln!(
+                        "import call: tool={tool}, phase={phase}, op={op_id}, elapsed_ms={}, status={}, error_code={}",
+                        started.elapsed().as_millis(),
+                        value["structuredContent"]["status"],
+                        value["structuredContent"]["error"]["code"]
+                    );
+                }
                 return value;
             }
             assert!(
@@ -214,6 +244,27 @@ impl Fixture {
             );
             std::thread::sleep(Duration::from_millis(10));
         }
+    }
+    fn original_operation(&self, seat: Ulid, op_id: Ulid) -> Value {
+        let journal = self
+            .config
+            .run_dir
+            .join(format!("seat-{seat}/object.sqlite"));
+        rusqlite::Connection::open_with_flags(&journal, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .and_then(|db| {
+                db.query_row(
+                    "SELECT value FROM kv WHERE key=?1",
+                    [format!("control/op/{op_id}")],
+                    |row| row.get::<_, Vec<u8>>(0),
+                )
+            })
+            .map(|bytes| {
+                let entry: Value = serde_json::from_slice(&bytes).unwrap();
+                json!({"tool":entry["tool"],"status":entry["result"]["structuredContent"]["status"],
+                    "error_code":entry["result"]["structuredContent"]["error"]["code"],
+                    "source_records":entry["result"]["structuredContent"]["source_records"]})
+            })
+            .unwrap_or_else(|error| json!({"read_only_query":format!("{error:?}")}))
     }
     fn audits(&self, seat: Ulid, count: usize) -> Vec<bbt_mux::store::events::Envelope> {
         let until = Instant::now() + Duration::from_secs(120);
@@ -1770,6 +1821,16 @@ fn mcp_framing_is_bounded_and_protocol_errors_never_echo_input() {
     let unavailable = rpc(&mut bridge, 5, "tools/call", json!({"name":"orient"}));
     assert_eq!(unavailable["error"]["code"], -32001);
     assert_eq!(unavailable["error"]["data"]["status"], "unknown");
+    assert_eq!(
+        unavailable["error"]["data"]["transport"]["phase"],
+        "connect"
+    );
+    assert_eq!(
+        unavailable["error"]["data"]["transport"]["kind"],
+        "NotFound"
+    );
+    assert!(unavailable["error"]["data"]["transport"]["elapsed_ms"].is_u64());
+    assert!(!unavailable.to_string().contains("/does/not/exist"));
     assert_ne!(
         unavailable["error"]["data"]["op_id"]
             .as_str()
@@ -3147,10 +3208,10 @@ fn migration_files(root: &std::path::Path) -> std::collections::BTreeMap<String,
 
 // A provisional range may legitimately lose to ordinary work. Only these
 // explicitly no-effect results permit a fresh operation; unknown never does.
-fn migration_import(f: &Fixture, args: &Value) -> (Ulid, Value, usize) {
+fn migration_import(f: &Fixture, phase: &str, args: &Value) -> (Ulid, Value, usize) {
     for attempt in 0..8 {
         let op = Ulid::new();
-        let result = f.mutate(f.oracle.id, op, "task_import", args.clone());
+        let result = f.mutate_at(phase, f.oracle.id, op, "task_import", args.clone());
         let code = result["structuredContent"]["error"]["code"].as_str();
         if matches!(
             code,
@@ -3177,6 +3238,129 @@ fn migration_import(f: &Fixture, args: &Value) -> (Ulid, Value, usize) {
     panic!(
         "private importer did not obtain a stable provisional range in eight explicit no-effect operations"
     );
+}
+
+// Adapted from this file's real seat-socket bridge fixtures. The relay changes only
+// whether the completed reply is delivered; it never interprets or retries an effect.
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn migration_transport_controls(f: &Fixture, args: &Value) -> Vec<Value> {
+    let mut evidence = Vec::new();
+    for lose_reply in [false, true] {
+        let info = f
+            .runtime
+            .block_on(f.client().endpoint(f.oracle.id))
+            .unwrap();
+        let proxy = f
+            ._temp
+            .path()
+            .join(format!("import-relay-{lose_reply}.sock"));
+        let listener = std::os::unix::net::UnixListener::bind(&proxy).unwrap();
+        let thread = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            loop {
+                use std::os::fd::AsRawFd;
+                let mut readiness = libc::pollfd {
+                    fd: listener.as_raw_fd(),
+                    events: libc::POLLIN,
+                    revents: 0,
+                };
+                let remaining = deadline
+                    .saturating_duration_since(Instant::now())
+                    .as_millis();
+                assert!(
+                    remaining > 0,
+                    "import relay did not receive its completed operation"
+                );
+                // SAFETY: this thread owns the live listener and the one-element poll array.
+                assert_eq!(
+                    unsafe { libc::poll(&mut readiness, 1, remaining.try_into().unwrap()) },
+                    1
+                );
+                let (mut caller, _) = listener.accept().unwrap();
+                caller
+                    .set_read_timeout(Some(Duration::from_secs(10)))
+                    .unwrap();
+                caller
+                    .set_write_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let request = read_frame(&mut std::io::BufReader::new(caller.try_clone().unwrap()))
+                    .unwrap()
+                    .unwrap();
+                let mut upstream = UnixStream::connect(&info.path).unwrap();
+                upstream
+                    .set_read_timeout(Some(Duration::from_secs(10)))
+                    .unwrap();
+                upstream
+                    .set_write_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                upstream.write_all(&request).unwrap();
+                upstream.write_all(b"\n").unwrap();
+                let reply = read_frame(&mut std::io::BufReader::new(upstream))
+                    .unwrap()
+                    .unwrap();
+                let actual = serde_json::from_slice::<Value>(&reply).unwrap();
+                let opening = actual["structuredContent"]["error"]["code"] == "workspace_pending";
+                // Preserve the existing RPC helper's explicit pre-effect readiness
+                // replies unchanged. Only a completed operation can lose its receipt.
+                if !lose_reply || opening {
+                    caller.write_all(&reply).unwrap();
+                    caller.write_all(b"\n").unwrap();
+                }
+                if opening {
+                    continue;
+                }
+                // Both owned sockets close before the thread joins. Payload/capability
+                // stays in memory; only the actual tool result returns to the test.
+                return actual;
+            }
+        });
+        let admission = f
+            .runtime
+            .block_on(f.client().endpoint(f.oracle.id))
+            .unwrap();
+        let mut bridge = Bridge::new(BridgeConfig {
+            socket: proxy,
+            seat: f.oracle.id,
+            generation: admission.generation,
+            capability: admission.capability,
+        });
+        initialize(&mut bridge);
+        let op = Ulid::new();
+        let mut arguments = args.clone();
+        arguments["op_id"] = json!(op);
+        let started = Instant::now();
+        let observed = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":"task_import","arguments":arguments}),
+        );
+        let actual = thread.join().unwrap();
+        let retained = f.original_operation(f.oracle.id, op);
+        let row = json!({"phase":if lose_reply{"completed_reply_lost"}else{"completed_reply_delivered"},
+            "op_id":op,"elapsed_ms":started.elapsed().as_millis(),"observed":observed,
+            "actual":actual,"read_only_original":retained,"unknown_retried":false});
+        eprintln!("import transport control: {row}");
+        assert_eq!(data(actual.clone())["status"], "imported");
+        assert_eq!(data(actual.clone())["source_records"], 250);
+        assert_eq!(retained["tool"], "task_import");
+        assert_eq!(retained["status"], "imported");
+        assert_eq!(retained["source_records"], 250);
+        if lose_reply {
+            assert_eq!(observed["error"]["code"], -32001);
+            assert_eq!(observed["error"]["data"]["op_id"], op.to_string());
+            assert_eq!(observed["error"]["data"]["status"], "unknown");
+            assert_eq!(
+                observed["error"]["data"]["transport"]["phase"],
+                "response_eof"
+            );
+            assert_eq!(observed["error"]["data"]["transport"]["kind"], "Other");
+        } else {
+            assert_eq!(observed["result"], actual);
+        }
+        evidence.push(row);
+    }
+    evidence
 }
 
 #[test]
@@ -3238,7 +3422,13 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
     let mut denied = args.clone();
     denied["expected_root"] = json!(private.path());
     assert_eq!(
-        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        f.mutate_at(
+            "wrong_root",
+            f.oracle.id,
+            Ulid::new(),
+            "task_import",
+            denied
+        )["isError"],
         true
     );
     assert!(!root.join("imports").exists());
@@ -3249,33 +3439,54 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
     let mut denied = args.clone();
     denied["owner_seat"] = json!(f.own.id);
     assert_eq!(
-        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        f.mutate_at(
+            "worker_custodian",
+            f.oracle.id,
+            Ulid::new(),
+            "task_import",
+            denied
+        )["isError"],
         true
     );
     let mut denied = args.clone();
     denied["bundle_sha256"] = json!("0".repeat(64));
     assert_eq!(
-        f.mutate(f.oracle.id, Ulid::new(), "task_import", denied)["isError"],
+        f.mutate_at(
+            "wrong_digest",
+            f.oracle.id,
+            Ulid::new(),
+            "task_import",
+            denied
+        )["isError"],
         true
     );
     let inboxes: Vec<_> = [&f.own, &f.peer, &f.oracle, &f.outside]
         .iter()
         .map(|s| data(f.call(s.id, Ulid::new(), "message_list", json!({})))["page"].clone())
         .collect();
-    let (op, first, no_effect_attempts) = migration_import(&f, &args);
+    let (op, first, no_effect_attempts) = migration_import(&f, "first_publication", &args);
     assert_eq!(first["source_records"], 250);
     assert_eq!(first["published_records"], 251);
     let published = migration_files(&root.join("imports"));
     let mut changed = args.clone();
     changed["expected_root"] = json!(format!("{}/.", root.display()));
     assert_eq!(
-        f.mutate(f.oracle.id, op, "task_import", changed)["structuredContent"]["error"]["code"],
+        f.mutate_at("changed_arguments", f.oracle.id, op, "task_import", changed)["structuredContent"]
+            ["error"]["code"],
         "op_id_reused"
     );
-    data(f.mutate(f.oracle.id, op, "task_import", args.clone()));
+    data(f.mutate_at(
+        "same_operation_replay",
+        f.oracle.id,
+        op,
+        "task_import",
+        args.clone(),
+    ));
+    assert_eq!(published, migration_files(&root.join("imports")));
+    let transport_controls = migration_transport_controls(&f, &args);
     assert_eq!(published, migration_files(&root.join("imports")));
     f.restart();
-    let (_, _, restart_no_effect_attempts) = migration_import(&f, &args);
+    let (_, _, restart_no_effect_attempts) = migration_import(&f, "restart_bundle_replay", &args);
     f.prepare_operator(); // This fixture's existing memory-only custody; no real account or prompt.
     let bbt_proto::GuiReply::Task {
         response: context_response,
@@ -3354,7 +3565,7 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
         copy(&root.join("imports"), &dest.join("imports"));
         std::fs::copy(root.join(&task171_path), dest.join(&task171_path)).unwrap();
         let proof = json!({"task171_path":task171_path,"task171_before":bbt_mux::store::digest(&task171_before),"task171_after":bbt_mux::store::digest(&std::fs::read(root.join(&task171_path)).unwrap()),
-            "unrelated_before":bbt_mux::store::digest(&unrelated_before),"unrelated_after":bbt_mux::store::digest(&std::fs::read(unrelated).unwrap()),"historical_wakes":0,"replay_unchanged":true,"known_no_effect_attempts":no_effect_attempts+restart_no_effect_attempts});
+            "unrelated_before":bbt_mux::store::digest(&unrelated_before),"unrelated_after":bbt_mux::store::digest(&std::fs::read(unrelated).unwrap()),"historical_wakes":0,"replay_unchanged":true,"known_no_effect_attempts":no_effect_attempts+restart_no_effect_attempts,"transport_controls":transport_controls});
         std::fs::write(
             output.join("proof.json"),
             serde_json::to_vec_pretty(&proof).unwrap(),

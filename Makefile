@@ -43,6 +43,7 @@ help:
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
+	  'make test-task-import-transport  Focused authenticated import transport and original-operation diagnostics' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
@@ -162,6 +163,15 @@ test-signatures:
 
 test-landing:
 	@python3 -I scripts/test-landing.py
+.PHONY: test-task-import-transport
+TASK_IMPORT_FILTER ?= task_migration
+test-task-import-transport:
+	@set -eu; . ./scripts/cache-env.sh; \
+	python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
+	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
+	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp $(TASK_IMPORT_FILTER) -- --nocapture; \
+	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
 
 .PHONY: parity-settings
 .PHONY: test-cursors
