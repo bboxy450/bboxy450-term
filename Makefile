@@ -531,7 +531,8 @@ test-input-latency:
 test-input-backend:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib logic::idle_command_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::input_check_tests
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::input_check_tests; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events -- --exact
 	$(MAKE) test-input-latency test-terminal-replay
 
 test-input-ui:
