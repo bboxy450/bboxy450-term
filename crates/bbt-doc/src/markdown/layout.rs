@@ -1129,7 +1129,10 @@ impl Render<'_> {
             line_height,
             ..font(ui::TypeStep::Caption, 400, true, ui::Color::Foreground)
         };
-        let e = nowrap(format!("{key}/text"), value, f);
+        let mut literal = c::Text::new(value, f);
+        literal.wrap = false;
+        literal.preserve_whitespace = true;
+        let e = named(format!("{key}/text"), c::Element::Text(literal));
         let pad = [
             STYLE.spacing.s4 as f32,
             STYLE.spacing.s5 as f32,
@@ -1461,12 +1464,25 @@ impl Render<'_> {
                     .iter()
                     .filter(|(key, _)| evidence(key) && (keys.is_empty() || keys.contains(key)))
                     .collect();
+                let original = serde_yaml::to_value(&fields).unwrap_or_default();
                 let details = serde_json::to_value(&fields)
-                    .and_then(|value| serde_json::to_string_pretty(&value))
-                    .unwrap_or_else(|_| serde_yaml::to_string(&fields).unwrap_or_default());
+                    .ok()
+                    .filter(|value| {
+                        serde_yaml::to_value(value).is_ok_and(|restored| restored == original)
+                    })
+                    .and_then(|value| serde_json::to_string_pretty(&value).ok())
+                    .unwrap_or_else(|| serde_yaml::to_string(&fields).unwrap_or_default());
                 children.push(
-                    self.code("metadata/provenance/details", &details, 1.6)
-                        .into(),
+                    row(
+                        "metadata/provenance/details-slot",
+                        plain([0.; 4]),
+                        0.,
+                        vec![fixed(
+                            self.code("metadata/provenance/details", &details, 1.6),
+                            self.width,
+                        )],
+                    )
+                    .into(),
                 );
             }
         }

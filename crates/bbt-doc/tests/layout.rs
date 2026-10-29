@@ -352,7 +352,19 @@ fn task_provenance_is_quiet_until_opened_and_keeps_every_evidence_value() {
                     Some(Action::ToggleProvenance)
                 );
                 let opened = render(true);
+                assert!(
+                    named(&opened, "metadata/provenance/details")
+                        .unwrap()
+                        .rect
+                        .w
+                        <= width.min(STYLE.spacing.doc_measure as f32) + 0.01
+                );
                 let expanded = texts(&opened);
+                assert!(
+                    runs(named(&opened, "metadata/provenance/details/text").unwrap())
+                        .iter()
+                        .any(|run| run.text.starts_with("  \"authorship\""))
+                );
                 for value in [
                     digest.as_str(),
                     signature.as_str(),
@@ -373,6 +385,36 @@ fn task_provenance_is_quiet_until_opened_and_keeps_every_evidence_value() {
         assert_eq!(doc.document("task.md").body, source);
         assert!(doc.document("task.md").prov.signed.is_none());
     }
+}
+
+// keeps: spec document-viewer §Markdown — valid YAML evidence cannot silently become JSON null.
+#[test]
+fn expanded_provenance_retains_non_json_yaml_values() {
+    use bbt_ui::modules::document_modal::controller::{Controller, RecordLinks};
+    let source = "---\ntype: task\nprovenance:\n  digest: .nan\n  upper: .inf\n  lower: -.inf\n  tagged: !evidence retained\n  keyed: {1: numeric}\n---\nTask body.\n";
+    let doc = parse(source);
+    assert!(doc.frontmatter.error.is_none());
+    let original = doc.frontmatter.fields.clone();
+    let mut control = Controller::default();
+    control.provenance_expanded = true;
+    let layout = doc
+        .hosted_body_element_with_controller(
+            "Task",
+            ctx(),
+            &Fonts,
+            500.,
+            &RecordLinks::new(),
+            &control,
+        )
+        .layout(Rect::new(0., 0., 500., 0.), ctx(), &Fonts)
+        .unwrap();
+    let shown = texts(&layout);
+    for value in [".nan", ".inf", "-.inf", "!evidence", "1: numeric"] {
+        assert!(shown.contains(value), "lost YAML evidence {value}: {shown}");
+    }
+    assert!(!shown.contains("null"));
+    assert_eq!(doc.source, source);
+    assert_eq!(doc.frontmatter.fields, original);
 }
 
 // keeps: spec document-viewer §Markdown — fitting never splits extended grapheme clusters.
