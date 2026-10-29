@@ -360,9 +360,31 @@ def fitted_table_and_dismissal(app, style):
     selected = click(next(run["rect"] for run in observed["texts"] if run["text"] == "123"))
     require(selected["document"] == layout["document"], "body selection-start click dismissed the document")
     find = click(keyed["action4"]["rect"])
-    require(find["document"] == layout["document"] and any("find is not available yet" in str(n.get("text", "")) for _,n in nodes(find)),
-            "footer command was replaced by outside dismissal")
-    find_keyed = {key:n for key,n in nodes(find) if n["kind"].startswith("named:")}
+    require(find["document"] == layout["document"], "footer command dismissed the document")
+    deadline = time.monotonic()+25
+
+    def find_notice(after, visible):
+        while True:
+            current = app.ctl("ui", "layout")
+            require(current["document"] == layout["document"], "Find lost the open document while rebuilding")
+            if current["frame_seq"] > after and current.get("document_observation") is not None:
+                painted = app.observation(current, record)
+                notices = [r for r in painted["texts"] if r["key"] == "notice" and r["text"] == "find is not available yet"]
+                for notice in notices:
+                    x,y,w,h = notice["rect"]
+                    clip = notice.get("clip") or [0,0,*current["size"]]
+                    if not visible or (min(x+w,clip[0]+clip[2]) > max(x,clip[0])
+                                       and min(y+h,clip[1]+clip[3]) > max(y,clip[1])):
+                        return current
+            require(time.monotonic() < deadline, "Find did not produce its complete native notice in the visible document")
+            time.sleep(0.05)
+
+    # The command clears the retained layout. Wait for its rebuilt frame before
+    # Home, then prove the top notice is actually visible rather than clipped at End.
+    rebuilt = find_notice(find["frame_seq"], False)
+    home = app.ctl("ui", "key", "home")
+    visible_find = find_notice(max(rebuilt["frame_seq"], home["frame_seq"]), True)
+    find_keyed = {key:n for key,n in nodes(visible_find) if n["kind"].startswith("named:")}
     closed = click(find_keyed["action6"]["rect"])
     anchor = ["swarm", "tab", "focused", "page"]
     require(closed["document"] is None and all(closed[k] == before[k] for k in anchor),
@@ -379,7 +401,7 @@ def fitted_table_and_dismissal(app, style):
             "backdrop click did not consume dismissal and restore focus; underlying Settings received the click")
     require(not any(n["kind"] == "named:document" for _,n in nodes(dismissed)), "dismissed modal remains in the produced tree")
     app.checks.append({"feature":"modal-dismissal", "inside_frame":inside["frame_seq"], "body_frame":selected["frame_seq"],
-                       "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
+                       "footer_notice_frame":visible_find["frame_seq"], "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
                        "focus_anchor":{k:dismissed[k] for k in anchor}})
 
     # Resize after dismissal guards so every preceding click used its own frame.
