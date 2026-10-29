@@ -554,10 +554,8 @@ fn canonical_recent_reconciles_real_event_once() {
         if let Some(event) = log.after(0, 128).unwrap().into_iter().find(|event| {
             event.event.subject == format!("seats/{seat}/inbox/message")
                 && event.event.payload["id"] == message
-        }) {
-            if fixture.lane_position(swarm).1 >= event.seq {
-                break event;
-            }
+        }) && fixture.lane_position(swarm).1 >= event.seq {
+            break event;
         }
         assert!(
             Instant::now() < deadline,
