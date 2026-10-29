@@ -1,0 +1,142 @@
+# Project-owned bounded specifications. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+# Rust witnesses and existing implementation tests supplement these models, not refinement proofs.
+
+[[contract]]
+name = "DirtyWake"
+title = "Immediate dirty-set admission"
+models = ["DirtyWake", "BrokenDirtyWake"]
+sources = ["crates/bbt-rt/src/wake.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/formal_contracts/witnesses.rs"]
+assumptions = "One producer bit and one drain, atomic steps with sequential consistency. The Rust memory model, retained/deferred modes and OS wakers are outside this model."
+property = "The recheck after clearing pending must preserve an outstanding wake; omitting it must fail."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "NotificationReplace"
+title = "Bounded notification replacement"
+models = ["NotificationReplace", "BrokenNotificationReplace"]
+sources = ["crates/bboxy450-term/src/notifications.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/formal_contracts/witnesses.rs"]
+assumptions = "Two revisions, one queue slot, one authorization barrier; revision 2 replaces revision 1. No OS presentation or permission guarantee."
+property = "An admitted newer plan is reconciled before posting an obsolete notice after authorization."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WorkspaceFence"
+title = "Workspace reads and authority"
+models = ["WorkspaceFence", "BrokenWorkspaceFence"]
+sources = ["crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs"]
+implementation_tests = ["crates/bbt-mux/tests/workspace_roots.rs", "crates/bbt-mux/tests/harmony_host.rs"]
+assumptions = "Two roots, three workspace and provider revisions (including A -> B -> A), one captured job and revocable authority. Atomic selection/capture/publication may interleave; no fairness or eventual provider response is assumed. Hashes, filesystem safety, native writes, durable commits and unknown mutation outcomes use implementation tests."
+property = "Publication requires the captured workspace revision, root and provider revision plus current authority. Removing the provider fence must fail even when the root and workspace revision stay unchanged."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PluginActivation"
+title = "Plugin inspection completion"
+models = ["PluginActivation", "BrokenPluginActivation"]
+sources = ["crates/bbt-mux/src/plugins/registry.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugins.rs"]
+assumptions = "Two source digests and activation generations, one inspection. Digest equality is abstract, not a cryptographic proof."
+property = "Disabled, changed-source or changed-generation inspections cannot become active."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "HarnessToken"
+title = "Guarded single-use readiness"
+models = ["HarnessToken", "BrokenHarnessToken"]
+sources = ["crates/bboxy450-harness-wake-up/src/guard.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/adapters.rs"]
+assumptions = "One delivery ID, two ownership epochs, at most two preparations; positive proof and ambiguous native outcomes are Boolean abstractions. Real expiry, foreground PID and terminal modes use guard tests."
+property = "A captured token needs current unconsumed proof and input ownership; fresh proof never clears an ambiguous outcome for that ID."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "CustodyDelivery"
+title = "Local delivery during custody hold"
+models = ["CustodyDelivery", "BrokenCustodyDelivery"]
+sources = ["crates/bbt-mux/src/messaging/service.rs"]
+implementation_tests = ["crates/bbt-mux/tests/messaging.rs"]
+assumptions = "One operator-local pending intent, custody initially unavailable. Fair delivery turns are assumed; custody recovery is NOT assumed. This grants no network or signed-envelope bypass."
+property = "Local delivery eventually completes without signing custody; signatures require custody and prior admission."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "MessageSuppression"
+title = "Message wake reconciliation"
+models = ["MessageSuppression", "BrokenMessageSuppression"]
+sources = ["crates/bbt-mux/src/messaging/ledger/suppression.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One queued receipt, event/conversation admission, mute and resolution; sender authorization and multi-recipient SQL transactions use implementation tests."
+property = "Events, muted recipients and resolved or superseded receipts never cause a later automatic wake."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LifecycleOwnership"
+title = "UI detach and exact process ownership"
+models = ["LifecycleOwnership", "BrokenLifecycleOwnership"]
+sources = ["crates/bboxy450-term/src/cockpit/owners.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/lifecycle.rs"]
+assumptions = "One UI and retained owner, explicit stop and a PID-birth equality bit. Native process start/exit races and signal delivery require private process tests."
+property = "Ordinary detach preserves the owner; explicit stop may signal only the captured process birth."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WindowDurability"
+title = "GUI persistence and reply fences"
+models = ["WindowDurability", "BrokenWindowDurability"]
+sources = ["crates/bboxy450-term/src/window_writes.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/formal_contracts/witnesses.rs"]
+assumptions = "Two desired versions and GUI epochs, one save job and fenced reply. Save success abstracts the actual durable transaction; refusal/capacity paths use implementation tests."
+property = "Old-epoch completions cannot release a reply; each reply waits for its saved version."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "FocusFrame"
+title = "Produced-frame focus acknowledgement"
+models = ["FocusFrame", "BrokenFocusFrame"]
+sources = ["crates/bboxy450-term/src/focus_ack.rs"]
+implementation_tests = ["crates/bboxy450-term/src/focus_ack.rs"]
+assumptions = "One focus operation, prior placement, two process generations, visibility and one completed-frame boundary. GPU presentation and elapsed-time deadlines remain outside the contract."
+property = "Success needs a completed frame, settled earlier placements, current generation and a focused visible pane."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "CheckpointRestore"
+title = "Terminal checkpoint effect isolation"
+models = ["CheckpointRestore", "BrokenCheckpointRestore"]
+sources = ["crates/bbt-core/src/lib.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/formal_contracts/witnesses.rs"]
+assumptions = "Two parsed units and queued effects, one snapshot and restore. This models restore only, not byte-parser correctness or all historical replay."
+property = "Restore carries parser/grid data and never resurrects queued output effects."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatFairness"
+title = "Per-seat ingestion progress"
+models = ["SeatFairness", "BrokenSeatFairness"]
+sources = ["crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/ring_batch_tests.rs"]
+assumptions = "One continuously ready watched seat, one background seat, watched quota 3 and optional watched checkpoint pause. Scheduler turns are weakly fair; CPU deadlines and larger rings use performance tests."
+property = "The background seat progresses even with a hot watched seat; a watched checkpoint pause is local."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RenderSubmission"
+title = "GPU arena submission discipline"
+models = ["RenderSubmission", "BrokenRenderSubmission"]
+sources = ["crates/bbt-render/src/chrome/arena.rs"]
+implementation_tests = ["crates/bbt-render/src/chrome/arena.rs"]
+assumptions = "Two unit slices in one buffer, staging flush and submission boundary. Alignment, buffer growth/fallback, GPU memory execution and pixels require real GPU tests."
+property = "Live slices do not overlap; uploads are flushed before submit and the cursor rewinds at the next submission."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LandingVerification"
+title = "Source-bound formal evidence before landing"
+models = ["LandingVerification", "BrokenLandingVerification"]
+sources = ["scripts/landing.py", "scripts/formal.py", "Makefile"]
+implementation_tests = ["scripts/test-landing.py"]
+assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof."
+property = "Publishing needs clean current-source Rust and formal evidence, matching model inputs and remote base; old or partial evidence cannot authorize a push."
+checks = ["make test-formal", "make test"]

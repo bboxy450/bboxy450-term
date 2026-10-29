@@ -12,6 +12,7 @@ members = [
   "crates/bboxy450-desktop-notifications-linux",
   "crates/bboxy450-desktop-notifications",
   "crates/bbt-plugin",
+  "crates/bboxy450-tlc",
   "crates/bbt-yarn-macros",
   "crates/bbt-yarn",
   "crates/bbt-core",

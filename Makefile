@@ -45,9 +45,18 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
+	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
+	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
+	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
+	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
+	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
+	  'make test-tlc-standalone        Verify the public standalone source, native + TLC' \
+	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
+	  'make test-landing-extended       Moving-main and recovery fixtures with formal receipts' \
 	  'make test-task-import-transport  Focused authenticated import transport and original-operation diagnostics' \
 	  'make test-clipboard-isolation   Concurrent explicitly owned private pasteboards; no general clipboard' \
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
@@ -196,6 +205,10 @@ test-signatures:
 
 test-landing:
 	@python3 -I scripts/test-landing.py
+
+.PHONY: test-landing-extended
+test-landing-extended:
+	@python3 -I scripts/test-landing.py --all
 .PHONY: test-task-import-transport
 TASK_IMPORT_FILTER ?= task_migration
 test-task-import-transport:
@@ -575,6 +588,7 @@ push:
 	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; test -z "$$(git status --porcelain)"; \
 	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
+	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
 
@@ -1194,3 +1208,69 @@ test-recovery-built:
 	test "$$(cat '$(TARGET_DIR)/recovery-test.source')" = "$$(git rev-parse HEAD)"; \
 	shasum -a 256 -c '$(TARGET_DIR)/recovery-test.sha256'; \
 	'$(abspath $(TARGET_DIR))/recovery-test' --exact checkpoint_bounded_recovery --nocapture
+
+.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts check-formal-evidence
+
+check-formal-evidence:
+	@python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence
+
+test-yarn-model:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-tlc --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-yarn --features model --target-dir '$(TARGET_DIR)'; \
+	cargo check --locked -p bboxy450-yarn --no-default-features --target-dir '$(TARGET_DIR)'; \
+	cargo check --locked -p bboxy450-yarn --no-default-features --features model --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-tlc -p bboxy450-yarn -p bboxy450-yarn-macros --features bboxy450-yarn/model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-formal-contracts:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' -- -D warnings
+
+format-formal-contracts:
+	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
+
+test-formal: test-yarn-model
+	@python3 -I scripts/test-formal.py
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
+
+.PHONY: format-yarn-model
+format-yarn-model:
+	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bbt-yarn/src/model.rs crates/bbt-yarn/examples/verify.rs crates/bboxy450-tlc/tests/model_checker.rs crates/bboxy450-tlc/src/lib.rs crates/bboxy450-tlc/examples/verify.rs crates/bbt-yarn/tests/model_projection.rs crates/bbt-yarn-macros/src/lib.rs crates/bbt-yarn/src/lib.rs
+
+.PHONY: prepare-tlc test-tlc-standalone publish-tlc-github
+prepare-tlc:
+	@python3 -I scripts/prepare-tlc.py --target '$(abspath $(TARGET_DIR))'
+
+test-tlc-standalone:
+	@set -eu; mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); $(MAKE) -C "$$mirror" test; \
+	git -C "$$mirror" rev-parse HEAD > '$(TARGET_DIR)/tlc-standalone.passed'
+
+publish-tlc-github:
+	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
+	mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); version='$(APP_VERSION)'; \
+	test "$$(cat '$(TARGET_DIR)/tlc-standalone.passed')" = "$$(git -C "$$mirror" rev-parse HEAD)"; \
+	git -C "$$mirror" verify-commit HEAD; test -z "$$(git -C "$$mirror" status --porcelain)"; \
+	python3 -c 'import json,subprocess,sys; d=json.load(open(sys.argv[1]+"/SOURCE.json")); assert d["revision"]==subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()' "$$mirror"; \
+	file='$(abspath $(TARGET_DIR))/package/bboxy450-tlc-'"$$version"'.crate'; \
+	gpg --verify "$$file.asc" "$$file"; \
+	if git -C "$$mirror" rev-parse -q --verify "refs/tags/v$$version" >/dev/null; then git -C "$$mirror" verify-tag "v$$version"; else git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; fi; \
+	gh repo create bboxy450/bboxy450-tlc --public --description 'Experimental pure Rust model checker, checked side by side with TLA+/TLC' --source "$$mirror" --remote origin --push; \
+	git -C "$$mirror" push origin --follow-tags; \
+	gh release create "v$$version" --repo bboxy450/bboxy450-tlc "$$file" "$$file.asc" --title "bboxy450-tlc $$version" --notes 'Experimental finite expression/action subset. Native and upstream Java TLC run side by side; complete TLC compatibility is not claimed. Signed source provenance is recorded in SOURCE.json.'
+
+.PHONY: publish-tlc-crate
+publish-tlc-crate:
+	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
+	mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); version='$(APP_VERSION)'; \
+	test "$$(cat '$(TARGET_DIR)/tlc-standalone.passed')" = "$$(git -C "$$mirror" rev-parse HEAD)"; \
+	file='$(abspath $(TARGET_DIR))/package/bboxy450-tlc-'"$$version"'.crate'; gpg --verify "$$file.asc" "$$file"; \
+	if git -C "$$mirror" rev-parse -q --verify "refs/tags/v$$version" >/dev/null; then git -C "$$mirror" verify-tag "v$$version"; else git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; fi; \
+	python3 -I scripts/crates-publisher.py --receipt '$(abspath $(TARGET_DIR))/crates-publisher.json' --target '$(abspath $(TARGET_DIR))'; \
+	gpg --verify "$$file.asc" "$$file"

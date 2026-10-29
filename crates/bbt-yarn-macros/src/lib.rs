@@ -65,6 +65,44 @@ pub fn reactor_tokio_slots(input: TokenStream) -> TokenStream {
     expand_input(input.into(), Backend::Tokio, Transfer::Slots).into()
 }
 
+// New bboxy450 model integration; Respectful Slop License 1.0-Draft applies to this addition.
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+/// Projects reactor declarations to the native finite model and TLA+ backend.
+/// Handler bodies remain opaque; arbitrary Rust is never claimed as verified.
+#[proc_macro]
+#[cfg(not(test))]
+pub fn reactor_model(input: TokenStream) -> TokenStream {
+    match syn::parse2::<Reactor>(input.into()).and_then(|reactor| {
+        validate(&reactor)?;
+        let path = kittens_path();
+        let arms = reactor.arms.iter().map(|arm| {
+            let name = arm.id.to_string();
+            let terminal = arm.is_terminal();
+            let guarded = arm.when.is_some();
+            let drain = arm.drain.as_ref().map_or(1, |d| d.max);
+            let target = arm.yields_to.as_ref().map_or_else(
+                || quote!(core::option::Option::None),
+                |r| {
+                    let index = reactor
+                        .arms
+                        .iter()
+                        .position(|a| a.id == r.target)
+                        .expect("validated");
+                    quote!(core::option::Option::Some(#index))
+                },
+            );
+            quote!(#path::model::ReactorArm {
+                name: #name, terminal: #terminal, guarded: #guarded,
+                drain: #drain, yields_to: #target,
+            })
+        });
+        Ok(quote!(#path::model::reactor_model(&[#(#arms),*])))
+    }) {
+        Ok(tokens) => tokens.into(),
+        Err(error) => error.into_compile_error().into(),
+    }
+}
+
 #[derive(Clone, Copy)]
 enum Backend {
     Core,

@@ -24,6 +24,7 @@ import signal
 import subprocess
 import sys
 import time
+import tomllib
 import uuid
 
 # Running a gate must not leave bytecode among a candidate's source paths.
@@ -316,7 +317,8 @@ def affected(range_spec, *, root=None):
     broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock") or p.startswith(".cargo/")]
     # Validation tools are shared for retry decisions, but are not Rust source
     # dependencies. Their fixture suite and the fast invariants check them.
-    tooling = [p for p in paths if p.startswith("scripts/") and not p.startswith("scripts/e2e/")]
+    tooling = [p for p in paths if (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))
+               or p.startswith("verification/") or p == "Makefile"]
     touched = set()
     for path in paths:
         absolute = root / path
@@ -582,6 +584,23 @@ def command_tools(argv, root):
             else:
                 part.append(token)
         return result
+    if executable == "make" and "test-formal" in words:
+        sources = set()
+        coverage = root / "verification/coverage.toml"
+        if coverage.is_file():
+            sources.update(p for row in tomllib.loads(coverage.read_text())["crate"] for p in row["sources"])
+        contracts = root / "verification/contracts.toml"
+        if contracts.is_file():
+            sources.update(p for row in tomllib.loads(contracts.read_text())["contract"]
+                           for field in ["sources", "implementation_tests"] for p in row[field])
+        return {"Makefile", "scripts/formal.py", "scripts/test-formal.py",
+                "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
+                "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs",
+                "crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
+                "crates/bbt-yarn-macros/src/lib.rs", "verification/contracts.toml",
+                "crates/bboxy450-term/tests/formal_contracts.rs",
+                "crates/bboxy450-term/tests/formal_contracts/models.rs",
+                "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"} | sources
     if executable in {"sh", "bash", "dash", "python", "python3", "node"}:
         entries = [word for word in words[1:] if not word.startswith("-")]
         if not entries:
@@ -797,6 +816,7 @@ def presubmit_worker(base, result_path, recheck=None):
     root = repository()
     data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     atomic_write(result_path, json.dumps(data) + "\n")
+    checked(["make", "test-formal"], root)
     if data["tier"] == "lab":
         if recheck is None:
             records_checks(root, data["paths"])
@@ -827,7 +847,8 @@ def presubmit_worker(base, result_path, recheck=None):
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
     for argv in data.get("recheck", {}).get("commands", []):
-        checked(argv, root)
+        if argv != ["make", "test-formal"]:
+            checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
     return 0
@@ -837,7 +858,7 @@ def clean_source(root):
     if git("status", "--porcelain", "--untracked-files=no", cwd=root):
         raise Refusal("dirty_tracked_tree")
     untracked = git("ls-files", "--others", "--exclude-standard", "-z", cwd=root).split("\0")
-    source = [p for p in untracked if p.startswith(("crates/", "scripts/", "lab/", "design/", ".cargo/"))
+    source = [p for p in untracked if p.startswith(("crates/", "scripts/", "verification/", "lab/", "design/", ".cargo/"))
               or p in ("Cargo.toml", "Cargo.lock", "build.rs")]
     if source:
         raise Refusal("untracked_source: " + ", ".join(source))
@@ -967,6 +988,7 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
               "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
               **clocks.totals(ended)}
     if code == 0:
+        record["formal"] = formal_receipt(transcript, sha, root)
         record["commands"] = execution_commands(root, sha, transcript,
                                                  fixtures=any(p.startswith("scripts/") for p in data["paths"]))
     if "recheck" in data:
@@ -1002,7 +1024,49 @@ def build_environment(root, *, target=None):
     return environment
 
 
-def gate_proof(path, sha):
+def verify_formal_receipt(receipt, sha, root=None):
+    try:
+        if receipt["source"] != sha:
+            raise ValueError("formal receipt source differs from candidate")
+        spec = importlib.util.spec_from_file_location("landing_formal", Path(__file__).with_name("formal.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        current = module.evidence_receipt(Path(receipt["evidence"]).parent,
+                                          root=Path(root or receipt["checkout"]))
+        # An immutable checking worktree may differ from the author's worktree.
+        # Verify its evidence against the current candidate's source, not its old path.
+        if {k: v for k, v in receipt.items() if k != "checkout"} != {
+                k: v for k, v in current.items() if k != "checkout"}:
+            raise ValueError("formal receipt differs from evidence")
+        return receipt
+    except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as error:
+        raise Refusal("formal_evidence_invalid: " + str(error)) from error
+
+
+def formal_receipt(transcript, sha, root=None):
+    rows = [line.removeprefix("formal: receipt ") for line in transcript.splitlines()
+            if line.startswith("formal: receipt ")]
+    if len(rows) != 1:
+        raise Refusal("formal_receipt_missing_or_duplicate")
+    try:
+        receipt = json.loads(rows[0])
+    except ValueError as error:
+        raise Refusal("formal_receipt_invalid_json") from error
+    return verify_formal_receipt(receipt, sha, root)
+
+
+def refresh_formal(root, sha):
+    """A disjoint Rust recheck still needs formal evidence for its new commit."""
+    result = command(["make", "test-formal"], cwd=root, check=False)
+    log = state_directory() / "formal" / (sha + "-" + uuid.uuid4().hex[:8] + ".log")
+    atomic_write(log, result.stdout + result.stderr)
+    print(result.stdout + result.stderr, end="", flush=True)
+    if result.returncode:
+        raise Refusal("formal_recheck_failed: " + str(log), 77)
+    return formal_receipt(result.stdout, sha, root)
+
+
+def gate_proof(path, sha, root=None):
     path = Path(path).resolve(strict=True)
     digest = hashlib.sha256()
     sources, results = [], []
@@ -1025,7 +1089,7 @@ def gate_proof(path, sha):
             or last != f"ci-local: result {sha} normal 0"):
         raise Refusal("gate_log_not_green: full normal gate completion required")
     return {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(),
-            "tested_sha": sha}
+            "tested_sha": sha, "formal": formal_receipt(path.read_text(), sha, root)}
 
 
 def wide_check(root, data, gate_log=None):
@@ -1042,9 +1106,9 @@ def wide_check(root, data, gate_log=None):
             code = measured_command(["sh", "scripts/ci-local.sh"], check_root, output / "phases.jsonl",
                                     stream=stream, env=environment)
         print(gate_log.read_text(), end="", flush=True)
-        proof = gate_proof(gate_log, sha) if code == 0 else {"gate_log": str(gate_log)}
+        proof = gate_proof(gate_log, sha, root) if code == 0 else {"gate_log": str(gate_log)}
     else:
-        proof = gate_proof(gate_log, sha)
+        proof = gate_proof(gate_log, sha, root)
         code = 0
         print("land: reusing full normal gate on exact candidate " + sha, flush=True)
     if git("rev-parse", "HEAD", cwd=root) != sha:
@@ -1461,6 +1525,7 @@ def land(gate_log=None):
                 tested = git("rev-parse", "HEAD", cwd=root)
             else:
                 print("land: moved changes are disjoint; reusing presubmit", flush=True)
+                proof["formal"] = refresh_formal(root, candidate)
             own_signatures(root, base)
             git("fetch", "origin", "main", cwd=root)
             latest = git("rev-parse", "origin/main", cwd=root)
@@ -1471,6 +1536,7 @@ def land(gate_log=None):
             if not ancestor(base, "HEAD", root):
                 raise Refusal("not_a_fast_forward")
             sha = git("rev-parse", "HEAD", cwd=root)
+            formal = verify_formal_receipt(proof["formal"], sha, root)
             pushed = command(["git", "push", "origin", "HEAD:main"], cwd=root, check=False)
             if pushed.returncode:
                 git("fetch", "origin", "main", cwd=root)
@@ -1483,6 +1549,7 @@ def land(gate_log=None):
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
                        "tested_sha": tested, "branch": branch,
                        "incremental_rechecks": incremental_rechecks}
+            landing["formal"] = formal
             landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
                                                  "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
                                                  "tests_started", "timing_basis") if k in proof})

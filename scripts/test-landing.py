@@ -11,6 +11,7 @@ import atexit
 import hashlib
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import shutil
@@ -115,7 +116,7 @@ class Repository:
                                 CARGO_TARGET_DIR=str(self.state / "target"),
                                 RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
         self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
-        for name in ("landing.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
+        for name in ("landing.py", "formal.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
                      "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
@@ -126,6 +127,30 @@ class Repository:
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
         self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
+        self.write("verification/corpus.toml", '[[model]]\nname="Fixture"\nexpected="pass"\n')
+        self.write("verification/coverage.toml", "".join(
+            f'[[crate]]\nname="{name}"\nstatus="implementation-tests"\nmodels=[]\nscope="private fixture"\nsources=["crates/{name}/src/lib.rs"]\n'
+            for name in ("a", "b", "c")))
+        self.write("verification/tools.lock.json", json.dumps({"tlc": {"version": "fixture"}, "java": {
+            platform.system() + "-" + platform.machine(): {"version": "fixture"}}}))
+        # A test double for native/TLC execution, using the real receipt validator.
+        self.write("scripts/fixture-formal.py", '''import importlib.util,json,os,subprocess,sys
+sys.dont_write_bytecode=True
+from pathlib import Path
+root=Path.cwd()
+spec=importlib.util.spec_from_file_location("fixture_formal",root/"scripts/formal.py")
+formal=importlib.util.module_from_spec(spec);spec.loader.exec_module(formal)
+target=Path((sys.argv[1] if len(sys.argv)>1 else "") or os.environ.get("BBOXY_CARGO_TARGET_DIR") or os.environ["CARGO_TARGET_DIR"])/"formal"
+models=target/"models";models.mkdir(parents=True,exist_ok=True)
+tla=models/"Fixture.tla";tla.write_text("private fixture model\\n")
+records=formal.coverage(root,{"Fixture"});pins=json.loads((root/"verification/tools.lock.json").read_text())
+sha=subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()
+data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"].values())),"crates":records,"contracts":[],"complete_tlc_replacement":False,"input_sha256":formal.input_hashes(root,records,[]),"models":[{"name":"Fixture","expected":"pass","graph_equal":True,"states":1,"edges":0,"tlc_exit":0,"contract_metadata":None,"tla_sha256":formal.hashlib.sha256(tla.read_bytes()).hexdigest()}]}
+(target/"evidence.json").write_text(json.dumps(data))
+archive=formal.archive_evidence(target,root)
+print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
+''')
+        self.write("Makefile", 'test-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -133,6 +158,7 @@ printf 'ci-local: source %s normal\\n' "$sha"
 printf '%s\\n' "$BBOXY_GATE_SLOT $BBOXY_CARGO_TARGET_DIR" >> "$BBOXY_LANDING_STATE_DIR/wide.log"
 pwd -P > "$BBOXY_LANDING_STATE_DIR/wide-cwd"
 cargo test --workspace --locked
+make test-formal
 echo 'ci-local: all gates passed'
 printf 'ci-local: result %s normal 0\\n' "$sha"
 ''')
@@ -584,6 +610,14 @@ except Exception as error:
         self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
+    def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
+        self.repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        self.cut("crates/c/src/lib.rs")
+        result = self.repo.presubmit()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("test-formal", result.stdout + result.stderr)
+        self.assertFalse((self.repo.state / "cargo.jsonl").exists())
+
     def test_code_cut_passes_the_affected_crates_to_invariants(self):
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
@@ -712,6 +746,39 @@ except Exception as error:
 
 
 class GateReceiptTests(unittest.TestCase):
+    def test_formal_receipt_refuses_missing_stale_incomplete_and_tampered_evidence(self):
+        repo = Repository()
+        self.addCleanup(repo.close)
+        repo.tooling()
+        sha = run("git", "rev-parse", "HEAD", cwd=repo.root)
+        transcript = run(sys.executable, "-I", "scripts/fixture-formal.py", cwd=repo.root, env=repo.environment)
+        receipt = landing.formal_receipt(transcript, sha, repo.root)
+        evidence = Path(receipt["evidence"])
+        baseline = evidence.read_bytes()
+        original = json.loads(baseline)
+        mutations = [
+            {**original, "source": "0" * 40}, {**original, "dirty": True},
+            {**original, "models": []}, {**original, "crates": []},
+            {**original, "input_sha256": {}}, {**original, "tlc": {"version": "unreviewed"}},
+            {**original, "complete_tlc_replacement": True},
+            {**original, "models": [{**original["models"][0], "graph_equal": False}]},
+            {**original, "models": [{**original["models"][0], "tlc_exit": 13}]},
+            {**original, "models": [{**original["models"][0], "states": 0}]},
+            {**original, "unrecorded_change": True},
+        ]
+        for changed in mutations:
+            with self.subTest(changed=changed):
+                evidence.write_text(json.dumps(changed))
+                with self.assertRaises(landing.Refusal):
+                    landing.formal_receipt(transcript, sha, repo.root)
+        evidence.write_bytes(baseline)
+        (evidence.parent / "models/Fixture.tla").write_text("tampered after checking")
+        with self.assertRaises(landing.Refusal):
+            landing.formal_receipt(transcript, sha, repo.root)
+        for missing in ["", transcript + "\n" + transcript]:
+            with self.assertRaises(landing.Refusal):
+                landing.formal_receipt(missing, sha, repo.root)
+
     def test_real_ci_entrypoint_binds_success_and_does_not_certify_failure(self):
         repo = Repository()
         self.addCleanup(repo.close)
@@ -729,7 +796,15 @@ class GateReceiptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
-        self.assertEqual(landing.gate_proof(log, sha)["tested_sha"], sha)
+        self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
+        repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        formal_failed = repo.commit("Fixture failing formal gate")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        log.write_text(result.stdout + result.stderr)
+        with self.assertRaisesRegex(landing.Refusal, "gate_log_not_green"):
+            landing.gate_proof(log, formal_failed)
         repo.write("scripts/layering.sh", "#!/bin/sh\nexit 17\n")
         failed = repo.commit("Fixture failing actual gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
@@ -766,6 +841,7 @@ row={'tree':str(pathlib.Path.cwd().resolve()),'target':str(target.resolve()),
 with (state/'slot-calls.jsonl').open('a') as stream:stream.write(json.dumps(row)+'\\n')
 (target/'candidate-artifact').write_text(row['sha'])
 PY
+make test-formal
 echo 'ci-local: all gates passed'
 printf 'ci-local: result %s normal 0\\n' "$sha"
 ''')
@@ -777,7 +853,7 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         log = self.repo.state / "slot-ci.log"
         log.write_text(result.stdout + result.stderr)
-        self.assertEqual(landing.gate_proof(log, sha)["tested_sha"], sha)
+        self.assertEqual(landing.gate_proof(log, sha, self.repo.root)["tested_sha"], sha)
         return json.loads((self.repo.state / "slot-calls.jsonl").read_text().splitlines()[-1])
 
     def test_two_commits_reuse_slot_paths_with_empty_targets_and_keep_the_caller(self):
@@ -878,7 +954,9 @@ class LandTests(unittest.TestCase):
 
     def gate_log(self, sha, status=0, mode="normal"):
         path = self.repo.state / "provided-gate.log"
-        path.write_text(f"ci-local: source {sha} {mode}\n"
+        formal = (run(sys.executable, "-I", "scripts/fixture-formal.py", cwd=self.repo.root,
+                      env=self.repo.environment) + "\n") if status == 0 else ""
+        path.write_text(f"ci-local: source {sha} {mode}\n" + formal
                         + ("ci-local: all gates passed\n" if status == 0 else "fixture failed\n")
                         + f"ci-local: result {sha} {mode} {status}\n")
         return path
@@ -929,6 +1007,18 @@ class LandTests(unittest.TestCase):
         self.assertEqual(record["tested_sha"], sha)
         self.assertEqual(record["base"], self.repo.base)
         self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
+        self.assertEqual(record["formal"]["source"], sha)
+        self.assertEqual(record["formal"]["models"], 1)
+
+    def test_green_rust_log_without_formal_receipt_cannot_publish(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        log = self.gate_log(sha)
+        log.write_text("\n".join(line for line in log.read_text().splitlines()
+                                 if not line.startswith("formal: receipt ")) + "\n")
+        result = self.repo.land("--gate-log", log)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("formal_receipt_missing", result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
 
     def test_wide_wrong_sha_log_is_refused_without_push_or_fallback(self):
         self.cut("crates/a/src/lib.rs")
@@ -1003,6 +1093,7 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.cargo_test_count(), 1)
         record = json.loads((self.repo.state / "landings.log").read_text())
         self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
+        self.assertEqual(record["formal"]["source"], self.repo.remote_head())
 
 
     def test_intersecting_move_checks_only_the_crate_intersection(self):
@@ -1024,8 +1115,11 @@ class LandTests(unittest.TestCase):
         manifest = (self.repo.root / path).read_text().replace('name="c"', 'name="c_new"')
         self.repo.movement(path, contents=manifest)
         hook = self.repo.state / 'move-main.sh'
+        update_coverage = shlex.join([sys.executable, "-c",
+            """from pathlib import Path;p=Path("verification/coverage.toml");p.write_text(p.read_text().replace('name="c"','name="c_new"'))"""])
         text = hook.read_text().replace('git add -- ' + shlex.quote(path),
-            shlex.quote(shutil.which('cargo')) + ' generate-lockfile --offline\ngit add -- Cargo.lock ' + shlex.quote(path))
+            update_coverage + "\n" + shlex.quote(shutil.which('cargo')) +
+            ' generate-lockfile --offline\ngit add -- verification/coverage.toml Cargo.lock ' + shlex.quote(path))
         hook.write_text(text)
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -1272,6 +1366,8 @@ class LandTests(unittest.TestCase):
             if argv[:2]==["sh","scripts/presubmit.sh"]:
                 sha=run("git","rev-parse","HEAD",cwd=self.repo.root)
                 record={"sha":sha,"exit":0,"tier":"lab","affected":[]}
+                transcript=run(sys.executable,"-I","scripts/fixture-formal.py",cwd=self.repo.root,env=self.repo.environment)
+                record["formal"]=landing.formal_receipt(transcript,sha,self.repo.root)
                 if "--recheck" in argv:
                     plan=json.loads(Path(argv[argv.index("--recheck")+1]).read_text())
                     record["recheck"]=plan;plans.append(plan)
@@ -1858,14 +1954,14 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(json.loads((output/"requested.json").read_text()),self.cases[2:])
         self.assertFalse(any(c[0]=="cargo" for c in self.calls))
 
-    def test_lab_recheck_skips_unchanged_records_and_invariants(self):
+    def test_lab_recheck_keeps_formal_while_skipping_unchanged_records_and_invariants(self):
         data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
         plan=self.root/"recheck.json"
         plan.write_text(json.dumps({"affected":[],"parity_pages":["lab/web/settings.html"]}))
         with patch.object(landing,"repository",return_value=self.root),patch.object(landing,"affected",return_value=data),patch.object(landing,"records_checks") as records,patch.object(landing,"scoped_parity") as parity:
             self.assertEqual(landing.presubmit_worker("base",self.root/"result.json",plan),0)
         records.assert_not_called();parity.assert_called_once()
-        self.assertEqual(self.calls,[])
+        self.assertEqual(self.calls,[["make", "test-formal"]])
 
     def test_recheck_rejects_page_paths_outside_lab(self):
         data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}

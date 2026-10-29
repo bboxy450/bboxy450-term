@@ -5,6 +5,14 @@
 `bbt-yarn-macros` compiles the retained lean `reactor!` grammar. It validates
 declared topology and emits direct biased polling over `bbt-yarn` source adapters.
 
+## Model projection
+
+`reactor_model!` accepts the same reactor grammar and shares its parser and
+validator. It emits the `bbt_yarn::model` scheduling representation for independent
+native Rust and TLA+/TLC checking. Enable Yarn's `model` feature at the call site.
+Opaque Rust handlers are not translated. See the runtime crate's verification
+guide and `tests/model_projection.rs` for shared-declaration runtime/model checks.
+
 ## Mental model
 
 The **parser** builds a reactor from its policy, phases and arms. The **validator**

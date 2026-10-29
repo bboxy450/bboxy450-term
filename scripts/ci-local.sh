@@ -8,7 +8,7 @@
 set -eu
 gate_clean() {
     [ -z "$(git status --porcelain --untracked-files=no)" ] &&
-    [ -z "$(git ls-files --others --exclude-standard -- crates scripts lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
+    [ -z "$(git ls-files --others --exclude-standard -- crates scripts verification lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
 }
 if ! gate_clean; then echo 'ci-local: dirty source tree; no exact-SHA proof' >&2; exit 2; fi
 if [ "${BBOXY_GATE_SLOT:-}" != none ]; then
@@ -75,6 +75,7 @@ if [ "$after_tests" = false ]; then
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
     ledger unit sh scripts/quarantine-test.sh --workspace --locked
 fi
+ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger smoke sh scripts/ui-lint.sh
 ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"

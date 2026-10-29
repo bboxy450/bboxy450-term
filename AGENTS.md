@@ -41,6 +41,40 @@ Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED
 
 Signed installation never silently falls back to unsigned. `install-unsigned` uses an ad-hoc executable signature needed by arm64 macOS, with no Apple identity/Keychain access. It is a test install, not distribution signing. Notification authorization tests must use the appropriate signed build; ordinary smoke uses file custody and no OS prompt.
 
+## Mandatory formal verification
+
+TLA+/TLC and Yarn verification are mandatory for this codebase and every crate
+(operator decision [[d365-mandatory-formal-verification]]). Run `make test-formal`;
+`make test` includes it. Every workspace crate must occur in
+`verification/coverage.toml` with its model/source mapping or an explicit account
+of behavior still checked only by implementation tests. A new crate cannot pass
+by omission. Project contracts, assumptions and implementation witnesses live in
+`verification/contracts.toml`; `make test-formal-contracts` runs their native
+checks. Changes to concurrency, lifecycle, persistence, ownership, retries
+or event-loop arbitration update the relevant model and its negative controls.
+Yarn is the constrained frontend; native Rust and pinned Java TLC run side by
+side. Java remains the reference until separately recorded conformance evidence
+authorizes retirement. Finite model parity is not a proof of arbitrary Rust or
+complete TLA+ support. See `verification/README.md`.
+
+**Think in TLA+ when designing feature tests.** Name the state variables, their
+initial values and finite bounds, the owners, and the actions that change them.
+State what must always hold (safety), what must eventually happen (liveness),
+and the scheduling/fairness assumptions needed for progress. Explore delayed,
+reordered and duplicate completions, cancellation, restart, dependency failure,
+and generation/identity changes, including A → B → A. Mark which operations are
+atomic and which can interleave. Check a small instance exhaustively before
+trusting the happy-path test; add a broken control that removes the relevant
+guard and must fail. Connect the property to an actual Rust/API or process test,
+and record abstractions and unmodeled behavior in `verification/contracts.toml`.
+Pure parsing, geometry and performance still need their specialized tests.
+
+Landing requires a clean, current-source formal receipt as well as the Rust CI
+result. `scripts/land.sh` records its evidence hash and corpus counts and refreshes
+formal verification after a rebase, even when Rust checks can be reused. Missing,
+stale, incomplete or mismatched evidence blocks the push. `make check-formal-evidence`
+verifies the stored receipt; `make push` enforces it too.
+
 ## Scope and evidence
 
 - Read the task, `.bboxy/vision.md`, relevant specs/decisions/interfaces and the source/Git state before editing. `.bboxy/tasks/README.md` is the historical task board; GitHub issues track current release findings.
