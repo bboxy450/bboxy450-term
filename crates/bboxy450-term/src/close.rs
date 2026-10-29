@@ -8,6 +8,7 @@
 //! only the window's exact restoration handle and never perform IO.
 use std::{
     collections::BTreeMap,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -16,6 +17,22 @@ use bbt_proto::registry::{Lifecycle, Position, SeatRecord};
 use bbt_ui_model::{self as ui, SplitNode, TabId};
 
 pub const GRACE: Duration = Duration::from_secs(60);
+pub const NOTICE_TTL: Duration = Duration::from_secs(8);
+const NOTICE_LIMIT: usize = 512;
+
+/// A transient chat projection, separate from the retained history and audit.
+/// Its deadline is fixed when this window first confirms ClosedRetained.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CloseNotice {
+    pub operation: Ulid,
+    pub seat: ui::SeatId,
+    pub generation: u64,
+    pub swarm: ui::SwarmId,
+    pub text: String,
+    pub time: String,
+    pub ts_ms: u64,
+    pub until: Instant,
+}
 
 #[derive(Debug, Clone)]
 pub struct Intent {
@@ -114,16 +131,48 @@ impl Intent {
 /// IO-owned restoration handles, retained across coalesced model publications.
 /// Registry metadata, not a reply's arrival or an animation, owns each transition.
 #[derive(Debug, Clone, Default)]
-pub struct State(BTreeMap<ui::SeatId, Entry>);
+pub struct State {
+    entries: BTreeMap<ui::SeatId, Entry>,
+    notices: Arc<Vec<CloseNotice>>,
+}
 #[derive(Debug, Clone)]
 struct Entry {
     intent: Intent,
     confirmed: bool,
 }
 impl State {
+    /// Shared across ordinary model publications; strings are copied only when
+    /// the bounded notice collection actually changes.
+    pub fn notices(&self) -> &Arc<Vec<CloseNotice>> {
+        &self.notices
+    }
+    pub fn visible_notices(
+        &self,
+        swarm: ui::SwarmId,
+        now: Instant,
+    ) -> impl Iterator<Item = &CloseNotice> {
+        self.notices
+            .iter()
+            .filter(move |notice| notice.swarm == swarm && now < notice.until)
+    }
+    pub fn next_notice_expiry(&self, now: Instant) -> Option<Instant> {
+        self.notices
+            .iter()
+            .filter(|notice| now < notice.until)
+            .map(|notice| notice.until)
+            .min()
+    }
+    /// Repeated expiry/reconciliation leaves the Arc untouched once filtered.
+    pub fn expire_notices(&mut self, now: Instant) -> bool {
+        if !self.notices.iter().any(|notice| now >= notice.until) {
+            return false;
+        }
+        Arc::make_mut(&mut self.notices).retain(|notice| now < notice.until);
+        true
+    }
     /// The registry-confirmed operation carried by this immutable UI model.
     pub fn confirmed_close(&self, seat: ui::SeatId) -> Option<(Ulid, u64)> {
-        self.0
+        self.entries
             .get(&seat)
             .filter(|entry| entry.confirmed)
             .map(|entry| {
@@ -134,7 +183,7 @@ impl State {
             })
     }
     pub fn needs_reconcile(&self, records: &[SeatRecord]) -> bool {
-        self.0.iter().any(|(id, e)| {
+        self.entries.iter().any(|(id, e)| {
             records.iter().find(|r| r.id.0 == id.0.0).is_some_and(|r| {
                 r.generation != e.intent.view.undo.process_generation
                     || (!e.confirmed && r.lifecycle != Lifecycle::Open)
@@ -143,17 +192,17 @@ impl State {
         })
     }
     pub fn register(&mut self, intent: Intent) -> Result<bool, &'static str> {
-        if let Some(old) = self.0.get(&intent.seat) {
+        if let Some(old) = self.entries.get(&intent.seat) {
             return if old.intent.operation == intent.operation {
                 Ok(false)
             } else {
                 Err("a close is already pending or in grace")
             };
         }
-        if self.0.len() >= 1024 {
+        if self.entries.len() >= 1024 {
             return Err("close restoration limit reached");
         }
-        self.0.insert(
+        self.entries.insert(
             intent.seat,
             Entry {
                 intent,
@@ -164,7 +213,7 @@ impl State {
     }
     pub fn undo(&self, seat: ui::SeatId, now: Instant) -> Result<(Ulid, u64), &'static str> {
         let entry = self
-            .0
+            .entries
             .get(&seat)
             .ok_or("there is no window close to undo")?;
         if !entry.confirmed {
@@ -189,14 +238,14 @@ impl State {
         Ok(request)
     }
     pub fn latest(&self, now: Instant) -> Option<ui::SeatId> {
-        self.0
+        self.entries
             .iter()
             .filter(|(_, e)| e.confirmed && now < e.intent.view.until)
             .max_by_key(|(_, e)| e.intent.view.until)
             .map(|(id, _)| *id)
     }
     pub fn refused(&mut self, operation: Ulid) {
-        self.0
+        self.entries
             .retain(|_, e| e.confirmed || e.intent.operation != operation);
     }
     pub fn reconcile(
@@ -206,7 +255,9 @@ impl State {
         now: Instant,
         now_ms: u64,
     ) {
-        self.0.retain(|id, entry| {
+        self.expire_notices(now);
+        let notices = &mut self.notices;
+        self.entries.retain(|id, entry| {
             let Some(record) = records.iter().find(|record| record.id.0 == id.0.0) else {
                 return true;
             };
@@ -294,10 +345,12 @@ impl State {
                     false
                 }
                 Lifecycle::ClosedRetained => {
-                    if !record.close.as_ref().is_some_and(|close| {
-                        close.operation == entry.intent.operation
-                            && close.position == entry.intent.position
-                    }) {
+                    if record.swarm != entry.intent.position.swarm
+                        || !record.close.as_ref().is_some_and(|close| {
+                            close.operation == entry.intent.operation
+                                && close.position == entry.intent.position
+                        })
+                    {
                         return false;
                     }
                     if let Some(swarm) = model
@@ -308,13 +361,19 @@ impl State {
                         .find(|s| s.id.0.0 == entry.intent.position.swarm.0)
                     {
                         swarm.closed.retain(|c| c.seat != *id);
-                        swarm.stream.push(ui::StreamItem::Presence {
-                            kind: ui::PresenceKind::Presence,
+                        let notices = Arc::make_mut(notices);
+                        notices.push(CloseNotice {
+                            operation: entry.intent.operation,
+                            seat: *id,
+                            generation: record.generation,
+                            swarm: swarm.id,
                             text: format!("{} closed; its history is kept", record.name),
                             time: crate::local_time::hm(now_ms),
+                            ts_ms: now_ms,
+                            until: now + NOTICE_TTL,
                         });
-                        if swarm.stream.len() > 512 {
-                            swarm.stream.remove(0);
+                        if notices.len() > NOTICE_LIMIT {
+                            notices.remove(0);
                         }
                     }
                     false
@@ -368,6 +427,15 @@ pub fn status(model: &crate::model::Model, now: Instant) -> serde_json::Value {
                 } else {
                     omitted[2] += 1;
                 }
+            }
+        }
+        for notice in model.closes.visible_notices(swarm.id, now) {
+            if notices.len() < 128 {
+                let clipped = notice.text.chars().count() > 256;
+                truncated += usize::from(clipped);
+                notices.push(json!({"swarm":swarm.id.to_string(),"seat":notice.seat.to_string(),"operation":notice.operation.to_string(),"generation":notice.generation,"text":notice.text.chars().take(256).collect::<String>(),"time":notice.time,"ts_ms":notice.ts_ms,"remaining_ms":notice.until.saturating_duration_since(now).as_millis() as u64,"truncated":clipped}));
+            } else {
+                omitted[2] += 1;
             }
         }
     }
@@ -575,11 +643,24 @@ mod tests {
         assert!(state.undo(seat, now + GRACE).is_err());
         record.lifecycle = Lifecycle::ClosedRetained;
         state.reconcile(&[record.clone()], &mut ui, now + GRACE, 61_000);
+        let notices = state.notices().clone();
         state.reconcile(&[record], &mut ui, now + GRACE, 61_000);
         assert!(ui.window.sidebar.swarms[0].closed.is_empty());
-        assert_eq!(ui.window.sidebar.swarms[0].stream.len(), 1);
-        assert!(
-            matches!(&ui.window.sidebar.swarms[0].stream[0],ui::StreamItem::Presence {text,..} if text=="Tamsin Voss closed; its history is kept")
+        assert!(ui.window.sidebar.swarms[0].stream.is_empty());
+        assert!(Arc::ptr_eq(&notices, state.notices()));
+        assert_eq!(notices.len(), 1);
+        assert_eq!(
+            notices[0],
+            CloseNotice {
+                operation: Ulid(6),
+                seat,
+                generation: 7,
+                swarm: ui::SwarmId::from_u128(4),
+                text: "Tamsin Voss closed; its history is kept".into(),
+                time: crate::local_time::hm(61_000),
+                ts_ms: 61_000,
+                until: now + GRACE + NOTICE_TTL,
+            }
         );
         assert!(ui.seats.contains_key(&seat));
         assert!(state.undo(seat, now + GRACE).is_err());
@@ -615,15 +696,23 @@ mod tests {
         let grids = crate::grids::Grids::new();
         let mut unrelated = records.clone();
         unrelated[2].close.as_mut().unwrap().operation = Ulid(10);
-        let foreign = crate::model::build(&unrelated, &grids, &model);
+        let foreign = crate::model::build_at(&unrelated, &grids, &model, now, 1000);
         assert!(
             status(&foreign, now)["notices"]
                 .as_array()
                 .unwrap()
                 .is_empty()
         );
-        let closed = crate::model::build(&records, &grids, &model);
-        let again = crate::model::build(&records, &grids, &closed);
+        let closed = crate::model::build_at(&records, &grids, &model, now, 1000);
+        let again = crate::model::build_at(
+            &records,
+            &grids,
+            &closed,
+            now + Duration::from_secs(7),
+            8000,
+        );
+        assert!(Arc::ptr_eq(closed.closes.notices(), again.closes.notices()));
+        assert_eq!(again.closes.notices()[0].until, now + NOTICE_TTL);
         assert!(again.ui.tab_of(seat).is_none());
         assert!(again.closes.latest(now).is_none());
         let read = status(&again, now);
@@ -633,6 +722,168 @@ mod tests {
             read["notices"][0]["text"],
             "fixture closed; its history is kept"
         );
+        let expired = crate::model::build_at(&records, &grids, &again, now + NOTICE_TTL, 9000);
+        assert!(Arc::ptr_eq(
+            again.closes.notices(),
+            expired.closes.notices()
+        ));
+        assert!(
+            status(&expired, now + NOTICE_TTL)["notices"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    fn retained_fixture(
+        swarm: u128,
+        seat: u128,
+        operation: u128,
+        generation: u64,
+        now: Instant,
+    ) -> (ui::Model, Intent, SeatRecord) {
+        let swarm = ui::SwarmId::from_u128(swarm);
+        let seat = ui::SeatId::from_u128(seat);
+        let tab = ui::TabId::from_u128(seat.0.0 + 1000);
+        let tree = SplitNode::Leaf(seat);
+        let mut row = ui::Seat::new(seat, swarm, [0; 32], "fixture", "codex");
+        row.process_generation = generation;
+        let model = ui::Model::new(
+            vec![ui::Swarm::new(
+                swarm,
+                "fixture",
+                vec![ui::Tab::new(tab, "main", tree.clone())],
+            )],
+            vec![row],
+        )
+        .unwrap();
+        let intent = Intent::prepare(&model, tab, &tree, seat, 1, Ulid(operation), now).unwrap();
+        let mut record = SeatRecord::new(Ulid(seat.0.0), Ulid(swarm.0.0), "fixture", "codex");
+        record.generation = generation;
+        record.lifecycle = Lifecycle::ClosedRetained;
+        record.close = Some(bbt_proto::registry::CloseRecord {
+            operation: intent.operation,
+            revision: 1,
+            deadline_ms: 1,
+            position: intent.position.clone(),
+        });
+        (model, intent, record)
+    }
+
+    #[test]
+    fn retained_notices_expire_at_eight_seconds_without_extending_or_copying_on_refresh() {
+        let now = Instant::now();
+        let (mut model, intent, record) = retained_fixture(4, 3, 9, 7, now);
+        let swarm = ui::SwarmId::from_u128(4);
+        let mut state = State::default();
+        state.register(intent).unwrap();
+        state.reconcile(&[record.clone()], &mut model, now, 1000);
+        let published = state.clone();
+        assert!(Arc::ptr_eq(published.notices(), state.notices()));
+        assert_eq!(state.next_notice_expiry(now), Some(now + NOTICE_TTL));
+        let before = now + NOTICE_TTL - Duration::from_nanos(1);
+        state.reconcile(&[record], &mut model, before, 8999);
+        assert!(Arc::ptr_eq(published.notices(), state.notices()));
+        assert_eq!(state.visible_notices(swarm, before).count(), 1);
+        assert!(!state.expire_notices(before));
+        let expired = now + NOTICE_TTL;
+        assert_eq!(state.visible_notices(swarm, expired).count(), 0);
+        assert_eq!(state.next_notice_expiry(expired), None);
+        assert!(state.expire_notices(expired));
+        assert!(!Arc::ptr_eq(published.notices(), state.notices()));
+        assert!(state.notices().is_empty());
+        let filtered = state.notices().clone();
+        assert!(!state.expire_notices(expired + Duration::from_secs(1)));
+        assert!(Arc::ptr_eq(&filtered, state.notices()));
+        assert_eq!(published.notices()[0].until, expired);
+    }
+
+    #[test]
+    fn retained_notice_collection_keeps_only_the_latest_512_exact_transitions() {
+        let now = Instant::now();
+        let mut state = State::default();
+        for i in 0..=NOTICE_LIMIT {
+            let (mut model, intent, record) =
+                retained_fixture(4, 3, 100 + i as u128, 7 + i as u64, now);
+            state.register(intent).unwrap();
+            state.reconcile(&[record], &mut model, now, 1000);
+        }
+        assert_eq!(state.notices().len(), NOTICE_LIMIT);
+        assert_eq!(state.notices()[0].operation, Ulid(101));
+        assert_eq!(state.notices()[0].generation, 8);
+        assert_eq!(state.notices()[NOTICE_LIMIT - 1].operation, Ulid(612));
+        assert!(
+            state
+                .notices()
+                .iter()
+                .all(|notice| notice.until == now + NOTICE_TTL)
+        );
+    }
+
+    #[test]
+    fn retained_notices_keep_swarm_scope_and_other_presence_audit() {
+        let now = Instant::now();
+        let (mut first, a, ra) = retained_fixture(4, 3, 9, 7, now);
+        let (second, b, rb) = retained_fixture(8, 6, 12, 2, now);
+        first
+            .window
+            .sidebar
+            .swarms
+            .extend(second.window.sidebar.swarms);
+        first.seats.extend(second.seats);
+        first.window.sidebar.swarms[0]
+            .stream
+            .push(ui::StreamItem::Presence {
+                kind: ui::PresenceKind::Presence,
+                text: "durable audit".into(),
+                time: "12:34".into(),
+            });
+        let mut model = crate::model::Model {
+            ui: first,
+            ..Default::default()
+        };
+        model.closes.register(a).unwrap();
+        model.closes.register(b).unwrap();
+        model.closes.reconcile(&[ra, rb], &mut model.ui, now, 1000);
+        for (swarm, seat) in [(4, 3), (8, 6)] {
+            let rows: Vec<_> = model
+                .closes
+                .visible_notices(ui::SwarmId::from_u128(swarm), now)
+                .collect();
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].seat, ui::SeatId::from_u128(seat));
+        }
+        assert_eq!(
+            model
+                .closes
+                .visible_notices(ui::SwarmId::from_u128(99), now)
+                .count(),
+            0
+        );
+        assert_eq!(status(&model, now)["notices"].as_array().unwrap().len(), 3);
+        let expired = status(&model, now + NOTICE_TTL);
+        assert_eq!(expired["notices"].as_array().unwrap().len(), 1);
+        assert_eq!(expired["notices"][0]["text"], "durable audit");
+        assert_eq!(model.ui.window.sidebar.swarms[0].stream.len(), 1);
+    }
+
+    #[test]
+    fn retained_notices_require_the_captured_operation_generation_and_swarm() {
+        let now = Instant::now();
+        for mismatch in 0..5 {
+            let (mut model, intent, mut record) = retained_fixture(4, 3, 9, 7, now);
+            match mismatch {
+                0 => record.generation += 1,
+                1 => record.close.as_mut().unwrap().operation = Ulid(10),
+                2 => record.close.as_mut().unwrap().position.swarm = Ulid(8),
+                3 => record.swarm = Ulid(8),
+                _ => record.id = Ulid(6),
+            }
+            let mut state = State::default();
+            state.register(intent).unwrap();
+            state.reconcile(&[record], &mut model, now, 1000);
+            assert!(state.notices().is_empty(), "mismatch {mismatch}");
+        }
     }
 
     // keeps: spec c1-live-seats §4 (close, undo and retained history)
