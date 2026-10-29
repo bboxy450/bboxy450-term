@@ -521,7 +521,13 @@ test-checkpoint-resize:
 	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
 
-.PHONY: test-terminal-replay check-terminal-replay
+.PHONY: test-input-latency profile-input-ui test-terminal-replay check-terminal-replay
+test-input-latency:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test input_latency -- --nocapture
+
+profile-input-ui:
+	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
+
 test-terminal-replay:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test checkpoint_scheduling -- --nocapture; \

@@ -9618,6 +9618,58 @@ mod lazy_projection_tests {
     use super::*;
     use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
 
+    /// CPU-only profile of the real host solve; socket echo and completed GPU
+    /// frames have separate fixtures. Keep this workload stable for comparisons.
+    #[test]
+    fn input_frame_cpu_profile() {
+        if isolated_ui_case("lazy_projection_tests::input_frame_cpu_profile") {
+            return;
+        }
+        let (mut app, latest) = fixture();
+        latest.publish(published_model(1));
+        app.drain();
+        app.project_scene(true);
+        let measured = std::env::var_os("BBOXY_INPUT_PROFILE").is_some();
+        let iterations = if measured { 100 } else { 2 };
+        for messages in [0, 128] {
+            app.conversation.entries = (0..messages)
+                .map(|index| {
+                    bbt_ui::modules::stream_dock::Entry::Message {
+                        data: Box::new(bbt_ui::modules::stream_dock::Message {
+                            message_ids: vec![format!("message-{index}")],
+                            from: "Executor".into(),
+                            text: format!("Input profile message {index}. A representative multi-line conversation with a useful amount of text to wrap in the sidebar."),
+                            ..Default::default()
+                        }),
+                        show_channel: Some(false),
+                    }
+                })
+                .collect();
+            for _ in 0..3 {
+                app.solve_ui([1440., 1000.]).unwrap();
+            }
+            let mut micros = Vec::new();
+            for _ in 0..iterations {
+                let start = Instant::now();
+                app.solve_ui([1440., 1000.]).unwrap();
+                micros.push(start.elapsed().as_micros());
+            }
+            micros.sort_unstable();
+            if measured {
+                println!(
+                    "INPUT_UI_CPU {}",
+                    serde_json::json!({
+                        "messages": messages, "samples": iterations,
+                        "solve_p50_us": micros[micros.len()/2],
+                        "solve_p99_us": micros[(micros.len()*99/100).min(micros.len()-1)],
+                        "boundary": "CPU App::solve_ui only; no GPU or physical key latency"
+                    })
+                );
+            }
+            assert!(app.conversation_layout.is_some());
+        }
+    }
+
     fn published_model(revision: usize) -> Arc<bboxy450_term::model::Model> {
         let id = SeatId::from_u128(1);
         let swarm = SwarmId::from_u128(2);
@@ -9669,6 +9721,9 @@ mod lazy_projection_tests {
                 String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
+            if std::env::var_os("BBOXY_INPUT_PROFILE").is_some() {
+                print!("{}", String::from_utf8_lossy(&output.stdout));
+            }
             return true;
         }
         false

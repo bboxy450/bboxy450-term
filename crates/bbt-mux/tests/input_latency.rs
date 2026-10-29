@@ -77,13 +77,15 @@ fn isolated_raw_cat_input_ack_to_watched_echo_reports_exact_samples() {
         "-c".into(),
         "stty -echo -icanon min 1 time 0; printf 'RAW-CAT-READY\\r\\n'; exec /bin/cat".into(),
     ];
-    spec.env = vec![
+    spec.env = [
         (
             "HOME".into(),
             fixture.root.path().to_string_lossy().into_owned(),
         ),
         ("PATH".into(), "/usr/bin:/bin".into()),
-    ];
+    ]
+    .into_iter()
+    .collect();
     let info = fixture
         .runtime
         .block_on(logic.client.spawn(
