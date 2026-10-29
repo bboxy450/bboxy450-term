@@ -79,20 +79,25 @@ fn unrelated_replies_cannot_clear_the_draft_and_durable_held_is_named() {
 #[test]
 fn thread_refusal_keeps_the_draft_and_visible_thread_hint() {
     let mut client = Client::default();
-    let batch = client.prepare(Some(SwarmId::from_u128(1)), draft()).unwrap();
+    let batch = client
+        .prepare(Some(SwarmId::from_u128(1)), draft())
+        .unwrap();
     let commands = client.admitted(batch);
     let UiMsg::Messaging { id, .. } = commands[0] else {
         panic!("send");
     };
     let tip = Ulid::new();
     let mut results = Results::default();
-    results.push(id, Reply::Messaging(Response::Refused {
-        error: bbt_proto::messaging::MessageRefusal {
-            kind: "unknown_thread".into(),
-            message: "parent is not visible".into(),
-            hint: format!("reply to {tip}"),
-        },
-    }));
+    results.push(
+        id,
+        Reply::Messaging(Response::Refused {
+            error: bbt_proto::messaging::MessageRefusal {
+                kind: "unknown_thread".into(),
+                message: "parent is not visible".into(),
+                hint: format!("reply to {tip}"),
+            },
+        }),
+    );
     let (cleared, follow_up) = client.replies(&results);
     assert!(cleared.is_none());
     assert!(follow_up.is_empty());
@@ -577,8 +582,15 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
         .unwrap();
     let text = labels(&frame);
     assert!(text.contains("signature: pending · inferred · fixture custody unavailable"));
-    assert_eq!(data.receipts.as_ref().unwrap().delivered, 1, "delivery and signing remain separate evidence");
-    assert!(!text.contains("1 delivered"), "routine receipt counts stay in retained data, not message chrome");
+    assert_eq!(
+        data.receipts.as_ref().unwrap().delivered,
+        1,
+        "delivery and signing remain separate evidence"
+    );
+    assert!(
+        !text.contains("1 delivered"),
+        "routine receipt counts stay in retained data, not message chrome"
+    );
     assert!(
         !text.contains("local-dev"),
         "pending has no placeholder issuer"
@@ -617,7 +629,10 @@ fn pending_frame_has_no_issuer_and_a_grade_upgrade_keeps_the_message_position() 
         .element(ctx, "signed", true, false, &Metrics)
         .layout(Rect::new(0., 0., 900., 0.), ctx, &Metrics)
         .unwrap();
-    assert!(!labels(&frame).contains("signature: signed"), "successful signing does not add another routine status line");
+    assert!(
+        !labels(&frame).contains("signature: signed"),
+        "successful signing does not add another routine status line"
+    );
     let Entry::Message { data, .. } = &entries[1] else {
         panic!("later message");
     };
@@ -793,4 +808,91 @@ fn older_display_projections_cannot_undo_new_receipts_or_release_evidence() {
     row.receipts.delivered = 0;
     history.row(&row, None, 199);
     assert!(history.entries(&Default::default(),&Default::default(),&[]).iter().any(|entry|matches!(entry,Entry::Message {data,..} if data.receipts.as_ref().is_some_and(|r|r.held==0&&r.delivered==1))));
+}
+
+#[test]
+fn native_task_reads_and_unknown_mutations_remain_bound_across_colliding_roots() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::{gui::SwarmScope, messaging::TaskResponse};
+    let swarm = SwarmId::from_u128(61);
+    let first = SwarmScope {
+        swarm: Ulid(61),
+        revision: 1,
+    };
+    let second = SwarmScope {
+        swarm: Ulid(61),
+        revision: 2,
+    };
+    let mut records = Records::default();
+    records.select(swarm);
+    records.bind_workspace(Err("workspace_metadata_pending"));
+    assert!(
+        records
+            .commands()
+            .iter()
+            .all(|command| !matches!(command, UiMsg::Task { .. })),
+        "native unknown metadata never emits unscoped tasks"
+    );
+    records.bind_workspace(Ok(first));
+    let requests = records.commands();
+    let old = requests
+        .iter()
+        .find(|command| matches!(command, UiMsg::Task { .. }))
+        .unwrap();
+    assert!(matches!(old,UiMsg::Task{scope:Some(scope),..}if *scope==first));
+    let task = Ulid(1);
+    let mut results = Results::default();
+    results.push(
+        op_id(old),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    records.replies(&results);
+    let original = records.review(task, None).unwrap();
+    let original_id = op_id(&original);
+    results.push(original_id, Reply::Unknown("connection lost".into()));
+    records.replies(&results);
+    let replay = records.review(task, None).unwrap();
+    assert_eq!(op_id(&replay), original_id);
+    assert!(matches!(replay,UiMsg::Task{scope:Some(scope),..}if scope==first));
+    results.push(original_id, Reply::Unknown("connection lost again".into()));
+    records.replies(&results);
+    records.bind_workspace(Ok(second));
+    assert!(records.tasks().is_empty());
+    assert!(
+        matches!(records.review(task, None), Err("task_not_loaded")),
+        "colliding task ID cannot replay an effect from the previous root"
+    );
+    let requests = records.commands();
+    let new = requests
+        .iter()
+        .find(|command| matches!(command, UiMsg::Task { .. }))
+        .unwrap();
+    assert!(matches!(new,UiMsg::Task{scope:Some(scope),..}if *scope==second));
+    let late = op_id(old);
+    results.push(
+        late,
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    records.replies(&results);
+    assert!(
+        records.tasks().is_empty(),
+        "old-root reply cannot repaint a new binding"
+    );
+    results.push(
+        op_id(new),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    records.replies(&results);
+    let new_review = records.review(task, None).unwrap();
+    assert_ne!(op_id(&new_review), original_id);
+    assert!(matches!(new_review,UiMsg::Task{scope:Some(scope),..}if scope==second));
 }

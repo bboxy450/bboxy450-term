@@ -90,7 +90,7 @@ impl App {
                 .as_ref()
                 .and_then(|l| l.regions.hit(self.pointer));
             match action {
-                Some(Action::Open(target)) => self.open_document(target),
+                Some(Action::Open(target)) => self.follow_document_link(target),
                 Some(Action::Close) => self.close_document(),
                 Some(Action::Unavailable(name)) => {
                     self.document.notice = Some(format!("{name} is not available yet"));
@@ -368,7 +368,8 @@ impl App {
         self.request_redraw();
     }
     pub(super) fn navigate_to(&mut self, id: &str) {
-        if let Some(seat) = id.strip_prefix("seat-mute:")
+        if let Some(seat) = id
+            .strip_prefix("seat-mute:")
             .or_else(|| id.strip_prefix("pane-mute:"))
             .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
         {

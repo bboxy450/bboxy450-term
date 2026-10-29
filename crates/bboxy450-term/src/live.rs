@@ -90,6 +90,7 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
 pub struct CommandSender {
     sender: mpsc::Sender<UiMsg>,
     knowledge: Arc<KnowledgeDemand>,
+    workspace: tokio::sync::watch::Sender<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
     // UI loss detaches even when the queue and retained retry slot are full.
     // Only an explicit hard-quit signal stops the backend owners.
@@ -98,6 +99,11 @@ pub struct CommandSender {
 enum CloseMode {
     Detach(Option<Box<bbt_proto::gui::WindowState>>),
     HardQuit,
+}
+#[derive(Clone, PartialEq, Eq)]
+struct KnowledgeContext {
+    enabled: bool,
+    scope: std::result::Result<Option<bbt_proto::gui::SwarmScope>, String>,
 }
 #[derive(Default)]
 struct KnowledgeDemand {
@@ -118,6 +124,25 @@ impl CommandSender {
         self.context.send_replace(Some(context));
     }
 
+    pub fn observe_knowledge_scoped(
+        &self,
+        enabled: bool,
+        scope: std::result::Result<bbt_proto::gui::SwarmScope, String>,
+    ) {
+        let context = KnowledgeContext {
+            enabled,
+            scope: scope.map(Some),
+        };
+        self.knowledge.enabled.store(enabled, Ordering::Release);
+        self.workspace.send_if_modified(|current| {
+            if current.as_ref() == Some(&context) {
+                false
+            } else {
+                *current = Some(context);
+                true
+            }
+        });
+    }
     /// A desired observer state, independent of the bounded command queue.
     pub fn observe_knowledge(&self, enabled: bool) {
         if self.knowledge.enabled.swap(enabled, Ordering::AcqRel) != enabled {
@@ -135,17 +160,20 @@ struct Commands {
     messages: mpsc::Receiver<UiMsg>,
     stop: oneshot::Receiver<CloseMode>,
     knowledge: Arc<KnowledgeDemand>,
+    workspace: tokio::sync::watch::Receiver<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Receiver<Option<bboxy450_term::settings::ContextUpdate>>,
 }
 fn command_channel() -> (CommandSender, Commands) {
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
     let (context, contexts) = tokio::sync::watch::channel(None);
+    let (workspace, workspaces) = tokio::sync::watch::channel(None);
     let (stop, stopped) = oneshot::channel();
     let knowledge = Arc::new(KnowledgeDemand::default());
     (
         CommandSender {
             sender,
             knowledge: knowledge.clone(),
+            workspace,
             context,
             _stop: stop,
         },
@@ -153,6 +181,7 @@ fn command_channel() -> (CommandSender, Commands) {
             messages,
             stop: stopped,
             knowledge,
+            workspace: workspaces,
             context: contexts,
         },
     )
@@ -1075,7 +1104,12 @@ async fn run_with_control(
     let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
         None;
     let mut knowledge_watch = knowledge::Watch::new(knowledge::promises().map_err(invalid)?);
-    knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
+    if let Some(context) = commands.workspace.borrow().clone() {
+        knowledge_watch.observe(context.enabled);
+        knowledge_watch.bind_scope(context.scope);
+    } else {
+        knowledge_watch.observe(commands.knowledge.enabled.load(Ordering::Acquire));
+    }
     let mut in_flight = None;
     let mut closing = false;
     let mut close_mode = CloseMode::Detach(None);
@@ -1201,17 +1235,23 @@ async fn run_with_control(
         }
         knowledge_watch.connection(!lost);
         if let Some(snapshot) = knowledge_watch.publication() {
-            Arc::make_mut(&mut model).e2e = Some(snapshot);
+            let current = Arc::make_mut(&mut model);
+            current.e2e = Some(snapshot);
+            current.e2e_scope = knowledge_watch.scope();
             updates.publish(model.clone());
         }
         let retry_at = controls
             .deadline(&grids, &outgoing)
             .into_iter()
             .chain(history.deadline())
+            .chain(knowledge_watch.deadline())
             .min();
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
+                changed=commands.workspace.changed()=> {
+                    if changed.is_ok() && let Some(context)=commands.workspace.borrow_and_update().clone() {knowledge_watch.observe(context.enabled);knowledge_watch.bind_scope(context.scope);}
+                },
                 changed=commands.context.changed()=> {
                     if changed.is_ok() {
                         let context=commands.context.borrow_and_update().clone();
@@ -1275,7 +1315,7 @@ async fn run_with_control(
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     },
                     UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
-                    UiMsg::Task {id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task { scope: None,id:*id,request:request.clone()}); } },
+                    UiMsg::Task {id,request,scope}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,scope:*scope,request:request.clone()}); } },
                     UiMsg::GetAttention {id,seat,generation}=> {
                         if operation_admit(&mut model,&updates,*id) {
                             queue_action(&mut outgoing,GuiAction::GetAttention {id:*id,seat:*seat,generation:*generation});
@@ -1371,8 +1411,15 @@ async fn run_with_control(
                                 else if completed { updates.publish(model.clone()); }
                         } else if scroll_refused(&mut model,*seat,*generation,*request,"history_view_unavailable") { updates.publish(model.clone()); }
                     }
-                    UiMsg::DocumentRead {id,read}=> {
-                        if let Some(action)=document_reader.admit(*id,read.clone()) { queue_action(&mut outgoing,action); }
+                    UiMsg::DocumentRead {id,read,scope}=> {
+                        if let Some((_,previous))=document_preparation.take() {previous.abort();}
+                        match document_reader.admit_latest_scoped(*id,read.clone(),*scope) {
+                            Ok(action)=>queue_action(&mut outgoing,action),
+                            Err(reason)=>{
+                                Arc::make_mut(&mut model).document_reply=Some(Arc::new(documents::Reply{id:*id,response:documents::Response::Failed(reason.into())}));
+                                updates.publish(model.clone());
+                            }
+                        }
                     },
                     UiMsg::ConsumeDocument {id}=> {
                         if model.document_reply.as_ref().is_some_and(|r|r.id==*id) {Arc::make_mut(&mut model).document_reply=None;}
@@ -1592,6 +1639,7 @@ async fn run_with_control(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            if reason.starts_with("swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
                             if terminal_reply==Some(ActionReply::Swarm(op)) {
                                 if let Some(swarm)=swarm_mutations.complete(op,&mut outgoing) {Arc::make_mut(&mut model).swarm_metadata_pending.remove(&swarm);updates.publish(model.clone());}
                                 capture(OperatorAsk::SwarmMetadata{op,result:Err(reason.clone())});
@@ -1600,6 +1648,7 @@ async fn run_with_control(
                             if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Err(reason.clone())); }
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
+                                if result.as_ref().err().is_some_and(|error|error.code=="swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
                                 if let Some(work)=document_reader.response(op,result.clone()) {
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else { knowledge_watch.response(op,result); }
@@ -1631,7 +1680,8 @@ async fn run_with_control(
                         },
                         GuiReply::Knowledge {op,response}=> {
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
-                                let result=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
+                                let result:bbt_mux::knowledge::data_source::Result<serde_json::Value>=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
+                                if result.as_ref().err().is_some_and(|error|error.code=="swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
                                 if let Some(work)=document_reader.response(op,result.clone()) {
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else {knowledge_watch.response(op,result);}
@@ -3512,7 +3562,14 @@ mod tests {
             document.show(target);
             for _ in 0..2 {
                 let (id, read) = document.next_read().expect("resolve then fetch");
-                sender.send(UiMsg::DocumentRead { id, read }).await.unwrap();
+                sender
+                    .send(UiMsg::DocumentRead {
+                        id,
+                        scope: None,
+                        read,
+                    })
+                    .await
+                    .unwrap();
                 until(updates, publication, current, |model| {
                     model.document_reply.as_ref().is_some_and(|r| r.id == id)
                 })
@@ -3558,6 +3615,7 @@ mod tests {
         let op = Ulid::new();
         sender
             .send(UiMsg::Task {
+                scope: None,
                 id: op,
                 request: bbt_proto::messaging::TaskRequest::Delegate {
                     task_path: task_path.into(),
@@ -3972,6 +4030,7 @@ mod tests {
         let document_op = Ulid::new();
         sender
             .send(UiMsg::DocumentRead {
+                scope: None,
                 id: document_op,
                 read: documents::Read::Resolve("#1".into()),
             })
@@ -4014,6 +4073,7 @@ mod tests {
         let fetch_op = Ulid::new();
         sender
             .send(UiMsg::DocumentRead {
+                scope: None,
                 id: fetch_op,
                 read: documents::Read::Fetch(reference),
             })

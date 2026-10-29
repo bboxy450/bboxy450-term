@@ -12,7 +12,10 @@ use bbt_ui::modules::document_modal::{
     controller::{Controller, RecordLinks},
 };
 use serde_json::Value;
-use std::{collections::VecDeque, sync::Arc};
+use std::{
+    collections::{BTreeSet, VecDeque},
+    sync::Arc,
+};
 
 #[derive(Debug, Clone)]
 pub enum Read {
@@ -21,13 +24,20 @@ pub enum Read {
 }
 impl Read {
     pub fn action(&self, id: Ulid) -> bbt_proto::GuiAction {
+        self.action_scoped(id, None)
+    }
+    pub fn action_scoped(
+        &self,
+        id: Ulid,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    ) -> bbt_proto::GuiAction {
         let (method, args) = match self {
             Self::Resolve(locator) => ("resolve", serde_json::json!({"locator":locator})),
             Self::Fetch(reference) => ("fetch", serde_json::json!({"ref":reference})),
         };
         bbt_proto::GuiAction::Knowledge {
-            scope: None,
             id,
+            scope,
             method: method.into(),
             args,
         }
@@ -40,11 +50,61 @@ pub struct Prepared {
     pub document: Document,
     pub targets: Vec<String>,
 }
+/// Flat router evidence is retained before portable provider DTO parsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    pub scope: bbt_proto::gui::SwarmScope,
+    pub root: String,
+    pub provider_revision: u64,
+}
+impl Source {
+    pub(crate) fn decode(value: &Value, scope: bbt_proto::gui::SwarmScope) -> Result<Self, String> {
+        let root = value["knowledge_root_id"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .ok_or("document_source_missing: knowledge root")?;
+        let swarm = value["swarm_workspace_id"]
+            .as_str()
+            .and_then(|s| s.parse::<Ulid>().ok());
+        let revision = value["swarm_workspace_revision"].as_u64();
+        if swarm != Some(scope.swarm) || revision != Some(scope.revision) {
+            return Err(
+                "document_scope_mismatch: provider result belongs to another workspace".into(),
+            );
+        }
+        let provider_revision = value["knowledge_root_revision"]
+            .as_u64()
+            .ok_or("document_source_missing: provider revision")?;
+        Ok(Self {
+            scope,
+            root: root.into(),
+            provider_revision,
+        })
+    }
+}
 #[derive(Debug, Clone)]
 pub enum Response {
     Resolved(d::RecordRef),
     Fetched(Arc<Prepared>),
     Failed(String),
+    Retry {
+        after_ms: u64,
+    },
+    Bound {
+        source: Source,
+        response: Box<Response>,
+    },
+}
+impl Response {
+    pub fn status(&self) -> &'static str {
+        match self {
+            Self::Resolved(_) => "resolved",
+            Self::Fetched(_) => "loaded",
+            Self::Failed(_) => "refused",
+            Self::Retry { .. } => "pending",
+            Self::Bound { response, .. } => response.status(),
+        }
+    }
 }
 #[derive(Debug, Clone)]
 pub struct Reply {
@@ -106,46 +166,102 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
             }
         }
     })();
-    result.unwrap_or_else(|error| Response::Failed(error.to_string()))
+    result.unwrap_or_else(|error| {
+        if error.code == "workspace_pending" {
+            Response::Retry {
+                after_ms: error.retry_after_ms.unwrap_or(100).clamp(25, 1000),
+            }
+        } else {
+            Response::Failed(error.to_string())
+        }
+    })
 }
 
 /// One result is retained until consumed, even if Latest replaces a frame.
 #[derive(Default)]
 pub struct Reader {
-    pending: Option<(Ulid, Read)>,
+    pending: Option<(Ulid, Read, Option<bbt_proto::gui::SwarmScope>)>,
+    outstanding: BTreeSet<Ulid>,
 }
 pub struct Work {
     id: Ulid,
     read: Read,
     value: d::Result<Value>,
+    scope: Option<bbt_proto::gui::SwarmScope>,
 }
 impl Work {
     pub fn prepare(self) -> Arc<Reply> {
         bbt_rt::assert_not_ui_thread();
+        let source = self.scope.and_then(|scope| {
+            self.value
+                .as_ref()
+                .ok()
+                .map(|value| Source::decode(value, scope))
+        });
+        let response = match source {
+            Some(Ok(source)) => Response::Bound {
+                source,
+                response: Box::new(decode(&self.read, self.value)),
+            },
+            Some(Err(reason)) => Response::Failed(reason),
+            None => decode(&self.read, self.value),
+        };
         Arc::new(Reply {
             id: self.id,
-            response: decode(&self.read, self.value),
+            response,
         })
     }
 }
 impl Reader {
     pub fn admit(&mut self, id: Ulid, read: Read) -> Option<bbt_proto::GuiAction> {
+        self.admit_scoped(id, read, None)
+    }
+    pub fn admit_scoped(
+        &mut self,
+        id: Ulid,
+        read: Read,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    ) -> Option<bbt_proto::GuiAction> {
         if self.pending.is_some() {
             return None;
         }
-        let action = read.action(id);
-        self.pending = Some((id, read));
-        Some(action)
+        self.admit_latest_scoped(id, read, scope).ok()
+    }
+    /// Read-only navigation may abandon a held provider without closing the shared
+    /// GUI door. Retired replies only release bounded accounting, never repaint.
+    pub fn admit_latest_scoped(
+        &mut self,
+        id: Ulid,
+        read: Read,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    ) -> Result<bbt_proto::GuiAction, &'static str> {
+        self.pending = None;
+        if self.outstanding.len() >= 8 {
+            return Err(
+                "document_read_limit: eight previous reads are still outstanding; reopen after they finish",
+            );
+        }
+        let action = read.action_scoped(id, scope);
+        self.outstanding.insert(id);
+        self.pending = Some((id, read, scope));
+        Ok(action)
     }
     pub fn response(&mut self, id: Ulid, value: d::Result<Value>) -> Option<Work> {
+        self.outstanding.remove(&id);
         if self.pending.as_ref()?.0 != id {
             return None;
         }
-        let (_, read) = self.pending.take()?;
-        Some(Work { id, read, value })
+        let (_, read, scope) = self.pending.take()?;
+        Some(Work {
+            id,
+            read,
+            value,
+            scope,
+        })
     }
     pub fn disconnected(&mut self, reason: &str) -> Option<Arc<Reply>> {
-        let (id, _) = self.pending.take()?;
+        self.outstanding.clear();
+        let (id, _, _) = self.pending.take()?;
         Some(Arc::new(Reply {
             id,
             response: Response::Failed(format!("document_read_disconnected: {reason}")),
@@ -172,10 +288,27 @@ pub struct Host {
     pub scroll: Controller,
     epoch: u64,
     queued: VecDeque<(Read, Purpose)>,
-    pending: Option<(Ulid, Purpose)>,
+    pending: Option<(Ulid, Read, Purpose)>,
+    scope: Option<bbt_proto::gui::SwarmScope>,
+    source: Option<Source>,
+    retry_blocked: bool,
+    retry_delay: Option<std::time::Duration>,
+    retry_started: Option<std::time::Instant>,
+    retries: u8,
 }
 impl Host {
+    /// Deliberate startup-root path for legacy CLI/test callers.
     pub fn show(&mut self, target: String) {
+        self.show_scoped(target, None)
+    }
+    pub fn show_scoped(&mut self, target: String, scope: Option<bbt_proto::gui::SwarmScope>) {
+        self.scope = scope;
+        self.pending = None;
+        self.source = None;
+        self.retry_blocked = false;
+        self.retry_delay = None;
+        self.retry_started = None;
+        self.retries = 0;
         self.epoch = self.epoch.wrapping_add(1);
         self.open = true;
         self.target = target.clone();
@@ -188,32 +321,94 @@ impl Host {
         self.queued
             .push_back((Read::Resolve(target), Purpose::Open(self.epoch)));
     }
+    pub fn follow(&mut self, target: String) {
+        let source = self.source.clone();
+        let scope = self.scope;
+        self.show_scoped(target, scope);
+        self.source = source;
+    }
+    pub fn scope(&self) -> Option<bbt_proto::gui::SwarmScope> {
+        self.scope
+    }
+    pub fn source(&self) -> Option<&Source> {
+        self.source.as_ref()
+    }
+    pub fn take_retry(&mut self) -> Option<(u64, std::time::Duration)> {
+        self.retry_delay.take().map(|delay| (self.epoch, delay))
+    }
+    pub fn retry_ready(&mut self, epoch: u64) -> bool {
+        if epoch == self.epoch && self.open && self.retry_blocked {
+            self.retry_blocked = false;
+            true
+        } else {
+            false
+        }
+    }
     pub fn close(&mut self) {
+        self.pending = None;
+        self.retry_blocked = false;
+        self.retry_delay = None;
         self.epoch = self.epoch.wrapping_add(1);
         self.open = false;
         self.queued.clear();
     }
     pub fn next_read(&mut self) -> Option<(Ulid, Read)> {
-        if self.pending.is_some() {
+        if self.pending.is_some() || self.retry_blocked {
             return None;
         }
         let (read, purpose) = self.queued.pop_front()?;
         let id = Ulid::new();
-        self.pending = Some((id, purpose));
+        self.pending = Some((id, read.clone(), purpose));
         Some((id, read))
     }
     pub fn apply(&mut self, reply: &Reply) -> bool {
         if self.pending.as_ref().map(|p| p.0) != Some(reply.id) {
             return false;
         }
-        let (_, purpose) = self.pending.take().expect("matching pending read");
+        let (_, read, purpose) = self.pending.take().expect("matching pending read");
         let epoch = match &purpose {
             Purpose::Open(e) | Purpose::Fetch(e) | Purpose::Probe(e, _) => *e,
         };
         if epoch != self.epoch || !self.open {
             return true;
         }
-        match (purpose, &reply.response) {
+        let (response, source) = match &reply.response {
+            Response::Bound { source, response } => (response.as_ref(), Some(source)),
+            response => (response, None),
+        };
+        if let Response::Retry { after_ms } = response {
+            let now = std::time::Instant::now();
+            let began = self.retry_started.get_or_insert(now);
+            if self.retries >= 50
+                || now.saturating_duration_since(*began) >= std::time::Duration::from_secs(10)
+            {
+                self.unavailable(
+                    "workspace_pending: preparing the workspace exceeded its retry bound",
+                );
+            } else {
+                self.retries += 1;
+                self.retry_blocked = true;
+                self.retry_delay = Some(std::time::Duration::from_millis(*after_ms));
+                self.queued.push_front((read, purpose));
+                self.notice = Some("Preparing workspace…".into());
+            }
+            return true;
+        }
+        if let Some(scope) = self.scope
+            && matches!(response, Response::Resolved(_) | Response::Fetched(_))
+        {
+            let valid = source.is_some_and(|source| {
+                source.scope == scope && self.source.as_ref().is_none_or(|old| old == source)
+            });
+            if !valid {
+                self.unavailable("document_source_changed: record replies no longer belong to the captured workspace/provider");
+                return true;
+            }
+            if self.source.is_none() {
+                self.source = source.cloned();
+            }
+        }
+        match (purpose, response) {
             (Purpose::Open(e), Response::Resolved(reference)) => self
                 .queued
                 .push_front((Read::Fetch(reference.clone()), Purpose::Fetch(e))),
@@ -246,11 +441,16 @@ impl Host {
         true
     }
     pub fn unavailable(&mut self, reason: &str) -> bool {
+        self.pending = None;
         let changed = self.error.as_deref() != Some(reason);
         if changed {
             self.epoch = self.epoch.wrapping_add(1);
         }
         self.queued.clear();
+        self.prepared = None;
+        self.links.clear();
+        self.retry_blocked = false;
+        self.retry_delay = None;
         self.error = Some(reason.into());
         changed
     }

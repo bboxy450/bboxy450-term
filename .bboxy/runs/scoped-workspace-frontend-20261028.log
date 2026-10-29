@@ -1,0 +1,45 @@
+ROLE: EXECUTOR
+Worktree: /Users/feral/mydev/bboxy450-term-ui-dialogs
+Branch: feature/scoped-workspaces-20261028
+Base: root5d7475fa + equivalent boundary0f55d75c(original92cd1e19) + router5e91d1ea(original1288aa74).
+Status: frontend scoped acceptance verified; parent owns full normal CI, landing and install.
+
+Mechanism:
+- Native document, task and graph requests capture acknowledged SwarmScope. Unknown/pending metadata never emits a legacy None fallback.
+- Resolve/fetch/probes and follow-links retain workspace/root/provider evidence; changed cwd invalidates retained documents and held replies.
+- workspace_pending schedules bounded same-scope retries, cancelled by binding/navigation changes.
+- Task mutations retain operation+scope across uncertain outcomes; colliding roots cannot replay or repaint one another.
+- Provider invalidation uses the document's actual root. Graph opening/readiness accepts only matching scoped publications and exposes unknown/loading states.
+- Abandoned document generations release local pending immediately. Latest-reader admission and graph navigation bound outstanding reads to8each; retired replies only release accounting. No shared socket or mutation is cancelled. Stale parse handles/results are retired locally.
+
+2026-10-28 make test-scoped-workspaces test-overlay-captures — exit0.
+App lib:132 passed/3 intentional ignored; bin:163 passed/5 intentional ignored.
+Documents:17 passed; graph:5 passed; messaging UI:21 passed.
+Real private ctl collision/held-provider fixture:1 passed.
+Real private ctl menu/rename/restart fixture:1 light+1 dark passed.
+Strict app Clippy --all-targets -- -D warnings: exit0.
+Raw log:/Users/feral/Library/Logs/bboxy450-term/scoped-workspaces-20261028-final.log
+SHA256:249d50ebd4bcc59c2b9bca69d34373ff57e5330868ae6151ef9c9843b435ed27
+
+Ctl acceptance:
+- Two swarm cwd roots contain identical ID1, number1 and slug same; each UI open by #1/slug/ID renders only its own private body.
+- Explicitly trusted/checked/enabled fixture provider holds an actual rootA fetch on an owned Unix socket.
+- Authoritative cwd changes while A is held; old document becomes unavailable.
+- Close/switch/open ready rootB settles BEFORE releaseA. Gate WriteAll after B settles succeeds (provider timeout would shut it down). Late A cannot repaint B; reopening reads B.
+- Pure document/graph tests prove retired replies, scope preservation, provider replacement refusal, retry scheduling and outstanding limits. Native task tests prove captured scope/replay isolation across colliding task IDs.
+
+Final evidence capture test-only addition saves real ctl debug errors:
+make test-overlay-captures check-scoped-workspace-frontend — exit0.
+Raw log:/Users/feral/Library/Logs/bboxy450-term/scoped-workspaces-20261028-capture-errors.log
+SHA256:602a40788fc9e5d8c13512d98cbe778b5a4be8cfe0d9a36410209b13bb521d02
+Private final PNGs viewed with view_image, no desktop capture/input injection:
+target/overlay-evidence/light/context-menu.png 9f20983a86ae088077a8ac7135446dae0e8404037a0edb4d20c063d830e6088b
+target/overlay-evidence/light/rename-dialog.png c89438a7ba15ece3087a0452f8581d8f7a5b65e566cffa1105faaf321c111b38
+target/overlay-evidence/dark/context-menu.png 94fde2e197959be7f39ba12d1a5b74dc67dd830fd11336779f4ba34bf5393712
+target/overlay-evidence/dark/rename-dialog.png 56a518da05fd4740fcb9bd7a4660f01a4c6631c926a5c0271020cbd6155ee373
+Menu anchors/viewport, focused editor, buttons and blurred dialog backdrop are legible in both themes.
+*-errors.json contains exactly3 expected scripted remote LinkDown/Connecting entries plus1 startup readiness probe before GUI attach; no scoped read/router/document error.
+
+Development failures: old messaging_flow Task pattern missed new scope; corrected. Provider lookup initially passed Arc to a typed closure; corrected with as_deref. All final gates above green.
+No native RecordWrite caller exists outside CLI; legacy CLI None semantics remain deliberate. Backend scoped RecordWrite is verified by its owner, not claimed by these frontend tests.
+No full normal CI/landing/install run in this child. No push, land, publish or operator account changes.

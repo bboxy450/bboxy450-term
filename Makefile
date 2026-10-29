@@ -53,6 +53,8 @@ help:
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
+	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
+	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
@@ -583,3 +585,26 @@ test-workspace-routing:
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge_responsiveness_tests; \
 	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+.PHONY: test-scoped-workspace-frontend
+# Pure frontend checks do not require a running app or provider.
+test-scoped-workspace-frontend:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test documents --test messaging_ui --test knowledge_e2e; \
+	cargo clippy --locked -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: check-scoped-workspace-frontend
+check-scoped-workspace-frontend:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-scoped-workspaces test-overlay-captures
+test-scoped-workspaces: test-scoped-workspace-frontend
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir native_documents_capture_swarm_roots_and_drop_a_held_reply_after_cwd_change -- --ignored --exact --nocapture
+
+test-overlay-captures:
+	@set -eu; . ./scripts/cache-env.sh; \
+	for theme in light dark; do \
+	  BBOXY_UI_OVERLAY_THEME="$$theme" BBOXY_UI_OVERLAY_EVIDENCE='$(abspath $(TARGET_DIR))/overlay-evidence/'"$$theme" cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
+	done

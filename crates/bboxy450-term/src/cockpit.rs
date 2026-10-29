@@ -129,6 +129,7 @@ pub enum UiMsg {
     },
     Task {
         id: bbt_mux::Ulid,
+        scope: Option<bbt_proto::gui::SwarmScope>,
         request: bbt_proto::messaging::TaskRequest,
     },
     Input {
@@ -172,6 +173,7 @@ pub enum UiMsg {
     },
     DocumentRead {
         id: bbt_mux::Ulid,
+        scope: Option<bbt_proto::gui::SwarmScope>,
         read: crate::documents::Read,
     },
     ConsumeDocument {

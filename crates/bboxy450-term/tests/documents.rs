@@ -88,29 +88,26 @@ fn the_provenance_card_displays_test_account_attribution_without_certifying_meta
 }
 // keeps: spec l9-messaging-tasks §4
 #[test]
-fn reopening_while_pending_drains_the_old_reply_without_replacing_the_new_target() {
+fn reopening_while_pending_supersedes_the_old_reply_without_waiting_for_it() {
     let mut host = Host::default();
     host.show("#1".into());
     let (old, _) = host.next_read().unwrap();
     host.show("#2".into());
-    assert!(host.next_read().is_none());
+    let (next, read) = host
+        .next_read()
+        .expect("held old read cannot block a new document");
+    assert!(matches!(read,Read::Resolve(s) if s=="#2"));
     assert!(!host.apply(&Reply {
-        id: Ulid::new(),
-        response: Response::Resolved(reference(1))
-    }));
-    assert!(host.apply(&Reply {
         id: old,
         response: Response::Resolved(reference(1))
     }));
     assert_eq!(host.target, "#2");
     assert!(host.prepared.is_none());
-    let (next, read) = host.next_read().unwrap();
-    assert!(matches!(read,Read::Resolve(s) if s=="#2"));
     host.close();
-    host.apply(&Reply {
+    assert!(!host.apply(&Reply {
         id: next,
-        response: Response::Failed("not_found: missing".into()),
-    });
+        response: Response::Failed("not_found: missing".into())
+    }));
     assert!(!host.open);
     assert!(host.next_read().is_none());
 }
@@ -357,7 +354,7 @@ fn known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_th
     let (id, _) = host.next_read().unwrap();
     assert!(host.unavailable("document_backend_unavailable: connection lost"));
     assert!(host.settled());
-    assert!(host.apply(&Reply {
+    assert!(!host.apply(&Reply {
         id,
         response: Response::Resolved(reference(44))
     }));
@@ -372,4 +369,207 @@ fn known_backend_loss_is_a_visible_final_outcome_and_late_data_cannot_restart_th
     host.show("#44".into());
     assert!(host.error.is_none());
     assert!(host.next_read().is_some());
+}
+
+fn scoped_value(
+    mut value: serde_json::Value,
+    scope: bbt_proto::gui::SwarmScope,
+    root: &str,
+    provider_revision: u64,
+) -> serde_json::Value {
+    value["knowledge_root_id"] = json!(root);
+    value["knowledge_root_revision"] = json!(provider_revision);
+    value["swarm_workspace_id"] = json!(scope.swarm.to_string());
+    value["swarm_workspace_revision"] = json!(scope.revision);
+    value
+}
+#[test]
+fn scoped_document_chain_retains_flat_root_evidence_and_rejects_cross_root_collisions() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(44),
+        revision: 2,
+    };
+    let mut host = Host::default();
+    let mut reader = Reader::default();
+    host.show_scoped("#44".into(), Some(scope));
+    let (op, read) = host.next_read().unwrap();
+    let action = reader.admit_scoped(op, read, host.scope()).unwrap();
+    assert!(
+        matches!(action,bbt_proto::GuiAction::Knowledge{scope:Some(actual),..} if actual==scope)
+    );
+    let value = scoped_value(json!(reference(44)), scope, "root-a", 7);
+    // Portable provider DTOs intentionally tolerate the agreed flat GUI evidence.
+    assert_eq!(
+        serde_json::from_value::<d::RecordRef>(value.clone()).unwrap(),
+        reference(44)
+    );
+    host.apply(&result(&mut reader, op, value));
+    let (op, read) = host.next_read().unwrap();
+    reader.admit_scoped(op, read, host.scope()).unwrap();
+    let record = d::Record {
+        reference: reference(44),
+        frontmatter: json!({"title":"wrong root same ID"}),
+        body: "foreign contents".into(),
+        etag: "same".into(),
+        resources: vec![],
+        parse_error: None,
+    };
+    host.apply(&result(
+        &mut reader,
+        op,
+        scoped_value(json!(record), scope, "root-b", 7),
+    ));
+    assert!(host.prepared.is_none());
+    assert!(
+        host.error
+            .as_deref()
+            .unwrap()
+            .starts_with("document_source_changed:")
+    );
+    assert!(host.next_read().is_none());
+}
+#[test]
+fn pending_workspace_retry_is_scheduled_bounded_scoped_and_cancel_invalidates_its_wake() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(45),
+        revision: 3,
+    };
+    let mut host = Host::default();
+    let mut reader = Reader::default();
+    host.show_scoped("#1".into(), Some(scope));
+    let (op, read) = host.next_read().unwrap();
+    reader.admit_scoped(op, read, host.scope()).unwrap();
+    let mut pending = d::CommandError::new("workspace_pending", "mounting");
+    pending.retry_after_ms = Some(100);
+    host.apply(&reader.response(op, Err(pending)).unwrap().prepare());
+    assert!(host.error.is_none());
+    assert!(host.next_read().is_none());
+    let (epoch, delay) = host.take_retry().unwrap();
+    assert_eq!(delay, std::time::Duration::from_millis(100));
+    assert!(host.take_retry().is_none());
+    assert!(host.retry_ready(epoch));
+    let (op, read) = host.next_read().unwrap();
+    assert!(
+        matches!(reader.admit_scoped(op,read,host.scope()).unwrap(),bbt_proto::GuiAction::Knowledge{scope:Some(actual),..}if actual==scope)
+    );
+    host.close();
+    assert!(!host.retry_ready(epoch));
+    host.apply(&result(
+        &mut reader,
+        op,
+        scoped_value(json!(reference(1)), scope, "root", 1),
+    ));
+    assert!(!host.open);
+    assert!(host.prepared.is_none());
+}
+
+#[test]
+fn following_a_link_keeps_captured_workspace_and_provider_generation() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(46),
+        revision: 4,
+    };
+    let mut host = Host::default();
+    let mut reader = Reader::default();
+    host.show_scoped("#1".into(), Some(scope));
+    let (op, read) = host.next_read().unwrap();
+    reader.admit_scoped(op, read, host.scope()).unwrap();
+    host.apply(&result(
+        &mut reader,
+        op,
+        scoped_value(json!(reference(1)), scope, "root-a", 7),
+    ));
+    host.follow("#2".into());
+    assert_eq!(
+        host.scope(),
+        Some(scope),
+        "follow never recaptures the selected swarm"
+    );
+    let (op, read) = host.next_read().unwrap();
+    assert!(matches!(&read, Read::Resolve(target) if target=="#2"));
+    reader.admit_scoped(op, read, host.scope()).unwrap();
+    host.apply(&result(
+        &mut reader,
+        op,
+        scoped_value(json!(reference(2)), scope, "root-a", 8),
+    ));
+    assert!(host.prepared.is_none());
+    assert!(
+        host.error
+            .as_deref()
+            .unwrap()
+            .starts_with("document_source_changed:"),
+        "follow cannot reinterpret a retained link with a replaced provider"
+    );
+    assert!(host.next_read().is_none());
+}
+#[test]
+fn changed_workspace_invalidates_the_held_reply_without_admitting_a_fallback_read() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(47),
+        revision: 5,
+    };
+    let mut host = Host::default();
+    let mut reader = Reader::default();
+    host.show_scoped("#1".into(), Some(scope));
+    let (op, read) = host.next_read().unwrap();
+    reader.admit_scoped(op, read, host.scope()).unwrap();
+    host.unavailable("swarm_root_changed: working folder changed");
+    assert!(!host.apply(&result(
+        &mut reader,
+        op,
+        scoped_value(json!(reference(1)), scope, "old-root", 1)
+    )));
+    assert!(host.next_read().is_none());
+    assert!(host.prepared.is_none());
+    assert_eq!(host.scope(), Some(scope));
+    assert!(
+        host.error
+            .as_deref()
+            .unwrap()
+            .starts_with("swarm_root_changed:")
+    );
+}
+
+#[test]
+fn latest_document_reader_supersedes_held_roots_and_bounds_retired_replies() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(80),
+        revision: 1,
+    };
+    let mut reader = Reader::default();
+    let mut old = Vec::new();
+    for _ in 0..8 {
+        let id = Ulid::new();
+        reader
+            .admit_latest_scoped(id, Read::Resolve("#1".into()), Some(scope))
+            .unwrap();
+        old.push(id);
+    }
+    assert!(
+        reader
+            .admit_latest_scoped(Ulid::new(), Read::Resolve("#2".into()), Some(scope))
+            .unwrap_err()
+            .starts_with("document_read_limit:")
+    );
+    assert!(
+        reader.response(old[0], Ok(json!(reference(1)))).is_none(),
+        "retired read releases accounting without preparation"
+    );
+    let fresh = Ulid::new();
+    reader
+        .admit_latest_scoped(fresh, Read::Resolve("#2".into()), Some(scope))
+        .unwrap();
+    for id in old.into_iter().skip(1) {
+        assert!(reader.response(id, Ok(json!(reference(1)))).is_none());
+    }
+    let reply = reader
+        .response(
+            fresh,
+            Ok(scoped_value(json!(reference(2)), scope, "ready-root", 1)),
+        )
+        .unwrap()
+        .prepare();
+    assert_eq!(reply.id, fresh);
+    assert!(matches!(reply.response, Response::Bound { .. }));
 }

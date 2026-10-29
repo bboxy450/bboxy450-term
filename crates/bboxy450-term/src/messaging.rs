@@ -618,7 +618,7 @@ impl Client {
         draft: Submission,
     ) -> Result<Batch, &'static str> {
         let recipients = draft.to.clone();
-        self.prepare_recipients(swarm, draft, recipients)
+        self.prepare_recipients(swarm, draft, recipients, None)
     }
     pub fn prepare_for(
         &self,
@@ -663,13 +663,19 @@ impl Client {
                 recipients.push(address.clone());
             }
         }
-        self.prepare_recipients(Some(swarm), draft, recipients)
+        let workspace = if draft.delegate {
+            Some(model.swarm_scope(swarm)?)
+        } else {
+            None
+        };
+        self.prepare_recipients(Some(swarm), draft, recipients, workspace)
     }
     fn prepare_recipients(
         &self,
         swarm: Option<SwarmId>,
         draft: Submission,
         recipients: Vec<Address>,
+        workspace: Option<bbt_proto::gui::SwarmScope>,
     ) -> Result<Batch, &'static str> {
         if self.pending.is_some() {
             return Err("send_in_flight");
@@ -713,6 +719,7 @@ impl Client {
             let id = Ulid::new();
             commands.push(UiMsg::Task {
                 id,
+                scope: workspace,
                 request: TaskRequest::Delegate {
                     task_path: draft.attach[0].path.clone(),
                     seat_id,
@@ -1048,8 +1055,14 @@ pub fn message_entries_with_attachments(
 
 #[derive(Clone)]
 enum Saved {
-    Message { swarm: SwarmId, request: Request },
-    Task(TaskRequest),
+    Message {
+        swarm: SwarmId,
+        request: Request,
+    },
+    Task {
+        request: TaskRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    },
 }
 impl Saved {
     fn capture(command: &UiMsg) -> (Ulid, Self) {
@@ -1065,7 +1078,13 @@ impl Saved {
                     request: request.clone(),
                 },
             ),
-            UiMsg::Task { id, request } => (*id, Self::Task(request.clone())),
+            UiMsg::Task { id, request, scope } => (
+                *id,
+                Self::Task {
+                    request: request.clone(),
+                    scope: *scope,
+                },
+            ),
             _ => unreachable!("composer only emits messaging/task operations"),
         }
     }
@@ -1076,9 +1095,10 @@ impl Saved {
                 swarm_id: *swarm,
                 request: request.clone(),
             },
-            Self::Task(request) => UiMsg::Task {
+            Self::Task { request, scope } => UiMsg::Task {
                 id,
                 request: request.clone(),
+                scope: *scope,
             },
         }
     }
@@ -1117,6 +1137,13 @@ fn send(
 #[derive(Default)]
 pub struct Records {
     scope: Option<SwarmId>,
+    workspace: Option<bbt_proto::gui::SwarmScope>,
+    workspace_required: bool,
+    retry_epoch: u64,
+    retry_blocked: bool,
+    retry_delay: Option<std::time::Duration>,
+    retry_started: Option<std::time::Instant>,
+    retries: u8,
     pending: BTreeMap<Ulid, RecordRequest>,
     waiting: VecDeque<Read>,
     tasks: VecDeque<wire::TaskCard>,
@@ -1147,6 +1174,52 @@ struct RecordRequest {
     unknown: bool,
 }
 impl Records {
+    pub fn bind_workspace(
+        &mut self,
+        binding: Result<bbt_proto::gui::SwarmScope, &'static str>,
+    ) -> bool {
+        let next = binding.ok();
+        if self.workspace_required && self.workspace == next {
+            return false;
+        }
+        self.workspace_required = true;
+        self.workspace = next;
+        self.retry_epoch = self.retry_epoch.wrapping_add(1);
+        self.retry_blocked = false;
+        self.retry_delay = None;
+        self.retry_started = None;
+        self.retries = 0;
+        self.pending.retain(|_, request| {
+            request.read.is_none() || matches!(request.read, Some(Read::Tree(..)))
+        });
+        self.waiting.retain(|read| matches!(read, Read::Tree(..)));
+        self.tasks.clear();
+        self.unassigned.clear();
+        self.docs.clear();
+        self.task_next = None;
+        self.unassigned_next = None;
+        self.selected = None;
+        self.review_issue = None;
+        self.review_completed = None;
+        self.issue = binding.err().map(Into::into);
+        if next.is_some() {
+            self.refresh();
+        }
+        true
+    }
+    pub fn take_retry(&mut self) -> Option<(u64, std::time::Duration)> {
+        self.retry_delay
+            .take()
+            .map(|delay| (self.retry_epoch, delay))
+    }
+    pub fn retry_ready(&mut self, epoch: u64) -> bool {
+        if epoch == self.retry_epoch && self.retry_blocked {
+            self.retry_blocked = false;
+            true
+        } else {
+            false
+        }
+    }
     pub fn scope(&self) -> Option<SwarmId> {
         self.scope
     }
@@ -1243,8 +1316,10 @@ impl Records {
             .into_iter()
             .filter(|(_, p)| p.read.is_none())
             .collect();
+        let retry_epoch = self.retry_epoch.wrapping_add(1);
         *self = Self {
             scope: Some(scope),
+            retry_epoch,
             pending,
             ..Default::default()
         };
@@ -1317,7 +1392,10 @@ impl Records {
             let Some(read) = self.waiting.pop_front() else {
                 break;
             };
-            if !messaging_ready && matches!(read, Read::Tree(..)) {
+            if ((self.workspace_required && self.workspace.is_none() || self.retry_blocked)
+                && !matches!(read, Read::Tree(..)))
+                || (!messaging_ready && matches!(read, Read::Tree(..)))
+            {
                 self.waiting.push_back(read);
                 continue;
             }
@@ -1325,6 +1403,7 @@ impl Records {
             let command = match &read {
                 Read::Tasks(after) | Read::Unassigned(after) => UiMsg::Task {
                     id,
+                    scope: self.workspace,
                     request: TaskRequest::List {
                         unassigned: matches!(&read, Read::Unassigned(_)),
                         swarm_id: matches!(&read, Read::Tasks(_)).then(|| Ulid::from(scope.0.0)),
@@ -1340,6 +1419,7 @@ impl Records {
                     };
                     UiMsg::Task {
                         id,
+                        scope: self.workspace,
                         request: TaskRequest::Status {
                             task_path: Some(card.path.clone()),
                             task_id: None,
@@ -1373,12 +1453,18 @@ impl Records {
     /// A second click on an unknown task operation reuses its captured request,
     /// never a new mutation id. A changed action is refused until it is resolved.
     pub fn review(&mut self, task: Ulid, reason: Option<String>) -> Result<UiMsg, &'static str> {
-        if let Some((&original_id, p)) = self.pending.iter_mut().find(|(_, p)| p.task == Some(task))
-        {
+        if self.workspace_required && self.workspace.is_none() {
+            return Err("workspace_metadata_pending");
+        }
+        if let Some((&original_id, p)) = self.pending.iter_mut().find(|(_, p)| {
+            p.task == Some(task)
+                && (!self.workspace_required
+                    || matches!(&p.command,Saved::Task{scope,..}if *scope==self.workspace))
+        }) {
             if !p.unknown {
                 return Err("task_operation_in_flight");
             }
-            let Saved::Task(request) = &p.command else {
+            let Saved::Task { request, .. } = &p.command else {
                 unreachable!();
             };
             let same = match (request, reason.as_deref()) {
@@ -1413,7 +1499,11 @@ impl Records {
             }
         };
         let id = Ulid::new();
-        let command = UiMsg::Task { id, request };
+        let command = UiMsg::Task {
+            id,
+            request,
+            scope: self.workspace,
+        };
         self.pending.insert(
             id,
             RecordRequest {
@@ -1435,6 +1525,17 @@ impl Records {
             if row.serial <= p.serial {
                 continue;
             }
+            if self.workspace_required
+                && matches!(&p.command,Saved::Task{scope,..}if *scope!=self.workspace)
+            {
+                if let Reply::Unknown(_) = &row.reply {
+                    p.unknown = true;
+                    p.serial = row.serial;
+                } else {
+                    self.pending.remove(&row.op);
+                }
+                continue;
+            }
             p.serial = row.serial;
             if let Reply::Unknown(reason) = &row.reply {
                 p.unknown = true;
@@ -1449,6 +1550,25 @@ impl Records {
                 continue;
             }
             let p = self.pending.remove(&row.op).unwrap();
+            if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
+                && !matches!(read, Read::Tree(..))
+                && reason.starts_with("workspace_pending")
+            {
+                let now = std::time::Instant::now();
+                let began = self.retry_started.get_or_insert(now);
+                if self.retries < 50
+                    && now.saturating_duration_since(*began) < std::time::Duration::from_secs(10)
+                {
+                    self.retries += 1;
+                    self.enqueue(read.clone());
+                    if !self.retry_blocked {
+                        self.retry_blocked = true;
+                        self.retry_delay = Some(std::time::Duration::from_millis(100));
+                    }
+                    changed = true;
+                    continue;
+                }
+            }
             match (&p.read, &row.reply) {
                 (
                     Some(Read::Tasks(after) | Read::Unassigned(after)),
@@ -1552,7 +1672,11 @@ impl Records {
                     if let Some(task) = p.task {
                         self.review_completed = Some((
                             task,
-                            if let Saved::Task(TaskRequest::Reject { reason, .. }) = &p.command {
+                            if let Saved::Task {
+                                request: TaskRequest::Reject { reason, .. },
+                                ..
+                            } = &p.command
+                            {
                                 Some(reason.clone())
                             } else {
                                 None

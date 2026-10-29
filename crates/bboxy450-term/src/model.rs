@@ -539,6 +539,7 @@ pub struct Model {
     pub window_waiting: std::collections::BTreeSet<SeatId>,
     pub events: Arc<EventLane>,
     pub e2e: Option<Arc<bbt_ui::modules::e2e_checklist::Checklist>>,
+    pub e2e_scope: Option<bbt_proto::gui::SwarmScope>,
     /// G5 paint state only; neither map changes layout or selects a seat.
     pub attention: BTreeMap<SeatId, crate::attention::Attention>,
     pub focus_swell: Option<(SeatId, FocusSwell)>,
@@ -551,6 +552,35 @@ pub struct Model {
 }
 
 impl Model {
+    /// A native root-bearing operation binds to acknowledged metadata. Known
+    /// absence is scope0 only when no legacy working-folder intent remains.
+    pub fn swarm_scope(
+        &self,
+        swarm: ui::SwarmId,
+    ) -> Result<bbt_proto::gui::SwarmScope, &'static str> {
+        if !self.swarm_metadata_loaded || self.swarm_metadata_pending.contains(&swarm) {
+            return Err("workspace_metadata_pending");
+        }
+        let row = self
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .find(|row| row.id == swarm)
+            .ok_or("swarm_unavailable")?;
+        let revision = if let Some(record) = self.swarm_metadata.get(&Ulid(swarm.0.0)) {
+            record.revision
+        } else if row.workdir.is_some() {
+            return Err("workspace_metadata_unknown");
+        } else {
+            0
+        };
+        Ok(bbt_proto::gui::SwarmScope {
+            swarm: Ulid(swarm.0.0),
+            revision,
+        })
+    }
     /// Replay can return an older committed record. Never roll a hydrated name
     /// or cwd backward, and preserve the other metadata field on each update.
     pub fn hydrate_swarms(
@@ -636,6 +666,7 @@ impl Default for Model {
             window_waiting: Default::default(),
             events: Arc::new(EventLane::default()),
             e2e: None,
+            e2e_scope: None,
             attention: BTreeMap::new(),
             focus_swell: None,
             attention_episodes: crate::attention::Episodes::default(),
@@ -1373,6 +1404,7 @@ fn build_with_clock(
         window_waiting: previous.window_waiting.clone(),
         events: previous.events.clone(),
         e2e: previous.e2e.clone(),
+        e2e_scope: previous.e2e_scope,
         attention: previous.attention.clone(),
         focus_swell: previous.focus_swell,
         attention_episodes: previous.attention_episodes.clone(),
@@ -2524,5 +2556,42 @@ mod swarm_metadata_tests {
             next.swarm_metadata_pending
                 .contains(&ui::SwarmId::from_u128(8123))
         );
+    }
+}
+
+#[cfg(test)]
+mod workspace_scope_tests {
+    use super::*;
+    #[test]
+    fn native_capture_distinguishes_unknown_pending_absence_legacy_and_explicit_reset() {
+        let swarm = ui::SwarmId::from_u128(73);
+        let mut model = Model::default();
+        model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .push(ui::Swarm::new(swarm, "scope", vec![]));
+        assert_eq!(model.swarm_scope(swarm), Err("workspace_metadata_pending"));
+        model.swarm_metadata_loaded = true;
+        assert_eq!(
+            model.swarm_scope(swarm).unwrap(),
+            bbt_proto::gui::SwarmScope {
+                swarm: Ulid(73),
+                revision: 0
+            }
+        );
+        model.ui.window.sidebar.swarms[0].workdir = Some("/old/folder".into());
+        assert_eq!(model.swarm_scope(swarm), Err("workspace_metadata_unknown"));
+        model.hydrate_swarms([registry::SwarmRecord::new(Ulid(73))]);
+        assert_eq!(model.swarm_scope(swarm).unwrap().revision, 0);
+        model.swarm_metadata_pending.insert(swarm);
+        assert_eq!(model.swarm_scope(swarm), Err("workspace_metadata_pending"));
+        model.swarm_metadata_pending.clear();
+        let mut changed = registry::SwarmRecord::new(Ulid(73));
+        changed.revision = 9;
+        changed.workdir = Some("/new/folder".into());
+        model.hydrate_swarms([changed]);
+        assert_eq!(model.swarm_scope(swarm).unwrap().revision, 9);
     }
 }

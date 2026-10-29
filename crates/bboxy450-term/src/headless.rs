@@ -201,6 +201,18 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         dirty = true;
                     }
                     UiEvent::TitlebarDoubleClick => app.titlebar_double_click(),
+                    UiEvent::TaskRetry(epoch) => {
+                        if app.task_records.retry_ready(epoch) {
+                            app.task_reads();
+                            dirty = true;
+                        }
+                    }
+                    UiEvent::DocumentRetry(epoch) => {
+                        if app.document.retry_ready(epoch) {
+                            app.drive_document();
+                            dirty = true;
+                        }
+                    }
                     UiEvent::SwarmMetadataReply { op, result } => {
                         app.overlay_metadata_reply(op, result);
                         dirty = true;

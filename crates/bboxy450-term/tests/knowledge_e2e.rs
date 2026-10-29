@@ -351,3 +351,100 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
         Tone::Green
     );
 }
+
+#[test]
+fn scoped_graph_refuses_late_bindings_and_never_falls_back_when_metadata_is_unknown() {
+    use bbt_proto::{GuiAction, gui::SwarmScope};
+    let first = SwarmScope {
+        swarm: Ulid(201),
+        revision: 1,
+    };
+    let second = SwarmScope {
+        swarm: Ulid(202),
+        revision: 2,
+    };
+    let mut watch = Watch::new(vec![]);
+    watch.bind_scope(Ok(Some(first)));
+    watch.observe(true);
+    watch.connection(true);
+    let GuiAction::Knowledge { id: old, scope, .. } = watch.next_action().unwrap() else {
+        panic!("knowledge")
+    };
+    assert_eq!(scope, Some(first));
+    let mut pending = d::CommandError::new("workspace_pending", "mounting");
+    pending.retry_after_ms = Some(100);
+    watch.response(old, Err(pending));
+    assert!(watch.deadline().is_some());
+    assert!(
+        watch.next_action().is_none(),
+        "retry uses a scheduled wake rather than an immediate loop"
+    );
+    watch.bind_scope(Err("workspace_metadata_pending".into()));
+    assert!(watch.deadline().is_none());
+    assert!(
+        watch.next_action().is_none(),
+        "unknown metadata never emits scope None"
+    );
+    watch.bind_scope(Ok(Some(second)));
+    let GuiAction::Knowledge {
+        id: fresh, scope, ..
+    } = watch.next_action().unwrap()
+    else {
+        panic!("knowledge")
+    };
+    assert_ne!(fresh, old);
+    assert_eq!(scope, Some(second));
+    watch.response(old, Ok(json!({"changed":[],"next":"0"})));
+    assert!(
+        watch.next_action().is_none(),
+        "old reply cannot consume the fresh pending request"
+    );
+    watch.response(fresh,Ok(json!({"changed":[],"next":"0","knowledge_root_id":"second-root","knowledge_root_revision":1,"swarm_workspace_id":second.swarm.to_string(),"swarm_workspace_revision":second.revision})));
+    let GuiAction::Knowledge { scope, .. } = watch.next_action().unwrap() else {
+        panic!("next scoped page")
+    };
+    assert_eq!(scope, Some(second));
+}
+
+#[test]
+fn graph_root_switches_do_not_wait_for_retired_reads_or_fill_the_shared_gui_ledger() {
+    use bbt_proto::{GuiAction, gui::SwarmScope};
+    let mut watch = Watch::new(vec![]);
+    watch.observe(true);
+    watch.connection(true);
+    let mut old = Vec::new();
+    for n in 1..=8 {
+        watch.bind_scope(Ok(Some(SwarmScope {
+            swarm: Ulid(n),
+            revision: 1,
+        })));
+        let GuiAction::Knowledge { id, .. } = watch
+            .next_action()
+            .expect("a ready root must not wait for the prior held root")
+        else {
+            panic!("knowledge")
+        };
+        old.push(id);
+    }
+    let ready = SwarmScope {
+        swarm: Ulid(9),
+        revision: 1,
+    };
+    watch.bind_scope(Ok(Some(ready)));
+    assert!(watch.next_action().is_none());
+    assert!(
+        watch
+            .publication()
+            .unwrap()
+            .faults
+            .iter()
+            .any(|fault| fault.contains("workspace_read_limit"))
+    );
+    watch.response(old[0], Ok(json!({"changed":[],"next":"old-root"})));
+    watch.observe(true);
+    let GuiAction::Knowledge { scope, id, .. } = watch.next_action().unwrap() else {
+        panic!("knowledge")
+    };
+    assert_eq!(scope, Some(ready));
+    assert!(!old.contains(&id));
+}

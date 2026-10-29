@@ -75,6 +75,8 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    DocumentRetry(u64),
+    TaskRetry(u64),
     LaunchDirectoryChecked {
         token: bbt_mux::Ulid,
         value: String,
@@ -1960,6 +1962,7 @@ struct App {
     settings_attention_target: Option<(bbt_mux::Ulid, u64, bbt_proto::registry::Role)>,
     system_theme: Theme,
     local_tab: Option<LocalTab>,
+    graph_scope: Option<bbt_proto::gui::SwarmScope>,
     local_page_layout: Option<scene::LocalPageLayout>,
     document: documents::Host,
     document_return: Option<Stage>,
@@ -2151,6 +2154,7 @@ impl App {
             settings_attention_target: None,
             system_theme: Theme::Dark,
             local_tab: None,
+            graph_scope: None,
             local_page_layout: None,
             document: {
                 let mut host = documents::Host::default();
@@ -2282,17 +2286,61 @@ impl App {
             UiProxy::Headless(send) => self.logger.finish_with_sink(text, send.clone()),
         }
     }
+    fn workspace_scope(&self) -> Result<bbt_proto::gui::SwarmScope, &'static str> {
+        let model = self
+            .live_state
+            .as_deref()
+            .ok_or("workspace_metadata_pending")?;
+        let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
+        model.swarm_scope(stage.swarm.ok_or("swarm_required")?)
+    }
     fn open_document(&mut self, target: String) {
+        let binding = self.workspace_scope();
+        self.open_document_bound(target, binding.map(Some));
+    }
+    fn follow_document_link(&mut self, target: String) {
+        self.document.follow(target);
+        self.document_layout = None;
+        self.drive_document();
+        self.request_redraw();
+    }
+    fn open_document_bound(
+        &mut self,
+        target: String,
+        binding: Result<Option<bbt_proto::gui::SwarmScope>, &'static str>,
+    ) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
         }
-        self.document.show(target);
+        match binding {
+            Ok(scope) => self.document.show_scoped(target, scope),
+            Err(reason) => {
+                self.document.show_scoped(target, None);
+                self.document.unavailable(reason);
+            }
+        }
         self.document_layout = None;
         self.composer_dragging = false;
         self.query_dragging = false;
         self.sync_text_ime();
         self.drive_document();
         self.request_redraw();
+    }
+    fn document_binding(&mut self, model: &bboxy450_term::model::Model) -> bool {
+        if let Some(scope) = self.document.scope() {
+            let swarm = bbt_proto::SwarmId::from_u128(scope.swarm.0);
+            let issue = match model.swarm_scope(swarm) {
+                Ok(current) if current == scope => None,
+                Ok(_) => Some("swarm_root_changed: working folder changed; open the record again"),
+                Err(reason) => Some(reason),
+            };
+            if let Some(reason) = issue {
+                self.document.unavailable(reason);
+                self.document_layout = None;
+                return false;
+            }
+        }
+        true
     }
     fn close_document(&mut self) {
         self.document.close();
@@ -2308,6 +2356,13 @@ impl App {
     }
     fn drive_document(&mut self) {
         if self.document.open
+            && let Some(model) = self.live_state.clone()
+            && !self.document_binding(&model)
+        {
+            self.request_redraw();
+            return;
+        }
+        if self.document.open
             && (self.live_commands.is_none() || (self.backend_lost && !self.document.settled()))
         {
             if self.document.unavailable(
@@ -2321,7 +2376,11 @@ impl App {
         if self.live_commands.is_some()
             && let Some((id, read)) = self.document.next_read()
         {
-            self.queue(live::UiMsg::DocumentRead { id, read });
+            self.queue(live::UiMsg::DocumentRead {
+                id,
+                scope: self.document.scope(),
+                read,
+            });
         }
     }
     fn document_command(&mut self, command: PageCommand) {
@@ -2362,8 +2421,8 @@ impl App {
         self.launcher_parent = None;
         self.local_tab = Some(tab);
         if let Some(commands) = &self.live_commands {
-            commands.observe_knowledge(matches!(&self.local_tab, Some(LocalTab::Graph(_)))
-                || matches!(&self.local_tab, Some(LocalTab::Settings {controller,..}) if controller.section == "Knowledge"));
+            commands.observe_knowledge_scoped(matches!(&self.local_tab, Some(LocalTab::Graph(_)))
+                || matches!(&self.local_tab, Some(LocalTab::Settings {controller,..}) if controller.section == "Knowledge"),self.workspace_scope().map_err(Into::into));
         }
         self.local_page_layout = None;
         if let Some(window) = &self.window {
@@ -2378,10 +2437,32 @@ impl App {
         );
         self.request_redraw();
     }
+    fn observe_workspace_knowledge(&self, enabled: bool) {
+        if let Some(commands) = &self.live_commands {
+            commands.observe_knowledge_scoped(enabled, self.workspace_scope().map_err(Into::into));
+        }
+    }
+    fn sync_workspace_knowledge(&self) {
+        self.observe_workspace_knowledge(matches!(self.local_tab,Some(LocalTab::Graph(_)))||matches!(&self.local_tab,Some(LocalTab::Settings{controller,..})if controller.section=="Knowledge"));
+    }
     fn open_graph(&mut self) {
+        let binding = self.workspace_scope();
+        self.graph_scope = binding.ok();
         if !matches!(self.local_tab, Some(LocalTab::Graph(_))) {
             match e2e_checklist::Graph::new(vec![], vec![]) {
-                Ok(graph) => self.open_local_tab(LocalTab::Graph(graph)),
+                Ok(mut graph) => {
+                    if let Some(model) = &self.live_state
+                        && self.graph_scope.is_some()
+                        && model.e2e_scope == self.graph_scope
+                        && let Some(snapshot) = &model.e2e
+                    {
+                        graph.checklist = snapshot.clone();
+                    } else {
+                        Arc::make_mut(&mut graph.checklist).faults =
+                            vec![binding.err().unwrap_or("Loading workspace records…").into()];
+                    }
+                    self.open_local_tab(LocalTab::Graph(graph));
+                }
                 Err(error) => self.logger.write(format!("Graph refused: {error}")),
             }
         } else {
@@ -2487,7 +2568,10 @@ impl App {
                 &Default::default(),
             );
             if let Some(commands) = &self.live_commands {
-                commands.observe_knowledge(section == "Knowledge");
+                commands.observe_knowledge_scoped(
+                    section == "Knowledge",
+                    self.workspace_scope().map_err(Into::into),
+                );
             }
             self.close_launcher();
             if let Some(window) = &self.window {
@@ -2851,7 +2935,7 @@ impl App {
             self.apply_preferences();
         }
         if let Some(commands) = &self.live_commands {
-            commands.observe_knowledge(false);
+            commands.observe_knowledge_scoped(false, self.workspace_scope().map_err(Into::into));
         }
         self.local_tab = None;
         self.sync_text_ime();
@@ -3007,6 +3091,13 @@ impl App {
     fn task_reads(&mut self) {
         if self.closing || self.backend_lost {
             return;
+        }
+        let workspace = self.workspace_scope();
+        if self.task_records.bind_workspace(workspace) {
+            self.composer
+                .view
+                .attach
+                .retain(|attachment| attachment.kind != "task");
         }
         let messaging_ready = self.messaging_scope_ready();
         admit_reads(
@@ -4899,6 +4990,7 @@ impl App {
                 self.queue(message);
             }
             self.composer_notice();
+            self.document_binding(&state);
             if let Some(reply) = &state.document_reply
                 && self.document.apply(reply)
             {
@@ -4906,16 +4998,38 @@ impl App {
                 self.logger.write(format!(
                     "document {}: {:?}",
                     self.document.target,
-                    match &reply.response {
-                        documents::Response::Resolved(_) => "resolved",
-                        documents::Response::Fetched(_) => "loaded",
-                        documents::Response::Failed(_) => "refused",
-                    }
+                    reply.response.status()
                 ));
                 self.document_layout = None;
                 self.request_redraw();
             }
+            let graph_scope = self
+                .focus
+                .stage
+                .as_ref()
+                .unwrap_or(&state.ui.window.stage)
+                .swarm
+                .and_then(|swarm| state.swarm_scope(swarm).ok());
+            if self.graph_scope != graph_scope {
+                self.graph_scope = graph_scope;
+                if let Some(LocalTab::Graph(graph)) = &mut self.local_tab {
+                    graph.checklist = Arc::new(bbt_ui::modules::e2e_checklist::Checklist {
+                        promises: graph.checklist.promises.clone(),
+                        faults: vec![
+                            if graph_scope.is_some() {
+                                "Loading workspace records…"
+                            } else {
+                                "Workspace metadata is pending or unavailable"
+                            }
+                            .into(),
+                        ],
+                        ..Default::default()
+                    });
+                    self.local_page_layout = None;
+                }
+            }
             if let Some(snapshot) = &state.e2e
+                && graph_scope.is_some_and(|scope| state.e2e_scope == Some(scope))
                 && !self
                     .live_state
                     .as_ref()
@@ -4981,19 +5095,27 @@ impl App {
                 self.launcher_layout = None;
             }
             self.scene_dirty = true;
-            let root_changed = self
+            let document_root = self.document.source().map(|source| source.root.as_str());
+            let provider_revision = |status: &bbt_proto::gui::KnowledgeStatus| {
+                match document_root {
+                    Some(root) => status.roots.iter().find(|entry| entry.id == root),
+                    None if self.document.scope().is_none() => status.roots.first(),
+                    None => None,
+                }
+                .map(|entry| entry.revision)
+            };
+            let previous_provider = self
                 .live_state
                 .as_ref()
-                .and_then(|m| m.knowledge_roots.as_ref())
-                .and_then(|s| s.roots.first())
-                .map(|r| r.revision)
-                != state
-                    .knowledge_roots
-                    .as_ref()
-                    .and_then(|s| s.roots.first())
-                    .map(|r| r.revision);
+                .and_then(|model| model.knowledge_roots.as_deref())
+                .and_then(provider_revision);
+            let current_provider = state.knowledge_roots.as_deref().and_then(provider_revision);
+            let root_changed = previous_provider.is_some() && previous_provider != current_provider;
             if root_changed && self.document.open {
-                self.document.show(self.document.target.clone());
+                self.document.unavailable(
+                    "document_source_changed: provider changed; open the record again",
+                );
+                self.document_layout = None;
             }
             let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
             if let Some(draft) = completed {
@@ -5010,6 +5132,7 @@ impl App {
                 self.live_state = Some(state);
             }
             self.sync_role_settings();
+            self.sync_workspace_knowledge();
             if matches!(self.local_tab, Some(LocalTab::Settings { .. })) {
                 self.request_attention_read(false);
             }
@@ -5066,6 +5189,20 @@ impl App {
             self.apply_notification_click();
             self.sync_notifications();
             self.verify();
+        }
+        if let Some((epoch, delay)) = self.task_records.take_retry() {
+            let proxy = self.proxy.clone();
+            bbt_rt::handle().spawn(async move {
+                tokio::time::sleep(delay).await;
+                let _ = proxy.send_event(UiEvent::TaskRetry(epoch));
+            });
+        }
+        if let Some((epoch, delay)) = self.document.take_retry() {
+            let proxy = self.proxy.clone();
+            bbt_rt::handle().spawn(async move {
+                tokio::time::sleep(delay).await;
+                let _ = proxy.send_event(UiEvent::DocumentRetry(epoch));
+            });
         }
         self.drive_document();
         self.poll_focus();
@@ -5482,7 +5619,10 @@ impl App {
             UiEffect::Document => {
                 Ok(self.document.prepared.is_some() || self.document.error.is_some())
             }
-            UiEffect::Graph => Ok(model.e2e.is_some()),
+            UiEffect::Graph => Ok(self.workspace_scope().is_err()
+                || (self.graph_scope.is_some()
+                    && model.e2e.is_some()
+                    && model.e2e_scope == self.graph_scope)),
             UiEffect::Preferences { saved } => Ok(self.preferences.loaded
                 && (!*saved
                     || self.preferences.error.is_some()
@@ -6905,6 +7045,18 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::TaskRetry(epoch) => {
+                if self.task_records.retry_ready(epoch) {
+                    self.task_reads();
+                    self.request_redraw();
+                }
+            }
+            UiEvent::DocumentRetry(epoch) => {
+                if self.document.retry_ready(epoch) {
+                    self.drive_document();
+                    self.request_redraw();
+                }
+            }
             UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
             UiEvent::DesktopAction(action) => {
                 if let Some(hard) = self.desktop_action(action) {
@@ -11323,6 +11475,7 @@ mod composer_host_tests {
     fn operation_admission_is_bounded_without_consuming_terminal_input_capacity() {
         let mut pending = VecDeque::new();
         let operation = || live::UiMsg::Task {
+            scope: None,
             id: bbt_mux::Ulid::new(),
             request: bbt_proto::messaging::TaskRequest::List {
                 unassigned: false,

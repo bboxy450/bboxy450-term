@@ -356,8 +356,17 @@ pub struct Watch {
     observing: bool,
     connected: bool,
     pending: Option<bbt_mux::Ulid>,
+    outstanding: BTreeSet<bbt_mux::Ulid>,
+    read_limit: bool,
     restart: bool,
     published: u64,
+    scope: Result<Option<bbt_proto::gui::SwarmScope>, String>,
+    source: Option<crate::documents::Source>,
+    active_call: Option<ReadCall>,
+    retry_call: Option<ReadCall>,
+    retry_at: Option<std::time::Instant>,
+    retry_started: Option<std::time::Instant>,
+    retries: u8,
 }
 impl Watch {
     pub fn new(promises: Vec<Promise>) -> Self {
@@ -366,15 +375,56 @@ impl Watch {
             observing: false,
             connected: false,
             pending: None,
+            outstanding: BTreeSet::new(),
+            read_limit: false,
             restart: false,
             published: 0,
+            scope: Ok(None),
+            source: None,
+            active_call: None,
+            retry_call: None,
+            retry_at: None,
+            retry_started: None,
+            retries: 0,
         }
+    }
+    pub fn bind_scope(&mut self, scope: Result<Option<bbt_proto::gui::SwarmScope>, String>) {
+        if self.scope == scope {
+            return;
+        }
+        self.scope = scope;
+        self.reset_source();
+        if let Err(reason) = &self.scope {
+            self.loader
+                .fail(d::CommandError::new("workspace_unavailable", reason));
+        }
+    }
+    pub fn scope(&self) -> Option<bbt_proto::gui::SwarmScope> {
+        self.scope.as_ref().ok().copied().flatten()
+    }
+    pub fn deadline(&self) -> Option<std::time::Instant> {
+        self.retry_at
+    }
+    fn reset_source(&mut self) {
+        let promises = self.loader.snapshot().promises.clone();
+        self.loader = E2eLoader::new(promises);
+        self.pending = None;
+        self.source = None;
+        self.active_call = None;
+        self.retry_call = None;
+        self.retry_at = None;
+        self.retry_started = None;
+        self.retries = 0;
+        self.restart = false;
+        self.read_limit = false;
+        self.published = u64::MAX;
     }
     /// Called only for a coalesced UI demand notification. A close/open pair
     /// may coalesce to true, so true also forces a fresh source snapshot.
     pub fn observe(&mut self, enabled: bool) {
         self.observing = enabled;
         if enabled {
+            self.read_limit = false;
             if self.pending.is_some() {
                 self.restart = true;
             } else {
@@ -386,16 +436,22 @@ impl Watch {
         if self.connected != connected {
             self.connected = connected;
             self.pending = None;
+            self.outstanding.clear();
+            self.read_limit = false;
             self.restart = false;
+            self.active_call = None;
+            self.retry_call = None;
+            self.retry_at = None;
+            self.retry_started = None;
+            self.retries = 0;
+            self.source = None;
             if self.observing {
                 self.loader.reconnect();
             }
         }
     }
     pub fn source_changed(&mut self) {
-        self.pending = None;
-        self.restart = false;
-        self.loader.reconnect();
+        self.reset_source();
     }
     pub fn changed(&mut self) {
         if self.observing {
@@ -403,30 +459,86 @@ impl Watch {
         }
     }
     pub fn next_action(&mut self) -> Option<bbt_proto::GuiAction> {
-        if !self.observing || !self.connected || self.pending.is_some() {
+        if !self.observing
+            || !self.connected
+            || self.pending.is_some()
+            || self.read_limit
+            || self.scope.is_err()
+            || self
+                .retry_at
+                .is_some_and(|at| std::time::Instant::now() < at)
+        {
             return None;
         }
-        let call = self.loader.next_request()?;
+        if self.outstanding.len() >= 8 {
+            self.read_limit = true;
+            self.loader.fail(d::CommandError::new(
+                "workspace_read_limit",
+                "eight previous graph reads are still outstanding; reopen after they finish",
+            ));
+            return None;
+        }
+        self.retry_at = None;
+        let call = self
+            .retry_call
+            .take()
+            .or_else(|| self.loader.next_request())?;
+        self.active_call = Some(call.clone());
         let id = bbt_mux::Ulid::new();
         self.pending = Some(id);
+        self.outstanding.insert(id);
         Some(bbt_proto::GuiAction::Knowledge {
-            scope: None,
             id,
+            scope: self.scope(),
             method: call.method.into(),
             args: call.args,
         })
     }
-    pub fn response(&mut self, op: bbt_mux::Ulid, result: d::Result<Value>) {
+    pub fn response(&mut self, op: bbt_mux::Ulid, mut result: d::Result<Value>) {
+        self.outstanding.remove(&op);
         if self.pending != Some(op) {
             return;
         }
         self.pending = None;
         if self.restart || !self.observing {
+            self.active_call = None;
             self.restart = false;
             self.loader.reconnect();
-        } else {
-            self.loader.respond(result);
+            return;
         }
+        if let Err(error) = &result
+            && error.code == "workspace_pending"
+        {
+            let now = std::time::Instant::now();
+            let began = self.retry_started.get_or_insert(now);
+            if self.retries < 50
+                && now.saturating_duration_since(*began) < std::time::Duration::from_secs(10)
+            {
+                self.retries += 1;
+                self.retry_call = self.active_call.take();
+                self.retry_at = Some(
+                    now + std::time::Duration::from_millis(
+                        error.retry_after_ms.unwrap_or(100).clamp(25, 1000),
+                    ),
+                );
+                return;
+            }
+        }
+        self.active_call = None;
+        if let (Some(scope), Ok(value)) = (self.scope(), &result) {
+            match crate::documents::Source::decode(value, scope) {
+                Ok(source) if self.source.as_ref().is_none_or(|old| *old == source) => {
+                    self.source = Some(source)
+                }
+                _ => {
+                    result = Err(d::CommandError::new(
+                        "document_source_changed",
+                        "graph replies changed workspace/provider during loading",
+                    ))
+                }
+            }
+        }
+        self.loader.respond(result);
     }
     pub fn publication(&mut self) -> Option<std::sync::Arc<Checklist>> {
         if !self.observing || self.published == self.loader.revision() {

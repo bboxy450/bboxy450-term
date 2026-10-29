@@ -158,14 +158,7 @@ impl Fixture {
                     request,
                 },
             ),
-            UiMsg::Task { id, request } => (
-                id,
-                GuiAction::Task {
-                    scope: None,
-                    id,
-                    request,
-                },
-            ),
+            UiMsg::Task { id, request, scope } => (id, GuiAction::Task { scope, id, request }),
             _ => panic!("typed composer request"),
         };
         results.requested(id);

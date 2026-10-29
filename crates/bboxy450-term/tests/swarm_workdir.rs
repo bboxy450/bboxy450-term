@@ -98,8 +98,12 @@ impl Fixture {
     }
     fn start(&mut self) {
         let log = fs::File::create(self.root.join("app.log")).unwrap();
+        let mut command = self.command();
+        if let Some(theme) = std::env::var_os("BBOXY_UI_OVERLAY_THEME") {
+            command.arg("--theme").arg(theme);
+        }
         self.app = Some(
-            self.command()
+            command
                 .args(["--headless", "--ctl", "--unattended", "--test-account"])
                 .arg(self.root.join("account"))
                 .arg("--run-dir")
@@ -2511,6 +2515,28 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
             .to_string();
         fixture.ctl(&["ui", "right-click", &x, &y])
     }
+    fn evidence(fixture: &Fixture, label: &str, frame: &Value) {
+        if let Some(directory) = std::env::var_os("BBOXY_UI_OVERLAY_EVIDENCE") {
+            let root = PathBuf::from(directory);
+            fs::create_dir_all(&root).unwrap();
+            fixture.ctl(&[
+                "seat",
+                "capture",
+                "window",
+                root.join(format!("{label}.png")).to_str().unwrap(),
+            ]);
+            fs::write(
+                root.join(format!("{label}.json")),
+                serde_json::to_vec_pretty(frame).unwrap(),
+            )
+            .unwrap();
+            fs::write(
+                root.join(format!("{label}-errors.json")),
+                serde_json::to_vec_pretty(&fixture.ctl(&["debug", "errors"])).unwrap(),
+            )
+            .unwrap();
+        }
+    }
     fn text(frame: &Value) -> String {
         frame.to_string()
     }
@@ -2528,8 +2554,10 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
         "secondary click must not focus/toggle underneath"
     );
     assert!(menu["regions"]["context-menu:rename"].is_array());
+    evidence(&fixture, "context-menu", &menu);
     let dialog = fixture.ctl(&["ui", "key", "enter"]);
     assert!(dialog["regions"]["app-dialog:input"].is_array());
+    evidence(&fixture, "rename-dialog", &dialog);
     fixture.ctl(&["ui", "key", "cmd-a", "backspace", "enter"]);
     let invalid = fixture.ctl(&["ui", "layout"]);
     assert!(invalid["regions"]["app-dialog:input"].is_array());
@@ -2615,5 +2643,215 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     assert!(
         frame["regions"]["app-dialog:input"].is_null(),
         "Tab focuses Cancel; Enter closes without rename"
+    );
+}
+
+// keeps: scoped native documents — colliding handles and held old-root replies.
+#[test]
+#[ignore = "private ctl/root-provider boundary; make test-scoped-workspaces"]
+fn native_documents_capture_swarm_roots_and_drop_a_held_reply_after_cwd_change() {
+    use std::{io::Write, os::unix::net::UnixListener};
+    fn seed(root: &Path, body: &str) {
+        fs::create_dir_all(root.join(".bboxy/notes")).unwrap();
+        fs::write(
+            root.join(".bboxy/notes/same.md"),
+            format!(
+                "---\nid: \"{}\"\nnumber: 1\ntype: note\ntitle: Same slug\n---\n{body}\n",
+                bbt_mux::Ulid(1)
+            ),
+        )
+        .unwrap();
+    }
+    fn contains(frame: &Value, expected: &str, foreign: &str) {
+        let text = frame.to_string();
+        assert!(
+            text.contains(expected),
+            "missing bound contents {expected}: {frame}"
+        );
+        assert!(
+            !text.contains(foreign),
+            "foreign root contents visible: {frame}"
+        );
+    }
+    let mut fixture = Fixture::new();
+    let first = fixture.root.join("project with spaces");
+    let second = fixture.root.join("other swarm");
+    seed(&first, "FIRST ROOT PRIVATE BODY");
+    seed(&second, "SECOND ROOT PRIVATE BODY");
+    let plugin_dir = fixture.root.join("repository/.bboxy/plugins");
+    fs::create_dir_all(&plugin_dir).unwrap();
+    let source = plugin_dir.join("bboxy450-term-data_source-root-fixture");
+    let gate_path = fixture.root.join("held-fetch.sock");
+    let armed = fixture.root.join("held-fetch.armed");
+    let listener = UnixListener::bind(&gate_path).unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let python = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
+        .map(|root| root.join("python3"))
+        .find(|path| path.is_file())
+        .expect("unattended provider fixture needs installed python3");
+    let template = include_str!("../../bbt-mux/tests/fixtures/plugins/root_provider.py")
+        .replace(
+            "GATE = None",
+            &format!("GATE = {}", serde_json::json!(gate_path.to_str().unwrap())),
+        )
+        .replace(
+            "GATE_ROOT = None",
+            &format!(
+                "GATE_ROOT = {}",
+                serde_json::json!(first.join(".bboxy").to_str().unwrap())
+            ),
+        )
+        .replace(
+            "GATE_ARMED = None",
+            &format!(
+                "GATE_ARMED = {}",
+                serde_json::json!(armed.to_str().unwrap())
+            ),
+        );
+    fs::write(
+        &source,
+        format!(
+            "#!{}\nimport json\nSCHEMA=json.loads({})\n{template}",
+            python.display(),
+            serde_json::to_string(bbt_mux::knowledge::data_source::SCHEMA).unwrap()
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+    fixture.start();
+    let first_swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    fixture.ctl(&["ui", "swarm-workdir", &first_swarm, first.to_str().unwrap()]);
+    let first_seat = fixture.spawn("claude", &first_swarm, None);
+    let other = fixture.ctl(&[
+        "seat",
+        "spawn",
+        "claude",
+        "--place",
+        "space",
+        "--cwd",
+        second.to_str().unwrap(),
+    ]);
+    let second_swarm = other["swarm"].as_str().unwrap().to_owned();
+    let second_seat = other["seat"].as_str().unwrap().to_owned();
+    fixture.ctl(&[
+        "ui",
+        "swarm-workdir",
+        &second_swarm,
+        second.to_str().unwrap(),
+    ]);
+    for (seat, expected, foreign) in [
+        (
+            &first_seat,
+            "FIRST ROOT PRIVATE BODY",
+            "SECOND ROOT PRIVATE BODY",
+        ),
+        (
+            &second_seat,
+            "SECOND ROOT PRIVATE BODY",
+            "FIRST ROOT PRIVATE BODY",
+        ),
+    ] {
+        fixture.ctl(&["ui", "focus", seat]);
+        for locator in ["#1", "same", &bbt_mux::Ulid(1).to_string()] {
+            let frame = fixture.ctl(&["ui", "open", "docs", locator]);
+            contains(&frame, expected, foreign);
+            fixture.ctl(&["ui", "key", "esc"]);
+        }
+    }
+    fixture.ctl(&["ui", "focus", &first_seat]);
+    let trusted = fixture.ctl(&["plugin", "trust", source.to_str().unwrap()]);
+    let candidate = trusted["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["candidate"]["source"] == source.to_str().unwrap())
+        .unwrap()["candidate"]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    fixture.ctl(&["plugin", "check", &candidate]);
+    fixture.ctl(&["plugin", "enable", &candidate]);
+    let status = fixture.ctl(&["knowledge", "status"]);
+    let first_root = status["status"]["roots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|root| root["path"] == first.join(".bboxy").to_str().unwrap())
+        .unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    fixture.ctl(&["knowledge", "select", &first_root, &candidate]);
+    fs::write(&armed, "hold fetch only after explicit provider admission").unwrap();
+    let mut held = fixture
+        .command()
+        .args(["ctl", "ui", "open", "docs", "#1", "--run-dir"])
+        .arg(fixture.root.join("run"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let until = Instant::now() + Duration::from_secs(10);
+    let mut gate = loop {
+        match listener.accept() {
+            Ok((stream, _)) => break stream,
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(error) => panic!("gate: {error}"),
+        }
+        assert!(
+            held.try_wait().unwrap().is_none(),
+            "document request ended before the real provider fetch was held"
+        );
+        assert!(
+            Instant::now() < until,
+            "provider never reached held fetch: {}",
+            fixture.log()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    // The metadata mutation is admitted while fetch is held by a real provider.
+    let changed = fixture.ctl(&[
+        "ui",
+        "swarm-workdir",
+        &first_swarm,
+        second.to_str().unwrap(),
+    ]);
+    assert!(!changed.to_string().contains("FIRST ROOT PRIVATE BODY"));
+    assert!(
+        changed.to_string().contains("swarm_root_changed")
+            || changed.to_string().contains("workspace_metadata_pending")
+    );
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "focus", &second_seat]);
+    let ready_before_release = fixture.ctl(&["ui", "open", "docs", "#1"]);
+    contains(
+        &ready_before_release,
+        "SECOND ROOT PRIVATE BODY",
+        "FIRST ROOT PRIVATE BODY",
+    );
+    // Ready root B must settle while the actual root A provider remains held.
+    gate.write_all(b"x").unwrap();
+    drop(gate);
+    fs::remove_file(&armed).unwrap();
+    let old = held.wait_with_output().unwrap();
+    assert!(
+        !old.status.success(),
+        "newer UI operation must supersede the pending open"
+    );
+    let after_release = fixture.ctl(&["ui", "layout"]);
+    contains(
+        &after_release,
+        "SECOND ROOT PRIVATE BODY",
+        "FIRST ROOT PRIVATE BODY",
+    );
+    fixture.ctl(&["ui", "key", "esc"]);
+    let reopened = fixture.ctl(&["ui", "open", "docs", "#1"]);
+    contains(
+        &reopened,
+        "SECOND ROOT PRIVATE BODY",
+        "FIRST ROOT PRIVATE BODY",
     );
 }
