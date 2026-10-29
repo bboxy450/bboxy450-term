@@ -1,0 +1,19 @@
+Scope: operator-requested transient harness-close chat notices, incoming chat tail following, independent resizable Chat and Tasks sections.
+Implementation source before this evidence record: 356123431f6e83d52c3c4698e189d6bd5360ae7e.
+close.rs: exact operation/generation/swarm-fenced notices, eight-second deadline, bounded Arc storage; close/undo grace and retained history unchanged.
+sidebar_chat.rs + main/headless: timestamped chat placement and one abortable expiry wake; stale timer ids ignored; no repaint polling.
+chat_scroll.rs: bounded per-swarm/channel follow intent; upward wheel holds offset; bottom or send resumes following.
+composer/conversation.rs + scene/sidebar_vertical: independently clipped Chat and Tasks viewports, disjoint action ids, three resize handles, persistent tasks_height.
+messaging/history.rs: bounded recent message-ledger pages independent of receipt traffic; captured before-cursors and strict projection pairing; event coverage/read watermarks remain separate.
+mux messaging: operator-only Recent read, verified whole message/row pairs, descending sequence index, at most 256 candidates/512KiB raw scan and 512KiB complete reply.
+mux retained event pages: message/receipt hydration preserves canonical proof/position; historical seat/identity/host data remains activity.
+make test-chat-recent: EXIT 0; wire 4, backend 2, retained boundary 1, history 7, messaging UI 22; 36 checks.
+make test-chat-sections-e2e: EXIT 0; notice expiry/idle redraw/history retention and incoming/manual/tail/task resize/UI restart checks.
+make test-swarm test-boundaries: EXIT 0; 67 checks, including 22 existing real-app scenarios, both new chat cases, private signing, real controls and retained lifecycle.
+make parity-chat: EXIT 0; 416 reference/native cases, 416 required geometry measurements, zero mismatches, zero pixel reviews.
+Private dark-tail, dark-expanded-Tasks and light-restored PNG/JSON captures: target/chat-sections; visually reviewed both themes.
+Raw verification logs: ~/Library/Logs/bboxy450-term/chat-recent-20261029.log, chat-sections-final-e2e-20261029.log, chat-sections-swarm-boundaries-20261029.log, chat-sections-parity-20261029.log.
+Runtime regressions exposed and corrected: oldest-only initial page, activity-only retained message projection, receipt-heavy event tails displacing recent messages.
+Test fixture corrections preserve requirements: request actual retained capture range; accept prompt desktop peer rejection; inspect pre-attachment seat state as history; exhaust decreasing filtered cursors.
+Every fixture owns its homes, accounts, sockets, mock harnesses and recorded process ids. No operator prompts, OS input injection, desktop capture or real SSH.
+Full exact-source normal gate, signed landing receipt and signed installed smoke are recorded by their canonical workflows after this commit; this record does not claim those future results.
