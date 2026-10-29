@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -193,11 +194,101 @@ def verdict(result):
     raise ValueError(f"TLC tool failure (exit {result.returncode}):\n{output[-4000:]}")
 
 
+def input_hashes(root, records, contract_records):
+    paths = {"crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
+             "crates/bbt-yarn-macros/src/lib.rs", "crates/bboxy450-tlc/src/lib.rs",
+             "crates/bboxy450-tlc/examples/verify.rs", "verification/coverage.toml",
+             "verification/corpus.toml", "verification/tools.lock.json", "scripts/formal.py",
+             "verification/contracts.toml", "crates/bboxy450-term/tests/formal_contracts.rs",
+             "crates/bboxy450-term/tests/formal_contracts/models.rs",
+             "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"}
+    paths.update(p for row in records for p in row["sources"])
+    paths.update(p for row in contract_records for field in ["sources", "implementation_tests"] for p in row[field])
+    return {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in sorted(paths) if (root / p).is_file()}
+
+
+def source_dirty(root):
+    """Use ci-local's source boundary; unrelated untracked run records are not code."""
+    tracked = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root)
+    untracked = subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "--",
+        "crates", "scripts", "verification", "lab", "design", ".cargo", "Cargo.toml", "Cargo.lock", "build.rs"], cwd=root)
+    return bool(tracked.strip() or untracked.strip())
+
+
+def evidence_receipt(target, root=ROOT, *, require_clean=True):
+    """Bind completed native/TLC results to the current source, scopes and model bytes."""
+    target, root = Path(target).resolve(), Path(root).resolve()
+    path = target / "evidence.json"
+    raw = path.read_bytes()
+    data = json.loads(raw)
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    if data["source"] != sha:
+        raise ValueError("formal evidence source differs from current HEAD")
+    if require_clean and (data.get("dirty") is not False or source_dirty(root)):
+        raise ValueError("formal evidence requires clean source")
+    required = tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+    expected = {m["name"]: m["expected"] for m in required}
+    models = data["models"]
+    if len(expected) != len(required) or len(models) != len(expected) or {
+            m["name"]: m["expected"] for m in models} != expected:
+        raise ValueError("formal evidence has missing, duplicate or stale models")
+    records, contract_records = coverage(root, set(expected)), contracts(root, set(expected))
+    if data["crates"] != records or data.get("contracts", []) != contract_records:
+        raise ValueError("formal evidence coverage differs from current inventory")
+    if data["input_sha256"] != input_hashes(root, records, contract_records):
+        raise ValueError("formal evidence input hashes differ from current source")
+    if data.get("complete_tlc_replacement") is not False:
+        raise ValueError("formal evidence cannot claim complete TLC replacement")
+    pins = json.loads((root / "verification/tools.lock.json").read_text())
+    if data["tlc"] != pins["tlc"] or data["java"] not in pins["java"].values():
+        raise ValueError("formal evidence reference tools differ from pins")
+    contract_names = {name for row in contract_records for name in row["models"]}
+    for m in models:
+        if (m["graph_equal"] is not True or m["states"] < 1 or m["edges"] < 0
+                or m["tlc_exit"] != {"pass": 0, "safety": 12, "deadlock": 11, "liveness": 13}[m["expected"]]):
+            raise ValueError("formal evidence contains incomplete or mismatched verification")
+        if hashlib.sha256((target / "models" / (m["name"] + ".tla")).read_bytes()).hexdigest() != m["tla_sha256"]:
+            raise ValueError("formal evidence TLA model hash differs")
+        if m["name"] in contract_names and m["contract_metadata"] != contract_metadata(target / "models", m["name"]):
+            raise ValueError("formal evidence contract metadata differs")
+    return {"source": sha, "checkout": str(root), "evidence": str(path),
+            "evidence_sha256": hashlib.sha256(raw).hexdigest(), "dirty": data["dirty"],
+            "models": len(models), "crates": len(records), "contracts": len(contract_records)}
+
+
+def archive_evidence(target, root=ROOT):
+    """Keep reviewable evidence after an owned checking slot is removed."""
+    target, root = Path(target).resolve(), Path(root).resolve()
+    common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
+    store = (root / common).resolve() / "bboxy-formal-evidence"
+    store.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256((target / "evidence.json").read_bytes()).hexdigest()
+    destination = store / digest
+    if not destination.exists():
+        with tempfile.TemporaryDirectory(prefix="staging-", dir=store) as own:
+            staged = Path(own) / "evidence"
+            (staged / "models").mkdir(parents=True)
+            shutil.copyfile(target / "evidence.json", staged / "evidence.json")
+            for path in (target / "models").iterdir():
+                if path.is_file():
+                    shutil.copyfile(path, staged / "models" / path.name)
+            try:
+                staged.rename(destination)
+            except OSError:
+                if not destination.is_dir():
+                    raise
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", type=Path, required=True)
+    parser.add_argument("--verify-evidence", action="store_true")
     args = parser.parse_args()
     target = args.target.resolve()
+    if args.verify_evidence:
+        print("formal: receipt " + json.dumps(evidence_receipt(target), sort_keys=True))
+        return
     root = target / "models"
     rows = [line.split('\t') for line in (root / "manifest.tsv").read_text().splitlines()]
     if not rows or len({r[0] for r in rows}) != len(rows):
@@ -217,17 +308,8 @@ def main():
     evidence = {"source": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "tlc": pins["tlc"], "java": pins["java"][f"{platform.system()}-{platform.machine()}"],
                 "crates": records, "contracts": contract_records, "models": [], "complete_tlc_replacement": False,
-                "dirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)),
-                "input_sha256": {str(p): hashlib.sha256((ROOT / p).read_bytes()).hexdigest()
-                    for p in sorted({"crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
-                        "crates/bbt-yarn-macros/src/lib.rs", "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs", "verification/coverage.toml", "verification/corpus.toml",
-                        "verification/tools.lock.json", "scripts/formal.py", "verification/contracts.toml",
-                        "crates/bboxy450-term/tests/formal_contracts.rs",
-                        "crates/bboxy450-term/tests/formal_contracts/models.rs",
-                        "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"} |
-                        {p for row in records for p in row["sources"]} |
-                        {p for row in contract_records for field in ["sources", "implementation_tests"]
-                         for p in row[field]}) if (ROOT / p).is_file()}}
+                "dirty": source_dirty(ROOT),
+                "input_sha256": input_hashes(ROOT, records, contract_records)}
     for name, expected, count, width in rows:
         if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
             raise ValueError("invalid model manifest")
@@ -249,6 +331,8 @@ def main():
                                    "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()})
         print(f"formal: {name}: {actual}, {len(actual_states)} states, {len(actual_edges)} edges match", flush=True)
     (target / "evidence.json").write_text(json.dumps(evidence, indent=2) + '\n')
+    archive = archive_evidence(target)
+    print("formal: receipt " + json.dumps(evidence_receipt(archive, require_clean=False), sort_keys=True))
     print(f"formal: {len(rows)} models; {len(records)} crates inventoried; native/TLC parity held", flush=True)
 
 

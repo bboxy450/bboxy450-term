@@ -180,9 +180,9 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["InputReceipt", "LifecycleOwnership", "NotificationReplace", "WindowDurability", "FocusFrame", "CustodyDelivery"]
+models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "WindowDurability", "FocusFrame", "CustodyDelivery"]
 scope = "Stable input, retained process ownership, notification replacement, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
-sources = ["crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
+sources = ["scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-term-firehose"

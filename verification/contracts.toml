@@ -130,3 +130,13 @@ implementation_tests = ["crates/bbt-render/src/chrome/arena.rs"]
 assumptions = "Two unit slices in one buffer, staging flush and submission boundary. Alignment, buffer growth/fallback, GPU memory execution and pixels require real GPU tests."
 property = "Live slices do not overlap; uploads are flushed before submit and the cursor rewinds at the next submission."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LandingVerification"
+title = "Source-bound formal evidence before landing"
+models = ["LandingVerification", "BrokenLandingVerification"]
+sources = ["scripts/landing.py", "scripts/formal.py", "Makefile"]
+implementation_tests = ["scripts/test-landing.py"]
+assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof."
+property = "Publishing needs clean current-source Rust and formal evidence, matching model inputs and remote base; old or partial evidence cannot authorize a push."
+checks = ["make test-formal", "make test"]

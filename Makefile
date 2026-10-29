@@ -41,6 +41,7 @@ help:
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
 	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
@@ -50,6 +51,7 @@ help:
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
+	  'make test-landing-extended       Moving-main and recovery fixtures with formal receipts' \
 	  'make test-task-import-transport  Focused authenticated import transport and original-operation diagnostics' \
 	  'make test-clipboard-isolation   Concurrent explicitly owned private pasteboards; no general clipboard' \
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
@@ -188,6 +190,10 @@ test-signatures:
 
 test-landing:
 	@python3 -I scripts/test-landing.py
+
+.PHONY: test-landing-extended
+test-landing-extended:
+	@python3 -I scripts/test-landing.py --all
 .PHONY: test-task-import-transport
 TASK_IMPORT_FILTER ?= task_migration
 test-task-import-transport:
@@ -566,6 +572,7 @@ push:
 	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; test -z "$$(git status --porcelain)"; \
 	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
 	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
+	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
 
@@ -1126,7 +1133,10 @@ test-harness-vocabulary:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
 
-.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts
+.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts check-formal-evidence
+
+check-formal-evidence:
+	@python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence
 
 test-yarn-model:
 	@set -eu; . ./scripts/cache-env.sh; \

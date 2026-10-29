@@ -57,6 +57,24 @@ side. Java remains the reference until separately recorded conformance evidence
 authorizes retirement. Finite model parity is not a proof of arbitrary Rust or
 complete TLA+ support. See `verification/README.md`.
 
+**Think in TLA+ when designing feature tests.** Name the state variables, their
+initial values and finite bounds, the owners, and the actions that change them.
+State what must always hold (safety), what must eventually happen (liveness),
+and the scheduling/fairness assumptions needed for progress. Explore delayed,
+reordered and duplicate completions, cancellation, restart, dependency failure,
+and generation/identity changes, including A → B → A. Mark which operations are
+atomic and which can interleave. Check a small instance exhaustively before
+trusting the happy-path test; add a broken control that removes the relevant
+guard and must fail. Connect the property to an actual Rust/API or process test,
+and record abstractions and unmodeled behavior in `verification/contracts.toml`.
+Pure parsing, geometry and performance still need their specialized tests.
+
+Landing requires a clean, current-source formal receipt as well as the Rust CI
+result. `scripts/land.sh` records its evidence hash and corpus counts and refreshes
+formal verification after a rebase, even when Rust checks can be reused. Missing,
+stale, incomplete or mismatched evidence blocks the push. `make check-formal-evidence`
+verifies the stored receipt; `make push` enforces it too.
+
 ## Scope and evidence
 
 - Read the task, `.bboxy/vision.md`, relevant specs/decisions/interfaces and the source/Git state before editing. `.bboxy/tasks/README.md` is the historical task board; GitHub issues track current release findings.

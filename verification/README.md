@@ -59,14 +59,15 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 13 contract families and 13 broken controls to the
-14 checker/Yarn conformance cases: **40 models** in total. The declarations live
+The project corpus adds 14 contract families and 14 broken controls to the
+14 checker/Yarn conformance cases: **42 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
 
 | Boundary | Property checked |
 | --- | --- |
+| Landing verification | A clean current commit, inputs, complete checks and current remote base authorize publication |
 | Immediate dirty wake | Rechecking after clearing pending prevents a lost wake |
 | Notification replacement | A queued replacement wins after slow authorization |
 | Workspace reads | Root, revision and authority still match at publication, including A → B → A |
@@ -135,3 +136,22 @@ machine model](https://lamport.azurewebsites.net/tla/high-level-view.html).
 [TLC](https://github.com/tlaplus/tlaplus) is the independent reference. No upstream
 TLC implementation source was copied. Project source and credit policy:
 https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md.
+
+
+## Formal evidence during landing
+
+Every successful formal run emits a `formal: receipt` JSON line containing the
+source commit, evidence-file SHA-256, checkout, corpus size and crate count.
+A content-addressed archive under the repository’s private Git state retains
+evidence and generated models after checking-slot cleanup. Landing validates the actual evidence file against current source hashes,
+coverage and contract inventories, required model verdicts, pinned reference
+tools, TLA hashes and bounds metadata. Full-gate reuse requires exactly one
+receipt; scoped presubmit records it too. The landing record retains it, and
+checks it again immediately before pushing. A disjoint rebase may reuse Rust
+checks through the existing scope mechanism, but reruns formal verification for
+the new source commit. No cached receipt from an old commit authorizes publication.
+
+Use `make check-formal-evidence` to validate existing evidence without rerunning
+the model checker. `make push` also runs this check. The evidence hash records a
+script-produced result; it is not a proof of arbitrary Rust refinement or a
+replacement for signed commits, actual test execution and review.

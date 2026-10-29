@@ -675,8 +675,85 @@ fn arena(b: bool) -> Model {
     m
 }
 
+// Check/test evidence is tied to a commit, inputs and current remote base.
+fn landing_verification(b: bool) -> Model {
+    let mut m = model(
+        "LandingVerification",
+        b,
+        &[
+            ("candidate", 3, 1),
+            ("tests", 3, 0),
+            ("formal", 3, 0),
+            ("inputs", 1, 0),
+            ("formal_inputs", 1, 0),
+            ("remote", 2, 1),
+            ("base", 2, 1),
+            ("clean", 1, 1),
+            ("bad", 1, 0),
+            ("evidence_intact", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "CommitFeature",
+        eq(0, 1),
+        &[(0, Int(2)), (7, Int(1))],
+    );
+    action(&mut m, "RustChecksPass", eq(7, 1), &[(1, Var(0))]);
+    action(
+        &mut m,
+        "NativeAndTlcAgree",
+        eq(7, 1),
+        &[(2, Var(0)), (4, Var(3)), (9, Int(1))],
+    );
+    action(
+        &mut m,
+        "SourceChangesWithoutCommit",
+        eq(3, 0),
+        &[(3, Int(1)), (7, Int(0))],
+    );
+    action(&mut m, "RemoteMainMoves", eq(5, 1), &[(5, Int(2))]);
+    action(
+        &mut m,
+        "RebaseChangesCandidate",
+        all([Var(6).eq(Var(5)).negate(), eq(7, 1)]),
+        &[(0, Int(3)), (6, Var(5))],
+    );
+    action(
+        &mut m,
+        "EvidenceRemovedOrTampered",
+        eq(9, 1),
+        &[(9, Int(0))],
+    );
+    let valid = all([
+        Var(1).eq(Var(0)),
+        Var(2).eq(Var(0)),
+        Var(4).eq(Var(3)),
+        Var(6).eq(Var(5)),
+        eq(7, 1),
+        eq(9, 1),
+    ]);
+    action(&mut m, "PublishVerifiedCandidate", valid.clone(), &[]);
+    if b {
+        action(
+            &mut m,
+            "PublishUsingOldOrPartialEvidence",
+            all([
+                Var(1).eq(Var(0)),
+                Var(6).eq(Var(5)),
+                eq(7, 1),
+                valid.negate(),
+            ]),
+            &[(8, Int(1))],
+        );
+    }
+    no_bad(&mut m, 8);
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 13] = [
+    let families: [fn(bool) -> Model; 14] = [
+        landing_verification,
         dirty_wake,
         notification,
         workspace,

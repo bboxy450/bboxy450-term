@@ -91,3 +91,18 @@ remains in `verification/coverage.toml`; platform internals, parsing, layout and
 performance retain their appropriate executable tests and explicit model limits.
 Five real-API witnesses supplement native/reference agreement. These projections
 are contract specifications, not a proof of whole-codebase Rust refinement.
+
+
+**Landing and test design, 2026-10-29 (operator):** extend landing with TLA+
+and instruct agents to think in TLA+ when testing features. Record bounded state,
+actions, safety, liveness, atomicity, failure interleavings and fairness before
+selecting feature tests. Pair models with broken controls and actual API/process
+witnesses. Landing requires current-source native/TLC evidence, retained by hash
+in its receipt; rebasing refreshes formal evidence even when Rust checks can be
+reused. The landing protocol itself joins the corpus as a paired contract (14
+families, 42 models total). Java remains the reference.
+
+**Auto-merge authorization:** on 2026-10-29 the operator instructed “auto merge
+into main!” for this TLA+/TLC and Yarn adoption, its landing integration and the
+feature-testing instructions added in the same request. This authorizes this
+verified cut only; future unrelated changes retain their normal review rules.
