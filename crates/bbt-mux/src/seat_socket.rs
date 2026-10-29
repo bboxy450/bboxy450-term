@@ -937,7 +937,7 @@ async fn gui_session(
                     let stopping = matches!(&request.action, GuiAction::App {request:bbt_proto::gui::AppRequest::Stop,..});
                     let op=match &request.action {
                         GuiAction::ConfigureRoles {id,..}|GuiAction::WindowSave {id,..}|GuiAction::GuiHello {id,..}|GuiAction::Ui {id,..}|GuiAction::UiReply {id,..}|GuiAction::App {id,..}|GuiAction::AppReply {id,..}|GuiAction::Focused {id,..}=>*id,
-                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
+                        GuiAction::Identity(bbt_proto::identity::IdentityCall {id,..})|GuiAction::AttachEvents {id}|GuiAction::Spawn {id,..}|GuiAction::Messaging {id,..}|GuiAction::Task {id,..}|GuiAction::Input {id,..}|GuiAction::ScheduleClose {id,..}|GuiAction::Capture {id,..}|GuiAction::Captured {id,..}|GuiAction::Knowledge {id,..}|GuiAction::Screen {id,..}|GuiAction::EventsRead {id,..}|GuiAction::EventsStreams {id}|GuiAction::GetAttention {id,..}|GuiAction::SetAttention {id,..}|GuiAction::RenameSeat {id,..}|GuiAction::SeatControl {id,..}|GuiAction::FocusSeat {id,..}|GuiAction::RecordWrite {id,..}|GuiAction::RestartSeat {id,..}|GuiAction::CloseSeat {id,..}|GuiAction::UndoCloseSeat {id,..}=>*id,
                         GuiAction::UndoClose {close_id,..}=>*close_id,
                         _=>Ulid::new(),
                     };
@@ -1121,6 +1121,10 @@ async fn gui_session(
                             GuiAction::RestartSeat {id,seat,generation}=> {
                                 client.ctl_restart(seat,generation,id,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
                                 Ok(GuiReply::Ok {op:id})
+                            }
+                            GuiAction::SeatControl {id,seat,generation,command}=> {
+                                client.seat_control(seat,generation,id,command,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                Ok(GuiReply::SeatControlled {op:id})
                             }
                             action @ (GuiAction::CloseSeat {..}|GuiAction::UndoCloseSeat {..})=> {
                                 let (id,seat,undo)=match action { GuiAction::CloseSeat {id,seat}=>(id,seat,false),GuiAction::UndoCloseSeat {id,seat}=>(id,seat,true),_=>unreachable!() };

@@ -67,6 +67,34 @@ fn every_gui_reply_kind_keeps_its_exact_bytes() {
 }
 
 #[test]
+fn seat_controls_require_generation_and_scoped_assignment_without_caller_roots() {
+    for json in lines("action")
+        .into_iter()
+        .filter(|line| line.contains("\"kind\":\"SeatControl\""))
+    {
+        let mut value: serde_json::Value = serde_json::from_str(json).unwrap();
+        value["body"].as_object_mut().unwrap().remove("generation");
+        assert!(serde_json::from_value::<GuiAction>(value).is_err());
+    }
+    let json = lines("action")
+        .into_iter()
+        .find(|line| line.contains("\"kind\":\"assign_task\""))
+        .unwrap();
+    let value: serde_json::Value = serde_json::from_str(json).unwrap();
+    let mut missing = value.clone();
+    missing["body"]["command"]
+        .as_object_mut()
+        .unwrap()
+        .remove("scope");
+    assert!(serde_json::from_value::<GuiAction>(missing).is_err());
+    for field in ["root_id", "path"] {
+        let mut injected = value.clone();
+        injected["body"]["command"]["scope"][field] = serde_json::json!("caller root");
+        assert!(serde_json::from_value::<GuiAction>(injected).is_err());
+    }
+}
+
+#[test]
 fn optional_swarm_scope_preserves_legacy_bytes_and_accepts_only_host_context_handles() {
     use bbt_proto::gui::SwarmScope;
     let scope = SwarmScope {

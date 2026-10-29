@@ -11,6 +11,17 @@ updated: "2026-10-26T16:18:20Z"
 ---
 # ICD: logic ↔ GUI
 
+The operator `SeatControl` action captures `{id, seat, generation, command}` at
+menu opening. Logic validates the exact local open generation before an effect;
+`AssignTask` additionally carries the captured `SwarmScope`, requires that swarm
+to own the target, and uses the existing task delegation authorization and root
+revision fences. `SeatControlled {op}` is correlated by operation ID; an unknown
+kill outcome retains that ID and never becomes a new automatic kill. Kill uses
+the supervisor's exact owned child attachment, keeps the seat/history, and is
+distinct from reversible close. `UI_CONTROL_VERSION = 4` requires an old logic
+owner to refresh before these controls are sent. Role instruction delivery policy
+is pending the operator's explicit selection; this clause does not decide it.
+
 | | |
 |---|---|
 | Side A | logic (`bbt-mux`) |

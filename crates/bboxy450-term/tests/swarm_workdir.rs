@@ -3508,3 +3508,144 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
         "actual rendered Unicode/combining/wide text and hard lines copied through ctl drag/Cmd-C/native Copy dispatch; unrelated output preserved selection; cross-pane copy fenced; private provider only"
     );
 }
+
+// keeps: seat context actions — both entry points retain the chosen seat and working folder.
+#[test]
+#[ignore = "private app/PTY overlay controls; make test-seat-actions"]
+fn seat_context_actions_assign_captured_tasks_and_confirm_only_the_target_kill() {
+    fn right_click(fixture: &Fixture, key: &str) -> Value {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        let rect = frame["regions"][key]
+            .as_array()
+            .unwrap_or_else(|| panic!("missing {key}: {frame}"));
+        let x = (rect[0].as_f64().unwrap() + rect[2].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        let y = (rect[1].as_f64().unwrap() + rect[3].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        fixture.ctl(&["ui", "right-click", &x, &y])
+    }
+    fn process(fixture: &Fixture, seat: &str) -> Value {
+        fixture
+            .ctl(&["seat", "ls"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()["state"]["process"]
+            .clone()
+    }
+    fn seed(root: &Path, id: u128, title: &str) -> PathBuf {
+        fs::create_dir_all(root.join(".bboxy/tasks")).unwrap();
+        let path = root.join(".bboxy/tasks/captured.md");
+        fs::write(&path, format!("---\nid: {}\nnumber: 1\ntype: task\ntitle: {title}\nstatus: open\nassignee: none\n---\nPrivate captured task body.\n", bbt_mux::Ulid(id))).unwrap();
+        path
+    }
+    let mut fixture = Fixture::new();
+    let first_root = fixture.root.join("project with spaces");
+    let second_root = fixture.root.join("other swarm");
+    let first_task = seed(&first_root, 31, "FIRST ROOT TASK");
+    let second_task = seed(&second_root, 32, "SECOND ROOT TASK");
+    fixture.start();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, first_root.to_str().unwrap()]);
+    let first = fixture.spawn("claude", &swarm, None);
+    let peer = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&first, &first_root);
+    fixture.expect_cwd(&peer, &first_root);
+    let before = process(&fixture, &first);
+    let peer_before = process(&fixture, &peer);
+    fixture.ctl(&["ui", "focus", &first]);
+    let pane_menu = right_click(&fixture, &format!("pane:{first}"));
+    for action in ["role", "assign-task", "kill", "restart", "mute", "close"] {
+        assert!(
+            pane_menu["regions"][format!("context-menu:{action}")].is_array(),
+            "{pane_menu}"
+        );
+    }
+    click_region(&fixture, "context-menu:assign-task");
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if frame["regions"]["seat-choice:0"].is_array() {
+            assert!(frame.to_string().contains("FIRST ROOT TASK"));
+            assert!(!frame.to_string().contains("SECOND ROOT TASK"));
+            break;
+        }
+        assert!(Instant::now() < until, "task picker did not load: {frame}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, second_root.to_str().unwrap()]);
+    let changed = fixture.ctl(&["ui", "layout"]);
+    assert!(
+        changed["regions"]["seat-choice:0"].is_null(),
+        "stale task choices survive cwd change: {changed}"
+    );
+    assert!(
+        changed.to_string().contains("working folder changed"),
+        "{changed}"
+    );
+    assert!(
+        fs::read_to_string(&first_task)
+            .unwrap()
+            .contains("assignee: none")
+    );
+    assert!(
+        fs::read_to_string(&second_task)
+            .unwrap()
+            .contains("assignee: none")
+    );
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "swarm-workdir", &swarm, first_root.to_str().unwrap()]);
+    right_click(&fixture, &format!("pane:{first}"));
+    click_region(&fixture, "context-menu:assign-task");
+    // Change focus after opening; the task still belongs to the captured first seat.
+    fixture.ctl(&["ui", "focus", &peer]);
+    click_region(&fixture, "seat-choice:0");
+    let assigned = fs::read_to_string(&first_task).unwrap();
+    assert!(assigned.contains(&format!("seat:{first}")), "{assigned}");
+    assert!(!assigned.contains(&format!("seat:{peer}")), "{assigned}");
+    assert!(assigned.contains("claimed"));
+    assert!(
+        fs::read_to_string(&second_task)
+            .unwrap()
+            .contains("assignee: none")
+    );
+    assert_eq!(process(&fixture, &first), before);
+    let sidebar_menu = right_click(&fixture, &format!("seat:{first}"));
+    assert_eq!(
+        sidebar_menu["focused"], peer,
+        "right click never activates a background tab"
+    );
+    click_region(&fixture, "context-menu:kill");
+    fixture.ctl(&["ui", "key", "esc"]);
+    assert_eq!(process(&fixture, &first), before, "cancel does not kill");
+    right_click(&fixture, &format!("seat:{first}"));
+    click_region(&fixture, "context-menu:kill");
+    click_region(&fixture, "app-dialog:submit");
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let actual = process(&fixture, &first);
+        if actual["kind"] == "exited" {
+            break;
+        }
+        assert!(Instant::now() < until, "target did not exit: {actual}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(
+        process(&fixture, &peer),
+        peer_before,
+        "another seat keeps its process"
+    );
+    assert!(
+        fixture.ctl(&["app", "status"])["close"]["grace"]
+            .as_array()
+            .unwrap()
+            .is_empty(),
+        "kill is distinct from undo-close grace"
+    );
+}

@@ -217,6 +217,28 @@ impl Gui {
             }
         }
     }
+    async fn control(
+        &mut self,
+        id: Ulid,
+        seat: Ulid,
+        generation: u64,
+        command: bbt_proto::gui::SeatControl,
+    ) -> Result<(), String> {
+        self.send(GuiAction::SeatControl {
+            id,
+            seat,
+            generation,
+            command,
+        })
+        .await;
+        loop {
+            match self.recv().await {
+                GuiReply::SeatControlled { op } if op == id => return Ok(()),
+                GuiReply::Error { op, reason } if op == id => return Err(reason),
+                _ => {}
+            }
+        }
+    }
     async fn spawn(&mut self, id: Ulid, spec: bbt_proto::SpawnSpec) -> Result<SeatId, String> {
         self.send(GuiAction::Spawn { id, spec }).await;
         loop {
@@ -351,6 +373,7 @@ fn provider_gui_isolated_process() {
     assert_eq!(std::env::var_os("HOME"), std::env::var_os("ZDOTDIR"));
     match std::env::var("BBOXY_PROVIDER_GUI_CASE").unwrap().as_str() {
         "roles" => gui_spawn_roles_case(),
+        "seat-controls" => seat_controls_case(),
         "operator-restart" => operator_spawn_replays_case(),
         "host-routing" => host_routing_case(),
         _ => panic!("unknown provider GUI fixture case"),
@@ -927,5 +950,195 @@ fn host_routing_case() {
     logic.shutdown().unwrap();
     println!(
         "D1c: one supervisor/lease/journal, five labelled PTYs (two spawned through GUI), portable GUI hosts/transitions, local input during SSH drop, gap-free reconnect and exact PID/label recovery after logic restart"
+    );
+}
+
+// keeps: operator seat controls — current authority, scoped task writes and exact-child termination.
+#[test]
+#[ignore = "private real GUI/PTY controls; make test-seat-actions"]
+fn seat_controls_fence_generations_scope_and_kill_only_the_target_child() {
+    isolated_case("seat-controls");
+}
+fn seat_controls_case() {
+    use bbt_proto::gui::{SeatControl, SwarmScope};
+    let directory = tempfile::tempdir().unwrap();
+    let repository = directory.path().join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
+    let task = repository.join(".bboxy/tasks/seat-action.md");
+    std::fs::write(&task, format!("---\nid: {}\nnumber: 1\ntype: task\ntitle: Captured task\nstatus: open\nassignee: none\n---\nExecute the private fixture task.\n", Ulid(71))).unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let supervisor = Supervisor::start(Config {
+        journal_directory: Some(directory.path().join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
+    let run_dir = directory.path().join("run");
+    let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
+    prepare_gui_identity(&run_dir, &key);
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run_dir.clone(),
+            repository,
+            ring: Default::default(),
+        },
+        key,
+        runtime.handle(),
+    )
+    .unwrap();
+    let mut gui = runtime.block_on(Gui::open(&logic));
+    let spec = || bbt_proto::SpawnSpec {
+        harness_kind: "zsh".into(),
+        role: None,
+        swarm: bbt_proto::SwarmId::from_u128(7),
+        cwd: directory.path().to_string_lossy().into(),
+        location: bbt_proto::Where::Local,
+        args: vec![],
+        env: vec![],
+        command: None,
+        name: None,
+        resume: None,
+        placement: None,
+    };
+    let target = Ulid(
+        runtime
+            .block_on(gui.spawn(Ulid::new(), spec()))
+            .unwrap()
+            .0
+            .0,
+    );
+    let peer = Ulid(
+        runtime
+            .block_on(gui.spawn(Ulid::new(), spec()))
+            .unwrap()
+            .0
+            .0,
+    );
+    let before = runtime.block_on(logic.client.gui_seat(target)).unwrap();
+    let peer_before = runtime.block_on(logic.client.gui_seat(peer)).unwrap();
+    let generation = before.record.generation;
+    let account = SqliteStore::open(&run_dir.join("account")).unwrap();
+    let epoch = || {
+        account
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT epoch FROM msg_policies WHERE seat=?1",
+                [target.to_string()],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+    };
+    let old_epoch = epoch();
+    runtime
+        .block_on(gui.control(
+            Ulid::new(),
+            target,
+            generation,
+            SeatControl::Role {
+                name: "oracle".into(),
+            },
+        ))
+        .unwrap();
+    let promoted = runtime.block_on(logic.client.gui_seat(target)).unwrap();
+    assert_eq!(promoted.record.role.class, bbt_mux::registry::Class::Oracle);
+    assert_eq!(promoted.record.generation, generation);
+    assert_eq!(promoted.state.process, before.state.process);
+    assert!(
+        epoch() > old_epoch,
+        "authority change advances the policy epoch"
+    );
+    assert!(
+        runtime
+            .block_on(gui.control(
+                Ulid::new(),
+                target,
+                generation,
+                SeatControl::Role {
+                    name: "missing".into()
+                }
+            ))
+            .unwrap_err()
+            .contains("unknown_role_preset")
+    );
+    let stale_scope = SeatControl::AssignTask {
+        scope: SwarmScope {
+            swarm: Ulid(7),
+            revision: 99,
+        },
+        task_path: ".bboxy/tasks/seat-action.md".into(),
+    };
+    assert!(
+        runtime
+            .block_on(gui.control(Ulid::new(), target, generation, stale_scope))
+            .unwrap_err()
+            .contains("swarm_root_changed")
+    );
+    assert!(
+        std::fs::read_to_string(&task)
+            .unwrap()
+            .contains("assignee: none")
+    );
+    let assign = SeatControl::AssignTask {
+        scope: SwarmScope {
+            swarm: Ulid(7),
+            revision: 0,
+        },
+        task_path: ".bboxy/tasks/seat-action.md".into(),
+    };
+    runtime
+        .block_on(gui.control(Ulid::new(), target, generation, assign))
+        .unwrap();
+    let assigned = std::fs::read_to_string(&task).unwrap();
+    assert!(assigned.contains(&format!("seat:{target}")), "{assigned}");
+    assert!(assigned.contains("claimed"), "{assigned}");
+    assert!(
+        runtime
+            .block_on(gui.control(Ulid::new(), target, generation + 1, SeatControl::Kill))
+            .unwrap_err()
+            .contains("StaleGeneration")
+    );
+    assert_eq!(
+        runtime
+            .block_on(logic.client.gui_seat(target))
+            .unwrap()
+            .state
+            .process,
+        before.state.process
+    );
+    let kill = Ulid::new();
+    runtime
+        .block_on(gui.control(kill, target, generation, SeatControl::Kill))
+        .unwrap();
+    let until = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let row = runtime.block_on(logic.client.gui_seat(target)).unwrap();
+        if matches!(row.state.process, ProcessStatus::Exited { .. }) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < until,
+            "target did not exit: {row:?}"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    runtime
+        .block_on(gui.control(kill, target, generation, SeatControl::Kill))
+        .unwrap();
+    assert_eq!(
+        runtime
+            .block_on(logic.client.gui_seat(peer))
+            .unwrap()
+            .state
+            .process,
+        peer_before.state.process
+    );
+    logic.shutdown().unwrap();
+    println!(
+        "PASS seat controls: role authority epoch + same PID, scoped signed task assignment, stale-generation refusal, exact child kill, idempotent kill receipt and live peer"
     );
 }

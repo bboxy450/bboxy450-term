@@ -446,6 +446,7 @@ enum ActionReply {
     History(SeatId),
     Messaging(Ulid),
     Task(Ulid),
+    SeatControl(Ulid),
     Identity(Ulid),
     Attention(Ulid),
     Knowledge(Ulid),
@@ -541,6 +542,7 @@ impl ActionReplies {
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
             GuiAction::Messaging { id, .. } => ActionReply::Messaging(*id),
             GuiAction::Task { id, .. } => ActionReply::Task(*id),
+            GuiAction::SeatControl { id, .. } => ActionReply::SeatControl(*id),
             GuiAction::GetAttention { id, .. } | GuiAction::SetAttention { id, .. } => {
                 ActionReply::Attention(*id)
             }
@@ -560,6 +562,7 @@ impl ActionReplies {
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let independent = match reply {
+            GuiReply::SeatControlled{op}=>self.0.iter().position(|r|*r==ActionReply::SeatControl(*op)),
             GuiReply::Swarm{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarm(*op)),
             GuiReply::Swarms{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarms(*op)),
             GuiReply::RolesConfigured { id } => self.0.iter().position(|r| *r == ActionReply::Roles(*id)),
@@ -573,7 +576,7 @@ impl ActionReplies {
                 .iter()
                 .position(|r| matches!(r,ActionReply::Plugin(id,_) if id==op)),
             GuiReply::Error { op, .. } => self.0.iter().position(
-                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
+                |r| matches!(r,ActionReply::SeatControl(id)|ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
             ),
             _ => None,
         };
@@ -583,7 +586,8 @@ impl ActionReplies {
         let at = self.0.iter().position(|r| {
             !matches!(
                 r,
-                ActionReply::Knowledge(_)
+                ActionReply::SeatControl(_)
+                    | ActionReply::Knowledge(_)
                     | ActionReply::Plugin(..)
                     | ActionReply::Root(_)
                     | ActionReply::Roles(_)
@@ -1315,6 +1319,7 @@ async fn run_with_control(
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                     },
                     UiMsg::Messaging {id,swarm_id,request}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Messaging {id:*id,swarm_id:*swarm_id,request:request.clone()}); } },
+                    UiMsg::SeatControl {id,seat,generation,command}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::SeatControl {id:*id,seat:*seat,generation:*generation,command:command.clone()}); } },
                     UiMsg::Task {id,request,scope}=> { if operation_admit(&mut model,&updates,*id) { queue_action(&mut outgoing,GuiAction::Task {id:*id,scope:*scope,request:request.clone()}); } },
                     UiMsg::GetAttention {id,seat,generation}=> {
                         if operation_admit(&mut model,&updates,*id) {
@@ -1653,7 +1658,7 @@ async fn run_with_control(
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else { knowledge_watch.response(op,result); }
                             }
-                            let result = if matches!(terminal_reply,Some(ActionReply::Plugin(..)|ActionReply::Root(_))) && reason.starts_with("unknown:") {
+                            let result = if matches!(terminal_reply,Some(ActionReply::SeatControl(_)|ActionReply::Plugin(..)|ActionReply::Root(_))) && (reason.starts_with("unknown:") || reason.contains("outcome unknown")) {
                                 bboxy450_term::messaging::Reply::Unknown(reason.clone())
                             } else { bboxy450_term::messaging::Reply::Refused(reason.clone()) };
                             operation_reply(&mut model,&updates,op,result);
@@ -1671,6 +1676,7 @@ async fn run_with_control(
                             logger.write(format!("GUI operation {op} rejected: {reason}"));
                         }
                         GuiReply::Messaging {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Messaging(response)),
+                        GuiReply::SeatControlled {op}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::SeatControlled),
                         GuiReply::Task {op,response}=>operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::Task(response)),
                         GuiReply::IdentityControl {op,response}=> {
                             if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Ok(response)); }

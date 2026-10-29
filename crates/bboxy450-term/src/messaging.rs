@@ -372,6 +372,7 @@ pub fn task_report(
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Reply {
+    SeatControlled,
     RolesConfigured,
     Messaging(Response),
     Task(TaskResponse),

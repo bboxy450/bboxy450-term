@@ -778,6 +778,7 @@ impl UiEffect {
                 ..
             } => Some(Self::Mute(SeatId::from_u128(seat.0), *muted)),
             live::UiMsg::Messaging { id, .. }
+            | live::UiMsg::SeatControl { id, .. }
             | live::UiMsg::Task { id, .. }
             | live::UiMsg::SetAttention { id, .. }
             | live::UiMsg::GetAttention { id, .. } => Some(Self::Operation(*id)),
@@ -6208,6 +6209,7 @@ impl App {
             .iter()
             .filter_map(|message| match message {
                 live::UiMsg::Messaging { id, .. }
+                | live::UiMsg::SeatControl { id, .. }
                 | live::UiMsg::Task { id, .. }
                 | live::UiMsg::SetAttention { id, .. }
                 | live::UiMsg::GetAttention { id, .. }
@@ -6225,6 +6227,7 @@ impl App {
                 .iter()
                 .filter_map(|message| match message {
                     live::UiMsg::Messaging { id, .. }
+                    | live::UiMsg::SeatControl { id, .. }
                     | live::UiMsg::Task { id, .. }
                     | live::UiMsg::SetAttention { id, .. }
                     | live::UiMsg::GetAttention { id, .. }
@@ -8353,6 +8356,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
     matches!(
         message,
         live::UiMsg::Messaging { .. }
+            | live::UiMsg::SeatControl { .. }
             | live::UiMsg::Task { .. }
             | live::UiMsg::GetAttention { .. }
             | live::UiMsg::SetAttention { .. }
@@ -10258,6 +10262,7 @@ mod input_tests {
                 | live::UiMsg::PluginControl { .. }
                 | live::UiMsg::KnowledgeControl { .. }
                 | live::UiMsg::IdentityControl { .. }
+                | live::UiMsg::SeatControl { .. }
                 | live::UiMsg::Task { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }

@@ -273,6 +273,14 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<()>>,
     ),
+    SeatControl(
+        Ulid,
+        u64,
+        Ulid,
+        bbt_proto::gui::SeatControl,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<()>>,
+    ),
     CtlRecord(
         Ulid,
         String,
@@ -1068,6 +1076,25 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
             .map_err(|_| self.unavailable("restart outcome unknown"))?
+    }
+    pub async fn seat_control(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        op: Ulid,
+        command: bbt_proto::gui::SeatControl,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::SeatControl(
+                seat, generation, op, command, origin, tx,
+            ))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("seat control outcome unknown; retain the operation id")
+        })?
     }
     /// Admit on logic, then wait for the window outside the logic worker. A replay
     /// returns its retained layout and never repeats a chrome action.
@@ -5796,6 +5823,104 @@ impl Worker {
             stopped.map(|_| ())
         })
     }
+    fn controlled_seat(&self, id: Ulid, generation: u64) -> Result<SeatRecord> {
+        let record = self.registry.get(id)?;
+        if record.generation != generation {
+            return Err(invalid(
+                "StaleGeneration: captured seat process was replaced",
+            ));
+        }
+        if record.location != crate::registry::Location::Local
+            || record.lifecycle != Lifecycle::Open
+        {
+            return Err(invalid("seat control requires an open local seat"));
+        }
+        Ok(record)
+    }
+    fn seat_control(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        op: Ulid,
+        command: bbt_proto::gui::SeatControl,
+        origin: crate::mcp::Origin,
+    ) -> Result<()> {
+        use bbt_proto::gui::SeatControl;
+        match command {
+            SeatControl::Restart => self.ctl_restart(id, generation, op, origin),
+            SeatControl::AssignTask { scope, task_path } => {
+                let record = self.controlled_seat(id, generation)?;
+                if scope.swarm != record.swarm {
+                    return Err(invalid("task target belongs to another swarm"));
+                }
+                let response = self.gui_task(
+                    op,
+                    bbt_proto::messaging::TaskRequest::Delegate {
+                        task_path,
+                        seat_id: id,
+                        role: None,
+                    },
+                    Some(scope),
+                    origin,
+                )?;
+                if !matches!(response, bbt_proto::messaging::TaskResponse::Applied) {
+                    return Err(invalid("unexpected task assignment response"));
+                }
+                Ok(())
+            }
+            SeatControl::Role { name } => {
+                let args = serde_json::json!({"seat":id,"generation":generation,"role":name});
+                self.ctl_journaled(op, "seat_role", args, origin, |this| {
+                    this.roles_idle()?;
+                    let record = this.controlled_seat(id, generation)?;
+                    let (role, _) = this.configured_role(&record.harness_kind, Some(&name))?;
+                    this.registry.update(id, |record| {
+                        if record.generation != generation {
+                            return Err(invalid(
+                                "StaleGeneration: captured seat process was replaced",
+                            ));
+                        }
+                        record.role = role;
+                        Ok(())
+                    })?;
+                    // sync_seat derives a new policy epoch from the authoritative
+                    // registry role; previously admitted MCP actors fail revalidation.
+                    this.messaging.sync_seat(&this.registry.get(id)?)?;
+                    this.publish(
+                        &format!("seat-{id}"),
+                        Draft::new(
+                            format!("seat/{id}/state"),
+                            "role",
+                            serde_json::json!({"role":name}),
+                        ),
+                    )
+                })
+            }
+            SeatControl::Kill => {
+                let args = serde_json::json!({"seat":id,"generation":generation});
+                self.ctl_journaled(op, "seat_kill", args, origin, |this| {
+                    this.controlled_seat(id, generation)?;
+                    this.check_gui_generation(id, generation)?;
+                    let attachment = this
+                        .attachments
+                        .get(&id)
+                        .ok_or_else(|| invalid("seat not attached"))?
+                        .clone();
+                    // Supervisor validates this exact attachment/generation and
+                    // signals only its recorded PTY child, never a shared runtime.
+                    this.request_for_seat(id, Action::Kill { attachment })
+                        .map_err(|error| {
+                            if error.downcast_ref::<crate::Failure>().is_some_and(|failure| failure.code != crate::FailureCode::Io) {
+                                error
+                            } else {
+                                invalid(format!("unknown: kill outcome unavailable: {error}; retain operation ID {op}"))
+                            }
+                        })
+                        .map(drop)
+                })
+            }
+        }
+    }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
         role_catalog::validate_assignment(
             self.configured_roles()?,
@@ -9279,6 +9404,10 @@ impl Worker {
                     }
                     Command::CtlRestart(id, generation, op, origin, reply) => {
                         let result = self.ctl_restart(id, generation, op, origin);
+                        let _ = reply.send(result);
+                    }
+                    Command::SeatControl(id, generation, op, command, origin, reply) => {
+                        let result = self.seat_control(id, generation, op, command, origin);
                         let _ = reply.send(result);
                     }
                     Command::CtlUi(op, request, origin, reply) => {

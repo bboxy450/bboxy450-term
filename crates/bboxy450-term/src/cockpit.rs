@@ -132,6 +132,12 @@ pub enum UiMsg {
         scope: Option<bbt_proto::gui::SwarmScope>,
         request: bbt_proto::messaging::TaskRequest,
     },
+    SeatControl {
+        id: bbt_mux::Ulid,
+        seat: bbt_mux::Ulid,
+        generation: u64,
+        command: bbt_proto::gui::SeatControl,
+    },
     Input {
         seat: SeatId,
         generation: u64,

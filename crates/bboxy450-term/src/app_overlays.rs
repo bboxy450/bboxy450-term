@@ -37,6 +37,28 @@ pub(super) struct Rename {
     pending: Option<bbt_mux::Ulid>,
     error: Option<String>,
 }
+#[derive(Clone)]
+struct SeatTarget {
+    id: bbt_mux::Ulid,
+    generation: u64,
+    name: String,
+    harness: String,
+    scope: Result<bbt_proto::gui::SwarmScope, String>,
+}
+enum SeatFormKind {
+    Roles,
+    Tasks { next: Option<bbt_mux::Ulid> },
+    Kill,
+    Restart,
+}
+pub(super) struct SeatForm {
+    target: SeatTarget,
+    kind: SeatFormKind,
+    choices: Vec<(String, String)>,
+    pending: Option<bbt_mux::Ulid>,
+    reading: bool,
+    error: Option<String>,
+}
 pub(super) enum Surface {
     Menu {
         target: Target,
@@ -46,6 +68,7 @@ pub(super) enum Surface {
     Dialog {
         dialog: Box<Dialog>,
         rename: Option<Rename>,
+        seat: Option<SeatForm>,
     },
 }
 pub(super) enum Regions {
@@ -61,6 +84,7 @@ pub(super) struct Host {
     pub(super) surface: Option<Surface>,
     pub layout: Option<Layout>,
     parent: Option<TextFocus>,
+    seat: Option<SeatTarget>,
 }
 impl Host {
     pub fn open(&self) -> bool {
@@ -216,7 +240,315 @@ fn rename_dialog(rename: &Rename, focused: Option<&str>, ctx: ui::Context) -> ov
     modal.style.overrides.width = Some(ui::Length::Px(480.));
     modal
 }
+fn seat_dialog(form: &SeatForm, ctx: ui::Context) -> (overlays::Modal, Vec<dialog::Control>) {
+    let (title, explanation) = match form.kind {
+        SeatFormKind::Roles => (
+            "Change role",
+            "Authority changes immediately. Session instructions follow the selected role policy.",
+        ),
+        SeatFormKind::Tasks { .. } => (
+            "Assign task",
+            "Open tasks from this seat’s swarm working folder",
+        ),
+        SeatFormKind::Kill => (
+            "Kill seat process?",
+            "Stops this seat’s current process. Its terminal and history remain available. This cannot be undone.",
+        ),
+        SeatFormKind::Restart => (
+            "Restart seat?",
+            "Stops this seat’s current process and starts its next generation. Supported harnesses resume the same session.",
+        ),
+    };
+    let button = |id: &str, label: &str, enabled: bool, primary: bool| {
+        control(
+            id,
+            ui::widgets::Button {
+                label: label.into(),
+                kind: if primary {
+                    ui::widgets::ButtonKind::Primary
+                } else {
+                    ui::widgets::ButtonKind::Ghost
+                },
+                state: if enabled {
+                    ui::widgets::ButtonState::Idle
+                } else {
+                    ui::widgets::ButtonState::Disabled
+                },
+                icon: None,
+                key: None,
+            }
+            .element(ctx)
+            .expect("built-in seat action style"),
+        )
+    };
+    let mut controls = vec![dialog::Control::new(CANCEL, dialog::ControlKind::Action)];
+    let mut body = vec![
+        text(format!("{} · {}", form.target.name, form.target.harness)).into(),
+        text(explanation).into(),
+    ];
+    for (index, (_, label)) in form.choices.iter().enumerate() {
+        let id = format!("seat-choice:{index}");
+        let enabled = form.pending.is_none();
+        body.push(button(&id, label, enabled, false).into());
+        let mut action = dialog::Control::new(id, dialog::ControlKind::Action);
+        action.enabled = enabled;
+        controls.push(action);
+    }
+    if form.reading {
+        body.push(text("Loading tasks…").into());
+    }
+    if let Some(error) = &form.error {
+        body.push(text(error).into());
+    }
+    if matches!(form.kind, SeatFormKind::Tasks { .. })
+        && form.choices.is_empty()
+        && !form.reading
+        && form.error.is_none()
+    {
+        body.push(text("No open tasks in this working folder").into());
+    }
+    let mut actions = vec![button(CANCEL, "Cancel", true, false)];
+    if let SeatFormKind::Tasks { next: Some(_) } = form.kind {
+        let mut next = dialog::Control::new("seat-next", dialog::ControlKind::Action);
+        next.enabled = form.pending.is_none();
+        actions.push(button("seat-next", "Next tasks", next.enabled, false));
+        controls.push(next);
+    }
+    if matches!(form.kind, SeatFormKind::Kill | SeatFormKind::Restart) {
+        let mut submit = dialog::Control::new(SUBMIT, dialog::ControlKind::Action);
+        submit.enabled = form.pending.is_none();
+        actions.push(button(
+            SUBMIT,
+            if form.pending.is_some() {
+                "Stopping…"
+            } else if matches!(form.kind, SeatFormKind::Kill) {
+                "Kill process"
+            } else {
+                "Restart"
+            },
+            submit.enabled,
+            true,
+        ));
+        controls.push(submit);
+    }
+    let body = c::Element::Stack(c::Stack {
+        direction: bbt_ui_model::layout::Axis::Column,
+        gap: ui::Length::Spacing(3),
+        align: c::Alignment::Stretch,
+        children: body,
+    });
+    let mut modal = overlays::Modal::new(title, body, actions);
+    modal.style.overrides.width = Some(ui::Length::Px(520.));
+    (modal, controls)
+}
 impl App {
+    fn open_seat_dialog(&mut self, action: &str) {
+        let Some(target) = self.app_overlays.seat.clone() else {
+            return;
+        };
+        let kind = match action {
+            "role" => SeatFormKind::Roles,
+            "assign-task" => SeatFormKind::Tasks { next: None },
+            "kill" => SeatFormKind::Kill,
+            "restart" => SeatFormKind::Restart,
+            _ => return,
+        };
+        let mut form = SeatForm {
+            target,
+            kind,
+            choices: vec![],
+            pending: None,
+            reading: false,
+            error: None,
+        };
+        if matches!(form.kind, SeatFormKind::Roles) {
+            let catalog = self.preferences.preferences.role_catalog();
+            if let Some(policy) = catalog.harnesses.get(&form.target.harness) {
+                form.choices = policy
+                    .available_roles
+                    .iter()
+                    .filter(|name| catalog.roles.contains_key(*name))
+                    .map(|name| (name.clone(), name.clone()))
+                    .collect();
+            }
+            if !self.role_settings.applied(&catalog) {
+                form.error = Some("Wait for connected role settings before changing a role".into());
+            }
+        }
+        let (modal, controls) = seat_dialog(&form, self.scene.ui_context());
+        self.show_app_dialog(Dialog {
+            modal,
+            controller: dialog::Controller::new(controls, None),
+            composing: false,
+            on_action: App::seat_dialog_action,
+            on_edit: None,
+        });
+        if let Some(Surface::Dialog { seat, .. }) = &mut self.app_overlays.surface {
+            *seat = Some(form);
+        }
+        if action == "assign-task" {
+            self.read_seat_tasks(None);
+        }
+    }
+    fn read_seat_tasks(&mut self, after: Option<bbt_mux::Ulid>) {
+        let Some(Surface::Dialog {
+            seat: Some(form), ..
+        }) = &mut self.app_overlays.surface
+        else {
+            return;
+        };
+        let scope = match form.target.scope.clone() {
+            Ok(scope) => scope,
+            Err(reason) => {
+                form.error = Some(reason);
+                return;
+            }
+        };
+        if form.pending.is_some() {
+            return;
+        }
+        let id = bbt_mux::Ulid::new();
+        form.pending = Some(id);
+        form.reading = true;
+        form.error = None;
+        form.choices.clear();
+        self.operation_backlog.push_back(live::UiMsg::Task {
+            id,
+            scope: Some(scope),
+            request: bbt_proto::messaging::TaskRequest::List {
+                unassigned: true,
+                swarm_id: None,
+                status: Some("open".into()),
+                assignee: None,
+                after,
+                limit: Some(8),
+            },
+        });
+        self.flush_operations();
+    }
+    fn seat_dialog_action(&mut self, action: &str) {
+        if action == CANCEL {
+            self.close_app_overlay();
+            return;
+        }
+        let Some(Surface::Dialog {
+            seat: Some(form), ..
+        }) = &mut self.app_overlays.surface
+        else {
+            return;
+        };
+        if form.pending.is_some() {
+            return;
+        }
+        if matches!(form.kind, SeatFormKind::Roles)
+            && !self
+                .role_settings
+                .applied(&self.preferences.preferences.role_catalog())
+        {
+            form.error = Some("Wait for connected role settings before changing a role".into());
+            return;
+        }
+        if action == "seat-next" {
+            if let SeatFormKind::Tasks { next } = form.kind {
+                let next = next;
+                self.read_seat_tasks(next);
+            }
+            return;
+        }
+        let selected = action
+            .strip_prefix("seat-choice:")
+            .and_then(|index| index.parse::<usize>().ok())
+            .and_then(|index| form.choices.get(index))
+            .map(|(value, _)| value.clone());
+        let command = match (&form.kind, selected, action) {
+            (SeatFormKind::Roles, Some(name), _) => bbt_proto::gui::SeatControl::Role { name },
+            (SeatFormKind::Tasks { .. }, Some(task_path), _) => match form.target.scope.clone() {
+                Ok(scope) => bbt_proto::gui::SeatControl::AssignTask { scope, task_path },
+                Err(reason) => {
+                    form.error = Some(reason);
+                    return;
+                }
+            },
+            (SeatFormKind::Kill, _, SUBMIT) => bbt_proto::gui::SeatControl::Kill,
+            (SeatFormKind::Restart, _, SUBMIT) => bbt_proto::gui::SeatControl::Restart,
+            _ => return,
+        };
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
+            form.error = Some("Backend unavailable · reconnect before retrying".into());
+            return;
+        }
+        let id = bbt_mux::Ulid::new();
+        let target = form.target.clone();
+        form.pending = Some(id);
+        form.error = None;
+        self.operation_backlog.push_back(live::UiMsg::SeatControl {
+            id,
+            seat: target.id,
+            generation: target.generation,
+            command,
+        });
+        self.flush_operations();
+    }
+    fn sync_seat_dialog(&mut self) {
+        use bboxy450_term::messaging::Reply;
+        let Some(Surface::Dialog {
+            seat: Some(form), ..
+        }) = &mut self.app_overlays.surface
+        else {
+            return;
+        };
+        let Some(model) = self.live_state.as_ref() else {
+            return;
+        };
+        // A response from a former working folder is never installed in a picker.
+        if matches!(form.kind, SeatFormKind::Tasks { .. })
+            && let Ok(scope) = form.target.scope
+            && model
+                .swarm_scope(bbt_proto::SwarmId::from_u128(scope.swarm.0))
+                .ok()
+                != Some(scope)
+        {
+            form.choices.clear();
+            form.error = Some("Swarm working folder changed · reopen this menu".into());
+            return;
+        }
+        let Some(op) = form.pending else {
+            return;
+        };
+        let Some(result) = model.operation_results.rows().find(|row| row.op == op) else {
+            return;
+        };
+        match &result.reply {
+            Reply::Task(bbt_proto::messaging::TaskResponse::Items { items, next })
+                if form.reading =>
+            {
+                form.choices = items
+                    .iter()
+                    .map(|item| (item.path.clone(), item.title.clone()))
+                    .collect();
+                form.kind = SeatFormKind::Tasks { next: *next };
+                form.pending = None;
+                form.reading = false;
+            }
+            Reply::SeatControlled if !form.reading => {
+                self.close_app_overlay();
+            }
+            Reply::Refused(reason) => {
+                form.pending = None;
+                form.reading = false;
+                form.error = Some(reason.clone());
+            }
+            Reply::Unknown(reason) => {
+                form.reading = false;
+                form.error = Some(format!("Outcome unknown · {reason}"));
+            }
+            _ => {
+                form.pending = None;
+                form.reading = false;
+                form.error = Some("Unexpected seat action response".into());
+            }
+        }
+    }
     pub(super) fn overlay_right_click(&mut self, at: [f32; 2]) {
         self.pointer = at;
         if self.app_overlays.open() || self.document.open || self.launcher.is_some() {
@@ -254,6 +586,24 @@ impl App {
         }
     }
     pub(super) fn open_context(&mut self, target: Target, anchor: [f32; 2]) {
+        self.app_overlays.seat = match target {
+            Target::Seat(id) => self.live_state.as_ref().and_then(|model| {
+                model
+                    .gui_seats
+                    .iter()
+                    .find(|row| row.record.id.0 == id.0.0)
+                    .map(|row| SeatTarget {
+                        id: row.record.id,
+                        generation: row.record.generation,
+                        name: row.record.name.clone(),
+                        harness: row.record.harness_kind.clone(),
+                        scope: model
+                            .swarm_scope(bbt_proto::SwarmId::from_u128(row.record.swarm.0))
+                            .map_err(str::to_owned),
+                    })
+            }),
+            Target::Swarm(_) => None,
+        };
         let items = match target {
             Target::Swarm(id) => vec![
                 ("rename", "Rename swarm"),
@@ -277,6 +627,10 @@ impl App {
                 vec![
                     ("focus", "Focus seat"),
                     ("mute", if muted { "Unmute" } else { "Mute" }),
+                    ("role", "Change role…"),
+                    ("assign-task", "Assign task…"),
+                    ("restart", "Restart seat…"),
+                    ("kill", "Kill process…"),
                     ("close", "Close seat"),
                 ]
             }
@@ -320,6 +674,7 @@ impl App {
         self.app_overlays.surface = Some(Surface::Dialog {
             dialog: Box::new(dialog),
             rename: None,
+            seat: None,
         });
         self.app_overlays.layout = None;
         if let Some(window) = &self.window {
@@ -364,7 +719,11 @@ impl App {
             Outcome::Invoke(action) => match self.app_overlays.surface.as_ref() {
                 Some(Surface::Menu { target, .. }) => {
                     let target = *target;
-                    if action == "rename"
+                    if matches!(action.as_str(), "role" | "assign-task" | "kill" | "restart")
+                        && matches!(target, Target::Seat(_))
+                    {
+                        self.open_seat_dialog(&action);
+                    } else if action == "rename"
                         && let Target::Swarm(swarm) = target
                     {
                         let value = self
@@ -464,6 +823,7 @@ impl App {
         let Some(Surface::Dialog {
             dialog,
             rename: Some(rename),
+            ..
         }) = &mut self.app_overlays.surface
         else {
             return;
@@ -500,6 +860,7 @@ impl App {
         let Some(Surface::Dialog {
             dialog,
             rename: Some(rename),
+            ..
         }) = &mut self.app_overlays.surface
         else {
             return;
@@ -550,6 +911,7 @@ impl App {
         if let Some(Surface::Dialog {
             dialog,
             rename: Some(rename),
+            ..
         }) = &mut self.app_overlays.surface
             && (dialog.controller.focused() == Some(FIELD)
                 || matches!(command, EditCommand::CancelPreedit))
@@ -606,6 +968,7 @@ impl App {
         true
     }
     pub(super) fn solve_app_overlay(&mut self, size: [f32; 2]) -> Result<(), String> {
+        self.sync_seat_dialog();
         let ctx = self.scene.ui_context();
         self.app_overlays.layout = match &mut self.app_overlays.surface {
             Some(Surface::Menu {
@@ -617,9 +980,22 @@ impl App {
                 let regions = Regions::Menu(menu::Regions::retained(&solved, &controller.menu));
                 Some(Layout { solved, regions })
             }
-            Some(Surface::Dialog { dialog, rename }) => {
+            Some(Surface::Dialog {
+                dialog,
+                rename,
+                seat,
+            }) => {
                 if let Some(rename) = rename {
                     dialog.modal = rename_dialog(rename, dialog.controller.focused(), ctx);
+                }
+                if let Some(form) = seat {
+                    let (modal, controls) = seat_dialog(form, ctx);
+                    dialog.modal = modal;
+                    let focused = dialog.controller.focused().map(str::to_owned);
+                    dialog.controller = dialog::Controller::new(controls, None);
+                    if let Some(focused) = focused {
+                        dialog.controller.handle(dialog::Command::Focus(focused));
+                    }
                 }
                 let solved = self.scene.app_dialog_layout(dialog.modal.clone(), size)?;
                 let regions = Regions::Dialog(dialog::Regions::retained(

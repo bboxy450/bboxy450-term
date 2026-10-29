@@ -1,0 +1,16 @@
+Seat contextual actions — source candidate, 2026-10-29 UTC
+Worktree: /Users/feral/mydev/bboxy450-term-seat-context-actions
+Base: fe345666
+Scope: captured sidebar/pane seat controls; exact process generation; scoped task assignment; exact-child kill confirmation; existing restart.
+
+Commands:
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 cargo check --locked -p bboxy450-mux -p bboxy450-proto --lib --target-dir target/seat-context-check — exit 0 before later fixture/unknown-outcome refinements.
+make test-seat-actions-backend TARGET_DIR=target/seat-context-check — first run exit 2: new action/reply missing golden variants. Added goldens for all four commands and reply; strict missing-generation/scope/root-injection assertions.
+make test-seat-actions-backend TARGET_DIR=target/seat-context-check — intermediate compile exits 2: qualified crate::Failure and fixture SQL epoch type i64; corrected.
+Current canonical backend run: proto tests pass; private mux integration compile pending. Raw local log /tmp/bboxy-seat-context-backend.log.
+git diff --check — exit 0.
+
+Pending: final backend run, app build/unit/e2e, strict all-target clippy, combined full make test. Root owns warm integration validation, landing, push and install.
+Role instruction delivery policy awaits the operator's explicit choice. Current backend role primitive only changes registry authority/policy epoch and preserves process; UI wording/behavior must be completed after that choice before shipping.
+No live operator seat was killed or reset. Tests create private HOME and two owned zsh children. Kill uses a supervisor attachment with exact seat/generation; shared Codex runtime is not targeted.
+An accidental direct ui-lint invocation started default-target cargo; its exact owned cargo-clippy/cargo PIDs were stopped immediately. No result claimed; no peer target touched.

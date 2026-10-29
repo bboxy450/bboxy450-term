@@ -217,3 +217,8 @@ action	{"kind":"RecordWrite","body":{"id":"01M5SQMEZD1NHC4S4RCABKAK19","scope":{
 # UI control v3: explicit operator image paste, with old frame bytes unchanged.
 action	{"kind":"Ui","body":{"id":"00000000000000000000000001","request":{"kind":"paste_image","body":{"path":"/tmp/fixture.png"}}}}
 reply	{"kind":"Ui","body":{"op":"00000000000000000000000001","layout":{"frame_seq":1,"layout_revision":null,"size":[800.0,600.0],"swarm":null,"tab":null,"focused":null,"launcher_open":false,"page":null,"document":null,"panes":[],"tree":[],"pasted_image":{"id":"00000000000000000000000002","marker":"[Image #1]","path":"/tmp/bboxy450-image-fixture.png"}}}}
+action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"role","name":"executor"}}}
+action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"assign_task","scope":{"swarm":"00000000000000000000000007","revision":2},"task_path":".bboxy/tasks/brief.md"}}}
+action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"kill"}}}
+action	{"kind":"SeatControl","body":{"id":"00000000000000000000000007","seat":"00000000000000000000000007","generation":3,"command":{"kind":"restart"}}}
+reply	{"kind":"SeatControlled","body":{"op":"00000000000000000000000007"}}

@@ -77,11 +77,28 @@ pub struct AttentionEdit {
     pub mode: Option<crate::messaging::WakeMode>,
 }
 
+/// Operator controls captured from one seat menu. Every effect targets the
+/// process generation shown when that menu opened, independent of later focus.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum SeatControl {
+    Role {
+        name: String,
+    },
+    AssignTask {
+        scope: SwarmScope,
+        task_path: String,
+    },
+    Kill,
+    Restart,
+}
+
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.
 macro_rules! seat_actions {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)*
             ListSeats,
+            SeatControl { id: Ulid, seat: Ulid, generation: u64, command: SeatControl },
             GetAttention { id: Ulid, seat: Ulid, generation: u64 },
             SetAttention {
                 id: Ulid,
@@ -216,6 +233,7 @@ macro_rules! seat_replies {
                 seat: GuiSeat,
             },
             Seats(Vec<GuiSeat>),
+            SeatControlled { op: Ulid },
             Update {
                 #[serde(with = "text_id")]
                 seat: SeatId,

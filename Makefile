@@ -67,6 +67,7 @@ help:
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
+	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
 	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
 	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
@@ -611,6 +612,20 @@ test-app-overlays:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions
+test-seat-actions-backend:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui seat_controls_fence_generations_scope_and_kill_only_the_target_child -- --ignored --exact --nocapture
+
+test-seat-actions: test-seat-actions-backend
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) app_overlays; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_context_actions_ -- --ignored --nocapture
+
+check-seat-actions:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-workspace-boundary check-workspace-boundary format-workspace-boundary
 test-workspace-boundary:

@@ -8,8 +8,8 @@
 use super::*;
 
 /// Logical input verbs; old logic is refreshed without replacing live PTYs.
-/// Includes the explicit operator image-paste relay added in version 3.
-/// Version 5 adds terminal selection/copy and private test clipboard receipts.
+/// Versions 3/4 add image paste and captured seat controls; version 5 adds
+/// terminal selection/copy and private test clipboard receipts.
 pub const UI_CONTROL_VERSION: u16 = 5;
 
 /// The completed frame which acknowledged a focus command.
