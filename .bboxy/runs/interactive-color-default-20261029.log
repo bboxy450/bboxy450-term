@@ -1,0 +1,8 @@
+2026-10-29 ROLE: EXECUTOR — interactive color defaults
+Base: 014e555c. Scope: supervisor PTY/companion child environment only; no live user actions, restarts, global environment mutation, shared-daemon ownership, protocol or renderer changes.
+Evidence supplied by root: all four current Codex PTYs inherited NO_COLOR=1 despite TERM=xterm-256color, COLORTERM=truecolor and CLICOLOR=1; all 133 focused-pane style runs used default foreground/background.
+Decision: remove ambient NO_COLOR at each owned child boundary before explicit overrides. Interactive PTYs advertise TERM=xterm-256color, COLORTERM=truecolor and CLICOLOR=1. Explicit LaunchSpec.env overrides apply afterwards; login-shell startup can make its own later choice. Companions only remove ambient NO_COLOR, with spec.env then service.env retained; no forced-color capability defaults are added to their non-TTY structured IO. Existing user jobs and the shared Codex daemon are untouched.
+Local API evidence: portable-pty 0.9.0 CommandBuilder::new snapshots the base environment; env_remove deletes that inherited map entry; as_command clears std::process::Command's inherited environment before replaying the builder map.
+rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/supervisor/companion.rs — EXIT 0.
+git diff --check — EXIT 0.
+Cargo/Clippy/runtime checks explicitly deferred to root's warm canonical Make gates; the other Executor owns focused tests and Make wiring. This source-only commit does not claim runtime verification.

@@ -40,7 +40,11 @@ impl Companion {
         let (lifetime, slave) = lifetime_pty().map_err(super::pty_error)?;
         let slave_fd = slave.as_raw_fd();
         let mut command = Command::new(&service.program);
+        // Drop automation's inherited opt-out before explicit overrides. This
+        // non-TTY service gets no forced-color defaults on its structured IO.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
         command
+            .env_remove("NO_COLOR")
             .args(&service.args)
             .current_dir(&spec.cwd)
             .envs(&spec.env)

@@ -2331,7 +2331,13 @@ impl Seat {
         let mut command = CommandBuilder::new(&spec.program);
         command.args(&spec.args);
         command.cwd(&spec.cwd);
+        // Interactive seats inherit color capability, not automation's NO_COLOR.
+        // Explicit launch overrides and the user's later shell startup still win.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        command.env_remove("NO_COLOR");
         command.env("TERM", "xterm-256color");
+        command.env("COLORTERM", "truecolor");
+        command.env("CLICOLOR", "1");
         for (key, value) in &spec.env {
             command.env(key, value);
         }
