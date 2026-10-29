@@ -31,12 +31,16 @@ struct ProxyProbeData {
 }
 impl ProxyProbe {
     fn new() -> Self {
-        Self { started: Instant::now(), data: Default::default() }
+        Self {
+            started: Instant::now(),
+            data: Default::default(),
+        }
     }
     fn stage(&self, stage: &'static str) {
         let mut data = self.data.lock().unwrap();
         if data.stages.len() < 64 {
-            data.stages.push((stage, self.started.elapsed().as_millis()));
+            data.stages
+                .push((stage, self.started.elapsed().as_millis()));
         } else {
             data.dropped += 1;
         }
@@ -53,13 +57,19 @@ impl ProxyProbe {
     fn emit(&self) {
         use std::io::Write;
         // Write directly so successful focused runs retain observations too.
-        let _ = writeln!(std::io::stderr().lock(), "proxy fixture elapsed_ms={} {:?}",
-                         self.started.elapsed().as_millis(), *self.data.lock().unwrap());
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "proxy fixture elapsed_ms={} {:?}",
+            self.started.elapsed().as_millis(),
+            *self.data.lock().unwrap()
+        );
     }
 }
 struct ProxyReport(ProxyProbe);
 impl Drop for ProxyReport {
-    fn drop(&mut self) { self.0.emit(); }
+    fn drop(&mut self) {
+        self.0.emit();
+    }
 }
 struct ProxyChild {
     probe: ProxyProbe,
@@ -81,11 +91,17 @@ fn proxy_child(
     future: impl std::future::Future<Output = ()> + Send + 'static,
 ) {
     probe.task(name, "spawned");
-    let child = ProxyChild { probe: probe.clone(), name, finished: false };
+    let child = ProxyChild {
+        probe: probe.clone(),
+        name,
+        finished: false,
+    };
     tasks.spawn(async move {
         let mut child = child;
         let success = AssertUnwindSafe(future).catch_unwind().await.is_ok();
-        child.probe.task(name, if success { "completed" } else { "panicked" });
+        child
+            .probe
+            .task(name, if success { "completed" } else { "panicked" });
         child.finished = true;
         (name, success)
     });
@@ -101,7 +117,11 @@ async fn stop_proxy_children(
             Ok((_, success)) => no_panics &= success,
             Err(error) => {
                 no_panics &= error.is_cancelled();
-                probe.stage(if error.is_cancelled() { "child cancellation joined" } else { "child panic joined" });
+                probe.stage(if error.is_cancelled() {
+                    "child cancellation joined"
+                } else {
+                    "child panic joined"
+                });
             }
         }
     }
@@ -201,6 +221,14 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
         probe.stage("payload construction");
         let catalog = json!({"id":42,"result":{"catalog":"x".repeat(23 << 20)}}).to_string();
         let expected = catalog.clone();
+        // The first 64 KiB continuation boundary cuts through 界, not a UTF-8
+        // boundary. Both peers still use ordinary whole-message WebSocket APIs.
+        let unicode = format!("{}界{}", "u".repeat((64 << 10) - 1), "🙂".repeat(32_768));
+        let binary = (0..(192 << 10) + 17)
+            .map(|index| (index % 251) as u8)
+            .collect::<Vec<_>>();
+        let expected_unicode = unicode.clone();
+        let expected_binary = binary.clone();
         probe.stage("payload constructed");
         let server_probe = probe.clone();
         proxy_child(&mut tasks, &probe, "server", async move {
@@ -222,10 +250,43 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             drop(received);
             server_probe.stage("server echo catalog");
             ws.send(Message::Text(expected.into())).await.unwrap();
+            server_probe.stage("server read unicode");
+            let received = ws.next().await.unwrap().unwrap();
+            assert!(
+                received.is_text(),
+                "private proxy unicode message type changed"
+            );
+            require_proxy_bytes(
+                &received.clone().into_data(),
+                expected_unicode.as_bytes(),
+                "server unicode",
+            );
+            server_probe.stage("server echo unicode");
+            ws.send(received).await.unwrap();
+            server_probe.stage("server read binary");
+            let received = ws.next().await.unwrap().unwrap();
+            assert!(
+                received.is_binary(),
+                "private proxy binary message type changed"
+            );
+            require_proxy_bytes(
+                &received.clone().into_data(),
+                &expected_binary,
+                "server binary",
+            );
+            server_probe.stage("server echo binary");
+            ws.send(received).await.unwrap();
             server_probe.stage("server read final exchange");
             require_proxy_bytes(
-                ws.next().await.unwrap().unwrap().into_text().unwrap().as_bytes(),
-                b"still connected", "server final exchange"
+                ws.next()
+                    .await
+                    .unwrap()
+                    .unwrap()
+                    .into_text()
+                    .unwrap()
+                    .as_bytes(),
+                b"still connected",
+                "server final exchange",
             );
             server_probe.stage("server send confirmation");
             ws.send(Message::Text("confirmed".into())).await.unwrap();
@@ -266,6 +327,30 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
         let received = client.next().await.unwrap().unwrap().into_text().unwrap();
         require_proxy_bytes(received.as_bytes(), catalog.as_bytes(), "client catalog");
         drop(received);
+        probe.stage("client send unicode");
+        client
+            .send(Message::Text(unicode.clone().into()))
+            .await
+            .unwrap();
+        probe.stage("client read unicode echo");
+        let received = client.next().await.unwrap().unwrap();
+        assert!(
+            received.is_text(),
+            "private proxy unicode echo type changed"
+        );
+        require_proxy_bytes(&received.into_data(), unicode.as_bytes(), "client unicode");
+        probe.stage("client send binary");
+        client
+            .send(Message::Binary(binary.clone().into()))
+            .await
+            .unwrap();
+        probe.stage("client read binary echo");
+        let received = client.next().await.unwrap().unwrap();
+        assert!(
+            received.is_binary(),
+            "private proxy binary echo type changed"
+        );
+        require_proxy_bytes(&received.into_data(), &binary, "client binary");
         probe.stage("client send final exchange");
         client
             .send(Message::Text("still connected".into()))
@@ -273,18 +358,33 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             .unwrap();
         probe.stage("client read confirmation");
         require_proxy_bytes(
-            client.next().await.unwrap().unwrap().into_text().unwrap().as_bytes(),
-            b"confirmed", "client confirmation"
+            client
+                .next()
+                .await
+                .unwrap()
+                .unwrap()
+                .into_text()
+                .unwrap()
+                .as_bytes(),
+            b"confirmed",
+            "client confirmation",
         );
         probe.stage("client exchange complete");
         loop {
             let (name, success) = tasks.join_next().await.unwrap().unwrap();
             assert!(success, "private {name} task panicked");
-            if name == "server" { break; }
+            if name == "server" {
+                break;
+            }
         }
-        assert!(stop_proxy_children(&mut tasks, &probe).await, "private proxy task panicked");
+        assert!(
+            stop_proxy_children(&mut tasks, &probe).await,
+            "private proxy task panicked"
+        );
         drop(directory.take());
-    })).catch_unwind().await;
+    }))
+    .catch_unwind()
+    .await;
     probe.stage(match &result {
         Ok(Ok(())) => "relay complete",
         Ok(Err(_)) => "outer deadline elapsed",
@@ -294,7 +394,7 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
         stop_proxy_children(&mut tasks, &probe).await;
     }
     match result {
-        Ok(Ok(())) => {},
+        Ok(Ok(())) => {}
         Ok(Err(error)) => panic!("large catalog relay stalled: {error}"),
         Err(error) => std::panic::resume_unwind(error),
     }
@@ -303,23 +403,40 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
 // keeps: task 278 — cancellation and panic observations are executable controls.
 #[tokio::test]
 async fn proxy_diagnostics_retain_child_panic_and_join_cancelled_tasks() {
-    let mismatch = std::panic::catch_unwind(|| require_proxy_bytes(
-        b"private catalog contents", b"different bytes", "controlled mismatch"
-    )).unwrap_err();
-    assert!(mismatch.downcast_ref::<String>().is_some_and(
-        |message| message == "private proxy controlled mismatch bytes differ"
-    ));
+    let mismatch = std::panic::catch_unwind(|| {
+        require_proxy_bytes(
+            b"private catalog contents",
+            b"different bytes",
+            "controlled mismatch",
+        )
+    })
+    .unwrap_err();
+    assert!(
+        mismatch
+            .downcast_ref::<String>()
+            .is_some_and(|message| message == "private proxy controlled mismatch bytes differ")
+    );
     let probe = ProxyProbe::new();
     let mut tasks = tokio::task::JoinSet::new();
-    proxy_child(&mut tasks, &probe, "server", async { panic!("private diagnostic control"); });
+    proxy_child(&mut tasks, &probe, "server", async {
+        panic!("private diagnostic control");
+    });
     assert_eq!(tasks.join_next().await.unwrap().unwrap(), ("server", false));
     proxy_child(&mut tasks, &probe, "proxy", std::future::pending());
     probe.stage("control waiting for native read");
-    assert!(tokio::time::timeout(Duration::ZERO, std::future::pending::<()>()).await.is_err());
+    assert!(
+        tokio::time::timeout(Duration::ZERO, std::future::pending::<()>())
+            .await
+            .is_err()
+    );
     assert!(stop_proxy_children(&mut tasks, &probe).await);
     let data = probe.data.lock().unwrap();
     assert_eq!(data.tasks, [("server", "panicked"), ("proxy", "cancelled")]);
-    assert!(data.stages.iter().any(|(stage, _)| *stage == "control waiting for native read"));
+    assert!(
+        data.stages
+            .iter()
+            .any(|(stage, _)| *stage == "control waiting for native read")
+    );
     assert!(tasks.is_empty());
 }
 

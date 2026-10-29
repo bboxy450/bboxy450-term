@@ -12,7 +12,7 @@ use super::{
     WakeCause, WakeOutcome,
 };
 use crate::{Result, Ulid, invalid};
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{Sink, SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::Read;
@@ -23,7 +23,16 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
 use tokio_tungstenite::{
     WebSocketStream,
-    tungstenite::{Message, protocol::WebSocketConfig},
+    tungstenite::{
+        Message,
+        protocol::{
+            WebSocketConfig,
+            frame::{
+                Frame,
+                coding::{Data, OpCode},
+            },
+        },
+    },
 };
 
 const LIMIT: usize = 64 * 1024;
@@ -517,6 +526,227 @@ async fn codex_handshake(path: &Path, thread: &str, owner: Option<u32>) -> Resul
     Ok((socket, identity))
 }
 
+/// Inspect only the top-level method; unrelated catalog/config fields are skipped.
+/// Duplicate keys retain Value's last-key semantics; escaped method strings still decode.
+/// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn codex_proxy_method(text: &str) -> Option<std::borrow::Cow<'_, str>> {
+    use serde::de::{IgnoredAny, MapAccess, Visitor};
+    use std::{borrow::Cow, fmt};
+
+    #[derive(Deserialize)]
+    #[serde(field_identifier, rename_all = "lowercase")]
+    enum Field {
+        Method,
+        #[serde(other)]
+        Other,
+    }
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Method<'a> {
+        Text(#[serde(borrow)] Cow<'a, str>),
+        Other(IgnoredAny),
+    }
+    struct Envelope<'a>(Option<Cow<'a, str>>);
+    impl<'de> Deserialize<'de> for Envelope<'de> {
+        fn deserialize<D: serde::Deserializer<'de>>(
+            deserializer: D,
+        ) -> std::result::Result<Self, D::Error> {
+            struct Fields;
+            impl<'de> Visitor<'de> for Fields {
+                type Value = Envelope<'de>;
+                fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    formatter.write_str("a JSON object")
+                }
+                fn visit_map<A: MapAccess<'de>>(
+                    self,
+                    mut map: A,
+                ) -> std::result::Result<Self::Value, A::Error> {
+                    let mut method = None;
+                    while let Some(field) = map.next_key::<Field>()? {
+                        match field {
+                            Field::Method => {
+                                method = match map.next_value::<Method<'de>>()? {
+                                    Method::Text(value) => Some(value),
+                                    Method::Other(IgnoredAny) => None,
+                                };
+                            }
+                            Field::Other => {
+                                map.next_value::<IgnoredAny>()?;
+                            }
+                        }
+                    }
+                    Ok(Envelope(method))
+                }
+            }
+            deserializer.deserialize_map(Fields)
+        }
+    }
+    serde_json::from_str::<Envelope<'_>>(text).ok()?.0
+}
+
+const CODEX_RELAY_CHUNK: usize = 64 * 1024;
+
+/// Tungstenite 0.30 front-drains its Vec after each partial socket write. Bound
+/// that shifting to one standard continuation frame, sharing the original Bytes.
+/// The receiver still observes one unchanged Text/Binary message, including UTF-8
+/// characters split across frames. Small messages and control frames stay intact.
+/// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+async fn codex_proxy_send<S: Sink<Message> + Unpin>(
+    socket: &mut S,
+    message: Message,
+) -> std::result::Result<(), S::Error> {
+    let kind = match &message {
+        Message::Text(text) if text.len() > CODEX_RELAY_CHUNK => Data::Text,
+        Message::Binary(bytes) if bytes.len() > CODEX_RELAY_CHUNK => Data::Binary,
+        _ => return socket.send(message).await,
+    };
+    let payload = message.into_data();
+    for start in (0..payload.len()).step_by(CODEX_RELAY_CHUNK) {
+        let end = (start + CODEX_RELAY_CHUNK).min(payload.len());
+        let opcode = OpCode::Data(if start == 0 { kind } else { Data::Continue });
+        socket
+            .send(Message::Frame(Frame::message(
+                payload.slice(start..end),
+                opcode,
+                end == payload.len(),
+            )))
+            .await?;
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod codex_proxy_relay_tests {
+    use super::*;
+    use std::{
+        convert::Infallible,
+        pin::Pin,
+        task::{Context, Poll},
+    };
+
+    #[derive(Default)]
+    struct Frames(Vec<Message>);
+    impl Sink<Message> for Frames {
+        type Error = Infallible;
+        fn poll_ready(
+            self: Pin<&mut Self>,
+            _: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn start_send(self: Pin<&mut Self>, item: Message) -> std::result::Result<(), Self::Error> {
+            self.get_mut().0.push(item);
+            Ok(())
+        }
+        fn poll_flush(
+            self: Pin<&mut Self>,
+            _: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+        fn poll_close(
+            self: Pin<&mut Self>,
+            _: &mut Context<'_>,
+        ) -> Poll<std::result::Result<(), Self::Error>> {
+            Poll::Ready(Ok(()))
+        }
+    }
+
+    #[test]
+    fn borrowed_method_probe_matches_value_semantics_and_ignores_unrelated_fields() {
+        for text in [
+            r#"{"method":"thread/start","params":{"nested":{"method":"other"}}}"#,
+            r#"{"params":{"method":"thread/start"}}"#,
+            r#"{"method":null,"method":"thread/start"}"#,
+            r#"{"method":"thread/start","method":null}"#,
+            r#"{"method":{"method":"thread/start"},"method":"thread/resume"}"#,
+            r#"{"method":"other","method":"thread/start"}"#,
+            r#"{"\u006dethod":"thread\/resume"}"#,
+            r#"{"method":"thread/start","truncated":"#,
+            r#"[{"method":"thread/start"}]"#,
+        ] {
+            let expected = serde_json::from_str::<Value>(text).ok().and_then(|value| {
+                value
+                    .get("method")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned)
+            });
+            assert_eq!(
+                codex_proxy_method(text).map(|method| method.into_owned()),
+                expected
+            );
+        }
+        let text = format!(
+            r#"{{"params":{{"catalog":"{}"}},"method":"thread/start"}}"#,
+            "x".repeat(1024 * 1024)
+        );
+        assert!(matches!(
+            codex_proxy_method(&text),
+            Some(std::borrow::Cow::Borrowed("thread/start"))
+        ));
+    }
+
+    #[tokio::test]
+    async fn large_data_uses_shared_bounded_continuations_and_controls_remain_whole() {
+        let text = format!(
+            "{}界{}",
+            "x".repeat(CODEX_RELAY_CHUNK - 1),
+            "🙂".repeat(32_768)
+        );
+        assert!(!text.is_char_boundary(CODEX_RELAY_CHUNK));
+        let binary = (0..CODEX_RELAY_CHUNK * 3 + 17)
+            .map(|index| (index % 251) as u8)
+            .collect::<Vec<_>>();
+        for (message, kind) in [
+            (Message::Text(text.into()), Data::Text),
+            (Message::Binary(binary.into()), Data::Binary),
+        ] {
+            let original = message.clone().into_data();
+            let mut frames = Frames::default();
+            codex_proxy_send(&mut frames, message).await.unwrap();
+            assert_eq!(frames.0.len(), original.len().div_ceil(CODEX_RELAY_CHUNK));
+            let mut offset = 0;
+            for (index, message) in frames.0.iter().enumerate() {
+                let Message::Frame(frame) = message else {
+                    panic!("large relay emitted a whole message");
+                };
+                let end = (offset + CODEX_RELAY_CHUNK).min(original.len());
+                assert_eq!(
+                    frame.header().opcode,
+                    OpCode::Data(if index == 0 { kind } else { Data::Continue })
+                );
+                assert_eq!(frame.header().is_final, end == original.len());
+                assert!(
+                    frame.payload() == &original[offset..end],
+                    "relay payload differs"
+                );
+                assert_eq!(
+                    frame.payload().as_ptr(),
+                    original.as_ptr().wrapping_add(offset),
+                    "relay must share original Bytes"
+                );
+                offset = end;
+            }
+            assert_eq!(offset, original.len());
+        }
+        for message in [
+            Message::Text("small".into()),
+            Message::Binary(vec![1, 2].into()),
+            Message::Ping(vec![3].into()),
+            Message::Pong(vec![4].into()),
+            Message::Close(None),
+        ] {
+            let expected = message.clone();
+            let mut frames = Frames::default();
+            codex_proxy_send(&mut frames, message).await.unwrap();
+            assert!(
+                frames.0.as_slice() == [expected],
+                "small/control message changed"
+            );
+        }
+    }
+}
+
 /// Relay a seat's TUI to Codex's shared daemon, adding startup configuration to
 /// each connection's first thread start/resume only. Native clients can connect
 /// alongside the TUI. Never owns the daemon.
@@ -626,6 +856,7 @@ async fn codex_proxy_client(
                 let Some(Ok(mut frame)) = frame else { break; };
                 if !configured && pending.is_none()
                     && let Message::Text(text) = &frame
+                    && matches!(codex_proxy_method(text).as_deref(), Some("thread/start" | "thread/resume"))
                     && let Ok(mut call) = serde_json::from_str::<Value>(text)
                     && matches!(call["method"].as_str(), Some("thread/start" | "thread/resume"))
                 {
@@ -649,7 +880,7 @@ async fn codex_proxy_client(
                     pending = Some((call["id"].clone(), expected));
                     frame = Message::Text(serde_json::to_string(&call)?.into());
                 }
-                if server.send(frame).await.is_err() { break; }
+                if codex_proxy_send(&mut server, frame).await.is_err() { break; }
             }
             frame = server.next() => {
                 let Some(Ok(frame)) = frame else { break; };
@@ -689,7 +920,7 @@ async fn codex_proxy_client(
                         pending = None;
                     }
                 }
-                if client.send(frame).await.is_err() { break; }
+                if codex_proxy_send(&mut client, frame).await.is_err() { break; }
             }
         }
     }
