@@ -1,0 +1,87 @@
+{
+  "code_source": "5d330898b92fcda99dcbad6aff2f04b775d84642",
+  "commands": [
+    {
+      "command": "make test-chat-sections test-gui-events test-boundaries test-scene-template test-scene-template-phase test-licenses test-task-contract",
+      "exit": 0,
+      "sha256": "71e6fe038fc74b06299c3f6b85bd6bf922d810f66e879e332248ba4d07c231aa",
+      "source": "ea0d75daff394fae3a566dd6efd66afc0cd7ae0b"
+    },
+    {
+      "command": "make test-chat-backlog test-chat-reconciliation",
+      "exit": 0,
+      "sha256": "ace79b2167016d4acfc5c930b947fb583c1d47fec46f7453b89bbb260da417d5",
+      "source": "5d330898b92fcda99dcbad6aff2f04b775d84642"
+    },
+    {
+      "command": "make test-chat-backlog test-chat-backlog-frame",
+      "exit": 0,
+      "sha256": "14caa6a189cbc90e079ab3b4d7a96bf31ab3b8e05afd91bded2e489f55dc8ba2"
+    },
+    {
+      "command": "make test-chat-backlog test-chat-backlog-component",
+      "exit": 0,
+      "sha256": "d3ab36949ad97e0cda72264dcdd11d94d96c873997d995c761feb5f9793960a4"
+    },
+    {
+      "command": "make test-chat-backlog-frame (explicit cold-start case)",
+      "exit": 2,
+      "sha256": "ae5cfd2c42bbc76808a5220a42dc6ca56f1e0c7bf271a3d4340197d86fed8fe0"
+    },
+    {
+      "command": "make test-chat-backlog-component (invalid mandatory-race observation)",
+      "exit": 2,
+      "sha256": "7ddece65e8eabf32abc7991e611e596fd61eae13d4617f007cc8a4e8ad057975"
+    },
+    {
+      "label": "refresh-disabled-full348000",
+      "command": "make test-chat-backlog-frame",
+      "exit": 2,
+      "sha256": "7d27457207f68ac270f15b5c8afe268a16a021884f66efaf42c55c97eaa81f31"
+    },
+    {
+      "label": "none-rejection-restored-component16384",
+      "command": "make test-chat-backlog-component",
+      "exit": 2,
+      "sha256": "46a4429af3374e5ce1878ad43fb5070da2f321d14692db0165af1f2aaecc1352"
+    }
+  ],
+  "artifacts": [
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-G0nPd8/backlog-witness.json",
+      "sha256": "0fbdd764aab5e62565c0c1f2cb0af409141598561c8ae9e62a0e19f7babf0359"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-G0nPd8/backlog-produced-frame.json",
+      "sha256": "22fe1dcc0883e6f3bca00b080c25b08acd24f3e7a0bab9269d02be8582c1cb33"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-G0nPd8/backlog-produced.png",
+      "sha256": "8d1fffda9f8d55e285edc81734fb954ad28d07877e511db67579a1b62ee3580e"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-wqldf3/backlog-witness.json",
+      "sha256": "e2d5b3230dff1706cfdda33a00ec39f50650ea76eb7e3e128eab8d30b1307ff8"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-qufmoI/canonical-reconciliation.json",
+      "sha256": "dda1b313f07e86b500a43f079473f950f18d72fe27b71e640035a57042793457"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-qKCyd4/canonical-reconciliation.json",
+      "sha256": "6a70194d40bd2770694b83850b14183ce18315d1bb98a9fcbffbfa8cb177beb5"
+    },
+    {
+      "ref": "/tmp/issue-73-second-owned-retirement.json",
+      "sha256": "5ee46939321404b80cd90832321c4105f013ff23b21a1152520f687a8832183c"
+    },
+    {
+      "ref": "/tmp/issue-73-prior-witness-lossless-archives.json",
+      "sha256": "0880ef855887fa43b6811a1b0f469519f53bbccb5a51eb6b9b2921521858cb47"
+    },
+    {
+      "ref": "/tmp/issue-73-owned-transparent-compression.json",
+      "sha256": "41c0b6d0a551022676ce660dfdadc7d9a545d4d74714f7465f05e0a3e35b9829"
+    }
+  ]
+}
