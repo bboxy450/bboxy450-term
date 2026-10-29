@@ -38,7 +38,7 @@ pub(super) fn recovery(broken: bool) -> Model {
     action(
         &mut m,
         "QuestionArrives",
-        all([eq(0, 0), eq(1, 1)]),
+        eq(0, 0),
         &[(0, Int(1))],
     );
     action(

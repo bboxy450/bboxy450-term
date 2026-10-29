@@ -131,9 +131,9 @@ sources = ["crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/wor
 [[crate]]
 name = "bboxy450-proto"
 status = "contract-model"
-models = ["InputReceipt"]
-scope = "Input identity/lease protocol contract for the supervisor boundary; serialization and cryptography use implementation tests."
-sources = ["crates/bbt-proto/src/lib.rs"]
+models = ["InputReceipt", "AttentionLifecycle"]
+scope = "Input identity/lease and shared current-notification episode identity contracts; serialization, transport bytes and cryptography use implementation tests."
+sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-proto/src/gui/events.rs"]
 
 [[crate]]
 name = "bboxy450-rt"

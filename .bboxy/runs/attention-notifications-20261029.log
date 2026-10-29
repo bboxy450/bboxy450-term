@@ -17,3 +17,10 @@ live state: no forced frontend restart; unsent composer drafts are not persisted
 limit: private recorder and native request construction verify delivery mechanics, not actual Notification Center banner presentation
 limit: stable seat-ID OS callbacks lack a per-post token; captured episode protects asynchronous reattachment, not identification of an already superseded native response
 logs: ~/Library/Logs/bboxy450-term/attention-notifications-*-20261029.log and native-settings JSON; no raw logs or fixture identities committed
+formal update: decision d365 and mandatory canonical stack landed while this cut was in verification; rebased onto a516ac55
+formal models: NotificationRecovery/BrokenNotificationRecovery (pass/liveness), AttentionLifecycle/BrokenAttentionLifecycle (pass/safety); native/TLC verdicts pending final gate
+formal bounds: one seat, two questions, two UI streams, three source incarnations; recovery has 192 possible valuations, finite one-time failure and explicit weak fairness
+formal scope: source-bound broker/context/click/retry mappings and actual socket/worker/process witnesses; OS presentation and arbitrary Rust refinement remain unproved
+interim full CI: ci-local source 719d66da05210f644ff7b47083ccbf12fd40867c normal 0, before mandatory formal-stack rebase
+interim process gates: make test-boundaries test-desktop-lifecycle test-notification-copy 0 on 4373a41a88642ca18987db11419b0b3ed0fed08c
+final formal gate: make test-formal; source-bound full make test must be refreshed after model commits and rebases
