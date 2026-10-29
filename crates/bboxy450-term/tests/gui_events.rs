@@ -10,7 +10,6 @@
 )]
 use bbt_mux::{
     Ulid,
-    bus::Broker,
     registry::{Lifecycle, Registry, SeatRecord},
     store::{Events, Store, events::EventLog, object_dir, sqlite::SqliteStore},
 };
@@ -29,6 +28,7 @@ use std::{
 const BIN: &str = env!("CARGO_BIN_EXE_bboxy450-term");
 const TASK: &str = "GUI retained membership task";
 const MESSAGE: &str = "GUI retained membership message";
+const RETAINED_RECEIPTS: u64 = 348_000;
 
 // Adapted from this project's swarm_workdir.rs private headless fixture. Keep
 // HOME, file custody, endpoint, logs and backend-owner cleanup inside TempDir.
@@ -147,8 +147,33 @@ impl Fixture {
     fn log(&self) -> String {
         fs::read_to_string(self.root.join("app.log")).unwrap_or_default()
     }
-    fn retain_receipt_backlog(&mut self, swarm: &str, message: &str) -> (u64, u64) {
-        // Only this fixture's UI/logic owners stop. Its supervisor and PTY stay
+    fn retain_receipt_backlog(
+        &mut self,
+        swarm: &str,
+        message: &str,
+        count: u64,
+        restart_logic: bool,
+    ) -> (u64, u64) {
+        let stream = format!("swarm-{swarm}");
+        let directory = self.root.join("run").join(&stream);
+        let log = EventLog::open(&directory).unwrap();
+        // Stored/Recent can precede optional event publication. Fence only the
+        // fixture's read of its real seed; never repeat the message operation.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let original = loop {
+            if let Some(event) = log.after(0, 128).unwrap().into_iter().find(|event| {
+                event.event.subject.ends_with("/receipt")
+                    && event.event.payload["message"] == message
+            }) {
+                break event;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "real seed receipt on its canonical stream"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        // Only this fixture's UI/optional logic owner stops. Its supervisor and PTY stay
         // alive; no runtime reset, cursor write or operator identity is used.
         let owner: Value =
             serde_json::from_slice(&fs::read(self.root.join("run/logic.owner.json")).unwrap())
@@ -158,36 +183,29 @@ impl Fixture {
         let mut app = self.app.take().unwrap();
         app.kill().unwrap();
         app.wait().unwrap();
-        assert_eq!(unsafe { libc::kill(pid as i32, libc::SIGTERM) }, 0);
-        let deadline = Instant::now() + Duration::from_secs(10);
-        while bbt_mux::adapters::native::process_start(pid).is_ok_and(|now| now == start) {
-            assert!(
-                Instant::now() < deadline,
-                "private logic owner did not stop"
-            );
-            std::thread::sleep(Duration::from_millis(20));
+        if restart_logic {
+            assert_eq!(unsafe { libc::kill(pid as i32, libc::SIGTERM) }, 0);
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while bbt_mux::adapters::native::process_start(pid).is_ok_and(|now| now == start) {
+                assert!(
+                    Instant::now() < deadline,
+                    "private logic owner did not stop"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
         }
-        let stream = format!("swarm-{swarm}");
-        let directory = self.root.join("run").join(&stream);
-        let log = EventLog::open(&directory).unwrap();
-        let original = log
-            .after(0, 128)
-            .unwrap()
-            .into_iter()
-            .find(|event| {
-                event.event.subject.ends_with("/receipt")
-                    && event.event.payload["message"] == message
-            })
-            .expect("real seed receipt on its canonical stream");
         let before = log.last_sequence().unwrap();
         // A labelled legacy workload, not fabricated model acknowledgement:
         // clone the private seed receipt's shape and append fixture-signed
         // no-effect/pending history. Production retry behavior is independently
         // exercised through the real expired-readiness guard in messaging_flow.
         // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        let mut broker =
-            Broker::open(&self.root.join("run"), SigningKey::from_bytes(&[73; 32])).unwrap();
-        for i in 0..16_384 {
+        // The full case retains the running owner, as issue73 did. Seed labelled
+        // history through the transactional EventLog while its GUI is detached;
+        // this creates no second router or live-message send path. The smaller
+        // component independently proves a real logic restart and chain verify.
+        let key = SigningKey::from_bytes(&[73; 32]);
+        for i in 0..count {
             let mut draft = original.event.clone();
             draft.id = Ulid::new();
             draft.issued_by = None; // Fixture signer claims no app/account attribution.
@@ -199,12 +217,61 @@ impl Fixture {
             }
             .into();
             draft.payload["fixture"] = "retained-legacy-no-effect-workload".into();
-            broker.publish(&stream, draft).unwrap();
+            log.append(draft, &key).unwrap();
         }
-        drop(broker);
+        if !restart_logic {
+            assert_eq!(
+                bbt_mux::adapters::native::process_start(pid).unwrap(),
+                start
+            );
+        }
         let high = log.last_sequence().unwrap();
-        assert_eq!(high - before, 16_384);
+        assert!(high - before >= count); // The retained owner may publish its own real state.
         (before, high)
+    }
+    fn lane_position(&self, swarm: &str) -> (u64, u64, u64) {
+        // Read-only inspection of the private real consumer, never an ACK or
+        // cursor write. Detach the auxiliary DB before returning its lease.
+        let directory = self.root.join("run").join(format!("swarm-{swarm}"));
+        let db = SqliteStore::open(&directory).unwrap().connection().unwrap();
+        db.execute(
+            "ATTACH DATABASE ?1 AS lane_witness",
+            [directory.join("events.sqlite").to_str().unwrap()],
+        )
+        .unwrap();
+        let position: (i64,i64,i64) = db.query_row("SELECT cursor,acked,(SELECT MAX(seq) FROM lane_witness.events) FROM lane_witness.consumers WHERE deliver='gui'",[],|row|Ok((row.get(0)?,row.get(1)?,row.get(2)?))).unwrap();
+        db.execute("DETACH DATABASE lane_witness", []).unwrap();
+        (
+            position.0.try_into().unwrap(),
+            position.1.try_into().unwrap(),
+            position.2.try_into().unwrap(),
+        )
+    }
+    fn recent_projection(&self, message: Ulid) -> Value {
+        fn recent(value: &Value, id: &str) -> Option<Value> {
+            if value["kind"] == "recent"
+                && value["rows"]
+                    .as_array()
+                    .is_some_and(|rows| rows.iter().any(|row| row["id"] == id))
+            {
+                return Some(value.clone());
+            }
+            match value {
+                Value::Object(values) => values.values().find_map(|value| recent(value, id)),
+                Value::Array(values) => values.iter().find_map(|value| recent(value, id)),
+                _ => None,
+            }
+        }
+        let account = SqliteStore::open(&self.root.join("run/account")).unwrap();
+        account
+            .list("control/op/")
+            .unwrap()
+            .into_iter()
+            .find_map(|(_, bytes)| {
+                let value: Value = serde_json::from_slice(&bytes).unwrap();
+                recent(&value, &message.to_string())
+            })
+            .expect("actual canonical Recent response recorded by the operator journal")
     }
     fn start(&mut self) {
         let log = fs::OpenOptions::new()
@@ -435,6 +502,97 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
 #[test]
 #[ignore = "private retained app/PTY fixture; make test-chat-backlog-frame runs this unattended"]
 fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
+    retained_backlog_frame(RETAINED_RECEIPTS, false);
+}
+
+#[test]
+#[ignore = "labelled 16384-receipt component witness; not the full retained-scale proof"]
+fn component_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
+    retained_backlog_frame(16_384, true);
+}
+
+#[test]
+#[ignore = "native canonical Recent to actual authorized Event reconciliation"]
+fn canonical_recent_reconciles_real_event_once() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let spawned = fixture.ctl(&["seat", "spawn", "zsh", "--name", "canonical reconciliation"]);
+    let seat = spawned["seat"].as_str().unwrap();
+    fixture.ctl(&["ui", "focus", seat]);
+    let frame = fixture.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        seat,
+        "--text",
+        "canonical reconciliation witness",
+    ]);
+    let message = frame["composed"]["messages"][0].as_str().unwrap();
+    let projection = fixture.recent_projection(message.parse().unwrap());
+    let row = projection["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["id"] == message)
+        .unwrap();
+    // Recent and publication race legitimately. Label the case actually seen;
+    // never replay the send or fabricate None to force an observation.
+    let canonical_none_observed = row["bus"].is_null();
+    println!("actual native canonical None observed: {canonical_none_observed}");
+    let seats = fixture.ctl(&["seat", "ls"]);
+    let swarm = seats
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat)
+        .unwrap()["record"]["swarm"]
+        .as_str()
+        .unwrap();
+    let log = EventLog::open(&fixture.root.join("run").join(format!("swarm-{swarm}"))).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let event = loop {
+        if let Some(event) = log.after(0, 128).unwrap().into_iter().find(|event| {
+            event.event.subject == format!("seats/{seat}/inbox/message")
+                && event.event.payload["id"] == message
+        }) {
+            if fixture.lane_position(swarm).1 >= event.seq {
+                break event;
+            }
+        }
+        assert!(
+            Instant::now() < deadline,
+            "actual publication and real GUI Event admission"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let after = fixture.ctl(&["ui", "layout"]);
+    fn count(value: &Value) -> usize {
+        match value {
+            Value::Object(values) => {
+                usize::from(value["text"] == "canonical reconciliation witness")
+                    + values.values().map(count).sum::<usize>()
+            }
+            Value::Array(values) => values.iter().map(count).sum(),
+            _ => 0,
+        }
+    }
+    assert_eq!(
+        count(&after),
+        1,
+        "one actual rendered row after Event merges the canonical identity"
+    );
+    let receipts = fixture.ctl(&["message", "receipts", message]);
+    assert!(
+        receipts
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|row| row["receipt"]["evidence"] != "application-acknowledged")
+    );
+    fs::write(fixture.root.join("canonical-reconciliation.json"),serde_json::to_vec_pretty(&serde_json::json!({"canonical_none_observed":canonical_none_observed,"canonical_recent":projection,"actual_event":event,"lane_after":fixture.lane_position(swarm),"first_frame":frame,"after_frame":after,"actual_receipts":receipts})).unwrap()).unwrap();
+}
+
+fn retained_backlog_frame(count: u64, restart_logic: bool) {
     let mut fixture = Fixture::new();
     fixture.start();
     let spawned = fixture.ctl(&["seat", "spawn", "zsh", "--name", "retained receipt fixture"]);
@@ -459,12 +617,25 @@ fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
         .as_str()
         .unwrap()
         .to_owned();
-    let (before, high) = fixture.retain_receipt_backlog(&swarm, &seed);
+    let owner_before: Value =
+        serde_json::from_slice(&fs::read(fixture.root.join("run/logic.owner.json")).unwrap())
+            .unwrap();
+    let (before, high) = fixture.retain_receipt_backlog(&swarm, &seed, count, restart_logic);
+    let lane_seeded = fixture.lane_position(&swarm);
+    assert!(
+        lane_seeded.2 - lane_seeded.0 >= count,
+        "real consumer starts behind the full seeded backlog"
+    );
     let account = SqliteStore::open(&fixture.root.join("run/account")).unwrap();
     let read_key = format!("read/swarm-{swarm}");
     let read_before = account.get(&read_key).unwrap();
     fixture.start();
+    let owner_after: Value =
+        serde_json::from_slice(&fs::read(fixture.root.join("run/logic.owner.json")).unwrap())
+            .unwrap();
     fixture.ctl(&["ui", "focus", &seat]);
+    let lane_before = fixture.lane_position(&swarm);
+    assert!(lane_before.0 < high && lane_before.1 < high);
     let started = Instant::now();
     let frame = fixture.ctl(&[
         "ui",
@@ -481,12 +652,36 @@ fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
     let fresh = frame["composed"]["messages"][0].as_str().unwrap();
     let chat = find(&frame, &|n| n["kind"] == "named:conversation/rows").unwrap();
     assert!(visible_in(rect(&frame["composed"]), rect(chat)));
+    let lane_after = fixture.lane_position(&swarm);
+    assert!(
+        lane_after.0 < high && lane_after.1 < high,
+        "fresh frame must precede old-lane catch-up"
+    );
     assert_eq!(
         account.get(&read_key).unwrap(),
         read_before,
         "live recovery must not mark history read"
     );
     let receipts = fixture.ctl(&["message", "receipts", fresh]);
+    let projection = fixture.recent_projection(fresh.parse().unwrap());
+    let bbt_proto::messaging::Response::Recent { page, rows, .. } =
+        serde_json::from_value(projection.clone()).unwrap()
+    else {
+        unreachable!()
+    };
+    let canonical = page
+        .items
+        .iter()
+        .find(|item| item.view().id.to_string() == fresh)
+        .unwrap();
+    use bbt_mux::messaging::wire::EnvelopeExt;
+    canonical.envelope().unwrap().verify_signature().unwrap();
+    assert_eq!(canonical.view().swarm_id.to_string(), swarm);
+    assert_eq!(canonical.view().context, format!("seats/{seat}/inbox"));
+    let row = rows.iter().find(|row| row.id.to_string() == fresh).unwrap();
+    assert_eq!(row.bus, canonical.bus);
+    assert!(row.receipts.delivered > 0);
+    assert_eq!(row.receipts.acked, 0);
     assert!(
         receipts
             .as_array()
@@ -521,6 +716,7 @@ fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
         "5000",
     ]);
     assert!(input_at.elapsed() < Duration::from_secs(5));
+    let input_ms = input_at.elapsed().as_millis();
     let log = EventLog::open(&fixture.root.join("run").join(format!("swarm-{swarm}"))).unwrap();
     assert!(log.last_sequence().unwrap() >= high);
     assert_eq!(
@@ -533,7 +729,7 @@ fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
     )
     .unwrap();
     fs::write(fixture.root.join("backlog-witness.json"), serde_json::to_vec_pretty(&serde_json::json!({
-        "before":before,"retained_high":high,"fresh_message":fresh,"receipt":receipts,"frame_seq":frame["frame_seq"],"compose_ms":compose_ms,"input_ms":input_at.elapsed().as_millis(),"read_mark_unchanged":true
+        "before":before,"retained_high":high,"legacy_rows":count,"full_retained_scale":count>=348_000,"fixture_requested_logic_restart":restart_logic,"observed_logic_owner_changed":owner_before["process"]!=owner_after["process"],"owner_before":owner_before["process"],"owner_after":owner_after["process"],"lane_seeded":lane_seeded,"lane_before":lane_before,"lane_after":lane_after,"fresh_message":fresh,"receipt":receipts,"canonical_recent":projection,"frame_seq":frame["frame_seq"],"compose_ms":compose_ms,"input_ms":input_ms,"read_mark_unchanged":true
     })).unwrap()).unwrap();
     let capture = fixture.ctl(&[
         "seat",

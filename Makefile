@@ -373,7 +373,16 @@ parity-documents:
 test-documents-controls:
 	@python3 -I -B scripts/e2e/documents_negative.py --target '$(TARGET_DIR)' --out '$(TARGET_DIR)/document-controls/'$$(date -u +%Y%m%dT%H%M%SZ)
 
-.PHONY: test-chat-backlog test-chat-backlog-frame
+.PHONY: test-chat-backlog test-chat-backlog-component test-chat-backlog-frame test-chat-reconciliation
+test-chat-backlog-component:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact component_receipt_backlog_keeps_fresh_composer_and_terminal_live --nocapture --test-threads=1
+	$(MAKE) test-chat-reconciliation
+
+test-chat-reconciliation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact canonical_recent_reconciles_real_event_once --nocapture --test-threads=1
+
 test-chat-backlog-frame:
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_receipt_backlog_keeps_fresh_composer_and_terminal_live --nocapture --test-threads=1
@@ -381,14 +390,15 @@ test-chat-backlog-frame:
 test-chat-backlog:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests -- --nocapture
 
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_membership_over_64_keeps_events_chat_and_tasks_live --nocapture --test-threads=1
-	$(MAKE) test-chat-backlog test-chat-backlog-frame
+	$(MAKE) test-chat-backlog test-chat-backlog-component test-chat-backlog-frame
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \

@@ -691,14 +691,16 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
         };
         let message_position = message.metadata.reference.position.clone();
         gui.send(GuiAction::EventAck {stream:message_position.stream.clone(), seq:message_position.sequence}).await;
+        let receipt_started = std::time::Instant::now();
         assert!(matches!(gui.messaging(Request::Acknowledge {message:message_id,agent:None}).await, Response::Applied));
         let receipt = match gui.until(|reply| matches!(reply,
             GuiReply::Event {subject,envelope,..} if subject.ends_with("/receipt")
-                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id)
+                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id && row.receipts.acked > 0)
         )).await {
             GuiReply::Event {envelope,..} => *envelope,
             _ => unreachable!(),
         };
+        println!("later explicit application-ACK receipt observed through the existing Event lane in {}ms; distinct from the retained-backlog composer witness",receipt_started.elapsed().as_millis());
         assert_ne!(receipt.metadata.reference.position, message_position);
         gui.send(GuiAction::EventAck {stream:receipt.metadata.reference.position.stream.clone(), seq:receipt.metadata.reference.position.sequence}).await;
         for expected in [message, receipt] {
@@ -727,6 +729,7 @@ fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state(
                 assert_eq!(row.text, "latest retained message body");
                 assert_eq!(row.issuer_kind, Some(IssuerKind::LocalDev));
                 assert_eq!(row.signature, bbt_proto::messaging::SignatureState::Signed);
+                assert!(row.receipts.acked > 0, "later receipt evidence is rehydrated; the initial snapshot is not permanently fresh");
                 let bus = row.bus.as_ref().unwrap();
                 assert_eq!(bus.stream, message_position.stream);
                 assert_eq!(bus.seq, message_position.sequence, "receipt is not the message position");

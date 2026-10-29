@@ -12,7 +12,7 @@ use super::{
 use bbt_mux::Ulid;
 use bbt_proto::SwarmId;
 use bbt_ui::modules::stream_dock::{Channel, Entry, UnreadCount};
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 const EVENT_PAGE: u64 = 128;
 
@@ -44,6 +44,12 @@ struct Row {
 struct List {
     id: Ulid,
     after: u64,
+    committed: Vec<Committed>,
+}
+struct Committed {
+    id: Ulid,
+    sequence: u64,
+    context: String,
 }
 #[derive(Default)]
 pub struct History {
@@ -55,6 +61,8 @@ pub struct History {
     list_wanted: Option<u64>,
     list_next: Option<u64>,
     list_failed_after: Option<u64>,
+    sending: BTreeSet<Ulid>,
+    refresh_wanted: Option<Vec<Committed>>,
     cursor: Option<(u64, u64, u64)>, // confirmed read, high, unread
     cursor_wanted: bool,
     page_wanted: Option<u64>,
@@ -219,9 +227,72 @@ impl History {
             self.list_next = None;
             self.list_failed_after = None;
             self.list_wanted = Some(0);
+            self.sending.clear();
+            self.refresh_wanted = None;
         }
     }
+    /// A composer admission is only a correlation watch, never display data.
+    /// Only its actual Stored reply can request a canonical read-through.
+    pub fn watch_sends(&mut self, ids: &[Ulid]) {
+        if ids.is_empty() {
+            return;
+        }
+        if self.sending.iter().any(|id| !ids.contains(id)) {
+            // A new composer admission supersedes only disposable read watches.
+            // Original unknown effects/IDs remain in Results and the journal.
+            self.issue =
+                Some("prior_send_refresh_tracking_retired · original outcomes retained".into());
+        }
+        self.sending.clear();
+        for id in ids {
+            if self.sending.len() == super::MAX_DESTINATIONS && !self.sending.contains(id) {
+                self.issue = Some("committed_refresh_watch_limit".into());
+                break;
+            }
+            self.sending.insert(*id);
+        }
+    }
+    // One existing read plus one bounded dirty demand; no timer or second lane.
+    // Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn committed_replies(&mut self, results: &Results) -> bool {
+        let mut changed = false;
+        for result in results.rows() {
+            if !self.sending.contains(&result.op) {
+                continue;
+            }
+            if matches!(result.reply, Reply::Unknown(_)) {
+                continue;
+            }
+            self.sending.remove(&result.op);
+            let Reply::Messaging(wire::Response::Stored { message }) = &result.reply else {
+                continue; // Unknown/refused/held results never cause a read or replay.
+            };
+            let view = message.view();
+            if view.id != result.op
+                || message.sequence == 0
+                || self.scope.is_none_or(|scope| view.swarm_id.0 != scope.0.0)
+            {
+                self.issue = Some("committed_refresh_source_mismatch".into());
+                changed = true;
+                continue;
+            }
+            let wanted = self.refresh_wanted.get_or_insert_with(Vec::new);
+            if wanted.len() == super::MAX_DESTINATIONS {
+                self.issue = Some("committed_refresh_window_limit".into());
+            } else {
+                wanted.push(Committed {
+                    id: view.id,
+                    sequence: message.sequence,
+                    context: view.context.to_owned(),
+                });
+            }
+            changed = true;
+        }
+        changed
+    }
     pub fn reconnect(&mut self) {
+        self.refresh_wanted = None;
         self.page_pending = None;
         self.page_wanted = Some(
             self.page_next
@@ -267,21 +338,44 @@ impl History {
         if row.bus.as_ref().is_none_or(|bus| bus.stream != stream) {
             return;
         }
-        if self.rows.iter().any(|old| {
-            old.row.id == row.id
-                && (old.projected_at > projected_at
-                        // A display clock cannot revoke a confirmed signature.
-                        || (old.row.signature == wire::SignatureState::Signed
-                            && row.signature == wire::SignatureState::Pending))
-        }) {
-            return;
+        self.canonical_row(row, context, projected_at);
+    }
+    /// Only a validated Recent response can supply a scoped canonical row
+    /// before its optional bus position is recorded. Never synthesize one.
+    fn canonical_row(&mut self, row: &wire::MessageRow, context: Option<&str>, projected_at: u64) {
+        let mut merged = row.clone();
+        let mut observed_at = projected_at;
+        if let Some(old) = self.rows.iter().find(|old| old.row.id == row.id) {
+            if old.projected_at > projected_at {
+                merged = old.row.clone();
+            }
+            // Observation time is not a revision. Merge actual publication and
+            // confirmed evidence independently, including None→Event followed
+            // by a late unpositioned snapshot; never manufacture either.
+            merged.bus = merged
+                .bus
+                .or_else(|| old.row.bus.clone())
+                .or_else(|| row.bus.clone());
+            merged.receipts.acked = merged
+                .receipts
+                .acked
+                .max(old.row.receipts.acked)
+                .max(row.receipts.acked);
+            if merged.signature == wire::SignatureState::Pending
+                && (old.row.signature == wire::SignatureState::Signed
+                    || row.signature == wire::SignatureState::Signed)
+            {
+                merged.signature = wire::SignatureState::Signed;
+            }
+            observed_at = observed_at.max(old.projected_at);
         }
+        let row = &merged;
         if let Some(old) = self
             .rows
             .iter_mut()
             .find(|old| old.row == *row && context.is_none_or(|context| context == old.context))
         {
-            old.projected_at = old.projected_at.max(projected_at);
+            old.projected_at = old.projected_at.max(observed_at);
             return;
         }
         let previous = self
@@ -303,7 +397,7 @@ impl History {
             row: row.clone(),
             context,
             size,
-            projected_at,
+            projected_at: observed_at,
         });
         self.trim();
     }
@@ -402,11 +496,29 @@ impl History {
         if self.list.is_some() {
             return vec![];
         }
-        let Some(after) = self.list_wanted.take() else {
-            return vec![];
+        let (after, committed) = if let Some(committed) = self.refresh_wanted.take() {
+            let Some(after) = committed
+                .iter()
+                .map(|message| message.sequence)
+                .max()
+                .and_then(|sequence| sequence.checked_add(1))
+            else {
+                self.issue = Some("committed_refresh_sequence_limit".into());
+                return vec![];
+            };
+            (after, committed)
+        } else {
+            let Some(after) = self.list_wanted.take() else {
+                return vec![];
+            };
+            (after, vec![])
         };
         let id = Ulid::new();
-        self.list = Some(List { id, after });
+        self.list = Some(List {
+            id,
+            after,
+            committed,
+        });
         vec![UiMsg::Messaging {
             id,
             swarm_id: scope,
@@ -473,14 +585,16 @@ impl History {
         })
     }
     pub fn replies(&mut self, results: &Results) -> bool {
+        let changed = self.committed_replies(results);
         let Some(request) = &self.list else {
-            return false;
+            return changed;
         };
         let Some(reply) = results.rows().find(|r| r.op == request.id) else {
-            return false;
+            return changed;
         };
+        let request = self.list.take().unwrap();
         let after = request.after;
-        self.list = None;
+        let refresh = !request.committed.is_empty();
         if let Reply::Messaging(wire::Response::Recent {
             page,
             rows,
@@ -505,20 +619,72 @@ impl History {
                 || rows.iter().zip(&page.items).any(|(row, item)| {
                     row.id != item.view().id
                         || row.bus != item.bus
+                        || row
+                            .bus
+                            .as_ref()
+                            .is_some_and(|bus| self.stream().as_ref() != Some(&bus.stream))
                         || self
                             .scope
                             .is_none_or(|scope| item.view().swarm_id.0 != scope.0.0)
                 })
             {
-                self.list_failed_after = Some(after);
+                if !refresh {
+                    self.list_failed_after = Some(after);
+                }
                 self.issue = Some("recent_message_projection_mismatch".into());
+                return true;
+            }
+            if refresh
+                && request.committed.iter().any(|known| {
+                    !page.items.iter().any(|item| {
+                        item.view().id == known.id
+                            && item.sequence == known.sequence
+                            && item.view().context == known.context
+                    })
+                })
+            {
+                self.issue = Some("committed_message_outside_recent_window".into());
                 return true;
             }
             // The ledger page chooses messages, so receipt traffic cannot hide
             // the latest conversation. Event coverage/read cursors stay separate.
             for (row, item) in rows.iter().zip(&page.items) {
-                self.row(row, Some(item.view().context), *projected_at);
+                self.canonical_row(row, Some(item.view().context), *projected_at);
             }
+            if refresh {
+                // This snapshot chooses no older-history cursor and proves no
+                // bus coverage. Keep attachment metadata bounded by the same
+                // view window while retaining the user's pagination position.
+                for item in &page.items {
+                    self.listed.retain(|(id, ..)| *id != item.view().id);
+                    self.listed.push((
+                        item.view().id,
+                        item.bus.clone(),
+                        item.view().context.to_owned(),
+                        MessageAttachments::bounded(item.view().attachments),
+                    ));
+                }
+                while self.listed.len() > 128
+                    || serde_json::to_vec(&self.listed)
+                        .map_or(true, |bytes| bytes.len() > 256 * 1024)
+                {
+                    if self.listed.is_empty() {
+                        break;
+                    }
+                    self.listed.remove(0);
+                    self.omitted += 1;
+                }
+                self.issue = None;
+                return true;
+            }
+        } else if refresh {
+            self.issue = Some(match &reply.reply {
+                Reply::Refused(reason) | Reply::Unknown(reason) => {
+                    format!("committed_refresh_unavailable · {reason}")
+                }
+                _ => "unexpected_committed_refresh_reply".into(),
+            });
+            return true;
         }
         match &reply.reply {
             Reply::Messaging(
@@ -653,7 +819,9 @@ impl History {
             .filter(|row| self.selected == "all" || row.context == self.selected)
             .map(|r| r.row.clone())
             .collect();
-        rows.sort_by_key(|row| row.bus.as_ref().map(|bus| bus.seq));
+        // Unpositioned canonical snapshots remain at the display tail until
+        // the actual bus position arrives; this key is never a bus cursor.
+        rows.sort_by_key(|row| row.bus.as_ref().map_or(u64::MAX, |bus| bus.seq));
         let stream = self.stream().unwrap();
         let contexts = self
             .rows
@@ -702,6 +870,392 @@ impl History {
 #[cfg(test)]
 mod quiet_history_tests {
     use super::*;
+
+    fn committed_message(scope: SwarmId, sequence: u64) -> wire::StoredMessage {
+        let mut request = wire::SendRequest::text("operator/inbox", "committed fixture");
+        request.id = Ulid::from(sequence as u128 + 500);
+        wire::StoredMessage {
+            sequence,
+            content: wire::StoredContent::Pending {
+                intent: Box::new(wire::PendingIntent {
+                    version: 1,
+                    id: request.id,
+                    sender: wire::LogicalSender::Seat {
+                        device: None,
+                        seat: Ulid(91),
+                        process_generation: 1,
+                    },
+                    swarm_id: Ulid(scope.0.0),
+                    role: bbt_proto::registry::Role {
+                        name: "executor".into(),
+                        class: bbt_proto::registry::Class::Worker,
+                    },
+                    role_epoch: Some(1),
+                    body: wire::Body::Text {
+                        text: request.text.clone(),
+                    },
+                    request,
+                    admission_order: sequence,
+                    admitted_ms: 1000,
+                    signature: wire::PendingSignature::Pending,
+                    hold_reason: "fixture custody held".into(),
+                }),
+            },
+            held_out: None,
+            bus: Some(wire::BusPosition {
+                stream: format!("swarm-{scope}"),
+                seq: sequence * 10,
+            }),
+        }
+    }
+    fn snapshot(messages: &[wire::StoredMessage]) -> Reply {
+        let rows = messages
+            .iter()
+            .map(|message| {
+                let scope = SwarmId::from_u128(message.view().swarm_id.0);
+                let mut row = latest_row(scope, message.sequence * 10);
+                row.id = message.view().id;
+                row.bus = message.bus.clone();
+                row.signature = wire::SignatureState::Pending;
+                row.issuer_kind = None;
+                row.receipts.delivered = 1;
+                row.text = message.view().body.text().unwrap().into();
+                row
+            })
+            .collect();
+        Reply::Messaging(wire::Response::Recent {
+            page: wire::Page {
+                items: messages.to_vec(),
+                next: Some(1),
+            },
+            rows,
+            projected_at: 2000,
+        })
+    }
+    fn read_id(history: &mut History, before: u64) -> Ulid {
+        let commands = history.commands();
+        let [
+            UiMsg::Messaging {
+                id,
+                request:
+                    wire::Request::Recent {
+                        before: Some(actual),
+                        limit: 128,
+                        ..
+                    },
+                ..
+            },
+        ] = commands.as_slice()
+        else {
+            panic!("one bounded canonical read")
+        };
+        assert_eq!(*actual, before);
+        *id
+    }
+
+    #[test]
+    fn committed_refresh_coalesces_without_changing_older_or_event_cursors() {
+        let scope = SwarmId::from_u128(98);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            list_next: Some(5),
+            cursor: Some((3, 348_000, 8)),
+            read_sent: 3,
+            page_pending: Some((2, 1)),
+            ..Default::default()
+        };
+        let mut results = Results::default();
+        let first = committed_message(scope, 7);
+        history.watch_sends(&[first.view().id]);
+        assert!(
+            history.commands().is_empty(),
+            "admission is not a committed row"
+        );
+        results.push(
+            first.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(first.clone()),
+            }),
+        );
+        assert!(history.replies(&results));
+        assert!(
+            history.rows.is_empty(),
+            "draft/result are never optimistic display data"
+        );
+        let read = read_id(&mut history, 8);
+        let next = [committed_message(scope, 9), committed_message(scope, 10)];
+        history.watch_sends(
+            &next
+                .iter()
+                .map(|message| message.view().id)
+                .collect::<Vec<_>>(),
+        );
+        for message in &next {
+            results.push(
+                message.view().id,
+                Reply::Messaging(wire::Response::Stored {
+                    message: Box::new(message.clone()),
+                }),
+            );
+        }
+        assert!(history.replies(&results));
+        assert!(history.commands().is_empty(), "only one read is in flight");
+        results.push(read, snapshot(&[first]));
+        assert!(history.replies(&results));
+        let dirty = read_id(&mut history, 11);
+        results.push(dirty, snapshot(&next));
+        assert!(history.replies(&results));
+        assert!(history.commands().is_empty());
+        assert!(
+            !history.replies(&results),
+            "the same completed sends never start a read loop"
+        );
+        assert_eq!(history.rows.len(), 3);
+        assert!(
+            history
+                .rows
+                .iter()
+                .all(|row| row.row.receipts.delivered == 1 && row.row.receipts.acked == 0)
+        );
+        assert_eq!(history.list_next, Some(5));
+        assert_eq!(history.cursor, Some((3, 348_000, 8)));
+        assert_eq!(history.page_pending, Some((2, 1)));
+        assert_eq!(history.read_sent, 3);
+        assert!(history.covered_high.is_none());
+    }
+
+    #[test]
+    fn committed_refresh_keeps_unknowns_quiet_and_refuses_stale_or_unavailable_reads() {
+        let scope = SwarmId::from_u128(99);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            list_next: Some(5),
+            ..Default::default()
+        };
+        let message = committed_message(scope, 9);
+        let mut results = Results::default();
+        history.watch_sends(&[message.view().id]);
+        results.push(
+            message.view().id,
+            Reply::Unknown("original effect unknown".into()),
+        );
+        assert!(!history.replies(&results));
+        assert!(history.commands().is_empty());
+        results.push(
+            message.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(message.clone()),
+            }),
+        );
+        assert!(history.replies(&results));
+        let read = read_id(&mut history, 10);
+        results.push(read, Reply::Refused("scope revoked".into()));
+        assert!(history.replies(&results));
+        assert!(history.issue.as_deref().unwrap().contains("scope revoked"));
+        assert!(
+            history.commands().is_empty(),
+            "a failed read is not automatically retried"
+        );
+        assert_eq!(history.list_next, Some(5));
+        history.watch_sends(&[message.view().id]);
+        assert!(history.replies(&results));
+        let stale = read_id(&mut history, 10);
+        history.channel("channels/other");
+        results.push(stale, snapshot(&[message]));
+        assert!(!history.replies(&results));
+        assert!(
+            history.rows.is_empty(),
+            "a replaced selection ignores its old reply"
+        );
+    }
+
+    #[test]
+    fn committed_refresh_validates_source_and_requires_the_exact_known_message() {
+        let scope = SwarmId::from_u128(101);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            list_next: Some(5),
+            ..Default::default()
+        };
+        let message = committed_message(scope, 9);
+        let mut results = Results::default();
+        history.watch_sends(&[message.view().id]);
+        let foreign = committed_message(SwarmId::from_u128(102), 9);
+        results.push(
+            message.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(foreign),
+            }),
+        );
+        assert!(history.replies(&results));
+        assert_eq!(
+            history.issue.as_deref(),
+            Some("committed_refresh_source_mismatch")
+        );
+        assert!(history.commands().is_empty());
+        history.watch_sends(&[message.view().id]);
+        results.push(
+            message.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(message.clone()),
+            }),
+        );
+        assert!(history.replies(&results));
+        let read = read_id(&mut history, 10);
+        results.push(read, snapshot(&[committed_message(scope, 8)]));
+        assert!(history.replies(&results));
+        assert_eq!(
+            history.issue.as_deref(),
+            Some("committed_message_outside_recent_window")
+        );
+        assert!(history.rows.is_empty());
+        assert_eq!(history.list_next, Some(5));
+        assert!(history.commands().is_empty());
+    }
+
+    #[test]
+    fn confirmed_ack_and_signature_survive_late_history_and_refresh_reconnect() {
+        let scope = SwarmId::from_u128(103);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            ..Default::default()
+        };
+        let mut acknowledged = latest_row(scope, 90);
+        acknowledged.receipts.acked = 1;
+        acknowledged.receipts.delivered = 1;
+        history.row(&acknowledged, Some("operator/inbox"), 100);
+        let mut older = acknowledged.clone();
+        older.receipts.acked = 0;
+        history.row(&older, Some("operator/inbox"), 200);
+        assert_eq!(
+            history.rows[0].row.receipts.acked, 1,
+            "timestamp is not authority to revoke ACK"
+        );
+        older.signature = wire::SignatureState::Pending;
+        history.row(&older, None, 300);
+        assert_eq!(history.rows[0].row.signature, wire::SignatureState::Signed);
+        history.refresh_wanted = Some(vec![Committed {
+            id: Ulid(91),
+            sequence: 9,
+            context: "operator/inbox".into(),
+        }]);
+        history.reconnect();
+        assert!(history.refresh_wanted.is_none());
+        assert!(matches!(
+            history.commands().as_slice(),
+            [UiMsg::Messaging {
+                request: wire::Request::Recent { before: None, .. },
+                ..
+            }]
+        ));
+    }
+
+    #[test]
+    fn committed_snapshot_before_publication_keeps_none_then_reconciles_the_real_bus_position() {
+        let scope = SwarmId::from_u128(104);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            ..Default::default()
+        };
+        let mut message = committed_message(scope, 9);
+        message.bus = None;
+        let mut results = Results::default();
+        history.watch_sends(&[message.view().id]);
+        results.push(
+            message.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(message.clone()),
+            }),
+        );
+        assert!(history.replies(&results));
+        let read = read_id(&mut history, 10);
+        results.push(read, snapshot(&[message]));
+        assert!(history.replies(&results));
+        assert!(history.issue.is_none());
+        assert_eq!(history.rows.len(), 1);
+        assert!(
+            history.rows[0].row.bus.is_none(),
+            "no synthesized publication position"
+        );
+        let mut published = history.rows[0].row.clone();
+        history.rows[0].row.signature = wire::SignatureState::Signed;
+        history.rows[0].row.receipts.acked = 2;
+        published.bus = Some(wire::BusPosition {
+            stream: format!("swarm-{scope}"),
+            seq: 99,
+        });
+        history.row(&published, Some("operator/inbox"), 3000);
+        assert_eq!(history.rows.len(), 1);
+        assert_eq!(history.rows[0].row.bus, published.bus);
+        assert_eq!(history.rows[0].row.signature, wire::SignatureState::Signed);
+        assert_eq!(history.rows[0].row.receipts.acked, 2);
+        let mut unpositioned = published.clone();
+        unpositioned.bus = None;
+        unpositioned.receipts.acked = 3;
+        history.canonical_row(&unpositioned, Some("operator/inbox"), 4000);
+        assert_eq!(
+            history.rows[0].row.bus, published.bus,
+            "a late snapshot cannot erase an evidenced publication"
+        );
+        assert!(history.cursor.is_none());
+        assert_eq!(
+            history.rows[0].row.receipts.acked, 3,
+            "later confirmed receipt evidence still refreshes independently of publication position"
+        );
+    }
+
+    #[test]
+    fn thirty_two_unknown_watches_cannot_starve_a_new_known_commit() {
+        let scope = SwarmId::from_u128(105);
+        let mut history = History {
+            scope: Some(scope),
+            selected: "all".into(),
+            ..Default::default()
+        };
+        let ids: Vec<_> = (1..=32).map(Ulid).collect();
+        history.watch_sends(&ids);
+        let mut results = Results::default();
+        for id in &ids {
+            results.push(*id, Reply::Unknown("original outcome unresolved".into()));
+        }
+        assert!(!history.replies(&results));
+        assert_eq!(history.sending.len(), 32);
+        assert!(history.commands().is_empty());
+        let fresh = committed_message(scope, 45);
+        history.watch_sends(&[fresh.view().id]);
+        assert_eq!(history.sending.len(), 1);
+        assert!(
+            history
+                .issue
+                .as_deref()
+                .unwrap()
+                .contains("tracking_retired")
+        );
+        results.push(
+            fresh.view().id,
+            Reply::Messaging(wire::Response::Stored {
+                message: Box::new(fresh),
+            }),
+        );
+        assert!(history.replies(&results));
+        let _ = read_id(&mut history, 46);
+        assert_eq!(
+            results
+                .rows()
+                .filter(|reply| matches!(reply.reply, Reply::Unknown(_)))
+                .count(),
+            32
+        );
+        assert!(
+            history.commands().is_empty(),
+            "no effect replay or second in-flight read"
+        );
+    }
 
     #[test]
     fn recent_message_read_is_scoped_and_does_not_claim_event_coverage() {
