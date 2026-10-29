@@ -361,31 +361,41 @@ def fitted_table_and_dismissal(app, style):
     require(selected["document"] == layout["document"], "body selection-start click dismissed the document")
     find = click(keyed["action4"]["rect"])
     require(find["document"] == layout["document"], "footer command dismissed the document")
-    deadline = time.monotonic()+25
-
-    def find_notice(after, visible):
-        while True:
-            current = app.ctl("ui", "layout")
-            require(current["document"] == layout["document"], "Find lost the open document while rebuilding")
-            if current["frame_seq"] > after and current.get("document_observation") is not None:
-                painted = app.observation(current, record)
-                notices = [r for r in painted["texts"] if r["key"] == "notice"]
-                if "".join(r["text"] for r in notices) == "find is not available yet":
-                    def visible_run(run):
-                        x,y,w,h = run["rect"]
-                        clip = run.get("clip") or [0,0,*current["size"]]
-                        return not run["text"].strip() or (min(x+w,clip[0]+clip[2]) > max(x,clip[0])
-                                                         and min(y+h,clip[1]+clip[3]) > max(y,clip[1]))
-                    if not visible or all(visible_run(run) for run in notices):
-                        return current
-            require(time.monotonic() < deadline, "Find did not produce its complete native notice in the visible document")
-            time.sleep(0.05)
-
-    # The command clears the retained layout. Wait for its rebuilt frame before
-    # Home, then prove the top notice is actually visible rather than clipped at End.
-    rebuilt = find_notice(find["frame_seq"], False)
+    # Host intentionally withholds provider-bound observations while a notice
+    # is present (documents.rs observation_source). Capture the actual next
+    # produced frame, then reveal its top notice via the existing Home control.
+    after_find_path = app.work/"find-after-command.png"
+    after_find = app.ctl("seat", "capture", "window", after_find_path)
+    require(after_find["offscreen"] is True and after_find["stale"] is False
+            and after_find["frame_seq"] > find["frame_seq"], "Find diagnostic capture predates the command")
     home = app.ctl("ui", "key", "home")
-    visible_find = find_notice(max(rebuilt["frame_seq"], home["frame_seq"]), True)
+    deadline = time.monotonic()+25
+    while True:
+        visible_find = app.ctl("ui", "layout")
+        require(visible_find["document"] == layout["document"], "Find lost the open document while revealing its notice")
+        notice = next((n for _,n in nodes(visible_find) if n["kind"] == "named:notice"), None)
+        if visible_find["frame_seq"] >= max(home["frame_seq"], after_find["frame_seq"]) and notice is not None:
+            notice_text = "".join(n.get("text", "") for _,n in nodes({"tree":[notice]}) if n["kind"] == "text")
+            if notice_text == "find is not available yet":
+                break
+        require(time.monotonic() < deadline, "Find did not produce its visible native notice after Home")
+        time.sleep(0.05)
+    require(visible_find.get("document_observation") is None,
+            "a transient notice must not claim the complete provider-bound observation")
+    document_root = next(n for _,n in nodes(visible_find) if n["kind"] == "named:document")
+    notice_viewport = next(n["rect"] for _,n in nodes({"tree":[document_root]}) if n["kind"] == "scroll_view")
+    require(all(notice["rect"][i] >= notice_viewport[i]-0.01
+                and notice["rect"][i]+notice["rect"][i+2] <= notice_viewport[i]+notice_viewport[i+2]+0.01
+                for i in range(2)), "the complete Find notice is not inside the actual document viewport")
+    notice_path = app.work/"find-visible-notice.png"
+    notice_capture = app.ctl("seat", "capture", "window", notice_path)
+    require(notice_capture["offscreen"] is True and notice_capture["stale"] is False
+            and notice_capture["frame_seq"] >= visible_find["frame_seq"], "visible Find capture predates its produced tree")
+    (app.work/"find-visible-notice-layout.json").write_text(json.dumps(visible_find,indent=2)+"\n")
+    # Use the same actually observed Muted paint from the earlier complete
+    # provider frame; no second font engine or assumed theme/color palette.
+    muted = next(r["color"] for r in observed["texts"] if r["key"] == "provenance/created" and r["text"] == "created ")
+    notice_ink = ink_bounds(png(notice_path), notice["rect"], muted)
     find_keyed = {key:n for key,n in nodes(visible_find) if n["kind"].startswith("named:")}
     closed = click(find_keyed["action6"]["rect"])
     anchor = ["swarm", "tab", "focused", "page"]
@@ -403,7 +413,10 @@ def fitted_table_and_dismissal(app, style):
             "backdrop click did not consume dismissal and restore focus; underlying Settings received the click")
     require(not any(n["kind"] == "named:document" for _,n in nodes(dismissed)), "dismissed modal remains in the produced tree")
     app.checks.append({"feature":"modal-dismissal", "inside_frame":inside["frame_seq"], "body_frame":selected["frame_seq"],
-                       "footer_notice_frame":visible_find["frame_seq"], "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
+                       "footer_notice_frame":visible_find["frame_seq"], "footer_notice_ink":notice_ink,
+                       "notice_provider_observation":None, "notice_viewport":notice_viewport,
+                       "after_find_capture_frame":after_find["frame_seq"],
+                       "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
                        "focus_anchor":{k:dismissed[k] for k in anchor}})
 
     # Resize after dismissal guards so every preceding click used its own frame.
