@@ -366,6 +366,13 @@ impl History {
                     || row.signature == wire::SignatureState::Signed)
             {
                 merged.signature = wire::SignatureState::Signed;
+                let confirmed = if old.row.signature == wire::SignatureState::Signed {
+                    &old.row
+                } else {
+                    row
+                };
+                merged.issuer_kind = confirmed.issuer_kind;
+                merged.signature_reason = confirmed.signature_reason.clone();
             }
             observed_at = observed_at.max(old.projected_at);
         }
@@ -1136,8 +1143,12 @@ mod quiet_history_tests {
             "timestamp is not authority to revoke ACK"
         );
         older.signature = wire::SignatureState::Pending;
+        older.issuer_kind = None;
+        older.signature_reason = Some("checking older projection".into());
         history.row(&older, None, 300);
         assert_eq!(history.rows[0].row.signature, wire::SignatureState::Signed);
+        assert_eq!(history.rows[0].row.issuer_kind, acknowledged.issuer_kind);
+        assert_eq!(history.rows[0].row.signature_reason, acknowledged.signature_reason);
         history.refresh_wanted = Some(vec![Committed {
             id: Ulid(91),
             sequence: 9,
