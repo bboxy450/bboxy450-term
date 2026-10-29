@@ -39,11 +39,8 @@ impl Default for Context {
 }
 
 enum Event {
-    Context {
-        attachment: bbt_mux::Ulid,
-        context: Context,
-    },
-    Detached(bbt_mux::Ulid),
+    Context { attachment: u64, context: Context },
+    Detached(u64),
     State(AttentionUpdate),
     SourceLost,
     Response(Response),
@@ -265,7 +262,8 @@ impl Drop for Service {
 #[derive(Default)]
 struct State {
     context: Context,
-    attachment: Option<bbt_mux::Ulid>,
+    attachment: Option<u64>,
+    latest_attachment: u64,
     seats: BTreeMap<SeatId, GuiSeat>,
     episodes: Episodes,
     epoch: Option<bbt_mux::Ulid>,
@@ -274,14 +272,18 @@ struct State {
     source_ready: bool,
 }
 impl State {
-    fn attach(&mut self, attachment: bbt_mux::Ulid, context: Context) {
+    fn attach(&mut self, attachment: u64, context: Context) {
+        if attachment < self.latest_attachment {
+            return;
+        }
+        self.latest_attachment = attachment;
         self.attachment = Some(attachment);
         self.context = context;
         for (seat, key) in &self.context.handled {
             self.episodes.handle(*seat, *key);
         }
     }
-    fn detach(&mut self, attachment: bbt_mux::Ulid) {
+    fn detach(&mut self, attachment: u64) {
         if self.attachment == Some(attachment) {
             self.attachment = None;
             self.context.frontmost = false;
@@ -385,12 +387,17 @@ async fn receive_context(
     events: mpsc::Sender<Event>,
 ) {
     let permits = Arc::new(tokio::sync::Semaphore::new(16));
+    let mut sequence = 0_u64;
     while let Ok((stream, _)) = listener.accept().await {
         let Ok(permit) = permits.clone().try_acquire_owned() else {
             continue;
         };
         let config = config.clone();
         let events = events.clone();
+        let Some(attachment) = sequence.checked_add(1) else {
+            continue;
+        };
+        sequence = attachment;
         tokio::spawn(async move {
             let _permit = permit;
             let checked = async {
@@ -407,7 +414,6 @@ async fn receive_context(
                 {
                     return Err(invalid("desktop context peer refused"));
                 }
-                let attachment = bbt_mux::Ulid::new();
                 let mut reader = BufReader::new(stream);
                 let result = async {
                     loop {
@@ -638,8 +644,8 @@ mod tests {
         state.apply(snapshot(4, 1, 1));
         let id = SeatId::from_u128(1);
         let key = state.episodes.key(id).unwrap();
-        let first = bbt_mux::Ulid(10);
-        let second = bbt_mux::Ulid(11);
+        let first = 10;
+        let second = 11;
         let mut context = enabled_context();
         context.frontmost = true;
         context.focused = Some(id);
@@ -660,6 +666,29 @@ mod tests {
         );
         state.apply(snapshot(4, 3, 2));
         assert_eq!(state.desired().len(), 1, "new question is not handled");
+    }
+
+    #[test]
+    fn late_old_context_and_eof_cannot_replace_a_new_frontend() {
+        let mut state = State::default();
+        let mut current = enabled_context();
+        current.frontmost = true;
+        current.focused = Some(SeatId::from_u128(1));
+        state.attach(2, current.clone());
+        state.attach(1, Context::default());
+        state.detach(1);
+        assert_eq!(state.attachment, Some(2));
+        assert_eq!(state.context, current);
+        state.detach(2);
+        state.attach(1, Context::default());
+        assert!(
+            state.attachment.is_none(),
+            "old stream cannot reattach after EOF"
+        );
+        assert!(
+            state.context.policy.enabled,
+            "last accepted policy survives"
+        );
     }
 
     #[test]
