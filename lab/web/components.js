@@ -115,7 +115,7 @@
   const SHELL_HARNESSES = new Set(['zsh', 'bash', 'fish', 'sh', 'dash', 'ksh', 'tcsh', 'csh', 'powershell', 'pwsh', 'cmd']);
   const seatRoleLabel = seat => cleanRole(seat.role).toUpperCase() || (SHELL_HARNESSES.has(seat.harness) ? 'SHELL' : 'UNASSIGNED');
   const identityRole = label => el('span', { class: 'rmark identity-role', title: label }, label);
-  const identityColor = role => Object.hasOwn(T.color.role, cleanRole(role).toLowerCase()) ? 'var(--role-' + cleanRole(role).toLowerCase() + ')' : 'var(--fg-dim)';
+  const identityColor = (role, fallback = 'var(--role-unsigned)') => Object.hasOwn(T.color.role, role) ? 'var(--role-' + role + ')' : fallback;
   function kbd(s) { return el('span', { class: 'kbd' }, s); }
 
   // ---------- model ----------
@@ -1559,7 +1559,7 @@
       el('div', { class: 'aline' }, el('span', { class: 'amark' }, ROLE_MARK.oracle + ' '), el('b', {}, a.actor || 'Oracle'), ' ' + a.verb + ' ', el('b', {}, a.target || '')),
       el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, time))); }
     // a mark only when something real says it: the operator and observers by author kind, a seat by its registry role; never invented
-    const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:' + identityColor(role) });
+    const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:' + identityColor(role, role ? 'var(--role-unsigned)' : 'var(--fg-dim)') });
     const head = el('div', { class: 'head' }, el('span', { class: 'role identity-role', title: roleLabel }, roleLabel), el('span', { class: 'who', title: fullName, 'aria-label': fullName }, firstName(fullName)));
     // Role-first author identity stays separate from exceptional numeric priority.
     if ((m.priority || 0) >= 7) head.append(el('span', { class: 'prio p1', title: 'priority ' + m.priority + ' of 9' }, 'Priority ' + m.priority));

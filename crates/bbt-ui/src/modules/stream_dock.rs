@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Chronological stream compositions. Delivery, routing and actions remain host-owned.
 use super::{
-    seat_row::{named, role_color},
+    seat_row::{first_name, named, role_color, role_label},
     strip::plain,
 };
 use crate::{self as ui, components as c};
@@ -426,6 +426,24 @@ pub fn evidence(key: &str, state: &str, m: &dyn c::Measure) -> c::Element {
     )
 }
 impl Message {
+    // Role-first identity is shared with the seat list and pane strip. Keep the
+    // canonical sender in the DTO; only the visible name is shortened.
+    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn sender_role(&self) -> &str {
+        if self
+            .author
+            .as_ref()
+            .is_some_and(|author| matches!(author.kind.as_str(), "operator" | "operator-local"))
+        {
+            "operator"
+        } else if !self.role.trim().is_empty() {
+            &self.role
+        } else if self.author.is_some() {
+            "unknown"
+        } else {
+            "unsigned"
+        }
+    }
     pub fn element(
         &self,
         ctx: ui::Context,
@@ -642,13 +660,19 @@ impl Message {
                 text_style(small, 400, false, rgba(TOKENS.color.state.errored)),
             );
             text.runs.push(c::TextRun {
-                value: self.from.clone(),
+                value: format!(
+                    "{} · {}",
+                    role_label(Some(self.sender_role()), ""),
+                    first_name(&self.from)
+                ),
                 style: text_style(small, 500, false, ui::Color::Foreground),
             });
             text.runs.push(c::TextRun {
                 value: " tried to post progress to the stream".into(),
                 style: text_style(small, 400, false, ui::Color::Muted),
             });
+            // A wrapped flex item keeps its allocation even when its ink is shorter.
+            text.max_content_basis = true;
             let flow = c::Flow {
                 children: vec![
                     named(format!("{key}/rj-t"), c::Element::Text(text)).into(),
@@ -677,16 +701,16 @@ impl Message {
             return column(key, s, vec![c::Element::Flow(flow).into()]);
         }
         let author_kind = self.author.as_ref().map(|a| a.kind.as_str());
-        let role = if author_kind == Some("operator") {
+        let role = if matches!(author_kind, Some("operator" | "operator-local")) {
             "oracle"
-        } else if self.role.is_empty() {
+        } else if self.role.trim().is_empty() {
             if self.author.is_some() {
                 ""
             } else {
                 "unsigned"
             }
         } else {
-            &self.role
+            self.role.trim()
         };
         let color = if role.is_empty() {
             ui::Color::Muted
@@ -694,19 +718,32 @@ impl Message {
             role_color(role)
         };
         let head_key = format!("{key}/body/head");
-        let mut head = vec![shrink(label(
-            format!("{head_key}/who"),
-            &self.from,
-            text_style(
-                if dock { caption } else { t.section as f32 },
-                600,
+        let identity_size = if dock { caption } else { t.section as f32 };
+        let mut head = vec![
+            label(
+                format!("{head_key}/role"),
+                role_label(Some(self.sender_role()), ""),
+                text_style(identity_size, 600, true, color),
                 false,
-                ui::Color::Foreground,
-            ),
-            true,
-        ))];
-        // Roles stay visible through the rail. Repeat only exceptional priority,
-        // not the default authority class or local issuer on every message.
+            )
+            .into(),
+            c::Item {
+                element: label(
+                    format!("{head_key}/who"),
+                    first_name(&self.from),
+                    text_style(identity_size, 600, false, ui::Color::Foreground),
+                    false,
+                ),
+                extent: c::Extent::Content {
+                    grow: 0.,
+                    shrink: 1.,
+                    min: 0.,
+                    max: None,
+                    max_fraction: None,
+                },
+            },
+        ];
+        // Role is primary identity; repeat only exceptional priority/issuer state.
         if self.priority >= 7 {
             head.push(
                 badge(
@@ -883,7 +920,11 @@ impl Message {
             )
             .into(),
         ];
-        if let Some(signature) = self.signature.as_ref().filter(|grade| grade.as_str() != "signed") {
+        if let Some(signature) = self
+            .signature
+            .as_ref()
+            .filter(|grade| grade.as_str() != "signed")
+        {
             let pending = signature == "pending";
             let grade = if pending {
                 "pending · inferred"

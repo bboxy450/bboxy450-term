@@ -54,6 +54,113 @@ fn messages(rows: Vec<Message>) -> StreamDock {
             .collect(),
     }
 }
+
+// keeps: operator role-first identity across seat lists, pane strips and messages.
+#[test]
+fn message_identity_puts_explicit_role_before_first_name_without_changing_sender_data() {
+    for (kind, role, name, expected_role, expected_name) in [
+        ("seat", "oracle", "Vesper Greywind", "ORACLE", "Vesper"),
+        (
+            "seat",
+            "architect",
+            "Nyx\u{a0}Copperwing",
+            "ARCHITECT",
+            "Nyx",
+        ),
+        (
+            "seat",
+            "creativity",
+            "  Wren Starling ",
+            "CREATIVITY",
+            "Wren",
+        ),
+        ("seat", "executor", "Dax Riven", "EXECUTOR", "Dax"),
+        ("seat", "reviewer", "🦊 Boxy", "REVIEWER", "🦊"),
+        ("operator", "oracle", "Boxy User", "OPERATOR", "Boxy"),
+        ("operator-local", "oracle", "Boxy User", "OPERATOR", "Boxy"),
+        ("seat", "", "Dax Riven", "UNKNOWN", "Dax"),
+        ("seat", " \u{a0} ", "Dax Riven", "UNKNOWN", "Dax"),
+    ] {
+        let message = Message {
+            author: Some(Author {
+                kind: kind.into(),
+                id: "stable-actor-id".into(),
+                name: name.into(),
+            }),
+            from: "legacy sender".into(),
+            role: role.into(),
+            text: "Complete message body is unchanged.".into(),
+            ..Default::default()
+        };
+        let tree = layout(messages(vec![message.clone()]), 320.);
+        let role_node = node(&tree, "e0/body/head/role").unwrap();
+        let name_node = node(&tree, "e0/body/head/who").unwrap();
+        assert_eq!(labels(role_node), expected_role);
+        assert_eq!(labels(name_node), expected_name);
+        assert!(role_node.rect.right() <= name_node.rect.x);
+        assert_eq!(message.author.as_ref().unwrap().name, name);
+        assert_eq!(message.author.as_ref().unwrap().id, "stable-actor-id");
+        assert_eq!(message.from, "legacy sender");
+        assert!(labels(&tree).contains(&message.text));
+    }
+    let tree = layout(
+        messages(vec![Message {
+            from: "Legacy Sender".into(),
+            ..Default::default()
+        }]),
+        320.,
+    );
+    assert_eq!(
+        labels(node(&tree, "e0/body/head/role").unwrap()),
+        "UNSIGNED"
+    );
+}
+
+#[test]
+fn narrow_message_identity_keeps_role_width_while_name_yields() {
+    let message = Message {
+        from: "AnUnreasonablyLongGivenNameThatMustYield Surname".into(),
+        role: "creativity".into(),
+        time: "11:06".into(),
+        text: "body".into(),
+        ..Default::default()
+    };
+    for width in [180., 240., 360.] {
+        let tree = layout(messages(vec![message.clone()]), width);
+        let head = node(&tree, "e0/body/head").unwrap().rect;
+        let role = node(&tree, "e0/body/head/role").unwrap();
+        let name = node(&tree, "e0/body/head/who").unwrap();
+        assert_eq!(labels(role), "CREATIVITY");
+        assert!(
+            role.rect.w
+                >= "CREATIVITY".len() as f32 * bbt_ui_model::STYLE.r#type.caption as f32 * 0.5
+                    - 0.01
+        );
+        assert!(role.rect.x >= head.x && role.rect.right() <= head.right());
+        assert!(name.rect.x >= role.rect.right());
+        assert!(name.rect.right() <= head.right() + 0.01);
+    }
+}
+
+#[test]
+fn rejected_role_first_identity_retains_the_wrapped_flex_allocation() {
+    let message = Message {
+        from: "Rook Ashwhisker".into(),
+        role: "executor".into(),
+        rejected: true,
+        time: "14:36".into(),
+        delegator: "Vesper Greywind".into(),
+        ..Default::default()
+    };
+    for width in [220., 260., 300.] {
+        let tree = layout(messages(vec![message.clone()]), width);
+        let identity = node(&tree, "e0/rj-t").unwrap();
+        let time = node(&tree, "e0/time").unwrap();
+        assert!(labels(identity).contains("EXECUTOR · Rook"));
+        assert!(!labels(identity).contains("Ashwhisker"));
+        assert!((identity.rect.right() - time.rect.right()).abs() < 0.01);
+    }
+}
 // keeps: spec gui-components §1.3
 #[test]
 fn task_review_hits_follow_the_painted_clip_and_zero_exit_gate() {

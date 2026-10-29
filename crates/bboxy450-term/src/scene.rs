@@ -713,11 +713,7 @@ impl Scene {
             .filter(|(_, s)| s.lifecycle == bbt_ui_model::Lifecycle::Open)
             .map(|(id, seat)| {
                 let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
-                row.role = seat
-                    .role
-                    .as_ref()
-                    .filter(|role| role.name != "shell")
-                    .map(|role| role.name.clone());
+                row.role = seat.role.as_ref().map(|role| role.name.clone());
                 row.title = seat.title.clone();
                 row.subtitle = self
                     .subtitle
@@ -2737,6 +2733,34 @@ mod depth_tests {
 #[cfg(test)]
 mod launcher_tests {
     use super::*;
+
+    // keeps: operator ROLE-first identity uses the assigned role on every surface.
+    #[test]
+    fn live_seat_projection_preserves_assigned_shell_role_for_every_harness() {
+        for harness in ["claude", "codex", "zsh"] {
+            let id = bbt_mux::Ulid(1);
+            let mut record =
+                bbt_proto::SeatRecord::new(id, bbt_mux::Ulid(100), "Vesper Greywind", harness);
+            record.role.name = "shell".into();
+            let model = bboxy450_term::model::build_at(
+                std::slice::from_ref(&record),
+                &bboxy450_term::grids::Grids::new(),
+                &Default::default(),
+                Instant::now(),
+                1000,
+            );
+            let mut scene = Scene::live();
+            scene.set_model(&model, &model.ui.window.stage);
+            let row = &scene.seats[scene.seat_index[&SeatId::from_u128(id.0)]];
+            assert_eq!(row.role.as_deref(), Some("shell"), "{harness}");
+            assert_eq!(
+                bbt_ui::modules::seat_row::role_label(row.role.as_deref(), &row.harness),
+                "SHELL"
+            );
+            assert_eq!(row.name, record.name);
+            assert_eq!(row.key, id.to_string());
+        }
+    }
 
     #[test]
     fn launch_parameters_wire_round_trips_the_native_retained_layout() {

@@ -4,7 +4,7 @@ type: "spec"
 number: 92
 title: "UX prototype spec — bboxy450-term sidebar and panes"
 created: "2026-10-21T20:07:02Z"
-updated: "2026-10-28T16:29:21Z"
+updated: "2026-10-29T12:25:00Z"
 ---
 # UX prototype spec — bboxy450-term sidebar and panes
 
@@ -45,13 +45,14 @@ A swarm is a rounded body (radius 11, surface colour) in the finish language of 
 ### 3.2 Inside an open block
 Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with macOS proportions), flush on the body, no separators. Selection is an inset rounded highlight. Section labels (Shadows, new seat) are sentence case, 11 px semibold grey.
 - **Tab row**: caret-less name, roll-up glyphs when collapsed, ⌘N, and the split **mini-grid**: the tab's split tree drawn as a tiny grid with real ratios, focused cell in accent, waiting and errored cells tinted. A single-seat tab shows no grid.
-- **Seat row**: a where-mark first when the seat is remote (cloud glyph for cloud, server glyph for ssh, nothing for local) · harness icon in a small coloured tile · character name in the seat colour · role mark (♔ oracle, ♟ executor, ♝ creativity) · title (hidden at compact density) · ⌘N · state glyph. Rows never reorder. The focused row has a quiet gloss band and no bar.
+- **Seat row**: a where-mark first when the seat is remote (cloud glyph for cloud, server glyph for ssh, nothing for local) · harness icon in a small coloured tile · explicit uppercase **ROLE** · first name in the seat colour · title (hidden at compact density) · ⌘N · state glyph. Role does not shrink; the name and title truncate first. Rows never reorder. The focused row has a quiet gloss band and no bar.
+- **Role-first identity** (operator, 2026-10-29: "ROLE goes first then name!"): seat rows, pane strips and message authors use the same role-first order and first-name display. Full canonical names and stable identities remain available to search, routing and actions; rendering never renames a seat. A shell without a role displays SHELL; a harness with no assigned role displays UNASSIGNED. Operator message authors display OPERATOR, not an invented Oracle role.
 - **`+ new seat ⌘T`**: last seat row of every open swarm, like Arc's New Tab inside the space. It never moves with focus.
 - **Closed strip**: a seat in grace after close (see 5.3): struck name, grey icon, countdown, `undo ⌘Z`.
 - **SHADOWS**: a group of other people's harnesses in this swarm's channels (published remote participants). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
 
 ### 3.3 Stream dock
-Above the footer, hidden until the first message. Shows the last four messages of the current swarm: role rail (gold oracle, blue executor, dashed violet creativity, grey unsigned), parsed `<ROLE>` token, text, time, unread dot. A foreign Oracle gets no priority chip. Filter chip `from <name> × all` when a shadow is selected.
+Above the footer, hidden until the first message. Shows the last four messages of the current swarm: role rail (gold oracle, blue executor, dashed violet creativity, grey unsigned), explicit uppercase ROLE before the author's first name, text, time, unread dot. Role remains visible when the author name truncates. A foreign Oracle gets no priority chip. Filter chip `from <name> × all` when a shadow is selected.
 
 ### 3.4 Footer
 None. The big `+ new swarm` button is the only creator; the stream dock is the bottom-most element.
@@ -64,7 +65,7 @@ Rows carry the state glow at a quieter budget than panes so halos on 20 px rows 
 The stage shows the tab that holds the focused seat, as a binary split tree with uneven ratios. Panes have square corners and sit 2 px apart.
 
 ### 4.1 Pane
-- **Strip** (22 px, seat colour): macOS-style red close dot on the left, harness icon, name, role mark, title, ⌘N, state glyph. Names never wrap.
+- **Strip** (22 px, seat colour): macOS-style red close dot on the left, harness icon, uppercase ROLE, first name, title, ⌘N, state glyph. Names never wrap and truncate before the role does.
 - **Border**: 1 px in the seat colour, 2 px when active.
 - **Body**: terminal text, bottom-anchored, cursor last.
 - **Unfocused**: strip and content desaturate (0.10) and fade (0.45), background washes 28% toward grey; the border and the glow keep the seat colour so identity survives (`[dim]`). Focused is full contrast. iTerm2's inactive read, pushed 20% further.

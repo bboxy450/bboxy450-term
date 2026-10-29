@@ -4,7 +4,7 @@ type: "spec"
 number: 106
 title: "GUI components — model, layout, draw list, input, signals, lab"
 created: "2026-10-21T22:26:59Z"
-updated: "2026-10-29T07:11:40Z"
+updated: "2026-10-29T12:25:00Z"
 links:
   - { to: "[[d26-terminal-key-ownership]]", rel: decision }
   - { to: "[[d43-kit-alive-borders]]", rel: decision }
@@ -266,8 +266,8 @@ pub struct TextStyle { scale: TypeScale /* style.type: input, banner, title, sub
 Every element implements `fn draw(&self, rect: Rect, ctx: &DrawCtx, out: &mut DrawList)` where `DrawCtx { theme, density, tokens: &TOKENS, style: &STYLE, dim: Option<Dim> }`. Colours and sizes are read from `ctx`; the element never holds a colour literal. Examples, lifted from the lab:
 
 - **SwarmCard** (showcase.html:39-44, lab.css:542-560,612-615): `Rect{ radii [12;4], fill surface @ card_alpha 0.72, stroke hairline }`, bumper `Rect{ radii [0,0,12,12], fill swarm colour, h 4 or 3 }`, `Gloss{ band, radius 4 }`, band `Text{ band scale 10.5, weight 600, tracking .16em, uppercase, white 92% }`, count `Text{ 10.5, white 70% }`, `Swatch` = `Rect{ circle 10, fill swarm, stroke 1.5 white 85% }`. Shut: band only, roll-up glyphs worst-first max 6 (components.js:231-236), waiting badge (:238).
-- **SeatRow** (components.js:149-167; showcase.html:47-56): optional `WhereMark` icon 12 → `IconTile` 16 radius 5 → name `Text{ row 12.5, weight 600, seat colour, ellipsis }` → `RoleMark` → `MutedMark` → title `Text{ font_small, fg_dim, ellipsis, Fill }` → right group: unread `Badge{ role colour }`, `Badge{ ⌘N mono }`, `StateGlyph`. Focused: `Rect{ radius 6, fill selection tint fg 9% }`; hover: fg 6 % (style `tint`). Never both a bar and a tint (ux-prototype §3.2 "no bar").
-- **Strip** (components.js:300-311, lab.css:162-173): `Rect{ fill seat colour, h strip.height }`, `CloseDot` circle 12 `#FF5F57`, `WhereMark`, harness `Icon` 13 (tile-less), name, `RoleMark`, title with " · waiting for <kind>" when waiting, `Badge ⌘N` on black 22 %, `MuteToggle`, `StateGlyph` 11.
+- **SeatRow** (components.js:149-167; showcase.html:47-56): optional `WhereMark` icon 12 → `IconTile` 16 radius 5 → fixed uppercase role label → first name `Text{ row 12.5, weight 600, seat colour, ellipsis }` → `MutedMark` → title `Text{ font_small, fg_dim, ellipsis, Fill }` → right group: unread `Badge{ role colour }`, `Badge{ ⌘N mono }`, `StateGlyph`. Role is primary identity and does not shrink; name/title yield first. Canonical names and IDs remain unchanged in the model. Focused: `Rect{ radius 6, fill selection tint fg 9% }`; hover: fg 6 % (style `tint`). Never both a bar and a tint (ux-prototype §3.2 "no bar").
+- **Strip** (components.js:300-311, lab.css:162-173): `Rect{ fill seat colour, h strip.height }`, `CloseDot` circle 12 `#FF5F57`, `WhereMark`, harness `Icon` 13 (tile-less), fixed uppercase role label, flexible first name, title with " · waiting for <kind>" when waiting, `Badge ⌘N` on black 22 %, `MuteToggle`, `StateGlyph` 11. Use the same role/name presentation as SeatRow and message authors.
 - **Pane** (lab.css:152-158): `Rect{ radius 0, fill bg, stroke (1 or 2 when active, seat colour) }`; errored strokes red. The body is the cells pass's rectangle; chrome only emits a `Clip`.
 - **Launcher** (showcase.html:98-153): backdrop `Rect{ fill bg @ 0.35 }` full window; panel `Rect{ radius 20, fill surface @ 0.78, stroke hairline, inner_highlight white 8%, shadow floating }`; crumbs, input `Text{ input 22 }`, section labels `Text{ section 12, weight 500, fg_dim }`, rows 46 high with `IconTile` 30, label `Text{ title 16 }`, sub `Text{ subtitle 15, fg_dim }`, kind `Text{ kind 14 }`, number `Badge` 24×22 or `Chevron`; footer swatch, name `Text{ 14, 600 }`, reroll circle 28, `Pill`.
 
@@ -400,8 +400,11 @@ is a separate, plainly labelled control. Routine successful storage IDs and
 projection-window bookkeeping do not occupy the conversation/draft; meaningful
 pending, held, refused, partial or unknown outcomes stay visible, and original
 records, receipt evidence and read coverage remain intact. Message surfaces have
-clear author/body hierarchy and spacing, with repeated local issuer/role/default
-priority/transport badges omitted. Chat timestamps use the machine's local time
+clear author/body hierarchy and spacing. The explicit uppercase role comes first,
+then a flexible first name; full author data remains intact. OPERATOR identifies
+operator authors, UNKNOWN labels a signed author with no role, and UNSIGNED
+labels a legacy unattributed author with no role. Repeated local issuer/default
+priority/transport badges remain omitted. Chat timestamps use the machine's local time
 zone and the timestamp's daylight-saving rules, retaining the raw UTC instant
 for evidence; timezone discovery runs off the UI thread.
 

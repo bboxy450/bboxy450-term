@@ -88,6 +88,7 @@ help:
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
+	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
 	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
@@ -192,7 +193,27 @@ check-clipboard-isolation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-term-desktop-macos --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: parity-settings
+.PHONY: test-role-identity check-role-identity parity-role-identity
+test-role-identity:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP)
+
+check-role-identity:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+parity-role-identity:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	identity_out='$(TARGET_DIR)/parity-role-identity'; \
+	if [ -n '$(ROLE_IDENTITY_CASES_FILE)' ]; then \
+	  identity_cases=$$(cat '$(ROLE_IDENTITY_CASES_FILE)'); identity_out="$$identity_out-recheck"; \
+	else \
+	  identity_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("seat-row","title-strip","sidebar","message-row","stream")]; assert selected; print(json.dumps(selected))'); \
+	fi; \
+	PARITY_OUT="$$identity_out" sh scripts/parity.sh --cases "$$identity_cases"
+
 .PHONY: test-cursors
 test-cursors:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -253,6 +274,7 @@ test-settings-window:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) settings_; \
 	BBOXY_SETTINGS_WINDOW_EVIDENCE='$(abspath $(TARGET_DIR))/settings-window' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_uses_full_window_height_after_resizes -- --ignored --exact --nocapture
 
+.PHONY: parity-settings
 parity-settings:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
