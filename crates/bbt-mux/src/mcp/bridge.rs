@@ -243,14 +243,16 @@ impl Bridge {
                 self.initialized = true;
                 Ok(
                     json!({"protocolVersion":if VERSIONS.contains(&version){version}else{VERSIONS[0]},
-                    "capabilities":{"tools":{"listChanged":false}},
+                    "capabilities":{"tools":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false}},
                     "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
                     // Decision #260: a curious agent finding the binary in PATH is the common case.
-                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
+                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Discover canonical workflow and current provider guidance with skill_list and skill_read, or MCP resources. Reading guidance grants no authority. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
                 )
             }
             "ping" => Ok(json!({})),
-            "tools/list" | "tools/call" if !self.initialized => {
+            "tools/list" | "tools/call" | "resources/list" | "resources/read"
+                if !self.initialized =>
+            {
                 return Some(rpc_error(id, -32002, "Initialize first"));
             }
             "tools/list" => {
@@ -258,6 +260,57 @@ impl Bridge {
                     return Some(rpc_error(id, -32602, "No catalogue cursor is available"));
                 }
                 self.forward(Action::Catalogue)
+            }
+            "resources/list" | "resources/read" => {
+                if params.get("cursor").is_some() {
+                    return Some(rpc_error(id, -32602, "No resource cursor is available"));
+                }
+                let (tool, args) = if method == "resources/read" {
+                    let Some(uri) = params["uri"]
+                        .as_str()
+                        .filter(|uri| !uri.is_empty() && uri.len() <= super::skills::MAX_URI_BYTES)
+                    else {
+                        return Some(rpc_error(id, -32602, "A bounded skill URI is required"));
+                    };
+                    ("skill_read", json!({"uri":uri}))
+                } else {
+                    ("skill_list", json!({}))
+                };
+                // Use the very same admitted, root-scoped read as legacy tools.
+                // No paths, provider processes or independent resource authority.
+                match self.forward(Action::Call {
+                    call: Call {
+                        op_id: Ulid::new(),
+                        tool: tool.into(),
+                        args,
+                    },
+                }) {
+                    Ok(reply) if reply["isError"] == true => {
+                        let mut error = rpc_error(
+                            id,
+                            -32002,
+                            "Skill resource is unavailable for the current seat and workspace",
+                        );
+                        error["error"]["data"] = reply["structuredContent"].clone();
+                        return Some(error);
+                    }
+                    Ok(reply) => {
+                        let data = &reply["structuredContent"];
+                        if method == "resources/list" {
+                            let resources = data["skills"].as_array().into_iter().flatten().map(|skill| json!({
+                                "uri":skill["uri"],"name":skill["name"],"description":skill["description"],"mimeType":"text/markdown",
+                                "_meta":{"bboxy450/skill":skill}
+                            })).collect::<Vec<_>>();
+                            Ok(json!({"resources":resources}))
+                        } else {
+                            let skill = &data["skill"];
+                            Ok(
+                                json!({"contents":[{"uri":skill["uri"],"mimeType":"text/markdown","text":skill["content"]}]}),
+                            )
+                        }
+                    }
+                    Err(error) => Err(error),
+                }
             }
             "tools/call" => {
                 let Some(tool) = params["name"]

@@ -1598,7 +1598,9 @@ fn mcp_skills_and_resources_share_exact_root_bound_instructions_and_recheck_admi
     fixture
         .registry()
         .update(fixture.own.id, |seat| {
-            seat.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            // UI lifecycle is not process authority. Advance the authority
+            // generation so this already-admitted bridge is actually stale.
+            seat.generation += 1;
             Ok(())
         })
         .unwrap();

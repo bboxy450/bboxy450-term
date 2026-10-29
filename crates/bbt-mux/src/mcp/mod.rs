@@ -12,6 +12,7 @@ pub(crate) mod journal;
 pub(crate) mod knowledge;
 pub(crate) mod messaging;
 pub(crate) mod seats;
+pub(crate) mod skills;
 pub(crate) mod tools;
 pub(crate) mod work_items;
 

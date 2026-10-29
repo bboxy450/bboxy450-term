@@ -164,6 +164,15 @@ impl DataSourceProvider {
     pub(crate) fn check_authority(&self) -> d::Result<()> {
         self.current().map(|_| ())
     }
+    pub(crate) fn skill_documents(&self) -> d::Result<Vec<bbt_plugin::skills::Skill>> {
+        self.current()?;
+        Ok(self
+            .record
+            .shape
+            .as_ref()
+            .map(|shape| shape.skills.clone())
+            .unwrap_or_default())
+    }
     fn current(&self) -> d::Result<PathBuf> {
         if self.closed.load(Ordering::Acquire) {
             return Err(error("provider_closed", "this root instance is closed"));

@@ -57,6 +57,8 @@ help:
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
+	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
+	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
@@ -542,6 +544,18 @@ test-harness-startup:
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
+
+.PHONY: test-plugin-skills check-plugin-skills
+test-plugin-skills:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_skills_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_four_methods_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test knowledge_provider -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters
+
+check-plugin-skills:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-terminal-colors test-terminal-colors-native
 test-terminal-colors:

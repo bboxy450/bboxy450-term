@@ -167,16 +167,20 @@ pub(crate) fn in_login_shell(
     }
 }
 
+pub(crate) fn workflow_skill(role: &crate::registry::Role) -> Result<String> {
+    Ok(bboxy450_harness_wake_up::launch::render_skill(
+        include_str!("skills/bboxy450/SKILL.md"),
+        &serde_json::to_string(&role.name)?,
+        &serde_json::to_string(&role.class)?,
+    ))
+}
+
 pub(super) fn plan_neutral(
     record: &bboxy450_harness_wake_up::HarnessRecord,
     context: &LaunchContext<'_>,
 ) -> Result<LaunchPlan> {
     super::validate_role(&record.kind, &context.seat.role)?;
-    let skill = bboxy450_harness_wake_up::launch::render_skill(
-        include_str!("skills/bboxy450/SKILL.md"),
-        &serde_json::to_string(&context.seat.role.name)?,
-        &serde_json::to_string(&context.seat.role.class)?,
-    );
+    let skill = workflow_skill(&context.seat.role)?;
     let plan = bboxy450_harness_wake_up::launch::plan(
         record,
         &bboxy450_harness_wake_up::LaunchContext {

@@ -87,7 +87,7 @@ HK-0 the wake-up crate: move the six files, the skill mechanism, the tests and f
 
 An integration combines a binary, its MCP contract and its workflow skill. [[plugins]] §3a and [[plugin-host]] define the current bounded compatibility cut; [[plugins-sota]] §B records the official MCP extension's Beta status and the uneven client support.
 
-The app owns the canonical built-in `SKILL.md` and bundled KB guide. Its existing harness filesystem/developer-prompt fallback reuses that content with the existing explicit role rendering. The wake-up kit remains a delivery mechanism supplied with caller-owned content; it does not acquire plugin discovery, workspace selection, trust or role policy.
+The app owns the canonical built-in `SKILL.md` and bundled KB guide. Its existing harness filesystem/developer-prompt fallback reuses the built-in workflow source with the existing explicit role rendering; the KB guide is discovered through MCP. The wake-up kit remains a delivery mechanism supplied with caller-owned content; it does not acquire plugin discovery, workspace selection, trust or role policy.
 
 The app's fixed `skill_list`/`skill_read` and legacy MCP Resources expose those same sources on demand, plus only the external provider selected for the captured root. External provider instructions are not automatically added to a harness prompt. Reading a skill does not change a seat's role, signing rights, custody or tool grants.
 
