@@ -73,14 +73,14 @@ class Client:
         params = {"protocolVersion": "2025-06-18", "root": str(root), "unknown_future": True}
         if fixture_mode:
             params["fixture"] = {"version": 1, "kind": "data_source_conformance"}
-        self.rpc("initialize", params)
+        self.initialization = self.rpc("initialize", params)
         self.notify("notifications/initialized", {})
 
     def notify(self, method, params):
         self.process.stdin.write(json.dumps({"jsonrpc": "2.0", "method": method, "params": params}) + "\n")
         self.process.stdin.flush()
 
-    def rpc(self, method, params):
+    def rpc(self, method, params, error=None):
         self.sequence += 1
         self.process.stdin.write(json.dumps({"jsonrpc": "2.0", "id": self.sequence, "method": method, "params": params}) + "\n")
         self.process.stdin.flush()
@@ -93,6 +93,9 @@ class Client:
         assert line, "provider exited during " + method
         value = json.loads(line)
         assert value["id"] == self.sequence, value
+        if error:
+            assert value.get("error", {}).get("data", {}).get("code") == error, value
+            return value["error"]
         assert "error" not in value, value
         return value["result"]
 
@@ -132,6 +135,10 @@ def main():
     shape = json.loads(run([str(PLUGIN), "--shape"], RUN, json_output=False))
     bare = run([str(PLUGIN)], RUN, text="")
     assert shape == bare and shape["name"] == "GitKB" and shape["signed_writer"] is True
+    skill_bytes = (Path(__file__).resolve().parent.parent / "plugins/gitkb/SKILL.md").read_bytes()
+    assert len(shape["skills"]) == 1 and shape["skills"][0]["name"] == "gitkb"
+    assert shape["skills"][0]["content"].encode("utf-8") == skill_bytes
+    assert "description: " + shape["skills"][0]["description"] + "\n" in skill_bytes.decode("utf-8")
     assert {m["name"] for m in shape["systems"][0]["commands"]} == {"resolve", "fetch", "search", "list", "links", "graph", "write", "changes_since", "commit"}
     a, b = fixture("root-a"), fixture("root-b")
     checker = RUN / "checker-knowledge/.bboxy"
@@ -146,6 +153,20 @@ def main():
     repeat = Client(checker, fixture_mode=True)
     assert repeat.call("resolve", {"locator": "#7"})["number"] == 7
     client, other = Client(a / ".bboxy"), Client(b / ".kb")
+    assert client.initialization["capabilities"]["resources"] == {}
+    assert "extensions" not in client.initialization["capabilities"]
+    uri = "gitkb://skills/gitkb/SKILL.md"
+    resources = client.rpc("resources/list", {})["resources"]
+    assert resources == [{"uri": uri, "name": "gitkb", "description": shape["skills"][0]["description"],
+                          "mimeType": "text/markdown"}]
+    for connection in (client, other):
+        contents = connection.rpc("resources/read", {"uri": uri})["contents"]
+        assert len(contents) == 1 and contents[0]["uri"] == uri and contents[0]["mimeType"] == "text/markdown"
+        assert contents[0]["text"].encode("utf-8") == skill_bytes
+    for unknown in ("gitkb://skills/other/SKILL.md", "gitkb://skills/gitkb/../SKILL.md",
+                    "gitkb://skills/gitkb/%2e%2e/SKILL.md", "gitkb://skills/gitkb/%53KILL.md",
+                    uri + "?path=../../outside", "file:///etc/passwd"):
+        assert client.rpc("resources/read", {"uri": unknown}, error="unknown_resource")["code"] == -32002
     assert len(client.rpc("tools/list", {})["tools"]) == 9
     client.call("write", {"path": "notes/unsigned.md", "frontmatter": {}, "body": ""}, "signed_writer_unavailable")
     one = client.create("notes/shared", "Needle fixture", id="01ARZ3NDEKTSV4RRFFQ69G5FAV",
@@ -170,10 +191,13 @@ def main():
     assert other.call("resolve", {"locator": "notes/shared"})["id"] == sibling["id"]
 
     baseline = client.call("changes_since", {"cursor": "0"})["next"]
+    unchanged = client.call("changes_since", {"cursor": baseline})
+    assert unchanged["changed"] == [], unchanged
+    baseline = unchanged["next"]
     task = client.create("tasks/harmony-7", "Lifecycle", "task", id="01ARZ3NDEKTSV4RRFFQ69G5FAW", status="open", swarm="fixture-a", assignee="seat:fixture")
     assert task["number"] == 7
     changes = client.call("changes_since", {"cursor": baseline})
-    assert [r["slug"] for r in changes["changed"]] == [task["slug"]]
+    assert [r["slug"] for r in changes["changed"]] == [task["slug"]], changes
     assert client.call("changes_since", {"cursor": changes["next"]})["changed"] == []
     other.call("changes_since", {"cursor": changes["next"]}, "stale_cursor")
     for status in ("claimed", "running", "reported", "accepted"):
@@ -194,6 +218,15 @@ def main():
     assert len(client.call("list", {"filter": {"type": "task", "status": "accepted"}})["items"]) == 1
     assert len(client.call("list", {"filter": {"type": "task", "status": "accepted", "swarm": "fixture-a", "assignee": "seat:fixture"}})["items"]) == 1
     assert client.call("list", {"filter": {"type": "task", "swarm": "fixture-b"}})["items"] == []
+    assert client.call("list", {"filter": {"type": "task", "assignee": "seat:other"}})["items"] == []
+    assert client.collect("search", {"query": "Lifecycle type:task", "filter": {"swarm": "fixture-b"}}) == []
+    assert client.collect("search", {"query": "Lifecycle type:task", "filter": {"assignee": "seat:other"}}) == []
+    assert [item["ref"]["slug"] for item in client.collect("search", {
+        "query": "Lifecycle type:task", "filter": {"swarm": "fixture-a", "assignee": "seat:fixture"}})] == [task["slug"]]
+    absent_graph = client.call("graph", {"scope": {"kind": "swarm", "graph": "task", "swarm": "fixture-b"}})
+    assert absent_graph["nodes"] == [] and absent_graph["edges"] == [], absent_graph
+    scoped_graph = client.call("graph", {"scope": {"kind": "swarm", "graph": "task", "swarm": "fixture-a"}})
+    assert [node["id"] for node in scoped_graph["nodes"]] == [task["id"]], scoped_graph
     # Explicit native commit writes only A; pending B and the other root survive.
     commit = client.call("commit", {"refs": [client.call("resolve", {"locator": task["slug"]})], "message": "Commit only selected fixture task"})
     assert commit["commit"] and [r["slug"] for r in commit["committed"]] == [task["slug"]]
@@ -285,6 +318,9 @@ def main():
     # macOS adds __CF_USER_TEXT_ENCODING when the Python backend wrapper starts.
     assert all(set(row["env"]) <= {"PATH", "HOME", "LANG", "TMPDIR", "TERM", "LC_CTYPE", "GITKB_ROOT", "GITKB_WORKSPACE", "__CF_USER_TEXT_ENCODING"} for row in rows)
     wrapper.write_text(wrapper.read_text() + "\n# dependency changed\n")
+    before_refusal = trace.read_bytes()
+    traced.call("resolve", {"locator": "notes/shared"}, "backend_changed")
+    assert trace.read_bytes() == before_refusal, "changed backend executed through the existing client"
     try:
         Client(a, binary=traced_plugin)
         raise RuntimeError("changed backend unexpectedly admitted")
@@ -300,12 +336,12 @@ def main():
     assert (b / ".bboxy/plugin-notices/gitkb/NOTICE").is_file()
     for c in CLIENTS:
         c.close()
-    return {"result": "passed", "checks": ["shape", "all eight methods", "real source-aware create/update",
+    return {"result": "passed", "checks": ["shape", "canonical embedded skill and fixed MCP resource", "unknown and escaped skill URIs refused", "all eight methods", "real source-aware create/update",
             "UUID/ULID and numbers", "host intent storage and lifecycle projection (signature verification belongs to host)",
             "two isolated roots with same slug", "query/root/snapshot cursors", "native incoming/outgoing graph",
             "stale external edit rejection", "confined resource copy", "committed/workspace source transition",
             "real selected-only commit, unrelated pending source preserved", "disposable native bootstrap",
-            "scrubbed native process environment and private cwd", "backend hash pin", "local installation preserves config"],
+            "scrubbed native process environment and private cwd", "backend hash pin on existing and new clients", "local installation preserves config"],
             "plugin_sha256": hashlib.sha256(PLUGIN.read_bytes()).hexdigest()}
 
 

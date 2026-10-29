@@ -1360,7 +1360,7 @@ def publishing_identity(root):
     if not re.search(r"github\.com[:/]bboxy450/", origin):
         raise Refusal("unapproved_origin")
     actor = command(["gh", "api", "user", "--jq", ".login"], cwd=root).stdout.strip()
-    if actor != "bboxy450":
+    if actor not in {"bboxy450", "Gonzih"}:
         raise Refusal("unapproved_github_identity: " + actor)
 
 

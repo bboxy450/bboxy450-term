@@ -1908,6 +1908,27 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(landing.parity_cases(cases, data), cases[:1])
 
 
+class PublishingIdentityTests(unittest.TestCase):
+    def publish(self, actor, origin="https://github.com/bboxy450/bboxy450-term.git"):
+        result = subprocess.CompletedProcess([], 0, stdout=actor + "\n", stderr="")
+        with patch.dict(os.environ, {}, clear=True), \
+                patch.object(landing, "local_origin", return_value=False), \
+                patch.object(landing, "git", return_value=origin), \
+                patch.object(landing, "command", return_value=result):
+            landing.publishing_identity(Path("/unused-private-fixture"))
+
+    def test_operator_approved_source_publishers_are_accepted(self):
+        for actor in ("bboxy450", "Gonzih"):
+            with self.subTest(actor=actor):
+                self.publish(actor)
+
+    def test_other_publishers_and_origins_remain_refused(self):
+        with self.assertRaisesRegex(landing.Refusal, "unapproved_github_identity"):
+            self.publish("unapproved-fixture")
+        with self.assertRaisesRegex(landing.Refusal, "unapproved_origin"):
+            self.publish("Gonzih", "https://github.com/unapproved-fixture/project.git")
+
+
 def fixture_suite(extended=False):
     # Every test has an independent mktemp repo and local bare origin. Isolated
     # subprocesses keep mocks apart; one fresh test-only signer avoids 39 agents.

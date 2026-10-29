@@ -33,6 +33,8 @@ pub const STATES: &[&str] = &[
     "modal · plain markdown",
     "title in body",
     "different first heading",
+    "provenance details",
+    "provenance details expanded",
     "link · resolved",
     "link · missing",
 ];
@@ -94,7 +96,15 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
             let mut view: DocumentModal = serde_json::from_value(frame["view"].clone())?;
             let host = &frame["host"];
             let available = [seat_rows::number(host, "w")?, seat_rows::number(host, "h")?];
-            let markdown = bbt_doc::parse(&view.document.body);
+            let mut markdown = bbt_doc::parse(&view.document.body);
+            let evidence = &frame["view"]["document"]["provenanceDetails"];
+            if evidence.is_object() {
+                markdown.set_metadata(evidence)?;
+            }
+            let mut control = bbt_ui::modules::document_modal::controller::Controller::default();
+            control.provenance_expanded = frame["view"]["provenance_expanded"]
+                .as_bool()
+                .unwrap_or(false);
             if let Some(index) = frame["record_index"]
                 .as_array()
                 .filter(|index| !index.is_empty())
@@ -144,14 +154,24 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                 view.record_links = Some(links);
             }
             let element = view.element_with_body(ctx, &metrics, available, &|width| {
-                let title: Option<&str> = Some(if view.document.title.is_empty() {
+                let title = if view.document.title.is_empty() {
                     &view.document.path
                 } else {
                     &view.document.title
-                });
+                };
+                if evidence.is_object() {
+                    return markdown.hosted_body_element_with_controller(
+                        title,
+                        ctx,
+                        &metrics,
+                        width,
+                        view.record_links.as_ref().unwrap_or(&Default::default()),
+                        &control,
+                    );
+                }
                 if let Some(links) = &view.record_links {
                     return markdown.body_element_with_links(
-                        title,
+                        Some(title),
                         ctx,
                         &metrics,
                         width,
@@ -159,17 +179,7 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                         links,
                     );
                 }
-                markdown.body_element_with_title(
-                    Some(if view.document.title.is_empty() {
-                        &view.document.path
-                    } else {
-                        &view.document.title
-                    }),
-                    ctx,
-                    &metrics,
-                    width,
-                    &view.diagrams,
-                )
+                markdown.body_element_with_title(Some(title), ctx, &metrics, width, &view.diagrams)
             });
             let width = if view.modal {
                 980_f32.min(view.viewport[0] * 0.94).min(available[0])

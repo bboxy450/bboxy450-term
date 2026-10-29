@@ -177,6 +177,23 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     )
     .await;
     let before = roots(&logic.client, KnowledgeRequest::Status).await;
+    let mut seat = SeatRecord::new(seat_id, swarm, "private provider reader", "zsh");
+    seat.role.class = Class::Oracle;
+    seat.role.name = "oracle".into();
+    let mut launch = LaunchSpec::new("/bin/cat", temp.path());
+    launch.seat = seat.id;
+    launch.generation = seat.generation;
+    logic.client.spawn(seat, launch).await.unwrap();
+    let before_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(before_skills["isError"], false);
+    assert!(
+        before_skills["structuredContent"]["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|skill| skill["name"] != "root-fixture"),
+        "enabled but unselected provider instructions leaked into the root"
+    );
     let choice = before.offered.iter().find(|p| p.id == candidate).unwrap();
     // Exercise the new operation-correlated GUI socket port, not only a library call.
     let endpoint = logic.client.gui_endpoint().await.unwrap();
@@ -233,13 +250,42 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         .unwrap()
         .unwrap();
     assert_eq!(fetched["body"], "Private note body.\n");
-    let mut seat = SeatRecord::new(seat_id, swarm, "private provider reader", "zsh");
-    seat.role.class = Class::Oracle;
-    seat.role.name = "oracle".into();
-    let mut launch = LaunchSpec::new("/bin/cat", temp.path());
-    launch.seat = seat.id;
-    launch.generation = seat.generation;
-    logic.client.spawn(seat, launch).await.unwrap();
+    let selected_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(selected_skills["isError"], false);
+    assert!(selected_skills["structuredContent"]["provider_error"].is_null());
+    let selected_skills = selected_skills["structuredContent"]["skills"]
+        .as_array()
+        .unwrap();
+    assert_eq!(selected_skills.len(), 3);
+    let fixture_skill = selected_skills
+        .iter()
+        .find(|skill| skill["name"] == "root-fixture")
+        .unwrap();
+    let expected_skill = "---\nname: root-fixture\ndescription: Root fixture knowledge instructions.\n---\n\n# Root fixture\n\nResolve before fetch; preserve é and exact source bytes.\n";
+    assert_eq!(fixture_skill["root_id"], swapped.roots[0].id);
+    assert_eq!(fixture_skill["size"], expected_skill.len());
+    assert_eq!(
+        fixture_skill["digest"],
+        format!(
+            "sha256:{}",
+            bbt_mux::store::digest(expected_skill.as_bytes())
+        )
+    );
+    let skill_call = Call {
+        op_id: Ulid::new(),
+        tool: "skill_read".into(),
+        args: json!({"uri":fixture_skill["uri"]}),
+    };
+    let skill_read = logic
+        .client
+        .control_call(seat_id, 1, skill_call.clone())
+        .await
+        .unwrap();
+    assert_eq!(skill_read["isError"], false);
+    assert_eq!(
+        skill_read["structuredContent"]["skill"]["content"],
+        expected_skill
+    );
     let call = Call {
         op_id: Ulid::new(),
         tool: "knowledge_fetch".into(),
@@ -344,6 +390,23 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
             .contains("authority changed")
     );
     fs::remove_file(&armed).unwrap();
+    // Cache a successful instruction read under the current worker grant before
+    // reset, so the next replay refusal proves provider fencing independently
+    // of the earlier role-change refusal.
+    let skill_call = Call {
+        op_id: Ulid::new(),
+        ..skill_call
+    };
+    let current_skill = logic
+        .client
+        .control_call(seat_id, 1, skill_call.clone())
+        .await
+        .unwrap();
+    assert_eq!(current_skill["isError"], false);
+    assert_eq!(
+        current_skill["structuredContent"]["skill"]["content"],
+        expected_skill
+    );
     let back = roots(
         &logic.client,
         KnowledgeRequest::Reset {
@@ -353,6 +416,35 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     .await;
     assert_eq!(back.roots[0].provider.id, "bboxy450-term-data_source-bboxy");
     assert_eq!(back.roots[0].records, Some(2));
+    let reset_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(reset_skills["isError"], false);
+    assert_eq!(
+        reset_skills["structuredContent"]["skills"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    let old_skill = tool(
+        &logic.client,
+        seat_id,
+        "skill_read",
+        skill_call.args.clone(),
+    )
+    .await;
+    assert_eq!(
+        old_skill["isError"], true,
+        "reset provider URI still returned instructions"
+    );
+    let old_skill = logic
+        .client
+        .control_call(seat_id, 1, skill_call)
+        .await
+        .unwrap();
+    assert_eq!(
+        old_skill["isError"], true,
+        "cached plugin instructions bypassed provider reset"
+    );
     let replay = logic.client.control_call(seat_id, 1, call).await.unwrap();
     assert_eq!(
         replay["isError"], true,

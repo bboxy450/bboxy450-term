@@ -36,14 +36,14 @@ class Policy:
     public_keys: tuple[Path, ...]
     historical: Identity | None = None
     historical_commit: str | None = None
+    additional: tuple[Identity, ...] = ()
 
 
 KEYS = Path(__file__).resolve().parent / "verification-keys"
 POLICY = Policy(
     Identity("9B07E849480C68328CA20684844ECC0587DE7AB0", "Boxy", "bboxy450@gmail.com"),
     (KEYS / "boxy.asc", KEYS / "historical-618df56f.asc"),
-    Identity("B9ABDC578390946B71B6C20C3526057098BAC1AD", "Maksim Soltan", "code@maksim.sh"),
-    "618df56faccffce46dfec3d1d525b8d115b5d35a",
+    additional=(Identity("B9ABDC578390946B71B6C20C3526057098BAC1AD", "Maksim Soltan", "code@maksim.sh"),),
 )
 
 
@@ -67,13 +67,14 @@ def check_records(records, policy):
             raise Refusal(f"{sha}: signature status {status!r} refused")
         if not re.fullmatch(r"[0-9A-F]{40}|[0-9A-F]{64}", signing):
             raise Refusal(f"{sha}: verified signing fingerprint missing")
-        identity = policy.approved
+        identities = (policy.approved, *policy.additional)
         if sha == policy.historical_commit and policy.historical is not None:
-            identity = policy.historical
+            identities = (policy.historical,)
             historical += 1
-        if primary != identity.fingerprint:
+        matching = [identity for identity in identities if primary == identity.fingerprint]
+        if not matching:
             raise Refusal(f"{sha}: primary fingerprint outside pinned policy")
-        if (name, email) != (identity.name, identity.email):
+        if not any((name, email) == (identity.name, identity.email) for identity in matching):
             raise Refusal(f"{sha}: author outside pinned policy")
     return {"commits": len(records), "historical": historical}
 
@@ -120,7 +121,7 @@ def verify(repo, revision="HEAD", policy=POLICY):
             elif fields[0] == "fpr" and primary:
                 primary_keys.add(fields[9])
                 primary = False
-        expected = {policy.approved.fingerprint}
+        expected = {identity.fingerprint for identity in (policy.approved, *policy.additional)}
         if policy.historical is not None:
             expected.add(policy.historical.fingerprint)
         if primary_keys != expected:

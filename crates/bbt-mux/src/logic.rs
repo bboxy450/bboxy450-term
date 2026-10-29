@@ -3565,7 +3565,7 @@ impl Worker {
                 )));
                 return;
             }
-        } else if call.tool != "orient" {
+        } else if call.tool != "orient" && !crate::mcp::skills::handles(&call.tool) {
             let root = port.binding.root_id.clone();
             self.queue_workspace_read(PendingWorkspaceRead {
                 binding: port.binding,
@@ -3576,7 +3576,15 @@ impl Worker {
             }
             return;
         }
-        let port = match self.scan_port(&port.binding) {
+        // Instruction descriptors do not read documents or depend on a scan.
+        // They still use the captured root and the normal completion fences.
+        let waiting_binding = port.binding.clone();
+        let prepared_port = if crate::mcp::skills::handles(&call.tool) {
+            Ok(port)
+        } else {
+            self.scan_port(&port.binding)
+        };
+        let port = match prepared_port {
             Ok(port) => port,
             Err(error) => {
                 if call.tool == "orient" {
@@ -3596,7 +3604,7 @@ impl Worker {
                     })
                 {
                     self.queue_workspace_read(PendingWorkspaceRead {
-                        binding: port.binding,
+                        binding: waiting_binding,
                         read: WorkspaceRead::Seat(id, generation, Box::new(call), reply),
                     });
                 } else {

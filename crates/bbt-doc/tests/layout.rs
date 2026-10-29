@@ -226,14 +226,14 @@ fn fitted_tables_use_the_offered_width_and_align_short_and_wrapped_cells() {
     assert_eq!(doc.source, source);
 }
 
-// keeps: spec document-viewer §Markdown — fitting body tables preserves generated metadata policy.
+// keeps: spec document-viewer §Markdown — fitting body tables preserves generic metadata policy.
 #[test]
 fn narrow_gfm_tables_fit_while_generated_metadata_keeps_its_original_word_viewport() {
     use bbt_ui::modules::document_modal::controller::{RecordLinks, Regions};
     let token = "0123456789abcdef".repeat(4);
     let source = format!("| Left | Right |\n| --- | --- |\n| {token} | {token} |\n");
     let mut doc = parse(&source);
-    let metadata = serde_json::json!({"type":"note", "authorship":{"public_key":token}});
+    let metadata = serde_json::json!({"type":"note", "custom_metadata":{"public_key":token}});
     doc.set_metadata(&metadata).unwrap();
     let layout = doc
         .hosted_body_element(
@@ -263,7 +263,7 @@ fn narrow_gfm_tables_fit_while_generated_metadata_keeps_its_original_word_viewpo
         1,
         "generated metadata key must not enter the new per-cell fragmentation path"
     );
-    assert_eq!(key[0].text, "authorship");
+    assert_eq!(key[0].text, "custom_metadata");
     let value = runs(named(&layout, "metadata/grid/row1/cell1/text").unwrap())
         .iter()
         .map(|r| r.text.as_str())
@@ -279,10 +279,142 @@ fn narrow_gfm_tables_fit_while_generated_metadata_keeps_its_original_word_viewpo
             .any(|r| r.key == "metadata/grid" && r.max > 0.)
     );
     assert_eq!(
-        doc.frontmatter.fields["authorship"],
-        serde_yaml::to_value(&metadata["authorship"]).unwrap()
+        doc.frontmatter.fields["custom_metadata"],
+        serde_yaml::to_value(&metadata["custom_metadata"]).unwrap()
     );
     assert_eq!(doc.source, source);
+}
+
+// keeps: spec document-viewer §Markdown — evidence is a display disclosure, never a source rewrite.
+#[test]
+fn task_provenance_is_quiet_until_opened_and_keeps_every_evidence_value() {
+    use bbt_ui::modules::document_modal::controller::{Action, Controller, RecordLinks, Regions};
+    let digest = format!("sha256:{}", "0123456789abcdef".repeat(4));
+    let signature = "fixture-signature-".repeat(12);
+    let metadata = serde_json::json!({
+        "type":"task", "title":"Retained chat visibility", "swarm_id":"fixture-swarm",
+        "custom":"keep this field visible",
+        "provenance": {"digest":digest, "matter_digest":"fedcba9876543210".repeat(4),
+            "log":".bboxy/log/2026-10-29.jsonl#1302", "sig":signature, "signer":"seat:fixture-executor"},
+        "authorship":{"issued_by":"fixture-device", "public_key":"fixture-public-key"}
+    });
+    for provider in [false, true] {
+        let source = if provider {
+            "## Purpose\nKeep the task readable.\n".to_owned()
+        } else {
+            format!(
+                "---\n{}---\n## Purpose\nKeep the task readable.\n",
+                serde_yaml::to_string(&metadata).unwrap()
+            )
+        };
+        let mut doc = parse(&source);
+        if provider {
+            doc.set_metadata(&metadata).unwrap();
+            assert!(doc.frontmatter.source.is_empty());
+        }
+        let fields = doc.frontmatter.fields.clone();
+        for theme in [ui::Theme::Light, ui::Theme::Dark] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            for width in [240., 640.] {
+                let render = |expanded| {
+                    let mut control = Controller::default();
+                    control.provenance_expanded = expanded;
+                    doc.hosted_body_element_with_controller(
+                        "Retained chat visibility",
+                        ctx,
+                        &Fonts,
+                        width,
+                        &RecordLinks::new(),
+                        &control,
+                    )
+                    .layout(Rect::new(0., 0., width, 0.), ctx, &Fonts)
+                    .unwrap()
+                };
+                let closed = render(false);
+                let text = texts(&closed);
+                assert!(
+                    text.contains("Provenance details") && text.contains("Keep the task readable.")
+                );
+                assert!(text.contains("keep this field visible") && text.contains("fixture-swarm"));
+                for value in [
+                    digest.as_str(),
+                    signature.as_str(),
+                    "fixture-device",
+                    "fixture-public-key",
+                    "seat:fixture-executor",
+                    ".bboxy/log/2026-10-29.jsonl#1302",
+                ] {
+                    assert!(!text.contains(value), "closed disclosure leaked {value}");
+                }
+                let toggle = named(&closed, "metadata/provenance/toggle").unwrap().rect;
+                assert_eq!(
+                    Regions::retained(&closed).hit([toggle.x + 1., toggle.y + 1.]),
+                    Some(Action::ToggleProvenance)
+                );
+                let opened = render(true);
+                assert!(
+                    named(&opened, "metadata/provenance/details")
+                        .unwrap()
+                        .rect
+                        .w
+                        <= width.min(STYLE.spacing.doc_measure as f32) + 0.01
+                );
+                let expanded = texts(&opened);
+                assert!(
+                    runs(named(&opened, "metadata/provenance/details/text").unwrap())
+                        .iter()
+                        .any(|run| run.text.starts_with("  \"authorship\""))
+                );
+                for value in [
+                    digest.as_str(),
+                    signature.as_str(),
+                    "fixture-device",
+                    "fixture-public-key",
+                    "seat:fixture-executor",
+                    ".bboxy/log/2026-10-29.jsonl#1302",
+                ] {
+                    assert!(expanded.contains(value), "expanded disclosure lost {value}");
+                }
+                assert!(expanded.contains("Hide provenance details"));
+                assert!(opened.rect.h > closed.rect.h);
+                assert!(!texts(&render(false)).contains(&signature));
+            }
+        }
+        assert_eq!(doc.frontmatter.fields, fields);
+        assert_eq!(doc.source, source);
+        assert_eq!(doc.document("task.md").body, source);
+        assert!(doc.document("task.md").prov.signed.is_none());
+    }
+}
+
+// keeps: spec document-viewer §Markdown — valid YAML evidence cannot silently become JSON null.
+#[test]
+fn expanded_provenance_retains_non_json_yaml_values() {
+    use bbt_ui::modules::document_modal::controller::{Controller, RecordLinks};
+    let source = "---\ntype: task\nprovenance:\n  digest: .nan\n  upper: .inf\n  lower: -.inf\n  tagged: !evidence retained\n  keyed: {1: numeric}\n---\nTask body.\n";
+    let doc = parse(source);
+    assert!(doc.frontmatter.error.is_none());
+    let original = doc.frontmatter.fields.clone();
+    let mut control = Controller::default();
+    control.provenance_expanded = true;
+    let layout = doc
+        .hosted_body_element_with_controller(
+            "Task",
+            ctx(),
+            &Fonts,
+            500.,
+            &RecordLinks::new(),
+            &control,
+        )
+        .layout(Rect::new(0., 0., 500., 0.), ctx(), &Fonts)
+        .unwrap();
+    let shown = texts(&layout);
+    for value in [".nan", ".inf", "-.inf", "!evidence", "1: numeric"] {
+        assert!(shown.contains(value), "lost YAML evidence {value}: {shown}");
+    }
+    assert!(!shown.contains("null"));
+    assert_eq!(doc.source, source);
+    assert_eq!(doc.frontmatter.fields, original);
 }
 
 // keeps: spec document-viewer §Markdown — fitting never splits extended grapheme clusters.

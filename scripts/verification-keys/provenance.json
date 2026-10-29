@@ -3,7 +3,7 @@
   "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
   "purpose": "Public signature verification only; no private signing material or global trust enrollment",
   "recorded_utc": "2026-10-29",
-  "decision": "Live decision 220: autonomous pinned history verification",
+  "decision": "Decision 220, amended by explicit operator approval on 2026-10-29: Maksim alongside Boxy for new source commits and author landing",
   "keys": [
     {
       "file": "boxy.asc",
@@ -18,8 +18,8 @@
       "sha256": "2007a81c3d0a5f46452b9e2871a793aab5a73494c6af7e24913a92197d95db71",
       "source": "Copied from the Oracle's public-only /tmp/rook-public-sig-w5b31zii/key.asc, retrieved from https://api.github.com/users/Gonzih/gpg_keys",
       "identity": "Maksim Soltan <code@maksim.sh>",
-      "only_authorized_commit": "618df56faccffce46dfec3d1d525b8d115b5d35a",
-      "restriction": "Does not authorize any new author, committer, publisher or future use of this historical key"
+      "restriction": "Approved only with exact author Maksim Soltan <code@maksim.sh>; operator authorization on 2026-10-29 extends the original historical pin to new source commits and author landing. This does not change release signing identities.",
+      "first_authorized_commit": "618df56faccffce46dfec3d1d525b8d115b5d35a"
     }
   ]
 }

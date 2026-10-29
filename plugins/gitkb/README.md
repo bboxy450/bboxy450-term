@@ -18,7 +18,11 @@ make install-gitkb-plugin-local PLUGIN_WORKSPACE=/absolute/project
 `GITKB_BIN` selects the installed backend at build time; `TARGET_DIR` selects the
 worktree-local output. The builder embeds the canonical contract schema, backend
 path/version/SHA256 and build interpreter path. The executable needs no adjacent
-source or schema files. A changed GitKB binary produces `backend_changed` until
+source, schema or skill files. `plugins/gitkb/SKILL.md` is the canonical UTF-8
+skill: its exact contents and frontmatter metadata are embedded in `Shape.skills`.
+Rebuilding after a skill edit changes the executable digest and requires retrust.
+A changed GitKB binary produces `backend_changed` before its next invocation,
+including through an already initialized client, until
 the adapter is rebuilt and retrusted. Python 3.9 or later and the pinned GitKB
 installation remain runtime dependencies; this does not package either runtime.
 This provider requires the host's optional commit and signed-writer extensions.
@@ -54,6 +58,16 @@ own a real `.kb`; the adapter never searches ancestor projects or initializes
 production data. Normal backend processes keep the host's private plugin cwd.
 Only the documented environment allowlist is inherited, with generated
 `GITKB_ROOT` and `GITKB_WORKSPACE` selecting the bound source.
+
+The initialized MCP server advertises `resources` and serves the same embedded
+skill through `resources/list` and `resources/read` at the fixed URI
+`gitkb://skills/gitkb/SKILL.md`. Unknown, escaped and filesystem URIs are refused;
+resource reads never search cwd or adjacent files. This is a compatibility
+resource surface, not an advertisement of the beta Skills-over-MCP extension.
+Host delivery requires support for the additive `Shape.skills` manifest; older
+hosts may ignore it. Supporting hosts relay only selected, trusted provider
+skills through their admitted interface. Instructions grant no additional
+tools, signing or task authority.
 
 The disposable checker alone may send
 `fixture: {version: 1, kind: "data_source_conformance"}`. A guarded
@@ -112,6 +126,13 @@ tokens are root/query/snapshot-specific, expire when source metadata changes,
 and are retained only within this process (128 tokens). Unknown or restarted
 cursors return `stale_cursor`; start changes polling with `cursor: "0"` for a new
 baseline. Deletions return a stable tombstone digest and their former identity.
+For workspace-backed rows, GitKB 0.2.19's read-time `modified_at` is excluded
+from cursor/change fingerprints; exact workspace file stats fence edits instead.
+Committed-only rows retain their native modification timestamp.
+Native filters are prefilters: fetched frontmatter is checked again for type,
+status, assignee and swarm because 0.2.19 can include nonmatching workspace
+overlays. Swarm graph pages apply the same source check. Empty pages still
+advance their cursor within the existing two-record read cap.
 
 Image links are copied from regular, confined GitKB files to the plugin's private
 resource directory and linked from there. Symlinks, hard links and oversized

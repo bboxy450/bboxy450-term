@@ -752,6 +752,22 @@
     mk('circle', { cx, cy, r: 9, style: 'fill:' + (DOC_HUE[doc.type] || 'var(--accent)') + ';stroke:var(--bg);stroke-width:2' });
     return svg;
   }
+  function provenanceDetails(value, open) {
+    const sorted = v => Array.isArray(v) ? v.map(sorted) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sorted(v[k])])) : v;
+    const disclosure = el('div', { class: 'doc-provenance-details' });
+    const button = el('button', { type: 'button', class: 'doc-provenance-toggle', onclick: () => render(!open), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') e.stopPropagation(); } });
+    let evidence;
+    const render = expanded => {
+      open = !!expanded;
+      button.textContent = open ? '⌄ Hide provenance details' : '› Provenance details';
+      button.setAttribute('aria-expanded', String(open));
+      if (evidence) { evidence.remove(); evidence = null; }
+      if (open) { evidence = el('pre', {}, JSON.stringify(sorted(value), null, 2)); disclosure.append(evidence); }
+    };
+    disclosure.append(button);
+    render(open);
+    return disclosure;
+  }
   function docView(doc, opts) {
     opts = opts || {};
     const hue = DOC_HUE[doc.type] || 'var(--accent)';
@@ -774,7 +790,8 @@
       pv.updated_by ? el('span', {}, 'updated by ', el('b', { style: 'color:' + (pv.updatedColor || 'var(--fg)') }, pv.updated_by)) : null,
       pv.derived_from ? el('span', {}, 'derived from ', renderLinks(pv.derived_from)) : null,
       el('span', { class: 'dig' }, el('code', {}, (pv.digest || '').slice(0, 12)), pv.signed ? el('i', { class: 'ok' }, '✓ signed · ' + pv.signed) : el('i', { class: 'no' }, 'unsigned · no write is anonymous: updated_by stamped')));
-    const main = el('div', { class: 'doc-main' }, head, fm, mdLite(bodyAfterTitle(doc.body, doc.title)), prov);
+    const details = doc.provenanceDetails == null ? null : provenanceDetails(doc.provenanceDetails, opts.provenanceDetailsOpen);
+    const main = el('div', { class: 'doc-main' }, head, fm, details, mdLite(bodyAfterTitle(doc.body, doc.title)), prov);
     const backs = (doc.near || []).filter(x => x.back);
     const rail = el('div', { class: 'doc-rail' }, el('div', { class: 'rail-h' }, 'markdown graph · neighbourhood'), neighbourhood(doc),
       el('div', { class: 'rail-legend' }, ...Object.keys(DOC_HUE).map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),

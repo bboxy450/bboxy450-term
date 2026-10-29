@@ -23,6 +23,82 @@ impl c::Measure for Metrics {
 fn ctx() -> ui::Context {
     ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)
 }
+
+// keeps: spec document-viewer — provenance details are an explicit, clipped
+// display action; no source reads or record authority are attached to the link.
+#[test]
+fn provenance_disclosure_defaults_collapsed_and_uses_clipped_retained_actions() {
+    fn layout(name: &str, offset: f32) -> c::Layout {
+        let toggle = c::Element::Named {
+            name: name.into(),
+            content: Box::new(c::Element::Text(c::Text::new(
+                "Provenance details",
+                ui::Text::default(),
+            ))),
+        };
+        c::Element::ScrollView(c::ScrollView {
+            viewport: [240., 10.],
+            offset: [0., offset],
+            content_width: None,
+            content: Box::new(c::Element::Stack(c::Stack {
+                direction: bbt_ui_model::layout::Axis::Column,
+                gap: ui::Length::Px(0.),
+                align: c::Alignment::Start,
+                children: vec![
+                    toggle.into(),
+                    c::Element::Text(c::Text::new(
+                        "Other document content.\n".repeat(20),
+                        ui::Text::default(),
+                    ))
+                    .into(),
+                ],
+            })),
+        })
+        .layout(Rect::new(20., 30., 240., 10.), ctx(), &Metrics)
+        .unwrap()
+    }
+    fn named(node: &c::Layout, name: &str) -> Rect {
+        fn find(node: &c::Layout, name: &str) -> Option<Rect> {
+            if matches!(&node.kind, c::LayoutKind::Named(key) if key == name) {
+                Some(node.rect)
+            } else {
+                node.children.iter().find_map(|child| find(child, name))
+            }
+        }
+        find(node, name).unwrap()
+    }
+    assert!(!Controller::default().provenance_expanded);
+    for name in [
+        "metadata/provenance/toggle",
+        "document/body/metadata/provenance/toggle",
+    ] {
+        let visible = layout(name, 5.);
+        let control = named(&visible, name);
+        let clipped = intersection(control, visible.rect);
+        assert!(clipped.w > 0. && clipped.h > 0.);
+        let point = [clipped.x + clipped.w * 0.5, clipped.y + clipped.h * 0.5];
+        let regions = Regions::retained(&visible);
+        assert_eq!(regions.hit(point), Some(Action::ToggleProvenance));
+        assert_eq!(regions.cursor(point), ui::cursor::Cursor::Pointer);
+        let outside = [clipped.x + 1., visible.rect.y - 1.];
+        assert_eq!(regions.hit(outside), None);
+        assert_eq!(regions.cursor(outside), ui::cursor::Cursor::Default);
+        let modal = Regions::retained_modal(&visible);
+        assert_eq!(modal.hit(point), Some(Action::ToggleProvenance));
+        assert_eq!(modal.hit(outside), Some(Action::Close));
+
+        let hidden = layout(name, 100.);
+        let control = named(&hidden, name);
+        assert!(control.bottom() <= hidden.rect.y);
+        let regions = Regions::retained(&hidden);
+        let viewport_center = [hidden.rect.x + 1., hidden.rect.y + hidden.rect.h * 0.5];
+        assert_eq!(regions.hit(viewport_center), None);
+        assert_eq!(regions.cursor(viewport_center), ui::cursor::Cursor::Default);
+    }
+    let unrelated = layout("metadata/provenance/toggle-extra", 0.);
+    assert_eq!(Regions::retained(&unrelated).hit([22., 31.]), None);
+}
+
 // keeps: spec document-viewer §Markdown
 #[test]
 fn link_hit_regions_follow_the_scroll_clip_and_disable_missing_links() {

@@ -44,7 +44,7 @@ Signed installation never silently falls back to unsigned. `install-unsigned` us
 ## Scope and evidence
 
 - Read the task, `.bboxy/vision.md`, relevant specs/decisions/interfaces and the source/Git state before editing. `.bboxy/tasks/README.md` is the historical task board; GitHub issues track current release findings.
-- One writing worktree per Executor. Do not edit the shared checkout, stage broadly, stash, reset, or change someone else's work. Stage exact paths. Every commit is signed as Boxy with the approved machine key.
+- One writing worktree per Executor. Do not edit the shared checkout, stage broadly, stash, reset, or change someone else's work. Stage exact paths. Every commit is signed with its author's exact approved key and identity from `.bboxy/invariants/signed-main.md`; Boxy and Maksim are approved.
 - Run the Make targets appropriate to the change. Before handoff/push, `make test` must pass on the exact committed source. A real process-boundary change also runs `make test-boundaries`; UI geometry/reference changes require the existing parity check.
 - Report commands and actual exits, paths/lines and mechanisms, what was skipped, the commit and worktree status. An agent report or dashboard label is not proof.
 - Keep raw logs and fixture accounts outside Git. In `.bboxy/runs`, commit only a `.log`/`.json` command/exit/hash summary. Markdown under `.bboxy` is a numbered record and must follow its frontmatter format.

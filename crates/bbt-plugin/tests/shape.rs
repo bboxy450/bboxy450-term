@@ -37,11 +37,50 @@ fn versions_are_major_minor_and_unknown_fields_are_additive() {
             .unwrap();
     validator.validate(&value).unwrap();
     let shape: Shape = serde_json::from_value(value).unwrap();
+    assert!(
+        shape.skills.is_empty(),
+        "old descriptors need no skill field"
+    );
     shape
         .validate(
             &PluginName::parse("bboxy450-term", "bboxy450-term-data_source-my-provider").unwrap(),
         )
         .unwrap();
+}
+
+#[test]
+fn descriptor_skills_are_additive_and_use_shared_validation() {
+    let name = PluginName::parse("bboxy450-term", "bboxy450-term-data_source-reference").unwrap();
+    let mut value = fixture();
+    let content = "---\r\nname: knowledge\r\n---\r\n\nRead é with the current tools.\n";
+    value["skills"] = json!([{"name":"knowledge","description":"Knowledge workflow",
+        "content":content,"future_minor_field":true}]);
+    let validator =
+        jsonschema::validator_for(&serde_json::from_str(bbt_plugin::shape::SCHEMA).unwrap())
+            .unwrap();
+    validator.validate(&value).unwrap();
+    let shape: Shape = serde_json::from_value(value.clone()).unwrap();
+    shape.validate(&name).unwrap();
+    assert_eq!(shape.skills[0].content.as_bytes(), content.as_bytes());
+    let duplicate = value["skills"][0].clone();
+    value["skills"].as_array_mut().unwrap().push(duplicate);
+    assert_eq!(
+        serde_json::from_value::<Shape>(value.clone())
+            .unwrap()
+            .validate(&name)
+            .unwrap_err()
+            .code,
+        "duplicate_skill"
+    );
+    value["skills"] = json!([]);
+    validator.validate(&value).unwrap();
+    serde_json::from_value::<Shape>(value.clone())
+        .unwrap()
+        .validate(&name)
+        .unwrap();
+    value["skills"] = Value::Null;
+    assert!(validator.validate(&value).is_err());
+    assert!(serde_json::from_value::<Shape>(value).is_err());
 }
 
 // keeps: decision #278 — concrete contracts, additive wire and fixed host approval

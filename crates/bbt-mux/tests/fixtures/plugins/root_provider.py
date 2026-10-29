@@ -11,6 +11,7 @@ TRACE = None
 GATE = None
 GATE_ROOT = None
 GATE_ARMED = None
+SKILL_CONTENT = "---\nname: root-fixture\ndescription: Root fixture knowledge instructions.\n---\n\n# Root fixture\n\nResolve before fetch; preserve é and exact source bytes.\n"
 def trace(kind, **fields):
     if TRACE:
         with open(TRACE, "a") as log: log.write(json.dumps(dict(kind=kind, pid=os.getpid(), **fields))+"\n")
@@ -43,6 +44,7 @@ def schema(method, result=False):
 
 def shape():
     return {"name":"root fixture", "version":"1.0", "shape_version":"1.0", "health_command":"health",
+        "skills":[{"name":"root-fixture","description":"Root fixture knowledge instructions.","content":SKILL_CONTENT}],
         "systems":[{"contract":"data_source", "contract_version":"1.0", "commands":[
         {"name":m,"args":schema(m),"result":schema(m,True),"timeout_ms":30000} for m in METHODS]}]}
 

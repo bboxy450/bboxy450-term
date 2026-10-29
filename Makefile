@@ -62,7 +62,10 @@ help:
 	  'make test-documents-night        Full native D1/D2 private document assertions' \
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
+	  'make test-document-provenance   Collapsed task evidence, retained clicks and source preservation' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
+	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
+	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
@@ -358,9 +361,18 @@ test-documents-night:
 	$(MAKE) check-documents
 
 .PHONY: check-documents
+.PHONY: test-document-provenance
+test-document-provenance:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-doc --target-dir '$(TARGET_DIR)' --test layout --test record_host; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test document_host --test documents; \
+	cargo test --locked -p bboxy450-book --target-dir '$(TARGET_DIR)' --test documents; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test documents; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir document_provenance_disclosure_is_quiet_clickable_and_preserves_evidence -- --ignored --exact --nocapture
+
 check-documents:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: parity-documents
 parity-documents:
@@ -556,6 +568,19 @@ test-harness-startup:
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
+
+.PHONY: test-plugin-skills check-plugin-skills
+test-plugin-skills:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_skills_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_four_methods_ -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results -- --exact --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test knowledge_provider -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters
+
+check-plugin-skills:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-terminal-colors test-terminal-colors-native
 test-terminal-colors:

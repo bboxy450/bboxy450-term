@@ -14,6 +14,7 @@ use crate::{
     Refusal,
     contracts::Contract,
     policy::{Hook, Tier},
+    skills::{self, Skill},
 };
 
 /// The current descriptor ABI; minor versions may add unknown fields.
@@ -178,6 +179,9 @@ pub struct Shape {
     pub version: String,
     pub shape_version: String,
     pub systems: Vec<System>,
+    /// Optional instructions, cached with the trusted descriptor's binary digest.
+    #[serde(default)]
+    pub skills: Vec<Skill>,
     #[serde(default)]
     pub hooks: Vec<Hook>,
     #[serde(default)]
@@ -206,6 +210,7 @@ impl Shape {
                 "presentation metadata exceeds its bounds",
             ));
         }
+        skills::validate(&self.skills)?;
         if self.name.is_empty()
             || self.version.is_empty()
             || self.systems.is_empty()

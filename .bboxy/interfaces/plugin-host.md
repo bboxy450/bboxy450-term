@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:43:59Z"
+updated: "2026-10-29T22:09:42Z"
 ---
 # ICD: plugin ↔ host
 
@@ -82,3 +82,20 @@ this marker and the checker never redirects mutations to Harmony.
 Only that disposable bootstrap initialization may use a 15-second cap: real
 GitKB initialization measured 6.077 seconds, including its SQL checkpoint.
 Production initialization and ordinary contract calls retain the 2-second cap.
+
+## Integration-skill addendum — operator brief #63, 2026-10-29
+
+This additive agreement joins the binary, MCP surface and workflow content described in [[plugins]] §3a. [[plugins-sota]] §B separates the current compatibility cut from the published Beta extension.
+
+| Boundary | Agreement |
+|---|---|
+| Producer | A provider may add `Shape.skills: [{ name, description, content }]`; each `content` is its embedded canonical `SKILL.md`. Legacy shapes omit the field. |
+| Bounds | At most 16 entries, 64 KiB UTF-8 content each, and 256 KiB serialized skill-array JSON; invalid metadata is refused before publication. |
+| Consumer | The logic host resolves built-in and selected-provider skills once for both fixed `skill_list`/`skill_read` tools and legacy `resources/list`/`resources/read`. |
+| Scope and lifetime | An external read retains its captured root and selected source. Every list/read checks the live source generation, enable state, trust and trusted binary digest. A stale selector is refused; focus never retargets it. Unrelated providers are not inspected. |
+| Content and authority | The trusted binary contains the skill bytes. Returned content keeps its origin; it is instructional data and grants no role, signing, custody or execution permission. External instructions are never automatically injected at harness launch. |
+| Failure | Missing legacy skill metadata produces no external skills. Malformed metadata is refused. An unavailable selected provider is omitted with a named `provider_error` while host guides remain available; a stale external URI is refused. Neither path substitutes another provider or the current focus. |
+| Verification | Bounded descriptors; equal tool/resource catalogs and bytes; selected-root isolation; stale generation/disable/trust/digest fences; unchanged authority. |
+| Next interface revision | Native Beta `server/discover` plus `skills/list`/`skills/get`, complete file manifests and supporting files require an explicit revision. Preserve origin and canonical bytes across that mapping; do not advertise this support before it exists. |
+
+The KB plugin in PR #76 is the first concrete producer. Its builder derives embedded instructions and resource content from the same source. Generic tool forwarding and standalone bundled stdio export are separate work.

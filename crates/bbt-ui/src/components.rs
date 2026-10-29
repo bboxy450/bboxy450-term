@@ -104,6 +104,8 @@ impl TextShadow {
 pub struct Text {
     pub runs: Vec<TextRun>,
     pub wrap: bool,
+    /// Keep leading spaces on each line for preformatted source and evidence.
+    pub preserve_whitespace: bool,
     /// Keep the inline max-content measure as a flex basis before wrapping.
     pub max_content_basis: bool,
     pub ellipsis: bool,
@@ -124,6 +126,7 @@ impl Text {
                 style,
             }],
             wrap: true,
+            preserve_whitespace: false,
             max_content_basis: false,
             ellipsis: false,
             max_lines: None,
@@ -736,7 +739,7 @@ fn text_lines(
                 start = placed.len();
                 line_number += 1;
             }
-            let value = if x == 0. {
+            let value = if x == 0. && !text.preserve_whitespace {
                 value.trim_start_matches(' ')
             } else {
                 value

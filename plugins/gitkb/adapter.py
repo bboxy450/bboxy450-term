@@ -31,6 +31,8 @@ import uuid
 # Embedded by scripts/build-gitkb-plugin.py; no adjacent runtime files.
 BUILD = {}  # @build
 SCHEMA = {}  # @schema
+SKILLS = []  # @skills
+SKILL_URI = "gitkb://skills/gitkb/SKILL.md"
 METHODS = {"resolve": ("ResolveRequest", "RecordRef"), "fetch": ("FetchRequest", "Record"),
            "search": ("SearchRequest", "SearchPage"), "list": ("ListRequest", "RefPage"),
            "links": ("FetchRequest", "Links"), "graph": ("GraphRequest", "GraphPage"),
@@ -137,7 +139,14 @@ def shape():
                          "commands": [{"name": m, "args": schema(a), "result": schema(b),
                                        "timeout_ms": 15000 if m == "commit" else 2000} for m, (a, b) in METHODS.items()]}],
             "hooks": [], "health_command": "health", "signed_writer": True, "fixture_bootstrap": True,
-            "concurrent": False, "trace": False}
+            "concurrent": False, "trace": False, "skills": SKILLS}
+
+
+def skill_resource(uri):
+    # Exact embedded URI only: no decoding, cwd lookup or filesystem fallback.
+    if uri != SKILL_URI or len(SKILLS) != 1:
+        raise Refusal("unknown_resource", "only the embedded GitKB skill URI is available")
+    return {"uri": SKILL_URI, "mimeType": "text/markdown", "text": SKILLS[0]["content"]}
 
 
 class Adapter:
@@ -162,8 +171,7 @@ class Adapter:
                     and not any(word in k.upper() for word in ("TOKEN", "KEY", "SECRET", "BBOXY_", "ICQ_"))}
         self.env["GITKB_ROOT"] = str(self.root)
         self.backend = BUILD["path"]
-        if hashlib.sha256(Path(self.backend).read_bytes()).hexdigest() != BUILD["sha256"]:
-            raise Refusal("backend_changed", "the installed GitKB changed; rebuild and retrust this executable")
+        self.verify_backend()
         self.fixture_mode = params.get("fixture") == {"version": 1, "kind": "data_source_conformance"}
         if self.fixture_mode:
             temporary = Path(tempfile.gettempdir()).resolve()
@@ -213,17 +221,36 @@ class Adapter:
         self.cli("workspace", "write", "p0-fixture", "--stdin", "--create-if-missing",
                  "--origin-id", "bboxy-conformance-seed", "--json", stdin=raw)
 
-    def cli(self, *args, stdin=None, allow_text=False):
+    def check_budget(self):
         if self.cancelled.is_set():
             raise Refusal("cancelled", "request cancelled")
-        remaining = self.deadline - time.monotonic()
-        if remaining <= 0:
+        if time.monotonic() >= self.deadline:
             raise Refusal("deadline_exceeded", "GitKB call exhausted its declared budget")
+
+    def verify_backend(self):
+        # A root connection can outlive a CLI upgrade. Check every invocation,
+        # within the original call budget, without accepting a new pin silently.
+        checksum = hashlib.sha256()
+        self.check_budget()
+        with Path(self.backend).open("rb") as backend:
+            while True:
+                self.check_budget()
+                chunk = backend.read(1024 * 1024)
+                if not chunk:
+                    break
+                checksum.update(chunk)
+        self.check_budget()
+        if checksum.hexdigest() != BUILD["sha256"]:
+            raise Refusal("backend_changed", "the installed GitKB changed; rebuild and retrust this executable")
+
+    def cli(self, *args, stdin=None, allow_text=False):
+        self.verify_backend()
         # No shell, inherited GitKB root/workspace, repository cwd or credentials.
         with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out_file, tempfile.TemporaryFile() as err_file:
             if stdin is not None:
                 inp.write(stdin.encode())
             inp.seek(0)
+            self.check_budget()
             with subprocess.Popen([self.backend, "--no-pager", "--color", "never", *args],
                                   cwd=self.cwd, env=self.env, stdin=inp,
                                   stdout=out_file, stderr=err_file) as process:
@@ -297,6 +324,11 @@ class Adapter:
             raise Refusal("backend_protocol_error", "GitKB list is not an array")
         stats = self.workspace_stats()
         entries = {row["slug"]: dict(row, workspace_stat=stats.get(row["slug"])) for row in rows}
+        for row in entries.values():
+            if row["workspace_stat"] is not None:
+                # GitKB 0.2.19 reparses workspace modified_at as read time.
+                # Exact file stats fence that source; committed timestamps stay.
+                row.pop("modified_at", None)
         return entries, digest(encoded(entries))
 
     def read(self, slug, requested=None):
@@ -466,6 +498,13 @@ class Adapter:
         token = self.token(dict(key=key, snapshot=snapshot, offset=next_offset)) if next_offset < len(slugs) else None
         return result, token
 
+    @staticmethod
+    def matches_filter(record, filters):
+        # Native --where can include nonmatching workspace overlays (0.2.19).
+        # Check the fetched source within the existing per-page read budget.
+        return all(not filters.get(field) or record["frontmatter"].get(field) == filters[field]
+                   for field in ("type", "status", "assignee", "swarm"))
+
     def listing(self, args, search=False):
         filters = dict(args.get("filter") or {})
         words = []
@@ -509,7 +548,7 @@ class Adapter:
                 haystack = (encoded(record["frontmatter"]) + " " + record["body"]).casefold()
                 if not all(word.casefold() in haystack for word in words):
                     continue
-            if filters.get("status") and record["frontmatter"].get("status") != filters["status"]:
+            if not self.matches_filter(record, filters):
                 continue
             if search:
                 items.append({"ref": self.ref(record), "title": record["frontmatter"]["title"],
@@ -547,7 +586,7 @@ class Adapter:
             if slug not in selected:
                 continue
             record = self.read(slug)
-            if filters.get("status") and record["frontmatter"].get("status") != filters["status"]:
+            if not self.matches_filter(record, filters):
                 continue
             # Native FTS does not overlay workspace-only/dirty source content.
             if rows[slug].get("workspace_stat"):
@@ -597,6 +636,8 @@ class Adapter:
         elif scope["kind"] != "all":
             raise Refusal("invalid_scope", "unknown graph scope")
         records, token = self.page_records(sorted(selected), args, encoded(["graph", scope]), snapshot)
+        if scope["kind"] == "swarm":
+            records = [record for record in records if self.matches_filter(record, {"swarm": scope["swarm"]})]
         edges, _ = self.edges([r["slug"] for r in records])
         ids = {r["id"] for r in records}
         outgoing = [e for e in edges if e["from"] in ids]
@@ -760,11 +801,19 @@ def serve():
                     raise Refusal("already_initialized", "one process binds one root")
                 adapter = Adapter(params, cancelled)
                 value = {"protocolVersion": "2025-06-18", "serverInfo": {"name": "GitKB", "version": "1.0.0"},
-                         "capabilities": {"tools": {}, "experimental": {"bboxy450": {
+                         "capabilities": {"tools": {}, "resources": {}, "experimental": {"bboxy450": {
                              "shape_version": "1.0", "contracts": {"data_source": "1.0"},
                              "signed_writer": "1.0", "concurrent": False, "trace": False}}}}
             elif method == "ping":
                 value = {}
+            elif method in ("resources/list", "resources/read"):
+                if adapter is None:
+                    raise Refusal("not_initialized", "initialize.root must bind this process first")
+                if method == "resources/list":
+                    value = {"resources": [{"uri": SKILL_URI, "name": SKILLS[0]["name"],
+                                            "description": SKILLS[0]["description"], "mimeType": "text/markdown"}]}
+                else:
+                    value = {"contents": [skill_resource(params.get("uri"))]}
             elif method == "tools/list":
                 value = {"tools": [{"name": "data_source_" + m, "description": "GitKB " + m,
                                     "inputSchema": schema(a), "outputSchema": schema(b)} for m, (a, b) in METHODS.items()]}
@@ -790,7 +839,8 @@ def serve():
                 send({"jsonrpc": "2.0", "id": request_id, "result": {
                     "content": [{"type": "text", "text": str(error)}], "structuredContent": error.value, "isError": True}})
             else:
-                send({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32602, "message": str(error), "data": error.value}})
+                code = -32002 if error.value["code"] == "unknown_resource" else -32602
+                send({"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": str(error), "data": error.value}})
         except (KeyError, TypeError, ValueError, OSError) as error:
             if request.get("method") == "tools/call":
                 send({"jsonrpc": "2.0", "id": request_id, "result": {"isError": True, "content": [],

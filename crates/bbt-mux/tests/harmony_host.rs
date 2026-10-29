@@ -625,11 +625,20 @@ async fn selected_source_owns_signed_documents_and_slug_task_lifecycle_without_b
         .unwrap();
     for (tool, args) in [
         ("task_import_context", json!({})),
-        ("task_import", json!({"expected_root":a.join(".bboxy"),"manifest_path":a.join("missing-manifest.json"),"audit_path":a.join("missing-audit.json"),"source_dir":a,"bundle_sha256":"0".repeat(64),"owner_seat":oracle})),
+        (
+            "task_import",
+            json!({"expected_root":a.join(".bboxy"),"manifest_path":a.join("missing-manifest.json"),"audit_path":a.join("missing-audit.json"),"source_dir":a,"bundle_sha256":"0".repeat(64),"owner_seat":oracle}),
+        ),
     ] {
         let refused = call(&logic.client, oracle, tool, args).await;
         assert_eq!(refused["isError"], true, "{refused}");
-        assert!(refused["structuredContent"]["error"]["message"].as_str().unwrap().contains("unsupported_operation"), "{refused}");
+        assert!(
+            refused["structuredContent"]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("unsupported_operation"),
+            "{refused}"
+        );
     }
     let unsupported = call(
         &logic.client,
@@ -1284,10 +1293,18 @@ async fn real_gitkb_host_lifecycle() {
     fs::copy(&artifact, &source).unwrap();
     fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
     use sha2::{Digest, Sha256};
-    eprintln!(
-        "real adapter sha256={:x}",
-        Sha256::digest(fs::read(&source).unwrap())
-    );
+    let artifact_sha256 = format!("{:x}", Sha256::digest(fs::read(&source).unwrap()));
+    eprintln!("real adapter sha256={artifact_sha256}");
+    let descriptor = Command::new(&source)
+        .arg("--shape")
+        .env_clear()
+        .current_dir(&private_root)
+        .output()
+        .unwrap();
+    assert!(descriptor.status.success());
+    let descriptor: Value = serde_json::from_slice(&descriptor.stdout).unwrap();
+    let expected_skill = &descriptor["skills"][0];
+    assert_eq!(expected_skill["name"], "gitkb");
     let custody = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = LogicConfig {
@@ -1356,6 +1373,15 @@ async fn real_gitkb_host_lifecycle() {
         .unwrap();
     let before = status(&logic.client, scope).await;
     let choice = before.offered.iter().find(|p| p.id == candidate).unwrap();
+    let unselected = success(call(&logic.client, worker, "skill_list", json!({})).await);
+    assert!(
+        unselected["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|skill| skill["name"] != "gitkb"),
+        "enabled but unselected providers do not supply instructions"
+    );
     logic
         .client
         .gui_knowledge_control_scoped(
@@ -1372,6 +1398,29 @@ async fn real_gitkb_host_lifecycle() {
         .await
         .unwrap();
     let created=success(call(&logic.client,oracle,"knowledge_write",json!({"path":"notes/private-custom.md","frontmatter":{"type":"project-brief","title":"Private custom type"},"body":"Native custom document"})).await)["record"].clone();
+    let skills = success(call(&logic.client, worker, "skill_list", json!({})).await);
+    let gitkb_skills = skills["skills"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|skill| skill["name"] == "gitkb")
+        .collect::<Vec<_>>();
+    assert_eq!(gitkb_skills.len(), 1);
+    let skill = gitkb_skills[0];
+    assert_eq!(skill["origin"], candidate);
+    assert_eq!(skill["root_id"], before.roots[0].id);
+    assert_eq!(skill["plugin_sha256"], artifact_sha256);
+    let skill_uri = skill["uri"].clone();
+    let instruction = success(
+        call(
+            &logic.client,
+            worker,
+            "skill_read",
+            json!({"uri":skill_uri}),
+        )
+        .await,
+    );
+    assert_eq!(instruction["skill"]["content"], expected_skill["content"]);
     let reference: d::RecordRef = serde_json::from_value(created.clone()).unwrap();
     assert!(reference.external_id.is_some());
     assert_ne!(reference.id, reference.external_id.clone().unwrap());
@@ -1518,9 +1567,19 @@ async fn real_gitkb_host_lifecycle() {
         .unwrap()
         .unwrap();
     assert_eq!(after_restart["body"], "Signed edit after native commit");
+    let instruction = success(
+        call(
+            &restarted.client,
+            worker,
+            "skill_read",
+            json!({"uri":skill_uri}),
+        )
+        .await,
+    );
+    assert_eq!(instruction["skill"]["content"], expected_skill["content"]);
     restarted.shutdown().unwrap();
     supervisor.shutdown().unwrap();
     eprintln!(
-        "real GitKB host: trust/check/enable/select, typed create/update, slug delegate/report/accept, native commit, signed post-commit edit, restart all completed"
+        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, slug delegate/report/accept, native commit, signed post-commit edit, restart all completed"
     );
 }

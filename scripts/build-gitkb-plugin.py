@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -26,9 +27,15 @@ schema = json.loads(args.schema.read_text())
 if not {"CommitRequest", "CommitResult"} <= schema["$defs"].keys():
     raise SystemExit("schema_requires_commit_extension: use the canonical host schema with optional commit")
 source = (ROOT / "plugins/gitkb/adapter.py").read_text()
+skill = (ROOT / "plugins/gitkb/SKILL.md").read_bytes().decode("utf-8")
+metadata = re.match(r"\A---\nname: (gitkb)\ndescription: ([^\n]+)\n---\n", skill)
+if not metadata or len(skill.encode("utf-8")) > 64 * 1024:
+    raise SystemExit("invalid_gitkb_skill: expected bounded canonical gitkb skill frontmatter")
+skills = [{"name": metadata[1], "description": metadata[2], "content": skill}]
 source = source.replace("#!/usr/bin/env python3", "#!" + str(Path(sys.executable).resolve()) + " -I", 1)
 source = source.replace("BUILD = {}  # @build", "BUILD = " + repr(build))
 source = source.replace("SCHEMA = {}  # @schema", "SCHEMA = " + repr(schema))
+source = source.replace("SKILLS = []  # @skills", "SKILLS = " + repr(skills))
 compile(source, args.output, "exec")
 output = Path(args.output)
 output.parent.mkdir(parents=True, exist_ok=True)

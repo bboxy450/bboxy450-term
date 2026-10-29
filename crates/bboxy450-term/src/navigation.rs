@@ -109,6 +109,12 @@ impl App {
             match action {
                 Some(Action::Open(target)) => self.follow_document_link(target),
                 Some(Action::Close) => self.close_document(),
+                Some(Action::ToggleProvenance) => {
+                    self.document.scroll.provenance_expanded =
+                        !self.document.scroll.provenance_expanded;
+                    self.document_layout = None;
+                    self.request_redraw();
+                }
                 Some(Action::Unavailable(name)) => {
                     self.document.notice = Some(format!("{name} is not available yet"));
                     self.document_layout = None;

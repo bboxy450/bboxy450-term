@@ -42,11 +42,18 @@ fn retained_context(value: &Value, binding: &RootBinding, provider_revision: u64
         && context["knowledge_root_revision"] == json!(provider_revision)
 }
 pub(crate) fn handles(call: &Call) -> bool {
-    matches!(
-        call.tool.as_str(),
-        "knowledge_fetch" | "knowledge_search" | "orient" | "task_status" | "task_list" | "task_import_context"
-    ) || call.tool == "graph_read"
-        && matches!(call.args["graph"].as_str(), Some("task" | "markdown"))
+    mcp::skills::handles(&call.tool)
+        || matches!(
+            call.tool.as_str(),
+            "knowledge_fetch"
+                | "knowledge_search"
+                | "orient"
+                | "task_status"
+                | "task_list"
+                | "task_import_context"
+        )
+        || call.tool == "graph_read"
+            && matches!(call.args["graph"].as_str(), Some("task" | "markdown"))
 }
 pub(crate) struct Job {
     pub host: Host,
@@ -111,6 +118,26 @@ impl Job {
             Err(invalid(
                 "swarm_root_changed: knowledge read root does not match admission",
             ))
+        } else if mcp::skills::handles(&call.tool) {
+            let mut value = match mcp::skills::read(&host, &actor, &call) {
+                Ok(value) => mcp::success(call.op_id, value),
+                Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
+            };
+            if value["isError"] != true {
+                value["structuredContent"]["knowledge_root_revision"] = json!(revision);
+                value["structuredContent"]["knowledge_root_id"] = json!(binding.root_id);
+                value["structuredContent"]["swarm_workspace_id"] = json!(binding.swarm);
+                value["structuredContent"]["swarm_workspace_revision"] = json!(binding.revision);
+            }
+            journal.checked_authorized(
+                &actor,
+                &call,
+                mcp::knowledge::bounded(call.op_id, value, false),
+                |old| {
+                    retained_context(old, &binding, revision)
+                        && mcp::skills::retained(&host, &actor, &call, old)
+                },
+            )
         } else {
             host.with_source(&index, &registry, |source| {
                 let result: std::result::Result<Value, ReadFailure> = (|| match call.tool.as_str() {
