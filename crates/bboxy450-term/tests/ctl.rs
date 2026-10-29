@@ -928,6 +928,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                         id: op,
                         result: Box::new(Ok(bbt_proto::gui::UiLayout {
                             regions: Default::default(),
+                            test_clipboard: None,
                             swarm_workdirs: Default::default(),
                             sidebar_open: Default::default(),
                             clock: None,
@@ -1706,6 +1707,7 @@ async fn ctl_gui_seats(
                     id: op,
                     result: Box::new(Ok(bbt_proto::gui::UiLayout {
                         regions: Default::default(),
+                        test_clipboard: None,
                         swarm_workdirs: Default::default(),
                         sidebar_open: Default::default(),
                         frame_seq: 0,

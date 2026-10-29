@@ -8,6 +8,12 @@
 use crate::*;
 use bboxy450_term::terminal_selection::Display;
 
+fn copy_chord(input: &keyboard::Input<'_>, selected: bool) -> bool {
+    selected
+        && input.state.is_pressed()
+        && input.modifiers.state == ModifiersState::SUPER
+        && keyboard::shortcut_key(input) == Some('c')
+}
 impl App {
     pub(super) fn terminal_display(&self, seat: SeatId) -> Option<Display> {
         if self.app_overlays.open()
@@ -33,9 +39,16 @@ impl App {
         let prepared = model.prepared_screens.get(&seat)?;
         let frame = model.frames.get(&seat)?;
         let screen = &prepared.screen;
-        let mut view = model.screen_baselines.get(&seat)?.0;
-        // The process identity is current even when an older prepared frame is retained for resize.
-        view.generation = model.ui.seats.get(&seat)?.process_generation;
+        let view = model.screen_baselines.get(&seat)?.0;
+        let desired = model
+            .history
+            .get(&seat)
+            .map_or(model.screens.get(&seat)?, |h| &h.screen);
+        if !Arc::ptr_eq(screen, desired)
+            || view.generation != model.ui.seats.get(&seat)?.process_generation
+        {
+            return None;
+        }
         let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
         let cell = [
             frame.width as f32 / screen.cols as f32 / scale,
@@ -46,6 +59,7 @@ impl App {
             view,
             screen: screen.clone(),
             cell,
+            historical_row: model.history.get(&seat).map(|h| h.top_row),
             rect: Rect::new(
                 body.x,
                 body.y,
@@ -83,10 +97,7 @@ impl App {
         self.terminal_selection.text(&display)
     }
     pub(super) fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
-        input.state.is_pressed()
-            && input.modifiers.state == ModifiersState::SUPER
-            && keyboard::shortcut_key(input) == Some('c')
-            && self.terminal_copy_text().is_some()
+        copy_chord(input, self.terminal_copy_text().is_some())
     }
     pub(super) fn copy_terminal_selection(&mut self) -> bool {
         let Some(text) = self.terminal_copy_text() else {
@@ -117,8 +128,29 @@ impl App {
         };
         let mut draw = bbt_ui_model::draw::DrawList::default();
         for rect in self.terminal_selection.rectangles(&display) {
-            draw.rect(rect, 0., bbt_ui_model::Color([0.25, 0.50, 0.95, 0.35]));
+            draw.rect(
+                rect,
+                0.,
+                bbt_ui_model::draw::Color([0.25, 0.50, 0.95, 0.35]),
+            );
         }
         vec![bbt_ui::components::Paint::Draw(draw)]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn terminal_selection_copy_chord_does_not_steal_ctrl_c_or_empty_selection() {
+        let mut input = chrome_input("cmd-c").unwrap();
+        assert!(copy_chord(&input, true));
+        assert!(!copy_chord(&input, false));
+        input.modifiers.state = ModifiersState::CONTROL;
+        assert!(!copy_chord(&input, true));
+        assert_eq!(route_key(&input, 0, None), RoutedKey::Terminal(vec![3]));
+        input.modifiers.state = ModifiersState::SUPER;
+        input.state = ElementState::Released;
+        assert!(!copy_chord(&input, true));
     }
 }

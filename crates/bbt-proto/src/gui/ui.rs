@@ -8,8 +8,9 @@
 use super::*;
 
 /// Logical input verbs; old logic is refreshed without replacing live PTYs.
-/// Version 3 adds explicit operator image paste; older logic is refreshed before relay.
-pub const UI_CONTROL_VERSION: u16 = 3;
+/// Includes the explicit operator image-paste relay added in version 3.
+/// Version 5 adds terminal selection/copy and private test clipboard receipts.
+pub const UI_CONTROL_VERSION: u16 = 5;
 
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,6 +47,16 @@ pub enum UiRequest {
         from: [u32; 2],
         to: [u32; 2],
     },
+    /// Terminal drag through the real pointer selection owner. Shift overrides PTY mouse mode.
+    TerminalSelect {
+        from: [u32; 2],
+        to: [u32; 2],
+        shift: bool,
+    },
+    /// Same action as the native Edit > Copy menu.
+    Copy,
+    /// Private test-account clipboard provider only; never reads the system clipboard.
+    ClipboardRead,
     /// Wheel input in the retained sidebar viewport.
     SidebarWheel {
         lines: i32,
@@ -98,7 +109,9 @@ impl UiRequest {
             Self::Click { x, y } | Self::RightClick { x, y } if *x > 32768 || *y > 32768 => {
                 Err("invalid_ui_click: coordinates exceed window bounds")
             }
-            Self::Drag { from, to } if from.iter().chain(to).any(|v| *v > 32768) => {
+            Self::Drag { from, to } | Self::TerminalSelect { from, to, .. }
+                if from.iter().chain(to).any(|v| *v > 32768) =>
+            {
                 Err("invalid_ui_drag: coordinates exceed window bounds")
             }
             Self::SwarmWorkdir { swarm, path }
@@ -325,6 +338,7 @@ impl Default for UiScrollPosition {
 
 /// Named chrome chords accepted by ctl and independently checked by the window.
 pub const UI_KEYS: &[&str] = &[
+    "cmd-c",
     "cmd-t",
     "cmd-d",
     "cmd-shift-d",
@@ -392,6 +406,9 @@ pub struct UiLayout {
     /// Visible retained input regions in logical window coordinates.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub regions: std::collections::BTreeMap<String, [f32; 4]>,
+    /// Present only on an explicit verified test-account ClipboardRead receipt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_clipboard: Option<String>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub swarm_workdirs: std::collections::BTreeMap<Ulid, String>,
     /// Produced-frame expansion choices: swarm:<ULID>, providers/Hosts and providers/Cloud.

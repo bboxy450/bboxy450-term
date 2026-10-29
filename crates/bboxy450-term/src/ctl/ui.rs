@@ -14,6 +14,10 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "click", "Ui"),
     ("ui", "right-click", "Ui"),
     ("ui", "drag", "Ui"),
+    ("ui", "select", "Ui"),
+    ("ui", "shift-select", "Ui"),
+    ("ui", "copy", "Ui"),
+    ("ui", "clipboard-read", "Ui"),
     ("ui", "sidebar-scroll", "Ui"),
     ("ui", "launcher-scroll", "Ui"),
     ("ui", "focus", "Ui"),
@@ -47,6 +51,24 @@ pub(super) use ui_commands;
 /// when the words are not this noun's.
 pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", verb @ ("select" | "shift-select"), x0, y0, x1, y1] => {
+            let values: Result<Vec<u32>, _> =
+                [x0, y0, x1, y1].into_iter().map(str::parse).collect();
+            let v = values.map_err(|_| {
+                format!("{USAGE_PREFIX}ui select requires unsigned from-x from-y to-x to-y")
+            })?;
+            let request = bbt_proto::gui::UiRequest::TerminalSelect {
+                from: [v[0], v[1]],
+                to: [v[2], v[3]],
+                shift: verb == "shift-select",
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
+        ["ui", "copy"] => Command::Ui(bbt_proto::gui::UiRequest::Copy),
+        ["ui", "clipboard-read"] => Command::Ui(bbt_proto::gui::UiRequest::ClipboardRead),
         ["ui", "drag", x0, y0, x1, y1] => {
             let values: Result<Vec<u32>, _> =
                 [x0, y0, x1, y1].into_iter().map(str::parse).collect();

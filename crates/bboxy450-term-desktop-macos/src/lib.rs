@@ -407,4 +407,4 @@ pub fn apply_titlebar_action(
 }
 
 mod clipboard;
-pub use clipboard::{read_clipboard, clipboard_image_png, write_clipboard_text};
+pub use clipboard::{clipboard_image_png, read_clipboard, write_clipboard_text};

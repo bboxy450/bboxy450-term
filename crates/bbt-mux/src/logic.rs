@@ -5948,6 +5948,9 @@ impl Worker {
                 "test_account_required: UI clock control requires a verified test account",
             ));
         }
+        if matches!(&request, bbt_proto::gui::UiRequest::ClipboardRead)
+            && !self.identity.issued_by().is_some_and(|label| label.starts_with("test-account:"))
+        { return Err(invalid("test_account_required: clipboard receipt requires a verified test account")); }
         let origin = self.identity.bind_origin(origin);
         let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {

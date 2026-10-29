@@ -7,9 +7,9 @@
 //! App process boundaries, IO-owned terminal models and worker-prepared frames.
 pub mod attention;
 pub mod close;
-pub mod composer_images;
 pub mod close_frame;
 pub mod cockpit;
+pub mod composer_images;
 pub mod ctl;
 pub mod documents;
 pub mod e2e_night;
@@ -25,9 +25,9 @@ pub mod messaging;
 pub mod model;
 pub mod notifications;
 pub mod scrollback;
-pub mod terminal_selection;
 pub mod settings;
 pub mod spawn_params;
+pub mod terminal_selection;
 
 #[cfg(test)]
 // keeps: invariant kitty-keyboard

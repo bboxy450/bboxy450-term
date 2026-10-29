@@ -80,6 +80,7 @@ impl App {
     }
     /// Complete the same pointer gesture for native input and private ctl clicks.
     pub(super) fn pointer_released(&mut self) {
+        self.terminal_selection.release();
         if self.app_overlays.open() {
             return;
         }

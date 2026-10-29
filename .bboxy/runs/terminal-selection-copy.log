@@ -1,0 +1,28 @@
+ROLE: EXECUTOR
+Task: terminal UI drag selection and clipboard copy
+Worktree: /Users/feral/mydev/bboxy450-term-selection-copy
+Base: 17f1219e
+Imported dependency: 77309f6fb2ba98eb98f86dd20ad40b23fa3879ca as ce2b0771 (Settings pointer-release helper; exclude from selection handoff)
+
+2026-10-28 PDT
+command: make test-image-paste-desktop TARGET_DIR=target/selection-small
+exit: 0
+result: desktop-core action/menu tests 2 passed; desktop-macos clipboard tests 2 passed
+mechanism: native text writer checked against NSPasteboard::pasteboardWithUniqueName; general pasteboard untouched
+raw: /tmp/bboxy-selection-desktop.log
+sha256: 14e4d7dd5364837f760058b183a5746b3776fd2a93ea7964a7a39ded939cce59
+
+command: make test-licenses
+exit: 0
+result: license fixture6 + source notice fixture9 passed;27 workspace crates; source-notices changed0
+raw: /tmp/bboxy-selection-licenses.log
+sha256: 2d9d4fba25e889e480f5e9202700e28f327de6074f2d784095f07750d72eae9c
+
+command: git diff --check
+exit: 0
+
+Added executable acceptance workflow: make test-terminal-selection TARGET_DIR=<warm integration target>
+- pure terminal_selection tests: Unicode/combining/wide/backward/empty ranges, hard newline/padding/soft wraps, cursor and unselected output survival, selected overwrite and seat/View/geometry/history fences, Shift mouse override
+- bin selection tests: Ctrl-C remains PTY byte3, no empty-selection copy interception, native Copy key release suppression
+- actual private headless ctl fixture: rendered terminal Unicode drag -> Cmd-C -> private clipboard receipt; unrelated real PTY output; multiline hard-line padding; native Copy dispatch; cross-pane fence
+Not run in this Executor worktree: full app compile, above app tests/e2e, full CI. Parent owns the warm integration target and final gates; cold app builds prohibited in this brief.

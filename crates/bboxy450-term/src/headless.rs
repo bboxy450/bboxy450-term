@@ -218,7 +218,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         app.overlay_metadata_reply(op, result);
                         dirty = true;
                     }
-                    UiEvent::ComposerImageReady { id, result } => { app.composer_image_ready(id,result); dirty = true; },
+                    UiEvent::ComposerImageReady { id, result } => {
+                        app.composer_image_ready(id, result);
+                        dirty = true;
+                    }
                     UiEvent::LocalTimeReady => {
                         app.refresh_conversation();
                         dirty = true;

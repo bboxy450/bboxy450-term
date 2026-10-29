@@ -372,6 +372,7 @@ mod tests {
                 id,
                 Ok(UiLayout {
                     regions: Default::default(),
+                    test_clipboard: None,
                     swarm_workdirs: Default::default(),
                     sidebar_open: Default::default(),
                     frame_seq,

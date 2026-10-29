@@ -73,7 +73,7 @@ impl App {
         if self.sidebar_drag.active() {
             return Cursor::EwResize;
         }
-        if self.composer_dragging || self.query_dragging {
+        if self.composer_dragging || self.query_dragging || self.terminal_selection.dragging {
             return Cursor::Text;
         }
         if matches!(&self.local_tab, Some(LocalTab::Settings {controller,..}) if controller.dragging())
@@ -156,9 +156,12 @@ impl App {
                 Cursor::Default
             };
         }
-        if self.terminal_selection.dragging || self.pane_bounds.iter().any(|(seat, _)| {
-            self.terminal_display(*seat).is_some_and(|d| d.contains(at) && d.allows_selection(self.modifiers.shift_key()))
-        }) { return Cursor::Text; }
+        if self.pane_bounds.iter().any(|(seat, _)| {
+            self.terminal_display(*seat)
+                .is_some_and(|d| d.contains(at) && d.allows_selection(self.modifiers.shift_key()))
+        }) {
+            return Cursor::Text;
+        }
         Cursor::Default
     }
 

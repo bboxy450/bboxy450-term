@@ -52,6 +52,7 @@ help:
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-terminal-selection     Terminal drag selection, private clipboard and native Copy' \
 	  'make test-terminal-font          Global terminal font chords, native menu and retained PTY geometry' \
 	  'make test-color-emoji            Native chrome/terminal color glyphs and Unicode clusters' \
 	  'make test-color-emoji-swarm      Private Unicode swarm rename, storage and UI restart' \
@@ -736,3 +737,14 @@ test-color-emoji-swarm:
 check-color-emoji-all:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-render -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+.PHONY: test-terminal-selection check-terminal-selection
+test-terminal-selection:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-desktop-core --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-desktop-macos --target-dir '$(TARGET_DIR)' clipboard_; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib terminal_selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir terminal_selection_ -- --ignored --nocapture
+
+check-terminal-selection:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

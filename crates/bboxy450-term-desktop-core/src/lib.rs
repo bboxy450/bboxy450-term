@@ -97,10 +97,16 @@ impl FromStr for Action {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClipboardContent {
     Text(String),
-    Image { bytes: Vec<u8>, format: ClipboardImageFormat },
+    Image {
+        bytes: Vec<u8>,
+        format: ClipboardImageFormat,
+    },
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ClipboardImageFormat { Png, Tiff }
+pub enum ClipboardImageFormat {
+    Png,
+    Tiff,
+}
 pub const MAX_CLIPBOARD_IMAGE_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_CLIPBOARD_IMAGE_PIXELS: usize = 32 * 1024 * 1024;
 
@@ -364,7 +370,10 @@ mod tests {
             MenuCommand::Action(Action::MuteFocusedSeat)
         );
         assert!(!mute[0].option && !mute[0].shift && !mute[0].control);
-        assert_eq!(items.iter().find(|item| item.key == "c").unwrap().command, MenuCommand::Action(Action::Copy));
+        assert_eq!(
+            items.iter().find(|item| item.key == "c").unwrap().command,
+            MenuCommand::Action(Action::Copy)
+        );
         let hard = items
             .iter()
             .find(|item| item.command == MenuCommand::Action(Action::HardQuit))

@@ -3407,3 +3407,104 @@ for line in sys.stdin:
     assert_eq!(fs::read(&source).unwrap(), png);
     fs::remove_file(sent).unwrap();
 }
+
+// Origin: bboxy450-term displayed-cell selection/private clipboard regression.
+// Credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[test]
+#[ignore = "private headless ctl terminal drag/copy receipt; make test-terminal-selection"]
+fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_clipboard() {
+    fn ready(f: &Fixture, seat: &str) -> Value {
+        let until = Instant::now() + Duration::from_secs(15);
+        loop {
+            let frame = f.ctl(&["ui", "layout"]);
+            let pane = frame["panes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|p| p["seat"] == seat);
+            if pane.is_some_and(|p| {
+                let screen = f.ctl(&["seat", "screen", seat]);
+                p["rendered"]["lines"][0] == "copy 界e\u{301}  row"
+                    && p["rendered"]["pixel_size"].is_array()
+                    && p["cols"] == screen["cols"]
+                    && p["rows"].as_u64() == screen["rows"].as_array().map(|rows| rows.len() as u64)
+                    && p["rendered"]["lines"]
+                        .as_array()
+                        .map(|rows| rows.len() as u64)
+                        == p["rows"].as_u64()
+            }) {
+                return pane.unwrap().clone();
+            }
+            assert!(
+                Instant::now() < until,
+                "missing rendered selection fixture: {frame}\n{}",
+                f.log()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    fn select(f: &Fixture, pane: &Value, end: [f64; 2]) {
+        let r = pane["rect"].as_array().unwrap();
+        let x = r[0].as_f64().unwrap();
+        let y = r[1].as_f64().unwrap();
+        let cw =
+            pane["rendered"]["pixel_size"][0].as_f64().unwrap() / pane["cols"].as_f64().unwrap();
+        let ch =
+            pane["rendered"]["pixel_size"][1].as_f64().unwrap() / pane["rows"].as_f64().unwrap();
+        let coords = [
+            x + cw * 0.1,
+            y + ch * 0.25,
+            x + cw * end[0],
+            y + ch * (end[1] + 0.25),
+        ]
+        .map(|n| n.round().to_string());
+        f.ctl(&[
+            "ui", "select", &coords[0], &coords[1], &coords[2], &coords[3],
+        ]);
+    }
+    let mut f = Fixture::new();
+    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[2J\\033[Hcopy 界e\u{301}  row\\r\\nsecond   \\r\\n'\nexec /bin/cat\n").unwrap();
+    f.start();
+    let initial = f.ctl(&["ui", "layout"]);
+    let swarm = initial["swarm"].as_str().unwrap();
+    let seat = f.spawn("claude", swarm, None);
+    let pane = ready(&f, &seat);
+    select(&f, &pane, [13., 0.]);
+    f.ctl(&["ui", "key", "cmd-c"]);
+    let first = f.ctl(&["ui", "clipboard-read"]);
+    assert_eq!(first["test_clipboard"], "copy 界e\u{301}  row");
+    f.ctl(&["seat", "type", &seat, "unrelated\r"]);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "unrelated",
+        "--timeout",
+        "10000",
+    ]);
+    f.ctl(&["ui", "copy"]);
+    assert_eq!(
+        f.ctl(&["ui", "clipboard-read"])["test_clipboard"],
+        first["test_clipboard"],
+        "cursor and unrelated output preserve selected cells"
+    );
+    let pane = ready(&f, &seat);
+    select(&f, &pane, [pane["cols"].as_f64().unwrap(), 1.]);
+    f.ctl(&["ui", "copy"]);
+    let multiline = f.ctl(&["ui", "clipboard-read"]);
+    assert_eq!(multiline["test_clipboard"], "copy 界e\u{301}  row\nsecond");
+    let other = f.spawn("claude", swarm, None);
+    ready(&f, &other);
+    f.ctl(&["ui", "copy"]);
+    assert_eq!(
+        f.ctl(&["ui", "clipboard-read"])["test_clipboard"],
+        multiline["test_clipboard"],
+        "another focused pane cannot copy the prior pane's selection"
+    );
+    f.ctl(&["app", "stop"]);
+    assert!(f.app.as_mut().unwrap().wait().unwrap().success());
+    println!(
+        "actual rendered Unicode/combining/wide text and hard lines copied through ctl drag/Cmd-C/native Copy dispatch; unrelated output preserved selection; cross-pane copy fenced; private provider only"
+    );
+}

@@ -120,6 +120,35 @@ mod tests {
     use crate::{registry::SeatRecord, seat_state::*};
     // keeps: spec ctl-cli §1
     #[test]
+    fn terminal_selection_controls_are_bounded_and_private_receipt_is_explicit() {
+        for request in [
+            UiRequest::TerminalSelect {
+                from: [1, 2],
+                to: [300, 400],
+                shift: false,
+            },
+            UiRequest::Copy,
+            UiRequest::ClipboardRead,
+        ] {
+            assert!(request.validate().is_ok());
+            assert_eq!(
+                serde_json::from_value::<UiRequest>(serde_json::to_value(&request).unwrap())
+                    .unwrap(),
+                request
+            );
+        }
+        assert!(
+            UiRequest::TerminalSelect {
+                from: [32769, 0],
+                to: [1, 2],
+                shift: true
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(UiRequest::Key(vec!["cmd-c".into()]).validate().is_ok());
+    }
+    #[test]
     fn identity_status_is_portable_and_contains_only_state_and_reason() {
         for (state, name) in [
             (GuiIdentityState::LocalDev, "local-dev"),

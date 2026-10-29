@@ -19,6 +19,7 @@ pub struct Display {
     pub screen: Arc<Screen>,
     pub rect: Rect,
     pub cell: [f32; 2],
+    pub historical_row: Option<u64>,
 }
 impl Display {
     pub fn contains(&self, at: [f32; 2]) -> bool {
@@ -38,9 +39,12 @@ impl Display {
     fn same(&self, other: &Self) -> bool {
         self.seat == other.seat
             && self.view == other.view
-            && Arc::ptr_eq(&self.screen, &other.screen)
+            && self.screen.rows == other.screen.rows
+            && self.screen.cols == other.screen.cols
+            && self.screen.gap == other.screen.gap
             && self.rect == other.rect
             && self.cell == other.cell
+            && self.historical_row == other.historical_row
     }
     pub fn allows_selection(&self, shift: bool) -> bool {
         shift || self.screen.modes & TermMode::MOUSE_MODE.bits() as u64 == 0
@@ -88,11 +92,25 @@ impl SelectionState {
     pub fn seat(&self) -> Option<SeatId> {
         self.selected.as_ref().map(|s| s.display.seat)
     }
-    /// A changed viewport, focus, process/view generation or screen invalidates the selection.
+    /// Reject changed identity/geometry or overwritten selected cells; cursor, metadata and
+    /// unrelated output remain live. Only selected cells are compared, never retained history.
     pub fn valid(&self, display: &Display) -> bool {
-        self.selected
-            .as_ref()
-            .is_some_and(|s| s.display.same(display))
+        self.selected.as_ref().is_some_and(|s| {
+            s.display.same(display)
+                && (Arc::ptr_eq(&s.display.screen, &display.screen)
+                    || Self::selected_ranges(s).iter().all(|&(row, a, b)| {
+                        display
+                            .screen
+                            .cells
+                            .get(row)
+                            .and_then(|cells| cells.get(a..b))
+                            == s.display
+                                .screen
+                                .cells
+                                .get(row)
+                                .and_then(|cells| cells.get(a..b))
+                    }))
+        })
     }
     pub fn extend(&mut self, display: &Display, at: [f32; 2]) -> bool {
         if !self.dragging {
@@ -113,7 +131,10 @@ impl SelectionState {
         if !self.valid(display) {
             return vec![];
         }
-        let s = self.selected.as_ref().unwrap();
+        Self::selected_ranges(self.selected.as_ref().unwrap())
+    }
+    fn selected_ranges(s: &Selection) -> Vec<(usize, usize, usize)> {
+        let display = &s.display;
         let (start, end) = if s.anchor <= s.end {
             (s.anchor, s.end)
         } else {
@@ -218,6 +239,7 @@ mod tests {
             screen: Arc::new(Screen::from_term(&term, String::new(), None, None)),
             rect: Rect::new(0., 0., cols as f32 * 10., rows as f32 * 20.),
             cell: [10., 20.],
+            historical_row: None,
         }
     }
     fn select(d: &Display, a: [f32; 2], b: [f32; 2]) -> SelectionState {
@@ -246,11 +268,29 @@ mod tests {
             select(&d, [0., 1.], [50., 21.]).text(&d).as_deref(),
             Some("ab\ncd")
         );
+        assert_eq!(
+            select(&d, [0., 1.], [0., 21.]).text(&d).as_deref(),
+            Some("ab\n")
+        );
         let d = display(b"abcdefgh", 5, 3);
         assert_eq!(
             select(&d, [0., 1.], [30., 21.]).text(&d).as_deref(),
             Some("abcdefgh")
         );
+    }
+    #[test]
+    fn selection_survives_cursor_metadata_and_unselected_output_but_not_overwritten_cells() {
+        let d = display(b"abcdef\r\nother", 10, 2);
+        let s = select(&d, [0., 1.], [30., 1.]);
+        let mut next = d.clone();
+        let screen = Arc::make_mut(&mut next.screen);
+        screen.cursor = (1, 2);
+        screen.title = "new title".into();
+        screen.cells[1][0].c = 'X';
+        screen.cells[0][8].c = 'Y';
+        assert_eq!(s.text(&next).as_deref(), Some("abc"));
+        Arc::make_mut(&mut next.screen).cells[0][1].c = 'X';
+        assert_eq!(s.text(&next), None);
     }
     #[test]
     fn selection_fences_seat_generation_view_screen_and_geometry_and_mouse_override() {
@@ -267,6 +307,9 @@ mod tests {
         assert_eq!(s.text(&other), None);
         let mut other = d.clone();
         other.screen = Arc::new((*d.screen).clone());
+        assert_eq!(s.text(&other).as_deref(), Some("abc"));
+        let mut other = d.clone();
+        other.historical_row = Some(42);
         assert_eq!(s.text(&other), None);
         let mut other = d.clone();
         other.rect.x += 1.;

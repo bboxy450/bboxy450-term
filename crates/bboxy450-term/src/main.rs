@@ -5544,7 +5544,9 @@ impl App {
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
     fn route_chrome(&self, input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
-        if self.terminal_copy_shortcut(input) { return RoutedKey::TerminalCopy; }
+        if self.terminal_copy_shortcut(input) {
+            return RoutedKey::TerminalCopy;
+        }
         if self.launcher.is_none()
             && !self.document.open
             && self.local_tab.is_none()
@@ -5597,7 +5599,9 @@ impl App {
     }
     fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
         match routed {
-            RoutedKey::TerminalCopy => { self.copy_terminal_selection(); },
+            RoutedKey::TerminalCopy => {
+                self.copy_terminal_selection();
+            }
             RoutedKey::OpenLauncher => self.open_launcher(),
             RoutedKey::SplitLauncher(side) => self.split_launcher(side),
             RoutedKey::OpenGraph => self.open_graph(),
@@ -6115,6 +6119,21 @@ impl App {
             self.answer_seats(id);
             return false;
         }
+        if matches!(request, UiRequest::ClipboardRead) {
+            let result = if !self.test_account {
+                Err(
+                    "test_account_required: clipboard receipt requires a verified test account"
+                        .into(),
+                )
+            } else {
+                self.last_ui_frame().map(|mut layout| {
+                    layout.test_clipboard = self.private_clipboard.clone();
+                    layout
+                })
+            };
+            self.answer_ui(id, result);
+            return false;
+        }
         if matches!(request, UiRequest::Layout) {
             self.answer_ui(id, self.last_ui_frame());
             return false;
@@ -6337,6 +6356,28 @@ impl App {
                     }
                 }
             }
+            UiRequest::TerminalSelect { from, to, shift } => {
+                let at = from.map(|n| n as f32);
+                if !self.pane_bounds.iter().any(|(_, r)| {
+                    at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom()
+                }) {
+                    return Err(
+                        "selection_unavailable: drag must start in a visible terminal body".into(),
+                    );
+                }
+                let original = self.modifiers;
+                self.modifiers.set(ModifiersState::SHIFT, shift);
+                self.pointer_pressed(at);
+                self.modifiers = original;
+                if !self.terminal_selection.dragging {
+                    return Err("selection_unavailable: terminal screen unavailable or mouse reporting active; use shift-select".into());
+                }
+                self.extend_terminal_selection(to.map(|n| n as f32));
+                self.pointer_released();
+            }
+            UiRequest::Copy => {
+                self.desktop_action(bboxy450_term_desktop::Action::Copy);
+            }
             UiRequest::RightClick { x, y } => self.overlay_right_click([x as f32, y as f32]),
             UiRequest::Click { x, y } => {
                 self.pointer_pressed([x as f32, y as f32]);
@@ -6490,6 +6531,7 @@ impl App {
             | UiRequest::SpawnGate(_)
             | UiRequest::NotificationClick { .. }
             | UiRequest::Seats
+            | UiRequest::ClipboardRead
             | UiRequest::Layout => {
                 return Err("UI request uses the frame acknowledgment path".into());
             }
@@ -6580,6 +6622,7 @@ impl App {
         let layout = UiLayout {
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
+            test_clipboard: None,
             swarm_workdirs: model
                 .ui
                 .window
@@ -7844,7 +7887,9 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.overlay_hover(self.pointer) {
                     return;
                 }
-                if self.extend_terminal_selection(self.pointer) { return; }
+                if self.extend_terminal_selection(self.pointer) {
+                    return;
+                }
                 if self.move_sidebar_resize(self.pointer) {
                     return;
                 }
@@ -12159,14 +12204,14 @@ mod ctl_ui_key_tests {
         clippy::disallowed_methods,
         reason = "private subprocess owns this fixture's process-wide UI thread registration"
     )]
-    fn terminal_font_native_menu_owns_kitty_release_after_command_is_released() {
+    fn terminal_font_and_selection_native_menu_owns_kitty_release_after_command_is_released() {
         const CHILD: &str = "BBOXY_TERMINAL_FONT_MENU_TEST_CHILD";
         if std::env::var_os(CHILD).is_none() {
             let home = tempfile::tempdir().unwrap();
             let output = std::process::Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",
-                    "ctl_ui_key_tests::terminal_font_native_menu_owns_kitty_release_after_command_is_released",
+                    "ctl_ui_key_tests::terminal_font_and_selection_native_menu_owns_kitty_release_after_command_is_released",
                     "--nocapture",
                     "--test-threads=1",
                 ])
@@ -12204,6 +12249,7 @@ mod ctl_ui_key_tests {
         for (name, action) in [
             ("cmd-equal", Action::IncreaseTerminalFont),
             ("cmd-minus", Action::DecreaseTerminalFont),
+            ("cmd-c", Action::Copy),
         ] {
             let mut input = chrome_input(name).unwrap();
             let scancode = input.physical_key.to_scancode().unwrap();
