@@ -555,6 +555,7 @@ pub struct Client {
     seen: BTreeMap<Ulid, u64>,
     pub status: Status,
     groups: VecDeque<SendGroup>,
+    retained_image_paths: BTreeSet<String>,
 }
 /// Presentation metadata binds a role pick to its actual journaled sends.
 /// Receipts always come from the shared MessageRow projections.
@@ -607,6 +608,14 @@ pub fn ui_compose_draft(
     })
 }
 impl Client {
+    /// Owned image paths still referenced by an admitted/ambiguous or durable send.
+    pub fn protected_image_paths(&self) -> Vec<String> {
+        let mut paths = self.retained_image_paths.clone();
+        if let Some(pending) = &self.pending {
+            paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
+        }
+        paths.into_iter().collect()
+    }
     pub fn groups(&self) -> &VecDeque<SendGroup> {
         &self.groups
     }
@@ -696,7 +705,7 @@ impl Client {
         let attachments = draft
             .attach
             .iter()
-            .map(|a| attachment_reference(&a.path))
+            .map(|a| if a.kind == "image" { crate::composer_images::reference(a) } else { attachment_reference(&a.path) })
             .collect::<Result<Vec<_>, _>>()?;
         let kind = match draft.kind.as_str() {
             "text" => MessageKind::Text,
@@ -868,9 +877,13 @@ impl Client {
                     continue;
                 }
                 Reply::Messaging(Response::Held { reason, .. }) if !task => {
+                    self.retained_image_paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
                     pending.held.push(reason.clone());
                 }
-                Reply::Messaging(Response::Stored { .. }) if !task => pending.stored += 1,
+                Reply::Messaging(Response::Stored { .. }) if !task => {
+                    self.retained_image_paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
+                    pending.stored += 1;
+                }
                 Reply::Messaging(Response::Refused { error }) if !task => {
                     pending
                         .failures

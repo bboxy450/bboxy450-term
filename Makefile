@@ -68,6 +68,8 @@ help:
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
 	  'make test-desktop-lifecycle     Owned daemon/UI detach and same-harness reopen boundary' \
+	  'make test-image-paste             Private clipboard, atomic markers, custody and local recipient restart' \
+	  'make check-image-paste            Strict all-target Clippy for image-paste crates and dependents' \
 	  'make test-chat-ux                Chat controls, local times, quiet status and saved vertical splits' \
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
@@ -659,3 +661,25 @@ test-terminal-font:
 
 check-terminal-font:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-ui -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-image-paste test-image-paste-desktop test-image-paste-ui test-image-paste-app check-image-paste
+test-image-paste: test-image-paste-desktop test-image-paste-ui test-image-paste-app
+
+test-image-paste-desktop:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-desktop-core --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-desktop-macos --target-dir '$(TARGET_DIR)' clipboard_
+
+test-image-paste-ui:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test composer image_markers
+
+test-image-paste-app:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib composer_images; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui image_attachment; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) image_paste
+
+check-image-paste:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

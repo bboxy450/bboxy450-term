@@ -35,9 +35,10 @@ pub enum Action {
     MuteFocusedSeat,
     IncreaseTerminalFont,
     DecreaseTerminalFont,
+    Paste,
 }
 impl Action {
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 16] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -53,6 +54,7 @@ impl Action {
         Self::MuteFocusedSeat,
         Self::IncreaseTerminalFont,
         Self::DecreaseTerminalFont,
+        Self::Paste,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -71,6 +73,7 @@ impl Action {
             Self::MuteFocusedSeat => "mute_focused_seat",
             Self::IncreaseTerminalFont => "increase_terminal_font",
             Self::DecreaseTerminalFont => "decrease_terminal_font",
+            Self::Paste => "paste",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -86,6 +89,17 @@ impl FromStr for Action {
             .ok_or_else(|| Error::InvalidAction(value.into()))
     }
 }
+
+/// A bounded value snapshot. Image conversion and filesystem effects belong off the UI thread.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ClipboardContent {
+    Text(String),
+    Image { bytes: Vec<u8>, format: ClipboardImageFormat },
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClipboardImageFormat { Png, Tiff }
+pub const MAX_CLIPBOARD_IMAGE_BYTES: usize = 16 * 1024 * 1024;
+pub const MAX_CLIPBOARD_IMAGE_PIXELS: usize = 32 * 1024 * 1024;
 
 /// Menu entries distinguish host actions from the operating system responder chain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -169,7 +183,7 @@ pub fn app_menu() -> Vec<MenuGroup> {
                 MenuItem::separator(),
                 MenuItem::responder("Cut", "cut:", "x"),
                 MenuItem::responder("Copy", "copy:", "c"),
-                MenuItem::responder("Paste", "paste:", "v"),
+                MenuItem::action("Paste", Paste, "v"),
                 MenuItem::responder("Select All", "selectAll:", "a"),
             ],
         },
@@ -357,7 +371,7 @@ mod tests {
                 .iter()
                 .any(|item| item.command == MenuCommand::Action(Action::ShowWindow))
         );
-        for selector in ["cut:", "copy:", "paste:", "selectAll:"] {
+        for selector in ["cut:", "copy:", "selectAll:"] {
             assert!(
                 items
                     .iter()

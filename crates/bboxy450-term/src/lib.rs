@@ -7,6 +7,7 @@
 //! App process boundaries, IO-owned terminal models and worker-prepared frames.
 pub mod attention;
 pub mod close;
+pub mod composer_images;
 pub mod close_frame;
 pub mod cockpit;
 pub mod ctl;

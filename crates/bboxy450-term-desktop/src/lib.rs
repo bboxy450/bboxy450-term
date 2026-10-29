@@ -11,7 +11,7 @@ pub use bboxy450_term_desktop_core::*;
 #[cfg(target_os = "macos")]
 pub use bboxy450_term_desktop_macos::{
     MenuBar, Tray, apply_titlebar_action, apply_window_action, double_click_interval, run_daemon,
-    titlebar_action,
+    titlebar_action, read_clipboard, clipboard_image_png,
 };
 
 #[cfg(not(target_os = "macos"))]
@@ -19,6 +19,8 @@ mod unsupported {
     use super::*;
     use raw_window_handle::HasWindowHandle;
     use std::time::Duration;
+    pub fn read_clipboard() -> Result<Option<ClipboardContent>, Error> { Err(Error::Unsupported) }
+    pub fn clipboard_image_png(_bytes: &[u8], _format: ClipboardImageFormat) -> Result<Vec<u8>, Error> { Err(Error::Unsupported) }
     pub struct MenuBar;
     pub struct Tray;
     impl MenuBar {

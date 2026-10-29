@@ -1,0 +1,8 @@
+ROLE: EXECUTOR
+Scope: direct operator image-paste request; private worktree feat/swarm-image-paste-20261028 from 14464fd0.
+Paths: composer controller/images; app composer_images + admission/result hooks; desktop core/facade/macOS clipboard; Make workflows; attribution/spec.
+Checks: make test-image-paste-desktop test-image-paste-ui — exit 0 (native PNG/TIFF/text and first 3 marker tests).
+Checks: make test-image-paste-ui — exit 0 (4 marker tests including duplicated plain-text label).
+Checks: git diff --check — exit 0.
+Remaining: app runtime/transport tests, strict Clippy, final exact-source gate; root warm-target coordination required to preserve 10GiB free-space precondition.
+Raw logs: /private/tmp/bboxy450-image-paste-focused.log /private/tmp/bboxy450-image-paste-markers.log (outside Git).

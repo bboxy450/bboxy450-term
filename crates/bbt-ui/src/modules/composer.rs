@@ -16,6 +16,7 @@ use crate::{
 pub use hit::{Hit, Regions};
 pub use report::{Criterion, Reject, RejectController, Report, Verification};
 mod attachments;
+mod images;
 pub use attachments::AttachmentPicker;
 mod conversation;
 pub use conversation::{Conversation, SidebarLayout};
@@ -124,6 +125,7 @@ pub enum Command {
     ChooseAttachment(usize),
     Attach(Attachment),
     RemoveAttachment(usize),
+    ImageReady { id: String, path: String },
     Delegate(Attachment),
     Send,
     Escape,
@@ -148,6 +150,8 @@ pub struct Controller {
     attachment_catalog: Vec<Attachment>,
     catalog: Vec<PickGroup>,
     selected: usize,
+    next_image: usize,
+    image_spans: Vec<images::ImageSpan>,
 }
 impl Controller {
     pub fn new(view: Composer) -> Self {
@@ -162,8 +166,10 @@ impl Controller {
                 .as_ref()
                 .map_or_else(Vec::new, |p| p.items.clone()),
             catalog: view.pick.clone(),
+            image_spans: images::spans(&view),
             view,
             selected: 0,
+            next_image: 1,
         };
         result.sync();
         result
@@ -202,6 +208,9 @@ impl Controller {
                 || self.view.attach[0].kind != "task")
         {
             return Some("task_and_assignee_required");
+        }
+        if self.view.attach.iter().any(|a| a.kind == "image" && a.path.is_empty()) {
+            return Some("image_paste_pending");
         }
         if self.view.mode != "delegate" && self.view.text.trim().is_empty() {
             return Some("message_required");
@@ -274,7 +283,7 @@ impl Controller {
                 }
                 let changed = match self.view.field {
                     Field::Address => self.address.handle(&mut self.view.typed, command),
-                    Field::Body => self.body.handle(&mut self.view.text, command),
+                    Field::Body => self.edit_images(command),
                 };
                 if bracket && changed {
                     self.body
@@ -375,6 +384,9 @@ impl Controller {
             }
             Command::ChooseAttachment(_) => return Outcome::Local,
             Command::Attach(attachment) => {
+                if attachment.kind == "image" {
+                    return self.attach_image(attachment);
+                }
                 if attachment.path.is_empty() {
                     return Outcome::Refused("attachment_unresolved");
                 }
@@ -392,10 +404,19 @@ impl Controller {
                 if index >= self.view.attach.len() {
                     return Outcome::Local;
                 }
+                self.remove_image_marker(index);
                 self.view.attach.remove(index);
                 true
             }
+            Command::ImageReady { id, path } => {
+                let Some(image) = self.view.attach.iter_mut().find(|a| a.kind == "image" && a.id == id) else {
+                    return Outcome::Local;
+                };
+                image.path = path;
+                true
+            }
             Command::Delegate(task) => {
+                for index in (0..self.view.attach.len()).rev() { self.remove_image_marker(index); }
                 self.view.mode = "delegate".into();
                 self.view.attach = vec![task];
                 self.view.to.clear();
@@ -451,6 +472,7 @@ impl Controller {
         {
             self.view.text.clear();
             self.view.attach.clear();
+            self.image_spans.clear();
             if sent.delegate {
                 self.view.mode = "message".into();
             }

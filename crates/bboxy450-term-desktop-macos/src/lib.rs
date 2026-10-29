@@ -54,7 +54,7 @@ define_class!(
         fn activate(&self, sender: &NSMenuItem) {
             if let Ok(index) = usize::try_from(sender.tag())
                 && let Some(action) = Action::ALL.get(index) {
-                    if matches!(action, Action::CloseFocusedSeat | Action::MuteFocusedSeat)
+                    if matches!(action, Action::CloseFocusedSeat | Action::MuteFocusedSeat | Action::Paste)
                         && NSApplication::sharedApplication(MainThreadMarker::from(self))
                             .currentEvent()
                             .is_some_and(|event| event.r#type() == NSEventType::KeyDown && event.isARepeat())
@@ -405,3 +405,6 @@ pub fn apply_titlebar_action(
         TitlebarAction::None => Ok(()),
     }
 }
+
+mod clipboard;
+pub use clipboard::{read_clipboard, clipboard_image_png};

@@ -896,3 +896,30 @@ fn native_task_reads_and_unknown_mutations_remain_bound_across_colliding_roots()
     assert_ne!(op_id(&new_review), original_id);
     assert!(matches!(new_review,UiMsg::Task{scope:Some(scope),..}if scope==second));
 }
+
+#[test]
+fn image_attachment_transport_retains_pending_unknown_stored_and_releases_only_refused() {
+    use bbt_ui::modules::composer::Attachment;
+    for outcome in ["refused","held"] {
+        let mut client = Client::default(); let mut image = draft();
+        let path = "/private/tmp/bboxy450-image-fixture.png".to_string();
+        image.text = "Inspect [Image #1]".into();
+        image.attach.push(Attachment {kind:"image".into(),id:"fixture".into(),title:"[Image #1]".into(),path:path.clone(),..Default::default()});
+        let batch = client.prepare(Some(SwarmId::from_u128(7)),image).unwrap();
+        let UiMsg::Messaging {id,request:Request::Send {message},..} = &batch.commands[0] else {panic!("send")};
+        let id = *id;
+        assert_eq!(message.attachments,vec![format!("[[{path}|Image #1]]")]);
+        client.admitted(batch); assert_eq!(client.protected_image_paths(),vec![path.clone()]);
+        let mut results = Results::default(); results.push(id,Reply::Unknown("disconnect".into())); client.replies(&results);
+        assert_eq!(client.protected_image_paths(),vec![path.clone()]);
+        let retry = client.retry();
+        let UiMsg::Messaging {request:Request::Send {message},..} = &retry[0] else {panic!("retry")};
+        assert_eq!(message.attachments,vec![format!("[[{path}|Image #1]]")]);
+        results.push(id, match outcome {
+            "held" => Reply::Messaging(Response::Held {id,reason:"identity pending".into()}),
+            _ => Reply::Refused("explicit refusal".into()),
+        });
+        client.replies(&results);
+        assert_eq!(client.protected_image_paths(),if outcome == "refused" {vec![]} else {vec![path]});
+    }
+}

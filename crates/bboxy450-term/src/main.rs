@@ -137,6 +137,7 @@ pub enum UiEvent {
     NotificationError(String),
     ErrorCount(u64),
     LocalTimeReady,
+    ComposerImageReady { id: String, result: Result<bboxy450_term::composer_images::OwnedImage, String> },
     DesktopAction(bboxy450_term_desktop::Action, Option<u32>),
     TitlebarDoubleClick,
 }
@@ -999,6 +1000,7 @@ enum RoutedKey {
     ToggleHud,
     Launcher(LauncherCommand),
     Composer(ComposeCommand),
+    ComposerPaste,
     ComposerVertical { backwards: bool, extend: bool },
     ComposerLineEdge { end: bool, extend: bool },
     Pane(Navigation),
@@ -1511,6 +1513,9 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
     }
     let mods = input.modifiers.state;
     let command = mods.super_key();
+    if (command || cfg!(not(target_os = "macos")) && mods.control_key())
+        && !mods.alt_key() && !mods.shift_key() && keyboard::shortcut_key(input) == Some('v')
+    { return if input.repeat { RoutedKey::Local } else { RoutedKey::ComposerPaste }; }
     let navigation = match &input.logical_key {
         Key::Named(NamedKey::ArrowLeft) => NavigationKey::Arrow(Direction::Left),
         Key::Named(NamedKey::ArrowRight) => NavigationKey::Arrow(Direction::Right),
@@ -2001,6 +2006,7 @@ struct App {
     app_overlays: app_overlays::Host,
     composer: ComposeController,
     composer_client: messaging::Client,
+    composer_images: bboxy450_term::composer_images::Images,
     composer_scope: Option<bbt_proto::SwarmId>,
     task_records: messaging::Records,
     message_history: messaging::History,
@@ -2202,6 +2208,7 @@ impl App {
                 ..Default::default()
             }),
             composer_client: messaging::Client::default(),
+            composer_images: Default::default(),
             composer_scope: None,
             task_records: messaging::Records::default(),
             message_history: messaging::History::default(),
@@ -3418,6 +3425,47 @@ impl App {
             }),
         };
     }
+    fn composer_paste(&mut self) {
+        if !self.composer.view.focus || self.document.open || self.launcher.is_some() || self.reject_focus { return; }
+        match bboxy450_term_desktop::read_clipboard() {
+            Ok(Some(content)) => self.composer_paste_content(content),
+            Ok(None) => {},
+            Err(error) => { self.composer_client.refused(error.to_string()); self.composer_notice(); self.request_redraw(); }
+        }
+    }
+    fn composer_paste_content(&mut self, content: bboxy450_term_desktop::ClipboardContent) {
+        use bboxy450_term_desktop::ClipboardContent;
+        match content {
+            ClipboardContent::Text(text) => self.composer_command(ComposeCommand::Edit(EditCommand::Insert(text))),
+            ClipboardContent::Image { bytes, format } => {
+                if self.composer.view.field != ComposeField::Body || self.composer.view.attach_pick.is_some() { return; }
+                let id = bbt_mux::Ulid::new().to_string();
+                self.composer_command(ComposeCommand::Attach(composer::Attachment {kind:"image".into(),id:id.clone(),..Default::default()}));
+                if !self.composer.view.attach.iter().any(|a| a.id == id) { return; }
+                let proxy = self.proxy.clone();
+                drop(bbt_rt::handle().spawn_blocking(move || {
+                    let result = bboxy450_term::composer_images::OwnedImage::save(&bytes, format);
+                    let _ = proxy.send_event(UiEvent::ComposerImageReady {id,result});
+                }));
+            }
+        }
+    }
+    fn composer_image_ready(&mut self, id: String, result: Result<bboxy450_term::composer_images::OwnedImage, String>) {
+        match result {
+            Ok(image) => {
+                if let Some(path) = self.composer_images.ready(&id,image,&self.composer.view.attach) {
+                    self.composer_command(ComposeCommand::ImageReady {id,path});
+                }
+            }
+            Err(error) => {
+                if let Some(index) = self.composer.view.attach.iter().position(|a| a.kind == "image" && a.id == id) {
+                    self.composer_command(ComposeCommand::RemoveAttachment(index));
+                    self.composer_client.refused(error);
+                    self.composer_notice(); self.request_redraw();
+                }
+            }
+        }
+    }
     fn composer_command(&mut self, command: ComposeCommand) {
         if !self.mute.pending() {
             self.mute.notice = None;
@@ -3471,7 +3519,9 @@ impl App {
         } else {
             match self.composer.handle(command) {
                 ComposeOutcome::Submit(draft) => {
-                    if self.live_commands.is_none() || self.closing || self.backend_lost {
+                    if !self.composer_images.validate(&draft.attach) {
+                        self.composer_client.refused("image_attachment_not_owned");
+                    } else if self.live_commands.is_none() || self.closing || self.backend_lost {
                         self.composer_client.refused("backend_unavailable");
                     } else {
                         let prepared =
@@ -3493,6 +3543,7 @@ impl App {
                 _ => {}
             }
         }
+        self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
         self.composer_notice();
         if let Some(window) = &self.window {
             window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
@@ -3541,6 +3592,7 @@ impl App {
         let batch = self.composer_client.prepare_for(model, stage, draft)?;
         self.composer_catalog();
         self.composer = controller;
+        self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
         let messages = self.admit_composer(batch);
         self.message_history.channel("all");
         self.conversation_reads(false);
@@ -5183,6 +5235,7 @@ impl App {
                 self.composer.stored(&draft);
                 self.conversation_layout = None;
             }
+            self.composer_images.reconcile(&self.composer.view.attach, &self.composer_client.protected_image_paths());
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
             {
@@ -5471,6 +5524,7 @@ impl App {
             }
             RoutedKey::Launcher(command) => self.launcher_command(command),
             RoutedKey::Composer(command) => self.composer_command(command),
+            RoutedKey::ComposerPaste => self.composer_paste(),
             RoutedKey::ComposerVertical { backwards, extend } => {
                 self.composer_move(Some(backwards), None, extend)
             }
@@ -7158,6 +7212,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::TitlebarDoubleClick => self.titlebar_double_click(),
+            UiEvent::ComposerImageReady { id, result } => self.composer_image_ready(id,result),
             UiEvent::LocalTimeReady => {
                 self.refresh_conversation();
                 self.request_redraw();
@@ -9170,6 +9225,33 @@ mod lazy_projection_tests {
             return true;
         }
         false
+    }
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard() {
+        if isolated_ui_case("lazy_projection_tests::image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard") { return; }
+        let (mut app,_) = fixture();
+        let (events, receive) = std::sync::mpsc::channel();
+        app.proxy = UiProxy::Headless(Arc::new(move |event| {let _ = events.send(event);}));
+        app.composer_command(ComposeCommand::Focus(ComposeField::Body));
+        app.composer_command(ComposeCommand::Edit(EditCommand::Insert("before after".into())));
+        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {at:7,extend:false}));
+        let mut png = Vec::new();
+        {let mut writer = png::Encoder::new(&mut png,1,1).write_header().unwrap(); writer.write_image_data(&[123]).unwrap();}
+        app.composer_paste_content(bboxy450_term_desktop::ClipboardContent::Image {bytes:png.clone(),format:bboxy450_term_desktop::ClipboardImageFormat::Png});
+        assert_eq!(app.composer.view.text,"before [Image #1]after");
+        assert!(app.composer.view.attach[0].path.is_empty());
+        let UiEvent::ComposerImageReady {id,result} = receive.recv_timeout(Duration::from_secs(10)).unwrap() else {panic!("image completion")};
+        app.composer_image_ready(id,result);
+        let path = std::path::PathBuf::from(&app.composer.view.attach[0].path);
+        assert_eq!(std::fs::read(&path).unwrap(),png);
+        assert!(app.composer_images.validate(&app.composer.view.attach));
+        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {at:17,extend:false}));
+        app.composer_command(ComposeCommand::Edit(EditCommand::Delete {backwards:true}));
+        assert_eq!(app.composer.view.text,"before after"); assert!(app.composer.view.attach.is_empty());
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while path.exists() && Instant::now() < deadline {std::thread::sleep(Duration::from_millis(10));}
+        assert!(!path.exists());
     }
     fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;
@@ -11564,6 +11646,16 @@ mod placement_tests {
 #[cfg(test)]
 mod composer_host_tests {
     use super::*;
+    #[test]
+    fn image_paste_shortcut_is_owned_by_composer_and_repeat_is_suppressed() {
+        let v = Key::Character("v".into());
+        let input = test_key(&v,PhysicalKey::Code(KeyCode::KeyV),Some("v"),ModifiersState::SUPER,false);
+        assert_eq!(route_composer(&input,0,ComposeField::Body),RoutedKey::ComposerPaste);
+        let mut repeat = input.clone(); repeat.repeat = true;
+        assert_eq!(route_composer(&repeat,0,ComposeField::Body),RoutedKey::Local);
+        assert!(!matches!(route_key(&input,0,None),RoutedKey::ComposerPaste));
+    }
+
     #[test]
     fn composer_enter_sends_shift_enter_adds_a_line_and_terminal_keys_remain_local() {
         let enter = Key::Named(NamedKey::Enter);

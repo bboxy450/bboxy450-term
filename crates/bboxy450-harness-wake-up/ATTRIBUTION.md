@@ -100,6 +100,12 @@ file/section and its canonical URL in the accompanying attribution. Preserve
 third-party fixture bytes and notices; a project source header never overrides
 their terms. Full factual notices are in [NOTICE](NOTICE).
 
+## Image composer interaction
+
+The atomic `[Image #N]` marker interaction is independently implemented, inspired
+by the Codex CLI image composer. No Codex source code was copied or adapted.
+Origin: https://github.com/openai/codex (interaction reference only).
+
 ## Repository workflow
 
 Read this file from `AGENTS.md`, but carry compact identity, license and absolute
