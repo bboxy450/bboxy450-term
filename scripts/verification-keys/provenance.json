@@ -1,0 +1,25 @@
+{
+  "project": "bboxy450-term",
+  "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "purpose": "Public signature verification only; no private signing material or global trust enrollment",
+  "recorded_utc": "2026-10-29",
+  "decision": "Live decision 220: autonomous pinned history verification",
+  "keys": [
+    {
+      "file": "boxy.asc",
+      "primary_fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+      "sha256": "0d96695c6e9ae42a6f6e61acddb5481a689496c5b493e9be032975f99615725d",
+      "source": "Public-only gpg --no-options --batch --no-tty --no-autostart --disable-dirmngr --armor --export of the machine fingerprint explicitly approved by task 221 and the operator identity instructions",
+      "identity": "Boxy <bboxy450@gmail.com>"
+    },
+    {
+      "file": "historical-618df56f.asc",
+      "primary_fingerprint": "B9ABDC578390946B71B6C20C3526057098BAC1AD",
+      "sha256": "2007a81c3d0a5f46452b9e2871a793aab5a73494c6af7e24913a92197d95db71",
+      "source": "Copied from the Oracle's public-only /tmp/rook-public-sig-w5b31zii/key.asc, retrieved from https://api.github.com/users/Gonzih/gpg_keys",
+      "identity": "Maksim Soltan <code@maksim.sh>",
+      "only_authorized_commit": "618df56faccffce46dfec3d1d525b8d115b5d35a",
+      "restriction": "Does not authorize any new author, committer, publisher or future use of this historical key"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+2026-10-29 — Pip Hollow, tasks 221/229, decision 220
+Source parent: signed 7e0633096619b92c43d2ae63c67d8226d0736c8d.
+Earlier make test exits: 2 (4 GiB capacity stop), then 2 (sole invariant failure: historical public key unavailable). Those failures are retained, not waived.
+Public pins: scripts/verification-keys/provenance.json records sources, exact fingerprints, SHA256 and the sole exact historical commit exception.
+python3 -I scripts/verify-signatures.py — exit 0; full 2202-commit HEAD, one exact historical exception; target/adapter-startup/pinned-history-first.log.
+Initial signature fixture setup failed unattended with GPG IPC startup under its long temporary home; a short private /tmp signing home repaired the fixture. No production verifier agent is used.
+python3 -I scripts/test-verify-signatures.py SignatureTests — exit 0; 11 throwaway controls; signature-negatives.log SHA256 6df1bedc189fc8ecc88e15d412f1f44fd1175485e0c9d71da2f6772c2dfc00cc.
+Initial make test-signatures test-landing — exit 2; signatures passed; two landing assertions correctly refused untracked private adapter bytecode. Protected assertions were retained; the private loader now disables bytecode.
+make test-signatures test-landing — exit 0; 12 signature tests, 127 landing fixtures; signatures-and-landing-restored.log SHA256 2342550771117791f9077ba7107fbc87082ec1ce8fc498701b65c7d4f18278d2.
+make test-boundaries on parent 7e063309 — exit 0; boundaries.log SHA256 d28e6940467601c27f26f235342bbb83003a60507e6131d52d9c36679e0fc49e.
+Raw logs: own target/adapter-startup; earlier full gate and diagnostic binaries copied to /Users/feral/.local/state/bboxy450-term/evidence/pip-adapter-startup-5jkrsh0h before retiring only own inactive debug products.
+Canonical exact-source make test and author self-landing are separate required gates; their actual results follow in the task reports and retained external evidence, not this pre-gate record.
+Issue 40 historical failure remains unproven; quarantine unchanged, MA-7 accounting untouched. Typed wake causes task 243 starts only after this landing and reports.

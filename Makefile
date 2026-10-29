@@ -41,6 +41,8 @@ help:
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
+	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
+	  'make test-landing                Private author-landing fixtures; no operator key' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
@@ -126,9 +128,9 @@ compile:
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)' $$flag
 
-test check:
+test check: test-signatures
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
-	BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
+	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
 
 test-parity:
@@ -148,6 +150,13 @@ test-task-migration:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib task_migration_verbs; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir task_migration_catalogue_upgrade -- --ignored --nocapture --test-threads=1; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
+
+.PHONY: test-signatures test-landing
+test-signatures:
+	@python3 -I scripts/test-verify-signatures.py
+
+test-landing:
+	@python3 -I scripts/test-landing.py
 
 .PHONY: parity-settings
 .PHONY: test-cursors

@@ -1,3 +1,9 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Landing contracts exercised only on private throwaway repositories (#323 §12)."""
 import importlib.util
 import io
@@ -459,6 +465,33 @@ class PresubmitTests(unittest.TestCase):
         invariant = SOURCE.parent.parent / ".bboxy/invariants/signed-main.md"
         check = next(line.removeprefix("check: ") for line in invariant.read_text().splitlines()
                      if line.startswith("check: "))
+        key, program = fixture_identity()
+        # Copy the real verifier unchanged. Only this private test entry point
+        # supplies the fixture's own public pin; production has no such override.
+        self.repo.write("scripts/verify-signatures-core.py", SOURCE.with_name("verify-signatures.py").read_text())
+        public = run(str(program), "--batch", "--armor", "--export", key, cwd=self.repo.root)
+        self.repo.write("scripts/fixture-public.asc", public + "\n")
+        self.repo.write("scripts/verify-signatures.py", f'''# bboxy450-term private fixture adapter; not a production policy override.
+# Origin: https://github.com/bboxy450/bboxy450-term/blob/main/scripts/verify-signatures.py
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+import importlib.util
+from pathlib import Path
+import sys
+sys.dont_write_bytecode = True
+try:
+    source = Path(__file__).with_name("verify-signatures-core.py")
+    spec = importlib.util.spec_from_file_location("fixture_signature_core", source)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    policy = module.Policy(module.Identity({key!r}, "Landing Fixture", "fixture@bboxy450.invalid"),
+                           (Path(__file__).with_name("fixture-public.asc"),))
+    result = module.verify(Path.cwd(), sys.argv[1] if len(sys.argv) == 2 else "HEAD", policy)
+    print("fixture signatures:", result)
+except Exception as error:
+    print("fixture signatures refused:", error, file=sys.stderr)
+    sys.exit(1)
+''')
         self.repo.write("scripts/invariants.sh", "#!/bin/sh\n" + check + "\n")
         self.repo.base = self.repo.commit("Fixture signature invariant")
         self.repo.environment.pop("SIGNED_RANGE", None)
@@ -490,6 +523,17 @@ class PresubmitTests(unittest.TestCase):
         whole_history = subprocess.run(["sh", "scripts/invariants.sh"], cwd=self.repo.root,
                                        env=self.repo.environment, capture_output=True, text=True, timeout=15)
         self.assertEqual(whole_history.returncode, 1, whole_history.stdout + whole_history.stderr)
+
+    def test_signature_fixture_refuses_missing_verifier_or_public_pin(self):
+        self.signature_invariant()
+        for name in ("verify-signatures-core.py", "fixture-public.asc"):
+            path = self.repo.root / "scripts" / name
+            original = path.read_bytes()
+            path.unlink()
+            result = subprocess.run(["sh", "scripts/invariants.sh"], cwd=self.repo.root,
+                                    env=self.repo.environment, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            path.write_bytes(original)
 
     def test_code_targets_the_affected_leaf_and_records_one_verdict(self):
         self.cut("crates/c/src/lib.rs")
