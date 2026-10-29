@@ -122,7 +122,7 @@ impl Fixture {
         fs::write(root.join("home/.zshrc"), "PROMPT='%# '\n").unwrap();
         fs::write(
             root.join("bin/claude"),
-            "#!/bin/sh\nprintf '\\nDESKTOP-PTY-READY\\n'\nexec /bin/cat\n",
+            "#!/bin/sh\nprintf '\\nDESKTOP-PTY-READY\\n'\nwhile IFS= read -r line; do\ncase \"$line\" in\nDESKTOP_ASK) printf '\\033]7501;state=blocked:kind=question:msg=RGVza3RvcCBxdWVzdGlvbg==\\007DESKTOP_WAITING\\n' ;;\nDESKTOP_CLEAR) printf '\\033]7501;state=working\\007DESKTOP_CLEARED\\n' ;;\n*) printf '%s\\n' \"$line\" ;;\nesac\ndone\n",
         )
         .unwrap();
         fs::set_permissions(root.join("bin/claude"), fs::Permissions::from_mode(0o700)).unwrap();
@@ -260,7 +260,7 @@ impl Fixture {
             .unwrap();
         reader.join().unwrap();
         let reply: Value = serde_json::from_str(&line).unwrap();
-        assert_eq!(reply["version"], 1);
+        assert_eq!(reply["version"], 2);
         assert_eq!(reply["supervisor_pid"], supervisor["pid"]);
         assert_eq!(
             self.owner("desktop")["pid"].as_u64(),
@@ -272,6 +272,22 @@ impl Fixture {
         serde_json::to_writer(&mut *input, action).unwrap();
         input.write_all(b"\n").unwrap();
         input.flush().unwrap();
+    }
+    fn notification_click(&mut self, seat: &str) {
+        let input = self.input.as_mut().unwrap();
+        serde_json::to_writer(&mut *input, &json!({"notification_click":seat})).unwrap();
+        input.write_all(b"\n").unwrap();
+        input.flush().unwrap();
+    }
+    fn notifications(&self) -> Value {
+        fs::read(self.root.join("run/desktop-notifications.json"))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or(Value::Null)
+    }
+    fn line(&self, seat: &str, line: &str) {
+        self.ctl(&["seat", "type", seat, line]);
+        self.ctl(&["seat", "key", seat, "enter"]);
     }
     fn assert_desktop_alive(&mut self) {
         assert!(
@@ -358,6 +374,11 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
         .as_str()
         .unwrap()
         .to_owned();
+    let neutral =
+        fixture.ctl(&["seat", "spawn", "zsh", "--place", "tab", "--swarm", &swarm])["seat"]
+            .as_str()
+            .unwrap()
+            .to_owned();
     let seat = fixture.ctl(&[
         "seat", "spawn", "claude", "--place", "tab", "--swarm", &swarm,
     ])["seat"]
@@ -375,6 +396,7 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     ]);
     let before = fixture.seat(&seat);
     assert_eq!(before["state"]["process"]["kind"], "running");
+    fixture.ctl(&["ui", "focus", &neutral]);
     fixture.start_desktop(&owners[0]);
     let mut ui = fixture.ui.take().unwrap();
     ui.kill().unwrap();
@@ -382,11 +404,47 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     fixture.assert_desktop_alive();
     assert!(owners.iter().all(alive));
 
-    fixture.action("show_window");
+    // The desktop observer and recorder remain alive with no GUI event drain.
+    // Drive the real PTY/status parser and activate the same callback as macOS,
+    // without an operator permission prompt or Notification Center interaction.
+    fixture.line(&seat, "DESKTOP_ASK");
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--state",
+        "waiting",
+        "--timeout",
+        "20000",
+    ]);
+    wait_until("detached desktop question notification", DEADLINE, || {
+        let state = fixture.notifications();
+        state["owner"] == "desktop"
+            && state["os_presentation"] == false
+            && state["source_ready"] == true
+            && state["settled"] == true
+            && state["posts"] == 1
+            && state["outstanding"][0]["id"] == seat
+            && state["outstanding"][0]["body"] == "Desktop question"
+    });
+    fixture.notification_click(&seat);
     fixture.wait_ui();
     let first_ui = fixture.launched_ui();
     assert!(alive(&first_ui));
+    wait_until(
+        "desktop notification focuses its retained seat",
+        DEADLINE,
+        || fixture.ctl(&["ui", "layout"])["focused"] == seat,
+    );
     fixture.assert_work_preserved(&owners, &seat, &before);
+    wait_until(
+        "notification focus handles only that episode",
+        DEADLINE,
+        || {
+            let state = fixture.notifications();
+            state["outstanding_count"] == 0 && state["settled"] == true
+        },
+    );
     fixture.action("settings");
     wait_until("native desktop Settings action", DEADLINE, || {
         fixture.ctl(&["ui", "layout"])["page"] == "settings"
@@ -398,7 +456,9 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     fixture.assert_work_preserved(&owners, &seat, &before);
     fixture.action("close_focused_seat");
     wait_until("native close hides the focused seat", DEADLINE, || {
-        fixture.ctl(&["ui", "layout"])["panes"].as_array().is_some_and(Vec::is_empty)
+        fixture.ctl(&["ui", "layout"])["panes"]
+            .as_array()
+            .is_some_and(Vec::is_empty)
     });
     fixture.ctl(&["ui", "key", "cmd-z"]);
     fixture.assert_work_preserved(&owners, &seat, &before);
@@ -426,6 +486,14 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     assert!(alive(&second_ui));
     assert_ne!(first_ui, second_ui);
     fixture.assert_work_preserved(&owners, &seat, &before);
+    wait_until(
+        "handled notification stays handled across frontend reopen",
+        DEADLINE,
+        || {
+            let state = fixture.notifications();
+            state["settled"] == true && state["posts"] == 1 && state["outstanding_count"] == 0
+        },
+    );
 
     fixture.action("hard_quit");
     let status =

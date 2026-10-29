@@ -525,6 +525,20 @@ refused, while the owned GUI branch keeps its operator authority. One bounded ac
 independent receive slots. This does not open the optional operator ctl door.
 Ordinary headless/test-account fixtures do not create a status item.
 
+The same desktop owner is the sole production native-notification poster. Its
+read-only `ObserveAttention` connection receives current waiting episodes without
+claiming GUI events, terminal capture, input, replay or message acknowledgements.
+The UI publishes replaceable policy/frontmost/focused/handled-episode context
+through a private mode0600 socket admitting only its recorded, birth-checked
+frontend with the run's frontend lock. EOF clears frontmost/focus; policy and
+handled episode keys survive UI detachment. The owner reads saved policy on
+startup, so new questions can post while no UI exists. A native click captures
+the current epoch/generation/ordinal before asynchronously showing or reattaching
+one UI; a stale captured key cannot focus or handle a newer episode. Helper
+version refresh stops only the birth-checked old desktop owner, preserving
+supervisor, logic and PTYs. Explicit private desktop fixtures record posts and
+drive that same callback without native authorization or operator notifications.
+
 CmdQ and the red window control detach the UI and preserve sessions. The
 explicit CmdOptionQ / Quit and Stop All Sessions action stops backend owners
 through the existing orderly shutdown path, with a birth-checked fallback when

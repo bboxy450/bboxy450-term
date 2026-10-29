@@ -26,27 +26,100 @@ use tokio::{
     task::JoinHandle,
 };
 
+mod attention;
+pub use attention::Context;
+
 const SOCKET: &str = "desktop-ui.sock";
-const VERSION: u16 = 1;
+const VERSION: u16 = 2;
+
+/// App-private messages; portable desktop actions keep no seat-domain payload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", content = "body", rename_all = "snake_case")]
+pub enum Message {
+    Action(Action),
+    NotificationClicked {
+        id: String,
+        episode: crate::attention::EpisodeKey,
+    },
+}
+
+#[derive(Serialize, Deserialize)]
+struct FrontendReady {
+    supervisor_pid: u32,
+}
 
 #[derive(Serialize, Deserialize)]
 struct Ready {
     version: u16,
     supervisor_pid: u32,
+    #[serde(default)]
+    frontend_pid: u32,
+}
+
+/// Permit only this run's recorded, birth-checked desktop observer. This does
+/// not grant a device-event consumer, a GUI claim, terminal watches or input.
+pub(super) fn admit_observer(config: &Config, pid: u32, supervisor: u32) -> bool {
+    owners::read::<Ready>(config, "desktop")
+        .ok()
+        .flatten()
+        .is_some_and(|owner| {
+            owner.process.pid() == pid
+                && owner.ready.version == VERSION
+                && owner.ready.supervisor_pid == supervisor
+                && outside_supervisor_with(
+                    pid,
+                    supervisor,
+                    owner.ready.frontend_pid,
+                    bbt_mux::ctl_door::parent,
+                )
+        })
 }
 
 /// Retained by the GUI's IO task. Dropping a UI never stops the desktop daemon.
 pub struct UiPort {
     task: JoinHandle<()>,
+    context_task: JoinHandle<()>,
+    context_relay: Option<JoinHandle<()>>,
+    context: tokio::sync::watch::Sender<Option<Context>>,
     path: PathBuf,
     inode: u64,
 }
 impl Drop for UiPort {
     fn drop(&mut self) {
         self.task.abort();
+        self.context_task.abort();
+        if let Some(task) = &self.context_relay {
+            task.abort();
+        }
         if std::fs::symlink_metadata(&self.path).is_ok_and(|m| m.ino() == self.inode) {
             let _ = std::fs::remove_file(&self.path);
         }
+    }
+}
+
+impl UiPort {
+    /// Replace only declarative UI context, never wait on a desktop process.
+    pub fn publish_context(&self, context: Context) {
+        self.context.send_replace(Some(context));
+    }
+
+    /// Couple a coalesced UI-to-IO policy relay to this frontend attachment.
+    pub fn follow_context(&mut self, mut source: tokio::sync::watch::Receiver<Option<Context>>) {
+        if let Some(task) = self.context_relay.take() {
+            task.abort();
+        }
+        if let Some(context) = source.borrow_and_update().clone() {
+            self.publish_context(context);
+        }
+        let destination = self.context.clone();
+        self.context_relay = Some(tokio::spawn(async move {
+            loop {
+                destination.send_replace(source.borrow_and_update().clone());
+                if source.changed().await.is_err() {
+                    break;
+                }
+            }
+        }));
     }
 }
 
@@ -68,16 +141,13 @@ fn enabled(config: &Config) -> bool {
 pub fn attach(
     config: Config,
     supervisor: Arc<std::sync::atomic::AtomicU32>,
-    callback: impl Fn(Action) + Send + Sync + 'static,
+    callback: impl Fn(Message) + Send + Sync + 'static,
 ) -> Option<UiPort> {
     if !enabled(&config) {
         return None;
     }
     match bind(config.clone(), supervisor, Arc::new(callback)) {
-        Ok(port) => {
-            refresh(config);
-            Some(port)
-        }
+        Ok(port) => Some(port),
         Err(error) => {
             eprintln!("desktop callback unavailable: {error}");
             None
@@ -88,7 +158,7 @@ pub fn attach(
 fn bind(
     config: Config,
     supervisor: Arc<std::sync::atomic::AtomicU32>,
-    callback: Arc<dyn Fn(Action) + Send + Sync>,
+    callback: Arc<dyn Fn(Message) + Send + Sync>,
 ) -> Result<UiPort> {
     let path = config.run_dir.join(SOCKET);
     // The caller holds this run's FrontendLock; only a stale socket can remain.
@@ -102,6 +172,12 @@ fn bind(
     let listener = UnixListener::bind(&path)?;
     std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
     let inode = std::fs::symlink_metadata(&path)?.ino();
+    let (context, source) = tokio::sync::watch::channel(None);
+    let context_config = config.clone();
+    let context_supervisor = supervisor.clone();
+    let context_task = tokio::spawn(async move {
+        attention::publish_context(context_config, context_supervisor, source).await;
+    });
     let budget = Arc::new(tokio::sync::Semaphore::new(16));
     let task = tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
@@ -122,14 +198,21 @@ fn bind(
             });
         }
     });
-    Ok(UiPort { task, path, inode })
+    Ok(UiPort {
+        task,
+        context_task,
+        context_relay: None,
+        context,
+        path,
+        inode,
+    })
 }
 
 async fn receive(
     config: &Config,
     supervisor_pid: u32,
     stream: UnixStream,
-    callback: &(dyn Fn(Action) + Send + Sync),
+    callback: &(dyn Fn(Message) + Send + Sync),
 ) -> Result<()> {
     let peer = stream
         .peer_cred()?
@@ -145,14 +228,14 @@ async fn receive(
         return Err(invalid("desktop callback peer refused"));
     }
     let (read, mut write) = stream.into_split();
-    let mut input = BufReader::new(read.take(128));
+    let mut input = BufReader::new(read.take(512));
     let mut line = String::new();
     input.read_line(&mut line).await?;
-    if line.len() > 64 || !line.ends_with('\n') {
+    if line.len() > 384 || !line.ends_with('\n') {
         return Err(invalid("desktop action framing refused"));
     }
-    let action: Action = serde_json::from_str(&line)?;
-    callback(action);
+    let message: Message = serde_json::from_str(&line)?;
+    callback(message);
     write.write_all(b"ok\n").await?;
     Ok(())
 }
@@ -189,9 +272,13 @@ fn outside_supervisor_with(
 }
 
 async fn send(config: &Config, action: Action) -> Result<()> {
+    send_message(config, Message::Action(action)).await
+}
+
+async fn send_message(config: &Config, message: Message) -> Result<()> {
     tokio::time::timeout(Duration::from_secs(1), async {
         let mut socket = UnixStream::connect(config.run_dir.join(SOCKET)).await?;
-        write_json(&mut socket, &action).await?;
+        write_json(&mut socket, &message).await?;
         let mut reply = String::new();
         BufReader::new(socket.take(8)).read_line(&mut reply).await?;
         if reply != "ok\n" {
@@ -217,10 +304,14 @@ pub(super) fn refresh(config: Config) {
 async fn ensure(config: &Config) -> Result<()> {
     let supervisor = owners::read::<SupervisorReady>(config, "supervisor")?
         .ok_or_else(|| invalid("desktop supervisor unavailable"))?;
-    if owners::read::<Ready>(config, "desktop")?.is_some_and(|owner| {
-        owner.ready.version == VERSION && owner.ready.supervisor_pid == supervisor.process.pid()
-    }) {
-        return Ok(());
+    if let Some(owner) = owners::read::<Ready>(config, "desktop")? {
+        if owner.ready.version == VERSION && owner.ready.supervisor_pid == supervisor.process.pid()
+        {
+            return Ok(());
+        }
+        // Replace only this recorded helper. Its SIGTERM path stops the status
+        // owner, never the still-running supervisor, logic or PTYs.
+        stop_owned(Process::adopted(config, "desktop", owner)).await?;
     }
     let path = std::env::var_os("PATH").unwrap_or_default();
     let mut child = super::child(config, "desktop", &path)?;
@@ -272,8 +363,15 @@ pub(super) fn run() -> Result<()> {
     let _lock = claim(&config)?;
     let (sender, mut actions) = mpsc::channel(32);
     let fixture_sender = sender.clone();
+    let click_sender = sender.clone();
+    let prepared = attention::Prepared::new(
+        &config,
+        Arc::new(move |id, episode| {
+            let _ = click_sender.try_send(DaemonAction::Notification { id, episode });
+        }),
+    );
     let callback = Box::new(move |action| {
-        if sender.try_send(action).is_err() {
+        if sender.try_send(DaemonAction::Menu(action)).is_err() {
             eprintln!("desktop action queue full");
         }
     });
@@ -282,7 +380,8 @@ pub(super) fn run() -> Result<()> {
             if let Some(error) = stop.native_error() { return Err(invalid(format!("desktop native backend: {error}"))); }
             let owner = owners::read::<SupervisorReady>(&config, "supervisor")?
                 .ok_or_else(|| invalid("desktop supervisor unavailable"))?;
-            let ready = Ready { version: VERSION, supervisor_pid: owner.process.pid() };
+            let service = prepared.start(config.clone(), owner.process.pid()).await?;
+            let ready = Ready { version: VERSION, supervisor_pid: owner.process.pid(), frontend_pid: std::os::unix::process::parent_id() };
             owners::write(&config, "desktop", &ready)?;
             write_json(&mut tokio::io::stdout(), &ready).await?;
             use tokio::signal::unix::{signal, SignalKind};
@@ -298,22 +397,29 @@ pub(super) fn run() -> Result<()> {
                     action = async {
                         loop {
                             match read_line(&mut input).await? {
-                                Some(line) => return Ok::<_, Box<dyn std::error::Error + Send + Sync>>(serde_json::from_slice::<Action>(&line)?),
+                                Some(line) => return Ok::<_, Box<dyn std::error::Error + Send + Sync>>(serde_json::from_slice::<FixtureAction>(&line)?),
                                 None => std::future::pending().await,
                             }
                         }
                     }, if fixture => {
-                        fixture_sender.try_send(action?).map_err(|_| invalid("desktop fixture action queue full"))?;
+                        match action? {
+                            FixtureAction::Menu(action) => fixture_sender.try_send(DaemonAction::Menu(action)).map_err(|_| invalid("desktop fixture action queue full"))?,
+                            FixtureAction::Notification { notification_click } => service.activate_fixture(notification_click)?,
+                        }
                     }
                     Some(action) = actions.recv() => {
-                        if action == Action::HardQuit {
-                            if send(&config, action).await.is_ok() && matches!(tokio::time::timeout(Duration::from_secs(5), owner_exit(owner.process.pid())).await, Ok(Ok(()))) { break; }
+                        if matches!(action, DaemonAction::Menu(Action::HardQuit)) {
+                            if send(&config, Action::HardQuit).await.is_ok() && matches!(tokio::time::timeout(Duration::from_secs(5), owner_exit(owner.process.pid())).await, Ok(Ok(()))) { break; }
                             stop_backends(&config).await?;
                             break;
                         }
                         let config = config.clone(); let launching = launching.clone();
                         tokio::spawn(async move {
-                            if let Err(error) = show(&config, action, &launching).await { eprintln!("desktop action {}: {error}", action.as_str()); }
+                            let message = match action {
+                                DaemonAction::Menu(action) => Message::Action(action),
+                                DaemonAction::Notification { id, episode } => Message::NotificationClicked { id, episode },
+                            };
+                            if let Err(error) = show_message(&config, message, &launching).await { eprintln!("desktop action: {error}"); }
                         });
                     }
                 }
@@ -326,14 +432,29 @@ pub(super) fn run() -> Result<()> {
     }).map_err(|error| invalid(error.to_string()))
 }
 
-async fn show(
+enum DaemonAction {
+    Menu(Action),
+    Notification {
+        id: String,
+        episode: crate::attention::EpisodeKey,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum FixtureAction {
+    Menu(Action),
+    Notification { notification_click: String },
+}
+
+async fn show_message(
     config: &Config,
-    action: Action,
+    message: Message,
     launching: &std::sync::atomic::AtomicBool,
 ) -> Result<()> {
     if send(config, Action::ShowWindow).await.is_ok() {
-        if action != Action::ShowWindow {
-            send(config, action).await?;
+        if message != Message::Action(Action::ShowWindow) {
+            send_message(config, message).await?;
         }
         return Ok(());
     }
@@ -385,8 +506,8 @@ async fn show(
         tokio::time::timeout(STARTUP_TIMEOUT, async {
             loop {
                 if send(config, Action::ShowWindow).await.is_ok() {
-                    if action != Action::ShowWindow {
-                        send(config, action).await?;
+                    if message != Message::Action(Action::ShowWindow) {
+                        send_message(config, message.clone()).await?;
                     }
                     break Ok(());
                 }
@@ -512,6 +633,7 @@ mod tests {
             Ready {
                 version: VERSION,
                 supervisor_pid: 0,
+                frontend_pid: std::process::id(),
             },
         )
         .unwrap();
@@ -529,7 +651,7 @@ mod tests {
             tokio::time::timeout(Duration::from_secs(1), received.recv())
                 .await
                 .unwrap(),
-            Some(Action::Settings)
+            Some(Message::Action(Action::Settings))
         );
         // A separate real child has a different kernel peer PID despite the same uid.
         let output = tokio::process::Command::new("/usr/bin/python3")
