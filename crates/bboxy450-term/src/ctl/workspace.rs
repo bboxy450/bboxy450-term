@@ -28,6 +28,19 @@ fn time_left(deadline: Instant) -> Result<Duration, String> {
     Ok(left.max(Duration::from_millis(1)))
 }
 
+fn closed_peer(stream: &UnixStream) -> bool {
+    use std::os::fd::AsRawFd;
+    let mut poll = libc::pollfd {
+        fd: stream.as_raw_fd(),
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    // A hangup is permanent: the sole reader can drain queued bytes and EOF
+    // without waiting. Darwin can refuse timeout changes after this close.
+    // SAFETY: poll points to one initialized descriptor for this synchronous call.
+    unsafe { libc::poll(&mut poll, 1, 0) > 0 && poll.revents & libc::POLLHUP != 0 }
+}
+
 pub(super) fn send(
     client: &mut Client,
     action: GuiAction,
@@ -59,11 +72,14 @@ pub(super) fn send(
 pub(super) fn reply(client: &mut Client, deadline: Instant) -> Result<GuiReply, String> {
     let mut line = Vec::new();
     loop {
-        client
+        if let Err(error) = client
             .reader
             .get_ref()
             .set_read_timeout(Some(time_left(deadline)?))
-            .map_err(|e| format!("gui.sock read deadline: {e}"))?;
+            && (error.raw_os_error() != Some(libc::EINVAL) || !closed_peer(client.reader.get_ref()))
+        {
+            return Err(format!("gui.sock read deadline: {error}"));
+        }
         let bytes = client
             .reader
             .fill_buf()
@@ -231,6 +247,35 @@ mod tests {
             json!({"written":true})
         );
         server.join().unwrap();
+    }
+    #[test]
+    fn a_closed_peer_keeps_its_final_reply_readable() {
+        let (_dir, mut client, mut door) = fixture();
+        let op = Ulid::new();
+        send(
+            &mut door,
+            &GuiReply::Task {
+                op,
+                response: TaskResponse::Applied,
+            },
+        );
+        drop(door);
+        assert!(closed_peer(client.reader.get_ref()));
+        assert!(matches!(
+            reply(&mut client, Instant::now() + Duration::from_secs(1)).unwrap(),
+            GuiReply::Task { op: received, response: TaskResponse::Applied } if received == op
+        ));
+    }
+    #[test]
+    fn a_closed_peer_cannot_turn_a_truncated_reply_into_success() {
+        let (_dir, mut client, mut door) = fixture();
+        door.write_all(b"{\"incomplete\":").unwrap();
+        drop(door);
+        assert!(
+            reply(&mut client, Instant::now() + Duration::from_secs(1))
+                .unwrap_err()
+                .starts_with("gui.sock reply:")
+        );
     }
     #[test]
     fn unknown_and_permanent_refusals_are_never_redispatched() {

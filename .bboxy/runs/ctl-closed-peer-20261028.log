@@ -1,0 +1,16 @@
+ROLE: EXECUTOR
+Scope: preserve a completed CLI response when its Unix peer closes immediately afterward.
+Base: fe345666 (font input-boundary/test-isolation and watched-task fixture followups integrated).
+Mechanism: ctl/workspace.rs uses nonblocking poll to prove permanent peer hangup. Only EINVAL from setting a read deadline on that closed socket permits draining queued bytes/EOF; live sockets and all other errors retain their original failure. Absolute deadline, frame limit, operation identity and no-redispatch rules remain intact.
+Root cause: Darwin native socketpair experiment returned EINVAL22 for SO_RCVTIMEO after full peer close, with POLLIN|POLLHUP17 and final queued bytes readable. Open peers and half shutdown accepted the same timeout. This was not a duration-rounding failure; checked Rust1.99 std source truncates subsecond microseconds.
+Regression: final complete frame after close succeeds; truncated frame after close remains a parse error. Existing deadline/trickle/unknown/permanent/operation/payload tests remain.
+make test-ctl-workspaces: 8 socket +20 actual CLI tests passed; command exit2 solely strict Clippy collapsible-if. Applied the suggested let-chain without changing behavior.
+make test-scoped-workspace-frontend test-workspace-routing: exit0 on corrected source. App lib143passed/3existingignored, bin165passed/5existingignored, documents17, graph5, messagingUI21; routing12, knowledge11, provider1, actual logic9/5existingignored, MCP52/9existingignored, suppression8, provenance3/3existingignored, recovery1/1ownedchildignored, cache4, responsiveness5. Strict app and mux all-target Clippy -Dwarnings passed.
+Both native-font/virtual-key UI tests pass together; keyboard source-boundary invariant and original watched-task bus assertion pass. No new skips, quarantine or global serialization.
+Full combined CI14464 previously failed four tests across three targets; its actual log preserved below. Exact final full CI/landing/install follows remaining integration.
+Primary source checked: https://raw.githubusercontent.com/rust-lang/rust/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4/library/std/src/sys/net/connection/socket/unix.rs (set_timeout); no source code copied/adapted from it.
+No operator input, credentials, OS keystrokes, real SSH or live session changes.
+raw_log: /Users/feral/Library/Logs/bboxy450-term/ctl-closed-peer-20261028.log; sha256=3b926056c9d4979bbc69d92b99f3ede219e62dc7b9d50c95f17809809fb548cf
+raw_log: /Users/feral/Library/Logs/bboxy450-term/terminal-font-replay-regressions-20261028.log; sha256=29354a73e5d63466b03be9a14f076ac907afab59ce240e5f9456961e654d2fd7
+raw_log: /Users/feral/Library/Logs/bboxy450-term/terminal-font-replay-20261028-ci-14464-failed.log; sha256=4ad65815dc21967af355306f6bfbe53d3853da49440c3c10e5e91a5c7586400c
+source_sha256: d91f135e744d1ed60e562e910423725d5c344f8ecc03ee4298f5fdda1ddb15d7
