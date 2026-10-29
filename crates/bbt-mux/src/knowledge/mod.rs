@@ -241,3 +241,5 @@ pub mod views {
         })
     }
 }
+
+pub(crate) mod routing;

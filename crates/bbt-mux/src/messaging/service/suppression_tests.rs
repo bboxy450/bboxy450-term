@@ -228,3 +228,140 @@ fn local_operator_withdrawal_cancels_an_unsigned_intent_without_signing() {
         0
     );
 }
+
+// keeps: cwd selects records; copied task IDs cannot cancel another root's wakes.
+#[test]
+fn workspace_task_status_isolated_across_roots_and_same_swarm_cwd_changes() {
+    let (_root, mut messaging, caller, receiver) = fixture();
+    let task = Ulid::new();
+    let mut send = |root: &str, now: u64| {
+        let mut request =
+            SendRequest::text(format!("seats/{}/inbox", receiver.id), "root-bound task");
+        request.kind = MessageKind::Task;
+        messaging.task_root(caller.swarm, request.id, root).unwrap();
+        messaging
+            .task_event(
+                caller.id,
+                1,
+                request,
+                Body::Task {
+                    task_id: task,
+                    event: "delegate".into(),
+                    path: "tasks/same.md".into(),
+                    summary: "root-bound task".into(),
+                },
+                now,
+            )
+            .unwrap()
+            .view()
+            .id
+    };
+    let first = send("project-a", 1);
+    let second = send("project-b", 2);
+    messaging.bind_workspace(caller.swarm, "project-b").unwrap();
+    messaging
+        .task_state_root("project-a", &[], task, "accepted", 3)
+        .unwrap();
+    assert_eq!(
+        wake(&mut messaging, &caller, first),
+        Some(ReceiptWake::None {
+            reason: Some(WakeReason::Done)
+        })
+    );
+    assert_eq!(
+        wake(&mut messaging, &caller, second),
+        Some(ReceiptWake::Now)
+    );
+    // The compatibility projection cannot suppress a root-tagged delegation.
+    messaging.task_state(task, "rejected", 4).unwrap();
+    assert_eq!(
+        wake(&mut messaging, &caller, second),
+        Some(ReceiptWake::Now)
+    );
+    messaging
+        .task_state_root("project-b", &[caller.swarm], task, "accepted", 5)
+        .unwrap();
+    assert_eq!(
+        wake(&mut messaging, &caller, second),
+        Some(ReceiptWake::None {
+            reason: Some(WakeReason::Done)
+        })
+    );
+}
+
+#[test]
+fn workspace_pending_task_reopen_hydrates_its_source_root_after_cwd_changes() {
+    let (root, mut messaging, caller, receiver) = fixture();
+    let task = Ulid::new();
+    let mut request = SendRequest::text(
+        format!("seats/{}/inbox", receiver.id),
+        "scoped pending task",
+    );
+    request.kind = MessageKind::Task;
+    messaging
+        .task_root(caller.swarm, request.id, "project-a")
+        .unwrap();
+    let id = messaging
+        .task_event(
+            caller.id,
+            1,
+            request,
+            Body::Task {
+                task_id: task,
+                event: "delegate".into(),
+                path: "tasks/same.md".into(),
+                summary: "scoped pending task".into(),
+            },
+            1,
+        )
+        .unwrap()
+        .view()
+        .id;
+    messaging.bind_workspace(caller.swarm, "project-b").unwrap();
+    // Crash after account projection, before applying the per-ledger suppression.
+    messaging
+        .account
+        .put(
+            &format!("messaging/task-state-root/project-a/{task}"),
+            b"accepted",
+        )
+        .unwrap();
+    drop(messaging);
+    let mut reopened = Messaging::open(
+        root.path(),
+        Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[75; 32]))),
+    )
+    .unwrap();
+    assert_eq!(
+        wake(&mut reopened, &caller, id),
+        Some(ReceiptWake::None {
+            reason: Some(WakeReason::Done)
+        })
+    );
+}
+
+#[test]
+fn workspace_legacy_terminal_state_migrates_only_into_trusted_startup_root() {
+    let (root, mut messaging, caller, receiver) = fixture();
+    let task = Ulid::new();
+    let id = delegate(&mut messaging, &caller, &receiver, task, 1)
+        .view()
+        .id;
+    messaging
+        .account
+        .put(&format!("messaging/task-state/{task}"), b"accepted")
+        .unwrap();
+    drop(messaging);
+    let mut reopened = Messaging::open(
+        root.path(),
+        Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[75; 32]))),
+    )
+    .unwrap();
+    reopened.startup_workspace("startup").unwrap();
+    assert_eq!(
+        wake(&mut reopened, &caller, id),
+        Some(ReceiptWake::None {
+            reason: Some(WakeReason::Done)
+        })
+    );
+}

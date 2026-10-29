@@ -274,6 +274,7 @@ impl Messaging {
     }
 
     /// Task authority comes from the existing Index, not a message's prose.
+    #[cfg(test)]
     pub(crate) fn task_state(&mut self, task: Ulid, status: &str, now: u64) -> Result<()> {
         let key = format!("messaging/task-state/{task}");
         if self.account.get(&key)?.as_deref() != Some(status.as_bytes()) {
@@ -284,18 +285,76 @@ impl Messaging {
         }
         Ok(())
     }
-    fn sync_task(&mut self, swarm: Ulid, body: &Body, now: u64) -> Result<()> {
+    /// Workspace projection is scoped by canonical root and admitted swarm bindings.
+    pub(crate) fn task_state_root(
+        &mut self,
+        root: &str,
+        swarms: &[Ulid],
+        task: Ulid,
+        status: &str,
+        now: u64,
+    ) -> Result<()> {
+        let key = format!("messaging/task-state-root/{root}/{task}");
+        if self.account.get(&key)?.as_deref() != Some(status.as_bytes()) {
+            self.account.put(&key, status.as_bytes())?;
+        }
+        let prefix = format!("messaging/task-root-swarm/{root}/");
+        let mut targets: std::collections::BTreeSet<Ulid> = swarms.iter().copied().collect();
+        for (key, _) in self.account.list(&prefix)? {
+            if let Some(swarm) = key.strip_prefix(&prefix).and_then(|id| id.parse().ok()) {
+                targets.insert(swarm);
+            }
+        }
+        for swarm in targets {
+            self.swarm(swarm)?
+                .ledger
+                .task_state_root(root, task, status, now)?;
+        }
+        Ok(())
+    }
+    pub(crate) fn startup_workspace(&self, root: &str) -> Result<()> {
+        self.account.put("messaging/startup-root", root.as_bytes())
+    }
+    pub(crate) fn bind_workspace(&self, swarm: Ulid, root: &str) -> Result<()> {
+        let key = format!("messaging/swarm-root/{swarm}");
+        if self.account.get(&key)?.as_deref() != Some(root.as_bytes()) {
+            self.account.put(&key, root.as_bytes())?;
+        }
+        Ok(())
+    }
+    pub(crate) fn task_root(&mut self, swarm: Ulid, message: Ulid, root: &str) -> Result<()> {
+        self.swarm(swarm)?.ledger.task_root(message, root)?;
+        self.account
+            .put(&format!("messaging/task-root-swarm/{root}/{swarm}"), b"1")
+    }
+    fn sync_task(&mut self, swarm: Ulid, message: Ulid, body: &Body, now: u64) -> Result<()> {
         if let Body::Task { task_id, event, .. } = body
             && event == "delegate"
         {
-            let status = self
-                .account
-                .get(&format!("messaging/task-state/{task_id}"))?;
-            if let Some(status) = status {
+            let mut root = self.swarm(swarm)?.ledger.task_root_id(message)?;
+            if root.is_none()
+                && let Some(startup) = self.account.get("messaging/startup-root")?
+            {
+                let startup = std::str::from_utf8(&startup)?.to_owned();
+                self.swarm(swarm)?.ledger.task_root(message, &startup)?;
+                root = Some(startup);
+            }
+            let key = root.as_ref().map_or_else(
+                || format!("messaging/task-state/{task_id}"),
+                |root| format!("messaging/task-state-root/{root}/{task_id}"),
+            );
+            if let Some(status) = self.account.get(&key)? {
                 let status = std::str::from_utf8(&status)?;
-                self.swarm(swarm)?
-                    .ledger
-                    .task_state(*task_id, status, now)?;
+                match root {
+                    Some(root) => self
+                        .swarm(swarm)?
+                        .ledger
+                        .task_state_root(&root, *task_id, status, now)?,
+                    None => self
+                        .swarm(swarm)?
+                        .ledger
+                        .task_state(*task_id, status, now)?,
+                }
             }
         }
         Ok(())
@@ -784,9 +843,34 @@ impl Messaging {
             }
             let ledger = Ledger::open(store, id)?
                 .with_test_context(self.keys.test_account_label().map(str::to_owned));
-            for task in ledger.pending_tasks()? {
-                if let Some(status) = self.account.get(&format!("messaging/task-state/{task}"))? {
-                    ledger.task_state(task, std::str::from_utf8(&status)?, 0)?;
+            let startup = self.account.get("messaging/startup-root")?;
+            if let Some(startup) = &startup {
+                ledger.bind_legacy_task_roots(std::str::from_utf8(startup)?)?;
+            }
+            for (root, task) in ledger.pending_task_roots()? {
+                let key = match &root {
+                    Some(root) => {
+                        self.account
+                            .put(&format!("messaging/task-root-swarm/{root}/{id}"), b"1")?;
+                        format!("messaging/task-state-root/{root}/{task}")
+                    }
+                    None => format!("messaging/task-state/{task}"),
+                };
+                let mut status = self.account.get(&key)?;
+                if status.is_none()
+                    && root
+                        .as_ref()
+                        .is_some_and(|root| startup.as_deref() == Some(root.as_bytes()))
+                {
+                    status = self.account.get(&format!("messaging/task-state/{task}"))?;
+                }
+                if let Some(status) = status {
+                    match root {
+                        Some(root) => {
+                            ledger.task_state_root(&root, task, std::str::from_utf8(&status)?, 0)?
+                        }
+                        None => ledger.task_state(task, std::str::from_utf8(&status)?, 0)?,
+                    }
                 }
             }
             self.swarms.insert(
@@ -1041,7 +1125,8 @@ impl Messaging {
                 Err(invalid(format!("signing held: {reason}")))
             }
             super::api::Response::Refused { error } => Err(invalid(format!(
-                "{}: {}; {}", error.kind, error.message, error.hint
+                "{}: {}; {}",
+                error.kind, error.message, error.hint
             ))),
             _ => unreachable!(),
         }
@@ -1066,7 +1151,7 @@ impl Messaging {
             super::tree::sink(&request.destination)?;
         }
         self.sync_seat(&record)?;
-        self.sync_task(record.swarm, &body, now)?;
+        self.sync_task(record.swarm, request.id, &body, now)?;
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
             if old.view().body != &body {
                 return Err(invalid("task message ID body conflict"));
@@ -1201,7 +1286,7 @@ impl Messaging {
             request.destination.push_str("/*");
         }
         let body = body.unwrap_or_else(|| request_body(&request));
-        self.sync_task(swarm, &body, now)?;
+        self.sync_task(swarm, request.id, &body, now)?;
         if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, sender)? {
             if old.view().body != &body {
                 return Err(invalid("message ID body conflict"));
@@ -1470,7 +1555,11 @@ impl Messaging {
             });
         }
         if request.destination.is_empty() {
-            let parent = parent.as_ref().ok_or_else(|| invalid("message_send needs a destination, or reply_to to answer a message's sender"))?;
+            let parent = parent.as_ref().ok_or_else(|| {
+                invalid(
+                    "message_send needs a destination, or reply_to to answer a message's sender",
+                )
+            })?;
             request.destination = sender_inbox(parent);
         }
         request.destination = super::tree::normalize(&request.destination, true)?;
@@ -1492,7 +1581,9 @@ impl Messaging {
                 message: Box::new(old),
             });
         }
-        if let Some(error) = self.inherit_reply(record.swarm, reader, parent.as_ref(), &mut request)? {
+        if let Some(error) =
+            self.inherit_reply(record.swarm, reader, parent.as_ref(), &mut request)?
+        {
             return Ok(super::api::Response::Refused { error });
         }
         let actor = if operator {
@@ -2663,22 +2754,32 @@ impl Messaging {
     /// Small ordinary observation: no channel list, role or policy duplication per seat.
     pub fn deferred_view(&self, record: &SeatRecord) -> Result<Option<serde_json::Value>> {
         let Some(swarm) = self.swarms.get(&record.swarm) else {
-            return Ok(Some(serde_json::json!({"deferred_error":"messaging observation unavailable"})));
+            return Ok(Some(
+                serde_json::json!({"deferred_error":"messaging observation unavailable"}),
+            ));
         };
-        Ok(swarm.ledger.digest_summary(record.id)?.map(|summary|
-            serde_json::json!({"deferred":summary})))
+        Ok(swarm
+            .ledger
+            .digest_summary(record.id)?
+            .map(|summary| serde_json::json!({"deferred":summary})))
     }
     /// One explicitly selected seat, read without another consumer or scheduler mutation.
     pub fn attention_view(&self, record: &SeatRecord) -> Result<serde_json::Value> {
         let mut value = crate::mcp::attention::view(record).map_err(invalid)?;
         let summary = self.deferred_view(record)?;
-        value["deferred"] = summary.as_ref().and_then(|v| v.get("deferred")).cloned()
+        value["deferred"] = summary
+            .as_ref()
+            .and_then(|v| v.get("deferred"))
+            .cloned()
             .unwrap_or(serde_json::Value::Null);
         if let Some(reason) = summary.as_ref().and_then(|v| v.get("deferred_error")) {
             value["deferred_error"] = reason.clone();
         }
-        let (channels, complete) = self.swarms.get(&record.swarm)
-            .map(|swarm| swarm.tree.attention_channels(128)).unwrap_or_default();
+        let (channels, complete) = self
+            .swarms
+            .get(&record.swarm)
+            .map(|swarm| swarm.tree.attention_channels(128))
+            .unwrap_or_default();
         value["channels"] = serde_json::json!(channels);
         value["channels_complete"] = complete.into();
         Ok(value)
@@ -3313,7 +3414,9 @@ mod native_attention_tests {
             .unwrap();
         assert_eq!(
             messaging.receipts(sender.id, prose.view().id).unwrap()[0].wake,
-            Some(ReceiptWake::None {reason:Some(bbt_proto::messaging::WakeReason::Policy)})
+            Some(ReceiptWake::None {
+                reason: Some(bbt_proto::messaging::WakeReason::Policy)
+            })
         );
         let mut request = SendRequest::text(&destination, "your task brief");
         request.kind = MessageKind::Task;

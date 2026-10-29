@@ -39,6 +39,17 @@ impl Held {
         .await
         .unwrap();
     }
+    fn block(&self) {
+        self.max_active.fetch_max(
+            self.active.fetch_add(1, Ordering::AcqRel) + 1,
+            Ordering::AcqRel,
+        );
+        self.calls.fetch_add(1, Ordering::Release);
+        self.entered.notify_one();
+        let guard = self.released.lock().unwrap();
+        drop(self.wake.wait_while(guard, |released| !*released).unwrap());
+        self.active.fetch_sub(1, Ordering::AcqRel);
+    }
     fn release(&self) {
         *self.released.lock().unwrap() = true;
         self.wake.notify_all();
@@ -52,15 +63,7 @@ impl Drop for Release {
 }
 impl DataSource for Held {
     fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
-        self.max_active.fetch_max(
-            self.active.fetch_add(1, Ordering::AcqRel) + 1,
-            Ordering::AcqRel,
-        );
-        self.calls.fetch_add(1, Ordering::Release);
-        self.entered.notify_one();
-        let guard = self.released.lock().unwrap();
-        drop(self.wake.wait_while(guard, |released| !*released).unwrap());
-        self.active.fetch_sub(1, Ordering::AcqRel);
+        self.block();
         Ok(d::Page {
             items: vec![],
             next: None,
@@ -128,7 +131,7 @@ impl Gui {
     }
 }
 
-async fn held_read(same_session: bool) {
+async fn held_read(same_session: bool, invalidate: bool) {
     let root = tempfile::tempdir().unwrap();
     let supervisor = crate::Supervisor::start(crate::Config {
         journal_directory: Some(root.path().join("supervisor-journal")),
@@ -147,6 +150,7 @@ async fn held_read(same_session: bool) {
     )
     .unwrap();
     let seat = Ulid::new();
+    let swarm = Ulid::new();
     let mut launch = LaunchSpec::new("/bin/zsh", root.path());
     launch.seat = seat;
     launch.args = vec![
@@ -156,10 +160,7 @@ async fn held_read(same_session: bool) {
     ];
     logic
         .client
-        .spawn(
-            SeatRecord::new(seat, Ulid::new(), "held read", "zsh"),
-            launch,
-        )
+        .spawn(SeatRecord::new(seat, swarm, "held read", "zsh"), launch)
         .await
         .unwrap();
     let endpoint = logic.client.gui_endpoint().await.unwrap();
@@ -181,13 +182,23 @@ async fn held_read(same_session: bool) {
     rx.await.unwrap();
     let read_id = Ulid::new();
     gui.send(GuiAction::Knowledge {
-        scope: None,
         id: read_id,
         method: "list".into(),
         args: json!({"limit":1}),
+        scope: invalidate.then_some(bbt_proto::gui::SwarmScope { swarm, revision: 0 }),
     })
     .await;
     held.entered(1).await;
+    if invalidate {
+        let next = root.path().join("next-project");
+        std::fs::create_dir(&next).unwrap();
+        let registry = Registry::new(
+            SqliteStore::open(&object_dir(&root.path().join("run"), "account").unwrap()).unwrap(),
+        );
+        registry
+            .update_swarm_workdir(swarm, Some(next.to_str().unwrap()))
+            .unwrap();
+    }
     let control = other.as_mut().unwrap_or(&mut gui);
     let input_id = Ulid::new();
     let seat_id = SeatId::from_u128(seat.0);
@@ -251,7 +262,7 @@ async fn held_read(same_session: bool) {
         })
         .await
         .unwrap();
-        if same_session {
+        if !invalidate && same_session {
             gui.send(GuiAction::Knowledge {
                 scope: None,
                 id: second_id,
@@ -283,7 +294,7 @@ async fn held_read(same_session: bool) {
                     .code,
                 "provider_busy"
             );
-        } else {
+        } else if !invalidate {
             let client = logic.client.clone();
             let second =
                 tokio::spawn(async move { client.gui_knowledge("list".into(), json!({})).await });
@@ -302,12 +313,15 @@ async fn held_read(same_session: bool) {
             assert_eq!(busy.code, "provider_busy");
             assert!(busy.retry_after_ms.is_some());
         }
-        assert_eq!(held.max_active.load(Ordering::Acquire), 2);
+        assert_eq!(
+            held.max_active.load(Ordering::Acquire),
+            if invalidate { 1 } else { 2 }
+        );
     }
     held.release();
     // Drain the read before teardown even when the pre-fix responsiveness assertion fails.
     tokio::time::timeout(Duration::from_secs(5), async {
-        let mut pending = if same_session && responsive {
+        let mut pending = if same_session && responsive && !invalidate {
             vec![read_id, second_id]
         } else {
             vec![read_id]
@@ -319,11 +333,12 @@ async fn held_read(same_session: bool) {
                     .position(|id| *id == op)
                     .expect("original operation ID retained");
                 pending.remove(at);
-                assert!(
-                    serde_json::from_value::<d::Result<Value>>(response)
-                        .unwrap()
-                        .is_ok()
-                );
+                let response = serde_json::from_value::<d::Result<Value>>(response).unwrap();
+                if invalidate {
+                    assert_eq!(response.unwrap_err().code, "swarm_root_changed");
+                } else {
+                    assert!(response.is_ok());
+                }
             }
         }
     })
@@ -360,10 +375,242 @@ async fn held_read(same_session: bool) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn held_read_does_not_stall_other_gui_seat_input_or_resize() {
-    held_read(false).await;
+    held_read(false, false).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn held_read_does_not_stall_same_gui_seat_input_or_resize() {
-    held_read(true).await;
+    held_read(true, false).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn workspace_read_completion_is_fenced_while_input_and_resize_remain_live() {
+    held_read(true, true).await;
+}
+
+// keeps: one slow root cannot hold the operator's terminal/chat or another root.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes() {
+    let root = tempfile::tempdir().unwrap();
+    let first = root.path().join("first");
+    let second = root.path().join("second");
+    for (path, label) in [(&first, "first"), (&second, "second")] {
+        std::fs::create_dir_all(path.join(".bboxy/notes")).unwrap();
+        std::fs::write(
+            path.join(".bboxy/notes/same.md"),
+            format!(
+                "---\nid: \"{}\"\nnumber: 1\ntype: note\ntitle: Same\n---\n{label} content\n",
+                Ulid(1)
+            ),
+        )
+        .unwrap();
+    }
+    let supervisor = crate::Supervisor::start(crate::Config {
+        journal_directory: Some(root.path().join("supervisor")),
+        ..Default::default()
+    })
+    .unwrap();
+    let run = root.path().join("run");
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository: first.clone(),
+            ring: Default::default(),
+        },
+        SigningKey::from_bytes(&[47; 32]),
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let seat = Ulid::new();
+    let swarm = Ulid::new();
+    let other = Ulid::new();
+    let mut launch = LaunchSpec::new("/bin/zsh", root.path());
+    launch.seat = seat;
+    launch.args = vec![
+        "-f".into(),
+        "-c".into(),
+        "while IFS= read -r line; do print -r -- SCAN-ECHO:$line; done".into(),
+    ];
+    logic
+        .client
+        .spawn(SeatRecord::new(seat, swarm, "scan fixture", "zsh"), launch)
+        .await
+        .unwrap();
+    let registry = Registry::new(SqliteStore::open(&object_dir(&run, "account").unwrap()).unwrap());
+    let second_scope = registry
+        .update_swarm_workdir(other, Some(second.to_str().unwrap()))
+        .unwrap();
+    let held = Arc::new(Held::default());
+    let release = Release(held.clone());
+    let first_id =
+        crate::knowledge::roots::root_identity(&first.join(".bboxy").canonicalize().unwrap())
+            .unwrap();
+    let hold = held.clone();
+    let selected = first_id.clone();
+    let hook = Arc::new(move |root: &str| {
+        if root == selected {
+            hold.block();
+        }
+    });
+    let (tx, rx) = oneshot::channel();
+    logic
+        .client
+        .tx
+        .send(Command::WorkspaceScanFixture(
+            Some(bbt_proto::gui::SwarmScope { swarm, revision: 0 }),
+            hook,
+            tx,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(rx.await.unwrap().unwrap().root_id, first_id);
+    held.entered(1).await;
+    let mut gui = Gui::connect(&logic.client.gui_endpoint().await.unwrap()).await;
+    let input = Ulid::new();
+    gui.send(GuiAction::Input {
+        seat: SeatId::from_u128(seat.0),
+        generation: 1,
+        id: input,
+        bytes: b"live\n".to_vec(),
+    })
+    .await;
+    gui.send(GuiAction::Resize {
+        seat: SeatId::from_u128(seat.0),
+        generation: 1,
+        cols: 72,
+        rows: 24,
+    })
+    .await;
+    tokio::time::timeout(Duration::from_millis(500), async {
+        let mut replies = 0;
+        while replies < 2 {
+            if matches!(gui.next().await, GuiReply::Ok { .. }) {
+                replies += 1;
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let message = crate::messaging::api::Request::Send {
+        message: crate::messaging::wire::SendRequest::text(
+            format!("seats/{seat}/inbox"),
+            "chat during scan",
+        ),
+    };
+    tokio::time::timeout(
+        Duration::from_millis(500),
+        logic.client.messaging(seat, 1, message),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let read = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match logic
+                .client
+                .gui_knowledge_scoped(
+                    "resolve".into(),
+                    json!({"locator":"#1"}),
+                    Some(bbt_proto::gui::SwarmScope {
+                        swarm: other,
+                        revision: second_scope.revision,
+                    }),
+                )
+                .await
+                .unwrap()
+            {
+                Ok(value) => break value,
+                Err(error) if error.code == "workspace_pending" => {
+                    tokio::time::sleep(Duration::from_millis(20)).await
+                }
+                Err(error) => panic!("{error}"),
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert_ne!(read["knowledge_root_id"], first_id);
+    let reference: d::RecordRef = serde_json::from_value(read).unwrap();
+    let data = logic
+        .client
+        .gui_knowledge_scoped(
+            "fetch".into(),
+            json!({"ref":reference}),
+            Some(bbt_proto::gui::SwarmScope {
+                swarm: other,
+                revision: second_scope.revision,
+            }),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(data["body"], "second content\n");
+    let call = crate::mcp::Call {
+        op_id: Ulid::new(),
+        tool: "knowledge_write".into(),
+        args: json!({"path":"notes/after-scan.md","frontmatter":{"type":"note","title":"After scan"},"body":"only first root"}),
+    };
+    let refused = tokio::time::timeout(
+        Duration::from_millis(500),
+        logic.client.control_call(seat, 1, call.clone()),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        refused["structuredContent"]["error"]["code"],
+        "workspace_pending"
+    );
+    assert!(!first.join(".bboxy/notes/after-scan.md").exists());
+    let store = SqliteStore::open(&object_dir(&run, &format!("seat-{seat}")).unwrap()).unwrap();
+    assert!(
+        store
+            .get(&format!("control/op/{}", call.op_id))
+            .unwrap()
+            .is_none(),
+        "transient scan refusal admitted effect"
+    );
+    held.release();
+    let applied = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            let value = logic
+                .client
+                .control_call(seat, 1, call.clone())
+                .await
+                .unwrap();
+            if value["structuredContent"]["error"]["code"] == "workspace_pending" {
+                tokio::time::sleep(Duration::from_millis(20)).await;
+                continue;
+            }
+            break value;
+        }
+    })
+    .await
+    .unwrap();
+    assert_ne!(applied["isError"], true, "{applied}");
+    assert!(first.join(".bboxy/notes/after-scan.md").is_file());
+    assert!(!second.join(".bboxy/notes/after-scan.md").exists());
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            let snapshot = logic.client.snapshot(seat, 1).await.unwrap();
+            let text: String = snapshot
+                .screen
+                .cells
+                .iter()
+                .flatten()
+                .map(|cell| cell.c)
+                .collect();
+            if text.contains("SCAN-ECHO:live") && snapshot.screen.cols == 72 {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+    drop(release);
+    drop(gui);
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
 }

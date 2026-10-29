@@ -267,7 +267,7 @@ pub struct Index {
     root: PathBuf,
     store: SqliteStore,
     activity: crate::store::events::EventLog,
-    activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle)>,
+    activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle, String)>,
     issued_by: Option<String>,
     pub documents: BTreeMap<String, Document>,
     pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
@@ -330,17 +330,7 @@ impl Index {
         collect(&self.root, &mut paths)?;
         let mut seen = BTreeSet::new();
         let mut changed = false;
-        let mut events = {
-            let db = self.store.connection()?;
-            let mut statement = db.prepare("SELECT payload FROM document_outbox ORDER BY seq")?;
-            let pending = statement
-                .query_map([], |r| r.get::<_, Vec<u8>>(0))?
-                .collect::<std::result::Result<Vec<_>, _>>()?;
-            pending
-                .into_iter()
-                .map(|bytes| Ok(serde_json::from_slice(&bytes)?))
-                .collect::<Result<Vec<Draft>>>()?
-        };
+        let mut events = self.pending_events()?;
         for (path, metadata) in paths {
             let relative = path.strip_prefix(&self.root)?.to_string_lossy().to_string();
             let state = FileState {
@@ -456,6 +446,17 @@ impl Index {
             self.rebuild_graphs();
         }
         Ok(events)
+    }
+    pub(crate) fn pending_events(&self) -> Result<Vec<Draft>> {
+        let db = self.store.connection()?;
+        let mut statement = db.prepare("SELECT payload FROM document_outbox ORDER BY seq")?;
+        let pending = statement
+            .query_map([], |r| r.get::<_, Vec<u8>>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        pending
+            .into_iter()
+            .map(|bytes| Ok(serde_json::from_slice(&bytes)?))
+            .collect::<Result<Vec<Draft>>>()
     }
     /// Called only after the bus confirms append; retry uses the same event ID.
     pub fn acknowledge(&self, event: Ulid) -> Result<()> {
@@ -574,7 +575,20 @@ impl Index {
         bus: crate::bus::BusHandle,
         handle: tokio::runtime::Handle,
     ) {
-        self.activity_sink = Some((bus, handle));
+        self.route_activity_to(bus, handle, "index".into());
+    }
+    pub(crate) fn route_activity_to(
+        &mut self,
+        bus: crate::bus::BusHandle,
+        handle: tokio::runtime::Handle,
+        stream: String,
+    ) {
+        self.activity_sink = Some((bus, handle, stream));
+    }
+    pub(crate) fn activity_stream(&self) -> &str {
+        self.activity_sink
+            .as_ref()
+            .map_or("index", |(_, _, stream)| stream.as_str())
     }
     pub(crate) fn append_activity(
         &self,
@@ -586,8 +600,12 @@ impl Index {
             return Err(invalid("test_account_label_mismatch: activity attribution"));
         }
         event.issued_by = self.issued_by.clone();
-        if let Some((bus, handle)) = &self.activity_sink {
-            handle.block_on(bus.publish_activity(event, key.clone()))
+        if let Some((bus, handle, stream)) = &self.activity_sink {
+            if stream == "index" {
+                handle.block_on(bus.publish_activity(event, key.clone()))
+            } else {
+                handle.block_on(bus.publish_activity_scoped(stream.clone(), event, key.clone()))
+            }
         } else {
             self.activity.append(event, key)
         }
@@ -820,14 +838,13 @@ impl Index {
         map.insert("updated_by".into(), json!(author.id));
         let mut authorship = author.public.clone();
         if let Some(label) = &self.issued_by {
-            if map
-                .get("issued_by")
-                .is_some_and(|value| {
-                    value.as_str() != Some(label)
-                        && current.as_ref().and_then(|doc| doc.metadata.get("issued_by"))
-                            != Some(value)
-                })
-            {
+            if map.get("issued_by").is_some_and(|value| {
+                value.as_str() != Some(label)
+                    && current
+                        .as_ref()
+                        .and_then(|doc| doc.metadata.get("issued_by"))
+                        != Some(value)
+            }) {
                 return Err(invalid("test_account_label_mismatch: record attribution"));
             }
             // A fetched record may retain its previous run's label. Its new
@@ -1067,7 +1084,8 @@ mod tests {
                 .unwrap_err()
                 .downcast_ref::<std::io::Error>()
                 .unwrap()
-                .kind() == std::io::ErrorKind::InvalidData
+                .kind()
+                == std::io::ErrorKind::InvalidData
         );
         assert_eq!(
             std::fs::read_to_string(root.join(path)).unwrap(),

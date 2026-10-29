@@ -251,7 +251,7 @@ impl Engine {
                 "provenance",
                 json!({"reason":reason,"complete":false}),
             );
-            handle.block_on(bus.publish("index", event))?;
+            handle.block_on(bus.publish(index.activity_stream(), event))?;
         }
         if self.pending.is_none()
             && let Some(row) = self.ready.pop_front()
@@ -266,7 +266,8 @@ impl Engine {
             }
         }
         if let Some(pending) = &self.pending {
-            let envelope = handle.block_on(bus.publish("index", pending.event.clone()))?;
+            let envelope =
+                handle.block_on(bus.publish(index.activity_stream(), pending.event.clone()))?;
             envelope.verify()?;
             let change = pending.change.clone();
             self.apply_catalog(&change);
@@ -284,7 +285,7 @@ impl Engine {
                 "provenance",
                 json!({"state":if held{"held"}else{"live"},"reason":held.then_some("artifact-projection-signing-held"),"checkpoint":"pending-root-held"}),
             );
-            handle.block_on(bus.publish("index", event))?;
+            handle.block_on(bus.publish(index.activity_stream(), event))?;
             self.holding = Some(held);
         }
         if let Some(key) = signer {

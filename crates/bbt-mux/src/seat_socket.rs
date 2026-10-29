@@ -830,11 +830,6 @@ async fn gui_session(
                         continue;
                     }
                     if let GuiAction::Knowledge {id,scope,method,args} = request.action {
-                        if scope.is_some() {
-                            let error=crate::knowledge::data_source::CommandError::new("workspace_scope_unavailable","scoped workspace routing is unavailable");
-                            send(&mut write,&gui_knowledge_reply(id,Ok(Err(error)))?).await?;
-                            continue;
-                        }
                         if knowledge_reads.len() >= 2 {
                             let error = crate::knowledge::data_source::CommandError::new(
                                 "provider_busy", "this GUI session already has two knowledge reads",
@@ -842,7 +837,7 @@ async fn gui_session(
                             send(&mut write,&gui_knowledge_reply(id,Ok(Err(error)))?).await?;
                         } else {
                             let client = client.clone();
-                            knowledge_reads.spawn(async move { (id,client.gui_knowledge(method,args).await) });
+                            knowledge_reads.spawn(async move { (id,client.gui_knowledge_scoped(method,args,scope).await) });
                         }
                         continue;
                     }
@@ -1024,16 +1019,14 @@ async fn gui_session(
                                 Ok(GuiReply::Messaging {op:id,response})
                             },
                             GuiAction::Task {id,scope,request}=> {
-                                if scope.is_some() {return Err(invalid("workspace_scope_unavailable: scoped workspace routing is unavailable"));}
-                                Ok(GuiReply::Task {op:id,response:client.gui_task(id,request,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?})
+                                Ok(GuiReply::Task {op:id,response:client.gui_task_scoped(id,request,scope,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?})
                             },
                             GuiAction::Knowledge {..}=>unreachable!("knowledge was dispatched independently"),
                             GuiAction::Plugin {..}=>unreachable!("plugins were dispatched independently"),
                             GuiAction::KnowledgeControl {..}=>unreachable!("root controls were dispatched independently"),
                             GuiAction::Debug {..}=>unreachable!("debug was dispatched independently"),
                             GuiAction::RecordWrite {id,scope,args}=> {
-                                if scope.is_some() {return Err(invalid("workspace_scope_unavailable: scoped workspace routing is unavailable"));}
-                                Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write(id,args,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?})
+                                Ok(GuiReply::Knowledge {op:id,response:serde_json::to_value(client.gui_record_write_scoped(id,args,scope,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?)?})
                             },
                             GuiAction::Watch {seat,view}=> {
                                 if view.seat!=Ulid::from(seat.0.0) {return Err(invalid("watch seat and view disagree"));}

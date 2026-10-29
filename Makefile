@@ -574,3 +574,12 @@ check-workspace-boundary:
 
 format-workspace-boundary:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/gui/swarm.rs crates/bbt-proto/src/gui/mod.rs crates/bbt-proto/src/gui/record.rs crates/bbt-proto/src/gui/task.rs crates/bbt-proto/tests/gui_wire_golden.rs crates/bbt-mux/src/mcp/journal.rs crates/bbt-mux/src/knowledge/seat_reads.rs crates/bbt-mux/src/knowledge/responsiveness_tests.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/documents.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/knowledge_e2e.rs crates/bboxy450-term/tests/messaging_flow.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+.PHONY: test-workspace-routing
+# Private cwd roots, stale completions/replays, provider responsiveness and scoped wakes.
+test-workspace-routing:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib workspace_; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge_responsiveness_tests; \
+	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings

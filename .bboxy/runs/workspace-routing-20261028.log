@@ -1,0 +1,12 @@
+ROLE: EXECUTOR — active per-swarm cwd/.bboxy routing
+base: 7f0110df8626bd8ee2414a1187aa01eaf1f67ba4
+source_sha256: 12f93b121dbac4eea065755646e1c0991b1bf4146efa73ee3e571cc509ea7f51
+command: make test-workspace-routing
+exit: 0
+log: /Users/feral/Library/Logs/bboxy450-term/workspace-routing-20261028-focused.log
+evidence: workspace lib9; knowledge11; provider1; MCP52/9 pre-existing ignored; messaging suppression8; recovery1/1 pre-existing ignored; cache4; responsiveness4; strict all-target mux Clippy held
+command: make test-licenses
+exit: 0
+evidence: 27 workspace crates; license6 + notice9 checks; owned source notices held
+acceptance: signed A/B root activity/write/readback and #N/id/slug/task isolation; same cwd cache identity; same-op cross-root replay refused; stale completions fenced; missing cwd basic orient/chat retained; panic root isolated/retried; held IO scan permits PTY input/resize/chat/other-root reads; scan blocks effects before journal and same-op later succeeds; task source-root suppression and restart migration isolated; read queues bounded per root32
+limits: native frontend scope/captures and combined full CI owned by parent; no operator/Keychain/SSH used; no land/push by this executor

@@ -82,6 +82,16 @@ impl<'a> BboxySource<'a> {
         }
         Ok(bytes)
     }
+    pub(crate) fn fresh_record(&self, path: &str) -> d::Result<d::Record> {
+        let document = self
+            .index
+            .current(path)
+            .map_err(command_io)?
+            .ok_or_else(|| error("not_found", "record disappeared after write"))?;
+        self.fetch(d::FetchRequest {
+            reference: reference(&document),
+        })
+    }
     fn open_resource(root: &Path, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
         use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
         if relative.as_os_str().is_empty()

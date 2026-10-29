@@ -6,6 +6,9 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 mod role_catalog;
+#[cfg(test)]
+#[path = "knowledge/routing_tests.rs"]
+mod workspace_routing_tests;
 
 #[cfg(test)]
 #[path = "knowledge/responsiveness_tests.rs"]
@@ -38,8 +41,11 @@ use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 
 use crate::bus::{Broker, BusHandle};
 use crate::checkpoint::{Age, Cursor as CheckpointCursor, Policy as CheckpointPolicy, Saves};
-use crate::index::{FileWatch, Index};
 use crate::knowledge::{BboxySource, DataSource};
+use crate::knowledge::{
+    routing::{Port as WorkspacePort, Router as WorkspaceRouter},
+    workspaces::{Config as WorkspaceConfig, RootBinding, Workspaces},
+};
 use crate::provider::{Connections, HostId, LocalProvider, Provider};
 use crate::registry::{Lifecycle, Position, Registry, SeatRecord};
 use crate::store::{
@@ -179,12 +185,14 @@ enum Command {
     GuiTask(
         Ulid,
         bbt_proto::messaging::TaskRequest,
+        Option<bbt_proto::gui::SwarmScope>,
         crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
     GuiRecordWrite(
         Ulid,
         serde_json::Value,
+        Option<bbt_proto::gui::SwarmScope>,
         crate::mcp::Origin,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     ),
@@ -209,7 +217,14 @@ enum Command {
     GuiKnowledge(
         String,
         serde_json::Value,
+        Option<bbt_proto::gui::SwarmScope>,
         oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ),
+    #[cfg(test)]
+    WorkspaceScanFixture(
+        Option<bbt_proto::gui::SwarmScope>,
+        Arc<dyn Fn(&str) + Send + Sync>,
+        oneshot::Sender<Result<RootBinding>>,
     ),
     #[cfg(test)]
     KnowledgeFixture(Arc<dyn DataSource + Send + Sync>, oneshot::Sender<()>),
@@ -804,9 +819,18 @@ impl LogicClient {
         request: bbt_proto::messaging::TaskRequest,
         origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
+        self.gui_task_scoped(id, request, None, origin).await
+    }
+    pub async fn gui_task_scoped(
+        &self,
+        id: Ulid,
+        request: bbt_proto::messaging::TaskRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::messaging::TaskResponse> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiTask(id, request, origin, tx))
+            .send(Command::GuiTask(id, request, scope, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -835,9 +859,18 @@ impl LogicClient {
         args: serde_json::Value,
         origin: crate::mcp::Origin,
     ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
+        self.gui_record_write_scoped(id, args, None, origin).await
+    }
+    pub async fn gui_record_write_scoped(
+        &self,
+        id: Ulid,
+        args: serde_json::Value,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+    ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiRecordWrite(id, args, origin, tx))
+            .send(Command::GuiRecordWrite(id, args, scope, origin, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -851,9 +884,17 @@ impl LogicClient {
         method: String,
         args: serde_json::Value,
     ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
+        self.gui_knowledge_scoped(method, args, None).await
+    }
+    pub async fn gui_knowledge_scoped(
+        &self,
+        method: String,
+        args: serde_json::Value,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    ) -> Result<crate::knowledge::data_source::Result<serde_json::Value>> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::GuiKnowledge(method, args, tx))
+            .send(Command::GuiKnowledge(method, args, scope, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await
@@ -2189,6 +2230,54 @@ struct RoleUpdate {
     reply: oneshot::Sender<Result<()>>,
     result: Result<bbt_proto::gui::RoleCatalog>,
 }
+enum WorkspaceRead {
+    Seat(
+        Ulid,
+        u64,
+        Box<crate::mcp::Call>,
+        oneshot::Sender<Result<serde_json::Value>>,
+    ),
+    Knowledge(
+        String,
+        serde_json::Value,
+        Option<bbt_proto::gui::SwarmScope>,
+        oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ),
+    Task(
+        Ulid,
+        Box<bbt_proto::messaging::TaskRequest>,
+        Option<bbt_proto::gui::SwarmScope>,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
+    ),
+}
+struct PendingWorkspaceRead {
+    binding: RootBinding,
+    read: WorkspaceRead,
+}
+struct GuiTaskReadCompletion {
+    binding: RootBinding,
+    reply: oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
+    result: Result<bbt_proto::messaging::TaskResponse>,
+}
+struct GuiKnowledgeCompletion {
+    binding: RootBinding,
+    revision: u64,
+    reply: oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    result: crate::knowledge::data_source::Result<serde_json::Value>,
+}
+fn workspace_command_error(
+    error: &(dyn std::error::Error + 'static),
+) -> crate::knowledge::data_source::CommandError {
+    let code = error
+        .downcast_ref::<crate::knowledge::workspaces::Error>()
+        .map_or("workspace_unavailable", |error| error.code());
+    let mut error = crate::knowledge::data_source::CommandError::new(code, error.to_string());
+    if code == "workspace_pending" {
+        error.retry_after_ms = Some(100);
+    }
+    error
+}
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -2198,15 +2287,16 @@ struct Worker {
     role_updates: tokio::task::JoinSet<RoleUpdate>,
     // Reads retain an immutable catalogue without holding the logic worker.
     // Scans and provenance updates use copy-on-write while an older read is active.
-    index: Arc<Index>,
-    knowledge_reads: Arc<tokio::sync::Semaphore>,
-    knowledge_host: crate::knowledge::roots::Host,
+    workspaces: WorkspaceRouter,
+    provenance_registered: BTreeSet<(Ulid, u64, String)>,
+    workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
+    knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
-    knowledge_seen: u64,
+    gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
+    gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     debug_reads: Arc<tokio::sync::Semaphore>,
     plugins: crate::plugins::control::Control,
     plugin_jobs: tokio::task::JoinSet<()>,
-    watch: FileWatch,
     bus: BusHandle,
     handle: tokio::runtime::Handle,
     views: BTreeMap<Ulid, ViewState>,
@@ -2232,7 +2322,6 @@ struct Worker {
     identity_probe_at: Instant,
     identity_acl: bbt_proto::identity::CustodyAcl,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
-    provenance: crate::provenance::engine::Engine,
     operator_journal: crate::mcp::journal::Journal,
     history_faults: crate::history_fault::Masks,
     stale_gui_requests: u64,
@@ -2308,25 +2397,18 @@ impl Worker {
         )
         .map_err(|error| invalid(format!("{}: {}", error.code, error.message)))?;
         let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
-        let mut index = Index::open(
-            &config.repository.join(".bboxy"),
-            SqliteStore::open(&object_dir(&config.run_dir, "index")?)?,
-        )?;
-        index.set_issued_by(identity.issued_by().map(str::to_owned));
-        index.route_activity(bus.clone(), handle.clone());
-        // Markdown is authority even if a crash preceded the mirror update.
-        // scan retains its durable outbox; the normal startup scan publishes it.
-        let _ = index.scan()?;
-        let knowledge_host = crate::knowledge::roots::Host::with_config(
-            index.knowledge_root(),
-            plugin_registry,
+        let workspaces = WorkspaceRouter::new(
+            Workspaces::open(WorkspaceConfig {
+                startup_repository: config.repository.clone(),
+                run_dir: config.run_dir.clone(),
+                plugins: plugin_registry,
+                runtime: handle.clone(),
+                provider: plugin_config.provider,
+                activity: Some(bus.clone()),
+                issued_by: identity.issued_by().map(str::to_owned),
+            })?,
             handle.clone(),
-            plugin_config.provider,
-        )?;
-        let knowledge_seen = knowledge_host.revision()?;
-        let provenance =
-            crate::provenance::engine::Engine::open(&index, &config.repository, handle.clone())?;
-        let watch = FileWatch::start(&config.repository.join(".bboxy"))?;
+        );
         // macOS sockaddr_un has a short path bound. A fresh private namespace
         // also avoids stealing any prior logic instance's listener on restart.
         use std::os::unix::fs::DirBuilderExt;
@@ -2340,6 +2422,7 @@ impl Worker {
             .mode(0o700)
             .create(&endpoint_root)?;
         let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
+        messaging.startup_workspace(workspaces.cache.startup().root_id())?;
         messaging.operator_reference(identity.observed_operator_device()?)?;
         let mut capability = [0; 32];
         getrandom::fill(&mut capability).map_err(std::io::Error::other)?;
@@ -2362,15 +2445,16 @@ impl Worker {
             role_catalog,
             role_catalog_store,
             role_updates: tokio::task::JoinSet::new(),
-            index: Arc::new(index),
-            knowledge_reads: Arc::new(tokio::sync::Semaphore::new(2)),
-            knowledge_host,
+            workspaces,
+            provenance_registered: BTreeSet::new(),
+            workspace_reads: BTreeMap::new(),
+            knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
-            knowledge_seen,
+            gui_knowledge_jobs: tokio::task::JoinSet::new(),
+            gui_task_reads: tokio::task::JoinSet::new(),
             debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             plugins,
             plugin_jobs: tokio::task::JoinSet::new(),
-            watch,
             bus,
             handle,
             views: BTreeMap::new(),
@@ -2393,7 +2477,6 @@ impl Worker {
             identity_probe_at: Instant::now(),
             identity_acl: bbt_proto::identity::CustodyAcl::Unknown,
             control_journals: BTreeMap::new(),
-            provenance,
             history_faults: crate::history_fault::Masks::new(account.clone()),
             operator_journal: crate::mcp::journal::Journal::new(account),
             stale_gui_requests: 0,
@@ -2417,10 +2500,14 @@ impl Worker {
                 worker.attach(info, false)?;
             }
         }
-        for (task, status) in worker.index.task_states() {
-            worker.messaging.task_state(task, status, now_ms())?;
+        let startup = worker.workspaces.cache.startup().root_id().to_owned();
+        let swarms = worker.workspaces.bound_swarms(&worker.registry, &startup)?;
+        for (task, status) in worker.workspaces.cache.startup().index.task_states() {
+            worker
+                .messaging
+                .task_state_root(&startup, &swarms, task, status, now_ms())?;
         }
-        worker.scan()?;
+        worker.publish_root_outbox(&startup)?;
         // Recover audit outboxes after a logic crash, even without a new call.
         for record in worker.registry.list()? {
             worker.control_journal(record.id)?;
@@ -2902,14 +2989,57 @@ impl Worker {
             };
         }
         if crate::mcp::work_items::handles(&call.tool) {
-            return self.work_item_call(&authority, &call, &journal);
+            let port = match self.seat_workspace(&actor) {
+                Ok(port) => port,
+                Err(error) => {
+                    return Ok(crate::mcp::error(
+                        call.op_id,
+                        workspace_command_error(error.as_ref()).code.as_str(),
+                        &error.to_string(),
+                    ));
+                }
+            };
+            let journal = self.root_journal(&journal, &port);
+            return match self.work_item_call(&port, &authority, &call, &journal) {
+                Err(error)
+                    if error
+                        .downcast_ref::<crate::knowledge::workspaces::Error>()
+                        .is_some() =>
+                {
+                    Ok(crate::mcp::error(
+                        call.op_id,
+                        workspace_command_error(error.as_ref()).code.as_str(),
+                        &error.to_string(),
+                    ))
+                }
+                result => result,
+            };
         }
         if crate::mcp::knowledge::handles(&call.tool) {
             return self.knowledge_call(&actor, &call, &journal);
         }
-        if matches!(call.tool.as_str(), "orient" | "graph_read") {
-            self.scan()?;
-        }
+        let port = if matches!(call.tool.as_str(), "orient" | "graph_read") {
+            match self
+                .seat_workspace(&actor)
+                .and_then(|port| self.scan_port(&port.binding))
+            {
+                Ok(port) => Some(port),
+                Err(_) if call.tool == "orient" => None,
+                Err(error) => {
+                    return Ok(crate::mcp::error(
+                        call.op_id,
+                        workspace_command_error(error.as_ref()).code.as_str(),
+                        &error.to_string(),
+                    ));
+                }
+            }
+        } else {
+            None
+        };
+        let journal = port
+            .as_ref()
+            .map(|port| self.root_journal(&journal, port))
+            .unwrap_or(journal);
         match crate::mcp::messaging::request(&authority, &call) {
             Ok(Some(request)) if crate::mcp::messaging::mutation(&call.tool) => {
                 journal.effect(&actor, &call, || {
@@ -2925,7 +3055,7 @@ impl Worker {
             prepared => {
                 let result = match prepared {
                     Err(reason) => Err(reason),
-                    Ok(None) => self.control_read(&actor, &record, &call, None),
+                    Ok(None) => self.control_read(&actor, &record, &call, None, port.as_ref()),
                     Ok(Some(_)) => unreachable!(),
                 };
                 let value = match result {
@@ -2933,7 +3063,11 @@ impl Worker {
                     Err(reason) => crate::mcp::error(call.op_id, "rejected", &reason),
                 };
                 journal.checked_authorized(&actor, &call, value, |old| {
-                    let source = BboxySource::new(&self.index).with_registry(&self.registry);
+                    let index = port
+                        .as_ref()
+                        .map(|port| &port.index)
+                        .unwrap_or(&self.workspaces.cache.startup().index);
+                    let source = BboxySource::new(index).with_registry(&self.registry);
                     crate::mcp::tools::retained_documents(&source, &actor, &record, &call, old)
                 })
             }
@@ -2982,26 +3116,118 @@ impl Worker {
         call: crate::mcp::Call,
         reply: oneshot::Sender<Result<serde_json::Value>>,
     ) {
+        self.start_knowledge_read_at(id, generation, call, reply, None);
+    }
+    fn start_knowledge_read_at(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+        ready: Option<RootBinding>,
+    ) {
         let prepared = (|| -> Result<_> {
             let (actor, record) = self.control_actor(id, generation)?;
             call.validate()?;
-            self.scan()?;
             let journal = self.control_journal(id)?;
-            let revision = self.knowledge_host.revision()?;
-            let binding = crate::knowledge::workspaces::RootBinding {
-                swarm: actor.swarm_id,
-                revision: self
-                    .registry
-                    .swarm(actor.swarm_id)?
-                    .map_or(0, |record| record.revision),
-                root_id: self.knowledge_host.root_id().to_owned(),
-            };
-            let journal =
-                journal.with_root(self.knowledge_host.root_id(), self.knowledge_host.root_id());
-            Ok((actor, record, journal, revision, binding))
+            Ok((actor, record, journal))
         })();
-        let (actor, record, journal, revision, binding) = match prepared {
+        let (actor, record, journal) = match prepared {
             Ok(prepared) => prepared,
+            Err(error) => {
+                let _ = reply.send(Err(error));
+                return;
+            }
+        };
+        if let Some(binding) = &ready
+            && self.workspaces.current(&self.registry, binding).is_err()
+        {
+            let _ = reply.send(Ok(crate::mcp::error(
+                call.op_id,
+                "swarm_root_changed",
+                "workspace changed before queued read",
+            )));
+            return;
+        }
+        let port = match self.seat_workspace(&actor) {
+            Ok(port) => port,
+            Err(error) => {
+                if call.tool == "orient" {
+                    let result = self
+                        .control_read(&actor, &record, &call, None, None)
+                        .map(|mut base| {
+                            let code = workspace_command_error(error.as_ref()).code;
+                            base["tasks"]["availability"] = serde_json::json!(code);
+                            base["tasks"]["reason"] = serde_json::json!(error.to_string());
+                            base["execution"]["availability"] = serde_json::json!(code);
+                            crate::mcp::success(call.op_id, base)
+                        })
+                        .map_err(invalid);
+                    let _ = reply.send(result);
+                } else {
+                    let code = workspace_command_error(error.as_ref()).code;
+                    let _ =
+                        reply.send(Ok(crate::mcp::error(call.op_id, &code, &error.to_string())));
+                }
+                return;
+            }
+        };
+        if let Some(binding) = ready {
+            if binding != port.binding {
+                let _ = reply.send(Ok(crate::mcp::error(
+                    call.op_id,
+                    "swarm_root_changed",
+                    "workspace changed before read",
+                )));
+                return;
+            }
+        } else if call.tool != "orient" {
+            let root = port.binding.root_id.clone();
+            self.queue_workspace_read(PendingWorkspaceRead {
+                binding: port.binding,
+                read: WorkspaceRead::Seat(id, generation, Box::new(call), reply),
+            });
+            if let Err(error) = self.workspaces.reconcile(&root) {
+                eprintln!("workspace read reconciliation failed: {error}");
+            }
+            return;
+        }
+        let port = match self.scan_port(&port.binding) {
+            Ok(port) => port,
+            Err(error) => {
+                if call.tool == "orient" {
+                    let result = self
+                        .control_read(&actor, &record, &call, None, None)
+                        .map(|mut value| {
+                            value["tasks"]["availability"] =
+                                serde_json::json!(workspace_command_error(error.as_ref()).code);
+                            crate::mcp::success(call.op_id, value)
+                        })
+                        .map_err(invalid);
+                    let _ = reply.send(result);
+                } else if error
+                    .downcast_ref::<crate::knowledge::workspaces::Error>()
+                    .is_some_and(|error| {
+                        matches!(error, crate::knowledge::workspaces::Error::Pending(_))
+                    })
+                {
+                    self.queue_workspace_read(PendingWorkspaceRead {
+                        binding: port.binding,
+                        read: WorkspaceRead::Seat(id, generation, Box::new(call), reply),
+                    });
+                } else {
+                    let _ = reply.send(Ok(crate::mcp::error(
+                        call.op_id,
+                        workspace_command_error(error.as_ref()).code.as_str(),
+                        &error.to_string(),
+                    )));
+                }
+                return;
+            }
+        };
+        let journal = self.root_journal(&journal, &port);
+        let revision = match port.host.revision() {
+            Ok(revision) => revision,
             Err(error) => {
                 let _ = reply.send(Err(error));
                 return;
@@ -3013,6 +3239,7 @@ impl Worker {
                 &record,
                 &call,
                 Some(serde_json::json!({"items":[],"truncated":false})),
+                Some(&port),
             ) {
                 Ok(value) => Some(value),
                 Err(reason) => {
@@ -3037,7 +3264,10 @@ impl Worker {
             ));
             return;
         }
-        let permit = match self.knowledge_reads.clone().try_acquire_owned() {
+        let permit = match self
+            .knowledge_permits(&port.binding.root_id)
+            .try_acquire_owned()
+        {
             Ok(permit) => permit,
             Err(_) => {
                 let _ = reply.send(journal.checked(
@@ -3053,11 +3283,11 @@ impl Worker {
             }
         };
         let job = crate::knowledge::seat_reads::Job {
-            host: self.knowledge_host.clone(),
-            index: self.index.clone(),
+            host: port.host,
+            index: port.index,
             registry: self.registry.clone(),
+            binding: port.binding,
             actor,
-            binding,
             record,
             call,
             journal,
@@ -3076,10 +3306,23 @@ impl Worker {
         journal: &crate::mcp::journal::Journal,
     ) -> Result<serde_json::Value> {
         use crate::mcp::{self, knowledge as tool};
-        self.scan()?;
+        let port = match self
+            .seat_workspace(actor)
+            .and_then(|port| self.scan_port(&port.binding))
+        {
+            Ok(port) => port,
+            Err(error) => {
+                return Ok(mcp::error(
+                    call.op_id,
+                    workspace_command_error(error.as_ref()).code.as_str(),
+                    &error.to_string(),
+                ));
+            }
+        };
+        let journal = self.root_journal(journal, &port);
         match tool::prepare(call) {
             Ok(tool::Request::Fetch(locator)) => {
-                let source = BboxySource::new(&self.index);
+                let source = BboxySource::new(&port.index);
                 let value = match tool::fetch(&source, locator) {
                     Ok(record) => tool::bounded(
                         call.op_id,
@@ -3091,7 +3334,7 @@ impl Worker {
                 journal.checked(actor, call, value)
             }
             Ok(tool::Request::Search(request)) => {
-                let source = BboxySource::new(&self.index);
+                let source = BboxySource::new(&port.index);
                 let value = match source.search(request) {
                     Ok(page) => {
                         let empty = page.items.is_empty();
@@ -3106,9 +3349,9 @@ impl Worker {
                 };
                 journal.checked(actor, call, value)
             }
-            Ok(tool::Request::Write(request)) => {
-                journal.effect(actor, call, || self.knowledge_write(actor, call, *request))
-            }
+            Ok(tool::Request::Write(request)) => journal.effect(actor, call, || {
+                self.knowledge_write(&port, actor, call, *request)
+            }),
             Err(reason) => {
                 journal.checked(actor, call, mcp::error(call.op_id, "rejected", &reason))
             }
@@ -3116,22 +3359,26 @@ impl Worker {
     }
     fn knowledge_write(
         &mut self,
+        port: &WorkspacePort,
         actor: &crate::mcp::SeatActor,
         call: &crate::mcp::Call,
         request: crate::knowledge::data_source::WriteRequest,
     ) -> serde_json::Value {
+        if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
+            return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
+        }
         use crate::{
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
-        if self.knowledge_host.external() {
+        if port.host.external() {
             return mcp::error(
                 call.op_id,
                 "signed_writer_unavailable",
                 "Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write until the host signed-writer bridge is available.",
             );
         }
-        let source = BboxySource::new(&self.index);
+        let source = BboxySource::new(&port.index);
         let current = match request.reference.clone() {
             Some(reference) => match source.fetch(d::FetchRequest { reference }) {
                 Ok(record) => {
@@ -3170,7 +3417,7 @@ impl Worker {
         let result = match plan {
             tool::WritePlan::Report(report) => {
                 let effect = match crate::mcp::work_items::prepare(
-                    &self.index,
+                    &port.index,
                     &self.registry,
                     &authority,
                     &report,
@@ -3194,21 +3441,35 @@ impl Worker {
                         "task changed before Report; fetch it again",
                     );
                 }
-                let value = self.control_work_item(&authority, &report, *effect);
+                let value = self.control_work_item(port, &authority, &report, *effect);
                 if value["isError"] == true {
                     return value;
                 }
-                if self.scan().is_err() {
+                if self.scan_workspace(&port.binding).is_err() {
                     return mcp::error(
                         call.op_id,
                         "unknown",
                         "task Report applied; activity publication pending, inspect original operation",
                     );
                 }
-                let source = BboxySource::new(&self.index);
-                let record = source
-                    .resolve(d::ResolveRequest { locator: record_id })
-                    .and_then(|reference| source.fetch(d::FetchRequest { reference }));
+                let current_port = match self.workspaces.port(port.binding.clone()) {
+                    Ok(current) => current,
+                    Err(error) => {
+                        return mcp::error(
+                            call.op_id,
+                            "unknown",
+                            &format!("task Report applied; readback unavailable: {error}"),
+                        );
+                    }
+                };
+                let source = BboxySource::new(&current_port.index);
+                let record = source.fresh_record(
+                    &current
+                        .as_ref()
+                        .expect("Report has current task")
+                        .reference
+                        .path,
+                );
                 match record {
                     Ok(record) => d::WriteResult {
                         record,
@@ -3272,7 +3533,7 @@ impl Worker {
                     Some(actor.process_generation),
                     &key,
                 );
-                let source = BboxySource::new(&self.index);
+                let source = BboxySource::new(&port.index);
                 if request.reference.is_none() {
                     match source.resolve(d::ResolveRequest {
                         locator: call.op_id.to_string(),
@@ -3312,7 +3573,7 @@ impl Worker {
                         );
                     }
                 };
-                if self.scan().is_err() {
+                if self.scan_workspace(&port.binding).is_err() {
                     return mcp::error(
                         call.op_id,
                         "unknown",
@@ -3333,12 +3594,16 @@ impl Worker {
     }
     fn work_item_call(
         &mut self,
+        port: &WorkspacePort,
         actor: &crate::mcp::Actor,
         call: &crate::mcp::Call,
         journal: &crate::mcp::journal::Journal,
     ) -> Result<serde_json::Value> {
-        self.scan()?;
-        match crate::mcp::work_items::prepare(&self.index, &self.registry, actor, call) {
+        if crate::mcp::work_items::mutation(&call.tool) {
+            self.workspaces.write_ready(&self.registry, &port.binding)?;
+        }
+        let port = self.scan_port(&port.binding)?;
+        match crate::mcp::work_items::prepare(&port.index, &self.registry, actor, call) {
             Ok(crate::mcp::work_items::Prepared::Read(value)) => {
                 let value = if call.tool == "task_list"
                     && let Some(seat) = actor.seat()
@@ -3354,7 +3619,7 @@ impl Worker {
                     crate::mcp::success(call.op_id, value),
                     |old| {
                         crate::mcp::work_items::retained_allowed(
-                            &self.index,
+                            &port.index,
                             &self.registry,
                             actor,
                             call,
@@ -3364,7 +3629,9 @@ impl Worker {
                 )
             }
             Ok(crate::mcp::work_items::Prepared::Effect(effect)) => {
-                journal.effect(actor, call, || self.control_work_item(actor, call, *effect))
+                journal.effect(actor, call, || {
+                    self.control_work_item(&port, actor, call, *effect)
+                })
             }
             Err(reason) => journal.checked(
                 actor,
@@ -3375,37 +3642,54 @@ impl Worker {
     }
     fn control_work_item(
         &mut self,
+        port: &WorkspacePort,
         actor: &crate::mcp::Actor,
         call: &crate::mcp::Call,
         effect: crate::mcp::work_items::Effect,
     ) -> serde_json::Value {
+        if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
+            return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
+        }
         let mut plan = match crate::mcp::work_items::plan(effect, actor, call) {
             Ok(plan) => plan,
             Err(reason) => return crate::mcp::error(call.op_id, "rejected", &reason),
         };
         if call.tool == "artifact_claim" {
-            if self.provenance.recovering() {
+            if self
+                .workspaces
+                .cache
+                .get_mut(&port.binding)
+                .expect("admitted workspace")
+                .provenance
+                .recovering()
+            {
                 return crate::mcp::error(call.op_id, "held", "artifact catalog recovery pending");
             }
             let Some(seat_actor) = actor.seat() else {
                 return crate::mcp::error(call.op_id, "rejected", "artifact claim requires a seat");
             };
             let original = call.args["ref"].as_str().unwrap_or_default();
-            let normalized = self.provenance.normalize(
-                seat_actor.seat_id,
-                seat_actor.process_generation,
-                original,
-            );
+            let normalized = self
+                .workspaces
+                .cache
+                .get_mut(&port.binding)
+                .expect("admitted workspace")
+                .provenance
+                .normalize(seat_actor.seat_id, seat_actor.process_generation, original);
             let reference = normalized.as_deref().unwrap_or(original);
             if !self
+                .workspaces
+                .cache
+                .get_mut(&port.binding)
+                .expect("admitted workspace")
                 .provenance
-                .claim_ready(&self.index, reference)
+                .claim_ready(&port.index, reference)
                 .unwrap_or(false)
             {
                 return crate::mcp::error(call.op_id, "held", "artifact record projection pending");
             }
             if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
-                &self.index,
+                &port.index,
                 &mut plan,
                 seat_actor,
                 call,
@@ -3545,7 +3829,7 @@ impl Worker {
         }
         // Validate every source before the first write of a multi-file claim.
         for update in &plan.writes {
-            match self.index.current(&update.path) {
+            match port.index.current(&update.path) {
                 Ok(current) if current.as_ref().map(|d| &d.digest) == update.expected.as_ref() => {}
                 Ok(_) => {
                     return crate::mcp::error(
@@ -3565,7 +3849,15 @@ impl Worker {
             .collect();
         for update in plan.writes {
             let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
-            if self.index.apply_author(update, &author).is_err() {
+            let task_status = (update.metadata["type"] == "task").then(|| {
+                (
+                    update.metadata["id"]
+                        .as_str()
+                        .and_then(|id| id.parse::<Ulid>().ok()),
+                    update.metadata["status"].as_str().map(str::to_owned),
+                )
+            });
+            if port.index.apply_author(update, &author).is_err() {
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",
@@ -3574,18 +3866,46 @@ impl Worker {
                     ),
                 );
             }
+            if let Some((Some(task), Some(status))) = task_status {
+                let swarms = self
+                    .workspaces
+                    .bound_swarms(&self.registry, &port.binding.root_id)
+                    .unwrap_or_default();
+                if self
+                    .messaging
+                    .task_state_root(&port.binding.root_id, &swarms, task, &status, now_ms())
+                    .is_err()
+                {
+                    return crate::mcp::error(
+                        call.op_id,
+                        "unknown",
+                        "task written; status projection pending",
+                    );
+                }
+            }
             if let Some(artifact) = artifact {
-                self.provenance.note_claim(&artifact);
+                self.workspaces
+                    .cache
+                    .get_mut(&port.binding)
+                    .expect("admitted workspace")
+                    .provenance
+                    .note_claim(&artifact);
             }
         }
         for (wake, wake_swarm) in plan.wakes.into_iter().zip(wake_swarms) {
+            let summary = format!(
+                "{}\nTask workspace: {} (knowledge root {}).",
+                wake.summary,
+                port.index.knowledge_root().display(),
+                port.binding.root_id
+            );
             let mut request = crate::messaging::wire::SendRequest::text(
                 match wake.to {
                     bbt_proto::messaging::Recipient::Seat(seat) => format!("seats/{seat}/inbox"),
                     bbt_proto::messaging::Recipient::Operator(_)
                     | bbt_proto::messaging::Recipient::OperatorLocal(_) => "operator/inbox".into(),
                 },
-                wake.summary.clone(),
+                summary.clone(),
             );
             request.id = wake.id;
             request.kind = crate::messaging::wire::MessageKind::Task;
@@ -3594,8 +3914,18 @@ impl Worker {
                 task_id: wake.task_id,
                 event: wake.event,
                 path: wake.path,
-                summary: wake.summary,
+                summary,
             };
+            if let Err(error) =
+                self.messaging
+                    .task_root(wake_swarm, request.id, &port.binding.root_id)
+            {
+                return crate::mcp::error(
+                    call.op_id,
+                    "unknown",
+                    &format!("task written; wake root binding unavailable: {error}"),
+                );
+            }
             let sent = match actor {
                 crate::mcp::Actor::OperatorLocal { .. } => {
                     Err(invalid("work-item signing requires custody"))
@@ -3632,7 +3962,7 @@ impl Worker {
                 }
             }
         }
-        if self.scan().is_err() {
+        if self.scan_workspace(&port.binding).is_err() {
             return crate::mcp::error(
                 call.op_id,
                 "unknown",
@@ -4372,11 +4702,15 @@ impl Worker {
         record: &SeatRecord,
         call: &crate::mcp::Call,
         documents: Option<serde_json::Value>,
+        port: Option<&WorkspacePort>,
     ) -> std::result::Result<serde_json::Value, String> {
         use crate::mcp::tools;
         use crate::registry::Class;
         use serde_json::json;
-        let source = BboxySource::new(&self.index).with_registry(&self.registry);
+        let index = port
+            .map(|port| port.index.clone())
+            .unwrap_or_else(|| self.workspaces.cache.startup().index.clone());
+        let source = BboxySource::new(&index).with_registry(&self.registry);
         match call.tool.as_str() {
             "orient" => {
                 let _: tools::Empty = tools::parse(&call.args)?;
@@ -4397,9 +4731,12 @@ impl Worker {
                     .map_err(|e| e.to_string())?;
                 let tasks = match documents {
                     Some(tasks) => tasks,
-                    None => tools::orient_documents(&source, record)?,
+                    None if port.is_some() => tools::orient_documents(&source, record)?,
+                    None => {
+                        json!({"items":[],"truncated":false,"availability":"workspace_pending"})
+                    }
                 };
-                let empty = tasks["items"].as_array().is_some_and(Vec::is_empty);
+                let empty = port.is_some() && tasks["items"].as_array().is_some_and(Vec::is_empty);
                 let tasks = tools::scoped_list(actor, tasks, empty.then_some("nothing_assigned"));
                 let destinations = crate::mcp::messaging::destination_list(
                     self.messaging
@@ -4423,7 +4760,7 @@ impl Worker {
                     "attention":crate::mcp::attention::view(record)?,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
                     "op_id_guidance":"ids are minted for you unless you retry",
-                    "execution":tools::graph(&self.index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)?,
+                    "execution":if port.is_some() { tools::graph(&index,&source,actor,record,&tools::GraphRead{graph:"execution".into(),after:None,limit:Some(32)},true)? } else { json!({"items":[],"availability":"workspace_pending"}) },
                     "channels":crate::mcp::messaging::result_for_seat(actor, channels)
                 });
                 Ok(tools::scoped_list(
@@ -4480,7 +4817,7 @@ impl Worker {
             }
             "graph_read" => {
                 let args: tools::GraphRead = tools::parse(&call.args)?;
-                tools::graph(&self.index, &source, actor, record, &args, false)
+                tools::graph(&index, &source, actor, record, &args, false)
             }
             _ => Err("tool is unavailable for this actor and catalogue".into()),
         }
@@ -4489,8 +4826,30 @@ impl Worker {
         self.handle.block_on(self.bus.publish(stream, event))?;
         Ok(())
     }
-    fn scan(&mut self) -> Result<()> {
-        for event in Arc::make_mut(&mut self.index).scan()? {
+    fn scan_workspace(&mut self, binding: &RootBinding) -> Result<()> {
+        self.workspaces.current(&self.registry, binding)?;
+        self.scan_root(&binding.root_id)
+    }
+    fn scan_root(&mut self, root: &str) -> Result<()> {
+        self.publish_root_outbox(root)?;
+        self.workspaces.reconcile(root)
+    }
+    fn publish_root_outbox(&mut self, root: &str) -> Result<()> {
+        if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
+            return Ok(());
+        }
+        let events = self
+            .workspaces
+            .cache
+            .root_mut(root)
+            .ok_or_else(|| invalid("unknown workspace root"))?
+            .index
+            .pending_events()?;
+        let swarms = self.workspaces.bound_swarms(&self.registry, root)?;
+        for mut event in events {
+            if let Some(payload) = event.payload.as_object_mut() {
+                payload.insert("knowledge_root_id".into(), serde_json::json!(root));
+            }
             if let Some(task) = event
                 .subject
                 .strip_prefix("task/")
@@ -4498,12 +4857,16 @@ impl Worker {
                 .and_then(|s| s.parse::<Ulid>().ok())
                 && let Some(status) = event.payload["to"].as_str()
             {
-                self.messaging.task_state(task, status, now_ms())?;
+                self.messaging
+                    .task_state_root(root, &swarms, task, status, now_ms())?;
             }
             let stream = if event.subject.starts_with("task/") {
                 event.payload["swarm_id"]
                     .as_str()
-                    .filter(|id| id.parse::<Ulid>().is_ok())
+                    .filter(|id| {
+                        id.parse::<Ulid>()
+                            .is_ok_and(|swarm| swarms.contains(&swarm))
+                    })
                     .map(|id| format!("swarm-{id}"))
                     .unwrap_or_else(|| "account".into())
             } else {
@@ -4511,9 +4874,167 @@ impl Worker {
             };
             let id = event.id;
             self.publish(&stream, event)?;
-            self.index.acknowledge(id)?;
+            self.workspaces
+                .cache
+                .root_mut(root)
+                .expect("mounted root")
+                .index
+                .acknowledge(id)?;
         }
         Ok(())
+    }
+    fn scan_port(&mut self, binding: &RootBinding) -> Result<WorkspacePort> {
+        self.workspaces.current(&self.registry, binding)?;
+        if self.workspaces.scanning(&binding.root_id) {
+            return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
+                binding.swarm,
+            )));
+        }
+        if self.workspaces.cache.get(binding)?.changed() {
+            self.workspaces.reconcile(&binding.root_id)?;
+        }
+        if self.workspaces.scanning(&binding.root_id) {
+            return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
+                binding.swarm,
+            )));
+        }
+        self.publish_root_outbox(&binding.root_id)?;
+        self.workspaces.port(binding.clone())
+    }
+    fn knowledge_permits(&mut self, root: &str) -> Arc<tokio::sync::Semaphore> {
+        self.knowledge_reads
+            .entry(root.to_owned())
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(2)))
+            .clone()
+    }
+    fn seat_workspace(&mut self, actor: &crate::mcp::SeatActor) -> Result<WorkspacePort> {
+        let port = self
+            .workspaces
+            .select(&self.registry, actor.swarm_id, None)?;
+        self.messaging
+            .bind_workspace(actor.swarm_id, &port.binding.root_id)?;
+        Ok(port)
+    }
+    fn gui_workspace(
+        &mut self,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+    ) -> Result<WorkspacePort> {
+        match scope {
+            Some(scope) => {
+                let port =
+                    self.workspaces
+                        .select(&self.registry, scope.swarm, Some(scope.revision))?;
+                self.messaging
+                    .bind_workspace(scope.swarm, &port.binding.root_id)?;
+                Ok(port)
+            }
+            None => self.workspaces.legacy(),
+        }
+    }
+    fn root_journal(
+        &self,
+        journal: &crate::mcp::journal::Journal,
+        port: &WorkspacePort,
+    ) -> crate::mcp::journal::Journal {
+        journal.with_root(
+            &port.binding.root_id,
+            self.workspaces.cache.startup().root_id(),
+        )
+    }
+    fn provenance_binding(&mut self, seat: Ulid, generation: u64) -> Option<RootBinding> {
+        let record = self.registry.get(seat).ok()?;
+        let port = self
+            .workspaces
+            .select(&self.registry, record.swarm, None)
+            .ok()?;
+        let key = (seat, generation, port.binding.root_id.clone());
+        if !self.provenance_registered.contains(&key) {
+            let directory = object_dir(&self.config.run_dir, &format!("seat-{seat}")).ok()?;
+            let bytes = SqliteStore::open(&directory)
+                .ok()?
+                .get("provenance_cwd")
+                .ok()??;
+            let cwd: PathBuf = serde_json::from_slice(&bytes).ok()?;
+            self.workspaces
+                .cache
+                .get_mut(&port.binding)
+                .ok()?
+                .provenance
+                .register(
+                    seat,
+                    generation,
+                    &cwd,
+                    record.location == crate::registry::Location::Local,
+                );
+            self.provenance_registered.insert(key);
+        }
+        let _ = self
+            .messaging
+            .bind_workspace(record.swarm, &port.binding.root_id);
+        Some(port.binding)
+    }
+    fn maintain_workspaces(&mut self) {
+        self.workspaces.poll(&self.registry);
+        let seats: Vec<_> = self
+            .views
+            .iter()
+            .map(|(id, view)| {
+                (
+                    *id,
+                    view.generation,
+                    view.adapter.status.observed_ms,
+                    view.info.exited.is_none()
+                        && view.adapter.status.state == crate::adapters::State::Active,
+                )
+            })
+            .collect();
+        let mut active: BTreeMap<String, Vec<(Ulid, u64, u64)>> = BTreeMap::new();
+        for (seat, generation, observed, is_active) in seats {
+            if let Some(binding) = self.provenance_binding(seat, generation)
+                && is_active
+            {
+                active
+                    .entry(binding.root_id)
+                    .or_default()
+                    .push((seat, generation, observed));
+            }
+        }
+        let roots: Vec<_> = self
+            .workspaces
+            .cache
+            .roots()
+            .map(|root| root.root_id().to_owned())
+            .collect();
+        for root in roots {
+            if self.workspaces.scanning(&root) {
+                continue;
+            }
+            if self.workspaces.reconciliation_failed(&root) {
+                let _ = self.workspaces.reconcile(&root);
+                continue;
+            }
+            let workspace = self.workspaces.cache.root_mut(&root).expect("mounted root");
+            if workspace.failed() {
+                continue;
+            }
+            let changed = match workspace.step_provenance(
+                &self.bus,
+                &self.handle,
+                &self.identity,
+                active.get(&root).map_or(&[], Vec::as_slice),
+            ) {
+                Ok(changed) => changed,
+                Err(error) => {
+                    eprintln!("ProvenancePending [{root}]: {error}");
+                    false
+                }
+            };
+            if (workspace.changed() || changed)
+                && let Err(error) = self.scan_root(&root)
+            {
+                eprintln!("WorkspacePending [{root}]: {error}");
+            }
+        }
     }
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
@@ -4526,13 +5047,20 @@ impl Worker {
             self.registry.get(info.seat),
             SqliteStore::open(&directory)?.get("provenance_cwd")?,
         ) && let Ok(cwd) = serde_json::from_slice::<PathBuf>(&bytes)
+            && let Ok(port) = self.workspaces.select(&self.registry, record.swarm, None)
         {
-            self.provenance.register(
-                info.seat,
-                info.generation,
-                &cwd,
-                record.location == crate::registry::Location::Local,
-            );
+            self.workspaces
+                .cache
+                .get_mut(&port.binding)?
+                .provenance
+                .register(
+                    info.seat,
+                    info.generation,
+                    &cwd,
+                    record.location == crate::registry::Location::Local,
+                );
+            self.provenance_registered
+                .insert((info.seat, info.generation, port.binding.root_id));
         }
         let reply = self.request_for_seat(
             info.seat,
@@ -5291,12 +5819,20 @@ impl Worker {
             &format!("seat-{}", record.id),
         )?)?
         .put("provenance_cwd", &serde_json::to_vec(&spec.cwd)?)?;
-        self.provenance.register(
-            record.id,
-            record.generation,
-            &spec.cwd,
-            record.location == crate::registry::Location::Local,
-        );
+        if let Ok(port) = self.workspaces.select(&self.registry, record.swarm, None) {
+            self.workspaces
+                .cache
+                .get_mut(&port.binding)?
+                .provenance
+                .register(
+                    record.id,
+                    record.generation,
+                    &spec.cwd,
+                    record.location == crate::registry::Location::Local,
+                );
+            self.provenance_registered
+                .insert((record.id, record.generation, port.binding.root_id));
+        }
         let Reply::Spawned { info } = self
             .request_for_seat(record.id, Action::Spawn { spec })
             .inspect_err(|e| {
@@ -6119,11 +6655,12 @@ impl Worker {
         }
         let now = now_ms();
         view.adapter.output(now);
+        let mut provenance_frames = Vec::new();
         match view.tap.drain() {
             Ok(frames) => {
                 for params in frames {
                     view.adapter.on_osc(&params, seq, now);
-                    self.provenance.osc(id, generation, &params);
+                    provenance_frames.push(params);
                 }
             }
             Err(_) => view.adapter.invalidate(),
@@ -6136,6 +6673,14 @@ impl Worker {
         if let Event::Resized { size, .. } = &event {
             check_size(size.cols as usize, size.rows as usize)?;
             view.view_generation = Ulid::new();
+        }
+        if !provenance_frames.is_empty()
+            && let Some(root) = self.provenance_binding(id, generation)
+            && let Ok(workspace) = self.workspaces.cache.get_mut(&root)
+        {
+            for params in provenance_frames {
+                workspace.provenance.osc(id, generation, &params);
+            }
         }
         self.parsed_bytes(id, previous_end);
         self.persist_native_session(id)?;
@@ -6761,18 +7306,79 @@ impl Worker {
             }
         }
         self.service_identity_jobs()?;
-        if let Ok(revision) = self.knowledge_host.revision()
-            && revision != self.knowledge_seen
-        {
-            // One coalesced view invalidation; root authority lives in the account,
-            // and this notice never enters the messaging wake/delivery path.
+        self.workspaces.poll(&self.registry);
+        for root in self.workspaces.take_ready_scans() {
+            if let Err(error) = self.publish_root_outbox(&root) {
+                eprintln!("WorkspacePublicationPending [{root}]: {error}");
+                self.workspaces.retry_publication(root.clone());
+            }
+            for pending in self.workspace_reads.remove(&root).unwrap_or_default() {
+                match pending.read {
+                    WorkspaceRead::Seat(id, generation, call, reply) => self
+                        .start_knowledge_read_at(
+                            id,
+                            generation,
+                            *call,
+                            reply,
+                            Some(pending.binding),
+                        ),
+                    WorkspaceRead::Knowledge(method, args, scope, reply) => {
+                        self.start_gui_knowledge(method, args, scope, reply, Some(pending.binding))
+                    }
+                    WorkspaceRead::Task(id, request, scope, origin, reply) => self
+                        .start_gui_task_read(
+                            id,
+                            *request,
+                            scope,
+                            origin,
+                            reply,
+                            Some(pending.binding),
+                        ),
+                }
+            }
+        }
+        let invalidations: Vec<_> = self
+            .workspaces
+            .cache
+            .roots()
+            .filter_map(|root| {
+                root.provider_changed()
+                    .ok()
+                    .flatten()
+                    .map(|revision| (root.root_id().to_owned(), revision))
+            })
+            .collect();
+        for (root, revision) in invalidations {
             let event = Draft::new(
                 "activity/knowledge-provider",
                 "logic",
-                serde_json::json!({"kind":"knowledge_provider_changed","revision":revision,"title":"Knowledge provider changed"}),
+                serde_json::json!({"kind":"knowledge_provider_changed","root":root,"revision":revision,"title":"Knowledge provider changed"}),
             );
-            if self.publish("index", event).is_ok() {
-                self.knowledge_seen = revision;
+            if self.publish("index", event).is_ok()
+                && let Some(workspace) = self.workspaces.cache.root_mut(&root)
+            {
+                workspace.acknowledge_provider_change(revision);
+            }
+        }
+        while let Some(joined) = self.gui_task_reads.try_join_next() {
+            if let Ok(done) = joined {
+                let current = self.workspaces.current(&self.registry, &done.binding);
+                let _ = done.reply.send(current.and(done.result));
+            }
+        }
+        while let Some(joined) = self.gui_knowledge_jobs.try_join_next() {
+            if let Ok(done) = joined {
+                let current = self
+                    .workspaces
+                    .current(&self.registry, &done.binding)
+                    .and_then(|_| self.workspaces.cache.get(&done.binding).map_err(Into::into))
+                    .and_then(|root| {
+                        root.host
+                            .current(done.revision)
+                            .map_err(|error| invalid(error.to_string()))
+                    })
+                    .map_err(|error| workspace_command_error(error.as_ref()));
+                let _ = done.reply.send(current.and(done.result));
             }
         }
         while let Some(result) = self.knowledge_jobs.try_join_next() {
@@ -6788,15 +7394,14 @@ impl Worker {
                             }
                         })
                         .and_then(|_| {
-                            done.current_binding(&crate::knowledge::workspaces::RootBinding {
-                                swarm: done.actor.swarm_id,
-                                revision: self
-                                    .registry
-                                    .swarm(done.actor.swarm_id)?
-                                    .map_or(0, |record| record.revision),
-                                root_id: self.knowledge_host.root_id().to_owned(),
-                            })?;
-                            self.knowledge_host
+                            self.workspaces.current(&self.registry, &done.binding)?;
+                            done.current_binding(
+                                self.workspaces.cache.current(done.binding.swarm)?,
+                            )?;
+                            self.workspaces
+                                .cache
+                                .get(&done.binding)?
+                                .host
                                 .current(done.revision)
                                 .map_err(|e| invalid(e.to_string()))
                         });
@@ -7381,12 +7986,251 @@ impl Worker {
         };
         messaging_response(result)
     }
+    fn queue_workspace_read(&mut self, pending: PendingWorkspaceRead) {
+        let root = pending.binding.root_id.clone();
+        if self
+            .workspace_reads
+            .get(&root)
+            .is_some_and(|reads| reads.len() >= 32)
+        {
+            match pending.read {
+                WorkspaceRead::Seat(_, _, call, reply) => {
+                    let _ = reply.send(Ok(crate::mcp::error(
+                        call.op_id,
+                        "provider_busy",
+                        "workspace read capacity occupied; retry",
+                    )));
+                }
+                WorkspaceRead::Knowledge(_, _, _, reply) => {
+                    let mut error = crate::knowledge::data_source::CommandError::new(
+                        "provider_busy",
+                        "workspace read capacity occupied",
+                    );
+                    error.retry_after_ms = Some(100);
+                    let _ = reply.send(Err(error));
+                }
+                WorkspaceRead::Task(_, _, _, _, reply) => {
+                    let _ = reply.send(Err(invalid(
+                        "provider_busy: workspace read capacity occupied",
+                    )));
+                }
+            }
+        } else {
+            self.workspace_reads.entry(root).or_default().push(pending);
+        }
+    }
+    fn start_gui_knowledge(
+        &mut self,
+        method: String,
+        args: serde_json::Value,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        reply: oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+        ready: Option<RootBinding>,
+    ) {
+        let port = match self.gui_workspace(scope) {
+            Ok(port) => port,
+            Err(error) => {
+                let _ = reply.send(Err(workspace_command_error(error.as_ref())));
+                return;
+            }
+        };
+        if let Some(binding) = ready {
+            if binding != port.binding {
+                let _ = reply.send(Err(crate::knowledge::data_source::CommandError::new(
+                    "swarm_root_changed",
+                    "workspace changed before read",
+                )));
+                return;
+            }
+        } else {
+            let root = port.binding.root_id.clone();
+            self.queue_workspace_read(PendingWorkspaceRead {
+                binding: port.binding,
+                read: WorkspaceRead::Knowledge(method, args, scope, reply),
+            });
+            if let Err(error) = self.workspaces.reconcile(&root) {
+                eprintln!("workspace GUI read reconciliation failed: {error}");
+            }
+            return;
+        }
+        let port = match self.scan_port(&port.binding) {
+            Ok(port) => port,
+            Err(error) => {
+                if error
+                    .downcast_ref::<crate::knowledge::workspaces::Error>()
+                    .is_some_and(|error| {
+                        matches!(error, crate::knowledge::workspaces::Error::Pending(_))
+                    })
+                {
+                    self.queue_workspace_read(PendingWorkspaceRead {
+                        binding: port.binding,
+                        read: WorkspaceRead::Knowledge(method, args, scope, reply),
+                    });
+                } else {
+                    let _ = reply.send(Err(workspace_command_error(error.as_ref())));
+                }
+                return;
+            }
+        };
+        let revision = match port.host.revision() {
+            Ok(revision) => revision,
+            Err(error) => {
+                let _ = reply.send(Err(workspace_command_error(error.as_ref())));
+                return;
+            }
+        };
+        let Ok(permit) = self
+            .knowledge_permits(&port.binding.root_id)
+            .try_acquire_owned()
+        else {
+            let mut error = crate::knowledge::data_source::CommandError::new(
+                "provider_busy",
+                "knowledge read capacity is occupied",
+            );
+            error.retry_after_ms = Some(100);
+            let _ = reply.send(Err(error));
+            return;
+        };
+        let registry = self.registry.clone();
+        #[cfg(test)]
+        let fixture = self.knowledge_fixture.clone();
+        self.gui_knowledge_jobs.spawn_blocking_on(
+            move || {
+                let _permit = permit;
+                let read = || {
+                    port.host.with_source(&port.index, &registry, |source| {
+                        crate::knowledge::read(source, &method, args.clone())
+                    })
+                };
+                #[cfg(test)]
+                let result = fixture.map_or_else(read, |source| {
+                    crate::knowledge::read(source.as_ref(), &method, args.clone())
+                });
+                #[cfg(not(test))]
+                let result = read();
+                let result = result.map(|mut value| {
+                    if value.is_object() {
+                        value["knowledge_root_id"] = serde_json::json!(port.binding.root_id);
+                        value["swarm_workspace_id"] = serde_json::json!(port.binding.swarm);
+                        value["swarm_workspace_revision"] =
+                            serde_json::json!(port.binding.revision);
+                        value["knowledge_root_revision"] = serde_json::json!(revision);
+                    }
+                    value
+                });
+                GuiKnowledgeCompletion {
+                    binding: port.binding,
+                    revision,
+                    reply,
+                    result,
+                }
+            },
+            &self.handle,
+        );
+    }
+    fn start_gui_task_read(
+        &mut self,
+        id: Ulid,
+        request: bbt_proto::messaging::TaskRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
+        origin: crate::mcp::Origin,
+        reply: oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
+        ready: Option<RootBinding>,
+    ) {
+        if ready.is_none() {
+            match self.gui_workspace(scope) {
+                Ok(port) => {
+                    let root = port.binding.root_id.clone();
+                    self.queue_workspace_read(PendingWorkspaceRead {
+                        binding: port.binding,
+                        read: WorkspaceRead::Task(id, Box::new(request), scope, origin, reply),
+                    });
+                    if let Err(error) = self.workspaces.reconcile(&root) {
+                        eprintln!("workspace task read reconciliation failed: {error}");
+                    }
+                }
+                Err(error) => {
+                    let _ = reply.send(Err(error));
+                }
+            }
+            return;
+        }
+        let prepared = (|| -> Result<_> {
+            let origin = self.identity.bind_origin(origin);
+            let actor = crate::mcp::Actor::Operator {
+                device_id: self.operator_device_for_effect()?,
+                door: origin.door,
+                issued_by: origin.issued_by,
+            };
+            let call = crate::mcp::work_items::call(id, request).map_err(invalid)?;
+            call.validate()?;
+            let port = self
+                .gui_workspace(scope)
+                .and_then(|port| self.scan_port(&port.binding))?;
+            if ready.as_ref() != Some(&port.binding) {
+                return Err(invalid(
+                    "swarm_root_changed: workspace changed before task read",
+                ));
+            }
+            let journal = self.root_journal(&self.operator_journal, &port);
+            let permit = self
+                .knowledge_permits(&port.binding.root_id)
+                .try_acquire_owned()
+                .map_err(|_| invalid("provider_busy: task read capacity occupied"))?;
+            Ok((actor, call, port, journal, permit))
+        })();
+        let (actor, call, port, journal, permit) = match prepared {
+            Ok(value) => value,
+            Err(error) => {
+                let _ = reply.send(Err(error));
+                return;
+            }
+        };
+        let registry = self.registry.clone();
+        self.gui_task_reads.spawn_blocking_on(
+            move || {
+                let _permit = permit;
+                let result = (|| -> Result<_> {
+                    let value = match crate::mcp::work_items::prepare(
+                        &port.index,
+                        &registry,
+                        &actor,
+                        &call,
+                    ) {
+                        Ok(crate::mcp::work_items::Prepared::Read(value)) => {
+                            crate::mcp::success(id, value)
+                        }
+                        Ok(_) => return Err(invalid("scheduled task read cannot mutate")),
+                        Err(reason) => crate::mcp::error(id, "rejected", &reason),
+                    };
+                    let value = journal.checked_authorized(&actor, &call, value, |old| {
+                        crate::mcp::work_items::retained_allowed(
+                            &port.index,
+                            &registry,
+                            &actor,
+                            &call,
+                            old,
+                        )
+                    })?;
+                    crate::mcp::work_items::response(&call.tool, value).map_err(invalid)
+                })();
+                GuiTaskReadCompletion {
+                    binding: port.binding,
+                    reply,
+                    result,
+                }
+            },
+            &self.handle,
+        );
+    }
     fn gui_task(
         &mut self,
         id: Ulid,
         request: bbt_proto::messaging::TaskRequest,
+        scope: Option<bbt_proto::gui::SwarmScope>,
         origin: crate::mcp::Origin,
     ) -> Result<bbt_proto::messaging::TaskResponse> {
+        let port = self.gui_workspace(scope)?;
         let origin = self.identity.bind_origin(origin);
         let device_id = self.operator_device_for_effect()?;
         let actor = crate::mcp::Actor::Operator {
@@ -7399,8 +8243,8 @@ impl Worker {
         if crate::mcp::work_items::mutation(&call.tool) {
             self.identity.operator_signing()?;
         }
-        let journal = self.operator_journal.clone();
-        let result = self.work_item_call(&actor, &call, &journal)?;
+        let journal = self.root_journal(&self.operator_journal, &port);
+        let result = self.work_item_call(&port, &actor, &call, &journal)?;
         crate::mcp::work_items::response(&call.tool, result).map_err(invalid)
     }
     /// `ctl record write` and `ctl task create` (e2e acceptance §2, #266 addendum): the
@@ -7411,12 +8255,20 @@ impl Worker {
         &mut self,
         id: Ulid,
         args: serde_json::Value,
+        scope: Option<bbt_proto::gui::SwarmScope>,
         origin: crate::mcp::Origin,
     ) -> crate::knowledge::data_source::Result<serde_json::Value> {
         use crate::{
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
+        let port = self
+            .gui_workspace(scope)
+            .and_then(|port| self.scan_port(&port.binding))
+            .map_err(|error| workspace_command_error(error.as_ref()))?;
+        self.workspaces
+            .write_ready(&self.registry, &port.binding)
+            .map_err(|error| workspace_command_error(error.as_ref()))?;
         let origin = self.identity.bind_origin(origin);
         let device_id = self
             .identity
@@ -7438,10 +8290,10 @@ impl Worker {
         };
         call.validate()
             .map_err(|e| d::CommandError::new("rejected", e.to_string()))?;
-        let journal = self.operator_journal.clone();
+        let journal = self.root_journal(&self.operator_journal, &port);
         let value = match tool::prepare(&call) {
             Ok(tool::Request::Write(request)) => journal.effect(&actor, &call, || {
-                self.operator_record_write(&call, *request)
+                self.operator_record_write(&port, &call, *request)
             }),
             Ok(_) => unreachable!("knowledge_write prepares a write"),
             Err(reason) => journal.checked(&actor, &call, mcp::error(id, "rejected", &reason)),
@@ -7458,14 +8310,18 @@ impl Worker {
     }
     fn operator_record_write(
         &mut self,
+        port: &WorkspacePort,
         call: &crate::mcp::Call,
         mut request: crate::knowledge::data_source::WriteRequest,
     ) -> serde_json::Value {
+        if let Err(error) = self.workspaces.current(&self.registry, &port.binding) {
+            return crate::mcp::error(call.op_id, "swarm_root_changed", &error.to_string());
+        }
         use crate::{
             knowledge::data_source as d,
             mcp::{self, knowledge as tool},
         };
-        if self.knowledge_host.external() {
+        if port.host.external() {
             return mcp::error(
                 call.op_id,
                 "signed_writer_unavailable",
@@ -7498,7 +8354,7 @@ impl Worker {
             signing.issuer.kind,
             &signing.key,
         );
-        let source = BboxySource::new(&self.index);
+        let source = BboxySource::new(&port.index);
         match request.reference.clone() {
             Some(reference) => match source.fetch(d::FetchRequest { reference }) {
                 Ok(record) if record.frontmatter["type"] != "e2e" => {
@@ -7558,7 +8414,7 @@ impl Worker {
             }
             Err(error) => return mcp::error(call.op_id, &error.code, &error.message),
         };
-        if self.scan().is_err() {
+        if self.scan_workspace(&port.binding).is_err() {
             return mcp::error(
                 call.op_id,
                 "unknown",
@@ -8047,12 +8903,20 @@ impl Worker {
                         let result = self.gui_messaging(id, swarm, request, origin);
                         let _ = reply.send(result);
                     }
-                    Command::GuiTask(id, request, origin, reply) => {
-                        let result = self.gui_task(id, request, origin);
+                    Command::GuiTask(id, request, scope, origin, reply) => {
+                        if matches!(
+                            request,
+                            bbt_proto::messaging::TaskRequest::List { .. }
+                                | bbt_proto::messaging::TaskRequest::Status { .. }
+                        ) {
+                            self.start_gui_task_read(id, request, scope, origin, reply, None);
+                            continue;
+                        }
+                        let result = self.gui_task(id, request, scope, origin);
                         let _ = reply.send(result);
                     }
-                    Command::GuiRecordWrite(id, args, origin, reply) => {
-                        let result = self.gui_record_write(id, args, origin);
+                    Command::GuiRecordWrite(id, args, scope, origin, reply) => {
+                        let result = self.gui_record_write(id, args, scope, origin);
                         let _ = reply.send(result);
                     }
                     Command::GuiPlugin(id, request, origin, reply) => {
@@ -8118,14 +8982,59 @@ impl Worker {
                                 let _ = reply.send(Err(error));
                             }
                             Ok((actor, call)) => {
-                                let host = self.knowledge_host.clone();
-                                let index = self.index.clone();
+                                let roots: Vec<_> = self
+                                    .workspaces
+                                    .cache
+                                    .roots()
+                                    .map(|root| {
+                                        (
+                                            root.root_id().to_owned(),
+                                            root.host.clone(),
+                                            root.index.clone(),
+                                        )
+                                    })
+                                    .collect();
                                 let journal = self.operator_journal.clone();
+                                let startup = self.workspaces.cache.startup().root_id().to_owned();
                                 self.plugin_jobs.spawn_on(
                                     async move {
-                                        let result = host
-                                            .request(index, actor, journal, call, request)
-                                            .await;
+                                        let result = match &request {
+                                            bbt_proto::gui::KnowledgeRequest::Status => {
+                                                tokio::task::spawn_blocking(move || -> Result<bbt_proto::gui::KnowledgeStatus> {
+                                                    let mut combined=bbt_proto::gui::KnowledgeStatus{roots:Vec::new(),offered:Vec::new()};
+                                                    for (_,host,index) in roots {
+                                                        let status=host.status(&index)?;
+                                                        combined.roots.extend(status.roots);
+                                                        combined.offered=status.offered;
+                                                    }
+                                                    let value=journal.checked(&actor,&call,crate::mcp::success(call.op_id,serde_json::json!({"status":combined})))?;
+                                                    let value:serde_json::Value=operator_response(value)?;
+                                                    serde_json::from_value(value["status"].clone()).map_err(Into::into)
+                                                }).await.map_err(|error|invalid(format!("knowledge inventory worker stopped: {error}"))).and_then(|result|result)
+                                            }
+                                            bbt_proto::gui::KnowledgeRequest::Reset { root }
+                                            | bbt_proto::gui::KnowledgeRequest::Select {
+                                                root,
+                                                ..
+                                            } => {
+                                                match roots
+                                                    .into_iter()
+                                                    .find(|(id, _, _)| id == root)
+                                                {
+                                                    Some((id, host, index)) => {
+                                                        let journal =
+                                                            journal.with_root(&id, &startup);
+                                                        host.request(
+                                                            index, actor, journal, call, request,
+                                                        )
+                                                        .await
+                                                    }
+                                                    None => Err(invalid(
+                                                        "knowledge root is not mounted",
+                                                    )),
+                                                }
+                                            }
+                                        };
                                         let _ = reply.send(result);
                                     },
                                     &self.handle,
@@ -8312,40 +9221,18 @@ impl Worker {
                             }
                         }
                     }
-                    Command::GuiKnowledge(method, args, reply) => {
-                        let Ok(permit) = self.knowledge_reads.clone().try_acquire_owned() else {
-                            let mut error = crate::knowledge::data_source::CommandError::new(
-                                "provider_busy",
-                                "knowledge read capacity is occupied",
-                            );
-                            error.retry_after_ms = Some(100);
-                            let _ = reply.send(Err(error));
-                            continue;
-                        };
-                        let index = self.index.clone();
-                        let registry = self.registry.clone();
-                        let host = self.knowledge_host.clone();
-                        #[cfg(test)]
-                        let fixture = self.knowledge_fixture.clone();
-                        self.handle.spawn_blocking(move || {
-                            // Cancellation does not free capacity until the blocking read ends.
-                            let _permit = permit;
-                            if reply.is_closed() {
-                                return;
-                            }
-                            #[cfg(test)]
-                            if let Some(source) = fixture {
-                                let _ = reply.send(crate::knowledge::read(
-                                    source.as_ref(),
-                                    &method,
-                                    args,
-                                ));
-                                return;
-                            }
-                            let _ = reply.send(host.with_source(&index, &registry, |source| {
-                                crate::knowledge::read(source, &method, args)
-                            }));
-                        });
+                    Command::GuiKnowledge(method, args, scope, reply) => {
+                        self.start_gui_knowledge(method, args, scope, reply, None)
+                    }
+                    #[cfg(test)]
+                    Command::WorkspaceScanFixture(scope, hook, reply) => {
+                        let result = (|| {
+                            let port = self.gui_workspace(scope)?;
+                            self.workspaces.scan_hook = Some(hook);
+                            self.workspaces.reconcile(&port.binding.root_id)?;
+                            Ok(port.binding)
+                        })();
+                        let _ = reply.send(result);
                     }
                     #[cfg(test)]
                     Command::KnowledgeFixture(source, reply) => {
@@ -8533,7 +9420,11 @@ impl Worker {
                             self.publish_adapter(id, status.clone())?;
                         }
                         if result.is_ok() {
-                            self.provenance.hook(id, generation, &event);
+                            if let Some(root) = self.provenance_binding(id, generation)
+                                && let Ok(workspace) = self.workspaces.cache.get_mut(&root)
+                            {
+                                workspace.provenance.hook(id, generation, &event);
+                            }
                             self.persist_native_session(id)?;
                         }
                         let _ = reply.send(result);
@@ -8885,39 +9776,8 @@ impl Worker {
                         0,
                         0,
                     );
-                    if self.watch.failed() {
-                        return Err(invalid(
-                            "filesystem watch failed; index reconciliation required",
-                        ));
-                    }
-                    let active: Vec<_> = self
-                        .views
-                        .iter()
-                        .filter(|(_, view)| {
-                            view.info.exited.is_none()
-                                && view.adapter.status.state == crate::adapters::State::Active
-                        })
-                        .map(|(seat, view)| {
-                            (*seat, view.generation, view.adapter.status.observed_ms)
-                        })
-                        .collect();
-                    let changed = match self.provenance.step(
-                        Arc::make_mut(&mut self.index),
-                        &self.bus,
-                        &self.handle,
-                        &self.identity,
-                        &active,
-                    ) {
-                        Ok(changed) => changed,
-                        Err(error) => {
-                            eprintln!("ProvenancePending: {error}");
-                            false
-                        }
-                    };
-                    if self.watch.changed() || changed {
-                        self.scan()?;
-                    }
-                    phase.finish(Outcome::Ok, active.len() as u64, 0);
+                    self.maintain_workspaces();
+                    phase.finish(Outcome::Ok, self.views.len() as u64, 0);
                     scan_at = Instant::now();
                 }
             }
@@ -9005,7 +9865,7 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
-        self.knowledge_host.close();
+        self.workspaces.cache.close();
         let roots: BTreeSet<_> = self
             .endpoints
             .values()
@@ -9709,18 +10569,26 @@ mod identity_retry_clock_tests {
         assert!(observed.event.source.starts_with("ephemeral-hold/"));
         let original = serde_json::to_vec(&observed).unwrap();
         worker
-            .provenance
-            .step(
-                Arc::make_mut(&mut worker.index),
-                &bus,
-                runtime.handle(),
-                &worker.identity,
-                &[],
-            )
+            .workspaces
+            .cache
+            .startup_mut()
+            .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
             .unwrap();
-        assert!(worker.index.current(&path).unwrap().is_none());
         assert!(
             worker
+                .workspaces
+                .cache
+                .startup()
+                .index
+                .current(&path)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            worker
+                .workspaces
+                .cache
+                .startup()
                 .index
                 .activity()
                 .after(0, 128)
@@ -9752,17 +10620,20 @@ mod identity_retry_clock_tests {
         );
         assert!(
             worker
-                .provenance
-                .step(
-                    Arc::make_mut(&mut worker.index),
-                    &bus,
-                    runtime.handle(),
-                    &worker.identity,
-                    &[]
-                )
+                .workspaces
+                .cache
+                .startup_mut()
+                .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
                 .unwrap()
         );
-        let doc = worker.index.current(&path).unwrap().unwrap();
+        let doc = worker
+            .workspaces
+            .cache
+            .startup()
+            .index
+            .current(&path)
+            .unwrap()
+            .unwrap();
         assert_eq!(doc.metadata["authorship"]["kind"], "local-dev");
         assert!(
             doc.metadata["history"]
@@ -9771,7 +10642,15 @@ mod identity_retry_clock_tests {
                 .iter()
                 .any(|row| row["source"] == observed.event.source)
         );
-        let restored = worker.index.activity().at(observed.seq).unwrap().unwrap();
+        let restored = worker
+            .workspaces
+            .cache
+            .startup()
+            .index
+            .activity()
+            .at(observed.seq)
+            .unwrap()
+            .unwrap();
         assert_eq!(serde_json::to_vec(&restored).unwrap(), original);
         use base64::Engine;
         let author = base64::engine::general_purpose::STANDARD

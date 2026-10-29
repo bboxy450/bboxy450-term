@@ -12,6 +12,8 @@ use std::collections::BTreeSet;
 pub(super) fn install(db: &rusqlite::Connection) -> Result<()> {
     db.execute_batch("CREATE TABLE IF NOT EXISTS msg_wake_cancelled(message INTEGER NOT NULL REFERENCES msg_messages(seq),recipient TEXT NOT NULL,reason TEXT NOT NULL,PRIMARY KEY(message,recipient));
         CREATE TABLE IF NOT EXISTS msg_task_state(task TEXT PRIMARY KEY,status TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS msg_task_roots(message TEXT PRIMARY KEY,root TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS msg_task_state_roots(root TEXT NOT NULL,task TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(root,task));
         CREATE INDEX IF NOT EXISTS msg_task_delegations ON msg_messages(COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id'))) WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.event'),json_extract(CAST(envelope AS TEXT),'$.intent.body.event'))='delegate';")?;
     Ok(())
 }
@@ -41,7 +43,7 @@ pub(super) fn reason(
     if let Body::Task { task_id, event, .. } = message.view().body
         && event == "delegate"
     {
-        let terminal: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM msg_task_state WHERE task=?1 AND status IN ('accepted','rejected'))", [task_id.to_string()], |row| row.get(0))?;
+        let terminal: bool = db.query_row("SELECT CASE WHEN EXISTS(SELECT 1 FROM msg_task_roots WHERE message=?2) THEN EXISTS(SELECT 1 FROM msg_task_state_roots s JOIN msg_task_roots r ON r.root=s.root WHERE r.message=?2 AND s.task=?1 AND s.status IN ('accepted','rejected')) ELSE EXISTS(SELECT 1 FROM msg_task_state WHERE task=?1 AND status IN ('accepted','rejected')) END", params![task_id.to_string(),message.view().id.to_string()], |row| row.get(0))?;
         if terminal {
             return Ok(Some(WakeReason::Done));
         }
@@ -143,13 +145,69 @@ pub(super) fn admitted(
 }
 
 impl Ledger {
+    /// Bind a terminal-authored Task wake before admission, never from message prose.
+    pub(crate) fn bind_legacy_task_roots(&self, startup: &str) -> Result<()> {
+        self.store.connection()?.execute("INSERT INTO msg_task_roots(message,root) SELECT id,?1 FROM msg_messages WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id')) IS NOT NULL ON CONFLICT(message) DO NOTHING",[startup])?;
+        Ok(())
+    }
+    pub(crate) fn task_root(&self, message: Ulid, root: &str) -> Result<()> {
+        let db = self.store.connection()?;
+        db.execute(
+            "INSERT INTO msg_task_roots VALUES(?1,?2) ON CONFLICT(message) DO NOTHING",
+            params![message.to_string(), root],
+        )?;
+        let existing: String = db.query_row(
+            "SELECT root FROM msg_task_roots WHERE message=?1",
+            [message.to_string()],
+            |row| row.get(0),
+        )?;
+        if existing != root {
+            return Err(invalid("task message root changed"));
+        }
+        Ok(())
+    }
+    pub(crate) fn task_root_id(&self, message: Ulid) -> Result<Option<String>> {
+        use rusqlite::OptionalExtension;
+        self.store
+            .connection()?
+            .query_row(
+                "SELECT root FROM msg_task_roots WHERE message=?1",
+                [message.to_string()],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(Into::into)
+    }
+    pub(crate) fn task_state_root(
+        &self,
+        root: &str,
+        task: Ulid,
+        status: &str,
+        now: u64,
+    ) -> Result<()> {
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        tx.execute("INSERT INTO msg_task_state_roots VALUES(?1,?2,?3) ON CONFLICT(root,task) DO UPDATE SET status=excluded.status",params![root,task.to_string(),status])?;
+        if matches!(status, "accepted" | "rejected") {
+            let sequences: Vec<u64> = {
+                let mut q=tx.prepare("SELECT m.seq FROM msg_messages m JOIN msg_task_roots r ON r.message=m.id WHERE r.root=?1 AND COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.event'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.event'))='delegate' AND COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.task_id'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.task_id'))=?2")?;
+                q.query_map(params![root, task.to_string()], |row| u64_at(row, 0))?
+                    .collect::<std::result::Result<_, _>>()?
+            };
+            for sequence in sequences {
+                cancel(&tx, sequence, None, WakeReason::Done, now)?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
     pub(crate) fn task_state(&self, task: Ulid, status: &str, now: u64) -> Result<()> {
         let mut db = self.store.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         tx.execute("INSERT INTO msg_task_state VALUES(?1,?2) ON CONFLICT(task) DO UPDATE SET status=excluded.status",params![task.to_string(),status])?;
         if matches!(status, "accepted" | "rejected") {
             let sequences: Vec<u64> = {
-                let mut q=tx.prepare("SELECT seq FROM msg_messages INDEXED BY msg_task_delegations WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.event'),json_extract(CAST(envelope AS TEXT),'$.intent.body.event'))='delegate' AND COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id'))=?1")?;
+                let mut q=tx.prepare("SELECT seq FROM msg_messages INDEXED BY msg_task_delegations WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.event'),json_extract(CAST(envelope AS TEXT),'$.intent.body.event'))='delegate' AND COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id'))=?1 AND NOT EXISTS(SELECT 1 FROM msg_task_roots r WHERE r.message=msg_messages.id)")?;
                 q.query_map([task.to_string()], |row| u64_at(row, 0))?
                     .collect::<std::result::Result<_, _>>()?
             };
@@ -160,11 +218,16 @@ impl Ledger {
         tx.commit()?;
         Ok(())
     }
-    pub(crate) fn pending_tasks(&self) -> Result<Vec<Ulid>> {
+    pub(crate) fn pending_task_roots(&self) -> Result<Vec<(Option<String>, Ulid)>> {
         let db = self.store.connection()?;
-        let mut q=db.prepare("SELECT DISTINCT COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.task_id'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.task_id')) FROM msg_deliveries d INDEXED BY msg_native_ready JOIN msg_messages m ON m.seq=d.message WHERE d.evidence='recipient-stored' AND json_extract(CAST(d.data AS TEXT),'$.wake') IS NOT 'none' AND COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.event'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.event'))='delegate'")?;
-        q.query_map([], |row| row.get::<_, String>(0))?
-            .map(|id| Ok(id?.parse()?))
-            .collect()
+        let mut q=db.prepare("SELECT DISTINCT r.root,COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.task_id'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.task_id')) FROM msg_deliveries d INDEXED BY msg_native_ready JOIN msg_messages m ON m.seq=d.message LEFT JOIN msg_task_roots r ON r.message=m.id WHERE d.evidence='recipient-stored' AND json_extract(CAST(d.data AS TEXT),'$.wake') IS NOT 'none' AND COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.event'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.event'))='delegate'")?;
+        q.query_map([], |row| {
+            Ok((row.get::<_, Option<String>>(0)?, row.get::<_, String>(1)?))
+        })?
+        .map(|row| {
+            let (root, task) = row?;
+            Ok((root, task.parse()?))
+        })
+        .collect()
     }
 }

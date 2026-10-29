@@ -165,17 +165,28 @@ impl Fixture {
         })
     }
     fn call(&self, seat: Ulid, op_id: Ulid, tool: &str, args: Value) -> Value {
-        self.runtime
-            .block_on(self.client().control_call(
-                seat,
-                1,
-                Call {
-                    op_id,
-                    tool: tool.into(),
-                    args,
-                },
-            ))
-            .unwrap()
+        let call = Call {
+            op_id,
+            tool: tool.into(),
+            args,
+        };
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let value = self
+                .runtime
+                .block_on(self.client().control_call(seat, 1, call.clone()))
+                .unwrap();
+            if value["structuredContent"]["error"]["code"] != "workspace_pending"
+                && value["structuredContent"]["tasks"]["availability"] != "workspace_pending"
+            {
+                return value;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "workspace never settled: {value}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
     fn registry(&self) -> Registry {
         Registry::new(SqliteStore::open(&self.config.run_dir.join("account")).unwrap())
@@ -184,14 +195,25 @@ impl Fixture {
         args["op_id"] = json!(op_id);
         let mut bridge = self.bridge(seat);
         initialize(&mut bridge);
-        let reply = rpc(
-            &mut bridge,
-            2,
-            "tools/call",
-            json!({"name":tool,"arguments":args}),
-        );
-        assert!(reply.get("error").is_none(), "{reply}");
-        reply["result"].clone()
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let reply = rpc(
+                &mut bridge,
+                2,
+                "tools/call",
+                json!({"name":tool,"arguments":args}),
+            );
+            assert!(reply.get("error").is_none(), "{reply}");
+            let value = reply["result"].clone();
+            if value["structuredContent"]["error"]["code"] != "workspace_pending" {
+                return value;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "workspace never settled: {value}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
     fn audits(&self, seat: Ulid, count: usize) -> Vec<bbt_mux::store::events::Envelope> {
         let until = Instant::now() + Duration::from_secs(120);
@@ -342,6 +364,21 @@ impl Fixture {
             .unwrap()
     }
     fn gui(&self, id: Ulid, action: bbt_proto::GuiAction) -> bbt_proto::GuiReply {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let reply = self.gui_once(id, action.clone());
+            if !matches!(&reply,bbt_proto::GuiReply::Error{reason,..} if reason.starts_with("workspace_pending:"))
+            {
+                return reply;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "workspace never settled: {reply:?}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    fn gui_once(&self, id: Ulid, action: bbt_proto::GuiAction) -> bbt_proto::GuiReply {
         let endpoint = self.runtime.block_on(self.client().gui_endpoint()).unwrap();
         let mut socket = UnixStream::connect(endpoint.path).unwrap();
         socket
@@ -376,14 +413,26 @@ impl Fixture {
     }
     fn gui_task(&self, request: bbt_proto::messaging::TaskRequest) -> bbt_proto::GuiReply {
         let id = Ulid::new();
-        self.gui(
-            id,
-            bbt_proto::GuiAction::Task {
-                scope: None,
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let reply = self.gui(
                 id,
-                request,
-            },
-        )
+                bbt_proto::GuiAction::Task {
+                    scope: None,
+                    id,
+                    request: request.clone(),
+                },
+            );
+            if !matches!(&reply,bbt_proto::GuiReply::Error{reason,..} if reason.starts_with("workspace_pending:"))
+            {
+                return reply;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "workspace never settled: {reply:?}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
     }
 }
 
@@ -1240,12 +1289,27 @@ fn data(value: Value) -> Value {
     value["structuredContent"].clone()
 }
 fn rpc(bridge: &mut Bridge, id: u64, method: &str, params: Value) -> Value {
-    bridge
-        .handle(
-            &serde_json::to_vec(&json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let value = bridge
+            .handle(
+                &serde_json::to_vec(
+                    &json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}),
+                )
                 .unwrap(),
-        )
-        .unwrap()
+            )
+            .unwrap();
+        if value["result"]["structuredContent"]["error"]["code"] != "workspace_pending"
+            && value["result"]["structuredContent"]["tasks"]["availability"] != "workspace_pending"
+        {
+            return value;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "workspace never settled: {value}"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
 }
 fn initialize(bridge: &mut Bridge) {
     let value = rpc(
@@ -3358,6 +3422,56 @@ fn mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_s
     );
 }
 
+fn assert_claim_number_matches_actual_root(
+    repository: &std::path::Path,
+    claimed: &bbt_mux::index::Document,
+) {
+    fn records(path: &std::path::Path, out: &mut Vec<bbt_mux::index::Document>) {
+        for entry in std::fs::read_dir(path).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                records(&path, out);
+            } else if path.extension().is_some_and(|extension| extension == "md") {
+                out.push(bbt_mux::index::Document::parse(
+                    path.to_str().unwrap(),
+                    &std::fs::read_to_string(&path).unwrap(),
+                ));
+            }
+        }
+    }
+    let mut docs = Vec::new();
+    records(&repository.join(".bboxy"), &mut docs);
+    let number = claimed.metadata["number"]
+        .as_u64()
+        .filter(|number| *number > 0)
+        .expect("positive claim number");
+    let mut numbers = std::collections::BTreeSet::new();
+    for doc in &docs {
+        assert!(
+            numbers.insert(
+                doc.metadata["number"]
+                    .as_u64()
+                    .filter(|number| *number > 0)
+                    .expect("positive actual root record number")
+            ),
+            "duplicate record number in {}",
+            doc.path
+        );
+    }
+    if number > 3 {
+        assert!(
+            docs.iter().any(|doc| doc.id != claimed.id
+                && doc.metadata["type"] == "artifact"
+                && doc.metadata["observed"] == true
+                && doc.metadata["last_observation_sequence"].as_str().is_some()
+                && doc.metadata["number"]
+                    .as_u64()
+                    .is_some_and(|prior| prior < number)),
+            "extra preceding record was not an actual provenance observation"
+        );
+    }
+}
+
 // keeps: spec mcp-control-plane
 #[test]
 fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content() {
@@ -3374,7 +3488,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
         .join(format!(".bboxy/artifacts/{op}.md"));
     let source = std::fs::read_to_string(&path).unwrap();
     let artifact = bbt_mux::index::Document::parse(&format!("artifacts/{op}.md"), &source);
-    assert_eq!(artifact.metadata["number"], 3);
+    assert_claim_number_matches_actual_root(&f.config.repository, &artifact);
     assert_eq!(
         artifact.metadata["produced_by"],
         format!("seat:{}", f.own.id)
@@ -3517,9 +3631,9 @@ fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
         .repository
         .join(format!(".bboxy/artifacts/{op}.md"));
     let written = std::fs::read_to_string(&artifact_path).unwrap();
-    assert_eq!(
-        bbt_mux::index::Document::parse("artifact.md", &written).metadata["number"],
-        3
+    assert_claim_number_matches_actual_root(
+        &f.config.repository,
+        &bbt_mux::index::Document::parse("artifact.md", &written),
     );
     assert_eq!(f.task_document().digest, original.digest);
     db.execute_batch("DROP TRIGGER fixture_task_write_failure")

@@ -51,6 +51,7 @@ pub struct RootBinding {
 pub enum Error {
     Unavailable { repository: PathBuf, reason: String },
     UnknownSwarm(Ulid),
+    Pending(Ulid),
     Changed(Ulid),
 }
 impl Error {
@@ -58,6 +59,7 @@ impl Error {
         match self {
             Self::Unavailable { .. } => "workspace_unavailable",
             Self::UnknownSwarm(_) => "unknown_swarm_workspace",
+            Self::Pending(_) => "workspace_pending",
             Self::Changed(_) => "swarm_root_changed",
         }
     }
@@ -73,13 +75,17 @@ impl fmt::Display for Error {
         match self {
             Self::Unavailable { repository, reason } => write!(
                 f,
-                "workspace {} unavailable: {reason}",
+                "workspace_unavailable: workspace {} unavailable: {reason}",
                 repository.display()
             ),
             Self::UnknownSwarm(swarm) => write!(f, "swarm {swarm} has no captured workspace"),
+            Self::Pending(swarm) => write!(
+                f,
+                "workspace_pending: swarm {swarm} workspace is opening; retry shortly"
+            ),
             Self::Changed(swarm) => write!(
                 f,
-                "swarm {swarm} workspace changed; capture its current binding"
+                "swarm_root_changed: swarm {swarm} workspace changed; capture its current binding"
             ),
         }
     }
@@ -114,7 +120,11 @@ impl Workspace {
             }
             index.set_issued_by(config.issued_by.clone());
             if let Some(bus) = &config.activity {
-                index.route_activity(bus.clone(), config.runtime.clone());
+                if store == "index" {
+                    index.route_activity(bus.clone(), config.runtime.clone());
+                } else {
+                    index.route_activity_to(bus.clone(), config.runtime.clone(), store.into());
+                }
             }
             // Keep the same durable scan outbox; the caller publishes/acks it.
             let _ = index.scan()?;
@@ -232,18 +242,31 @@ impl MountJob {
         )?;
         Ok(MountedRoot {
             prepared: self.prepared,
-            workspace,
+            workspace: Some(workspace),
+            cleanup: self.config.runtime,
         })
     }
 }
 pub struct MountedRoot {
     prepared: PreparedRoot,
-    workspace: Workspace,
+    workspace: Option<Workspace>,
+    cleanup: Handle,
+}
+impl Drop for MountedRoot {
+    fn drop(&mut self) {
+        if let Some(workspace) = self.workspace.take() {
+            // Aborted owner jobs can discard a mount result. Provider cleanup
+            // remains on IO, including this cancellation/shutdown path.
+            self.cleanup.spawn_blocking(move || workspace.close());
+        }
+    }
 }
 impl MountedRoot {
     /// Cleanup is an IO operation; never close a provider in the owner's insertion path.
-    pub fn close(self) {
-        self.workspace.close();
+    pub fn close(mut self) {
+        if let Some(workspace) = self.workspace.take() {
+            workspace.close();
+        }
     }
 }
 #[must_use = "schedule retired mount cleanup on IO"]
@@ -262,6 +285,10 @@ pub struct Workspaces {
 impl Workspaces {
     pub fn open(config: Config) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        // Preserve initial bootstrap behavior; only the trusted startup default
+        // is created. An explicit swarm cwd must already exist.
+        std::fs::create_dir_all(&config.startup_repository)
+            .map_err(|error| Error::unavailable(&config.startup_repository, error))?;
         let (repository, root) = Self::directory(&config.startup_repository)?;
         // Preserve the existing startup mirror/outbox location across upgrades.
         let workspace = Workspace::mount(&config, &repository, &root, "index")?;
@@ -325,14 +352,12 @@ impl Workspaces {
             store,
         }
     }
-    fn install_root(&mut self, mounted: MountedRoot) -> (String, Option<MountedRoot>) {
+    fn install_root(&mut self, mut mounted: MountedRoot) -> (String, Option<MountedRoot>) {
         if let Some(id) = self.paths.get(&mounted.prepared.root) {
             return (id.clone(), Some(mounted));
         }
-        let MountedRoot {
-            prepared,
-            workspace,
-        } = mounted;
+        let prepared = mounted.prepared.clone();
+        let workspace = mounted.workspace.take().expect("owned mount");
         let id = prepared.root_id;
         debug_assert_eq!(workspace.root_id(), id);
         self.paths.insert(prepared.root, id.clone());
@@ -415,6 +440,14 @@ impl Workspaces {
                 Err(error)
             }
         }
+    }
+    /// Owner-only selection of the already-mounted legacy startup root.
+    pub fn bind_startup(&mut self, swarm: Ulid, revision: u64) -> Result<RootBinding> {
+        self.check_revision(swarm, revision)?;
+        Ok(self.select(swarm, revision, self.startup.clone()))
+    }
+    pub(crate) fn root_mut(&mut self, root: &str) -> Option<&mut Workspace> {
+        self.roots.get_mut(root)
     }
     pub fn current(&self, swarm: Ulid) -> Result<&RootBinding> {
         match self.bindings.get(&swarm) {

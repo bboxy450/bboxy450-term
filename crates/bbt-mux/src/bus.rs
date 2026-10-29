@@ -1553,7 +1553,10 @@ impl Broker {
 
 enum Command {
     Publish(String, Draft, oneshot::Sender<Result<Envelope>>),
-    Activity(Box<(Draft, SigningKey)>, oneshot::Sender<Result<Envelope>>),
+    Activity(
+        Box<(String, Draft, SigningKey)>,
+        oneshot::Sender<Result<Envelope>>,
+    ),
     Subscribe(Consumer, oneshot::Sender<Result<String>>),
     Poll(String, usize, oneshot::Sender<Result<Vec<Delivery>>>),
     Ack(String, String, u64, oneshot::Sender<Result<()>>),
@@ -1620,7 +1623,8 @@ struct AppendSignal {
 impl AppendSignal {
     fn broadcast(&self) {
         #[cfg(test)]
-        self.broadcasts.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.broadcasts
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.changed.notify_waiters();
     }
 }
@@ -1630,7 +1634,9 @@ struct WaitingReader<'a>(&'a AppendSignal);
 #[cfg(test)]
 impl<'a> WaitingReader<'a> {
     fn new(signal: &'a AppendSignal) -> Self {
-        signal.waiting.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        signal
+            .waiting
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         signal.registered.notify_waiters();
         Self(signal)
     }
@@ -1638,7 +1644,9 @@ impl<'a> WaitingReader<'a> {
 #[cfg(test)]
 impl Drop for WaitingReader<'_> {
     fn drop(&mut self) {
-        self.0.waiting.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        self.0
+            .waiting
+            .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
     }
 }
 
@@ -1698,14 +1706,14 @@ impl BusHandle {
                         let _ = reply.send(broker.publish(&stream, event));
                     }
                     Command::Activity(activity, reply) => {
-                        let (event, key) = *activity;
+                        let (stream, event, key) = *activity;
                         let result = if !event.subject.starts_with("doc/")
                             && !event.subject.starts_with("artifact/")
                             && !event.subject.starts_with("activity/")
                         {
                             Err(invalid("activity sink only accepts index subjects"))
                         } else {
-                            broker.publish_using("index", event, Some(key))
+                            broker.publish_using(&stream, event, Some(key))
                         };
                         let _ = reply.send(result);
                     }
@@ -1797,9 +1805,18 @@ impl BusHandle {
     /// Trusted index writer only: append and route once with the actual author
     /// key. This is not a seat socket operation or a general signing service.
     pub(crate) async fn publish_activity(&self, event: Draft, key: SigningKey) -> Result<Envelope> {
+        self.publish_activity_scoped("index".into(), event, key)
+            .await
+    }
+    pub(crate) async fn publish_activity_scoped(
+        &self,
+        stream: String,
+        event: Draft,
+        key: SigningKey,
+    ) -> Result<Envelope> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::Activity(Box::new((event, key)), tx))
+            .send(Command::Activity(Box::new((stream, event, key)), tx))
             .await
             .map_err(|_| invalid("activity router stopped"))?;
         rx.await
