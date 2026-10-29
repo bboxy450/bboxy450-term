@@ -15,3 +15,10 @@ Swarm validation already permits Unicode scalar values/ZWJ/VS16; production vali
 Handoff gates for parent warm app target: make test-color-emoji-swarm; make check-color-emoji-all; exact committed integrated make test.
 Gap here: app/mux fixture and dependent Clippy not run in this worktree under disk floor; no cold app build. Parent owns integrated gates and final landing.
 No installation, merge, push, publication or operator data mutation performed.
+
+Followup exact source commit: 847a3dcd56f63d7f06fadae698d87ccfdc545ba6
+crates/bbt-render/src/cells/terminal/gpu.rs:561 — regional-indicator pairs join under the existing row/style guard without changing parser cell positions.
+command: make test-color-emoji TARGET_DIR=target-emoji — EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/flag-renderer.log; SHA256 8222a2dd610256c35b051fbb6c06b9bd594c7c0178c4b27a63939af618b7c26f
+command: make check-color-emoji TARGET_DIR=target-emoji — EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/flag-clippy.log; SHA256 d5df157f0337a5cdd322784b67c63f4f611f30f719904ff760d2bbf748dee883
+Followup renderer: 75 library +13 integration =88 tests passed; strict render all-target Clippy passed. Actual core/parser regression proves flag pairs, following text, lone indicators and style fences.
+Original parent integrated app/mux/dependent gates remain the handoff requirement; no cold app build in this worktree.
