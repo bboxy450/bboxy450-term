@@ -29,6 +29,7 @@ impl App {
             Action::CloseWindow => return Some(false),
             Action::HardQuit => return Some(true),
             Action::CloseFocusedSeat => self.close_focused_seat(),
+            Action::MuteFocusedSeat => self.mute_focused(),
             Action::NewTab => self.open_launcher(),
             Action::SplitRight => self.split_launcher(bbt_proto::seat_state::Side::Right),
             Action::SplitDown => self.split_launcher(bbt_proto::seat_state::Side::Bottom),

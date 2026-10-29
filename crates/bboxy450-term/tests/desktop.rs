@@ -402,6 +402,15 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     });
     fixture.ctl(&["ui", "key", "cmd-z"]);
     fixture.assert_work_preserved(&owners, &seat, &before);
+    fixture.action("mute_focused_seat");
+    wait_until("native mute applies", DEADLINE, || {
+        fixture.seat(&seat)["record"]["muted"] == true
+    });
+    fixture.action("mute_focused_seat");
+    wait_until("native unmute applies", DEADLINE, || {
+        fixture.seat(&seat)["record"]["muted"] == false
+    });
+    fixture.assert_work_preserved(&owners, &seat, &before);
     fixture.action("new_tab");
     wait_until("native desktop New Tab action", DEADLINE, || {
         fixture.ctl(&["ui", "layout"])["launcher_open"] == true

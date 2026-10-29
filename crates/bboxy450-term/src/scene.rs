@@ -712,6 +712,7 @@ impl Scene {
                 row.activity = seat.activity;
                 row.grade = seat.grade;
                 row.muted = seat.muted;
+                row.may_mute = self.live;
                 row.deferred = model.messaging_deferred.get(id).cloned();
                 row.focused = Some(*id) == self.focused;
                 // An inactive card dims its whole body once. In the selected

@@ -54,7 +54,7 @@ define_class!(
         fn activate(&self, sender: &NSMenuItem) {
             if let Ok(index) = usize::try_from(sender.tag())
                 && let Some(action) = Action::ALL.get(index) {
-                    if *action == Action::CloseFocusedSeat
+                    if matches!(action, Action::CloseFocusedSeat | Action::MuteFocusedSeat)
                         && NSApplication::sharedApplication(MainThreadMarker::from(self))
                             .currentEvent()
                             .is_some_and(|event| event.r#type() == NSEventType::KeyDown && event.isARepeat())

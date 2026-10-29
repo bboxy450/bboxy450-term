@@ -130,11 +130,12 @@ pub struct Strip {
 }
 impl Strip {
     pub fn new(seat: SeatRow) -> Self {
+        let may_mute = seat.may_mute;
         Self {
             seat,
             waiting_description: None,
             may_interrupt: false,
-            may_mute: false,
+            may_mute,
         }
     }
     pub fn element(&self, ctx: ui::Context) -> c::Element {

@@ -1,0 +1,19 @@
+Scope: operator-visible seat swarm-mute controls and documented Command-M shortcut.
+Base: eb1c8aaa5284fccabe5b85ade66e9ecd5a8cf6a6
+seat_row/strip: explicit may_mute capability adds a row speaker control and pane
+speaker; muted indication uses existing amber state. Default gallery unchanged.
+scene/navigation/main: retained control regions target their exact seat without
+moving focus, reuse authenticated messaging mute requests and wait for metadata.
+desktop-core/macos/menu: Cmd+M maps uniquely to mute/unmute; native repeat is
+suppressed and Minimize remains available through the menu/window control.
+make test-seat-mute test-desktop test-desktop-app test-desktop-lifecycle parity-swarm — exit 0.
+make test-seat-mute (after adding private debug evidence) — exit 0.
+Evidence: row/pane buttons + shortcut, other-row focus unchanged, operator PTY
+input while muted, persisted policy after UI restart, same backend/harness IDs;
+existing backend tests prove both swarm directions held and current-grant release.
+Native menu13/tray4 callbacks and private daemon mute/unmute passed.
+Visual parity: 72 required/measured cases, 0 geometry mismatches, 0 pixel reviews.
+Debug fixture rows were mock provider Connecting states and initial GUI admission
+probe, not mute failures; private JSON/PNG evidence remains under target/seat-mute.
+Logs: ~/Library/Logs/bboxy450-term/seat-mute-20261028-{focused,recheck}.log
+Exact committed-source full CI/land/install remain the integration gate.

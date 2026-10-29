@@ -1477,6 +1477,57 @@ fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
 }
 
 #[test]
+#[ignore = "private ctl mute buttons, shortcut, retained policy and operator input; make test-seat-mute"]
+fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"].as_str().unwrap().to_owned();
+    let first = fixture.spawn("claude", &swarm, None);
+    let second = fixture.spawn("claude", &swarm, None);
+    fixture.ctl(&["ui", "focus", &first]);
+    let before = fixture.ctl(&["seat", "ls"]);
+    let owners = fixture.owners();
+    let muted = |fixture: &Fixture, seat: &str| {
+        fixture.ctl(&["seat", "ls"]).as_array().unwrap().iter()
+            .find(|row| row["record"]["id"] == seat).unwrap()["record"]["muted"].as_bool().unwrap()
+    };
+    let background = click_region(&fixture, &format!("seat-mute:{second}"));
+    assert_eq!(background["focused"], first, "muting another row never moves focus");
+    assert!(muted(&fixture, &second));
+    assert!(!muted(&fixture, &first));
+    click_region(&fixture, &format!("pane-mute:{first}"));
+    assert!(muted(&fixture, &first));
+    capture_navigation(&fixture, "seat-mute-controls");
+    if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
+        fs::write(PathBuf::from(directory).join("seat-mute-errors.json"), serde_json::to_vec_pretty(&fixture.ctl(&["debug", "errors"])).unwrap()).unwrap();
+    }
+    fixture.ctl(&["seat", "type", &first, "MUTED-OPERATOR-CONTROL\n"]);
+    fixture.ctl(&["seat", "wait", &first, "--text", "MUTED-OPERATOR-CONTROL", "--timeout", "10000"]);
+    fixture.ctl(&["ui", "key", "cmd-m"]);
+    assert!(!muted(&fixture, &first));
+    assert!(muted(&fixture, &second));
+    let mut old = fixture.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert!(!muted(&fixture, &first));
+    assert!(muted(&fixture, &second));
+    click_region(&fixture, &format!("seat-mute:{second}"));
+    assert!(!muted(&fixture, &second));
+    let after = fixture.ctl(&["seat", "ls"]);
+    for seat in [&first, &second] {
+        let identity = |rows: &Value| {
+            let row = rows.as_array().unwrap().iter().find(|row| row["record"]["id"] == *seat).unwrap();
+            (row["record"]["generation"].clone(), row["state"]["process"].clone())
+        };
+        assert_eq!(identity(&before), identity(&after));
+    }
+    fixture.ctl(&["app", "stop"]);
+    assert!(fixture.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
 #[ignore = "private ctl pointer/keyboard/PTY fixture; make test-navigation"]
 fn native_navigation_clicks_splits_goto_and_directory_validation() {
     let mut fixture = Fixture::new();

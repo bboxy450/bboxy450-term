@@ -47,6 +47,7 @@ help:
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
+	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
@@ -442,6 +443,14 @@ test-new-swarm:
 
 format-new-swarm:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/navigation.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/swarm_folder.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+.PHONY: test-seat-mute
+test-seat-mute:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test seat_rows; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging mute; \
+	BBOXY_SWARM_EVIDENCE='$(abspath $(TARGET_DIR))/seat-mute' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart -- --ignored --exact --nocapture
 
 .PHONY: test-close-shortcut
 test-close-shortcut:

@@ -114,6 +114,25 @@ fn inactive_seat_content_dims_once_without_moving_or_dimming_its_rim() {
     }
 }
 
+#[test]
+fn operator_mute_control_is_explicit_and_carries_into_the_pane_strip() {
+    for density in [ui::Density::Compact, ui::Density::Cozy, ui::Density::Comfortable, ui::Density::Touch] {
+        let ctx = ui::Context::new(ui::Theme::Dark, density);
+        let mut row = SeatRow::new("mute", "A seat with a long descriptive name", "claude");
+        let solve = |row: &SeatRow| row.element(ctx).layout(Rect::new(0., 0., 260., 0.), ctx, &Metrics).unwrap();
+        assert!(find(&solve(&row), "right/mute").is_none());
+        row.may_mute = true;
+        for muted in [false, true] {
+            row.muted = muted;
+            let layout = solve(&row);
+            let control = find(&layout, "right/mute").unwrap().rect;
+            assert!(control.w >= 16. && control.h >= 16.);
+            assert!(control.x >= 0. && control.right() <= 260.);
+            assert!(bbt_ui::modules::strip::Strip::new(row.clone()).may_mute);
+        }
+    }
+}
+
 // keeps: spec gui-components — explicit filters, masks and opacity retain their semantics
 #[test]
 fn content_dim_preserves_unrelated_mask_opacity_and_explicit_filters() {

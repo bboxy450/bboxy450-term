@@ -1803,10 +1803,14 @@ fn mute_command(
     }
     let model = model?;
     let id = stage?.focused?;
-    let seat = model.ui.seats.get(&id)?;
     if !panes.iter().any(|(pane, _)| *pane == id) {
         return None;
     }
+    mute_seat_command(Some(model), id)
+}
+fn mute_seat_command(model: Option<&bboxy450_term::model::Model>, id: SeatId) -> Option<live::UiMsg> {
+    let seat = model?.ui.seats.get(&id)?;
+    if seat.lifecycle != bbt_ui_model::Lifecycle::Open { return None; }
     Some(live::UiMsg::Messaging {
         id: bbt_mux::Ulid::new(),
         swarm_id: bbt_proto::SwarmId::from_u128(seat.swarm.0.0),
@@ -2791,19 +2795,25 @@ impl App {
         self.sync_notifications();
     }
     fn mute_focused(&mut self) {
-        if self.mute.pending() {
-            return;
-        }
         let visible = self.local_tab.is_none()
             && self.launcher.is_none()
+            && !self.document.open
             && !self.composer.view.focus
             && !self.reject_focus;
-        if let Some(message) = mute_command(
+        let message = mute_command(
             self.live_state.as_deref(),
             self.focus.stage.as_ref(),
             &self.pane_bounds,
             visible,
-        ) {
+        );
+        self.request_mute(message);
+    }
+    fn mute_seat(&mut self, seat: SeatId) {
+        self.request_mute(mute_seat_command(self.live_state.as_deref(), seat));
+    }
+    fn request_mute(&mut self, message: Option<live::UiMsg>) {
+        if self.mute.pending() { return; }
+        if let Some(message) = message {
             self.mute.requested(&message);
             self.composer_notice();
             self.queue(message);

@@ -32,9 +32,10 @@ pub enum Action {
     Minimize,
     Zoom,
     CloseFocusedSeat,
+    MuteFocusedSeat,
 }
 impl Action {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -47,6 +48,7 @@ impl Action {
         Self::Minimize,
         Self::Zoom,
         Self::CloseFocusedSeat,
+        Self::MuteFocusedSeat,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -62,6 +64,7 @@ impl Action {
             Self::Minimize => "minimize",
             Self::Zoom => "zoom",
             Self::CloseFocusedSeat => "close_focused_seat",
+            Self::MuteFocusedSeat => "mute_focused_seat",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -176,13 +179,14 @@ pub fn app_menu() -> Vec<MenuGroup> {
             items: vec![
                 MenuItem::action("New Tab", NewTab, "t"),
                 MenuItem::action("Close Seat", CloseFocusedSeat, "w"),
+                MenuItem::action("Mute/Unmute Seat", MuteFocusedSeat, "m"),
                 MenuItem::action("Split Right", SplitRight, "d"),
                 MenuItem {
                     shift: true,
                     ..MenuItem::action("Split Down", SplitDown, "d")
                 },
                 MenuItem::separator(),
-                MenuItem::action("Minimize", Minimize, "m"),
+                MenuItem::action("Minimize", Minimize, ""),
                 MenuItem::action("Zoom", Zoom, ""),
                 MenuItem::action("Show Terminal", ShowWindow, ""),
             ],
@@ -309,6 +313,10 @@ mod tests {
         assert_eq!(close.len(), 1);
         assert_eq!(close[0].command, MenuCommand::Action(Action::CloseFocusedSeat));
         assert!(!close[0].option && !close[0].shift && !close[0].control);
+        let mute: Vec<_> = items.iter().filter(|item| item.key == "m").collect();
+        assert_eq!(mute.len(), 1);
+        assert_eq!(mute[0].command, MenuCommand::Action(Action::MuteFocusedSeat));
+        assert!(!mute[0].option && !mute[0].shift && !mute[0].control);
         let hard = items
             .iter()
             .find(|item| item.command == MenuCommand::Action(Action::HardQuit))

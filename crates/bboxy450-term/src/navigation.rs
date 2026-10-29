@@ -363,6 +363,13 @@ impl App {
         self.request_redraw();
     }
     pub(super) fn navigate_to(&mut self, id: &str) {
+        if let Some(seat) = id.strip_prefix("seat-mute:")
+            .or_else(|| id.strip_prefix("pane-mute:"))
+            .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
+        {
+            self.mute_seat(seat);
+            return;
+        }
         if let Some(swarm) = id.strip_prefix("toggle-swarm:") {
             self.toggle_sidebar_section(&format!("swarm:{swarm}"));
             return;

@@ -63,6 +63,11 @@ impl Scene {
                 }
                 for (k, id) in tab.seats.iter().enumerate() {
                     add(
+                        format!("seat-mute:{id}"),
+                        &format!("{path}/seat{k}/right/mute"),
+                        viewport,
+                    );
+                    add(
                         format!("seat:{id}"),
                         &format!("{path}/seat{k}/row"),
                         viewport,
@@ -99,6 +104,13 @@ impl Scene {
         }
         add("settings".into(), "top/span1", sidebar.rect);
         add("new-swarm".into(), "new-swarm", viewport);
+        for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
+            if let Slot::Seat(id) = slot
+                && let Some(control) = named(layout, "pane/strip/mute")
+            {
+                result.push((format!("pane-mute:{id}"), control.rect));
+            }
+        }
         result
     }
 }

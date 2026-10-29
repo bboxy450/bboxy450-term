@@ -195,6 +195,8 @@ pub struct SeatRow {
     /// Dim this row's chrome content; its identity rim remains vivid.
     pub unfocused: bool,
     pub muted: bool,
+    /// The operator host exposes a swarm-mute control without changing focus.
+    pub may_mute: bool,
     pub authority: Option<String>,
     pub held: Vec<Held>,
     pub deferred: Option<Deferred>,
@@ -234,6 +236,7 @@ impl SeatRow {
             focused: false,
             unfocused: false,
             muted: false,
+            may_mute: false,
             authority: None,
             held: vec![],
             deferred: None,
@@ -602,6 +605,15 @@ impl SeatRow {
         }
         if let Some(shortcut) = &self.shortcut {
             right.push(named("kbd", keyboard_badge(shortcut, self.focused, false, 400)).into());
+        }
+        if self.may_mute {
+            let color = if self.muted { rgba(TOKENS.color.state.waiting) } else { ui::Color::Muted };
+            let mut style = plain(Some(16.), [2.; 4], STYLE.radius.tag as f32);
+            style.overrides.width = Some(ui::Length::Px(16.));
+            style.overrides.fill = Some(paint(color, if self.muted { 0.14 } else { 0. }));
+            right.push(named("mute", c::Element::Box(c::Box::new(style, vec![
+                named("mute/hicon", icon(if self.muted { "muted" } else { "unmuted" }, 12., color)).into(),
+            ]))).into());
         }
         right.push(
             named(
