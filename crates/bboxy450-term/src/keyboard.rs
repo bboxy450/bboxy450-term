@@ -148,6 +148,12 @@ impl State {
         }
         self.local_keys.contains(&physical)
     }
+    /// Native menus retain raw press ownership here, alongside winit adaptation.
+    /// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub fn consumed_scancode(&mut self, scancode: u32) {
+        use winit::platform::scancode::PhysicalKeyExtScancode;
+        self.consumed(PhysicalKey::from_scancode(scancode), ElementState::Pressed);
+    }
     pub fn consumed(&mut self, physical: PhysicalKey, state: ElementState) {
         if state.is_pressed() {
             self.local_keys.insert(physical);

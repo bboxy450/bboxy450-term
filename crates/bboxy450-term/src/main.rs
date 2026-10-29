@@ -11878,7 +11878,36 @@ mod ctl_ui_layout_tests {
 mod ctl_ui_key_tests {
     use super::*;
     #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "private subprocess owns this fixture's process-wide UI thread registration"
+    )]
     fn terminal_font_native_menu_owns_kitty_release_after_command_is_released() {
+        const CHILD: &str = "BBOXY_TERMINAL_FONT_MENU_TEST_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let home = tempfile::tempdir().unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "ctl_ui_key_tests::terminal_font_native_menu_owns_kitty_release_after_command_is_released",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .env(CHILD, "1")
+                .env("HOME", home.path())
+                .env("ZDOTDIR", home.path())
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success()
+                    && String::from_utf8_lossy(&output.stdout).contains("1 passed; 0 failed;"),
+                "isolated native menu fixture {:?}:\n{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
         use bboxy450_term_desktop::Action;
         use winit::platform::scancode::PhysicalKeyExtScancode;
         struct QuietWake;

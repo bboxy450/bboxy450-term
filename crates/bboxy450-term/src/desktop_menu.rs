@@ -27,14 +27,12 @@ impl App {
         }
     }
     pub(super) fn consume_desktop_font_key(&mut self, action: Action, scancode: Option<u32>) {
-        use winit::platform::scancode::PhysicalKeyExtScancode;
         if matches!(
             action,
             Action::IncreaseTerminalFont | Action::DecreaseTerminalFont
         ) && let Some(scancode) = scancode
         {
-            self.keyboard
-                .consumed(PhysicalKey::from_scancode(scancode), ElementState::Pressed);
+            self.keyboard.consumed_scancode(scancode);
         }
     }
     /// Closing is completed by the native/headless event owner using its existing lifecycle.
