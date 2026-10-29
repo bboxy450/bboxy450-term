@@ -155,7 +155,11 @@ test-cursors:
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
 
-.PHONY: test-chat-sections test-chat-notices check-chat-sections test-chat-ux parity-chat
+.PHONY: test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
+test-chat-sections-e2e:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_CHAT_SECTIONS_EVIDENCE='$(abspath $(TARGET_DIR))/chat-sections' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test chat_sections --test chat_notices -- --ignored --nocapture --test-threads=$(SWARM_TEST_THREADS)
+
 test-chat-notices:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test chat_notices -- --ignored --nocapture
@@ -216,7 +220,8 @@ test-swarm:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) swarm_workdir; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib window_state; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) quit_and_hard_quit; \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture --test-threads=$(SWARM_TEST_THREADS)
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir -- --ignored --skip settings_codex_service_fixture --test-threads=$(SWARM_TEST_THREADS); \
+	$(MAKE) test-chat-sections-e2e
 
 .PHONY: test-make-isolation
 test-make-isolation:

@@ -777,7 +777,7 @@ mod tests {
         let swarm = ui::SwarmId::from_u128(4);
         let mut state = State::default();
         state.register(intent).unwrap();
-        state.reconcile(&[record.clone()], &mut model, now, 1000);
+        state.reconcile(std::slice::from_ref(&record), &mut model, now, 1000);
         let published = state.clone();
         assert!(Arc::ptr_eq(published.notices(), state.notices()));
         assert_eq!(state.next_notice_expiry(now), Some(now + NOTICE_TTL));
