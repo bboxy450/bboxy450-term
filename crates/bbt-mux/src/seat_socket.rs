@@ -958,7 +958,8 @@ async fn gui_session(
     let mut tick = tokio::time::interval(Duration::from_millis(20));
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     // Only the window captures: its session relays the operator's asks.
-    let mut capture_asks = None;
+    let mut capture_asks: Option<tokio::sync::broadcast::Receiver<crate::gui_capture::Notice>> =
+        None;
     // Who issues this connection's operator requests, once it says (decision #269).
     let mut issued_by: Option<String> = None;
     // Knowledge is operation-correlated side work; ordinary controls keep their FIFO.

@@ -814,8 +814,8 @@ impl GuiWatchInterests {
     }
 }
 
-#[derive(Clone)]
 type AttentionObserverGuard = Arc<dyn Fn(u32) -> bool + Send + Sync>;
+#[derive(Clone)]
 pub struct LogicClient {
     tx: mpsc::Sender<Command>,
     pub bus: BusHandle,

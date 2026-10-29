@@ -67,6 +67,8 @@ impl Fixture {
             exit_cause: Arc::new(OnceLock::new()),
             capture_diagnostics: Arc::new(Recorder::default()),
             gui_peers: Arc::default(),
+            attention_observer_guard: Arc::default(),
+            current_attention: Arc::default(),
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: None,

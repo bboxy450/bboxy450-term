@@ -87,14 +87,16 @@ impl CurrentAttention {
         }
         // Generation fences for retained/removed seats stay in the registry,
         // not an ever-growing observer tombstone map.
-        let permanent = matches!(row.record.lifecycle, bbt_proto::Lifecycle::ClosedRetained)
-            || matches!(row.state.process, ProcessStatus::Retained);
+        let permanent = matches!(
+            row.record.lifecycle,
+            bbt_proto::registry::Lifecycle::ClosedRetained
+        ) || matches!(row.state.process, ProcessStatus::Retained);
         let generation_changed = if permanent {
             state.generations.remove(&id).is_some()
         } else {
             state.generations.insert(id, row.state.generation) != Some(row.state.generation)
         };
-        let waiting = matches!(row.record.lifecycle, bbt_proto::Lifecycle::Open)
+        let waiting = matches!(row.record.lifecycle, bbt_proto::registry::Lifecycle::Open)
             && matches!(row.state.process, ProcessStatus::Running { .. })
             && matches!(row.state.activity, Activity::Waiting(_));
         let mut removed = Vec::new();
@@ -273,7 +275,7 @@ mod tests {
             let mut row = seat(1, true);
             row.record.id = Ulid(id);
             current.update(row.clone(), true).unwrap();
-            row.record.lifecycle = bbt_proto::Lifecycle::ClosedRetained;
+            row.record.lifecycle = bbt_proto::registry::Lifecycle::ClosedRetained;
             row.state.process = ProcessStatus::Retained;
             current.update(row, false).unwrap();
         }
