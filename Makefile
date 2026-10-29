@@ -497,7 +497,9 @@ fmt-harness-proxy:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/codex_proxy.rs
 
 test-harness-proxy:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib codex_proxy_relay_tests; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --test codex_proxy
 
 .PHONY: test-wake-causes test-wake-journal-failure
 test-wake-journal-failure:
@@ -546,7 +548,7 @@ test-input-layout:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache::tests -- --nocapture
 
 check-input:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 profile-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
