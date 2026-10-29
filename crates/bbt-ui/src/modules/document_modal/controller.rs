@@ -54,6 +54,7 @@ pub fn link(element: c::Element, target: &str, enabled: bool) -> c::Element {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     Open(String),
+    ToggleProvenance,
     Close,
     Unavailable(&'static str),
 }
@@ -109,6 +110,11 @@ impl Regions {
                 let action = name
                     .split_once(PREFIX)
                     .map(|(_, target)| Action::Open(target.into()))
+                    .or_else(|| {
+                        (name == "metadata/provenance/toggle"
+                            || name.ends_with("/metadata/provenance/toggle"))
+                        .then_some(Action::ToggleProvenance)
+                    })
                     .or_else(|| {
                         name.ends_with("/button-source")
                             .then_some(Action::Unavailable("Diagram source"))
@@ -208,7 +214,7 @@ impl Regions {
     pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
         use crate::cursor::Cursor;
         match self.hit(at) {
-            Some(Action::Open(_) | Action::Close) => Cursor::Pointer,
+            Some(Action::Open(_) | Action::ToggleProvenance | Action::Close) => Cursor::Pointer,
             Some(Action::Unavailable(_)) | None => Cursor::Default,
         }
     }
@@ -217,6 +223,8 @@ impl Regions {
 #[derive(Debug, Clone, Default)]
 pub struct Controller {
     pub offset: [f32; 2],
+    /// Display state only; each newly opened document starts collapsed.
+    pub provenance_expanded: bool,
     horizontal: BTreeMap<String, f32>,
 }
 impl Controller {
