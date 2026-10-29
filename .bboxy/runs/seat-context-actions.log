@@ -94,3 +94,12 @@ rustfmt --edition2024 --check crates/bboxy450-term/src/close.rs — EXIT0.
 git diff --check — EXIT0.
 make test-licenses — EXIT0:6 fixtures,27 workspace crates, source notices unchanged.
 No Cargo/cold build/operator/GPU interaction. New Rust assertions remain unproven until root warm verification. Existing canonical make test-close-shortcut includes all app lib/bin tests and the focused native close/undo regression; root full gate owns acceptance.
+
+Transient close-notice native e2e source — 2026-10-29 UTC:
+Added tests/chat_notices.rs::closed_harness_notice_expires_from_chat_without_losing_history, ignored private integration fixture for root warm execution. Fixture is explicitly adapted from the existing swarm_workdir.rs private harness: isolated account/run/HOME/ZDOTDIR, own mock Claude scripts, own app/backend cleanup and preserved failure directory. No operator identity or real harness is used.
+Two mock Claude cat seats emit unique retained-history markers and write their own PID files. A seeded open task makes the task-panel check non-vacuous. The test matches the target mock PID to registry Running PID, focuses it, sends ctl ui key cmd-w, verifies grace undo, then signals only that recorded mock PID to trigger the authoritative ClosedRetained receipt without waiting60s. Exact notice operation/generation/swarm are compared with retained metadata; text must appear in named:conversation/chat-section and never named:conversation/task-section.
+After first visible notice, only app status reads observe expiry. The first absent-notice state must advance frame_seq beyond the last active-notice status, proving an unattended rendered frame; cached ui layout at that frame must omit the notice in both sections. Existing admitted ctl::Client.history compares exact retained capture records at a fixed sequence range across expiry and retains the unique marker; peer process and target generation remain unchanged.
+Bounded startup60s, mock readiness30s, section readiness20s, retention15s, rendered notice5s and expiry12s assertions;20ms condition polling, no fixed8s settling sleep or manual UI wake. Test requires root's timer/section integration beyond base651a020a; own source does not add GUI behavior.
+rustfmt --edition2024 --check tests/chat_notices.rs / git diff --check — EXIT0.
+make test-licenses — EXIT0:6 fixtures,27 crates,626 owned source notices held.
+No Cargo/cold target/runtime test run, per brief. E2e and strict all-target Clippy remain unproven pending root warm gates. Only new integration test and this existing log changed.
