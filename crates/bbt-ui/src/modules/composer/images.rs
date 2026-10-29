@@ -4,7 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Retained composer and pure draft control. Destinations are supplied by the
 //! Atomic image markers stay in the same UTF-16 draft editor as ordinary text.
 //! Inspired by Codex's image marker interaction (https://github.com/openai/codex).
 //! Implemented independently.

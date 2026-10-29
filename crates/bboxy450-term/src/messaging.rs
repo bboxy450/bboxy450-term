@@ -608,6 +608,7 @@ pub fn ui_compose_draft(
     })
 }
 impl Client {
+    pub fn has_pending(&self) -> bool { self.pending.is_some() }
     /// Owned image paths still referenced by an admitted/ambiguous or durable send.
     pub fn protected_image_paths(&self) -> Vec<String> {
         let mut paths = self.retained_image_paths.clone();

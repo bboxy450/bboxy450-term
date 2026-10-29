@@ -286,10 +286,8 @@ impl Controller {
                     Field::Body => self.edit_images(command),
                 };
                 if bracket && changed {
-                    self.body
-                        .handle(&mut self.view.text, EditCommand::Delete { backwards: true });
-                    self.body
-                        .handle(&mut self.view.text, EditCommand::Delete { backwards: true });
+                    self.edit_images(EditCommand::Delete { backwards: true });
+                    self.edit_images(EditCommand::Delete { backwards: true });
                     self.open_attachments();
                     self.sync();
                     return Outcome::Changed;
@@ -473,6 +471,7 @@ impl Controller {
             self.view.text.clear();
             self.view.attach.clear();
             self.image_spans.clear();
+            self.next_image = 1;
             if sent.delegate {
                 self.view.mode = "message".into();
             }

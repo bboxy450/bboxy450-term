@@ -3426,45 +3426,120 @@ impl App {
         };
     }
     fn composer_paste(&mut self) {
-        if !self.composer.view.focus || self.document.open || self.launcher.is_some() || self.reject_focus { return; }
+        if !self.composer.view.focus
+            || self.document.open
+            || self.launcher.is_some()
+            || self.reject_focus
+        {
+            return;
+        }
         match bboxy450_term_desktop::read_clipboard() {
             Ok(Some(content)) => self.composer_paste_content(content),
-            Ok(None) => {},
-            Err(error) => { self.composer_client.refused(error.to_string()); self.composer_notice(); self.request_redraw(); }
+            Ok(None) => {}
+            Err(error) => self.composer_paste_failed(error.to_string()),
         }
     }
     fn composer_paste_content(&mut self, content: bboxy450_term_desktop::ClipboardContent) {
         use bboxy450_term_desktop::ClipboardContent;
         match content {
-            ClipboardContent::Text(text) => self.composer_command(ComposeCommand::Edit(EditCommand::Insert(text))),
+            ClipboardContent::Text(text) => {
+                self.composer_command(ComposeCommand::Edit(EditCommand::Insert(text)))
+            }
             ClipboardContent::Image { bytes, format } => {
-                if self.composer.view.field != ComposeField::Body || self.composer.view.attach_pick.is_some() { return; }
+                if self.composer.view.field != ComposeField::Body
+                    || self.composer.view.attach_pick.is_some()
+                {
+                    return;
+                }
                 let id = bbt_mux::Ulid::new().to_string();
-                self.composer_command(ComposeCommand::Attach(composer::Attachment {kind:"image".into(),id:id.clone(),..Default::default()}));
-                if !self.composer.view.attach.iter().any(|a| a.id == id) { return; }
+                match self
+                    .composer
+                    .handle(ComposeCommand::Attach(composer::Attachment {
+                        kind: "image".into(),
+                        id: id.clone(),
+                        ..Default::default()
+                    })) {
+                    ComposeOutcome::Changed => {}
+                    ComposeOutcome::Refused(reason) => {
+                        self.composer_paste_failed(reason.into());
+                        return;
+                    }
+                    _ => return,
+                }
+                self.composer_images.reconcile(
+                    &self.composer.view.attach,
+                    &self.composer_client.protected_image_paths(),
+                );
+                self.composer_notice();
+                self.request_redraw();
                 let proxy = self.proxy.clone();
                 drop(bbt_rt::handle().spawn_blocking(move || {
                     let result = bboxy450_term::composer_images::OwnedImage::save(&bytes, format);
-                    let _ = proxy.send_event(UiEvent::ComposerImageReady {id,result});
+                    let _ = proxy.send_event(UiEvent::ComposerImageReady { id, result });
                 }));
             }
         }
     }
-    fn composer_image_ready(&mut self, id: String, result: Result<bboxy450_term::composer_images::OwnedImage, String>) {
+    fn composer_image_ready(
+        &mut self,
+        id: String,
+        result: Result<bboxy450_term::composer_images::OwnedImage, String>,
+    ) {
+        let mut failure = None;
         match result {
             Ok(image) => {
-                if let Some(path) = self.composer_images.ready(&id,image,&self.composer.view.attach) {
-                    self.composer_command(ComposeCommand::ImageReady {id,path});
+                if let Some(path) =
+                    self.composer_images
+                        .ready(&id, image, &self.composer.view.attach)
+                {
+                    self.composer
+                        .handle(ComposeCommand::ImageReady { id, path });
                 }
             }
             Err(error) => {
-                if let Some(index) = self.composer.view.attach.iter().position(|a| a.kind == "image" && a.id == id) {
-                    self.composer_command(ComposeCommand::RemoveAttachment(index));
-                    self.composer_client.refused(error);
-                    self.composer_notice(); self.request_redraw();
+                if let Some(index) = self
+                    .composer
+                    .view
+                    .attach
+                    .iter()
+                    .position(|a| a.kind == "image" && a.id == id)
+                {
+                    self.composer
+                        .handle(ComposeCommand::RemoveAttachment(index));
+                    failure = Some(error);
                 }
             }
         }
+        self.composer_images.reconcile(
+            &self.composer.view.attach,
+            &self.composer_client.protected_image_paths(),
+        );
+        if let Some(error) = failure {
+            self.composer_paste_failed(error);
+        } else {
+            self.composer_notice();
+            self.request_redraw();
+        }
+    }
+    fn composer_paste_failed(&mut self, error: String) {
+        // A local draft failure must not replace Unknown/Pending and strand its retry operation.
+        let pending = self.composer_client.has_pending();
+        if !pending {
+            self.composer_client.refused(error.clone());
+        }
+        self.composer_notice();
+        if pending {
+            let notice = self
+                .composer
+                .view
+                .notice
+                .get_or_insert_with(|| composer::Notice {
+                    kind: "refused".into(),
+                    text: String::new(),
+                });
+            notice.text.push_str(&format!(" · image paste: {error}"));
+        }
+        self.request_redraw();
     }
     fn composer_command(&mut self, command: ComposeCommand) {
         if !self.mute.pending() {
@@ -9228,30 +9303,105 @@ mod lazy_projection_tests {
     }
     #[cfg(target_os = "macos")]
     #[test]
-    fn image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard() {
-        if isolated_ui_case("lazy_projection_tests::image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard") { return; }
-        let (mut app,_) = fixture();
+    #[allow(clippy::disallowed_methods)] // Private headless fixture validates worker IO and exact owned cleanup.
+    fn image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard()
+     {
+        if isolated_ui_case(
+            "lazy_projection_tests::image_paste_injected_snapshot_uses_real_async_owner_and_atomic_delete_without_system_clipboard",
+        ) {
+            return;
+        }
+        let (mut app, _) = fixture();
         let (events, receive) = std::sync::mpsc::channel();
-        app.proxy = UiProxy::Headless(Arc::new(move |event| {let _ = events.send(event);}));
+        app.proxy = UiProxy::Headless(Arc::new(move |event| {
+            let _ = events.send(event);
+        }));
         app.composer_command(ComposeCommand::Focus(ComposeField::Body));
-        app.composer_command(ComposeCommand::Edit(EditCommand::Insert("before after".into())));
-        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {at:7,extend:false}));
+        app.composer_command(ComposeCommand::Edit(EditCommand::Insert(
+            "before after".into(),
+        )));
+        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+            at: 7,
+            extend: false,
+        }));
         let mut png = Vec::new();
-        {let mut writer = png::Encoder::new(&mut png,1,1).write_header().unwrap(); writer.write_image_data(&[123]).unwrap();}
-        app.composer_paste_content(bboxy450_term_desktop::ClipboardContent::Image {bytes:png.clone(),format:bboxy450_term_desktop::ClipboardImageFormat::Png});
-        assert_eq!(app.composer.view.text,"before [Image #1]after");
+        {
+            let mut writer = png::Encoder::new(&mut png, 1, 1).write_header().unwrap();
+            writer.write_image_data(&[123]).unwrap();
+        }
+        app.composer_paste_content(bboxy450_term_desktop::ClipboardContent::Image {
+            bytes: png.clone(),
+            format: bboxy450_term_desktop::ClipboardImageFormat::Png,
+        });
+        assert_eq!(app.composer.view.text, "before [Image #1]after");
         assert!(app.composer.view.attach[0].path.is_empty());
-        let UiEvent::ComposerImageReady {id,result} = receive.recv_timeout(Duration::from_secs(10)).unwrap() else {panic!("image completion")};
-        app.composer_image_ready(id,result);
+        let UiEvent::ComposerImageReady { id, result } =
+            receive.recv_timeout(Duration::from_secs(10)).unwrap()
+        else {
+            panic!("image completion")
+        };
+        app.reject_focus = true;
+        app.composer_image_ready(id, result);
+        app.reject_focus = false;
         let path = std::path::PathBuf::from(&app.composer.view.attach[0].path);
-        assert_eq!(std::fs::read(&path).unwrap(),png);
+        assert_eq!(std::fs::read(&path).unwrap(), png);
         assert!(app.composer_images.validate(&app.composer.view.attach));
-        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {at:17,extend:false}));
-        app.composer_command(ComposeCommand::Edit(EditCommand::Delete {backwards:true}));
-        assert_eq!(app.composer.view.text,"before after"); assert!(app.composer.view.attach.is_empty());
+        app.composer_command(ComposeCommand::Edit(EditCommand::SetCaret {
+            at: 17,
+            extend: false,
+        }));
+        app.composer_command(ComposeCommand::Edit(EditCommand::Delete {
+            backwards: true,
+        }));
+        assert_eq!(app.composer.view.text, "before after");
+        assert!(app.composer.view.attach.is_empty());
         let deadline = Instant::now() + Duration::from_secs(5);
-        while path.exists() && Instant::now() < deadline {std::thread::sleep(Duration::from_millis(10));}
+        while path.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
         assert!(!path.exists());
+        app.composer.view.to = vec![composer::Address {
+            destination: "swarms/fixture".into(),
+            ..Default::default()
+        }];
+        let ComposeOutcome::Submit(draft) = app.composer.handle(ComposeCommand::Send) else {
+            panic!("fixture draft")
+        };
+        let commands = app.composer_client.admitted(
+            app.composer_client
+                .prepare(Some(bbt_proto::SwarmId::from_u128(1)), draft)
+                .unwrap(),
+        );
+        let live::UiMsg::Messaging { id: operation, .. } = commands[0] else {
+            panic!("fixture message")
+        };
+        let mut results = messaging::Results::default();
+        results.push(
+            operation,
+            messaging::Reply::Unknown("fixture disconnect".into()),
+        );
+        app.composer_client.replies(&results);
+        app.composer
+            .handle(ComposeCommand::Attach(composer::Attachment {
+                kind: "image".into(),
+                id: "failed".into(),
+                ..Default::default()
+            }));
+        app.reject_focus = true;
+        app.composer_image_ready("failed".into(), Err("invalid_image_fixture".into()));
+        assert!(app.composer.view.attach.is_empty());
+        assert_eq!(app.composer.view.text, "before after");
+        assert!(matches!(
+            app.composer_client.status,
+            messaging::Status::Unknown(_)
+        ));
+        assert!(!app.composer_client.retry().is_empty());
+        app.composer_paste_failed("clipboard snapshot fixture failure".into());
+        assert!(matches!(
+            app.composer_client.status,
+            messaging::Status::Unknown(_)
+        ));
+        assert!(!app.composer_client.retry().is_empty());
     }
     fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;

@@ -6,3 +6,12 @@ Checks: make test-image-paste-ui — exit 0 (4 marker tests including duplicated
 Checks: git diff --check — exit 0.
 Remaining: app runtime/transport tests, strict Clippy, final exact-source gate; root warm-target coordination required to preserve 10GiB free-space precondition.
 Raw logs: /private/tmp/bboxy450-image-paste-focused.log /private/tmp/bboxy450-image-paste-markers.log (outside Git).
+
+Followup: independent read-only review identified and fixed bracket-picker span drift, image completion while reject editor is focused, and local paste failures overwriting Unknown send state. Regression coverage added; numbering resets after matching stored draft.
+Checks: make test-image-paste-desktop test-image-paste-ui test-ui-overlays — exit 0; desktop core 2 tests, private native pasteboard 1 test, atomic marker 6 tests, overlay interaction 5 tests, strict UI all-target Clippy.
+Checks: make test-desktop — exit 0; layering and cross-OS scripts, portable/native facade tests, strict desktop core/macOS/facade all-target Clippy, unattended owned native window/menu probe.
+Checks: make test-licenses — exit 0 (policy/source checks plus negative fixtures).
+Checks: git diff --check — exit 0.
+Not run here: make test-image-paste-app, check-image-paste, make test/full smoke. Root explicitly owns app verification and final combined exact-source gate on its existing warm target, avoiding a duplicate cold app target under the 10GiB free-space precondition. No operator input or real clipboard mutation needed.
+Raw logs: /private/tmp/bboxy450-image-paste-final-focused.log /private/tmp/bboxy450-image-paste-desktop.log /private/tmp/bboxy450-image-paste-ui.log /private/tmp/bboxy450-image-paste-licenses.log.
+Commit handoff: feature baseline 26457d73; root boundary fix imported as 75975c55 from 2eb0196e (exclude imported commit from feature cherry-pick). Followup commit carries lifecycle fixes and this evidence.

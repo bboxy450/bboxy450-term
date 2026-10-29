@@ -4,7 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![doc = include_str!("../README.md")]
 //! AppKit pasteboard snapshots; image decoding/encoding is a separate worker operation.
 use bboxy450_term_desktop_core::{
     ClipboardContent, ClipboardImageFormat, Error, MAX_CLIPBOARD_IMAGE_BYTES,

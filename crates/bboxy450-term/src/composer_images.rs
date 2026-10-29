@@ -4,7 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! App process boundaries, IO-owned terminal models and worker-prepared frames.
 //! Private local image custody. Clipboard bytes are copied; arbitrary source paths are never opened.
 use bboxy450_term_desktop::{ClipboardImageFormat, MAX_CLIPBOARD_IMAGE_BYTES};
 use bbt_ui::modules::composer::Attachment;
@@ -30,6 +29,7 @@ impl OwnedImage {
             bboxy450_term_desktop::clipboard_image_png(bytes, format).map_err(|e| e.to_string())?;
         Self::save_png(&png)
     }
+    #[allow(clippy::disallowed_methods)] // This private writer is called only on a blocking worker.
     fn save_png(png: &[u8]) -> Result<Self, String> {
         if !png.starts_with(b"\x89PNG\r\n\x1a\n") || png.len() > MAX_CLIPBOARD_IMAGE_BYTES {
             return Err("clipboard_image_invalid".into());
@@ -50,6 +50,7 @@ impl OwnedImage {
     }
 }
 impl Drop for OwnedImage {
+    #[allow(clippy::disallowed_methods)] // The removal itself runs inside spawn_blocking.
     fn drop(&mut self) {
         if !self.preserve {
             let path = self.path.clone();
@@ -126,6 +127,7 @@ pub fn reference(image: &Attachment) -> Result<String, &'static str> {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // Disposable files/processes; no UI callback runs here.
 mod tests {
     use super::*;
     const PNG: &[u8] = b"\x89PNG\r\n\x1a\nprivate fixture bytes";

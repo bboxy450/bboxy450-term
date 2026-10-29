@@ -303,61 +303,155 @@ fn composer_hides_routine_success_but_keeps_send_failures_visible() {
 }
 
 fn image_draft() -> Controller {
-    Controller::new(Composer { to: vec![Address { destination:"swarms/fixture".into(),..Default::default() }], focus:true, ..Default::default() })
+    Controller::new(Composer {
+        to: vec![Address {
+            destination: "swarms/fixture".into(),
+            ..Default::default()
+        }],
+        focus: true,
+        ..Default::default()
+    })
 }
 fn paste_image(editor: &mut Controller, id: &str) {
-    assert_eq!(editor.handle(Command::Attach(Attachment {kind:"image".into(),id:id.into(),..Default::default()})), Outcome::Changed);
+    assert_eq!(
+        editor.handle(Command::Attach(Attachment {
+            kind: "image".into(),
+            id: id.into(),
+            ..Default::default()
+        })),
+        Outcome::Changed
+    );
 }
 #[test]
 fn image_markers_paste_at_utf16_cursor_and_delete_atomically_from_each_edge() {
-    for (caret,backwards) in [(12,true),(2,false),(7,true)] {
+    for (caret, backwards) in [(12, true), (2, false), (7, true)] {
         let mut editor = image_draft();
         editor.handle(Command::Edit(Edit::Insert("🦊 trailing".into())));
-        editor.handle(Command::Edit(Edit::SetCaret {at:2,extend:false}));
-        paste_image(&mut editor,"one");
-        assert_eq!(editor.view.text,"🦊[Image #1] trailing");
-        assert!(!editor.send_enabled(),"a pending image cannot race a send");
-        editor.handle(Command::ImageReady {id:"one".into(),path:"/private/tmp/bboxy450-image-one.png".into()});
+        editor.handle(Command::Edit(Edit::SetCaret {
+            at: 2,
+            extend: false,
+        }));
+        paste_image(&mut editor, "one");
+        assert_eq!(editor.view.text, "🦊[Image #1] trailing");
+        assert!(!editor.send_enabled(), "a pending image cannot race a send");
+        editor.handle(Command::ImageReady {
+            id: "one".into(),
+            path: "/private/tmp/bboxy450-image-one.png".into(),
+        });
         assert!(editor.send_enabled());
-        editor.handle(Command::Edit(Edit::SetCaret {at:caret,extend:false}));
-        editor.handle(Command::Edit(Edit::Delete {backwards}));
-        assert_eq!(editor.view.text,"🦊 trailing");
+        editor.handle(Command::Edit(Edit::SetCaret {
+            at: caret,
+            extend: false,
+        }));
+        editor.handle(Command::Edit(Edit::Delete { backwards }));
+        assert_eq!(editor.view.text, "🦊 trailing");
         assert!(editor.view.attach.is_empty());
     }
 }
 #[test]
 fn image_markers_multiple_images_selection_replacement_and_cancel_are_consistent() {
     let mut editor = image_draft();
-    paste_image(&mut editor,"one"); paste_image(&mut editor,"two");
-    assert_eq!(editor.view.text,"[Image #1][Image #2]");
-    editor.handle(Command::Edit(Edit::SetCaret {at:9,extend:false}));
-    editor.handle(Command::Edit(Edit::SetCaret {at:11,extend:true}));
+    paste_image(&mut editor, "one");
+    paste_image(&mut editor, "two");
+    assert_eq!(editor.view.text, "[Image #1][Image #2]");
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 9,
+        extend: false,
+    }));
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 11,
+        extend: true,
+    }));
     editor.handle(Command::Edit(Edit::Insert("replacement".into())));
-    assert_eq!(editor.view.text,"replacement"); assert!(editor.view.attach.is_empty());
-    paste_image(&mut editor,"three");
-    assert_eq!(editor.view.text,"replacement[Image #3]");
+    assert_eq!(editor.view.text, "replacement");
+    assert!(editor.view.attach.is_empty());
+    paste_image(&mut editor, "three");
+    assert_eq!(editor.view.text, "replacement[Image #3]");
     editor.handle(Command::RemoveAttachment(0));
-    assert_eq!(editor.view.text,"replacement"); assert!(editor.view.attach.is_empty());
-    assert_eq!(editor.handle(Command::ImageReady {id:"three".into(),path:"late".into()}), Outcome::Local);
+    assert_eq!(editor.view.text, "replacement");
+    assert!(editor.view.attach.is_empty());
+    assert_eq!(
+        editor.handle(Command::ImageReady {
+            id: "three".into(),
+            path: "late".into()
+        }),
+        Outcome::Local
+    );
 }
 #[test]
 fn image_markers_ime_cancel_preserves_image_and_commit_replaces_it_whole() {
-    let mut editor = image_draft(); paste_image(&mut editor,"one");
-    editor.handle(Command::Edit(Edit::SetCaret {at:9,extend:false}));
-    editor.handle(Command::Edit(Edit::Preedit {text:"字".into(),caret:Some(1)}));
+    let mut editor = image_draft();
+    paste_image(&mut editor, "one");
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 9,
+        extend: false,
+    }));
+    editor.handle(Command::Edit(Edit::Preedit {
+        text: "字".into(),
+        caret: Some(1),
+    }));
     editor.handle(Command::Edit(Edit::CancelPreedit));
-    assert_eq!(editor.view.text,"[Image #1]"); assert_eq!(editor.view.attach.len(),1);
-    editor.handle(Command::Edit(Edit::Preedit {text:"字".into(),caret:Some(1)}));
+    assert_eq!(editor.view.text, "[Image #1]");
+    assert_eq!(editor.view.attach.len(), 1);
+    editor.handle(Command::Edit(Edit::Preedit {
+        text: "字".into(),
+        caret: Some(1),
+    }));
     editor.handle(Command::Edit(Edit::Commit("字".into())));
-    assert_eq!(editor.view.text,"字"); assert!(editor.view.attach.is_empty());
+    assert_eq!(editor.view.text, "字");
+    assert!(editor.view.attach.is_empty());
 }
 
 #[test]
 fn image_markers_track_owned_span_when_plain_text_contains_an_identical_label() {
-    let mut editor = image_draft(); paste_image(&mut editor,"one");
-    editor.handle(Command::Edit(Edit::SetCaret {at:0,extend:false}));
+    let mut editor = image_draft();
+    paste_image(&mut editor, "one");
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 0,
+        extend: false,
+    }));
     editor.handle(Command::Edit(Edit::Insert("[Image #1]".into())));
-    editor.handle(Command::Edit(Edit::SetCaret {at:20,extend:false}));
-    editor.handle(Command::Edit(Edit::Delete {backwards:true}));
-    assert_eq!(editor.view.text,"[Image #1]"); assert!(editor.view.attach.is_empty());
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 20,
+        extend: false,
+    }));
+    editor.handle(Command::Edit(Edit::Delete { backwards: true }));
+    assert_eq!(editor.view.text, "[Image #1]");
+    assert!(editor.view.attach.is_empty());
+}
+
+#[test]
+fn image_markers_bracket_picker_cleanup_keeps_owned_span_at_original_position() {
+    let mut editor = image_draft();
+    paste_image(&mut editor, "one");
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 0,
+        extend: false,
+    }));
+    editor.handle(Command::Edit(Edit::Insert("[[".into())));
+    assert!(editor.view.attach_pick.is_some());
+    editor.handle(Command::Escape);
+    editor.handle(Command::Edit(Edit::SetCaret {
+        at: 10,
+        extend: false,
+    }));
+    editor.handle(Command::Edit(Edit::Delete { backwards: true }));
+    assert_eq!(editor.view.text, "");
+    assert!(editor.view.attach.is_empty());
+}
+
+#[test]
+fn image_markers_reset_numbering_only_after_matching_stored_draft() {
+    let mut editor = image_draft();
+    paste_image(&mut editor, "one");
+    editor.handle(Command::ImageReady {
+        id: "one".into(),
+        path: "/private/tmp/bboxy450-image-one.png".into(),
+    });
+    let Outcome::Submit(sent) = editor.handle(Command::Send) else {
+        panic!("ready image")
+    };
+    editor.stored(&sent);
+    paste_image(&mut editor, "two");
+    assert_eq!(editor.view.text, "[Image #1]");
 }
