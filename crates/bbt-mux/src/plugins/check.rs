@@ -893,10 +893,17 @@ mod tests {
         let document: Value = serde_json::from_str(Contract::TaskSystem.schema()).unwrap();
         let tools = crate::mcp::work_items::catalogue(&actor);
         let mut seen = Vec::new();
+        let mut host_local = Vec::new();
         for tool in tools {
             let Some(method) = tool["name"].as_str().unwrap().strip_prefix("task_") else {
                 continue;
             };
+            // These authenticated Index maintenance operations are local to the
+            // host, not methods added to the portable task_system 1.0 contract.
+            if matches!(method, "import" | "import_context" | "reconcile") {
+                host_local.push(method.to_owned());
+                continue;
+            }
             let schema = Contract::TaskSystem.method_schema(method, false).unwrap();
             let resolved = expand(
                 &schema,
@@ -921,6 +928,8 @@ mod tests {
                 "accept", "delegate", "list", "reassign", "reject", "report", "status"
             ]
         );
+        host_local.sort();
+        assert_eq!(host_local, ["import", "import_context", "reconcile"]);
     }
 
     #[tokio::test]

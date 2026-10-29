@@ -278,6 +278,7 @@ impl Index {
         let destination = self.root.join(&prefix);
         if destination.symlink_metadata().is_ok() {
             drop(lock);
+            after_staging()?;
             validate()?;
             return self.import_receipt(&destination, &bundle);
         }
@@ -517,10 +518,11 @@ impl Index {
             })
             .collect::<Result<_>>()?;
         receipt["published_sha256"] = json!(hashes);
+        let receipt_data_sha256 = digest(&serde_json::to_vec(&receipt)?);
         let mut intent = Draft::new(
             format!("activity/task-import/{}/prepared", bundle.digest),
             "mux/task-import",
-            json!({"bundle_sha256":bundle.digest,"source_records":bundle.manifest.rows.len(),"receipt":format!(".bboxy/{prefix}/receipt.json"),"agent":author.id}),
+            json!({"bundle_sha256":bundle.digest,"source_records":bundle.manifest.rows.len(),"receipt":format!(".bboxy/{prefix}/receipt.json"),"agent":author.id,"receipt_data_sha256":receipt_data_sha256}),
         );
         intent.seat = author.seat;
         intent.generation = author.generation;
@@ -627,6 +629,36 @@ impl Index {
             &serde_json::to_vec(&receipt)?,
             &Signature::from_slice(&decode(&signature)?)?,
         )?;
+        // Authority comes from the host's recorded, admitted import intent,
+        // never from the key that an untrusted receipt declares for itself.
+        let sequence = receipt["activity_intent"]["sequence"]
+            .as_u64()
+            .ok_or_else(|| invalid("receipt lacks admitted import intent"))?;
+        let intent = self
+            .activity
+            .at(sequence)?
+            .ok_or_else(|| invalid("admitted import intent unavailable"))?;
+        intent.verify()?;
+        let mut core = receipt.clone();
+        for field in ["activity_intent", "signer", "public_key"] {
+            core.as_object_mut().unwrap().remove(field);
+        }
+        if intent.seq != sequence
+            || intent.event.id.to_string() != receipt["activity_intent"]["id"]
+            || intent.event.source != "mux/task-import"
+            || intent.event.subject != format!("activity/task-import/{}/prepared", bundle.digest)
+            || intent.provenance.signer != public
+            || intent.event.payload["agent"] != receipt["signer"]
+            || intent.event.payload["bundle_sha256"] != bundle.digest
+            || intent.event.payload["source_records"] != bundle.manifest.rows.len()
+            || intent.event.payload["receipt"]
+                != format!(".bboxy/imports/{}/receipt.json", bundle.digest)
+            || intent.event.payload["receipt_data_sha256"] != digest(&serde_json::to_vec(&core)?)
+        {
+            return Err(invalid(
+                "receipt is not bound to its admitted import intent",
+            ));
+        }
         for row in receipt["records"].as_array().unwrap() {
             let id = row["id"]
                 .as_str()
@@ -919,6 +951,56 @@ mod tests {
         );
         std::fs::write(input.join("source.md"), b"tampered").unwrap();
         assert!(Bundle::load(&input.join("manifest.json"), &audit, &input).is_err());
+    }
+    #[test]
+    fn self_signed_replacement_key_and_resigned_mapping_are_not_admitted_receipts() {
+        use ed25519_dalek::Verifier;
+        let (_temp, index, input) = fixture();
+        let key = SigningKey::from_bytes(&[73; 32]);
+        let owner = Ulid::new();
+        let author = crate::provenance::author::Author::seat(owner, Some(1), &key);
+        let result = index.import_author(load(&input), owner, &author).unwrap();
+        let path = PathBuf::from(result["receipt"].as_str().unwrap());
+        let original: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        for replace_key in [true, false] {
+            let mut receipt = original.clone();
+            receipt.as_object_mut().unwrap().remove("signature");
+            let signing = if replace_key {
+                SigningKey::from_bytes(&[19; 32])
+            } else {
+                key.clone()
+            };
+            if replace_key {
+                receipt["signer"] = json!(format!("seat:{}", Ulid::new()));
+                receipt["public_key"] = json!(
+                    base64::engine::general_purpose::STANDARD
+                        .encode(signing.verifying_key().as_bytes())
+                );
+            } else {
+                let name = receipt["published_sha256"]
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .next()
+                    .unwrap()
+                    .clone();
+                receipt["published_sha256"][name] = json!("0".repeat(64));
+            }
+            let bytes = serde_json::to_vec(&receipt).unwrap();
+            let signature = signing.sign(&bytes);
+            signing.verifying_key().verify(&bytes, &signature).unwrap(); // internally consistent, still unauthorized
+            receipt["signature"] =
+                json!(base64::engine::general_purpose::STANDARD.encode(signature.to_bytes()));
+            std::fs::remove_file(&path).unwrap();
+            std::fs::write(&path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+            let failure = index
+                .import_author(load(&input), owner, &author)
+                .unwrap_err();
+            assert!(
+                failure.to_string().contains("admitted import intent"),
+                "{failure}"
+            );
+        }
     }
     #[test]
     fn ordinary_write_during_staging_completes_and_conflicted_range_refuses_then_replays() {

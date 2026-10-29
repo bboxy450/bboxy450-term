@@ -140,8 +140,11 @@ test-task-migration:
 	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib migration -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_contract_properties_derive_from_the_current_native_tool_catalogue; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test messaging; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib task_migration_verbs; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir task_migration_catalogue_upgrade -- --ignored --nocapture --test-threads=1; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
 
 .PHONY: parity-settings

@@ -170,6 +170,10 @@ enum Command {
         crate::mcp::Call,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
+    TaskImportAuthority(
+        Box<task_import::Authority>,
+        std::sync::mpsc::SyncSender<Result<()>>,
+    ),
     GuiSpawn(
         Ulid,
         bbt_proto::SpawnSpec,
@@ -231,6 +235,8 @@ enum Command {
     KnowledgeFixture(Arc<dyn DataSource + Send + Sync>, oneshot::Sender<()>),
     #[cfg(test)]
     TaskImportFixture(Arc<dyn Fn() + Send + Sync>, oneshot::Sender<()>),
+    #[cfg(test)]
+    TaskImportReopenFailed(oneshot::Sender<()>),
     GuiMessageRow(
         Ulid,
         Ulid,
@@ -6115,8 +6121,15 @@ impl Worker {
             ));
         }
         if matches!(&request, bbt_proto::gui::UiRequest::ClipboardRead)
-            && !self.identity.issued_by().is_some_and(|label| label.starts_with("test-account:"))
-        { return Err(invalid("test_account_required: clipboard receipt requires a verified test account")); }
+            && !self
+                .identity
+                .issued_by()
+                .is_some_and(|label| label.starts_with("test-account:"))
+        {
+            return Err(invalid(
+                "test_account_required: clipboard receipt requires a verified test account",
+            ));
+        }
         let origin = self.identity.bind_origin(origin);
         let device_id = self.operator_device_for_effect()?;
         let principal = crate::mcp::Principal::Operator {
@@ -9438,6 +9451,17 @@ impl Worker {
                     #[cfg(test)]
                     Command::TaskImportFixture(hook, reply) => {
                         self.task_import_hook = Some(hook);
+                        let _ = reply.send(());
+                    }
+                    Command::TaskImportAuthority(authority, reply) => {
+                        let _ = reply.send(self.validate_task_import_authority(&authority));
+                    }
+                    #[cfg(test)]
+                    Command::TaskImportReopenFailed(reply) => {
+                        self.identity
+                            .note_reopen_failed(bbt_proto::identity::ReopenFailure {
+                                reason: "private import custody reopen failure".into(),
+                            });
                         let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {

@@ -21,6 +21,16 @@ the supervisor's exact owned child attachment, keeps the seat/history, and is
 distinct from reversible close. `UI_CONTROL_VERSION = 4` requires an old logic
 owner to refresh before these controls are sent.
 
+The independent `MCP_CONTROL_VERSION = 7` adds the native task import/context/
+reconcile catalogue. Normal same-account UI reattach replaces an owner
+advertising version 6 or an absent MCP marker, retaining the supervisor, all
+seat process IDs/generations/native session IDs and live PTY shell state. A
+matching healthy owner is retained. `make test-task-migration` proves this with
+private home/account/file custody, retained authenticated Oracle and worker
+bridges, selected-root context and actual shell output. The fixture advertises
+the older contract in its private owner record; it does not run an old binary
+or authorize a live application restart.
+
 On the GUI door, a committed SeatControl returns the current authoritative
 `GuiReply::Seat` before `SeatControlled {op}`. The GUI applies that metadata before
 publishing completion, so its cached seat listing observes its own write without

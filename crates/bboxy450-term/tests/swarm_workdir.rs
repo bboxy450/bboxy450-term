@@ -2365,6 +2365,243 @@ fn swarm_switches_wait_for_membership_and_dim_real_inactive_seats() {
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }
 
+// keeps: task API upgrade contract; task_import_context/import/reconcile.
+#[test]
+#[ignore = "private same-account logic upgrade; make test-task-migration"]
+fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
+    use bbt_mux::mcp::bridge::{Bridge, Config};
+    use serde_json::json;
+
+    fn bridge(fixture: &Fixture, seat: &str) -> Bridge {
+        // Only throwaway harness admission is read, never printed or persisted
+        // outside this private HOME. The same bridge is retained across refresh.
+        let admission =
+            fs::read_to_string(fixture.root.join(format!("home/{seat}.admission"))).unwrap();
+        let fields: std::collections::BTreeMap<_, _> = admission
+            .lines()
+            .filter_map(|line| line.split_once('='))
+            .collect();
+        let cap = fields["BBOXY_CAPABILITY"];
+        let mut bridge = Bridge::new(Config {
+            socket: fields["BBOXY_SOCK"].into(),
+            seat: seat.parse().unwrap(),
+            generation: fields["BBOXY_GENERATION"].parse().unwrap(),
+            capability: std::array::from_fn(|i| {
+                u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap()
+            }),
+        });
+        let initialized = rpc(
+            &mut bridge,
+            "initialize",
+            json!({"protocolVersion":"2025-11-25","clientInfo":{"name":"task-upgrade-fixture","version":"1"},"capabilities":{}}),
+        );
+        assert!(initialized.get("error").is_none(), "{initialized}");
+        bridge
+    }
+    fn rpc(bridge: &mut Bridge, method: &str, params: Value) -> Value {
+        bridge
+            .handle(
+                &serde_json::to_vec(
+                    &json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+    }
+    fn assert_catalogue(fixture: &Fixture, oracle: &mut Bridge, worker: &mut Bridge) {
+        for (bridge, authorized) in [(oracle, true), (worker, false)] {
+            let tools = rpc(bridge, "tools/list", json!({}));
+            assert!(tools.get("error").is_none(), "{tools}");
+            let tools = tools["result"]["tools"].as_array().unwrap();
+            for name in ["task_import_context", "task_import", "task_reconcile"] {
+                assert_eq!(
+                    tools.iter().any(|tool| tool["name"] == name),
+                    authorized,
+                    "{name} catalogue authority"
+                );
+                let reply = rpc(bridge, "tools/call", json!({"name":name,"arguments":{}}));
+                assert!(reply.get("error").is_none(), "{reply}");
+                if authorized && name == "task_import_context" {
+                    assert_eq!(reply["result"]["isError"], false, "{reply}");
+                    assert_eq!(
+                        reply["result"]["structuredContent"]["expected_root"],
+                        json!(
+                            fixture
+                                .root
+                                .join("repository/.bboxy")
+                                .canonicalize()
+                                .unwrap()
+                        )
+                    );
+                } else {
+                    assert_eq!(reply["result"]["isError"], true, "{reply}");
+                    if !authorized {
+                        assert!(reply.to_string().contains("oracle-class"), "{reply}");
+                    }
+                }
+            }
+        }
+    }
+    fn retained(fixture: &Fixture, before: &Value) {
+        let after = fixture.ctl(&["seat", "ls"]);
+        assert_eq!(
+            after.as_array().unwrap().len(),
+            before.as_array().unwrap().len()
+        );
+        for old in before.as_array().unwrap() {
+            let current = after
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["record"]["id"] == old["record"]["id"])
+                .unwrap();
+            for field in ["generation", "harness_session_id", "role", "swarm"] {
+                assert_eq!(current["record"][field], old["record"][field], "{field}");
+            }
+            assert_eq!(current["state"]["process"], old["state"]["process"]);
+            assert_eq!(current["state"]["generation"], old["state"]["generation"]);
+        }
+    }
+    fn reattach(fixture: &mut Fixture) {
+        let mut ui = fixture.app.take().unwrap();
+        ui.kill().unwrap();
+        ui.wait().unwrap();
+        fixture.start();
+    }
+    fn shell_echo(fixture: &Fixture, shell: &str, label: &str) {
+        let output = fixture.root.join(format!("{label}.shell"));
+        fixture.ctl(&[
+            "seat",
+            "type",
+            shell,
+            &format!(
+                "printf '{label}:%s:%s\\n' \"$KEEP_MIGRATION_WORK\" $$ | tee '{}'",
+                output.display()
+            ),
+        ]);
+        fixture.ctl(&["seat", "key", shell, "enter"]);
+        fixture.ctl(&[
+            "seat",
+            "wait",
+            shell,
+            "--text",
+            &format!("(?m)^{label}:private-state:[0-9]+$"),
+            "--timeout",
+            "10000",
+        ]);
+        let rows = fixture.ctl(&["seat", "ls"]);
+        let row = rows
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == shell)
+            .unwrap();
+        assert_eq!(
+            fs::read_to_string(output).unwrap(),
+            format!("{label}:private-state:{}\n", row["state"]["process"]["pid"])
+        );
+    }
+
+    let mut fixture = Fixture::new();
+    fs::create_dir_all(fixture.root.join("repository/.bboxy/notes")).unwrap();
+    fs::write(
+        fixture.root.join("repository/.bboxy/notes/private.md"),
+        format!(
+            "---\nid: {}\nnumber: 1\ntype: note\n---\nPrivate upgrade control.\n",
+            bbt_mux::Ulid::new()
+        ),
+    )
+    .unwrap();
+    fs::write(fixture.root.join("bin/claude"),
+        "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
+    fixture.start();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let oracle = fixture.spawn("claude", &swarm, None);
+    let worker = fixture.ctl(&[
+        "seat", "spawn", "claude", "--place", "tab", "--swarm", &swarm, "--role", "executor",
+    ])["seat"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    for seat in [&oracle, &worker] {
+        fixture.expect_cwd(seat, &fixture.root.join("repository"));
+    }
+    let shell = fixture.spawn("zsh", &swarm, None);
+    fixture.ctl(&["seat", "type", &shell, "KEEP_MIGRATION_WORK=private-state"]);
+    fixture.ctl(&["seat", "key", &shell, "enter"]);
+    shell_echo(&fixture, &shell, "BEFORE");
+    let before = fixture.ctl(&["seat", "ls"]);
+    assert_eq!(before.as_array().unwrap().len(), 3);
+    for seat in [&oracle, &worker] {
+        let row = before
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == *seat)
+            .unwrap();
+        assert!(
+            row["record"]["harness_session_id"]
+                .as_str()
+                .is_some_and(|id| !id.is_empty())
+        );
+    }
+    let mut oracle_bridge = bridge(&fixture, &oracle);
+    let mut worker_bridge = bridge(&fixture, &worker);
+    assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
+    let owner_path = fixture.root.join("run/logic.owner.json");
+    let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    assert_eq!(owner["ready"]["mcp_control_version"], 7);
+    let owners = fixture.owners();
+    reattach(&mut fixture);
+    assert_eq!(
+        fixture.owners(),
+        owners,
+        "same-version attach must retain logic"
+    );
+    retained(&fixture, &before);
+
+    for version in [Some(6), None] {
+        let owners = fixture.owners();
+        let mut ui = fixture.app.take().unwrap();
+        ui.kill().unwrap();
+        ui.wait().unwrap();
+        // Advertise an older or missing contract in this disposable owner only.
+        // This tests the real attach/refresh path, not an old executable binary.
+        let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        if let Some(version) = version {
+            owner["ready"]["mcp_control_version"] = json!(version);
+        } else {
+            owner["ready"]
+                .as_object_mut()
+                .unwrap()
+                .remove("mcp_control_version");
+        }
+        fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+        fixture.start();
+        let upgraded = fixture.owners();
+        assert_eq!(upgraded[0], owners[0], "supervisor replaced");
+        assert_ne!(upgraded[1], owners[1], "older logic retained");
+        retained(&fixture, &before);
+        assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
+        shell_echo(
+            &fixture,
+            &shell,
+            if version.is_some() {
+                "AFTER6"
+            } else {
+                "AFTERMISSING"
+            },
+        );
+        eprintln!(
+            "task catalogue upgrade: advertised={version:?}; supervisor={} retained; logic {} -> {}; all 3 seat PIDs/generations/native sessions retained; same Oracle context and worker refusal; real shell state/PTY echo held",
+            upgraded[0], owners[1], upgraded[1]
+        );
+    }
+}
+
 // keeps: spec mcp-control-plane
 #[test]
 #[ignore = "private unattended seat-MCP/GUI/PTY boundary; make test-oracle-control"]
@@ -2942,13 +3179,19 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     let until = Instant::now() + Duration::from_secs(10);
     loop {
         let frame = fixture.ctl(&["ui", "layout"]);
-        if frame["regions"]["app-dialog:input"].is_null() && text(&frame).contains("🦊 RENDER CREW 👩🏽‍💻 🇺🇦") {
+        if frame["regions"]["app-dialog:input"].is_null()
+            && text(&frame).contains("🦊 RENDER CREW 👩🏽‍💻 🇺🇦")
+        {
             break;
         }
         assert!(Instant::now() < until, "rename never completed: {frame}");
         std::thread::sleep(Duration::from_millis(20));
     }
-    evidence(&fixture, "emoji-swarm-renamed", &fixture.ctl(&["ui", "layout"]));
+    evidence(
+        &fixture,
+        "emoji-swarm-renamed",
+        &fixture.ctl(&["ui", "layout"]),
+    );
     let screen = fixture.ctl(&["seat", "screen", &seat]);
     assert!(
         !screen.to_string().contains("🦊 render crew 👩🏽‍💻 🇺🇦")
@@ -2975,7 +3218,11 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
         );
         std::thread::sleep(Duration::from_millis(20));
     }
-    evidence(&fixture, "emoji-swarm-restored", &fixture.ctl(&["ui", "layout"]));
+    evidence(
+        &fixture,
+        "emoji-swarm-restored",
+        &fixture.ctl(&["ui", "layout"]),
+    );
     // The UI-control wire marker independently refreshes old logic, preserving
     // supervisor, live harness identity and durable swarm metadata.
     let mut ui = fixture.app.take().unwrap();

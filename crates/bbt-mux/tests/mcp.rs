@@ -2210,13 +2210,16 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
     assert_eq!(worker["tools"].as_array().unwrap().len(), 23);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 39);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 42);
     for tool in [
         "ch_link",
         "ch_pause",
         "ch_grant",
         "seat_input_text",
         "task_delegate",
+        "task_import_context",
+        "task_import",
+        "task_reconcile",
         "seat_mute",
         "seat_unmute",
     ] {

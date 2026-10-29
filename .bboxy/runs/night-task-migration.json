@@ -5,21 +5,82 @@
   "task": "tasks/2026-10-29-night-task-migration.md",
   "base": "618df56faccffce46dfec3d1d525b8d115b5d35a",
   "files": [
+    ".bboxy/interfaces/logic-gui.md",
+    ".bboxy/specs/plugins.md",
     ".bboxy/specs/work-items.md",
     "Makefile",
-    "crates/bbt-proto/src/messaging.rs",
-    "crates/bbt-proto/tests/messaging.rs",
-    "crates/bbt-mux/src/mcp/work_items.rs",
+    "crates/bboxy450-term/src/cockpit.rs",
+    "crates/bboxy450-term/src/ctl.rs",
+    "crates/bboxy450-term/src/ctl/task.rs",
+    "crates/bboxy450-term/tests/swarm_workdir.rs",
     "crates/bbt-mux/src/index.rs",
     "crates/bbt-mux/src/index/migration.rs",
     "crates/bbt-mux/src/logic.rs",
     "crates/bbt-mux/src/logic/task_import.rs",
+    "crates/bbt-mux/src/mcp/work_items.rs",
+    "crates/bbt-mux/src/plugins/check.rs",
     "crates/bbt-mux/tests/mcp.rs",
-    "crates/bboxy450-term/src/ctl.rs",
-    "crates/bboxy450-term/src/ctl/task.rs",
+    "crates/bbt-proto/src/messaging.rs",
+    "crates/bbt-proto/tests/messaging.rs",
     "scripts/test-task-migration.py"
   ],
-  "verification": [
+  "private_proof": {
+    "command": "make test-task-migration",
+    "records": 250,
+    "dependencies": 209,
+    "seeds": 41,
+    "published": 251,
+    "live_tasks": 7,
+    "source_revision": "3ef27cf85f3f63fe49b2061a0c966b0ee212e264",
+    "bundle_sha256": "c025b21f11d2b082ca00f90c80ecfd11acbae6debff0a7959de1b319d0a254e9",
+    "dispositions": "independently checked",
+    "raw_hashes": "250/250",
+    "links": 2742,
+    "disposition_counts": {
+      "close_completed": 24,
+      "close_superseded": 8,
+      "retain_deferred": 1,
+      "retain_narrowed": 3,
+      "retain_active": 2,
+      "already_done": 1,
+      "retain_followup": 1,
+      "archive_note": 1
+    },
+    "task171_sha256": "068ee50ffc790f33f35bc2ddfba1629898368b40d542baf1249818f51ee5fad8",
+    "historical_wakes": 0,
+    "duplicate_prevention": true,
+    "known_no_effect_attempts": 2,
+    "evidence": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/private-proof-final"
+  },
+  "evidence_directory": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i",
+  "source_packet": {
+    "lossless-import-manifest.json": "fceea2a978283fc46466270dca315ee2193092599696a04364021f5b21d566b8",
+    "checked-audit.json": "53acec13a5c04412b6c15fcad50cc8cf8ea9e6e730739b95cbe2e57fbab2c134"
+  },
+  "workflow": {
+    "discovery": "Authenticated Oracle task_import_context {} returns only the selected canonical expected_root; ctl task import-context is the operator equivalent.",
+    "import_command": "bboxy450-term ctl task import /tmp/nyx-task-reconciliation-qzzo4m5p/lossless-import-manifest.json --audit /tmp/nyx-task-reconciliation-qzzo4m5p/checked-audit.json --source-dir /tmp/nyx-task-reconciliation-qzzo4m5p/dependency-source --expected-root ROOT_FROM_AUTHENTICATED_CONTEXT --owner-seat ADMITTED_ORACLE_SEAT_ID",
+    "recovery": "Query an unknown original operation. Known no-effect stale-allocation/busy results may use a fresh operation with the identical pinned bundle; an existing signed receipt reuses its mapping without reimport.",
+    "live_application": "Not attempted. No backing-store edits, live daemon refresh/restart, historical delegation or issue closure. New actions require the Oracle safe-rollout step in live ICD201.",
+    "mcp_import_arguments": {
+      "expected_root": "EXACT_ROOT_FROM_AUTHENTICATED_task_import_context",
+      "manifest_path": "/tmp/nyx-task-reconciliation-qzzo4m5p/lossless-import-manifest.json",
+      "audit_path": "/tmp/nyx-task-reconciliation-qzzo4m5p/checked-audit.json",
+      "source_dir": "/tmp/nyx-task-reconciliation-qzzo4m5p/dependency-source",
+      "bundle_sha256": "c025b21f11d2b082ca00f90c80ecfd11acbae6debff0a7959de1b319d0a254e9",
+      "owner_seat": "CURRENT_ADMITTED_SAME_ROOT_ORACLE_SEAT_ID"
+    },
+    "live_availability": {
+      "witness": "Oracle orient op01M635DF27HDKG3HZV4HYE2J0S, generation1, role/class oracle, root_revision0; message01M635DF5PB7HC290RJS3NMHKS",
+      "observed": "Task catalogue lacks task_import_context/task_import/task_reconcile. Daemon source/version is not exposed. Worker catalogue absence alone would not prove this.",
+      "applied": false
+    }
+  },
+  "supplemental_tasks": [
+    "tasks/2026-10-29-task-api-upgrade-scope.md",
+    "tasks/2026-10-29-native-task-maintenance-boundary.md"
+  ],
+  "prior_prechecks": [
     {
       "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-migration",
       "exit_code": 0,
@@ -45,42 +106,77 @@
       "sha256": "879514703cd323f769df856f6b70fc5077cc5f510ef6d233074b7da5747d71ea"
     }
   ],
-  "private_proof": {
-    "command": "make test-task-migration",
-    "records": 250,
-    "dependencies": 209,
-    "seeds": 41,
-    "published": 251,
-    "live_tasks": 7,
-    "source_revision": "3ef27cf85f3f63fe49b2061a0c966b0ee212e264",
-    "bundle_sha256": "c025b21f11d2b082ca00f90c80ecfd11acbae6debff0a7959de1b319d0a254e9",
-    "dispositions": "independently checked",
-    "raw_hashes": "250/250",
-    "links": 2742,
-    "disposition_counts": {
-      "close_completed": 24,
-      "close_superseded": 8,
-      "retain_deferred": 1,
-      "retain_narrowed": 3,
-      "retain_active": 2,
-      "already_done": 1,
-      "retain_followup": 1,
-      "archive_note": 1
+  "prior_prechecks_note": "Pre-supplemental source only; not final exact-source verification.",
+  "verification": [
+    {
+      "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-migration",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-authority-proof-v2.log",
+      "sha256": "6bd088df0258640604c0d7b9ade7e8f7b745247b1bc9f139cf2ced791ec9a73a"
     },
-    "task171_sha256": "df2414f47c6d838cd6e8c572b17b4a0a92c87d384efc58367e9e18dd4c6f36ae",
-    "historical_wakes": 0,
-    "duplicate_prevention": true,
-    "known_no_effect_attempts": 2
+    {
+      "command": "make check-workspace-boundary",
+      "exit_code": 0,
+      "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-clippy-authority.log",
+      "sha256": "182c48d8037eba9197ba02e684aa87613f528d101ed748d2a1116b0a4afd74c8"
+    }
+  ],
+  "prior_red_source_gate": {
+    "command": "make test CI_LOG=/tmp/nyx-task-migration-ci-a56bdd5b.log",
+    "exit_code": 2,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-ci-a56bdd5b.log",
+    "sha256": "41b45de241e7463c02ad1518fb84e378555a08292c5e597c5a1e53f638941983",
+    "source": "a56bdd5b7b8fc41e47ae3b1e17bc2b857fe59f4b",
+    "failures": [
+      "native/portable task catalogue parity unwrap",
+      "native Oracle catalogue expected39/actual42"
+    ],
+    "disposition": "Corrected by supplemental task237; old gate remains red."
   },
-  "evidence_directory": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i",
-  "source_packet": {
-    "lossless-import-manifest.json": "fceea2a978283fc46466270dca315ee2193092599696a04364021f5b21d566b8",
-    "checked-audit.json": "53acec13a5c04412b6c15fcad50cc8cf8ea9e6e730739b95cbe2e57fbab2c134"
+  "authority_fixture_first_red": {
+    "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-migration",
+    "exit_code": 2,
+    "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/nyx-task-migration-evidence-k9jeo41i/nyx-task-migration-authority-proof.log",
+    "sha256": "ee42680f9cc67c677cddb73cb27fdf39b08684d463ee9e1b292b386052dab842",
+    "disposition": "Three independent held process fixtures ran in parallel; two hit unchanged15s fixture bounds. The final fixture executes all three sequentially without increasing any deadline."
   },
-  "workflow": {
-    "discovery": "Authenticated Oracle task_import_context {} returns only the selected canonical expected_root; ctl task import-context is the operator equivalent.",
-    "import_command": "bboxy450-term ctl task import /tmp/nyx-task-reconciliation-qzzo4m5p/lossless-import-manifest.json --audit /tmp/nyx-task-reconciliation-qzzo4m5p/checked-audit.json --source-dir /tmp/nyx-task-reconciliation-qzzo4m5p/dependency-source --expected-root ROOT_FROM_AUTHENTICATED_CONTEXT --owner-seat ADMITTED_ORACLE_SEAT_ID",
-    "recovery": "Query an unknown original operation. Known no-effect stale-allocation/busy results may use a fresh operation with the identical pinned bundle; an existing signed receipt reuses its mapping without reimport.",
-    "live_application": "Not attempted. No backing-store edits, live daemon refresh/restart, historical delegation or issue closure. New actions require the Oracle safe-rollout step in live ICD201."
-  }
+  "authority_proof": {
+    "receipt": "Canonical admitted signed Index activity intent pins signer/key and full receipt core; valid substituted-key and resigned-mapping negatives refuse.",
+    "publication": "Fresh caller/custodian grant epochs and current signing issuer/key/operator grant are checked off the Index lock. The successful owner-side check is admission for the short publication attempt; later revocations apply to subsequent admissions.",
+    "paused_negatives": [
+      "swarm root change",
+      "role restored with a newer grant epoch",
+      "custody reopen held after key capture"
+    ],
+    "ordinary_same_root_write": "Actual task reconciliation succeeds while bulk staging is held.",
+    "no_effect_failure": "import_authority_unavailable on immediate queue refusal or 5s recheck deadline; no global authority lock."
+  },
+  "upgrade_proof": {
+    "mcp_control_version": 7,
+    "same_version": "Same healthy supervisor and logic retained.",
+    "older_and_missing": "Advertised MCP6 and absent marker replace logic alone. Same supervisor, all3 real seat PIDs/process generations/native session IDs, retained authenticated Oracle bridge, worker refusal, selected private root and real zsh variable/PTY output asserted.",
+    "limitation": "Disposable owner record advertises the old contract; an old executable binary was not run. No live refresh/install/restart."
+  },
+  "native_contract_proof": "Exactly import/import_context/reconcile are host-local. All7 normal native task schemas retain strict portable task_system1.0 parity; unknown task_* still unwrap-fails. Oracle catalogue42/worker23 with explicit maintenance refusal.",
+  "precheck_source_sha256": {
+    ".bboxy/interfaces/logic-gui.md": "8dfdbe910c7bdb660961b5270c09dbfa659a81c192ac9e3478db8d3d2e5b3a85",
+    ".bboxy/specs/plugins.md": "750925d9eb18522c8d063f5c027df065c04bae9b21d8e6395dbd961594a63e44",
+    ".bboxy/specs/work-items.md": "622aae88d59c9add05357d91e479eb60cbc54edf479bb962f84197f76b8aebdb",
+    "Makefile": "cf0543d4a4440026714e51452fd22d20259dc18c31e7580d7cf7b29d28b1ec09",
+    "crates/bboxy450-term/src/cockpit.rs": "7a82660cbdd1ee9365dd3a4ccba5c1d1dee883399b7e07b046a9c70a32c7552d",
+    "crates/bboxy450-term/src/ctl.rs": "368cef11b8a9b8adef764a17ee6a2ac7f940a6a522ce3bb6e3748fd9a28b0632",
+    "crates/bboxy450-term/src/ctl/task.rs": "799cb21076b501ca386cccd20d1f66653f79102f99067c381a77eabb919a3343",
+    "crates/bboxy450-term/tests/swarm_workdir.rs": "df1e055803eb2fb2072b358b53eb408735e55a3fafc82e1cde2eb444d6df89d0",
+    "crates/bbt-mux/src/index.rs": "671d7578aacba4ad943400b67c01c6239a9a0e9d21e8868fc5b9debb34bb1ca4",
+    "crates/bbt-mux/src/index/migration.rs": "8a35498f1cbeaf63db4ad0575831234b7de9478c382350b5e19d73975dba3283",
+    "crates/bbt-mux/src/logic.rs": "c77be0baa7fac8b29dfad3d2733dd33a6ef1be6d48b68fd8eb729ee008724b82",
+    "crates/bbt-mux/src/logic/task_import.rs": "7ba1a51528ef7b6b80660d413ec94f870de65378e6465232888e59552dd007c7",
+    "crates/bbt-mux/src/mcp/work_items.rs": "505b857206348fdb44567c2c65991be6d622c030bf7f1f1bd60780693ad3c205",
+    "crates/bbt-mux/src/plugins/check.rs": "4a37ccb4ac5b7dd2ff5260b31b61e639a92cb70c8990ed3bdeae7c0d50fa5174",
+    "crates/bbt-mux/tests/mcp.rs": "580e8d710d9008f85bf3bc128ee5e2edd45efe8e7b5b10dac743b3f0a9f0aec7",
+    "crates/bbt-proto/src/messaging.rs": "79e6a8a39284f7195cfa88a95526a3df3212452cab83a0d76c47905dbd87da2e",
+    "crates/bbt-proto/tests/messaging.rs": "a6303237af787c0a796eec6c1a017aa2c6440728f37cb509552e2333e5c37377",
+    "scripts/test-task-migration.py": "4e9036374c14b2c6fad0646a6783a8b3d9a308f4d9d3f7b9ed67598d790ab771"
+  },
+  "exact_source_full_gate": "Pending signed candidate make test and scripts/land.sh; final externally retained logs and signed landing SHA belong to task_report. No precheck is claimed as a final full gate."
 }

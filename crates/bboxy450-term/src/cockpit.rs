@@ -497,7 +497,7 @@ fn fixture_hosts_default() -> bool {
     true
 }
 // MCP control schema/grants; logical UI input is versioned independently.
-const MCP_CONTROL_VERSION: u16 = 6;
+const MCP_CONTROL_VERSION: u16 = 7;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {

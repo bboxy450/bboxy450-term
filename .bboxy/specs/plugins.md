@@ -30,6 +30,13 @@ Owner: Corvin Duskmantle <ARCHITECT>. **Status: draft, logged for later** (opera
 
 **"Decision models like Jev", corrected by the operator (2026-10-23):** Jev is TypeSafe's hosted decision primitive (`POST /v1/systemone`, bearer auth; a `choice` question carrying `instructions` and a map of named `criteria`, answered with one `choice`, a `confidence` and `probabilities`; pinned model `jev-1.13.0`), already used by kittens (`McpSelect`, shell branching) and by paperhands autoresearch, with a key in the kittens harness configuration on this machine. It decides which single named choice applies; it never executes, plans or keeps state. Here it is a plugin **system**, `decision_model`, with Jev its first provider: the places where the app picks among named options may ask the plugin, and the built-in rules decide when none is present. Optional, never load-bearing ("we want to use it if it makes sense or we don't have to use it").
 
+The native `task_import`, `task_import_context` and `task_reconcile` tools are
+exactly three host-local historical maintenance operations on the selected
+Markdown Index root. They are outside the portable `task_system` 1.0 contract:
+external task backends acquire no new required methods or local source-path
+read authority. All seven ordinary native task methods retain strict schema
+parity; any unclassified `task_*` tool remains a parity failure.
+
 ## 1. Shape of the system
 
 **Contracts first; MCP is only the wire ([[d255-visualization-is-ours]], operator 2026-10-24, verbatim: "I WANT VIZUALIZATION TO ALWAYS BE OURS, and we plug into data sourcse! like document bases, code hosting, git or what not, everything pluggable and with opionated defaults!").** A plugin is a **data source or an effect**: a document base, a task system, code hosting, git, an event bus, a decision model, a session or a supervisor link. It returns records, resources and results in our shapes, and **never pixels or UI**: the GPU kit draws everything a plugin returns through the app's own views (the document modal, the Graph tab, the sidebar, later the swarm canvas), and the messaging tree, roles, priority and signing stay the app's. The built-ins are the **opinionated defaults**, the first providers of their own contracts; a plugin replaces where the data comes from and where it goes, never how the cockpit looks. An existing MCP server is not a plugin by existing; it is one when it implements a contract and answers `--shape`. Named for later, not written: `code_host` (pull requests, reviews, CI status from GitHub, GitLab, Forgejo) and `event_source`.

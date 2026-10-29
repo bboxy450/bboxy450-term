@@ -105,6 +105,29 @@ records become `done`; six unfinished seed tasks remain open with narrowed
 scope. MA-7 accounting is historical `done` with one separately open issue-40
 adapter-startup follow-up, giving seven live tasks. The board remains a note.
 
+Receipt authority is bound to the canonical Index activity entry admitted by
+the host for that import. Its verified signer key and actor must match the
+receipt, and its source/subject/bundle/root/count plus a digest of the mapping
+and projection hashes must agree. A receipt's self-signature alone confers no
+authority. Missing intent, a substituted throwaway signer/key/signature, or a
+resigned changed mapping fails closed. Authorized same-root replay by another
+principal validates the original recorded admission instead of adopting the
+new caller as the historical signer.
+
+After staging and before taking the final number lock, import rechecks the
+captured caller and custodian grant epochs through the current logic owner's
+existing authority seam, plus current issuer/key and signing readiness (and the
+GUI operator's device grant/epoch). Immediate queue refusal or a five-second
+recheck deadline refuses publication. A role change away and back or a custody
+hold observed by this check refuses the staged batch. Replay rechecks current
+admission; the same operation ID remains bound to its full admitted actor.
+The successful owner-side check is the authority admission point for this short
+publication attempt. Revocations observed after that point apply to subsequent
+admissions; no global lock or token claims to make revocation and filesystem
+publication atomic. The final critical section still rechecks current root,
+registry and collision state. Recheck capacity/deadline failures return the named
+no-effect `import_authority_unavailable` refusal.
+
 Discover the root through authenticated `task_import_context {}` first. This
 read is Oracle-class only, takes no root selector, and returns `expected_root`
 from the caller's exact selected Index. Worker calls and extra selector fields
