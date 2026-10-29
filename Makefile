@@ -380,7 +380,7 @@ test-chat-backlog-frame:
 
 test-chat-backlog:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib operator_subjects_include_exact_authorized_direct_inboxes_without_granting_seats -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture
 
 test-gui-events:

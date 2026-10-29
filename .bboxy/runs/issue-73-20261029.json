@@ -35,6 +35,22 @@
       "command": "make test-gui-events (before live recovery)",
       "exit": 2,
       "sha256": "56df0eaac3feeef329c481cb7c602c16b91e44824e0fdad6138de77e8ed924df"
+    },
+    {
+      "command": "make test",
+      "source": "9c33008c83606075228b7c9e871dbb5af1d6b889",
+      "exit": 2,
+      "sha256": "60a877f335308c51c4c5a60b571398a2817e53a85def0b11b1a4f90fd26eb077"
+    },
+    {
+      "command": "retire only owned obsolete build outputs; preserve source/logs/current gate executables",
+      "exit": 0,
+      "sha256": "171e83a4354ef056db710eb90d23d9134d579180016d6bdaefdbc1058c672b47"
+    },
+    {
+      "command": "make test-chat-backlog (distinct retained history plus retry coalescing)",
+      "exit": 0,
+      "sha256": "1f5075e79bf8ef1e79b9ae7b11a23025503817fa7e515a61e17a09bbcb01cddd"
     }
   ]
 }

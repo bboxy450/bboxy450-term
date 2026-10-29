@@ -3251,8 +3251,9 @@ mod reference_tests {
         let ids: Vec<_> = (0..4)
             .map(|number| pending_text(&mut messaging, &recipient, &format!("recent-{number}")))
             .collect();
-        // Repeated native recipient-store outcomes create real receipt history;
-        // newest messages remain in their own ledger index rather than the bus tail.
+        // Distinct native no-effect outcomes create real receipt history;
+        // identical retries coalesce (#73), while changed evidence is retained.
+        // Newest messages remain in their ledger index rather than the bus tail.
         for attempt in 0..140 {
             let now = 10_000 + attempt * 10_000;
             let work = messaging
@@ -3267,7 +3268,7 @@ mod reference_tests {
                         cause: None,
                         evidence: crate::adapters::Evidence::RecipientStored,
                         native_id: None,
-                        note: "receipt-heavy fixture".into(),
+                        note: format!("receipt-heavy fixture: distinct refusal {attempt}"),
                     },
                     now + 1,
                     false,
