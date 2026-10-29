@@ -505,6 +505,7 @@ struct InputCheck {
 
 /// Only an admitted input to an exact existing watch starts fast checks. The
 /// ordinary 20 ms fallback remains unchanged once its first fresh snapshot lands.
+/// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #[derive(Default)]
 struct InputChecks(BTreeMap<bbt_proto::SeatId, InputCheck>);
 impl InputChecks {

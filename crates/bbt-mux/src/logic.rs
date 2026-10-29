@@ -439,6 +439,7 @@ impl Command {
 
 /// The bounded idle cadence belongs to command admission, not a blocking
 /// supervisor read. Tokio's receiver notification interrupts this wait.
+/// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 async fn idle_command(commands: &mut mpsc::Receiver<Command>, until: Instant) -> Option<Command> {
     tokio::time::timeout_at(tokio::time::Instant::from_std(until), commands.recv())
         .await

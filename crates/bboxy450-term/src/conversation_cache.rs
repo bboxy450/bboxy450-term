@@ -104,6 +104,7 @@ impl App {
         }
         // Compare borrowed DTOs before cloning. The snapshot includes hidden
         // action identities, attachment paths, caret and serde-skipped IME state.
+        // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
         if self.conversation_layout.is_some() && self.conversation_cache_matches(logical) {
             return Ok(());
         }

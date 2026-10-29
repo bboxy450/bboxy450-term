@@ -524,7 +524,7 @@ test-checkpoint-resize:
 	cargo test --locked -p bboxy450-term-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test checkpoint_resize
 
-.PHONY: test-input-latency test-input-backend test-input-ui profile-input-ui check-input test-terminal-replay check-terminal-replay
+.PHONY: test-input-latency test-input-backend test-input-ui test-input-layout profile-input-ui check-input test-terminal-replay check-terminal-replay
 test-input-latency:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test input_latency -- --nocapture
 
@@ -539,6 +539,10 @@ test-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib chat_scroll::tests; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) sidebar_chat::tests
+	$(MAKE) test-input-layout
+
+test-input-layout:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache::tests -- --nocapture
 
 check-input:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-ui -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings

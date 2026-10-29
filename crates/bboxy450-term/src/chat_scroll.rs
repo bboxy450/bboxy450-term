@@ -13,6 +13,7 @@ const MAX_CHANNEL_BYTES: usize = 512;
 
 /// A burst belongs to the current solved layout. Only layout_solved() retires
 /// its pending pixel target; repeated events never restart from stale geometry.
+/// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #[derive(Debug, Default)]
 pub struct WheelIntent {
     pending: Option<f32>,
