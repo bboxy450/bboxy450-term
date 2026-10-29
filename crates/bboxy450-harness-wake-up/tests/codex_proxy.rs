@@ -108,6 +108,9 @@ async fn stop_proxy_children(
     probe.stage("all children joined");
     no_panics
 }
+fn require_proxy_bytes(actual: &[u8], expected: &[u8], stage: &'static str) {
+    assert!(actual == expected, "private proxy {stage} bytes differ");
+}
 
 // keeps: interface app-harness — a composed launcher can deliver natively beside its live TUI
 #[tokio::test]
@@ -215,14 +218,14 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             };
             server_probe.stage("server read catalog");
             let received = ws.next().await.unwrap().unwrap().into_text().unwrap();
-            assert!(received.as_bytes() == expected.as_bytes(), "server catalog bytes differ");
+            require_proxy_bytes(received.as_bytes(), expected.as_bytes(), "server catalog");
             drop(received);
             server_probe.stage("server echo catalog");
             ws.send(Message::Text(expected.into())).await.unwrap();
             server_probe.stage("server read final exchange");
-            assert_eq!(
-                ws.next().await.unwrap().unwrap().into_text().unwrap(),
-                "still connected"
+            require_proxy_bytes(
+                ws.next().await.unwrap().unwrap().into_text().unwrap().as_bytes(),
+                b"still connected", "server final exchange"
             );
             server_probe.stage("server send confirmation");
             ws.send(Message::Text("confirmed".into())).await.unwrap();
@@ -261,7 +264,7 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             .unwrap();
         probe.stage("client read catalog echo");
         let received = client.next().await.unwrap().unwrap().into_text().unwrap();
-        assert!(received.as_bytes() == catalog.as_bytes(), "client catalog bytes differ");
+        require_proxy_bytes(received.as_bytes(), catalog.as_bytes(), "client catalog");
         drop(received);
         probe.stage("client send final exchange");
         client
@@ -269,9 +272,9 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
             .await
             .unwrap();
         probe.stage("client read confirmation");
-        assert_eq!(
-            client.next().await.unwrap().unwrap().into_text().unwrap(),
-            "confirmed"
+        require_proxy_bytes(
+            client.next().await.unwrap().unwrap().into_text().unwrap().as_bytes(),
+            b"confirmed", "client confirmation"
         );
         probe.stage("client exchange complete");
         loop {
@@ -300,6 +303,12 @@ async fn large_catalog_frames_survive_the_proxy_without_reconnecting() {
 // keeps: task 278 — cancellation and panic observations are executable controls.
 #[tokio::test]
 async fn proxy_diagnostics_retain_child_panic_and_join_cancelled_tasks() {
+    let mismatch = std::panic::catch_unwind(|| require_proxy_bytes(
+        b"private catalog contents", b"different bytes", "controlled mismatch"
+    )).unwrap_err();
+    assert!(mismatch.downcast_ref::<String>().is_some_and(
+        |message| message == "private proxy controlled mismatch bytes differ"
+    ));
     let probe = ProxyProbe::new();
     let mut tasks = tokio::task::JoinSet::new();
     proxy_child(&mut tasks, &probe, "server", async { panic!("private diagnostic control"); });
