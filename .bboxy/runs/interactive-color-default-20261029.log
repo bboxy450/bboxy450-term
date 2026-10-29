@@ -6,3 +6,11 @@ Local API evidence: portable-pty 0.9.0 CommandBuilder::new snapshots the base en
 rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/supervisor/companion.rs — EXIT 0.
 git diff --check — EXIT 0.
 Cargo/Clippy/runtime checks explicitly deferred to root's warm canonical Make gates; the other Executor owns focused tests and Make wiring. This source-only commit does not claim runtime verification.
+
+Root verification on source f8accc8979617bba736e4624d26c547ff679f703:
+make test-terminal-colors — EXIT 0; five private raw-PTY/companion/default-login-shell cases. Actual SGR red bytes and parsed/projected red cells survive ambient NO_COLOR=1; explicit launch/service/rc choices and literal argv/cwd remain intact. The ignored fixture is invoked by its nonignored parent in an isolated subprocess.
+make build — EXIT 0.
+make test-terminal-colors-native — EXIT 0; installed Codex 0.164.0, private HOME/account/provider, warm private daemon also inherited NO_COLOR=1. Both TUI clients emitted indexed/RGB foregrounds (8 nondefault runs and 106 nonblank colored characters each). Native orient, shared-daemon wake, close isolation and same-thread seat restart/resume passed; zero external model calls and zero operator input. Compact evidence: /private/tmp/bbt-shared-codex-fei9hr64/color-evidence.json and evidence.json; command log: ~/Library/Logs/bboxy450-term/terminal-colors-native-20261029.log.
+make test-boundaries — EXIT 0; 36 passing executions covering seat wiring, operator ctl, private native signing, login-shell exec, PATH/recovery and private retained-process cockpit lifecycle.
+Live limitation: the four existing user Codex clients cached NO_COLOR=1. GUI reattach retains those same PTYs; no supported live color reset or safe active-turn TUI replacement was proven. No debugger attachment, memory patch, user input injection, or live process restart was attempted. The retained old supervisor uses its already-loaded code until its next start; installing the new binary alone does not hot-patch it or existing clients.
+Full exact-source Make CI, strict workspace/all-target Clippy, signed author landing and signed installed smoke are recorded by the subsequent gate/landing/install logs, not claimed by this pre-gate record.
