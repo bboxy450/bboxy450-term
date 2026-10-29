@@ -218,6 +218,13 @@ impl Fixture {
             .into();
             draft.payload["fixture"] = "retained-legacy-no-effect-workload".into();
             log.append(draft, &key).unwrap();
+            if !restart_logic && (i + 1).is_multiple_of(64) {
+                // Test-only legacy seeding shares SQLite with the real owner.
+                // Leave a bounded writer opportunity between bursts instead of
+                // continuously reacquiring IMMEDIATE transactions. This is setup,
+                // outside the unchanged composer/frame/input deadlines.
+                std::thread::sleep(Duration::from_millis(2));
+            }
         }
         if !restart_logic {
             assert_eq!(
@@ -228,6 +235,18 @@ impl Fixture {
         let high = log.last_sequence().unwrap();
         assert!(high - before >= count); // The retained owner may publish its own real state.
         (before, high)
+    }
+    fn logic_entry_failures(&self) -> Vec<Value> {
+        let contents = match fs::read_to_string(self.root.join("run/diagnostics.jsonl")) {
+            Ok(contents) => contents,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+            Err(error) => panic!("private diagnostic read failed: {error}"),
+        };
+        contents
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).unwrap())
+            .filter(|row| row["source"] == "logic" && row["operation"] == "process_entry")
+            .collect()
     }
     fn lane_position(&self, swarm: &str) -> (u64, u64, u64) {
         // Read-only inspection of the private real consumer, never an ACK or
@@ -554,7 +573,8 @@ fn canonical_recent_reconciles_real_event_once() {
         if let Some(event) = log.after(0, 128).unwrap().into_iter().find(|event| {
             event.event.subject == format!("seats/{seat}/inbox/message")
                 && event.event.payload["id"] == message
-        }) && fixture.lane_position(swarm).1 >= event.seq {
+        }) && fixture.lane_position(swarm).1 >= event.seq
+        {
             break event;
         }
         assert!(
@@ -631,6 +651,17 @@ fn retained_backlog_frame(count: u64, restart_logic: bool) {
     let owner_after: Value =
         serde_json::from_slice(&fs::read(fixture.root.join("run/logic.owner.json")).unwrap())
             .unwrap();
+    if !restart_logic {
+        let failures = fixture.logic_entry_failures();
+        assert!(
+            failures.is_empty(),
+            "retained owner failed during fixture setup: {failures:?}"
+        );
+        assert_eq!(
+            owner_before["process"], owner_after["process"],
+            "retained live owner must survive seeding and reattach"
+        );
+    }
     fixture.ctl(&["ui", "focus", &seat]);
     let lane_before = fixture.lane_position(&swarm);
     assert!(lane_before.0 < high && lane_before.1 < high);
@@ -737,4 +768,19 @@ fn retained_backlog_frame(count: u64, restart_logic: bool) {
     ]);
     assert_eq!(capture["offscreen"], true);
     assert_eq!(capture["stale"], false);
+    if !restart_logic {
+        assert_eq!(fixture.ctl(&["app", "status"])["backend_ready"], true);
+        let final_owner: Value =
+            serde_json::from_slice(&fs::read(fixture.root.join("run/logic.owner.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            owner_before["process"], final_owner["process"],
+            "retained owner identity changed after frame/input proof"
+        );
+        let failures = fixture.logic_entry_failures();
+        assert!(
+            failures.is_empty(),
+            "retained owner failed during frame/input proof: {failures:?}"
+        );
+    }
 }

@@ -44,6 +44,37 @@
       "command": "make test-chat-backlog-component",
       "exit": 2,
       "sha256": "46a4429af3374e5ce1878ad43fb5070da2f321d14692db0165af1f2aaecc1352"
+    },
+    {
+      "command": "make test",
+      "source": "d9c4bc55714989e05bd4049a108f3761c2445a10",
+      "exit": 0,
+      "sha256": "727be0b9885a5f165b40c4ed98130c6d20e75e2c89c074540d347b6b70ef342d"
+    },
+    {
+      "command": "make test-chat-backlog test-chat-reconciliation",
+      "source": "d9c4bc55714989e05bd4049a108f3761c2445a10",
+      "exit": 0,
+      "sha256": "1b1cccc67f901fce450346cd57c2f5823c1bbfe2171c04be301d3d07cabefbd5"
+    },
+    {
+      "command": "make test-chat-backlog-frame",
+      "source_parent": "d9c4bc55714989e05bd4049a108f3761c2445a10",
+      "harness_source_sha256": "78a11bbbc1452ba93d3554c68a8f21d008bd08003dc75fc3409c7318f826c269",
+      "exit": 0,
+      "sha256": "9f1d16df15b8ea89d8ccd97dadda8e8573e7413b05642c05904e1a28f36ec894"
+    },
+    {
+      "command": "make test-chat-backlog-frame",
+      "control": "live-owner-refresh-disabled348000",
+      "exit": 2,
+      "sha256": "efd8c0c04575c1f57c80e2b1b680e7eef89be2931823cca5899d2b7d818010d5"
+    },
+    {
+      "command": "make test-chat-backlog",
+      "control": "old-none-rejection",
+      "exit": 2,
+      "sha256": "dbe7384d4c4ae99282d1857bf459b199462aa8bbe074a3ad7f89268572ed0d49"
     }
   ],
   "artifacts": [
@@ -82,6 +113,46 @@
     {
       "ref": "/tmp/issue-73-owned-transparent-compression.json",
       "sha256": "41c0b6d0a551022676ce660dfdadc7d9a545d4d74714f7465f05e0a3e35b9829"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-fO20vZ/backlog-witness.json",
+      "sha256": "cc616fa917119dc8cc8b93c8a95b54efc2138c82eb595bc05367963826d5e5d5"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-fO20vZ/backlog-produced-frame.json",
+      "sha256": "2cb45aec448ae21c7dcadfdbf7ed9f846c0ac95f088bb656464dd6362a425a86"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-fO20vZ/backlog-produced.png",
+      "sha256": "f40f3ce8d0351f903512a6b9611c2af8f91065ca97eaf06bef706051f76d519a"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-fO20vZ/run/diagnostics.jsonl",
+      "sha256": "5773b69d350ab870216b35d704b4f74f66e71d348d9ca3435710a5cda90c85f4"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-mDRGNF/failed-produced-layout.json",
+      "sha256": "df453efaa945f67fb419fb47a43fa49b20bf8a4913a17b2249a6458ab9fa89b4"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-mDRGNF/run/diagnostics.jsonl",
+      "sha256": "25d7f4bd67a8d72a4fe98554a4957667280c0af38190de5bbf43f49fe8bedc73"
+    },
+    {
+      "ref": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/gui-events-app-0bsnpV/canonical-reconciliation.json",
+      "sha256": "5c50f2374257a4c39db79c3e1b8fc83083b4a7e00c52ed38289b4f90c2ed3c3c"
+    },
+    {
+      "ref": "/tmp/issue-73-final-witness-preservation.json",
+      "sha256": "7acdd6ef83c54683236d0609d64f8f06e58e420a636d78cef6d2d27aaadc4250"
+    },
+    {
+      "ref": "/tmp/issue-73-new-stable-artifacts-preservation.json",
+      "sha256": "ed21e50b892c0fdf92ffb94856b856ccb51cdf0cdfe410737e07fc775640db81"
+    },
+    {
+      "ref": "/tmp/issue-73-owned-test-artifact-preservation.json",
+      "sha256": "ed819fb52e64dde1ab993dd6d59bdb07ba35f4d69c7669780d294b868fda0a05"
     }
   ]
 }
