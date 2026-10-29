@@ -641,3 +641,90 @@ fn restarted_gui_retains_truncated_request_diagnostics_before_eof() {
     process.stop();
     supervisor.shutdown().unwrap();
 }
+
+#[test]
+fn retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state() {
+    let root = FixtureRoot::new();
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::create_dir_all(root.path().join("repository/.bboxy")).unwrap();
+    let supervisor = Supervisor::start(Config {
+        socket_path: Some(root.path().join("supervisor.sock")),
+        journal_directory: Some(root.path().join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut process = Process::start(root.path(), supervisor.socket_capability());
+    rt.block_on(async {
+        let mut gui = Gui::open(root.path(), &process).await;
+        gui.attach().await;
+        let message = SendRequest::text("operator/inbox", "latest retained message body");
+        let message_id = message.id;
+        assert!(matches!(gui.messaging(Request::Send { message }).await, Response::Stored { .. }));
+        let message = match gui.until(|reply| matches!(reply,
+            GuiReply::Event {subject,envelope,..} if subject.ends_with("/message")
+                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id)
+        )).await {
+            GuiReply::Event {envelope,..} => *envelope,
+            _ => unreachable!(),
+        };
+        let message_position = message.metadata.reference.position.clone();
+        let receipt = match gui.until(|reply| matches!(reply,
+            GuiReply::Event {subject,envelope,..} if subject.ends_with("/receipt")
+                && matches!(&envelope.payload, GuiEventPayload::Message {row} if row.id == message_id)
+        )).await {
+            GuiReply::Event {envelope,..} => *envelope,
+            _ => unreachable!(),
+        };
+        assert_ne!(receipt.metadata.reference.position, message_position);
+        let seat = match gui.until(|reply| matches!(reply,
+            GuiReply::Event {envelope,..} if matches!(&envelope.payload, GuiEventPayload::Seat {..})
+        )).await {
+            GuiReply::Event {envelope,..} => *envelope,
+            _ => unreachable!(),
+        };
+        for (expected, messaging) in [(message, true), (receipt, true), (seat, false)] {
+            let position = &expected.metadata.reference.position;
+            let before = gui.cursor(&position.stream).await;
+            gui.send(GuiAction::GetEvents {
+                stream: position.stream.clone(),
+                after: position.sequence.saturating_sub(1),
+                limit: 1,
+            }).await;
+            let GuiReply::Events {page} = gui.until(|reply| matches!(reply,
+                GuiReply::Events {page} if page.cursor.stream == position.stream
+            )).await else { unreachable!() };
+            assert_eq!(page.records.len(), 1);
+            assert!(serde_json::to_vec(&page).unwrap().len() <= 256 * 1024);
+            assert_eq!(page.cursor.read, before.read, "retained projection never marks read");
+            let bbt_proto::events::GuiEventRecord::Event(actual) = &page.records[0] else {
+                panic!("bounded fixture record unexpectedly became a gap");
+            };
+            assert_eq!(actual.metadata, expected.metadata, "canonical position and proof unchanged");
+            assert!(actual.cursor.is_none());
+            if messaging {
+                let GuiEventPayload::Message {row} = &actual.payload else {
+                    panic!("retained message/receipt did not hydrate MessageRow");
+                };
+                assert_eq!(row.id, message_id);
+                assert_eq!(row.text, "latest retained message body");
+                assert_eq!(row.issuer_kind, Some(IssuerKind::LocalDev));
+                assert_eq!(row.signature, bbt_proto::messaging::SignatureState::Signed);
+                let bus = row.bus.as_ref().unwrap();
+                assert_eq!(bus.stream, message_position.stream);
+                assert_eq!(bus.seq, message_position.sequence, "receipt is not the message position");
+            } else {
+                assert!(matches!(actual.payload, GuiEventPayload::Activity {..}),
+                    "historical seat state must remain activity, not a live pane replacement");
+            }
+            assert_eq!(gui.cursor(&position.stream).await.read, before.read);
+        }
+        drop(gui);
+    });
+    process.stop();
+    supervisor.shutdown().unwrap();
+}

@@ -646,10 +646,8 @@ async fn gui_event_reply(
         } => Ok(gui_gap(stream, first, last, reason)),
     }
 }
-fn gui_events_page(page: crate::bus::GuiPage) -> Result<GuiReply> {
-    use bbt_proto::events::{
-        EventGap, GuiEventEnvelope, GuiEventPage, GuiEventPayload, GuiEventRecord,
-    };
+async fn gui_events_page(page: crate::bus::GuiPage, client: &LogicClient) -> Result<GuiReply> {
+    use bbt_proto::events::{EventGap, GuiEventPage, GuiEventRecord};
     let mut records = Vec::new();
     let mut used = 0;
     let mut next = page.next;
@@ -659,16 +657,9 @@ fn gui_events_page(page: crate::bus::GuiPage) -> Result<GuiReply> {
                 stream, envelope, ..
             } => {
                 let sequence = envelope.seq;
-                // A retained history page is activity data, never a request to
-                // replace a live pane or historical identity with old state.
-                let record = GuiEventRecord::Event(Box::new(GuiEventEnvelope {
-                    metadata: crate::gui_events::metadata(&stream, &envelope)?,
-                    projected_at: crate::store::now_ms(),
-                    cursor: None,
-                    payload: GuiEventPayload::Activity {
-                        summary: crate::gui_events::summary(&envelope)?,
-                    },
-                }));
+                let record = GuiEventRecord::Event(Box::new(
+                    crate::gui_events::project_retained(client, &stream, *envelope).await?,
+                ));
                 (record, sequence.saturating_sub(1))
             }
             crate::bus::Delivery::Gap {
@@ -1053,7 +1044,7 @@ async fn gui_session(
                             }
                             GuiAction::GetEvents {stream,after,limit}=> {
                                 let active=lane.as_ref().ok_or_else(||invalid("GuiEventsHeld: events lane is not attached"))?;
-                                gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?)
+                                gui_events_page(client.bus.gui_page(&active.lease,&stream,after,limit,crate::gui_events::PAGE_BYTES).await?, &client).await
                             }
                             GuiAction::ConfigureRoles {id,catalog}=> {
                                 client.configure_roles(id,catalog,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;

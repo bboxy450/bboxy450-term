@@ -223,6 +223,26 @@ pub(crate) async fn project(
     envelope: Envelope,
     position: Option<GuiEventCursor>,
 ) -> Result<GuiEventEnvelope> {
+    project_inner(client, stream, envelope, position, false).await
+}
+
+/// Retained messages keep the same canonical row/proof as live delivery. Other
+/// history remains activity data, never a replacement for current pane state.
+pub(crate) async fn project_retained(
+    client: &LogicClient,
+    stream: &str,
+    envelope: Envelope,
+) -> Result<GuiEventEnvelope> {
+    project_inner(client, stream, envelope, None, true).await
+}
+
+async fn project_inner(
+    client: &LogicClient,
+    stream: &str,
+    envelope: Envelope,
+    position: Option<GuiEventCursor>,
+    retained: bool,
+) -> Result<GuiEventEnvelope> {
     let metadata = metadata(stream, &envelope)?;
     let subject = envelope.event.subject.as_str();
     let payload = if messaging_source(&envelope.event.source)
@@ -241,11 +261,11 @@ pub(crate) async fn project(
         GuiEventPayload::Message {
             row: client.gui_message_row(swarm, message).await?,
         }
-    } else if subject == "account/identity/state" {
+    } else if !retained && subject == "account/identity/state" {
         GuiEventPayload::Identity {
             identity: client.gui_identity().await?,
         }
-    } else if subject == crate::provider::fake::STATE_SUBJECT {
+    } else if !retained && subject == crate::provider::fake::STATE_SUBJECT {
         let crate::provider::ProviderEvent::HostState { host, state } =
             serde_json::from_value(envelope.event.payload.clone())?;
         match client
@@ -262,7 +282,8 @@ pub(crate) async fn project(
                 summary: summary(&envelope)?,
             },
         }
-    } else if subject.starts_with("seat/")
+    } else if !retained
+        && subject.starts_with("seat/")
         && (subject.ends_with("/state") || subject.ends_with("/receipt"))
     {
         let seat = subject
