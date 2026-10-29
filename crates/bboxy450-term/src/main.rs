@@ -523,7 +523,7 @@ mod notification_foreground_tests {
     #[test]
     fn foreground_control_has_a_versioned_state_setting_wire() {
         use bbt_proto::gui::{UI_CONTROL_VERSION, UiRequest};
-        assert!(UI_CONTROL_VERSION >= 6);
+        const { assert!(UI_CONTROL_VERSION >= 6) };
         for frontmost in [false, true] {
             let request = UiRequest::NotificationForeground { frontmost };
             assert!(request.validate().is_ok());
