@@ -743,6 +743,7 @@ enum UiEffect {
         saved: bool,
     },
     TerminalFont,
+    ImagePaste(String),
     Clock {
         state: bbt_proto::gui::UiClockState,
         landed: Option<(SeatId, FocusSwell)>,
@@ -3446,39 +3447,56 @@ impl App {
                 self.composer_command(ComposeCommand::Edit(EditCommand::Insert(text)))
             }
             ClipboardContent::Image { bytes, format } => {
-                if self.composer.view.field != ComposeField::Body
-                    || self.composer.view.attach_pick.is_some()
-                {
-                    return;
+                if let Err(error) = self.composer_start_image_paste(
+                    bboxy450_term::composer_images::Source::Clipboard { bytes, format },
+                ) {
+                    self.composer_paste_failed(error);
                 }
-                let id = bbt_mux::Ulid::new().to_string();
-                match self
-                    .composer
-                    .handle(ComposeCommand::Attach(composer::Attachment {
-                        kind: "image".into(),
-                        id: id.clone(),
-                        ..Default::default()
-                    })) {
-                    ComposeOutcome::Changed => {}
-                    ComposeOutcome::Refused(reason) => {
-                        self.composer_paste_failed(reason.into());
-                        return;
-                    }
-                    _ => return,
-                }
-                self.composer_images.reconcile(
-                    &self.composer.view.attach,
-                    &self.composer_client.protected_image_paths(),
-                );
-                self.composer_notice();
-                self.request_redraw();
-                let proxy = self.proxy.clone();
-                drop(bbt_rt::handle().spawn_blocking(move || {
-                    let result = bboxy450_term::composer_images::OwnedImage::save(&bytes, format);
-                    let _ = proxy.send_event(UiEvent::ComposerImageReady { id, result });
-                }));
             }
         }
+    }
+    fn composer_start_image_paste(
+        &mut self,
+        source: bboxy450_term::composer_images::Source,
+    ) -> Result<String, String> {
+        if !self.composer.view.focus
+            || self.composer.view.field != ComposeField::Body
+            || self.composer.view.attach_pick.is_some()
+            || self.document.open
+            || self.launcher.is_some()
+            || self.reject_focus
+            || self.app_overlays.open()
+        {
+            return Err("image_paste_requires_focused_composer_body".into());
+        }
+        let id = bbt_mux::Ulid::new().to_string();
+        match self
+            .composer
+            .handle(ComposeCommand::Attach(composer::Attachment {
+                kind: "image".into(),
+                id: id.clone(),
+                ..Default::default()
+            })) {
+            ComposeOutcome::Changed => {}
+            ComposeOutcome::Refused(reason) => return Err(reason.into()),
+            _ => return Err("image_paste_not_admitted".into()),
+        }
+        self.composer_images.reconcile(
+            &self.composer.view.attach,
+            &self.composer_client.protected_image_paths(),
+        );
+        self.composer_notice();
+        self.request_redraw();
+        let proxy = self.proxy.clone();
+        let pending = id.clone();
+        drop(bbt_rt::handle().spawn_blocking(move || {
+            let result = bboxy450_term::composer_images::OwnedImage::from_source(source);
+            let _ = proxy.send_event(UiEvent::ComposerImageReady {
+                id: pending,
+                result,
+            });
+        }));
+        Ok(id)
     }
     fn composer_image_ready(
         &mut self,
@@ -5760,6 +5778,10 @@ impl App {
                 })
                 .ok_or_else(|| "swarm_unavailable".into()),
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
+            UiEffect::ImagePaste(id) => {
+                let image = self.composer.view.attach.iter().find(|a| a.kind == "image" && a.id == *id).ok_or("image_paste_unavailable: paste failed or its marker was removed")?;
+                Ok(!image.path.is_empty())
+            }
             UiEffect::Spawn(id) => {
                 if let Some(launch) = self.starting.get(*id) {
                     return launch
@@ -5991,6 +6013,10 @@ impl App {
                     if let UiEffect::SwarmWorkdir(swarm,path)=effect
                         && layout.swarm_workdirs.get(&bbt_mux::Ulid(swarm.0.0)) != path.as_ref() {
                         return Err("ui_frame_refused: swarm folder changed before its frame".into());
+                    }
+                    if let UiEffect::ImagePaste(id) = effect {
+                        let image = layout.pasted_image.as_ref().ok_or("ui_frame_refused: pasted image missing from produced frame")?;
+                        if image.id != *id || image.path.is_empty() {return Err("ui_frame_refused: pasted image changed before its frame".into());}
                     }
                     if let UiEffect::Compose(sent) = effect {
                         let actual = layout.composed.as_ref().ok_or("ui_frame_refused: sent group is not visible in the produced frame")?;
@@ -6309,6 +6335,10 @@ impl App {
                 self.composer_dragging = false;
             }
             UiRequest::Compose(request) => self.compose_ui(request)?,
+            UiRequest::PasteImage {path} => {
+                let pasted = self.composer_start_image_paste(bboxy450_term::composer_images::Source::File(path.into()))?;
+                if let Some(effects) = &mut self.ui_collect { effects.push(UiEffect::ImagePaste(pasted)); }
+            }
             UiRequest::Spawn(pick) => {
                 let model = self.live_state.as_deref().ok_or("ui_not_ready: no model")?;
                 let stage = self.focus.stage.as_ref().unwrap_or(&model.ui.window.stage);
@@ -6595,6 +6625,11 @@ impl App {
             spawned: None,
             starting: self.starting_layout(layouts),
             seats: None,
+            pasted_image: self.ui_wait.as_ref().and_then(|wait| wait.effects.iter().find_map(|effect| {
+                let UiEffect::ImagePaste(id) = effect else {return None};
+                let image = self.composer.view.attach.iter().find(|a| a.kind == "image" && a.id == *id && !a.path.is_empty())?;
+                Some(bbt_proto::gui::UiImagePaste {id:id.clone(),marker:image.title.clone(),path:image.path.clone()})
+            })),
             composed: self.ui_wait.as_ref().and_then(|wait| {
                 wait.effects.iter().find_map(|effect| {
                     if let UiEffect::Compose(sent) = effect {

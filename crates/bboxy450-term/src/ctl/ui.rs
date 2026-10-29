@@ -22,6 +22,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "clock", "Ui"),
     ("ui", "notification-click", "Ui"),
     ("ui", "compose", "Ui"),
+    ("ui", "paste-image", "Ui"),
     ("ui", "swarm-workdir", "Ui"),
 ];
 
@@ -122,6 +123,12 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
                 Some(folder.to_string_lossy().into_owned())
             };
             Command::Ui(bbt_proto::gui::UiRequest::SwarmWorkdir { swarm, path })
+        }
+        ["ui", "paste-image", path] => {
+            let path = std::path::absolute(path).map_err(|error| format!("{USAGE_PREFIX}image path: {error}"))?;
+            let request = bbt_proto::gui::UiRequest::PasteImage {path:path.to_string_lossy().into_owned()};
+            request.validate().map_err(|error| format!("{USAGE_PREFIX}{error}"))?;
+            Command::Ui(request)
         }
         ["ui", "compose"] => {
             let to = cx
@@ -270,6 +277,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui clock freeze",
     "ui notification-click s",
     "ui compose --to s --text hi",
+    "ui paste-image /tmp/fixture.png",
     "ui swarm-workdir 00000000000000000000000001 default",
 ];
 
@@ -290,6 +298,16 @@ pub(super) fn compose(client: &mut Client, to: String, text: String) -> Result<V
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn image_paste_parses_an_operator_path_without_opening_it() {
+        let words = ["ui","paste-image","missing-fixture.png"].map(str::to_string);
+        let parsed = super::super::parse_full(&words).unwrap();
+        let Command::Ui(bbt_proto::gui::UiRequest::PasteImage {path}) = parsed.command else {panic!("typed operator paste")};
+        assert!(std::path::Path::new(&path).is_absolute());
+        assert!(path.ends_with("missing-fixture.png"));
+        assert!(super::super::parse_full(&["ui".into(),"paste-image".into()]).is_err());
+    }
+
     #[test]
     fn compose_requires_bounded_text_and_an_explicit_target() {
         let parse = |words: &[&str]| {

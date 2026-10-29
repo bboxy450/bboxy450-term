@@ -378,6 +378,7 @@ mod tests {
                     layout_revision: None,
                     spawned: None,
                     composed: None,
+                    pasted_image: None,
                     starting: Vec::new(),
                     seats: None,
                     clock: None,

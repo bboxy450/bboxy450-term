@@ -9,9 +9,18 @@ use bboxy450_term_desktop::{ClipboardImageFormat, MAX_CLIPBOARD_IMAGE_BYTES};
 use bbt_ui::modules::composer::Attachment;
 use std::{
     collections::BTreeMap,
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
+
+/// Bytes from the clipboard or a file explicitly selected through the operator control door.
+pub enum Source {
+    Clipboard {
+        bytes: Vec<u8>,
+        format: ClipboardImageFormat,
+    },
+    File(PathBuf),
+}
 
 /// Only this ownership token can unlink a draft image. Drop queues IO off the window thread.
 #[derive(Debug)]
@@ -21,6 +30,43 @@ pub struct OwnedImage {
     committed: bool,
 }
 impl OwnedImage {
+    /// Runs only on a blocking worker; never opens a source path in a window callback.
+    #[allow(clippy::disallowed_methods)] // Bounded source read on the dedicated blocking IO path.
+    pub fn from_source(source: Source) -> Result<Self, String> {
+        match source {
+            Source::Clipboard { bytes, format } => Self::save(&bytes, format),
+            Source::File(path) => {
+                use std::os::unix::fs::OpenOptionsExt;
+                let mut file = std::fs::OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NONBLOCK)
+                    .open(path)
+                    .map_err(|error| format!("image_source: {error}"))?;
+                let metadata = file
+                    .metadata()
+                    .map_err(|error| format!("image_source: {error}"))?;
+                if !metadata.is_file() || metadata.len() > MAX_CLIPBOARD_IMAGE_BYTES as u64 {
+                    return Err("image_source_must_be_bounded_regular_file".into());
+                }
+                let mut bytes = Vec::new();
+                (&mut file)
+                    .take(MAX_CLIPBOARD_IMAGE_BYTES as u64 + 1)
+                    .read_to_end(&mut bytes)
+                    .map_err(|error| format!("image_source: {error}"))?;
+                if bytes.len() > MAX_CLIPBOARD_IMAGE_BYTES {
+                    return Err("clipboard_image_too_large".into());
+                }
+                let format = if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+                    ClipboardImageFormat::Png
+                } else if bytes.starts_with(b"II*\0") || bytes.starts_with(b"MM\0*") {
+                    ClipboardImageFormat::Tiff
+                } else {
+                    return Err("image_source_requires_png_or_tiff".into());
+                };
+                Self::save(&bytes, format)
+            }
+        }
+    }
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -429,5 +475,31 @@ mod tests {
             assert_eq!(std::fs::read(&path).unwrap(), png);
             std::fs::remove_file(path).unwrap();
         }
+    }
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn image_file_source_copies_only_bounded_image_bytes_and_keeps_source_custody_external() {
+        let source = tempfile::NamedTempFile::new().unwrap();
+        let mut png = Vec::new();
+        {
+            let mut writer = png::Encoder::new(&mut png, 1, 1).write_header().unwrap();
+            writer.write_image_data(&[123]).unwrap();
+        }
+        std::fs::write(source.path(), &png).unwrap();
+        let image = OwnedImage::from_source(Source::File(source.path().into())).unwrap();
+        let path = image.path.clone();
+        assert_ne!(path, source.path());
+        assert_eq!(std::fs::read(&path).unwrap(), png);
+        drop(image);
+        removed(&path);
+        assert_eq!(std::fs::read(source.path()).unwrap(), png);
+        source
+            .as_file()
+            .set_len(MAX_CLIPBOARD_IMAGE_BYTES as u64 + 1)
+            .unwrap();
+        assert!(OwnedImage::from_source(Source::File(source.path().into())).is_err());
+        source.as_file().set_len(0).unwrap();
+        std::fs::write(source.path(), "not an image").unwrap();
+        assert!(OwnedImage::from_source(Source::File(source.path().into())).is_err());
     }
 }

@@ -662,8 +662,16 @@ test-terminal-font:
 check-terminal-font:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-ui -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: test-image-paste test-image-paste-desktop test-image-paste-ui test-image-paste-app check-image-paste
-test-image-paste: test-image-paste-desktop test-image-paste-ui test-image-paste-app
+.PHONY: test-image-paste test-image-paste-wire test-image-paste-desktop test-image-paste-ui test-image-paste-app test-image-paste-e2e check-image-paste check-image-paste-wire
+test-image-paste: test-image-paste-wire test-image-paste-desktop test-image-paste-ui test-image-paste-app test-image-paste-e2e
+
+test-image-paste-wire:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_image_paste --test gui_wire_golden
+
+check-image-paste-wire:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-proto --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-image-paste-desktop:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -677,9 +685,14 @@ test-image-paste-ui:
 test-image-paste-app:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib composer_images; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::ui::tests::image_paste; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui image_attachment; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) image_paste
 
+test-image-paste-e2e:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir image_paste_ctl_owns_atomic_marker_and_recipient_png_survives_ui_and_logic_restart -- --ignored --exact --nocapture
+
 check-image-paste:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

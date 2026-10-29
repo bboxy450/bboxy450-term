@@ -261,6 +261,7 @@ impl App {
                 tree: Vec::new(),
                 spawned: None,
                 composed: None,
+                pasted_image: None,
                 starting,
                 seats: Some(seats),
             }),

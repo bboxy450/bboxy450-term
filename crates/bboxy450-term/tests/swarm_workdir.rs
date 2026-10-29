@@ -3144,3 +3144,191 @@ fn native_documents_capture_swarm_roots_and_drop_a_held_reply_after_cwd_change()
         "FIRST ROOT PRIVATE BODY",
     );
 }
+
+// Inspired by the existing private font/restart fixture in bboxy450-term; adapted for image custody.
+// Origin/policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[cfg(target_os = "macos")]
+#[test]
+#[ignore = "private real app/ctl image-paste, recipient read and restart; make test-image-paste-e2e"]
+fn image_paste_ctl_owns_atomic_marker_and_recipient_png_survives_ui_and_logic_restart() {
+    fn find<'a>(node: &'a Value, key: &str) -> Option<&'a Value> {
+        if node["kind"] == key {
+            return Some(node);
+        }
+        node["children"]
+            .as_array()?
+            .iter()
+            .find_map(|child| find(child, key))
+    }
+    fn text(node: &Value) -> String {
+        let mut value = node["text"].as_str().unwrap_or_default().to_owned();
+        if let Some(children) = node["children"].as_array() {
+            for child in children {
+                value.push_str(&text(child));
+            }
+        }
+        value
+    }
+    fn body(layout: &Value) -> &Value {
+        layout["tree"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find_map(|node| find(node, "named:composer/body-viewport"))
+            .unwrap()
+    }
+    fn click_body(f: &Fixture, layout: &Value) {
+        let r = body(layout)["rect"].as_array().unwrap();
+        let x = (r[0].as_f64().unwrap() + r[2].as_f64().unwrap() * 0.5)
+            .round()
+            .to_string();
+        let y = (r[1].as_f64().unwrap() + r[3].as_f64().unwrap() * 0.5)
+            .round()
+            .to_string();
+        f.ctl(&["ui", "click", &x, &y]);
+    }
+    fn recipient_reads(f: &Fixture, seat: &str, path: &Path, nonce: &str, png: &[u8]) {
+        let command = format!("READ_IMAGE:{nonce}:{}", path.display());
+        f.ctl(&["seat", "type", seat, &command]);
+        f.ctl(&["seat", "key", seat, "enter"]);
+        let expected = format!(
+            "PNG_READ:{nonce}:{}",
+            png.iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>()
+        );
+        f.ctl(&[
+            "seat",
+            "wait",
+            seat,
+            "--text",
+            &regex::escape(&expected),
+            "--timeout",
+            "10000",
+        ]);
+    }
+    fn identity(f: &Fixture, seat: &str) -> (Value, Value) {
+        let seats = f.ctl(&["seat", "ls"]);
+        let row = seats
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap();
+        (
+            row["record"]["generation"].clone(),
+            row["state"]["process"].clone(),
+        )
+    }
+    let mut f = Fixture::new();
+    fs::write(
+        f.root.join("bin/claude"),
+        r#"#!/usr/bin/env python3
+import os, pathlib, sys
+print('CWD:'+os.getcwd(),flush=True)
+for line in sys.stdin:
+    if line.startswith('READ_IMAGE:'):
+        _,nonce,path=line.rstrip('\r\n').split(':',2)
+        data=pathlib.Path(path).read_bytes()
+        assert data[:8] == bytes([137,80,78,71,13,10,26,10])
+        print('PNG_READ:'+nonce+':'+data.hex(),flush=True)
+"#,
+    )
+    .unwrap();
+    fs::set_permissions(f.root.join("bin/claude"), fs::Permissions::from_mode(0o700)).unwrap();
+    let source = f.root.join("fixture.png");
+    let mut png = Vec::new();
+    {
+        let mut writer = png::Encoder::new(&mut png, 1, 1).write_header().unwrap();
+        writer.write_image_data(&[123]).unwrap();
+    }
+    fs::write(&source, &png).unwrap();
+    f.start();
+    let initial = f.ctl(&["ui", "layout"]);
+    let swarm = initial["swarm"].as_str().unwrap().to_owned();
+    let seat = f.spawn("claude", &swarm, None);
+    f.expect_cwd(&seat, &f.root.join("repository"));
+    let owners = f.owners();
+    let original = identity(&f, &seat);
+    let frame = f.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        &seat,
+        "--text",
+        "Image fixture initial message",
+    ]);
+    click_body(&f, &frame);
+    type_keys(&f, "AB");
+    f.ctl(&["ui", "key", "left"]);
+    let pasted = f.ctl(&["ui", "paste-image", source.to_str().unwrap()]);
+    let first = PathBuf::from(pasted["pasted_image"]["path"].as_str().unwrap());
+    assert_eq!(pasted["pasted_image"]["marker"], "[Image #1]");
+    assert_eq!(text(body(&pasted)), "A[Image #1]B");
+    assert_eq!(fs::read(&first).unwrap(), png);
+    assert_ne!(first, source);
+    assert_eq!(
+        fs::metadata(&first).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    let removed = f.ctl(&["ui", "key", "backspace"]);
+    assert_eq!(text(body(&removed)), "AB");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while first.exists() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(
+        !first.exists(),
+        "removing closing bracket must remove the entire owned draft file"
+    );
+    assert_eq!(
+        fs::read(&source).unwrap(),
+        png,
+        "source file is never owned by the composer"
+    );
+    let pasted = f.ctl(&["ui", "paste-image", source.to_str().unwrap()]);
+    let sent = PathBuf::from(pasted["pasted_image"]["path"].as_str().unwrap());
+    assert_ne!(sent, first);
+    f.ctl(&["ui", "key", "enter"]);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = f.ctl(&["ui", "layout"]);
+        if frame["tree"].to_string().contains(sent.to_str().unwrap()) {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "sent attachment reference not projected: {frame}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    type_keys(&f, "Later plain text");
+    f.ctl(&["ui", "key", "enter"]);
+    assert_eq!(fs::read(&sent).unwrap(), png, "a later text send must not release a prior image file");
+    recipient_reads(&f, &seat, &sent, "before-ui-restart", &png);
+    let mut ui = f.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    f.start();
+    assert_eq!(f.owners(), owners);
+    assert_eq!(identity(&f, &seat), original);
+    recipient_reads(&f, &seat, &sent, "after-ui-restart", &png);
+    // Advertised older UI control refreshes logic alone, retaining the same recipient process.
+    let mut ui = f.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let owner_path = f.root.join("run/logic.owner.json");
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    owner["ready"]["ui_control_version"] =
+        serde_json::json!(bbt_proto::gui::UI_CONTROL_VERSION - 1);
+    fs::write(owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    f.start();
+    let upgraded = f.owners();
+    assert_eq!(upgraded[0], owners[0]);
+    assert_ne!(upgraded[1], owners[1]);
+    assert_eq!(identity(&f, &seat), original);
+    recipient_reads(&f, &seat, &sent, "after-logic-upgrade", &png);
+    assert_eq!(fs::read(&sent).unwrap(), png);
+    assert_eq!(fs::read(&source).unwrap(), png);
+    fs::remove_file(sent).unwrap();
+}

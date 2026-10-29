@@ -8,8 +8,8 @@
 use super::*;
 
 /// Logical input verbs; old logic is refreshed without replacing live PTYs.
-/// Version 2 adds the global terminal font chords accepted by the control door.
-pub const UI_CONTROL_VERSION: u16 = 2;
+/// Version 3 adds explicit operator image paste; older logic is refreshed before relay.
+pub const UI_CONTROL_VERSION: u16 = 3;
 
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -82,6 +82,8 @@ pub enum UiRequest {
     SpawnGate(UiSpawnGateCommand),
     /// Send through the window's retained composer, not a direct messaging call.
     Compose(UiCompose),
+    /// Copy PNG/TIFF bytes from an explicit operator path into private composer custody.
+    PasteImage { path: String },
 }
 
 impl UiRequest {
@@ -106,6 +108,9 @@ impl UiRequest {
                 Err("invalid_swarm_workdir: expected a swarm and an absolute folder path")
             }
             Self::Compose(compose) => compose.validate(),
+            Self::PasteImage { path } if !valid_workdir(path) => {
+                Err("invalid_ui_image_path: expected a bounded absolute printable image path")
+            },
             Self::Spawn(pick)
                 if pick.harness.is_empty()
                     || pick.harness.len() > 256
@@ -415,12 +420,19 @@ pub struct UiLayout {
     pub spawned: Option<UiSpawned>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub composed: Option<UiComposed>,
+    /// Only the explicit paste-image reply carries its newly owned file reference.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pasted_image: Option<UiImagePaste>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub starting: Vec<UiStartingPane>,
     /// Included only for `UiRequest::Seats`; ordinary layout replies keep it absent.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seats: Option<Vec<GuiSeat>>,
 }
+
+/// Completed private PNG copy, bound to the marker in the produced composer frame.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiImagePaste { pub id: String, pub marker: String, pub path: String }
 
 /// Resolved launcher values, sampled with the produced frame for ctl assertions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
