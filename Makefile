@@ -258,7 +258,8 @@ test-signed-mentions:
 	cargo test --locked -p bboxy450-mux --test messaging --test mcp mention --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-mux --test attention_policy --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test messaging_flow --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p $(APP) --test swarm_workdir signed_mentions_refresh_retains_sessions_and_shell_state --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	cargo test --locked -p $(APP) --test swarm_workdir signed_mentions_refresh_retains_sessions_and_shell_state --target-dir '$(TARGET_DIR)' -- --ignored --nocapture; \
+	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-gui-events
 test-gui-events:

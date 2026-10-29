@@ -419,7 +419,10 @@ mod mentions_tests {
         );
         // This is an existing unindexed version-1 account, including bad foreign data.
         registry.prepare_swarm_index().unwrap();
-        assert_eq!(registry.open_in_swarm(swarm).unwrap(), [local.clone()]);
+        assert_eq!(
+            registry.open_in_swarm(swarm).unwrap().as_slice(),
+            std::slice::from_ref(&local)
+        );
         let db = store.connection().unwrap();
         let plan: Vec<String> = db
             .prepare(&format!("EXPLAIN QUERY PLAN {OPEN_SWARM_SEATS}"))
@@ -490,7 +493,10 @@ mod mentions_tests {
                 ],
             )
             .unwrap();
-        assert_eq!(registry.open_in_swarm(swarm).unwrap(), [moved.clone()]);
+        assert_eq!(
+            registry.open_in_swarm(swarm).unwrap().as_slice(),
+            std::slice::from_ref(&moved)
+        );
         registry
             .update(moved.id, |seat| {
                 seat.swarm = foreign;
