@@ -9084,7 +9084,6 @@ impl Worker {
         let mut providers_at = Instant::now();
         let mut pending_events = PendingSeats::default();
         let mut provider_recoveries = BTreeSet::new();
-        let mut made_progress = false;
         let mut deferred_commands = VecDeque::new();
         while !stop.load(Ordering::Acquire) {
             // One pending bind per turn, rotating on refusal. No sleep, replay
@@ -9104,7 +9103,7 @@ impl Worker {
             );
             self.service_checkpoints(false)?;
             checkpoint_service.finish(Outcome::Ok, 0, 0);
-            made_progress = false;
+            let mut made_progress = false;
             let command_span =
                 self.client
                     .capture_diagnostics
