@@ -9,7 +9,7 @@ use bboxy450_desktop_notifications::{
     Authorization, Error, Notification, NotificationId, Notifier,
 };
 use bboxy450_term::{
-    attention::{Desired, EpisodeKey, Notice},
+    attention::{Desired, EpisodeKey, Episodes, Notice},
     notifications::{Event, Worker},
 };
 use bbt_mux::Ulid;
@@ -196,6 +196,7 @@ fn a_queued_mute_replaces_the_notice_after_slow_authorization() {
         id.clone(),
         Notice {
             episode: EpisodeKey {
+                epoch: Ulid::from(1_u128),
                 generation: 1,
                 ordinal: 1,
             },
@@ -207,11 +208,11 @@ fn a_queued_mute_replaces_the_notice_after_slow_authorization() {
         },
     )]
     .into();
-    worker.submit(desired, Default::default());
+    worker.submit(desired, Default::default(), true);
     at_authorization
         .recv_timeout(Duration::from_secs(5))
         .unwrap();
-    worker.submit(Desired::new(), Default::default());
+    worker.submit(Desired::new(), Default::default(), false);
     release.send(()).unwrap();
     while worker.progress().1 < 2 {
         events.recv_timeout(Duration::from_secs(5)).unwrap();
@@ -219,6 +220,65 @@ fn a_queued_mute_replaces_the_notice_after_slow_authorization() {
     assert_eq!(worker.progress(), (2, 2));
     assert_eq!(posts.load(Ordering::SeqCst), 0);
     worker.join().unwrap();
+}
+
+#[test]
+fn captured_episode_identity_survives_rebuild_but_not_a_to_b_to_a() {
+    use bbt_proto::{
+        Activity, Grade, GuiSeat, ProcessStatus, SeatId, SeatState, WaitKind, registry::SeatRecord,
+    };
+    use std::time::Instant;
+    let mut row = GuiSeat {
+        record: SeatRecord::new(Ulid::from(7_u128), Ulid::from(8_u128), "A", "claude"),
+        state: SeatState {
+            generation: 1,
+            process: ProcessStatus::Running { pid: 9 },
+            activity: Activity::Waiting(WaitKind::Question),
+            grade: Grade::Shim,
+            title: String::new(),
+            detail: Some("Answer?".into()),
+            turn_open: true,
+            observed_ms: 0,
+            subagents: vec![],
+        },
+        attention: None,
+        notification_episode: Some(EpisodeKey {
+            epoch: Ulid::from(1_u128),
+            generation: 1,
+            ordinal: 1,
+        }),
+    };
+    let id = SeatId::from_u128(7);
+    let now = Instant::now();
+    let captured_a = row.notification_episode.unwrap();
+    let mut episodes = Episodes::default();
+    episodes.observe(&row, now);
+    assert!(episodes.handle(id, captured_a));
+    // The daemon/UI may independently rebuild from the same shared key. Exact
+    // handled context remains applicable; an unchanged projection never resets it.
+    let mut rebuilt = Episodes::default();
+    rebuilt.observe(&row, now);
+    assert!(rebuilt.handle(id, captured_a));
+    rebuilt.observe(&row, now);
+    assert!(!rebuilt.handle(id, captured_a));
+    assert!(
+        rebuilt
+            .notifications(&Default::default(), false, None)
+            .is_empty()
+    );
+    for incarnation in [2_u128, 3] {
+        row.notification_episode.as_mut().unwrap().epoch = Ulid::from(incarnation);
+        rebuilt.observe(&row, now);
+        assert!(!rebuilt.handle(id, captured_a));
+        assert_eq!(
+            rebuilt
+                .notifications(&Default::default(), false, None)
+                .len(),
+            1
+        );
+    }
+    assert_eq!(rebuilt.key(id), row.notification_episode);
+    assert!(rebuilt.handle(id, row.notification_episode.unwrap()));
 }
 
 #[test]

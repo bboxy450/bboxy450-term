@@ -22,6 +22,26 @@ property = "An admitted newer plan is reconciled before posting an obsolete noti
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "NotificationRecovery"
+title = "Initial permission and transient notification IO recovery"
+models = ["NotificationRecovery", "BrokenNotificationRecovery"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/notification_models.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs"]
+implementation_tests = ["crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/tests/formal_contracts/witnesses.rs", "crates/bboxy450-term/tests/desktop.rs"]
+assumptions = "One seat, enabled policy, one question and cancellation, one optional transient failure shared among authorization/post/withdrawal; six variables have at most 192 valuations. Native call start and completion are separate atomic actions. Worker stages, completion groups and the retry timer are weakly fair; calls terminate and permission/backend eventually becomes available. Question/cancel arrival is not fair. Permanent denial, OS presentation, wall-clock retry duration, queue multiplicity and byte semantics are not proved. Authorization gating is projected to one initial granted check; later rechecks use the actual worker tests."
+property = "Enabled policy eventually checks permission even before a question; waiting eventually posts or is cancelled; cancellation eventually withdraws an in-flight completion. Omitting the retry timer leaves a fair stuck execution and must fail liveness. Worker tests enabled_policy_checks_permission_before_a_question_once_until_reenabled, unchanged_waiting_plans_recover_permission_post_and_withdrawal_failures and a_resolution_during_failed_post_cancels_its_retry witness the concrete branches."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "AttentionLifecycle"
+title = "Retained desktop owner and exact current notification episode"
+models = ["AttentionLifecycle", "BrokenAttentionLifecycle"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/notification_models.rs", "crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/seat_socket.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs"]
+implementation_tests = ["crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/seat_socket/attention_tests.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/tests/formal_contracts/witnesses.rs", "crates/bboxy450-term/tests/desktop.rs"]
+assumptions = "One seat, two questions, two UI context streams, three source incarnations (apparent A -> B -> A) and one delayed click. A model incarnation abstracts the exact epoch/generation/ordinal tuple, never a reusable seat ID. Current projection application, context receipt/EOF and click completion are separate atomic actions; duplicates self-loop. UI detach changes only attachment. No fairness is needed for safety; notification progress is checked by NotificationRecovery. FIFO/admitted current-source transport is assumed: lag resnapshot, peer admission, monotonic revisions, bounded receiver storage and authenticated ownership use actual socket/broker/process tests rather than a transport refinement proof."
+property = "Detach preserves the desktop owner and current question; replay cannot create a question; an old context/EOF cannot replace a newer stream; only an exact current captured episode can be handled after reconnect, including A -> B -> A. Broken controls remove these guards and must fail safety. Broker live_episode_is_shared_stable_and_replay_cannot_mint and snapshots_cover_lag_without_replaying_stale_deltas, desktop frontend_detach_preserves_policy_and_exact_handled_episode and late_old_context_and_eof_cannot_replace_a_new_frontend, and notification_click_cannot_handle_a_replacement_question_or_process are API witnesses; desktop.rs verifies a detached observer posts and click reopens the same retained process."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "WorkspaceFence"
 title = "Workspace reads and authority"
 models = ["WorkspaceFence", "BrokenWorkspaceFence"]

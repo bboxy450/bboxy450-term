@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "notification_models.rs"]
+mod notification_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -768,10 +771,12 @@ fn landing_verification(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 14] = [
+    let families: [fn(bool) -> Model; 16] = [
         landing_verification,
         dirty_wake,
         notification,
+        notification_models::recovery,
+        notification_models::lifecycle,
         workspace,
         plugin,
         token,

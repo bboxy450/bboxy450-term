@@ -209,3 +209,23 @@ frontend = "project"
 name = "BrokenLandingVerification"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "NotificationRecovery"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenNotificationRecovery"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "AttentionLifecycle"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenAttentionLifecycle"
+expected = "safety"
+frontend = "project"

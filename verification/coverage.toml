@@ -68,8 +68,8 @@ sources = ["crates/bboxy450-desktop-notifications-linux/src/lib.rs"]
 [[crate]]
 name = "bboxy450-desktop-notifications"
 status = "contract-model"
-models = ["NotificationReplace"]
-scope = "Capacity-one host worker and replacement after authorization; no OS presentation or permission proof."
+models = ["NotificationReplace", "NotificationRecovery"]
+scope = "Capacity-one host replacement, initial permission check and fair recovery after finite transient IO failure/cancellation; no OS presentation or permanent permission guarantee."
 sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-term/src/notifications.rs"]
 
 [[crate]]
@@ -124,9 +124,9 @@ sources = ["crates/bbt-supervisor/src/supervisor.rs"]
 [[crate]]
 name = "bboxy450-mux"
 status = "contract-model"
-models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness"]
-scope = "Checkpoint/input fences, captured workspace/provider revisions and plugin stale-completion guards, local delivery/suppression and fair seat ingestion. Native GitKB effects, signing, commit atomicity and unknown outcomes use real private host fixtures. Finite contract projections; no whole-mux refinement proof."
-sources = ["crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bbt-mux/src/logic.rs"]
+models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness", "AttentionLifecycle"]
+scope = "Checkpoint/input fences, captured workspace/provider revisions and plugin stale-completion guards, local delivery/suppression, fair seat ingestion and current live notification episodes without replay-created keys. Native GitKB effects, signing, commit atomicity and unknown outcomes use real private host fixtures. Finite contract projections; no whole-mux or observer transport refinement proof."
+sources = ["crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/seat_socket.rs"]
 
 [[crate]]
 name = "bboxy450-proto"
@@ -180,9 +180,9 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "WindowDurability", "FocusFrame", "CustodyDelivery"]
-scope = "Stable input, retained process ownership, notification replacement, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
-sources = ["scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
+models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery"]
+scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
+sources = ["scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-term-firehose"
