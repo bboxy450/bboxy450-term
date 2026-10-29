@@ -458,7 +458,7 @@ fn daemon_survives_ui_detach_and_reopens_the_same_running_harness() {
     wait_until("native close hides the focused seat", DEADLINE, || {
         fixture.ctl(&["ui", "layout"])["panes"]
             .as_array()
-            .is_some_and(Vec::is_empty)
+            .is_some_and(|panes| panes.iter().all(|pane| pane["seat"] != seat))
     });
     fixture.ctl(&["ui", "key", "cmd-z"]);
     fixture.assert_work_preserved(&owners, &seat, &before);
