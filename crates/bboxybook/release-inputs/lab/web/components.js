@@ -107,6 +107,15 @@
   function selectBox(optsArr, val, on) { const s = el('select', { onchange: e => on && on(e.target.value) }); for (const o of optsArr) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return el('span', { class: 'sel' }, s, harnessIcon('chevdown', 'caret')); }
   function harnessIcon(name, extra) { return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
+  // Display only: ROLE stays visible before a shrinkable first name. Full names
+  // and routing identities remain in the original records and name tooltips.
+  // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+  const firstName = name => String(name || '').match(/[^\p{White_Space}]+/u)?.[0] || '';
+  const cleanRole = role => String(role || '').replace(/^\p{White_Space}+|\p{White_Space}+$/gu, '');
+  const SHELL_HARNESSES = new Set(['zsh', 'bash', 'fish', 'sh', 'dash', 'ksh', 'tcsh', 'csh', 'powershell', 'pwsh', 'cmd']);
+  const seatRoleLabel = seat => cleanRole(seat.role).toUpperCase() || (SHELL_HARNESSES.has(seat.harness) ? 'SHELL' : 'UNASSIGNED');
+  const identityRole = label => el('span', { class: 'rmark identity-role', title: label }, label);
+  const identityColor = (role, fallback = 'var(--role-unsigned)') => Object.hasOwn(T.color.role, role) ? 'var(--role-' + role + ')' : fallback;
   function kbd(s) { return el('span', { class: 'kbd' }, s); }
 
   // ---------- model ----------
@@ -158,11 +167,10 @@
   // ---------- molecules ----------
   function seatRow(seat, opts) {
     opts = opts || {};
-    const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : '') + (opts.unfocused ? ' unfocused' : ''), style: '--seat:' + seatColor(seat) });
+    const row = el('div', { class: 'seat-row ' + seat.state + (seat.life ? ' life-' + seat.life : '') + (opts.focused ? ' focused' : '') + (opts.unfocused ? ' unfocused' : ''), style: '--seat:' + seatColor(seat) + ';--identity-role:' + identityColor(seat.role) });
     const tileCol = (LAUNCH.find(l => l.harness === seat.harness) || {}).tile || 'var(--surface-2)';
     if (seat.where && seat.where !== 'local') row.append(el('span', { class: 'where ' + seat.where + (seat.link ? ' ' + linkOf(seat.link).kind : ''), title: (seat.where === 'cloud' ? 'runs in the cloud' : 'over ssh') + (seat.host ? ' · ' + seat.host : '') + (seat.link ? ' · ' + linkSay(seat.link) : '') }, harnessIcon(seat.where)));
-    row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), el('span', { class: 'name', style: 'color:' + seatColor(seat) }, seat.name));
-    if (seat.role && seat.role !== 'shell') row.append(roleMark(seat.role));   // a shell carries no role chip (decision #262)
+    row.append(el('span', { class: 'tile', style: 'background:' + tileCol }, harnessIcon(seat.harness)), identityRole(seatRoleLabel(seat)), el('span', { class: 'name', style: 'color:' + seatColor(seat), title: seat.name, 'aria-label': seat.name }, firstName(seat.name)));
     if (seat.authority) row.append(authMark(seat));
     if (seat.muted) { row.classList.add('muted'); row.append(el('span', { class: 'mutemark', title: 'muted: 1:1 with the operator' }, harnessIcon('muted'))); }
     row.append(el('span', { class: 'title' }, seat.title || ''));
@@ -1096,8 +1104,7 @@
     opts = opts || {};
     const s = el('div', { class: 'strip', style: 'background:' + seatColor(seat) }, el('span', { class: 'close', title: 'close seat', onclick: e => { e.stopPropagation(); if (opts.onClose) opts.onClose(seat); } }));
     if (seat.where && seat.where !== 'local') s.append(el('span', { class: 'where', title: seat.where + (seat.host ? ' · ' + seat.host : '') }, harnessIcon(seat.where)));
-    s.append(harnessIcon(seat.harness), el('span', { class: 'name' }, seat.name));
-    if (seat.role && seat.role !== 'shell') s.append(roleMark(seat.role));
+    s.append(harnessIcon(seat.harness), identityRole(seatRoleLabel(seat)), el('span', { class: 'name', title: seat.name, 'aria-label': seat.name }, firstName(seat.name)));
     if (seat.authority) s.append(authMark(seat), el('span', { class: 'authsay' }, AUTH_SAY[seat.authority]));
     s.append(el('span', { class: 'title' }, (seat.title || '') + (seat.state === 'waiting' ? ' · waiting for ' + (seat.waitKind || 'an answer') : '')));
     if (opts.shortcut) s.append(kbd(opts.shortcut));
@@ -1538,20 +1545,23 @@
   function messageRow(m, opts) {
     opts = opts || {};
     const time = m.time || hhmm(m.ts);
+    const author = m.author || null, fullName = author?.name || m.from || '';
+    const op = author?.kind === 'operator' || author?.kind === 'operator-local';
+    const role = op ? 'oracle' : cleanRole(m.role) || (author ? null : 'unsigned');
+    const roleLabel = op ? 'OPERATOR' : cleanRole(m.role).toUpperCase() || (author ? 'UNKNOWN' : 'UNSIGNED');
     // MessageRow (decision #38): author { kind, id, name }, issuer_kind, kind, priority_class + priority, text, ts, receipts. role is not
     // in the row: the GUI looks it up from the seat registry by author.id (lab: m.role); an operator author reads OPERATOR.
     if (m.kind === 'presence') return el('div', { class: 'msg presence' }, el('span', { class: 'ptext' }, m.text), el('span', { class: 'time' }, time));
     // audit line (a projection of the Oracle audit log, swarm-member scope): the Oracle's effects in the open, centred like presence
     // routing discipline (messaging.md): a worker's progress note to the stream is rejected with a hint; only chunk, decision, presence land
-    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('b', {}, m.author.name), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, time));
+    if (m.rejected) return el('div', { class: 'msg rejected', title: 'rejected: worker-class stream messages must be chunk, decision or presence' }, el('span', { class: 'rj-t' }, el('span', { class: 'rj-x' }, '⊘ '), el('span', { class: 'rj-identity' }, identityRole(roleLabel), el('span', { class: 'identity-sep' }, ' · '), el('b', { class: 'who', title: fullName, 'aria-label': fullName }, firstName(fullName))), ' tried to post progress to the stream'), el('span', { class: 'rj-hint' }, 'DM your delegator' + (m.delegator ? ' · ' + m.delegator : '')), el('span', { class: 'time' }, time));
     if (m.audit) { const a = m.audit; return el('div', { class: 'msg presence audit ' + (a.outcome || 'applied'), title: 'audit · op ' + (a.op || '') + ' · ' + (a.outcome || 'applied') + (a.reason ? ' · ' + a.reason : '') },
       el('div', { class: 'aline' }, el('span', { class: 'amark' }, ROLE_MARK.oracle + ' '), el('b', {}, a.actor || 'Oracle'), ' ' + a.verb + ' ', el('b', {}, a.target || '')),
       el('div', { class: 'ameta' }, a.op ? el('code', { class: 'aop' }, a.op.slice(0, 6)) : null, a.outcome && a.outcome !== 'applied' ? el('span', { class: 'aout' }, a.outcome) : null, el('span', { class: 'time' }, time))); }
     // a mark only when something real says it: the operator and observers by author kind, a seat by its registry role; never invented
-    const op = m.author.kind === 'operator', role = op ? 'oracle' : m.role || null;
-    const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: role ? '--role:var(--role-' + role + ')' : null });
-    const head = el('div', { class: 'head' }, el('span', { class: 'who' }, m.author.name));
-    // The role rail carries identity; only exceptional numeric priority needs a label.
+    const row = el('div', { class: 'msg ' + (role || 'norole') + (op ? ' operator' : '') + (m.unread ? ' unread' : '') + (m.replyTo ? ' nested' : ''), style: '--role:' + identityColor(role, role ? 'var(--role-unsigned)' : 'var(--fg-dim)') });
+    const head = el('div', { class: 'head' }, el('span', { class: 'role identity-role', title: roleLabel }, roleLabel), el('span', { class: 'who', title: fullName, 'aria-label': fullName }, firstName(fullName)));
+    // Role-first author identity stays separate from exceptional numeric priority.
     if ((m.priority || 0) >= 7) head.append(el('span', { class: 'prio p1', title: 'priority ' + m.priority + ' of 9' }, 'Priority ' + m.priority));
     if (m.ch && opts.showCh !== false) head.append(el('span', { class: 'chchip', title: 'arrived by bboxy450://channels/bboxy450-term/' + m.ch + '/' }, '#' + m.ch));
     if (m.kind && !['text', 'message', 'chunk'].includes(m.kind)) head.append(el('span', { class: 'kchip ' + m.kind, title: m.kind + ': allowed on the swarm stream' }, m.kind));
@@ -1940,5 +1950,5 @@
     return root;
   }
 
-  window.C = { launchFields, composeLaunch, TRANSPORTS, poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { firstName, seatRoleLabel, launchFields, composeLaunch, TRANSPORTS, poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();
