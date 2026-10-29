@@ -122,11 +122,12 @@ fn wide_mermaid_code_and_tables_pan_in_their_own_retained_viewports() {
         }
     }
     let code = format!("```text\n{}\n```", "w".repeat(250));
+    // Text words now wrap to fit; forty structural cell paddings cannot.
     let table = format!(
-        "|{}|{}|{}|\n|---|---|---|\n|one|two|three|",
-        "LongColumn".repeat(12),
-        "LongColumn".repeat(12),
-        "LongColumn".repeat(12)
+        "|{}\n|{}\n|{}",
+        "X|".repeat(40),
+        "---|".repeat(40),
+        "v|".repeat(40)
     );
     let mermaid="```mermaid\nflowchart LR\n A[one] --> B[two] --> C[three] --> D[four] --> E[five] --> F[six] --> G[seven] --> H[eight] --> I[nine] --> J[ten]\n```".to_owned();
     for source in [code, table, mermaid] {

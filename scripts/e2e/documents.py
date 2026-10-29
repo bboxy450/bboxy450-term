@@ -286,6 +286,79 @@ def d1(app):
             app.ctl("app","resize","200x64")
 
 
+    fitted_table_and_dismissal(app, style)
+
+
+def fitted_table_and_dismissal(app, style):
+    # Actual native cell/paint receipts decide fit; no browser or duplicate solver.
+    # Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    app.ctl("ui", "key", "esc")
+    before = app.ctl("ui", "layout")
+    values = ["/workspace/long_component/document.md", "CenteredIdentifierAcrossSeveralSegments", "RightIdentifierAcrossSeveralSegments"]
+    body = ("| Path | Center | Right |\n| :--- | :---: | ---: |\n"
+            f"| `{values[0]}` | **{values[1][:8]}**{values[1][8:]} | `{values[2]}` |\n"
+            "| x | 123 | 45 |\n")
+    record = app.fixture("fitted-table", body)
+    layout, image = app.open(record, ["Path", "Center", "Right", "123", "45"])
+    observed = app.observation(layout, record)
+    keyed = {key:node for key,node in nodes(layout) if node["kind"].startswith("named:")}
+    panel, table = keyed["document"]["rect"], keyed["block0"]["rect"]
+    require(table[2] > 576 and table[0]+table[2] <= panel[0]+panel[2]+0.01,
+            "table did not use the actual modal column beyond readable prose width")
+    ink = []
+    for row, expected in [(1, values), (2, ["x", "123", "45"])]:
+        heights = []
+        for col, value in enumerate(expected):
+            cell = keyed[f"block0/row{row}/cell{col}"]["rect"]
+            text_key = f"block0/row{row}/cell{col}/text"
+            painted = [r for r in observed["texts"] if r["key"] == text_key or r["key"].startswith(text_key+"/")]
+            require("".join(r["text"] for r in painted) == value,
+                    f"fitted cell {row}/{col} changed or lost rich source text")
+            require(cell[0] >= table[0]-0.01 and cell[0]+cell[2] <= table[0]+table[2]+0.01,
+                    "fitted table cell exceeds its offered native viewport")
+            heights.append(cell[3])
+            for run in painted:
+                require(abs(run["font_size"]-style["body"]) < 0.001,
+                        "table fit changed the native Body font size")
+                require(run["rect"][0] >= cell[0]-0.01 and run["rect"][0]+run["rect"][2] <= cell[0]+cell[2]+0.01,
+                        "table text paints outside its retained cell")
+                ink.append({"key":run["key"], "text":run["text"], "ink":ink_bounds(image,run["rect"],run["color"])})
+        require(max(heights)-min(heights) < 0.01, "fitted cells lost shared row heights")
+    app.checks.append({"feature":"fitted-rich-table", "frame":layout["frame_seq"], "panel":panel, "table":table, "native_ink":ink})
+
+    def click(rect):
+        x,y,w,h = rect
+        return app.ctl("ui", "click", x+w*0.5, y+h*0.5)
+
+    # Inert panel padding and a body/selection-start click must never dismiss.
+    inside = app.ctl("ui", "click", panel[0]+1, panel[1]+panel[3]*0.5)
+    require(inside["document"] == layout["document"], "empty interior panel space dismissed the document")
+    selected = click(next(run["rect"] for run in observed["texts"] if run["text"] == "123"))
+    require(selected["document"] == layout["document"], "body selection-start click dismissed the document")
+    find = click(keyed["action4"]["rect"])
+    require(find["document"] == layout["document"] and any("find is not available yet" in str(n.get("text", "")) for _,n in nodes(find)),
+            "footer command was replaced by outside dismissal")
+    find_keyed = {key:n for key,n in nodes(find) if n["kind"].startswith("named:")}
+    closed = click(find_keyed["action6"]["rect"])
+    anchor = ["swarm", "tab", "focused", "page"]
+    require(closed["document"] is None and all(closed[k] == before[k] for k in anchor),
+            "footer close did not restore the original focus anchor")
+
+    reopened, _ = app.open(record, ["123", "45"])
+    panel = next(n["rect"] for key,n in nodes(reopened) if key == "document" and n["kind"] == "named:document")
+    settings = reopened["regions"]["settings"]
+    point = [settings[0]+settings[2]*0.5, settings[1]+settings[3]*0.5]
+    require(not (panel[0] <= point[0] < panel[0]+panel[2] and panel[1] <= point[1] < panel[1]+panel[3]),
+            "fixture must click a real underlying Settings control outside the modal")
+    dismissed = app.ctl("ui", "click", *point)
+    require(dismissed["document"] is None and all(dismissed[k] == before[k] for k in anchor),
+            "backdrop click did not consume dismissal and restore focus; underlying Settings received the click")
+    require(not any(n["kind"] == "named:document" for _,n in nodes(dismissed)), "dismissed modal remains in the produced tree")
+    app.checks.append({"feature":"modal-dismissal", "inside_frame":inside["frame_seq"], "body_frame":selected["frame_seq"],
+                       "footer_frame":closed["frame_seq"], "backdrop_frame":dismissed["frame_seq"], "outside_underlying_settings":point,
+                       "focus_anchor":{k:dismissed[k] for k in anchor}})
+
+
 def point(path, value):
     return [path["origin"][i]+path["scale"]*value[i] for i in range(2)]
 

@@ -118,6 +118,67 @@ fn modal_scroll_clamps_at_both_ends_and_the_footer_closes() {
         ui::cursor::Cursor::Default
     );
 }
+// keeps: spec document-viewer §What it is — only the modal backdrop dismisses.
+#[test]
+fn modal_backdrop_closes_but_interior_gaps_controls_and_embedded_documents_do_not() {
+    let shell = DocumentModal {
+        document: Document {
+            title: "Backdrop test".into(),
+            body: "Selectable body".into(),
+            ..Default::default()
+        },
+        modal: true,
+        viewport: [1100., 600.],
+        ..Default::default()
+    };
+    let layout = shell
+        .element(ctx(), &Metrics, [1100., 600.])
+        .layout(Rect::new(60., 54., 980., 492.), ctx(), &Metrics)
+        .unwrap();
+    let modal = Regions::retained_modal(&layout);
+    let embedded = Regions::retained(&layout);
+    let r = layout.rect;
+    for point in [
+        [r.x - 1., r.y + 1.],
+        [r.right(), r.y + 1.],
+        [r.x + 1., r.y - 1.],
+        [r.x + 1., r.bottom()],
+    ] {
+        assert_eq!(modal.hit(point), Some(Action::Close));
+        assert_eq!(embedded.hit(point), None);
+    }
+    for point in [
+        [r.x + 1., r.y + 1.],
+        [r.x + 1., r.y + r.h * 0.5],
+        [r.x + 1., r.bottom() - 1.],
+    ] {
+        assert_eq!(modal.hit(point), None, "inside padding is not the backdrop");
+    }
+    for point in [[f32::NAN, r.y], [r.x, f32::INFINITY]] {
+        assert_eq!(modal.hit(point), None);
+    }
+    fn action(node: &c::Layout, key: &str) -> Option<Rect> {
+        if matches!(&node.kind,c::LayoutKind::Named(s) if s==key) {
+            Some(node.rect)
+        } else {
+            node.children.iter().find_map(|n| action(n, key))
+        }
+    }
+    let close = action(&layout, "action6").unwrap();
+    assert_eq!(
+        modal.hit([close.x + close.w * 0.5, close.y + close.h * 0.5]),
+        Some(Action::Close)
+    );
+    let find = action(&layout, "action4").unwrap();
+    assert!(matches!(
+        modal.hit([find.x + find.w * 0.5, find.y + find.h * 0.5]),
+        Some(Action::Unavailable(_))
+    ));
+    assert_eq!(
+        modal.extent, embedded.extent,
+        "dismissal metadata never changes scroll bounds"
+    );
+}
 // keeps: spec document-viewer §Markdown
 #[test]
 fn stream_numbered_links_and_attachments_are_measured_actions_without_paint_changes() {

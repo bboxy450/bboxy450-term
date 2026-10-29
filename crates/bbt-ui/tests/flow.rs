@@ -77,6 +77,23 @@ fn nowrap_space_between_and_exact_fit_do_not_create_extra_rows() {
     let b = layout(c::Element::Flow(flow), 40.);
     assert!(b.children.iter().all(|c| c.rect.y == 0.));
 }
+// keeps: spec document-viewer §Markdown — right-aligned rich cells align whole wrapped lines.
+#[test]
+fn end_justification_aligns_each_wrapped_row_without_reordering_children() {
+    let mut flow = c::Flow::new(vec![
+        text("aaaaaa", 10.).into(),
+        text("bbbbbb", 10.).into(),
+        text("cc", 10.).into(),
+    ]);
+    flow.justify = c::Justify::End;
+    flow.column_gap = ui::Length::Px(0.);
+    let result = layout(c::Element::Flow(flow), 50.);
+    assert_eq!(result.children[0].rect.x, 20.);
+    assert_eq!(result.children[1].rect.x, 10.);
+    assert_eq!(result.children[2].rect.right(), 50.);
+    assert!(result.children[0].rect.y < result.children[1].rect.y);
+    assert_eq!(result.children[1].rect.y, result.children[2].rect.y);
+}
 // keeps: spec gui-components §2.2
 #[test]
 fn text_centers_or_ends_each_wrapped_line_and_ignores_collapsible_trailing_spaces() {

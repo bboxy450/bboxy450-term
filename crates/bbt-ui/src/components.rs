@@ -74,6 +74,7 @@ pub enum Alignment {
 pub enum Justify {
     Start,
     Center,
+    End,
     SpaceBetween,
 }
 #[derive(Debug, Clone)]
@@ -1874,6 +1875,7 @@ fn flow_layout(
         let (offset, extra_gap) = match f.justify {
             Justify::Start => (0., 0.),
             Justify::Center => (free * 0.5, 0.),
+            Justify::End => (free, 0.),
             Justify::SpaceBetween if rects.len() > 1 => (0., free / (rects.len() - 1) as f32),
             Justify::SpaceBetween => (0., 0.),
         };

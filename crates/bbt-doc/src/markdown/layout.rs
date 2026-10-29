@@ -1148,6 +1148,7 @@ impl Render<'_> {
         let mut minima = vec![2. * pad + 2.; n];
         let mut hard_minima = minima.clone();
         let mut preferred = minima.clone();
+        let mut cell_words = vec![];
         for (ri, cells) in std::iter::once(header)
             .chain(rows.iter().map(Vec::as_slice))
             .enumerate()
@@ -1158,20 +1159,22 @@ impl Render<'_> {
                 false,
                 ui::Color::Foreground,
             );
+            let mut words = vec![];
             for (i, cell) in cells.iter().enumerate() {
                 let [min, max, hard] = self.cell_widths(cell, f);
+                words.push(min);
                 hard_minima[i] = hard_minima[i].max(hard + 2. * pad + 2.);
                 minima[i] = minima[i]
                     .max(min.min(content_limit) + 2. * pad + 2.)
                     .max(hard_minima[i]);
                 preferred[i] = preferred[i].max(max + 2. * pad + 2.);
             }
+            cell_words.push(words);
         }
         // Text tokens may use rich()'s existing grapheme wrapping. Only atomic
         // chips, individual glyph clusters and cell padding are hard minima.
         // Proportionally shrink soft minima before the ordinary preferred solve.
         // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        let word_minima = minima.clone();
         let minimum: f32 = minima.iter().sum();
         let hard_minimum: f32 = hard_minima.iter().sum();
         if minimum > available && minimum > hard_minimum {
@@ -1210,9 +1213,10 @@ impl Render<'_> {
             let mut items = vec![];
             for i in 0..n {
                 let width = widths[i];
+                let inner = (width - 2. * pad - 2.).max(0.);
                 let render = Render {
-                    width: (width - 2. * pad - 2.).max(0.),
-                    fragment_words: width + 0.01 < word_minima[i],
+                    width: inner,
+                    fragment_words: cell_words[ri].get(i).is_some_and(|word| *word > inner),
                     ..*self
                 };
                 let f = font(
@@ -1226,16 +1230,10 @@ impl Render<'_> {
                     cells.get(i).map_or(&[], Vec::as_slice),
                     f,
                 );
-                if !matches!(align.get(i), Some(TableAlign::Start) | None)
-                    && let c::Element::Named { content, .. } = &mut cell
-                    && let c::Element::Text(t) = &mut **content
-                {
-                    t.align = if align[i] == TableAlign::Center {
-                        c::Alignment::Center
-                    } else {
-                        c::Alignment::End
-                    };
-                }
+                Self::align_cell(
+                    &mut cell,
+                    align.get(i).copied().unwrap_or(TableAlign::Start),
+                );
                 let s = border(
                     style(
                         if ri == 0 {
@@ -1284,6 +1282,34 @@ impl Render<'_> {
         b.clip = true;
         b.gap = ui::Length::Px(0.);
         named(key, c::Element::Box(b))
+    }
+    // Align complete retained lines, including wrapped rich fragments, rather
+    // than each word/chip separately. Short cells retain the ordinary Text path.
+    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn align_cell(cell: &mut c::Element, align: TableAlign) {
+        match cell {
+            c::Element::Named { content, .. } => Self::align_cell(content, align),
+            c::Element::Text(t) => {
+                t.align = match align {
+                    TableAlign::Start => c::Alignment::Start,
+                    TableAlign::Center => c::Alignment::Center,
+                    TableAlign::End => c::Alignment::End,
+                };
+            }
+            c::Element::Flow(flow) => {
+                flow.justify = match align {
+                    TableAlign::Start => c::Justify::Start,
+                    TableAlign::Center => c::Justify::Center,
+                    TableAlign::End => c::Justify::End,
+                };
+            }
+            c::Element::Box(b) => {
+                for child in &mut b.children {
+                    Self::align_cell(&mut child.element, align);
+                }
+            }
+            _ => {}
+        }
     }
     fn cell_widths(&self, values: &[Inline], f: ui::Text) -> [f32; 3] {
         let mut pieces = vec![];

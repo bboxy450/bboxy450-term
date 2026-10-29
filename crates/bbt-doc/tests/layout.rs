@@ -96,15 +96,17 @@ fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {
             .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
             .unwrap();
         let body = named(&layout, "body").unwrap();
-        assert!(body.rect.w <= width.min(STYLE.spacing.doc_measure as f32) + 0.01);
+        assert!((body.rect.w - width).abs() < 0.01);
+        assert!(
+            named(&layout, "block1").unwrap().rect.w <= STYLE.spacing.doc_measure as f32 + 0.01
+        );
         let table = named(&layout, "block2").unwrap();
-        assert!(table.rect.w <= width.min(STYLE.spacing.doc_measure as f32) + 0.01);
+        assert!((table.rect.w - width).abs() < 0.01);
         let c0 = named(&layout, "block2/row1/cell0").unwrap();
         let c1 = named(&layout, "block2/row1/cell1").unwrap();
-        assert!(
-            c0.rect.h > 30.,
-            "wrapped cell, not a truncated fixed-height UI table"
-        );
+        if width <= 360. {
+            assert!(c0.rect.h > 30., "the fitted cell wraps without truncation");
+        }
         assert!((c0.rect.y - c1.rect.y).abs() < 0.01);
         assert!((c0.rect.h - c1.rect.h).abs() < 0.01);
         assert!(c0.rect.x + c0.rect.w <= c1.rect.x + 0.01);
@@ -115,45 +117,190 @@ fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {
 
 // keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
-fn table_columns_keep_unbroken_words_and_scroll_when_their_minima_do_not_fit() {
-    let doc = parse(
-        "| Term | Description |\n| --- | --- |\n| harness | A considerably longer description that wraps naturally over many lines. |\n| **front**matter | metadata |\n",
-    );
+fn table_columns_wrap_oversized_words_and_preserve_styled_source() {
+    let source = "| Term | Description |\n| --- | --- |\n| harness | A considerably longer description that wraps naturally over many lines. |\n| **front**matter | metadata |\n";
+    let doc = parse(source);
     for width in [120., 240., 576.] {
         let layout = doc
             .body_element(ctx(), &Fonts, width, &[])
             .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
             .unwrap();
-        let cell = named(&layout, "block0/row1/cell0").unwrap();
-        let word_width = Fonts.width(
-            "harness",
-            &TextStyle {
-                size: ui::TypeStep::Body.pixels(),
-                weight: 400,
-                mono: false,
-                italic: false,
-                tracking_em: 0.,
-            },
-        );
-        assert!(cell.rect.w >= word_width + 16.);
-        let rendered = texts(named(&layout, "block0/row1/cell0/text").unwrap());
-        assert_eq!(rendered.trim(), "harness");
-        let styled = named(&layout, "block0/row2/cell0/text").unwrap();
-        let ys: Vec<_> = match &styled.kind {
-            c::LayoutKind::Named(_) => match &styled.children[0].kind {
-                c::LayoutKind::Text { runs, .. } => runs.iter().map(|run| run.rect.y).collect(),
-                _ => panic!("styled cell text"),
-            },
-            _ => unreachable!(),
-        };
-        assert!(
-            ys.iter().all(|y| (*y - ys[0]).abs() < 0.01),
-            "a word spanning style runs stays together"
-        );
-        if width == 120. {
+        assert!(named(&layout, "block0/rows").unwrap().rect.w <= width + 0.01);
+        for (row, value) in [(1, "harness"), (2, "frontmatter")] {
+            let cell = named(&layout, &format!("block0/row{row}/cell0/text")).unwrap();
+            let runs = runs(cell);
+            assert_eq!(
+                runs.iter().map(|r| r.text.as_str()).collect::<String>(),
+                value
+            );
             assert!(
-                named(&layout, "block0/rows").unwrap().rect.w > width,
-                "min-content columns use the explicit horizontal viewport"
+                runs.iter().all(|r| r.rect.x >= cell.rect.x - 0.01
+                    && r.rect.right() <= cell.rect.right() + 0.01)
+            );
+            if width == 576. {
+                assert!(
+                    runs.iter()
+                        .all(|r| (r.rect.y - runs[0].rect.y).abs() < 0.01),
+                    "words that fit remain together"
+                );
+            }
+        }
+    }
+    assert_eq!(doc.source, source);
+}
+
+fn runs(node: &c::Layout) -> Vec<&c::PositionedRun> {
+    let mut result = vec![];
+    if let c::LayoutKind::Text { runs, .. } = &node.kind {
+        result.extend(runs);
+    }
+    for child in &node.children {
+        result.extend(runs(child));
+    }
+    result
+}
+
+// keeps: spec document-viewer §Markdown — available width, true-size rich cells and requested alignment.
+#[test]
+fn fitted_tables_use_the_offered_width_and_align_short_and_wrapped_cells() {
+    let source = "Readable prose stays on its own measure.\n\n| Center | Right |\n| :---: | ---: |\n| **long**CenterIdentifierThatWrapsAcrossSeveralLines | `longRightIdentifierThatWrapsAcrossSeveralLines` |\n| 123 | 45 |\n";
+    let doc = parse(source);
+    for width in [240., 360., 944.] {
+        let layout = doc
+            .body_element(ctx(), &Fonts, width, &[])
+            .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+            .unwrap();
+        let prose = named(&layout, "block0").unwrap();
+        assert!(prose.rect.w <= width.min(STYLE.spacing.doc_measure as f32) + 0.01);
+        let table = named(&layout, "block1").unwrap();
+        assert!((table.rect.w - width).abs() < 0.01);
+        let rows = named(&layout, "block1/rows").unwrap();
+        assert!(rows.rect.right() <= table.rect.right() + 0.01);
+        for row in [1, 2] {
+            let left = named(&layout, &format!("block1/row{row}/cell0")).unwrap();
+            let right = named(&layout, &format!("block1/row{row}/cell1")).unwrap();
+            assert!((left.rect.h - right.rect.h).abs() < 0.01);
+            for col in [0, 1] {
+                let cell = named(&layout, &format!("block1/row{row}/cell{col}/text")).unwrap();
+                let runs = runs(cell);
+                assert!(
+                    runs.iter()
+                        .all(|r| r.style.size == ui::TypeStep::Body.pixels())
+                );
+                for first in &runs {
+                    let line: Vec<_> = runs
+                        .iter()
+                        .filter(|r| (r.rect.y - first.rect.y).abs() < 0.01)
+                        .collect();
+                    let x = line.iter().map(|r| r.rect.x).fold(f32::INFINITY, f32::min);
+                    let end = line
+                        .iter()
+                        .map(|r| r.rect.right())
+                        .fold(f32::NEG_INFINITY, f32::max);
+                    assert!(x >= cell.rect.x - 0.01 && end <= cell.rect.right() + 0.01);
+                    if col == 0 {
+                        assert!(
+                            ((x + end) * 0.5 - (cell.rect.x + cell.rect.w * 0.5)).abs() < 0.01,
+                            "centered row {row}, width {width}"
+                        );
+                    } else {
+                        assert!(
+                            (end - cell.rect.right()).abs() < 0.01,
+                            "right-aligned row {row}, width {width}"
+                        );
+                    }
+                }
+                let expected = match (row, col) {
+                    (1, 0) => "longCenterIdentifierThatWrapsAcrossSeveralLines",
+                    (1, 1) => "longRightIdentifierThatWrapsAcrossSeveralLines",
+                    (2, 0) => "123",
+                    _ => "45",
+                };
+                assert_eq!(
+                    runs.iter().map(|r| r.text.as_str()).collect::<String>(),
+                    expected
+                );
+            }
+        }
+    }
+    assert_eq!(doc.source, source);
+}
+
+// keeps: spec document-viewer §Markdown — fitting never splits extended grapheme clusters.
+#[test]
+fn narrow_table_tokens_preserve_unicode_clusters_and_exact_text() {
+    use unicode_segmentation::UnicodeSegmentation;
+    let word = "e\u{301}👩\u{200d}💻漢字".repeat(5);
+    let source = format!("| Left | Right |\n| --- | --- |\n| {word} | {word} |\n");
+    let doc = parse(&source);
+    let layout = doc
+        .body_element(ctx(), &Fonts, 150., &[])
+        .layout(Rect::new(0., 0., 150., 0.), ctx(), &Fonts)
+        .unwrap();
+    for col in [0, 1] {
+        let cell = named(&layout, &format!("block0/row1/cell{col}/text")).unwrap();
+        let rendered = runs(cell);
+        assert_eq!(
+            rendered.iter().map(|r| r.text.as_str()).collect::<String>(),
+            word
+        );
+        let mut end = 0;
+        let boundaries: Vec<_> = word
+            .grapheme_indices(true)
+            .map(|(i, _)| i)
+            .chain(std::iter::once(word.len()))
+            .collect();
+        for run in rendered {
+            end += run.text.len();
+            assert!(
+                boundaries.contains(&end),
+                "fragment ends inside a grapheme cluster"
+            );
+            assert!(run.rect.right() <= cell.rect.right() + 0.01);
+        }
+    }
+    assert_eq!(doc.source, source);
+}
+
+// keeps: spec document-viewer §Markdown — nested tables cannot escape their prose parent.
+#[test]
+fn nested_list_quote_and_footnote_tables_use_the_actual_enclosing_column() {
+    use bbt_doc::markdown::{Block, BlockKind};
+    let table = parse("| Left | Right |\n| --- | --- |\n| value | other |\n")
+        .blocks
+        .remove(0);
+    for (kind, key) in [
+        (
+            BlockKind::List {
+                start: None,
+                items: vec![vec![table.clone()]],
+            },
+            "block0/li0/block0",
+        ),
+        (BlockKind::Quote(vec![table.clone()]), "block0/quote/block0"),
+        (
+            BlockKind::Footnote {
+                label: "n".into(),
+                blocks: vec![table.clone()],
+            },
+            "block0/note/block0",
+        ),
+    ] {
+        let mut doc = parse("parent");
+        doc.blocks = vec![Block { source: 0..6, kind }];
+        for top_level_table in [false, true] {
+            if top_level_table {
+                doc.blocks.push(table.clone());
+            }
+            let layout = doc
+                .body_element(ctx(), &Fonts, 944., &[])
+                .layout(Rect::new(0., 0., 944., 0.), ctx(), &Fonts)
+                .unwrap();
+            let parent = named(&layout, "block0").unwrap();
+            let nested = named(&layout, key).unwrap();
+            assert!(parent.rect.w <= STYLE.spacing.doc_measure as f32 + 0.01);
+            assert!(
+                nested.rect.x >= parent.rect.x && nested.rect.right() <= parent.rect.right() + 0.01
             );
         }
     }
