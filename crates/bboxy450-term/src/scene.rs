@@ -181,8 +181,15 @@ pub struct LauncherLayout {
     query_font: MeasureStyle,
     context: ui::Context,
     pub rows: Vec<Rect>,
+    pub selected: usize,
+    row_available: Vec<bool>,
 }
 impl LauncherLayout {
+    /// Availability belongs to these painted rows, not a new filtered projection.
+    /// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub fn row_available(&self, index: usize) -> bool {
+        self.row_available.get(index).copied().unwrap_or(false)
+    }
     pub fn rect(&self, name: &str) -> Option<Rect> {
         named(&self.layout, name).map(|l| l.rect)
     }
@@ -1834,7 +1841,17 @@ impl Scene {
             italic: false,
             tracking_em: 0.,
         };
-        let rows = (0..launcher.view().rows.len())
+        let view = launcher.view();
+        let row_available = view
+            .rows
+            .iter()
+            .map(|item| {
+                item.kind != "fixed"
+                    && !item.down
+                    && !item.link.as_ref().is_some_and(|link| link.down())
+            })
+            .collect();
+        let rows = (0..view.rows.len())
             .map(|index| {
                 let key = if index == 0 {
                     "picker/div/opt".into()
@@ -1866,6 +1883,8 @@ impl Scene {
             query_origin,
             query_font,
             rows,
+            selected: view.selected,
+            row_available,
         })
     }
     /// Pointer hit testing uses this host's shaping metrics and UTF-16

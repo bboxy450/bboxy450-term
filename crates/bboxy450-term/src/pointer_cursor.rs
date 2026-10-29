@@ -37,7 +37,7 @@ impl App {
                 .as_ref()
                 .map_or(Cursor::Default, |layout| layout.regions.cursor(at));
         }
-        if let Some(controller) = &self.launcher {
+        if self.launcher.is_some() {
             if self.query_dragging {
                 return Cursor::Text;
             }
@@ -48,16 +48,10 @@ impl App {
                     if layout.query_contains(at) {
                         Cursor::Text
                     } else if let Some(index) = layout.row_at(at) {
-                        let launcher = &controller.launcher;
-                        let unavailable = launcher.view().rows.get(index).is_none_or(|item| {
-                            item.kind == "fixed"
-                                || item.down
-                                || item.link.as_ref().is_some_and(|link| link.down())
-                        });
-                        if unavailable {
-                            Cursor::Default
-                        } else {
+                        if layout.row_available(index) {
                             Cursor::Pointer
+                        } else {
+                            Cursor::Default
                         }
                     } else {
                         Cursor::Default
@@ -192,6 +186,16 @@ mod tests {
         [rect.x + rect.w * 0.5, rect.y + rect.h * 0.5]
     }
 
+    fn redraw_requests(app: &App) -> u64 {
+        let counters = serde_json::to_value(app.wake_counters.borrow().snapshot()).unwrap();
+        counters["sources"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|source| source["redraws"].as_u64().unwrap())
+            .sum()
+    }
+
     #[test]
     fn standard_cursor_shapes_use_the_portable_window_api() {
         use winit::window::CursorIcon;
@@ -301,7 +305,50 @@ mod tests {
         app.composer_dragging = false;
         app.begin_sidebar_resize(resize);
         assert_eq!(app.cursor_at([1300., 600.]), Cursor::EwResize);
+        let before = redraw_requests(&app);
+        for _ in 0..1000 {
+            assert!(app.move_sidebar_resize(resize));
+        }
+        assert_eq!(redraw_requests(&app), before, "stationary width capture");
+        assert!(app.move_sidebar_resize([-1000., resize[1]]));
+        assert_eq!(redraw_requests(&app), before + 1);
+        for _ in 0..1000 {
+            assert!(app.move_sidebar_resize([-2000., resize[1]]));
+        }
+        assert_eq!(redraw_requests(&app), before + 1, "clamped width capture");
+        assert!(app.sidebar_drag.active());
+        assert!(app.move_sidebar_resize(resize));
+        assert_eq!(redraw_requests(&app), before + 2, "return from width clamp");
         app.end_sidebar_resize();
+
+        let loaded = app.preferences.loaded;
+        let splits = app.preferences.preferences.sidebar;
+        app.preferences.loaded = true;
+        for handle in app.conversation_layout.as_ref().unwrap().splitters {
+            let point = center(handle);
+            assert!(app.begin_sidebar_vertical(point));
+            let before = redraw_requests(&app);
+            for _ in 0..1000 {
+                assert!(app.move_sidebar_resize(point));
+            }
+            assert_eq!(redraw_requests(&app), before, "stationary vertical capture");
+            assert!(app.move_sidebar_vertical([point[0], point[1] + 10_000.]));
+            let before = redraw_requests(&app);
+            for _ in 0..1000 {
+                assert!(app.move_sidebar_resize([point[0], point[1] + 20_000.]));
+            }
+            assert_eq!(redraw_requests(&app), before, "clamped vertical capture");
+            assert!(app.sidebar_vertical_drag.is_some());
+            assert!(app.move_sidebar_resize([point[0], point[1] - 10_000.]));
+            assert_eq!(
+                redraw_requests(&app),
+                before + 1,
+                "return from vertical clamp"
+            );
+            app.end_sidebar_resize();
+            app.preferences.preferences.sidebar = splits;
+        }
+        app.preferences.loaded = loaded;
 
         let settings = center(
             app.navigation_regions
@@ -344,6 +391,158 @@ mod tests {
             .position(|item| !item.down && !item.link.as_ref().is_some_and(|link| link.down()))
             .unwrap();
         assert_eq!(app.cursor_at(center(launcher.rows[row])), Cursor::Pointer);
+        let before = redraw_requests(&app);
+        app.launcher_command(LauncherCommand::Hover(row));
+        let after_first = redraw_requests(&app);
+        assert!(after_first <= before + 1);
+        for _ in 0..1000 {
+            app.launcher_command(LauncherCommand::Hover(row));
+        }
+        assert_eq!(redraw_requests(&app), after_first, "same launcher row");
+        let next = (row + 1) % app.launcher_layout.as_ref().unwrap().rows.len();
+        assert_ne!(row, next);
+        app.launcher_command(LauncherCommand::Hover(next));
+        assert_eq!(redraw_requests(&app), after_first + 1, "new launcher row");
+        app.launcher_command(LauncherCommand::Down);
+        assert!(
+            redraw_requests(&app) > after_first + 1,
+            "keyboard navigation still paints"
+        );
+        app.solve_ui([1400., 1000.]).unwrap();
+
+        // A cursor uses availability from the painted projection even if newer
+        // launcher data has not produced its next frame yet.
+        let items = std::mem::take(&mut app.launcher.as_mut().unwrap().launcher.items);
+        let layout = app.launcher_layout.as_ref().unwrap();
+        let at = center(layout.rows[row]);
+        for _ in 0..1000 {
+            assert_eq!(app.cursor_at(at), Cursor::Pointer);
+        }
+        app.launcher.as_mut().unwrap().launcher.items = items;
+
+        let launcher = &mut app.launcher.as_mut().unwrap().launcher;
+        launcher.items = vec![
+            bbt_ui::modules::launcher::Item {
+                id: "fixed".into(),
+                label: "Fixed".into(),
+                kind: "fixed".into(),
+                ..Default::default()
+            },
+            bbt_ui::modules::launcher::Item {
+                id: "down".into(),
+                label: "Down".into(),
+                down: true,
+                ..Default::default()
+            },
+            bbt_ui::modules::launcher::Item {
+                id: "offline".into(),
+                label: "Offline".into(),
+                link: Some(bbt_ui::modules::link::LinkState::Offline),
+                ..Default::default()
+            },
+            bbt_ui::modules::launcher::Item {
+                id: "available".into(),
+                label: "Available".into(),
+                ..Default::default()
+            },
+        ];
+        launcher.selected = None;
+        app.solve_ui([1400., 1000.]).unwrap();
+        let layout = app.launcher_layout.as_ref().unwrap();
+        for (row, expected) in [
+            Cursor::Default,
+            Cursor::Default,
+            Cursor::Default,
+            Cursor::Pointer,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert_eq!(app.cursor_at(center(layout.rows[row])), expected);
+        }
+        let before = redraw_requests(&app);
+        app.launcher_command(LauncherCommand::ActivateAt {
+            index: 1,
+            modifiers: Default::default(),
+        });
+        assert!(app.launcher.is_some(), "disabled row cannot activate");
+        assert_eq!(redraw_requests(&app), before);
+
+        use bbt_ui::modules::launcher::{FieldKey, Source, SpawnField};
+        assert!(app.launcher.as_mut().unwrap().open_parameters(
+            "available",
+            vec![
+                SpawnField {
+                    key: FieldKey::Role,
+                    value: "executor".into(),
+                    source: Source::BuiltIn,
+                    choices: None,
+                    fixed: true
+                },
+                SpawnField {
+                    key: FieldKey::Command,
+                    value: "zsh".into(),
+                    source: Source::BuiltIn,
+                    choices: None,
+                    fixed: false
+                },
+            ]
+        ));
+        app.launcher
+            .as_mut()
+            .unwrap()
+            .launcher
+            .params
+            .as_mut()
+            .unwrap()
+            .runs = "retained preview".into();
+        app.solve_ui([1400., 1000.]).unwrap();
+        let before = redraw_requests(&app);
+        for _ in 0..1000 {
+            app.launcher_command(LauncherCommand::Hover(0));
+        }
+        assert_eq!(redraw_requests(&app), before, "same parameter row");
+        app.launcher_command(LauncherCommand::Hover(1));
+        assert_eq!(redraw_requests(&app), before + 1);
+        assert_eq!(
+            app.launcher
+                .as_ref()
+                .unwrap()
+                .launcher
+                .params
+                .as_ref()
+                .unwrap()
+                .runs,
+            "retained preview"
+        );
+        app.launcher_command(LauncherCommand::SetCaret {
+            at: 0,
+            extend: false,
+        });
+        assert_eq!(
+            app.launcher
+                .as_ref()
+                .unwrap()
+                .launcher
+                .params
+                .as_ref()
+                .unwrap()
+                .runs,
+            "retained preview"
+        );
+        app.launcher_command(LauncherCommand::Down);
+        assert_ne!(
+            app.launcher
+                .as_ref()
+                .unwrap()
+                .launcher
+                .params
+                .as_ref()
+                .unwrap()
+                .runs,
+            "retained preview",
+            "navigation still resolves its preview"
+        );
         app.query_dragging = true;
         assert_eq!(app.cursor_at(settings), Cursor::Text);
         app.query_dragging = false;
@@ -378,5 +577,62 @@ mod tests {
         );
         app.pointer_left();
         assert_eq!(app.cursor_icon.get(), Cursor::Default);
+
+        app.local_tab = None;
+        app.composer.view.focus = false;
+        let seat = SeatId::from_u128(1);
+        app.focus.stage.as_mut().unwrap().focused = Some(seat);
+        app.solve_ui([1400., 1000.]).unwrap();
+        let mut model = app.live_state.as_deref().unwrap().clone();
+        let view = View {
+            seat: bbt_mux::Ulid(seat.0.0),
+            generation: model.ui.seats[&seat].process_generation,
+            view_generation: bbt_mux::Ulid(7),
+        };
+        model.screen_baselines.insert(seat, (view, 0));
+        app.live_state = Some(Arc::new(model));
+        let body = app
+            .pane_bounds
+            .iter()
+            .find(|(id, _)| *id == seat)
+            .unwrap()
+            .1;
+        let mut term = bbt_core::Term::new(8, 2, 0);
+        term.advance(b"abcdef");
+        let display = bboxy450_term::terminal_selection::Display {
+            seat,
+            view,
+            screen: Arc::new(bbt_proto::Screen::from_term(
+                &term,
+                String::new(),
+                None,
+                None,
+            )),
+            rect: Rect::new(body.x, body.y, 80., 40.),
+            cell: [10., 20.],
+            historical_row: None,
+        };
+        app.frame_observations
+            .record_displayed(vec![display.clone()]);
+        assert!(
+            app.terminal_selection
+                .begin(display, [body.x, body.y], false)
+        );
+        let before = redraw_requests(&app);
+        for _ in 0..1000 {
+            assert!(app.extend_terminal_selection([body.x + 1., body.y + 2.]));
+        }
+        assert_eq!(redraw_requests(&app), before, "same terminal cell");
+        assert!(app.extend_terminal_selection([body.x + 20., body.y + 2.]));
+        assert_eq!(redraw_requests(&app), before + 1, "new selection endpoint");
+        assert_eq!(app.terminal_copy_text().as_deref(), Some("ab"));
+        assert!(app.extend_terminal_selection([body.right() + 1000., body.bottom() + 1000.]));
+        let before = redraw_requests(&app);
+        for _ in 0..1000 {
+            assert!(app.extend_terminal_selection([body.right() + 2000., body.bottom() + 2000.]));
+        }
+        assert_eq!(redraw_requests(&app), before, "clamped selection endpoint");
+        app.pointer_released();
+        assert!(!app.terminal_selection.dragging);
     }
 }

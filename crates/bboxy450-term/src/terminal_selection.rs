@@ -123,14 +123,23 @@ impl SelectionState {
         true
     }
     pub fn extend(&mut self, display: &Display, at: [f32; 2]) -> bool {
+        self.extend_changed(display, at);
+        self.dragging
+    }
+    /// Report a changed endpoint or invalidated selection without allocating ranges.
+    /// Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub fn extend_changed(&mut self, display: &Display, at: [f32; 2]) -> bool {
         if !self.dragging {
             return false;
         }
         if !self.refresh(display) {
-            return false;
+            return true;
         }
-        self.selected.as_mut().unwrap().end = display.point(at);
-        true
+        let selection = self.selected.as_mut().unwrap();
+        let end = display.point(at);
+        let changed = selection.end != end;
+        selection.end = end;
+        changed
     }
     pub fn release(&mut self) {
         self.dragging = false;
@@ -257,6 +266,28 @@ mod tests {
         assert!(s.extend(d, b));
         s.release();
         s
+    }
+    #[test]
+    fn repeated_drag_inside_a_cell_or_at_a_clamped_edge_has_no_changed_work() {
+        let d = display(b"abcdef", 8, 2);
+        let mut selection = SelectionState::default();
+        assert!(selection.begin(d.clone(), [0., 1.], false));
+        for _ in 0..1000 {
+            assert!(!selection.extend_changed(&d, [1., 2.]));
+            assert!(selection.dragging);
+        }
+        assert!(selection.extend_changed(&d, [20., 2.]));
+        assert_eq!(selection.text(&d).as_deref(), Some("ab"));
+        assert!(selection.extend_changed(&d, [1000., 1000.]));
+        for _ in 0..1000 {
+            assert!(!selection.extend_changed(&d, [2000., 2000.]));
+        }
+        let mut replaced = d.clone();
+        replaced.view.generation += 1;
+        assert!(selection.extend_changed(&replaced, [20., 2.]));
+        assert!(!selection.dragging);
+        assert!(selection.text(&replaced).is_none());
+        assert!(!selection.extend_changed(&replaced, [20., 2.]));
     }
     #[test]
     fn selection_unicode_wide_combining_reverse_and_spaces() {

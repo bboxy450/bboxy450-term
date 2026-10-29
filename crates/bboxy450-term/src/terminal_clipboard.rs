@@ -118,16 +118,19 @@ impl App {
         if !self.terminal_selection.dragging {
             return false;
         }
-        if let Some(display) = self
+        let changed = if let Some(display) = self
             .terminal_selection
             .seat()
             .and_then(|seat| self.terminal_display(seat))
         {
-            self.terminal_selection.extend(&display, at);
+            self.terminal_selection.extend_changed(&display, at)
         } else {
             self.terminal_selection.clear();
+            true
+        };
+        if changed {
+            self.request_redraw();
         }
-        self.request_redraw();
         true
     }
     pub(super) fn terminal_copy_text(&self) -> Option<String> {

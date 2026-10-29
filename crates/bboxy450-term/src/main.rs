@@ -4122,9 +4122,24 @@ impl App {
             LauncherCommand::SetCaret { .. } | LauncherCommand::Hover(_)
         );
         self.launcher_reveal = !pointer_edit;
-        let old_query = launcher.launcher.query.clone();
+        // Hover changes selection only; repeated motion must not re-filter rows,
+        // clone query text, or resolve the unchanged launch preview.
+        // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        if let LauncherCommand::Hover(index) = &command
+            && launcher
+                .launcher
+                .selected
+                .or_else(|| self.launcher_layout.as_ref().map(|layout| layout.selected))
+                == Some(*index)
+        {
+            return;
+        }
+        let old_query = (!pointer_edit).then(|| launcher.launcher.query.clone());
         let outcome = launcher.handle(command);
-        if old_query != launcher.launcher.query {
+        if old_query
+            .as_ref()
+            .is_some_and(|old| *old != launcher.launcher.query)
+        {
             self.launch_directory_error = None;
         }
         match outcome {
@@ -4255,7 +4270,9 @@ impl App {
             LauncherOutcome::Local => {}
             other => self.logger.write(format!("launcher outcome: {other:?}")),
         }
-        self.update_launcher_runs();
+        if !pointer_edit {
+            self.update_launcher_runs();
+        }
     }
     fn update_launcher_runs(&mut self) {
         if let Some(params) = self

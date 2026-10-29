@@ -128,6 +128,9 @@ impl Controller {
             Command::Up => self.move_selection(true),
             Command::Down => self.move_selection(false),
             Command::Hover(index) => {
+                if self.launcher.selected == Some(index) {
+                    return Outcome::Local;
+                }
                 let view = self.launcher.view();
                 if index >= view.rows.len() || index == view.selected {
                     return Outcome::Local;

@@ -14,6 +14,7 @@ pub(super) struct VerticalDrag {
     from_y: f32,
     value: f32,
     available: f32,
+    last_value: f32,
 }
 fn contains(r: Rect, p: [f32; 2]) -> bool {
     p[0] >= r.x && p[0] < r.right() && p[1] >= r.y && p[1] < r.bottom()
@@ -37,14 +38,20 @@ impl App {
             return false;
         }
         let layout = self.conversation_layout.as_ref().unwrap();
+        let value = match index {
+            0 => layout.height,
+            1 => layout.regions.body.h,
+            _ => layout.tasks_height,
+        };
         self.sidebar_vertical_drag = Some(VerticalDrag {
             index,
             from_y: point[1],
             available: layout.available_height,
-            value: match index {
-                0 => layout.height,
-                1 => layout.regions.body.h,
-                _ => layout.tasks_height,
+            value,
+            last_value: if index == 0 {
+                (value / layout.available_height.max(1.)).clamp(0.05, 0.95)
+            } else {
+                value.clamp(0., 4096.)
             },
         });
         self.sidebar_layout_preview = Some(self.preferences.preferences.sidebar);
@@ -68,19 +75,31 @@ impl App {
         if !point.into_iter().all(f32::is_finite) {
             return true;
         }
+        let value = drag.value - (point[1] - drag.from_y);
+        let value = if drag.index == 0 {
+            (value / drag.available.max(1.)).clamp(0.05, 0.95)
+        } else {
+            value.clamp(0., 4096.)
+        };
+        self.pointer = point;
+        if value == drag.last_value {
+            return true;
+        }
+        self.sidebar_vertical_drag.as_mut().unwrap().last_value = value;
         let layout = self
             .sidebar_layout_preview
             .get_or_insert(self.preferences.preferences.sidebar);
-        let value = drag.value - (point[1] - drag.from_y);
+        let previous = *layout;
         if drag.index == 0 {
-            layout.conversation_fraction = (value / drag.available.max(1.)).clamp(0.05, 0.95);
+            layout.conversation_fraction = value;
         } else if drag.index == 1 {
-            layout.composer_body_height = Some(value.clamp(0., 4096.));
+            layout.composer_body_height = Some(value);
         } else {
-            layout.tasks_height = Some(value.clamp(0., 4096.));
+            layout.tasks_height = Some(value);
         }
-        self.pointer = point;
-        self.request_redraw();
+        if *layout != previous {
+            self.request_redraw();
+        }
         true
     }
     pub(super) fn end_sidebar_vertical(&mut self) {

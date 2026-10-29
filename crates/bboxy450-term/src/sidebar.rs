@@ -46,7 +46,9 @@ impl App {
         true
     }
     pub(super) fn move_sidebar_resize(&mut self, at: [f32; 2]) -> bool {
-        if self.sidebar_vertical_drag.is_some() { return self.move_sidebar_vertical(at); }
+        if self.sidebar_vertical_drag.is_some() {
+            return self.move_sidebar_vertical(at);
+        }
         if self.sidebar_drag.active() && (self.document.open || self.launcher.is_some()) {
             self.end_sidebar_resize();
             return false;
@@ -55,8 +57,11 @@ impl App {
             return false;
         };
         self.pointer = at;
+        let previous = self.sidebar_width.unwrap_or(self.scene.sidebar_width);
         self.sidebar_width = Some(width);
-        self.request_redraw();
+        if width != previous {
+            self.request_redraw();
+        }
         true
     }
     pub(super) fn end_sidebar_resize(&mut self) {
