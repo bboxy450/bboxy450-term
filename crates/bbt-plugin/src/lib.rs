@@ -11,6 +11,7 @@ pub mod data_source;
 pub mod policy;
 pub mod registry;
 pub mod shape;
+pub mod skills;
 pub mod trust;
 
 /// A stable, named refusal suitable for a checker or registry entry.

@@ -75,6 +75,37 @@
         "additionalProperties": true
       }
     },
+    "skills": {
+      "type": "array",
+      "maxItems": 16,
+      "$comment": "Optional metadata envelope, not an Agent Skills parser or upstream MCP skills wire. The SDK additionally enforces UTF-8 byte and whole serialized-array bounds.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "\\S"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536,
+            "pattern": "\\S",
+            "not": { "pattern": "\u0000" }
+          }
+        },
+        "required": ["name", "description", "content"],
+        "additionalProperties": true
+      }
+    },
     "hooks": {
       "type": "array",
       "items": {
