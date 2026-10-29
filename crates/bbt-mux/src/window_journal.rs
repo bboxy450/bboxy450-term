@@ -318,15 +318,17 @@ mod tests {
         use bbt_proto::gui::WindowSwarm;
         let root = tempfile::tempdir().unwrap();
         let existing = root.path().join("legacy-project");
+        let alias = root.path().join("legacy-project-alias");
         let replacement = root.path().join("new-project");
         let missing = root.path().join("unavailable-project");
         std::fs::create_dir(&existing).unwrap();
+        std::os::unix::fs::symlink(&existing, &alias).unwrap();
         std::fs::create_dir(&replacement).unwrap();
         let run = root.path().join("run");
         let journal = Journal::open(&run).unwrap();
         let mut legacy = empty();
         let ids = [Ulid::new(), Ulid::new(), Ulid::new()];
-        for (id, path) in ids.into_iter().zip([&existing, &missing, &existing]) {
+        for (id, path) in ids.into_iter().zip([&alias, &missing, &alias]) {
             legacy.swarms.push(WindowSwarm {
                 id,
                 workdir: Some(path.to_str().unwrap().into()),
@@ -343,10 +345,7 @@ mod tests {
         let explicit_reset = registry.update_swarm_workdir(ids[2], None).unwrap();
         let reopened = Journal::open(&run).unwrap();
         let imported = registry.swarm(ids[0]).unwrap().unwrap();
-        assert_eq!(
-            imported.workdir.as_deref(),
-            existing.canonicalize().unwrap().to_str()
-        );
+        assert_eq!(imported.workdir.as_deref(), alias.to_str());
         assert_eq!(
             registry.swarm(ids[1]).unwrap().unwrap().workdir.as_deref(),
             missing.to_str()

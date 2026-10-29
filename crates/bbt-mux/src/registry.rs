@@ -107,8 +107,8 @@ impl Registry {
         let path = path.map(canonical_workdir).transpose()?;
         self.change_swarm(id, |record| record.workdir = path)
     }
-    /// Import only absent metadata. A missing legacy folder stays named, never
-    /// silently becomes the startup repository. Explicit edits always win.
+    /// Import only absent metadata without probing legacy folders at bootstrap.
+    /// Root mounting resolves these paths; explicit metadata edits always win.
     pub(crate) fn import_swarm_workdir(&self, id: Ulid, path: &str) -> Result<()> {
         valid_swarm(id)?;
         if self.swarm(id)?.is_some() {
@@ -120,7 +120,7 @@ impl Registry {
             ));
         }
         let record = SwarmRecord {
-            workdir: Some(canonical_workdir(path).unwrap_or_else(|_| path.to_owned())),
+            workdir: Some(path.to_owned()),
             revision: 1,
             ..SwarmRecord::new(id)
         };

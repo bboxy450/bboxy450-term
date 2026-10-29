@@ -12,8 +12,8 @@ use crate::messaging::{MessageClass, WakeMode};
 
 /// Account-owned swarm metadata; window layout is a separate projection.
 /// An absent workdir retains the startup repository as the default. New paths
-/// are canonical existing directories; unavailable legacy absolute paths stay
-/// visible so a future root mount can refuse rather than select another root.
+/// are canonical existing directories; legacy absolute paths retain their
+/// supplied spelling, including unavailable folders that a root mount refuses.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SwarmRecord {
     pub id: Ulid,
