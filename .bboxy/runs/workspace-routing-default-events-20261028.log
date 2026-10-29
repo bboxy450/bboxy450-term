@@ -1,0 +1,11 @@
+ROLE: EXECUTOR — fullCI default swarm event/provenance follow-up
+base: d7ef8239a6457f045b95907d33c845dc186ec725
+source_sha256: 1c875c380e21b0d9fe0466cee96c649b2ddebd9787ffc0472fff58981b818420
+command: make test-workspace-routing
+exit: 0
+log: /Users/feral/Library/Logs/bboxy450-term/workspace-routing-default-events-20261028-focused.log
+evidence: default swarm event destinations resolve startup from authoritative absent/None metadata without prior data read or identity; explicit candidates use targeted asynchronous canonical binding, pending/unavailable degrade account-scoped with source root; enumeration does not mount unrelated roots.
+evidence: new workspace regression covers registered no-record seat, named no-seat default, unregistered legacy event ID, explicit same/different/missing cwd and no authority-row creation.
+evidence: actual dependent logic9 pass/5 pre-existing ignored; provenance3 pass/3 pre-existing ignored, preserving signatures/evidence and retrying only workspace_pending with original operation ID/deadline.
+evidence: expanded Make gate includes those suites plus existing knowledge/provider/MCP/suppression/recovery/cache/private responsiveness and strict mux all-target Clippy.
+limits: no app CLI edits; no land/push/install by this executor; parent owns combined validation.

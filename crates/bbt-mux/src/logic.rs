@@ -4861,14 +4861,16 @@ impl Worker {
                     .task_state_root(root, &swarms, task, status, now_ms())?;
             }
             let stream = if event.subject.starts_with("task/") {
-                event.payload["swarm_id"]
+                let swarm = event.payload["swarm_id"]
                     .as_str()
-                    .filter(|id| {
-                        id.parse::<Ulid>()
-                            .is_ok_and(|swarm| swarms.contains(&swarm))
-                    })
-                    .map(|id| format!("swarm-{id}"))
-                    .unwrap_or_else(|| "account".into())
+                    .and_then(|id| id.parse::<Ulid>().ok())
+                    .filter(|swarm| !swarm.is_nil());
+                match swarm {
+                    Some(swarm) if self.workspaces.matches_root(&self.registry, swarm, root)? => {
+                        format!("swarm-{swarm}")
+                    }
+                    _ => "account".into(),
+                }
             } else {
                 "index".into()
             };

@@ -487,3 +487,153 @@ fn workspace_task_read_queue_is_bounded_while_its_scan_is_held() {
     assert!(refused.to_string().starts_with("provider_busy:"));
     drop(release);
 }
+
+// keeps: event destinations follow authoritative defaults without requiring a prior read.
+#[test]
+fn workspace_event_routes_default_swarms_and_only_proven_explicit_roots() {
+    let mut fixture = Fixture::open();
+    let startup = fixture
+        .worker
+        .workspaces
+        .cache
+        .startup()
+        .root_id()
+        .to_owned();
+    let legacy = SeatRecord::new(Ulid::new(), Ulid::new(), "legacy default", "zsh");
+    fixture.worker.registry.insert(&legacy).unwrap();
+    let named = fixture
+        .worker
+        .registry
+        .rename_swarm(Ulid::new(), "default, no seat")
+        .unwrap();
+    let selected = fixture
+        .worker
+        .workspaces
+        .bound_swarms(&fixture.worker.registry, &startup)
+        .unwrap();
+    assert!(selected.contains(&legacy.swarm));
+    assert!(selected.contains(&named.id));
+    assert!(!selected.contains(&fixture.a.swarm));
+    assert!(!selected.contains(&fixture.b.swarm));
+    let unregistered = Ulid::new();
+    assert!(
+        fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, unregistered, &startup)
+            .unwrap()
+    );
+    assert!(
+        fixture
+            .worker
+            .registry
+            .swarm(unregistered)
+            .unwrap()
+            .is_none(),
+        "event routing created swarm authority"
+    );
+    assert_eq!(
+        fixture.worker.workspaces.cache.roots().count(),
+        1,
+        "enumeration mounted unrelated roots"
+    );
+    let explicit = fixture
+        .worker
+        .registry
+        .update_swarm_workdir(
+            Ulid::new(),
+            Some(fixture.worker.config.repository.to_str().unwrap()),
+        )
+        .unwrap();
+    // Explicit metadata has to complete canonical IO, even when it will reuse startup.
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, explicit.id, &startup)
+            .unwrap()
+    );
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        fixture.worker.workspaces.poll(&fixture.worker.registry);
+        if fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, explicit.id, &startup)
+            .unwrap()
+        {
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(fixture.worker.workspaces.cache.roots().count(), 1);
+    let other = fixture.a.swarm;
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, other, &startup)
+            .unwrap()
+    );
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        fixture.worker.workspaces.poll(&fixture.worker.registry);
+        if let Ok(binding) = fixture.worker.workspaces.cache.current(other) {
+            assert_ne!(binding.root_id, startup);
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, other, &startup)
+            .unwrap()
+    );
+    assert!(
+        fixture
+            .worker
+            .workspaces
+            .cache
+            .current(fixture.b.swarm)
+            .is_err(),
+        "explicit unrelated root was mounted by enumeration"
+    );
+    let removed = fixture.root.path().join("removed-route");
+    std::fs::create_dir(&removed).unwrap();
+    let missing = fixture
+        .worker
+        .registry
+        .update_swarm_workdir(Ulid::new(), Some(removed.to_str().unwrap()))
+        .unwrap();
+    std::fs::remove_dir(&removed).unwrap();
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, missing.id, &startup)
+            .unwrap()
+    );
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        fixture.worker.workspaces.poll(&fixture.worker.registry);
+        if matches!(
+            fixture.worker.workspaces.cache.current(missing.id),
+            Err(crate::knowledge::workspaces::Error::Unavailable { .. })
+        ) {
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .matches_root(&fixture.worker.registry, missing.id, &startup)
+            .unwrap()
+    );
+}

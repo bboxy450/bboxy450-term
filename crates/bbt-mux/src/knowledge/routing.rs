@@ -426,6 +426,51 @@ impl Router {
             }
         }
     }
+    fn cached_root_match(
+        &self,
+        registry: &Registry,
+        swarm: Ulid,
+        root: &str,
+    ) -> store::Result<Option<bool>> {
+        let desired = Self::desired(registry, swarm)?;
+        // Legacy/default metadata is itself a trusted startup selection. Event
+        // routing does not require an unrelated document read to have run first.
+        if desired.path.is_none() {
+            return Ok(Some(root == self.cache.startup().root_id()));
+        }
+        if !self
+            .attempts
+            .get(&swarm)
+            .is_some_and(|attempt| attempt.desired == desired)
+        {
+            return Ok(None);
+        }
+        match self.cache.current(swarm) {
+            Ok(binding) if binding.revision == desired.revision => {
+                Ok(Some(binding.root_id == root))
+            }
+            Err(Error::Unavailable { .. }) => Ok(Some(false)),
+            _ => Ok(None),
+        }
+    }
+    /// One event's explicit candidate can start its own canonical IO admission.
+    /// Pending/unavailable explicit roots remain account-scoped with source-root
+    /// evidence; neither case is permission to guess or use the startup root.
+    pub fn matches_root(
+        &mut self,
+        registry: &Registry,
+        swarm: Ulid,
+        root: &str,
+    ) -> store::Result<bool> {
+        if let Some(matches) = self.cached_root_match(registry, swarm, root)? {
+            return Ok(matches);
+        }
+        match self.select(registry, swarm, None) {
+            Ok(port) => Ok(port.binding.root_id == root),
+            Err(error) if error.downcast_ref::<Error>().is_some() => Ok(false),
+            Err(error) => Err(error),
+        }
+    }
     pub fn bound_swarms(&self, registry: &Registry, root: &str) -> store::Result<Vec<Ulid>> {
         let mut swarms: std::collections::BTreeSet<_> = registry
             .swarms()?
@@ -433,13 +478,12 @@ impl Router {
             .map(|swarm| swarm.id)
             .collect();
         swarms.extend(registry.list()?.into_iter().map(|seat| seat.swarm));
-        Ok(swarms
-            .into_iter()
-            .filter(|swarm| {
-                self.cache.current(*swarm).ok().is_some_and(|binding| {
-                    binding.root_id == root && self.current(registry, binding).is_ok()
-                })
-            })
-            .collect())
+        let mut selected = Vec::new();
+        for swarm in swarms {
+            if self.cached_root_match(registry, swarm, root)? == Some(true) {
+                selected.push(swarm);
+            }
+        }
+        Ok(selected)
     }
 }

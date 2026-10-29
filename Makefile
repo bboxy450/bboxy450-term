@@ -583,7 +583,7 @@ format-workspace-boundary:
 test-workspace-routing:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib workspace_; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery --test logic --test provenance; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge_responsiveness_tests; \
 	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 

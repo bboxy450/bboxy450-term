@@ -138,18 +138,30 @@ impl Fixture {
             .unwrap();
     }
     fn claim(&self, reference: &str, digest: &str) -> Value {
-        let result = self
-            .runtime
-            .block_on(self.logic.as_ref().unwrap().client.control_call(
-                self.one,
-                1,
-                bbt_mux::mcp::Call {
-                    op_id: Ulid::new(),
-                    tool: "artifact_claim".into(),
-                    args: json!({"kind":"file","ref":reference,"digest":digest}),
-                },
-            ))
-            .unwrap();
+        let call = bbt_mux::mcp::Call {
+            op_id: Ulid::new(),
+            tool: "artifact_claim".into(),
+            args: json!({"kind":"file","ref":reference,"digest":digest}),
+        };
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let result = loop {
+            let result = self
+                .runtime
+                .block_on(self.logic.as_ref().unwrap().client.control_call(
+                    self.one,
+                    1,
+                    call.clone(),
+                ))
+                .unwrap();
+            if result["structuredContent"]["error"]["code"] != "workspace_pending" {
+                break result;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "workspace never settled before artifact claim: {result}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        };
         assert_eq!(result["isError"], false, "{result}");
         result["structuredContent"].clone()
     }
