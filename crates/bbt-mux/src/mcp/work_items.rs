@@ -75,7 +75,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     ];
     if actor.class() == Class::Oracle {
         definitions.extend([
-            ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128}}), vec!["task_path","seat_id"]),
+            ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128,"description":"The target's exact current role, or an authorized legacy executor/oracle/creativity override."}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
             ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero and evidence for every declared criterion.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),

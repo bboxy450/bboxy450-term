@@ -52,3 +52,12 @@ CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-bac
   /tmp/bboxy-seat-context-role-live-clippy.log SHA256 16374560026e221e3cd6a28d9fef49c4b583c2183aaabdce1654f80c2fc8b7c2.
 git diff --check — EXIT 0.
 Native e2e source now selects Architect through the captured seat role menu and asserts unchanged harness process/session; execution remains root's warm app gate. No own cold app build was started for this follow-up.
+
+Task contract integration correction:
+Root full gate35dd542a exposed exact delegate.role property drift at plugins/check.rs909: plugin task_system schema carried the bounded current-role description while the native work_items catalogue omitted that description. Added the same exact property description to the native catalogue; the equality assertion remains unchanged.
+Added canonical make test-task-contract and made test-seat-actions-backend depend on it so the focused gate includes native/schema equivalence.
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-task-contract TARGET_DIR=target/seat-context-check — EXIT 0, exact existing contract test1/0.
+  /tmp/bboxy-seat-task-contract.log SHA256 dc34c08ec81c646c97b4d973dd35c2ab3fac6afa19086b7f942fbc4d347d886a.
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0. This follow-on strict check finished before the disk-margin stop message was observed; no further independent compile was started.
+  /tmp/bboxy-seat-task-contract-clippy.log SHA256 4e36eb5dea8d710f4ed2cac5090c247ebd4adf6e45fcf148a1ff431288d7005e.
+Own inactive target/seat-context-check retired only after lsof +D exited1 with no open handles, recovering disk margin for root's warm tests. Raw logs remain outside Git under /tmp. Root source/targets untouched.

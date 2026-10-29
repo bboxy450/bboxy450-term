@@ -68,6 +68,7 @@ help:
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
+	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
 	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
 	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
@@ -613,8 +614,11 @@ test-app-overlays:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions check-seat-actions-backend
-test-seat-actions-backend:
+.PHONY: test-seat-actions test-seat-actions-backend check-seat-actions check-seat-actions-backend test-task-contract
+test-task-contract:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue -- --exact
+
+test-seat-actions-backend: test-task-contract
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)' --test data_source; \
