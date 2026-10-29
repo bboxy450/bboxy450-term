@@ -83,4 +83,14 @@ HK-0 the wake-up crate: move the six files, the skill mechanism, the tests and f
 
 **Landed (HK-1, cb0b48c5).** The supervisor's input probes are caller configuration rather than a built-in list: the first seam of the host kit, the probe allowlist of #274, in the tree.
 
+## 7. Integration skills — operator brief #63, 2026-10-29
+
+An integration combines a binary, its MCP contract and its workflow skill. [[plugins]] §3a and [[plugin-host]] define the current bounded compatibility cut; [[plugins-sota]] §B records the official MCP extension's Beta status and the uneven client support.
+
+The app owns the canonical built-in `SKILL.md` and bundled KB guide. Its existing harness filesystem/developer-prompt fallback reuses that content with the existing explicit role rendering. The wake-up kit remains a delivery mechanism supplied with caller-owned content; it does not acquire plugin discovery, workspace selection, trust or role policy.
+
+The app's fixed `skill_list`/`skill_read` and legacy MCP Resources expose those same sources on demand, plus only the external provider selected for the captured root. External provider instructions are not automatically added to a harness prompt. Reading a skill does not change a seat's role, signing rights, custody or tool grants.
+
+The Agent Skills directory format remains the source format when delivery moves into MCP. A later adapter may select native `io.modelcontextprotocol/skills` support after capability negotiation and derive its file manifests from the canonical content. This cut does not advertise the Beta extension or assume support from a harness's product name. Generic plugin-tool forwarding and standalone bundled stdio export remain outside it.
+
 Owner: Corvin Duskmantle <ARCHITECT>.

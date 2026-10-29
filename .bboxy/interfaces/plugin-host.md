@@ -28,3 +28,20 @@ updated: "2026-10-26T18:43:59Z"
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+## Integration-skill addendum — operator brief #63, 2026-10-29
+
+This additive agreement joins the binary, MCP surface and workflow content described in [[plugins]] §3a. [[plugins-sota]] §B separates the current compatibility cut from the published Beta extension.
+
+| Boundary | Agreement |
+|---|---|
+| Producer | A provider may add `Shape.skills: [{ name, description, content }]`; each `content` is its embedded canonical `SKILL.md`. Legacy shapes omit the field. |
+| Bounds | At most 16 entries, 64 KiB UTF-8 content each, and 256 KiB serialized skill-array JSON; invalid metadata is refused before publication. |
+| Consumer | The logic host resolves built-in and selected-provider skills once for both fixed `skill_list`/`skill_read` tools and legacy `resources/list`/`resources/read`. |
+| Scope and lifetime | An external read retains its captured root and selected source. Every list/read checks the live source generation, enable state, trust and trusted binary digest. A stale selector is refused; focus never retargets it. Unrelated providers are not inspected. |
+| Content and authority | The trusted binary contains the skill bytes. Returned content keeps its origin; it is instructional data and grants no role, signing, custody or execution permission. External instructions are never automatically injected at harness launch. |
+| Failure | Missing legacy skill metadata produces no external skills. Malformed metadata or a changed selection/trust/digest produces a named refusal, without substituting another provider or the current focus. |
+| Verification | Bounded descriptors; equal tool/resource catalogs and bytes; selected-root isolation; stale generation/disable/trust/digest fences; unchanged authority. |
+| Next interface revision | Native Beta `server/discover` plus `skills/list`/`skills/get`, complete file manifests and supporting files require an explicit revision. Preserve origin and canonical bytes across that mapping; do not advertise this support before it exists. |
+
+The KB plugin in PR #76 is the first concrete producer. Its builder derives embedded instructions and resource content from the same source. Generic tool forwarding and standalone bundled stdio export are separate work.
