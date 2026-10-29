@@ -554,6 +554,7 @@ test-spawn-wire:
 test-notification-copy:
 	@$(MAKE) compile PROFILE=debug
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-desktop-notifications-macos --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	python3 -I -B scripts/e2e/notification_copy_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --target-dir '$(TARGET_DIR)' --out '$(TARGET_DIR)/night-notification-copy'
 
 test-settings-night:

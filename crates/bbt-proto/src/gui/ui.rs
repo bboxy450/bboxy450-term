@@ -139,7 +139,7 @@ impl UiRequest {
             Self::Compose(compose) => compose.validate(),
             Self::PasteImage { path } if !valid_workdir(path) => {
                 Err("invalid_ui_image_path: expected a bounded absolute printable image path")
-            }
+            },
             Self::Spawn(pick)
                 if pick.harness.is_empty()
                     || pick.harness.len() > 256
