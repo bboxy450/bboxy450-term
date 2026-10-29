@@ -1,0 +1,83 @@
+{
+  "project": "bboxy450-term",
+  "canonical_url": "https://github.com/bboxy450/bboxy450-term",
+  "credit_policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "task": 332,
+  "authorization": "01M63J2RF8BVS4B6N222S89ST0",
+  "scope": "cfg(test) clipboard fixtures plus canonical Make targets only",
+  "precheck_source_head": "69e41028a36bf66dbe40048f6b3042f04dbf64f9",
+  "production_prefix_sha256": "a014dd720acf86c2e9031d7e18aff7d8bcf6ed3d99e5033bc7d4f8e7878ac185",
+  "source_sha256": "f4d94f36d740e43cfe5710b667663800306d7d52473a7868fdf765e1b137062f",
+  "mechanism": "Explicit process/run/instance board names; verify native returned identities; nonblocking actor commands and5s-bounded receives; both values coexist before snapshot; joined actors; only confirmed owned boards are cleared.",
+  "prechecks": {
+    "restored-final": {
+      "command": [
+        "make",
+        "test-clipboard-isolation",
+        "TARGET_DIR=target/task-import-transport/build"
+      ],
+      "source_head": "69e41028a36bf66dbe40048f6b3042f04dbf64f9",
+      "source_diff_sha256": "d64b478846065a41fcbe27800b1df1f2118ae7ffeb488f478485ead6123ca988",
+      "exit_code": 0,
+      "seconds": 2.1765626670094207,
+      "peak_own_target_bytes": 5323984896,
+      "min_free_bytes": 13914537984,
+      "resource_stop": null,
+      "log_sha256": "c5576a23a4d37111a5ed2256a40b7921bf44f499c51e9f6f2910c424f0763b6d"
+    },
+    "lint-restored": {
+      "command": [
+        "make",
+        "check-clipboard-isolation",
+        "TARGET_DIR=target/task-import-transport/build"
+      ],
+      "source_head": "69e41028a36bf66dbe40048f6b3042f04dbf64f9",
+      "source_diff_sha256": "d64b478846065a41fcbe27800b1df1f2118ae7ffeb488f478485ead6123ca988",
+      "exit_code": 0,
+      "seconds": 2.0914940420771018,
+      "peak_own_target_bytes": 5323980800,
+      "min_free_bytes": 16394612736,
+      "resource_stop": null,
+      "log_sha256": "b6cf946e25d26517f6b2161f6d4b2c3947a575771e06ec2f29b31ec2f7c32e23"
+    },
+    "licenses-final": {
+      "command": [
+        "make",
+        "test-licenses"
+      ],
+      "source_head": "69e41028a36bf66dbe40048f6b3042f04dbf64f9",
+      "source_diff_sha256": "d64b478846065a41fcbe27800b1df1f2118ae7ffeb488f478485ead6123ca988",
+      "exit_code": 0,
+      "seconds": 12.645631166989915,
+      "peak_own_target_bytes": 5324001280,
+      "min_free_bytes": 13914546176,
+      "resource_stop": null,
+      "log_sha256": "040ca4bde1e68211362d04abe32b66492b8c49c5e5ecad2d5c99d022cad3d04e"
+    }
+  },
+  "verification": "target/clipboard-isolation/verification.json",
+  "raw_evidence": "target/clipboard-isolation/",
+  "negative": {
+    "command": [
+      "make",
+      "test-clipboard-isolation",
+      "TARGET_DIR=target/task-import-transport/build",
+      "CLIPBOARD_TEST_FILTER=clipboard::tests::clipboard_private_owned_boards_keep_overlapping_text_and_image_writes_isolated"
+    ],
+    "exit_code": 2,
+    "seconds": 1.3830605830298737,
+    "mutation": "Force both actual owned overlap boards to one explicit run-local name",
+    "source_before_sha256": "f4d94f36d740e43cfe5710b667663800306d7d52473a7868fdf765e1b137062f",
+    "source_after_sha256": "f4d94f36d740e43cfe5710b667663800306d7d52473a7868fdf765e1b137062f",
+    "identity_assertion_failed": true,
+    "both_actor_threads_joined": true,
+    "foreign_abort": false
+  },
+  "earlier_negative": "shared-board-negative.log hit identity/content failures and a foreign exception under all-test forced aliasing; preserved; its exact private board was cleared/verified empty by the recorded scoped cleanup. Dedicated overlap controls reject aliasing before mutation and join both threads.",
+  "old_red": "target/task-import-transport/exact-ci-aaf1db08.log3125-3145 SHA2567e58893311a25d03a6d9c34a7426838f0822a8b508fa5eae368cfa6cee0bf4a8",
+  "limits": [
+    "Old implicit-board failure cause is unproven; this proves explicit fixture ownership.",
+    "Old e5 migration transport cause remains unproven;305 causal criterion2 stays unfulfilled.",
+    "Exact committed-source make test and normal author landing follow this precheck record; actual final logs/task reports carry those results."
+  ]
+}

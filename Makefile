@@ -44,6 +44,8 @@ help:
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
 	  'make test-task-import-transport  Focused authenticated import transport and original-operation diagnostics' \
+	  'make test-clipboard-isolation   Concurrent explicitly owned private pasteboards; no general clipboard' \
+	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
@@ -172,6 +174,16 @@ test-task-import-transport:
 	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp $(TASK_IMPORT_FILTER) -- --nocapture; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
+
+.PHONY: test-clipboard-isolation check-clipboard-isolation
+CLIPBOARD_TEST_FILTER ?= clipboard::tests
+test-clipboard-isolation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-desktop-macos --target-dir '$(TARGET_DIR)' --lib $(CLIPBOARD_TEST_FILTER) -- --nocapture
+
+check-clipboard-isolation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-term-desktop-macos --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: parity-settings
 .PHONY: test-cursors
