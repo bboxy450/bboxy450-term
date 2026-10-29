@@ -32,7 +32,8 @@ the older contract in its private owner record; it does not run an old binary
 or authorize a live application restart.
 
 UI control version 6 adds `NotificationForeground {frontmost}` for debug,
-verified private test accounts with an active recording backend and no native
+verified private test accounts (selector plus the admitted signed-run identity
+label in a signing-ready state) with an active recording backend and no native
 window. Every other context refuses before mutation. It and native focus events
 invoke the same App focus transition, including blur effects and notification
 sync; it never changes OS focus. The produced-frame `notification_frontmost`

@@ -465,9 +465,44 @@ fn notification_foreground_admission(
     }
 }
 
+/// Logic publishes this label only after validating the signed test-run context.
+fn notification_test_account(selected: bool, identity: Option<&bbt_proto::GuiIdentity>) -> bool {
+    selected && identity.is_some_and(|identity| {
+        matches!(identity.state, bbt_proto::GuiIdentityState::LocalDev | bbt_proto::GuiIdentityState::Certified)
+            && identity.reason.as_deref()
+                .and_then(|reason| reason.split(" · ").next())
+                .and_then(|label| label.strip_prefix("test-account:"))
+                .is_some_and(|run| run.parse::<bbt_mux::Ulid>()
+                    .is_ok_and(|run| run != bbt_mux::Ulid::nil()))
+    })
+}
+
 #[cfg(test)]
 mod notification_foreground_tests {
-    use super::notification_foreground_admission;
+    use super::{notification_foreground_admission, notification_test_account};
+
+    #[test]
+    fn a_launch_selector_does_not_replace_the_admitted_private_identity() {
+        use bbt_proto::{GuiIdentity, GuiIdentityState};
+        let mut identity = GuiIdentity {
+            state: GuiIdentityState::LocalDev,
+            reason: Some(format!("test-account:{}", bbt_mux::Ulid(1))),
+        };
+        assert!(notification_test_account(true, Some(&identity)));
+        identity.state = GuiIdentityState::Certified;
+        assert!(notification_test_account(true, Some(&identity)));
+        assert!(!notification_test_account(false, Some(&identity)));
+        assert!(!notification_test_account(true, None));
+        for reason in ["ordinary account", "test-account:invalid", "test-account:00000000000000000000000000"] {
+            identity.reason = Some(reason.into());
+            assert!(!notification_test_account(true, Some(&identity)), "{reason}");
+        }
+        identity.reason = Some(format!("test-account:{}", bbt_mux::Ulid(1)));
+        for state in [GuiIdentityState::Held, GuiIdentityState::Pending] {
+            identity.state = state;
+            assert!(!notification_test_account(true, Some(&identity)), "{state:?}");
+        }
+    }
 
     #[test]
     fn foreground_control_refuses_every_non_private_recording_context() {
@@ -4477,6 +4512,17 @@ impl App {
             false
         }
     }
+    fn notification_foreground_allowed(&self) -> Result<(), String> {
+        notification_foreground_admission(
+            cfg!(debug_assertions),
+            notification_test_account(
+                self.test_account,
+                self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+            ),
+            self.recording_active(),
+            self.window.is_some(),
+        )
+    }
     fn recording_status(&self) -> serde_json::Value {
         #[cfg(debug_assertions)]
         if let Some(recorder) = &self.notification_recorder {
@@ -6350,12 +6396,7 @@ impl App {
             return false;
         }
         if matches!(request, UiRequest::NotificationForeground { .. })
-            && let Err(reason) = notification_foreground_admission(
-                cfg!(debug_assertions),
-                self.test_account,
-                self.recording_active(),
-                self.window.is_some(),
-            )
+            && let Err(reason) = self.notification_foreground_allowed()
         {
             self.answer_ui(id, Err(reason));
             return false;
@@ -6584,12 +6625,7 @@ impl App {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
             UiRequest::NotificationForeground { frontmost } => {
-                notification_foreground_admission(
-                    cfg!(debug_assertions),
-                    self.test_account,
-                    self.recording_active(),
-                    self.window.is_some(),
-                )?;
+                self.notification_foreground_allowed()?;
                 self.set_frontmost(frontmost);
                 if let Some(effects) = &mut self.ui_collect {
                     effects.push(UiEffect::NotificationForeground(frontmost));
@@ -6892,9 +6928,7 @@ impl App {
         );
         let layout = UiLayout {
             sidebar_sections: self.sidebar_section_positions(),
-            notification_frontmost: (self.test_account
-                && self.recording_active()
-                && self.window.is_none()).then_some(self.frontmost),
+            notification_frontmost: self.notification_foreground_allowed().is_ok().then_some(self.frontmost),
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             test_clipboard: None,
