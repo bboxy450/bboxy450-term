@@ -302,7 +302,10 @@ fn closed_harness_notice_expires_from_chat_without_losing_history() {
             .any(|row| row["seat"] == first)
     );
     let mut last_visible_frame = visible["frame_seq"].as_u64().unwrap();
-    let history = fixture.history(&first, u64::MAX);
+    let through = fixture.ctl(&["seat", "screen", &first])["sequence"]
+        .as_u64()
+        .unwrap();
+    let history = fixture.history(&first, through);
     let bytes: Vec<_> = history
         .iter()
         .flat_map(|row| match row {
@@ -314,15 +317,6 @@ fn closed_harness_notice_expires_from_chat_without_losing_history() {
         .copied()
         .collect();
     assert!(String::from_utf8_lossy(&bytes).contains(&format!("CHAT-NOTICE-HISTORY:{first}")));
-    let through = history
-        .iter()
-        .filter_map(|row| match row {
-            bbt_proto::gui::HistoryRecord::Bytes { sequence, .. } => Some(*sequence),
-            _ => None,
-        })
-        .max()
-        .unwrap();
-
     // Status is a readback, not a redraw request. Observe the timer's own frame
     // after the last status that still contained the active exact-seat notice.
     let expired = fixture.wait("unattended expiry must produce a new frame", 12, || {
