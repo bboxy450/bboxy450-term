@@ -3386,6 +3386,26 @@ mod reference_tests {
         };
         assert!(page.items.is_empty() && rows.is_empty());
         assert_eq!(page.next, None);
+        let hidden = messaging
+            .swarm(recipient.swarm)
+            .unwrap()
+            .ledger
+            .recent_for(Some(Recipient::Seat(other.id)), None, None, 128)
+            .unwrap();
+        assert!(hidden.items.is_empty());
+        assert_eq!(
+            hidden.next,
+            Some(cursor),
+            "visibility filtering also obeys the physical scan budget"
+        );
+        let older_hidden = messaging
+            .swarm(recipient.swarm)
+            .unwrap()
+            .ledger
+            .recent_for(Some(Recipient::Seat(other.id)), None, hidden.next, 128)
+            .unwrap();
+        assert!(older_hidden.items.is_empty());
+        assert_eq!(older_hidden.next, None);
     }
 
     // keeps: spec messaging

@@ -229,6 +229,10 @@ Chat position is retained per swarm and channel. A confirmed harness close
 appears once as a timestamped chat notice for eight seconds, then disappears
 through a one-shot redraw deadline. This expiry does not delete retained seat
 history or extend the separate close/undo grace period.
+Reopening reads a bounded recent message page from the message ledger; receipt
+traffic cannot displace the latest conversation. Older message pages use their
+own before-cursor. Event coverage and operator-read watermarks remain separate;
+historical seat/identity/host events never replace current live state.
 
 The scroll body is **virtualised**: each swarm card's height is a pure function of its state (`band + rows × row_h + closed × tab_h + newseat + shadows × row_h + padding`), so the column computes offsets from counts, lays out only cards intersecting the viewport, and rows only inside those. Focus scrolls the row into view inside the sidebar, never the window (showcase.js:374-378).
 

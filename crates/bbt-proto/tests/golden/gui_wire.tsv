@@ -38,6 +38,8 @@ action	{"kind":"Messaging","body":{"id":"01M5SQM23Y8H4H94Y44N7MVJ4K","swarm_id":
 action	{"kind":"Messaging","body":{"id":"01M5SQMFET14V1GZ3MC9TVHNGA","swarm_id":"01M5SQMED60MPJ1GBV9V5ZJF7M","request":{"op":"acknowledge","message":"01M5Q8A7DQ7EQFKBZH4NXBW3QQ","agent":null}}}
 action	{"kind":"Messaging","body":{"id":"01M5SQPJBG5X9YAZRVEXTNMNW7","swarm_id":"01M5SQPF4K0S6Z36ZTR818096B","request":{"op":"mute","seat":"01M5SQPGCCAFSE047JYTHBX677","muted":true}}}
 action	{"kind":"Messaging","body":{"id":"01M5SQTEMV4F2F87Y7C0C2JY1E","swarm_id":"01M5SQTEJ34FX71ATH7DYG2535","request":{"op":"list","thread":null,"channel":null,"after":0,"limit":8}}}
+action	{"kind":"Messaging","body":{"id":"01M5SQTEMV4F2F87Y7C0C2JY1E","swarm_id":"01M5SQTEJ34FX71ATH7DYG2535","request":{"op":"recent","channel":null,"before":null,"limit":128}}}
+reply	{"kind":"Messaging","body":{"op":"01M5SQTEMV4F2F87Y7C0C2JY1E","response":{"kind":"recent","page":{"items":[],"next":null},"rows":[],"projected_at":7}}}
 action	{"kind":"RecordWrite","body":{"id":"01M5SQMEZD1NHC4S4RCABKAK19","args":{"body":"x\n","frontmatter":{"title":"x","type":"note"},"path":"notes/x.md"}}}
 action	{"kind":"RenameSeat","body":{"id":"01M5SQMJVCKXJA0ARW2H0TQKHQ","seat":"01M5SQMED6BXWFXN4CYX48Q57F","name":" "}}
 action	{"kind":"Resize","body":{"seat":"01M5SQSE0DGPP4Y6M7FTQRA5WY","generation":1,"cols":77,"rows":7}}

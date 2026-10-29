@@ -410,10 +410,9 @@ impl History {
         vec![UiMsg::Messaging {
             id,
             swarm_id: scope,
-            request: wire::Request::List {
-                thread: None,
+            request: wire::Request::Recent {
                 channel: (self.selected != "all").then(|| self.selected.clone()),
-                after,
+                before: (after > 0).then_some(after),
                 limit: 128,
             },
         }]
@@ -482,8 +481,49 @@ impl History {
         };
         let after = request.after;
         self.list = None;
+        if let Reply::Messaging(wire::Response::Recent {
+            page,
+            rows,
+            projected_at,
+        }) = &reply.reply
+        {
+            if page.items.len() > 128
+                || rows.len() != page.items.len()
+                || page
+                    .items
+                    .windows(2)
+                    .any(|items| items[0].sequence >= items[1].sequence)
+                || page
+                    .items
+                    .iter()
+                    .any(|item| item.sequence == 0 || (after > 0 && item.sequence >= after))
+                || page.next.is_some_and(|next| {
+                    next == 0
+                        || (after > 0 && next >= after)
+                        || page.items.first().is_some_and(|item| next > item.sequence)
+                })
+                || rows.iter().zip(&page.items).any(|(row, item)| {
+                    row.id != item.view().id
+                        || row.bus != item.bus
+                        || self
+                            .scope
+                            .is_none_or(|scope| item.view().swarm_id.0 != scope.0.0)
+                })
+            {
+                self.list_failed_after = Some(after);
+                self.issue = Some("recent_message_projection_mismatch".into());
+                return true;
+            }
+            // The ledger page chooses messages, so receipt traffic cannot hide
+            // the latest conversation. Event coverage/read cursors stay separate.
+            for (row, item) in rows.iter().zip(&page.items) {
+                self.row(row, Some(item.view().context), *projected_at);
+            }
+        }
         match &reply.reply {
-            Reply::Messaging(wire::Response::Messages { page }) => {
+            Reply::Messaging(
+                wire::Response::Messages { page } | wire::Response::Recent { page, .. },
+            ) => {
                 self.issue = None;
                 self.list_failed_after = None;
                 self.list_next = page.next;
@@ -662,6 +702,88 @@ impl History {
 #[cfg(test)]
 mod quiet_history_tests {
     use super::*;
+
+    #[test]
+    fn recent_message_read_is_scoped_and_does_not_claim_event_coverage() {
+        let mut history = History::default();
+        let scope = SwarmId::from_u128(90);
+        history.select(scope);
+        history.channel("channels/review");
+        let UiMsg::Messaging {
+            id,
+            swarm_id,
+            request,
+        } = history.commands().pop().unwrap()
+        else {
+            panic!("message read")
+        };
+        assert_eq!(swarm_id, scope);
+        assert!(
+            matches!(request, wire::Request::Recent { channel:Some(channel), before:None, limit:128 } if channel == "channels/review")
+        );
+        let mut results = Results::default();
+        results.push(
+            id,
+            Reply::Messaging(wire::Response::Recent {
+                page: wire::Page {
+                    items: vec![],
+                    next: Some(42),
+                },
+                rows: vec![],
+                projected_at: 100,
+            }),
+        );
+        assert!(history.replies(&results));
+        assert!(history.issue.is_none());
+        assert!(history.covered_high.is_none());
+        assert!(history.cursor.is_none());
+        assert!(history.commands().is_empty());
+        history.more();
+        assert!(matches!(
+            history.commands().as_slice(),
+            [UiMsg::Messaging {
+                request: wire::Request::Recent {
+                    before: Some(42),
+                    ..
+                },
+                ..
+            }]
+        ));
+    }
+
+    #[test]
+    fn malformed_recent_projection_is_refused_without_inserting_rows_or_retrying() {
+        let mut history = History::default();
+        let scope = SwarmId::from_u128(89);
+        history.select(scope);
+        let UiMsg::Messaging { id, .. } = history.commands().pop().unwrap() else {
+            panic!("message read")
+        };
+        let mut results = Results::default();
+        results.push(
+            id,
+            Reply::Messaging(wire::Response::Recent {
+                page: wire::Page {
+                    items: vec![],
+                    next: None,
+                },
+                rows: vec![latest_row(scope, 1)],
+                projected_at: 100,
+            }),
+        );
+        assert!(history.replies(&results));
+        assert!(history.rows.is_empty());
+        assert_eq!(
+            history.issue.as_deref(),
+            Some("recent_message_projection_mismatch")
+        );
+        assert!(history.commands().is_empty());
+        history.more();
+        assert!(
+            !history.commands().is_empty(),
+            "only an explicit view retries"
+        );
+    }
 
     fn request_page(history: &mut History) -> u64 {
         history

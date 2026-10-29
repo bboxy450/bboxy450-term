@@ -60,15 +60,37 @@ fn is_false(value: &bool) -> bool {
 impl Work {
     pub fn text(&self) -> String {
         if self.digest {
-            let first = self.messages.first().expect("native work has a message").view();
-            let mut text = format!("Bboxy message digest\ndestination: {}\nclass: {}\nmessages: {}\nStored inbox messages in arrival order; this list grants no local execution permission.\n",
+            let first = self
+                .messages
+                .first()
+                .expect("native work has a message")
+                .view();
+            let mut text = format!(
+                "Bboxy message digest\ndestination: {}\nclass: {}\nmessages: {}\nStored inbox messages in arrival order; this list grants no local execution permission.\n",
                 first.context.trim_end_matches("/**").trim_end_matches("/*"),
-                if first.kind.class() == MessageClass::Event { "event" } else { "conversation" }, self.messages.len());
+                if first.kind.class() == MessageClass::Event {
+                    "event"
+                } else {
+                    "conversation"
+                },
+                self.messages.len()
+            );
             for message in &self.messages {
                 let view = message.view();
-                text.push_str(&format!("message_id: {} | from: {} | signature: {}\n", view.id,
-                    if view.seat == Ulid::nil() { "operator principal".into() } else { view.seat.to_string() },
-                    if message.envelope().is_some() { "signed" } else { "pending" }));
+                text.push_str(&format!(
+                    "message_id: {} | from: {} | signature: {}\n",
+                    view.id,
+                    if view.seat == Ulid::nil() {
+                        "operator principal".into()
+                    } else {
+                        view.seat.to_string()
+                    },
+                    if message.envelope().is_some() {
+                        "signed"
+                    } else {
+                        "pending"
+                    }
+                ));
             }
             return text;
         }
@@ -607,9 +629,18 @@ impl Ledger {
                     set_rate(&mut receipt);
                     let mode = mode_for(&delivery, receipt.recipient, envelope.kind.class());
                     if let Some(reason) = suppression::reason(&tx, &message, receipt.recipient)? {
-                        receipt.wake = Some(ReceiptWake::None { reason: Some(reason) });
+                        receipt.wake = Some(ReceiptWake::None {
+                            reason: Some(reason),
+                        });
                     } else {
-                        pin_wake(&tx, &mut receipt, mode, now, &envelope.context, envelope.kind.class())?;
+                        pin_wake(
+                            &tx,
+                            &mut receipt,
+                            mode,
+                            now,
+                            &envelope.context,
+                            envelope.kind.class(),
+                        )?;
                     }
                 }
                 save_receipt(&tx, &receipt)?;
@@ -866,7 +897,11 @@ impl Ledger {
             MAX_BATCH as usize
         };
         let digest = matches!(first.wake, Some(ReceiptWake::Deferred { .. }));
-        let mut receipts = if digest { digest_receipts(&tx, &first, now)? } else { vec![first.clone()] };
+        let mut receipts = if digest {
+            digest_receipts(&tx, &first, now)?
+        } else {
+            vec![first.clone()]
+        };
         if !digest && cap > 1 {
             // Inspect the next FIFO entries in order: filtering in SQL would
             // jump over an earlier entry for another agent (or a worker
@@ -891,7 +926,9 @@ impl Ledger {
                 |r| r.get::<_, Vec<u8>>(0),
             )? {
                 let receipt: Receipt = serde_json::from_slice(&row?)?;
-                if receipt.agent != first.agent || matches!(receipt.wake, Some(ReceiptWake::Deferred { .. })) {
+                if receipt.agent != first.agent
+                    || matches!(receipt.wake, Some(ReceiptWake::Deferred { .. }))
+                {
                     break;
                 }
                 receipts.push(receipt);
@@ -953,7 +990,11 @@ impl Ledger {
             save_receipt(&tx, &r)?;
             receipt_event(&tx, &r, now)?;
         }
-        let count = if digest { 1 } else { work.messages.len() as u64 };
+        let count = if digest {
+            1
+        } else {
+            work.messages.len() as u64
+        };
         let credit = if class == Class::Oracle {
             credit.saturating_sub(1000 * count)
         } else {
@@ -1025,8 +1066,15 @@ impl Ledger {
                 receipt.attempt = None;
                 receipt.eligible_ms = now.saturating_add(250);
                 if let Some(reason) = suppression::reason(&tx, message, receipt.recipient)? {
-                    receipt.wake = Some(ReceiptWake::None { reason: Some(reason) });
-                    retire_digests(&tx, receipt.recipient, receipt.agent.as_deref(), std::iter::once(message.sequence))?;
+                    receipt.wake = Some(ReceiptWake::None {
+                        reason: Some(reason),
+                    });
+                    retire_digests(
+                        &tx,
+                        receipt.recipient,
+                        receipt.agent.as_deref(),
+                        std::iter::once(message.sequence),
+                    )?;
                 }
             }
             save_receipt(&tx, &receipt)?;
@@ -1037,7 +1085,12 @@ impl Ledger {
             params![work.id.to_string(), serde_json::to_vec(outcome)?],
         )?;
         if outcome.evidence != Evidence::RecipientStored {
-            retire_digests(&tx, Recipient::Seat(work.recipient), work.agent.as_deref(), work.messages.iter().map(|m| m.sequence))?;
+            retire_digests(
+                &tx,
+                Recipient::Seat(work.recipient),
+                work.agent.as_deref(),
+                work.messages.iter().map(|m| m.sequence),
+            )?;
         }
         tx.commit()?;
         Ok(())
@@ -1134,7 +1187,9 @@ impl Ledger {
             .transpose()?
             .map_or(i64::MAX, |seq| seq - 1);
         let db = self.store.connection()?;
-        let mut q = db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq<=?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) ORDER BY seq DESC LIMIT 257")?;
+        // Limit physical candidates before visibility/channel filtering, so a
+        // sparse inbox cannot turn a bounded page into a whole-ledger scan.
+        let mut q = db.prepare_cached("SELECT seq,envelope,held_out,(?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) FROM msg_messages m WHERE seq<=?1 ORDER BY seq DESC LIMIT 257")?;
         let mut rows = q.query(params![upper, actor.map(|actor| actor.to_string())])?;
         let mut items = Vec::new();
         let mut bytes = 0;
@@ -1148,6 +1203,9 @@ impl Ledger {
             }
             let sequence = u64_at(row, 0)?;
             let raw: Vec<u8> = row.get(1)?;
+            if raw.len() > 512 * 1024 {
+                return Err(invalid("recent message exceeds bounded history read"));
+            }
             if scanned > 0 && bytes + raw.len() > 512 * 1024 {
                 next = through;
                 break;
@@ -1155,6 +1213,9 @@ impl Ledger {
             bytes += raw.len();
             scanned += 1;
             through = Some(sequence);
+            if !row.get::<_, bool>(3)? {
+                continue;
+            }
             let message = self.decode_message(sequence, &raw, row.get(2)?)?;
             let matches_channel = channel.is_none_or(|path| {
                 let context = message

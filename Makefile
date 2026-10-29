@@ -155,7 +155,15 @@ test-cursors:
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
 
-.PHONY: test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
+.PHONY: test-chat-recent test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
+test-chat-recent:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib recent; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state -- --exact; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui
+
 test-chat-sections-e2e:
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_CHAT_SECTIONS_EVIDENCE='$(abspath $(TARGET_DIR))/chat-sections' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test chat_sections --test chat_notices -- --ignored --nocapture --test-threads=$(SWARM_TEST_THREADS)
@@ -169,7 +177,8 @@ test-chat-sections:
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden --test ui_sidebar_sections; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
-	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
+	$(MAKE) test-chat-sections-e2e
 
 check-chat-sections:
 	@set -eu; . ./scripts/cache-env.sh; \

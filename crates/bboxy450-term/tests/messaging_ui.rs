@@ -721,7 +721,7 @@ fn a_refused_inbox_page_retries_its_actual_cursor_only_on_explicit_view() {
     assert!(matches!(
         history.commands().as_slice(),
         [UiMsg::Messaging {
-            request: Request::List { after: 0, .. },
+            request: Request::Recent { before: None, .. },
             ..
         }]
     ));
