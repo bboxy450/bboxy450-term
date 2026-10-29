@@ -1687,8 +1687,18 @@ mod gui_tests {
             .unwrap();
         let seat = Ulid::new();
         let swarm = Ulid::new();
-        let mut harness = crate::adapters::HarnessRecord::builtin("cat").unwrap();
-        harness.command = vec!["/bin/cat".into()];
+        let harness = crate::adapters::HarnessRecord {
+            kind: "cat".into(),
+            name: "role fixture cat".into(),
+            command: vec!["/bin/cat".into()],
+            tile: "#7397d4".into(),
+            icon: "cat".into(),
+            default_role: crate::adapters::role_preset("executor").unwrap(),
+            wake_method: crate::adapters::WakeMethod::Pty,
+            state_source: crate::adapters::StateSource::Cadence,
+            hooks: false,
+        };
+        harness.validate().unwrap();
         let info = logic
             .client
             .spawn_harness(
