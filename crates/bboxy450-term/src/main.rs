@@ -2171,6 +2171,7 @@ struct App {
     swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
     navigation_regions: Vec<(String, Rect)>,
     sidebar_scroll: Option<f32>,
+    sidebar_wheel: bboxy450_term::chat_scroll::WheelIntent,
     sidebar_width: Option<f32>,
     sidebar_accordion_overrides: BTreeMap<String, bool>,
     sidebar_drag: bbt_ui_model::input::SidebarResize,
@@ -2195,6 +2196,7 @@ struct App {
     chat_scroll: bboxy450_term::chat_scroll::State,
     task_stream: bbt_ui::modules::stream_dock::StreamDock,
     task_scroll: f32,
+    task_wheel: bboxy450_term::chat_scroll::WheelIntent,
     chat_notice_timer: Option<sidebar_chat::NoticeTimer>,
     conversation_layout: Option<scene::ConversationLayout>,
     composer_dragging: bool,
@@ -2378,6 +2380,7 @@ impl App {
             swarm_folder_regions: Vec::new(),
             navigation_regions: Vec::new(),
             sidebar_scroll: None,
+            sidebar_wheel: Default::default(),
             sidebar_width: None,
             sidebar_accordion_overrides: BTreeMap::new(),
             sidebar_drag: Default::default(),
@@ -2411,6 +2414,7 @@ impl App {
                 ..Default::default()
             },
             task_scroll: 0.,
+            task_wheel: Default::default(),
             chat_notice_timer: None,
             composer_dragging: false,
             terminal_selection: Default::default(),
@@ -3231,6 +3235,7 @@ impl App {
             self.reject_report = None;
             self.reject_focus = false;
             self.task_scroll = 0.;
+            self.task_wheel.layout_solved();
         }
         self.conversation_events();
         for (folder, title, kind) in [
@@ -7194,6 +7199,9 @@ impl App {
         }
         self.titlebar.retain(&layouts);
         self.update_cursor();
+        self.chat_scroll.layout_solved();
+        self.task_wheel.layout_solved();
+        self.sidebar_wheel.layout_solved();
         Ok(layouts)
     }
     /// Data and focus may change between ticks; only a usable frame projects
@@ -9705,7 +9713,7 @@ mod lazy_projection_tests {
         clippy::disallowed_methods,
         reason = "the fixture owns an isolated process-wide UI thread registration"
     )]
-    fn isolated_ui_case(name: &str) -> bool {
+    pub(super) fn isolated_ui_case(name: &str) -> bool {
         const CHILD: &str = "BBOXY_R5J_UI_FIXTURE_CHILD";
         if std::env::var_os(CHILD).is_none() {
             let output = std::process::Command::new(std::env::current_exe().unwrap())
@@ -9830,7 +9838,7 @@ mod lazy_projection_tests {
         ));
         assert!(!app.composer_client.retry().is_empty());
     }
-    fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
+    pub(super) fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;
         impl bbt_rt::Waker for QuietWake {
             fn wake(&self) {}

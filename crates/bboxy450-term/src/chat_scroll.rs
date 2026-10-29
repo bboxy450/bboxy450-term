@@ -11,6 +11,36 @@ use std::collections::VecDeque;
 pub const MAX_VIEWS: usize = 128;
 const MAX_CHANNEL_BYTES: usize = 512;
 
+/// A burst belongs to the current solved layout. Only layout_solved() retires
+/// its pending pixel target; repeated events never restart from stale geometry.
+#[derive(Debug, Default)]
+pub struct WheelIntent {
+    pending: Option<f32>,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct WheelMotion {
+    pub offset: f32,
+    pub changed: bool,
+}
+impl WheelIntent {
+    pub fn layout_solved(&mut self) {
+        self.pending = None;
+    }
+    pub fn wheel(&mut self, actual: f32, max: f32, dy: f32) -> Option<WheelMotion> {
+        if !actual.is_finite() || !max.is_finite() || !dy.is_finite() || dy == 0. {
+            return None;
+        }
+        let max = max.max(0.);
+        let before = self.pending.unwrap_or(actual).clamp(0., max);
+        let offset = (before + dy).clamp(0., max);
+        self.pending = Some(offset);
+        Some(WheelMotion {
+            offset,
+            changed: before != offset,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 struct Position {
     requested: f32,
@@ -35,6 +65,7 @@ struct View {
 pub struct State {
     views: VecDeque<View>,
     active: bool,
+    wheel: WheelIntent,
 }
 impl State {
     /// Returns whether the selected view changed. An invalid key clears the active
@@ -45,6 +76,7 @@ impl State {
             || channel.chars().any(char::is_control)
         {
             self.active = false;
+            self.wheel.layout_solved();
             return Err("invalid_chat_scroll_scope");
         }
         if self.active
@@ -70,6 +102,7 @@ impl State {
         }
         self.views.push_back(view);
         self.active = true;
+        self.wheel.layout_solved();
         Ok(true)
     }
     fn position(&self) -> Position {
@@ -94,21 +127,29 @@ impl State {
             position.requested
         }
     }
-    /// Positive logical pixels move down. Use the actual clamped offset and maximum
-    /// from the produced ScrollView, not a previously requested loading/reflow offset.
+    /// Successful layout completion starts a fresh wheel burst from its actual
+    /// clamped geometry, without changing the saved manual loading/reflow intent.
+    pub fn layout_solved(&mut self) {
+        self.wheel.layout_solved();
+    }
+    /// Positive pixels move down. The first event uses produced geometry; later
+    /// events before layout_solved() accumulate against their pending target.
     pub fn wheel(&mut self, actual: f32, max: f32, dy: f32) -> bool {
-        if !self.active || !actual.is_finite() || !max.is_finite() || !dy.is_finite() || dy == 0. {
+        if !self.active {
             return false;
         }
-        let max = max.max(0.);
-        let requested = (actual.clamp(0., max) + dy).clamp(0., max);
-        let following = requested == max;
-        let position = &mut self.views.back_mut().expect("active view exists").position;
-        let changed = position.requested != requested || position.following != following;
-        *position = Position {
-            requested,
-            following,
+        let Some(motion) = self.wheel.wheel(actual, max, dy) else {
+            return false;
         };
+        let following = motion.offset == max.max(0.);
+        let position = &mut self.views.back_mut().expect("active view exists").position;
+        let changed = motion.changed || position.following != following;
+        if changed {
+            *position = Position {
+                requested: motion.offset,
+                following,
+            };
+        }
         changed
     }
     /// Any explicit send returns this view to following its latest message.
@@ -116,6 +157,7 @@ impl State {
         if !self.active {
             return false;
         }
+        self.wheel.layout_solved();
         let view = self.views.back_mut().expect("active view exists");
         let changed = !view.position.following || view.position.requested != 0.;
         view.position = Position::default();
@@ -128,6 +170,59 @@ mod tests {
     use super::*;
     fn scope(id: u128) -> SwarmId {
         SwarmId::from_u128(id)
+    }
+    #[test]
+    fn wheel_intent_accumulates_fractional_bursts_and_rebases_only_after_layout() {
+        let mut intent = WheelIntent::default();
+        for (dy, expected) in [(0.25, 100.25), (0.5, 100.75), (-0.125, 100.625)] {
+            assert_eq!(intent.wheel(100., 200., dy).unwrap().offset, expected);
+        }
+        intent.layout_solved();
+        assert_eq!(intent.wheel(40., 50., -10.).unwrap().offset, 30.);
+        assert_eq!(intent.wheel(40., 50., -100.).unwrap().offset, 0.);
+        assert!(!intent.wheel(40., 50., -1.).unwrap().changed);
+        for dy in [0., f32::NAN, f32::INFINITY] {
+            assert!(intent.wheel(40., 50., dy).is_none());
+        }
+    }
+    #[test]
+    fn chat_burst_scope_send_and_noop_keep_tail_and_manual_intent() {
+        let mut state = State::default();
+        state.bind(scope(1), "all").unwrap();
+        assert!(
+            !state.wheel(200., 200., 10.),
+            "tail overscroll needs no redraw"
+        );
+        assert!(state.following());
+        assert!(state.wheel(200., 200., -10.));
+        assert!(state.wheel(200., 200., -10.));
+        assert_eq!(state.requested_offset(), 180.);
+        assert!(!state.following());
+        state.layout_solved();
+        state.wheel(50., 50., -5.);
+        assert_eq!(
+            state.requested_offset(),
+            45.,
+            "reflow starts from its solved clamp"
+        );
+        state.bind(scope(2), "all").unwrap();
+        state.wheel(300., 300., -10.);
+        assert_eq!(
+            state.requested_offset(),
+            290.,
+            "another scope never inherits a burst"
+        );
+        state.bind(scope(1), "all").unwrap();
+        state.wheel(45., 200., -5.);
+        assert_eq!(state.requested_offset(), 40.);
+        state.follow_latest();
+        assert!(!state.wheel(300., 300., 5.));
+        state.wheel(300., 300., -10.);
+        assert_eq!(
+            state.requested_offset(),
+            290.,
+            "explicit Send retires old pending movement"
+        );
     }
     #[test]
     fn tail_follows_append_and_manual_scroll_stays_put_until_bottom_or_send() {
@@ -148,6 +243,7 @@ mod tests {
             175.,
             "an incoming append cannot pull a manual view down"
         );
+        state.layout_solved();
         state.wheel(175., 300., 125.);
         assert!(state.following());
         state.wheel(300., 300., -50.);
@@ -185,6 +281,7 @@ mod tests {
         assert_eq!(state.layout_offset().clamp(0., 50.), 50.);
         assert_eq!(state.requested_offset(), 80.);
         assert_eq!(state.layout_offset().clamp(0., 200.), 80.);
+        state.layout_solved();
         state.wheel(50., 50., -10.);
         assert_eq!(
             state.requested_offset(),

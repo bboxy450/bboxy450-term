@@ -71,10 +71,13 @@ impl App {
         }
     }
     pub(super) fn scroll_sidebar(&mut self, delta: f32) {
-        if delta.is_finite()
-            && let Some((_, max)) = self.sidebar_viewport
+        if let Some((_, max)) = self.sidebar_viewport
+            && let Some(motion) = self
+                .sidebar_wheel
+                .wheel(self.scene.sidebar_scroll, max, delta)
+            && motion.changed
         {
-            self.sidebar_scroll = Some((self.scene.sidebar_scroll + delta).clamp(0., max));
+            self.sidebar_scroll = Some(motion.offset);
             self.request_redraw();
         }
     }

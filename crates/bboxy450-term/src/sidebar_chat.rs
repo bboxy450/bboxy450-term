@@ -84,6 +84,10 @@ pub(super) fn scroll_position(layout: &c::Layout, key: &str) -> Option<(f32, f32
     scroll(find(layout, key)?)
 }
 
+fn task_page_needed(dy: f32, offset: f32, max: f32) -> bool {
+    dy > 0. && max - offset <= 28.
+}
+
 impl App {
     pub(super) fn scroll_sidebar_section(&mut self, tasks: bool, dy: f32) -> Result<(), String> {
         if !dy.is_finite() || dy.abs() > bbt_proto::gui::MAX_SECTION_WHEEL_DY {
@@ -99,20 +103,32 @@ impl App {
             .as_ref()
             .and_then(|layout| scroll_position(&layout.layout, key))
             .ok_or("sidebar_section_unavailable")?;
-        if tasks {
-            self.task_scroll = (offset + dy).clamp(0., max);
-            if dy > 0. {
+        let changed = if tasks {
+            let Some(motion) = self.task_wheel.wheel(offset, max, dy) else {
+                return Ok(());
+            };
+            if motion.changed {
+                self.task_scroll = motion.offset;
+            }
+            if task_page_needed(dy, motion.offset, max) {
                 self.task_records.more_tasks();
                 self.task_reads();
             }
+            motion.changed
         } else {
-            self.chat_scroll.wheel(offset, max, dy);
-            if dy < 0. && (offset + dy).max(0.) <= 28. {
+            if dy == 0. {
+                return Ok(());
+            }
+            let changed = self.chat_scroll.wheel(offset, max, dy);
+            if dy < 0. && self.chat_scroll.requested_offset().clamp(0., max) <= 28. {
                 self.message_history.more();
             }
             self.conversation_reads(true);
+            changed
+        };
+        if changed {
+            self.request_redraw();
         }
-        self.request_redraw();
         Ok(())
     }
 
@@ -187,6 +203,140 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn shared_wheel_handlers_keep_bursts_noops_reflow_and_task_page_boundaries() {
+        if crate::lazy_projection_tests::isolated_ui_case(
+            "sidebar_chat::tests::shared_wheel_handlers_keep_bursts_noops_reflow_and_task_page_boundaries",
+        ) {
+            return;
+        }
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.compose_startup = true;
+        // This in-memory owner has no backend; retain generated read intents for assertions.
+        app.backend_lost = true;
+        app.sidebar_layout_preview = Some(composer::SidebarLayout {
+            conversation_fraction: 0.7,
+            tasks_height: Some(150.),
+            ..Default::default()
+        });
+        app.chat_scroll
+            .bind(bbt_ui_model::SwarmId::from_u128(1), "all")
+            .unwrap();
+        app.conversation.entries = (0..64)
+            .map(|number| Entry::Note {
+                text: format!("chat {number}"),
+                padding: [0.; 4],
+            })
+            .collect();
+        app.task_stream.entries = (0..64)
+            .map(|number| Entry::Note {
+                text: format!("task {number}"),
+                padding: [0.; 4],
+            })
+            .collect();
+        app.task_records.select(bbt_proto::SwarmId::from_u128(1));
+        let _ = app.task_records.commands(); // Admit initial reads before measuring pagination.
+        let next = bbt_mux::Ulid(99);
+        app.task_records.task_next = Some(next);
+        app.solve_ui([1200., 1000.]).unwrap();
+        let (_, chat_max) = scroll_position(
+            &app.conversation_layout.as_ref().unwrap().layout,
+            "conversation/rows",
+        )
+        .unwrap();
+        let (_, tasks_max) = scroll_position(
+            &app.conversation_layout.as_ref().unwrap().layout,
+            "conversation/tasks",
+        )
+        .unwrap();
+        assert!(chat_max > 100. && tasks_max > 100.);
+        app.redraw_pending.set(false);
+        app.scroll_sidebar_section(false, 10.).unwrap();
+        assert!(
+            !app.redraw_pending.get(),
+            "already following tail: no redundant redraw"
+        );
+        app.scroll_sidebar_section(false, -10.).unwrap();
+        app.scroll_sidebar_section(false, -10.).unwrap();
+        assert_eq!(app.chat_scroll.requested_offset(), chat_max - 20.);
+        app.scroll_sidebar_section(true, 1.25).unwrap();
+        app.scroll_sidebar_section(true, 1.25).unwrap();
+        assert_eq!(
+            app.task_scroll, 2.5,
+            "both native/ctl-shared events precede solve"
+        );
+        assert!(
+            app.task_records.commands().is_empty(),
+            "scrolling near top must not request next task page"
+        );
+        app.scene.sidebar_scroll = 100.;
+        app.sidebar_viewport = Some((Rect::new(0., 0., 100., 100.), 500.));
+        app.scroll_sidebar(1.25);
+        app.scroll_sidebar(1.25);
+        assert_eq!(app.sidebar_scroll, Some(102.5));
+        app.scroll_sidebar(-32768.);
+        app.redraw_pending.set(false);
+        app.scroll_sidebar(-1.);
+        assert!(
+            !app.redraw_pending.get(),
+            "clamped navigation wheel needs no redraw"
+        );
+        app.scroll_sidebar(102.5);
+        app.solve_ui([1200., 1800.]).unwrap(); // Explicitly retires all three pending bursts.
+        app.scene.sidebar_scroll = 20.;
+        app.sidebar_viewport = Some((Rect::new(0., 0., 100., 100.), 50.));
+        app.scroll_sidebar(1.);
+        assert_eq!(
+            app.sidebar_scroll,
+            Some(21.),
+            "new solved geometry retires navigation's stale target"
+        );
+        let (actual, _) = scroll_position(
+            &app.conversation_layout.as_ref().unwrap().layout,
+            "conversation/rows",
+        )
+        .unwrap();
+        app.scroll_sidebar_section(false, -5.).unwrap();
+        assert_eq!(app.chat_scroll.requested_offset(), (actual - 5.).max(0.));
+        let (actual, _) = scroll_position(
+            &app.conversation_layout.as_ref().unwrap().layout,
+            "conversation/tasks",
+        )
+        .unwrap();
+        app.scroll_sidebar_section(true, -1.).unwrap();
+        assert_eq!(app.task_scroll, (actual - 1.).max(0.));
+        app.scroll_sidebar_section(true, -32768.).unwrap();
+        app.redraw_pending.set(false);
+        app.scroll_sidebar_section(true, -1.).unwrap();
+        assert!(
+            !app.redraw_pending.get(),
+            "clamped top wheel needs no redraw"
+        );
+        app.scroll_sidebar_section(true, 32768.).unwrap();
+        assert!(app.task_records.commands().iter().any(|command| matches!(command,
+            live::UiMsg::Task {request:bbt_proto::messaging::TaskRequest::List {after:Some(cursor),..},..} if *cursor == next
+        )), "near-bottom motion must request the retained next page");
+        app.redraw_pending.set(false);
+        app.scroll_sidebar_section(true, 1.).unwrap();
+        assert!(
+            !app.redraw_pending.get(),
+            "clamped bottom wheel still pages without redundant redraw"
+        );
+    }
+    #[test]
+    fn tasks_pagination_threshold_counts_only_downward_boundary_gestures() {
+        let mut intent = bboxy450_term::chat_scroll::WheelIntent::default();
+        let mut reads = 0;
+        for dy in [1., 1., 1., 1.] {
+            let motion = intent.wheel(0., 100., dy).unwrap();
+            reads += usize::from(task_page_needed(dy, motion.offset, 100.));
+        }
+        assert_eq!(reads, 0);
+        let motion = intent.wheel(0., 100., 68.).unwrap();
+        assert!(task_page_needed(68., motion.offset, 100.));
+        assert!(!task_page_needed(-1., 72., 100.));
+        assert!(!task_page_needed(0., 100., 100.));
+    }
     #[test]
     fn close_notice_joins_chat_chronology_between_real_messages() {
         let mut entries = vec![Entry::Filter { name: "all".into() }];
