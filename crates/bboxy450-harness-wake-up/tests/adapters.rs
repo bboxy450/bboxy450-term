@@ -191,6 +191,7 @@ fn claude_question_hooks_wait_and_resolve_only_the_bound_parent_tool() {
     assert_eq!(ask.state, State::Waiting);
     assert_eq!(ask.waiting_kind, Some(WaitingKind::Question));
     assert_eq!(ask.detail.as_deref(), Some("Which workspace should I use?"));
+    assert!(!ask.resolves, "entering a question must not resolve itself");
     session.apply(ask);
 
     let unrelated = hook::project(

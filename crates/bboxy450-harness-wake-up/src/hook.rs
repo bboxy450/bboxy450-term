@@ -259,10 +259,12 @@ pub fn project(
             | "session_start"
             | "SessionEnd"
             | "session_end"
-    ) || (matches!(
-        event.event.as_str(),
-        "PreToolUse" | "PostToolUse" | "pre_tool_use" | "post_tool_use"
-    ) && tool.is_some()
+    ) || (state != State::Waiting
+        && matches!(
+            event.event.as_str(),
+            "PreToolUse" | "PostToolUse" | "pre_tool_use" | "post_tool_use"
+        )
+        && tool.is_some()
         && tool == session.dialog_key.as_deref());
     if matches!(event.event.as_str(), "SessionStart" | "session_start") {
         obs.clear = true;
