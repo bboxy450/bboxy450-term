@@ -3628,6 +3628,37 @@ fn seat_context_actions_assign_captured_tasks_and_confirm_only_the_target_kill()
             .contains("assignee: none")
     );
     assert_eq!(process(&fixture, &first), before);
+    let original_roles = fixture.ctl(&["seat", "ls"]);
+    let original_session = original_roles
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == first)
+        .unwrap()["record"]["harness_session_id"]
+        .clone();
+    right_click(&fixture, &format!("seat:{first}"));
+    let role_dialog = click_region(&fixture, "context-menu:role");
+    assert!(
+        role_dialog.to_string().contains("next explicit Restart"),
+        "{role_dialog}"
+    );
+    click_region(&fixture, "seat-choice:1"); // Builtin Claude policy: Architect.
+    let roles = fixture.ctl(&["seat", "ls"]);
+    let changed = roles
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == first)
+        .unwrap();
+    assert_eq!(changed["record"]["role"]["name"], "architect", "{changed}");
+    assert_eq!(
+        changed["state"]["process"], before,
+        "live role change preserves the process"
+    );
+    assert_eq!(
+        changed["record"]["harness_session_id"], original_session,
+        "live role change preserves the session"
+    );
     let sidebar_menu = right_click(&fixture, &format!("seat:{first}"));
     assert_eq!(
         sidebar_menu["focused"], peer,

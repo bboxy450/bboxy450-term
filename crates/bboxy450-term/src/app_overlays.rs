@@ -250,7 +250,7 @@ fn seat_dialog(form: &SeatForm, ctx: ui::Context) -> (overlays::Modal, Vec<dialo
     let (title, explanation) = match form.kind {
         SeatFormKind::Roles => (
             "Change role",
-            "Authority changes immediately. Session instructions follow the selected role policy.",
+            "Update authority and send new role instructions to this session. Its process and work continue. The startup prompt changes on your next explicit Restart.",
         ),
         SeatFormKind::Tasks { .. } => (
             "Assign task",

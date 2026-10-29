@@ -36,3 +36,19 @@ CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-bac
 Raw /tmp/bboxy-seat-context-clippy.log SHA256 69724430f9abc9eaa9d2b551505d8a95e98b33537a87ddb695fa6a52b10ebd6c.
 Second read-only audit: no new defect in retry tokens/scopes, mutation isolation, role pagination or post-write unknown outcomes; this remains a source review, not execution evidence.
 Native e2e waits for the restored-root read after changing focus, covering an asynchronous mount rather than assuming cached readiness.
+
+Live role implementation default — 2026-10-29T04:52:48Z:
+Parent brief resolves the earlier placeholder using the standing session-preservation order and explicit continuation: apply role changes live, preserve process/session, update future launch context, and send targeted operator instructions. This is an implementation default, not a claim that the operator answered the asynchronous live-versus-restart question. Later steering overrides it.
+crates/bbt-mux/src/logic.rs:5871 — prevalidates catalog assignment, retained recovery context, operator signing and complete notice bounds; updates registry role, saved next-launch prompt, policy epoch and state; stores one signed direct operator Decision notice with the new role prompt and bboxy.orient-first request. Active startup overlays/processes are not replaced.
+crates/bbt-mux/src/logic.rs:6145 — journal preserves unknown code for partial-effect errors. Stable role op ID is also the notice ID in the separate messaging ledger; replay never redispatches its role effect or sends a second notice.
+crates/bboxy450-term/src/app_overlays.rs:253 — UI says authority/instructions change live while process/work continue; startup prompt applies on a later explicit Restart.
+Existing native/GUI seats carry RecoveryLaunch context; a low-level seat without retained launch context refuses before changing authority. Existing messaging MAX_TEXT16KiB applies to the complete role notice; oversized/invalid role instructions refuse before any authority/context write and are never truncated.
+
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0 on final role source.
+  Proto/goldens all green; plugin data_source3/0; Architect/custom task-role unit1/0; private GUI integration1/0.
+  Live-role assertions: epoch advances, exact PID/generation/session unchanged, configured new role prompt saved for future launch, one signed operator notice with role+orient+new prompt despite target mute, same-op replay keeps one notice and same epoch. Oversized catalog-legal role instructions refuse with no role/epoch/future-prompt change. Existing captured scope/task/kill/live-peer assertions remain green.
+  /tmp/bboxy-seat-context-role-live.log SHA256 4943958d46b1492c94a9b14ad27f6f0ef8304325a6ff48968cf2c2b764fcaca8.
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-seat-actions-backend TARGET_DIR=target/seat-context-check — EXIT 0; strict all-target plugin/proto/mux Clippy.
+  /tmp/bboxy-seat-context-role-live-clippy.log SHA256 16374560026e221e3cd6a28d9fef49c4b583c2183aaabdce1654f80c2fc8b7c2.
+git diff --check — EXIT 0.
+Native e2e source now selects Architect through the captured seat role menu and asserts unchanged harness process/session; execution remains root's warm app gate. No own cold app build was started for this follow-up.

@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-10-29T04:52:48Z"
 ---
 # ICD: logic ↔ GUI
 
@@ -19,8 +19,20 @@ revision fences. `SeatControlled {op}` is correlated by operation ID; an unknown
 kill outcome retains that ID and never becomes a new automatic kill. Kill uses
 the supervisor's exact owned child attachment, keeps the seat/history, and is
 distinct from reversible close. `UI_CONTROL_VERSION = 4` requires an old logic
-owner to refresh before these controls are sent. Role instruction delivery policy
-is pending the operator's explicit selection; this clause does not decide it.
+owner to refresh before these controls are sent.
+
+Live role change is the implementation default under the standing session
+preservation order and the operator's continuation, not an answer to the pending
+live-versus-restart question. It preserves the process/session, updates registry
+authority and the next-launch role prompt, and sends one targeted operator notice
+with the new instructions and a request to call `bboxy.orient` before the next
+action. Existing direct-operator delivery applies even to a muted seat. Static
+startup prompts apply on a later explicit Restart; they are not hot-replaced.
+The role journal and notice use the same stable operation ID in separate stores;
+replay never sends a second notice. A partial write or notice failure is reported
+as unknown with that ID. Later explicit operator steering replaces this default.
+The complete notice must satisfy the existing 16KiB message bound; an oversized
+or invalid prompt refuses before any authority/context write, without truncation.
 
 | | |
 |---|---|

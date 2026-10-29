@@ -5870,10 +5870,28 @@ impl Worker {
             }
             SeatControl::Role { name } => {
                 let args = serde_json::json!({"seat":id,"generation":generation,"role":name});
+                let notice_origin = self.identity.bind_origin(origin.clone());
                 self.ctl_journaled(op, "seat_role", args, origin, |this| {
+                    use crate::messaging::wire::SendRequestExt;
                     this.roles_idle()?;
                     let record = this.controlled_seat(id, generation)?;
-                    let (role, _) = this.configured_role(&record.harness_kind, Some(&name))?;
+                    let (role, prompt) = this.configured_role(&record.harness_kind, Some(&name))?;
+                    let store = SqliteStore::open(&object_dir(&this.config.run_dir, &format!("seat-{id}"))?)?;
+                    let mut launch: RecoveryLaunch = serde_json::from_slice(&store.get("recovery_launch")?.ok_or_else(|| invalid("RecoveryUnavailable: seat has no retained role launch context"))?)?;
+                    launch.role_prompt = prompt.clone();
+                    let launch = serde_json::to_vec(&launch)?;
+                    let mut authority = this.identity.operator_signing()?;
+                    authority.origin = notice_origin;
+                    let mut notice = bbt_proto::messaging::SendRequest::text(
+                        format!("seats/{id}/inbox"),
+                        format!("ROLE: {name}. The operator changed this seat’s role live. Preserve the current process, session and ongoing work. Before your next action, call bboxy.orient to refresh your role and tool authority.\n\nApply these role instructions from now on:\n{prompt}\n\nThe static startup prompt will use this role on the next explicit Restart."),
+                    );
+                    // The outer role journal and message ledger have separate
+                    // namespaces. One stable ID makes a crash/replay observable
+                    // without creating a second notice or resending a batch.
+                    notice.id = op;
+                    notice.kind = bbt_proto::messaging::MessageKind::Decision;
+                    notice.validate().map_err(|error| invalid(format!("role_notice_unavailable: {error}; the complete live notice must fit {} bytes; role was not changed", bbt_proto::messaging::MAX_TEXT)))?;
                     this.registry.update(id, |record| {
                         if record.generation != generation {
                             return Err(invalid(
@@ -5883,6 +5901,7 @@ impl Worker {
                         record.role = role;
                         Ok(())
                     }).map_err(|error| invalid(format!("unknown: role authority write outcome unavailable: {error}; retain operation ID {op}")))?;
+                    store.put("recovery_launch", &launch).map_err(|error| invalid(format!("unknown: role authority changed; future launch prompt outcome unavailable: {error}; retain operation ID {op}")))?;
                     // sync_seat derives a new policy epoch from the authoritative
                     // registry role; previously admitted MCP actors fail revalidation.
                     let updated = this.registry.get(id).map_err(|error| invalid(format!("unknown: role authority changed; record reload unavailable: {error}; retain operation ID {op}")))?;
@@ -5894,7 +5913,17 @@ impl Worker {
                             "role",
                             serde_json::json!({"role":name}),
                         ),
-                    ).map_err(|error| invalid(format!("unknown: role authority changed; state publication unavailable: {error}; retain operation ID {op}")))
+                    ).map_err(|error| invalid(format!("unknown: role authority changed; state publication unavailable: {error}; retain operation ID {op}")))?;
+                    match this.messaging.request_operator(
+                        &authority,
+                        record.swarm,
+                        crate::messaging::api::Request::Send { message: notice },
+                        None,
+                        now_ms(),
+                    ).map_err(|error| invalid(format!("unknown: role authority changed; role notice outcome unavailable: {error}; retain operation ID {op}")))? {
+                        crate::messaging::api::Response::Stored { .. } => Ok(()),
+                        response => Err(invalid(format!("unknown: role authority changed; role notice was not stored: {response:?}; retain operation ID {op}"))),
+                    }
                 })
             }
             SeatControl::Kill => {
@@ -6141,7 +6170,15 @@ impl Worker {
         let result = if fresh {
             let result = match effect(self) {
                 Ok(()) => crate::mcp::success(op, serde_json::json!({"ok":true})),
-                Err(error) => crate::mcp::error(op, "rejected", &error.to_string()),
+                Err(error) => {
+                    let reason = error.to_string();
+                    let code = if reason.starts_with("unknown:") {
+                        "unknown"
+                    } else {
+                        "rejected"
+                    };
+                    crate::mcp::error(op, code, &reason)
+                }
             };
             self.operator_journal.complete(&principal, &call, result)?
         } else {

@@ -1033,10 +1033,32 @@ fn seat_controls_case() {
             )
             .unwrap()
     };
+    let mut catalog = bbt_proto::gui::RoleCatalog::builtin();
+    let role_prompt = "ROLE_CHANGE_FIXTURE_NEW_INSTRUCTIONS: supervise and verify evidence.";
+    catalog.roles.get_mut("oracle").unwrap().prompt = role_prompt.into();
+    runtime
+        .block_on(logic.client.configure_roles(
+            Ulid::new(),
+            catalog,
+            bbt_mux::mcp::Origin::default(),
+        ))
+        .unwrap();
+    runtime
+        .block_on(gui.while_waiting(logic.client.gui_messaging(
+            Ulid::new(),
+            Ulid(7),
+            bbt_proto::messaging::Request::Mute {
+                seat: target,
+                muted: true,
+            },
+            bbt_mux::mcp::Origin::default(),
+        )))
+        .unwrap();
     let old_epoch = epoch();
+    let role_op = Ulid::new();
     runtime
         .block_on(gui.control(
-            Ulid::new(),
+            role_op,
             target,
             generation,
             SeatControl::Role {
@@ -1051,6 +1073,152 @@ fn seat_controls_case() {
     assert!(
         epoch() > old_epoch,
         "authority change advances the policy epoch"
+    );
+    assert_eq!(
+        promoted.record.harness_session_id,
+        before.record.harness_session_id
+    );
+    assert!(
+        promoted.record.muted,
+        "live role changes do not clear operator mute"
+    );
+    let launch = SqliteStore::open(&run_dir.join(format!("seat-{target}"))).unwrap();
+    use bbt_mux::store::Store;
+    let context: serde_json::Value =
+        serde_json::from_slice(&launch.get("recovery_launch").unwrap().unwrap()).unwrap();
+    assert_eq!(
+        context["role_prompt"], role_prompt,
+        "future explicit restart uses the new prompt"
+    );
+    let changed_epoch = epoch();
+    runtime
+        .block_on(gui.control(
+            role_op,
+            target,
+            generation,
+            SeatControl::Role {
+                name: "oracle".into(),
+            },
+        ))
+        .unwrap();
+    assert_eq!(
+        epoch(),
+        changed_epoch,
+        "same-op replay never reapplies the authority change"
+    );
+    let response = runtime
+        .block_on(gui.while_waiting(logic.client.gui_messaging(
+            Ulid::new(),
+            Ulid(7),
+            bbt_proto::messaging::Request::List {
+                thread: None,
+                channel: Some(format!("seats/{target}/inbox")),
+                after: 0,
+                limit: 128,
+            },
+            bbt_mux::mcp::Origin::default(),
+        )))
+        .unwrap();
+    let bbt_proto::messaging::Response::Messages { page } = response else {
+        panic!("expected role notice inventory");
+    };
+    let notices: Vec<_> = page
+        .items
+        .iter()
+        .filter(|message| message.view().id == role_op)
+        .collect();
+    assert_eq!(
+        notices.len(),
+        1,
+        "same-op replay stores one targeted notice"
+    );
+    let envelope = notices[0]
+        .envelope()
+        .expect("role notice is signed by the operator");
+    assert_eq!(envelope.role.name, "operator");
+    assert_eq!(envelope.context, format!("seats/{target}/inbox"));
+    let text = envelope.body.text().unwrap();
+    assert!(
+        text.contains("ROLE: oracle.")
+            && text.contains("bboxy.orient")
+            && text.contains(role_prompt),
+        "{text}"
+    );
+    assert!(text.contains("next explicit Restart"), "{text}");
+    let receipts = runtime
+        .block_on(gui.while_waiting(logic.client.gui_messaging(
+            Ulid::new(),
+            Ulid(7),
+            bbt_proto::messaging::Request::Receipts {
+                message: role_op,
+                after: 0,
+                limit: 128,
+            },
+            bbt_mux::mcp::Origin::default(),
+        )))
+        .unwrap();
+    let bbt_proto::messaging::Response::Receipts { page } = receipts else {
+        panic!("expected role notice receipts");
+    };
+    assert!(
+        page.items.iter().any(|receipt| receipt.recipient
+            == bbt_proto::messaging::Recipient::Seat(target)
+            && receipt.held.is_none()),
+        "direct operator role notice is not gated by target mute: {:?}",
+        page.items
+    );
+    let mut oversized_catalog = bbt_proto::gui::RoleCatalog::builtin();
+    oversized_catalog.roles.get_mut("oracle").unwrap().prompt = role_prompt.into();
+    let mut oversized_role = oversized_catalog.roles["executor"].clone();
+    oversized_role.prompt = "x".repeat(bbt_proto::messaging::MAX_TEXT);
+    oversized_catalog
+        .roles
+        .insert("Large role".into(), oversized_role);
+    oversized_catalog
+        .harnesses
+        .get_mut("zsh")
+        .unwrap()
+        .available_roles
+        .push("Large role".into());
+    runtime
+        .block_on(logic.client.configure_roles(
+            Ulid::new(),
+            oversized_catalog,
+            bbt_mux::mcp::Origin::default(),
+        ))
+        .unwrap();
+    let refused = runtime
+        .block_on(gui.control(
+            Ulid::new(),
+            target,
+            generation,
+            SeatControl::Role {
+                name: "Large role".into(),
+            },
+        ))
+        .unwrap_err();
+    assert!(
+        refused.starts_with("role_notice_unavailable:") && refused.contains("role was not changed"),
+        "{refused}"
+    );
+    assert_eq!(
+        epoch(),
+        changed_epoch,
+        "oversized live instructions cannot mutate authority"
+    );
+    assert_eq!(
+        runtime
+            .block_on(logic.client.record(target))
+            .unwrap()
+            .role
+            .name,
+        "oracle"
+    );
+    let context: serde_json::Value =
+        serde_json::from_slice(&launch.get("recovery_launch").unwrap().unwrap()).unwrap();
+    assert_eq!(
+        context["role_prompt"], role_prompt,
+        "oversized refusal preserves the future prompt"
     );
     assert!(
         runtime
@@ -1189,6 +1357,6 @@ fn seat_controls_case() {
     );
     logic.shutdown().unwrap();
     println!(
-        "PASS seat controls: role authority epoch + same PID, scoped signed task assignment, stale-generation refusal, exact child kill, idempotent kill receipt and live peer"
+        "PASS seat controls: live role epoch + same PID/session, new future-launch prompt, one signed direct operator role/orient notice through mute and replay, scoped task assignment, stale-generation refusal, exact child kill and live peer"
     );
 }
