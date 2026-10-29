@@ -326,12 +326,28 @@ def fitted_table_and_dismissal(app, style):
         require(max(heights)-min(heights) < 0.01, "fitted cells lost shared row heights")
     app.checks.append({"feature":"fitted-rich-table", "frame":layout["frame_seq"], "panel":panel, "table":table, "native_ink":ink})
 
+    def logical_point(rect, at=None):
+        # ctl accepts u32 logical pixels; retain the intended half-open hit box
+        # after rounding rather than globally coercing unrelated ctl arguments.
+        require(all(math.isfinite(v) for v in rect+layout["size"]) and rect[2] > 0 and rect[3] > 0,
+                "document click region is not finite and nonempty")
+        target = at if at is not None else [rect[0]+rect[2]*0.5, rect[1]+rect[3]*0.5]
+        require(all(math.isfinite(v) for v in target), "document click point is not finite")
+        point = []
+        for axis in range(2):
+            low = max(0, math.ceil(rect[axis]))
+            high = min(2**32-1, math.ceil(rect[axis]+rect[axis+2])-1, math.ceil(layout["size"][axis])-1)
+            require(low <= high, "document hit region contains no visible integer pixel")
+            point.append(max(low, min(high, round(target[axis]))))
+        require(all(rect[i] <= point[i] < rect[i]+rect[i+2] for i in range(2)),
+                "rounded document click left its intended hit region")
+        return point
+
     def click(rect):
-        x,y,w,h = rect
-        return app.ctl("ui", "click", x+w*0.5, y+h*0.5)
+        return app.ctl("ui", "click", *logical_point(rect))
 
     # Inert panel padding and a body/selection-start click must never dismiss.
-    inside = app.ctl("ui", "click", panel[0]+1, panel[1]+panel[3]*0.5)
+    inside = app.ctl("ui", "click", *logical_point(panel, [panel[0]+1, panel[1]+panel[3]*0.5]))
     require(inside["document"] == layout["document"], "empty interior panel space dismissed the document")
     selected = click(next(run["rect"] for run in observed["texts"] if run["text"] == "123"))
     require(selected["document"] == layout["document"], "body selection-start click dismissed the document")
@@ -347,7 +363,7 @@ def fitted_table_and_dismissal(app, style):
     reopened, _ = app.open(record, ["123", "45"])
     panel = next(n["rect"] for key,n in nodes(reopened) if key == "document" and n["kind"] == "named:document")
     settings = reopened["regions"]["settings"]
-    point = [settings[0]+settings[2]*0.5, settings[1]+settings[3]*0.5]
+    point = logical_point(settings)
     require(not (panel[0] <= point[0] < panel[0]+panel[2] and panel[1] <= point[1] < panel[1]+panel[3]),
             "fixture must click a real underlying Settings control outside the modal")
     dismissed = app.ctl("ui", "click", *point)
