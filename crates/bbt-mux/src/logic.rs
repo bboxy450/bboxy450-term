@@ -2589,6 +2589,64 @@ struct Worker {
     gui_watch_epoch_seen: u64,
     ring_pages: BTreeMap<HostId, BTreeMap<Ulid, RingPage>>,
 }
+/// Only the worker's internal validated fixture context may be passed here.
+fn private_document_test_run(
+    context: Option<&str>,
+    state: crate::identity::IdentityState,
+    device: Option<Ulid>,
+) -> Option<Ulid> {
+    use crate::identity::IdentityState::{Certified, LocalDev};
+    if !cfg!(debug_assertions)
+        || !matches!(state, Certified | LocalDev)
+        || device.is_none_or(|id| id == Ulid::nil())
+    {
+        return None;
+    }
+    context?
+        .strip_prefix("test-account:")?
+        .parse::<Ulid>()
+        .ok()
+        .filter(|id| *id != Ulid::nil())
+}
+
+#[cfg(test)]
+mod private_document_identity_tests {
+    use super::*;
+    use crate::identity::IdentityState::*;
+    #[test]
+    fn document_test_run_requires_internal_ready_context_not_a_display_label() {
+        let run = Ulid::new();
+        let label = format!("test-account:{run}");
+        let device = Some(Ulid::new());
+        assert_eq!(
+            private_document_test_run(Some(&label), Certified, device),
+            Some(run)
+        );
+        assert_eq!(
+            private_document_test_run(Some(&label), LocalDev, device),
+            Some(run)
+        );
+        for state in [Held, Pending] {
+            assert_eq!(private_document_test_run(Some(&label), state, device), None);
+        }
+        assert_eq!(
+            private_document_test_run(Some(&label), Certified, None),
+            None
+        );
+        assert_eq!(private_document_test_run(None, Certified, device), None);
+        for invalid in [
+            "test-account:00000000000000000000000000",
+            "test-account:forged-display",
+            "operator:test-account:01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        ] {
+            assert_eq!(
+                private_document_test_run(Some(invalid), Certified, device),
+                None
+            );
+        }
+    }
+}
+
 impl Worker {
     #[cfg(test)]
     fn open(
@@ -8219,7 +8277,12 @@ impl Worker {
         use crate::identity::IdentityState;
         use bbt_proto::GuiIdentityState;
         let status = self.identity.admission()?;
+        // The origin is the validated runtime context, never an Issuer action,
+        // GUI reason, or CLI selector. Admission above checks current readiness.
+        let private_test_run =
+            private_document_test_run(self.identity.issued_by(), status.state, status.device_id);
         Ok(bbt_proto::GuiIdentity {
+            private_test_run,
             state: match status.state {
                 IdentityState::LocalDev => GuiIdentityState::LocalDev,
                 IdentityState::Pending => GuiIdentityState::Pending,

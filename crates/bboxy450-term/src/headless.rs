@@ -521,12 +521,13 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         if let Some(page) = &app.local_page_layout {
                             base.extend(page.paint());
                         }
+                        let (document_paints, document_observation) = app.document_paint(submitted);
                         let mut foreground = app.scene.foreground_with_document(
                             size,
                             app.launcher_layout.as_ref(),
                             None,
                             app.conversation_layout.as_ref(),
-                            app.document_layout.as_ref(),
+                            document_paints,
                             rims,
                         );
                         foreground.splice(0..0, app.paint_terminal_selection());
@@ -556,7 +557,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                 app.pane_bounds.iter().map(|(seat, _)| *seat),
                             );
                         }
-                        let layout = app.ui_observe.then(|| app.ui_layout(size, &layouts));
+                        let layout = app
+                            .ui_observe
+                            .then(|| app.ui_layout(size, &layouts, document_observation));
                         app.starting_produced(submitted, &layouts);
                         app.complete_paint_sources();
                         ui_frame = layout.map(|layout| (submitted, layout));

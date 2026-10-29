@@ -62,8 +62,8 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | G3 | `scripts/e2e/G3.sh` | partial | script not implemented: Settings › Plugins lists every discovered plugin with trust state, tier, shape, health and the call-and-hook timeline; a 10 s hook shows the warning | |
 | G4 | `scripts/e2e/G4.sh` | partial | script not implemented: Settings › Knowledge lists roots with their provider; swapping to a stub provider and back moves no file | |
 | G5 | `scripts/e2e/G5.sh` | partial | script not implemented: theme is data: a token change in design/tokens.toml changes the look without a code change | |
-| D1 | `scripts/e2e/D1.sh` | partial | script not implemented: a .md opens in the modal rendered natively: headings, lists, tables, code, task lists, footnotes; true size, never scaled | |
-| D2 | `scripts/e2e/D2.sh` | partial | script not implemented: a mermaid fence renders through our engine: no overlaps, edges on borders, deterministic | |
+| D1 | `scripts/e2e/D1.sh` | full | — | Private admitted records; all six native heading levels, lists, tables, code, task lists and footnotes; actual paint fonts/lines and unchanged glyph ink across retained modal widths |
+| D2 | `scripts/e2e/D2.sh` | full | — | Three real native Mermaid fences; submitted path commands/transforms, node non-overlap and border endpoints; dispose/rebuild geometry and capture-region pixel hashes |
 | D3 | `scripts/e2e/D3.sh` | partial | script not implemented: `[[slug]]`, `[[#N]]` and `[[slug\|alias]]` resolve; a bad link shows as broken, never silently skipped; ![[bboxy.png]] renders the image from .bboxy/images | |
 | D4 | `scripts/e2e/D4.sh` | partial | script not implemented: the modal opens, scrolls, copies, closes, and feeds the document into the focused harness | |
 | N1 | `scripts/e2e/N1.sh` | partial | script not implemented: every record has a unique number; a new record created through the app takes the next free one; a duplicate or invalid number is refused and shown as broken | |

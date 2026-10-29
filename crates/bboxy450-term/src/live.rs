@@ -1887,6 +1887,7 @@ mod tests {
             replies
                 .take(&GuiReply::Identity(bbt_proto::GuiIdentity {
                     state: bbt_proto::gui::GuiIdentityState::Pending,
+                    private_test_run: None,
                     reason: Some("held".into())
                 }))
                 .is_none()
@@ -2534,6 +2535,7 @@ mod tests {
         assert_eq!(
             replies.take(&GuiReply::Identity(GuiIdentity {
                 state: bbt_proto::GuiIdentityState::LocalDev,
+                private_test_run: None,
                 reason: None
             })),
             None

@@ -12,7 +12,8 @@ use super::*;
 /// terminal selection/copy and private test clipboard receipts. Version 6 adds
 /// independent chat/task section wheel controls and produced-frame scroll receipts.
 /// Version 7 adds the headless recording account's logical notification foreground control.
-pub const UI_CONTROL_VERSION: u16 = 7;
+/// Version 8 adds bounded private native document paint observations.
+pub const UI_CONTROL_VERSION: u16 = 8;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -450,6 +451,9 @@ pub struct UiLayout {
     pub launcher_params: Option<UiLauncherParams>,
     pub page: Option<String>,
     pub document: Option<String>,
+    /// Debug/headless private-fixture document facts from this produced frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_observation: Option<UiDocumentObservation>,
     pub panes: Vec<UiPane>,
     pub tree: Vec<UiLayoutNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -572,6 +576,280 @@ pub struct UiLayoutNode {
     /// observations exceeding the text budget omit it; absence is not empty text.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+}
+
+pub const DOCUMENT_TEXT_RUNS: usize = 128;
+pub const DOCUMENT_PATHS: usize = 128;
+pub const DOCUMENT_PATH_COMMANDS: usize = 2048;
+pub const DOCUMENT_CLIPS: usize = 128;
+pub const DOCUMENT_OBSERVATION_BYTES: usize = 64 * 1024;
+
+/// Provider-bound identity of the document whose retained paint was submitted.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiDocumentSource {
+    pub record_id: String,
+    pub number: Option<u64>,
+    pub path: String,
+    pub digest: String,
+    pub etag: String,
+    pub workspace: SwarmScope,
+    pub root: String,
+    pub provider_revision: u64,
+}
+
+/// Coordinates are logical window coordinates, after document scrolling.
+/// The clip is the intersection of the production paint's ancestor clips.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiDocumentText {
+    pub key: String,
+    pub text: String,
+    pub origin: [f32; 2],
+    pub rect: [f32; 4],
+    pub baseline: Option<f32>,
+    pub font_size: f32,
+    pub line_height: f32,
+    pub weight: u16,
+    pub mono: bool,
+    pub italic: bool,
+    #[serde(default)]
+    pub tracking_em: f32,
+    pub max_width: Option<f32>,
+    pub clip: Option<[f32; 4]>,
+    /// Indices into this observation's shared actual rounded-clip table.
+    #[serde(default, deserialize_with = "document_clip_indices")]
+    pub clips: Vec<u16>,
+    pub color: [f32; 4],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "op", content = "points", rename_all = "kebab-case")]
+pub enum UiDocumentPathCommand {
+    Move([f32; 2]),
+    Line([f32; 2]),
+    Cubic([[f32; 2]; 3]),
+    Close,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiDocumentClip {
+    pub rect: [f32; 4],
+    pub radii: [f32; 4],
+}
+
+/// Commands are the submitted native path in local coordinates; the effective
+/// window point is origin + scale * point, exactly as for production painting.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiDocumentPath {
+    pub key: String,
+    pub origin: [f32; 2],
+    pub scale: f32,
+    #[serde(deserialize_with = "document_commands")]
+    pub commands: Vec<UiDocumentPathCommand>,
+    pub stroke_width: f32,
+    pub clip: Option<[f32; 4]>,
+    #[serde(default, deserialize_with = "document_clip_indices")]
+    pub clips: Vec<u16>,
+    pub color: [f32; 4],
+    pub fill: Option<[f32; 4]>,
+}
+
+/// Counts are omitted facts encountered within the bounded walk. If the walk
+/// itself was cut short, these are lower bounds, never invented exact totals.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiDocumentOmitted {
+    pub text_runs: u32,
+    pub paths: u32,
+    pub path_commands: u32,
+    pub bytes: u32,
+    pub walk_truncated: bool,
+    pub unsupported_paint: bool,
+}
+impl UiDocumentOmitted {
+    pub fn is_empty(&self) -> bool {
+        self == &Self::default()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "DocumentObservationWire")]
+pub struct UiDocumentObservation {
+    pub frame_seq: u64,
+    pub private_test_run: Ulid,
+    pub source: UiDocumentSource,
+    pub clips: Vec<UiDocumentClip>,
+    pub texts: Vec<UiDocumentText>,
+    pub paths: Vec<UiDocumentPath>,
+    pub omitted: UiDocumentOmitted,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DocumentObservationWire {
+    frame_seq: u64,
+    private_test_run: Ulid,
+    source: UiDocumentSource,
+    #[serde(deserialize_with = "document_clips")]
+    clips: Vec<UiDocumentClip>,
+    #[serde(deserialize_with = "document_texts")]
+    texts: Vec<UiDocumentText>,
+    #[serde(deserialize_with = "document_paths")]
+    paths: Vec<UiDocumentPath>,
+    omitted: UiDocumentOmitted,
+}
+fn document_bounded<'de, D, T, const N: usize>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    struct Bounded<T, const N: usize>(std::marker::PhantomData<T>);
+    impl<'de, T: Deserialize<'de>, const N: usize> serde::de::Visitor<'de> for Bounded<T, N> {
+        type Value = Vec<T>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(formatter, "at most {N} document facts")
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(
+            self,
+            mut seq: A,
+        ) -> Result<Self::Value, A::Error> {
+            let mut values = Vec::with_capacity(seq.size_hint().unwrap_or(0).min(N));
+            while let Some(value) = seq.next_element()? {
+                if values.len() == N {
+                    return Err(serde::de::Error::custom(
+                        "document observation count exceeds its bound",
+                    ));
+                }
+                values.push(value);
+            }
+            Ok(values)
+        }
+    }
+    deserializer.deserialize_seq(Bounded::<T, N>(std::marker::PhantomData))
+}
+fn document_texts<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<UiDocumentText>, D::Error> {
+    document_bounded::<D, _, DOCUMENT_TEXT_RUNS>(d)
+}
+fn document_paths<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<UiDocumentPath>, D::Error> {
+    document_bounded::<D, _, DOCUMENT_PATHS>(d)
+}
+fn document_commands<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<Vec<UiDocumentPathCommand>, D::Error> {
+    document_bounded::<D, _, DOCUMENT_PATH_COMMANDS>(d)
+}
+fn document_clips<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<UiDocumentClip>, D::Error> {
+    document_bounded::<D, _, DOCUMENT_CLIPS>(d)
+}
+fn document_clip_indices<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<u16>, D::Error> {
+    document_bounded::<D, _, 16>(d)
+}
+impl TryFrom<DocumentObservationWire> for UiDocumentObservation {
+    type Error = String;
+    fn try_from(value: DocumentObservationWire) -> Result<Self, Self::Error> {
+        let observation = Self {
+            frame_seq: value.frame_seq,
+            private_test_run: value.private_test_run,
+            source: value.source,
+            clips: value.clips,
+            texts: value.texts,
+            paths: value.paths,
+            omitted: value.omitted,
+        };
+        observation.validate()?;
+        Ok(observation)
+    }
+}
+impl UiDocumentObservation {
+    pub fn validate(&self) -> Result<(), String> {
+        let bad = || "invalid or oversized document observation".to_owned();
+        let word = |value: &str, max: usize| {
+            !value.is_empty() && value.len() <= max && !value.contains('\0')
+        };
+        let finite = |values: &[f32]| values.iter().all(|value| value.is_finite());
+        let rect = |r: &[f32; 4]| finite(r) && r[2] >= 0. && r[3] >= 0.;
+        let clip = |r: Option<[f32; 4]>| r.is_none_or(|r| rect(&r));
+        let s = &self.source;
+        if self.frame_seq == 0
+            || self.private_test_run == Ulid::nil()
+            || !word(&s.record_id, 128)
+            || !word(&s.path, 1024)
+            || !word(&s.digest, 128)
+            || !word(&s.etag, 128)
+            || !word(&s.root, 128)
+            || s.workspace.swarm == Ulid::nil()
+            || s.number == Some(0)
+            || self.texts.len() > DOCUMENT_TEXT_RUNS
+            || self.paths.len() > DOCUMENT_PATHS
+            || self.clips.len() > DOCUMENT_CLIPS
+            || self.paths.iter().map(|p| p.commands.len()).sum::<usize>() > DOCUMENT_PATH_COMMANDS
+        {
+            return Err(bad());
+        }
+        if self
+            .clips
+            .iter()
+            .any(|c| !rect(&c.rect) || !finite(&c.radii) || c.radii.iter().any(|r| *r < 0.))
+        {
+            return Err(bad());
+        }
+        for t in &self.texts {
+            if !word(&t.key, 512)
+                || t.text.len() > 16 * 1024
+                || !finite(&t.origin)
+                || !rect(&t.rect)
+                || !clip(t.clip)
+                || !finite(&t.color)
+                || t.baseline.is_some_and(|v| !v.is_finite())
+                || !t.font_size.is_finite()
+                || t.font_size <= 0.
+                || !t.line_height.is_finite()
+                || t.line_height <= 0.
+                || !t.tracking_em.is_finite()
+                || t.clips.len() > 16
+                || t.clips
+                    .iter()
+                    .any(|index| usize::from(*index) >= self.clips.len())
+                || t.max_width.is_some_and(|v| !v.is_finite() || v < 0.)
+            {
+                return Err(bad());
+            }
+        }
+        for p in &self.paths {
+            if !word(&p.key, 512)
+                || !finite(&p.origin)
+                || !clip(p.clip)
+                || !finite(&p.color)
+                || p.fill.is_some_and(|c| !finite(&c))
+                || !p.scale.is_finite()
+                || p.scale <= 0.
+                || !p.stroke_width.is_finite()
+                || p.stroke_width < 0.
+                || p.clips.len() > 16
+                || p.clips
+                    .iter()
+                    .any(|index| usize::from(*index) >= self.clips.len())
+            {
+                return Err(bad());
+            }
+            for command in &p.commands {
+                let valid = match command {
+                    UiDocumentPathCommand::Move(v) | UiDocumentPathCommand::Line(v) => finite(v),
+                    UiDocumentPathCommand::Cubic(v) => v.iter().all(|v| finite(v)),
+                    UiDocumentPathCommand::Close => true,
+                };
+                if !valid {
+                    return Err(bad());
+                }
+            }
+        }
+        if serde_json::to_vec(self).map_err(|_| bad())?.len() > DOCUMENT_OBSERVATION_BYTES {
+            return Err(bad());
+        }
+        Ok(())
+    }
 }
 
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.

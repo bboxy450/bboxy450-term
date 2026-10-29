@@ -158,6 +158,7 @@ mod tests {
         ] {
             let identity = GuiIdentity {
                 state,
+                private_test_run: None,
                 reason: Some("Keychain unavailable".into()),
             };
             let value = serde_json::to_value(GuiReply::Identity(identity.clone())).unwrap();

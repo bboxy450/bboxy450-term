@@ -721,9 +721,9 @@
     for (const line of src.split('\n')) {
       if (line.startsWith('```')) { if (list && !code) { out.append(list); list = null; } if (code) { out.append(code.mermaid ? diagramFigure(code.textContent) : code); code = null; } else { code = el('pre', {}, ''); code.mermaid = /mermaid/.test(line); } continue; }
       if (code) { code.textContent += (code.textContent ? '\n' : '') + line; continue; }
-      const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,3}) (.*)/);
+      const li = line.match(/^\s*[-*] (.*)/), h = line.match(/^(#{1,6}) (.*)/);
       if (!li && list) { out.append(list); list = null; }
-      if (h) out.append(el('h' + (h[1].length + 1), {}, renderLinks(h[2])));
+      if (h) out.append(el('h' + h[1].length, {}, renderLinks(h[2])));
       else if (li) { list = list || el('ul'); list.append(el('li', {}, renderLinks(li[1]))); }
       else if (line.trim()) out.append(el('p', {}, renderLinks(line)));
     }

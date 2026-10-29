@@ -46,6 +46,44 @@ fn named<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
     }
 }
 
+// keeps: document heading baseline — six levels retain the existing named type scale.
+#[test]
+fn all_six_heading_levels_keep_their_baselined_native_size_and_weight() {
+    let style: serde_json::Value =
+        serde_json::from_str(include_str!("../../../design/style.json")).unwrap();
+    for (level, token) in [
+        "doc_title",
+        "heading",
+        "subtitle",
+        "doc_heading",
+        "body",
+        "section",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let source = format!("{} Heading{}\n", "#".repeat(level + 1), level + 1);
+        let expected = style["type"][token].as_f64().unwrap() as f32;
+        for width in [240., 576.] {
+            let layout = parse(&source)
+                .body_element(ctx(), &Fonts, width, &[])
+                .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+                .unwrap();
+            fn heading(node: &c::Layout) -> Option<&c::PositionedRun> {
+                if let c::LayoutKind::Text { runs, .. } = &node.kind {
+                    return runs.first();
+                }
+                node.children.iter().find_map(heading)
+            }
+            let run = heading(&layout).unwrap();
+            assert_eq!(run.text, format!("Heading{}", level + 1));
+            assert_eq!(run.style.size, expected, "H{} uses {token}", level + 1);
+            assert_eq!(run.style.weight, 700);
+            assert!(run.line_height >= expected && run.rect.h >= expected);
+        }
+    }
+}
+
 // keeps: spec document-viewer §Markdown — parser and native layout preserve source semantics
 #[test]
 fn document_body_uses_a_bounded_measure_and_real_wrapping_for_rich_tables() {

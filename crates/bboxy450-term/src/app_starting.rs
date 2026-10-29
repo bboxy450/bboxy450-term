@@ -260,6 +260,7 @@ impl App {
                 launcher_params: None,
                 page: None,
                 document: None,
+                document_observation: None,
                 panes: Vec::new(),
                 tree: Vec::new(),
                 spawned: None,

@@ -3485,6 +3485,157 @@ fn context_menu_rename_is_trapped_validated_and_persistent() {
     );
 }
 
+// keeps: private document wire activation — independent markers preserve real sessions.
+#[test]
+#[ignore = "private document marker/paint admission; make test-documents-activation"]
+fn document_observations_refresh_independent_markers_and_retain_native_sessions() {
+    use serde_json::json;
+    fn row(f: &Fixture, seat: &str) -> Value {
+        f.ctl(&["seat", "ls"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()
+            .clone()
+    }
+    fn identity(row: &Value) -> Value {
+        json!({"seat":row["record"]["id"], "generation":row["record"]["generation"],
+            "process":row["state"]["process"], "native_session":row["record"]["harness_session_id"]})
+    }
+    fn detach(f: &mut Fixture) {
+        let mut app = f.app.take().unwrap();
+        app.kill().unwrap();
+        let exit = app.wait().unwrap();
+        println!("private document UI detach pid={} exit={exit}", app.id());
+    }
+    fn document(f: &Fixture) -> Value {
+        f.ctl(&["ui", "open", "docs", "e2e/document-upgrade.md"]);
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = f.ctl(&["ui", "layout"]);
+            if let Some(observed) = frame["document_observation"].as_object() {
+                assert_eq!(observed["frame_seq"], frame["frame_seq"]);
+                assert_eq!(observed["source"]["path"], "e2e/document-upgrade.md");
+                assert_eq!(observed["source"]["workspace"]["swarm"], frame["swarm"]);
+                assert_ne!(observed["private_test_run"], "00000000000000000000000000");
+                assert_eq!(
+                    observed["omitted"],
+                    json!({"text_runs":0,"paths":0,"path_commands":0,
+                    "bytes":0,"walk_truncated":false,"unsupported_paint":false})
+                );
+                assert!(
+                    observed["texts"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|run| run["text"] == "RetainedDocumentGlyphs")
+                );
+                return frame["document_observation"].clone();
+            }
+            assert!(
+                Instant::now() < until,
+                "current private source never produced native paint: {frame}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    let mut f = Fixture::new();
+    let records = f.root.join("repository/.bboxy/e2e");
+    fs::create_dir_all(&records).unwrap();
+    fs::write(records.join("document-upgrade.md"),
+        "---\nid: \"00000000000000000000000001\"\nnumber: 1\ntype: e2e\ntitle: Private document upgrade\nfunction: D1\ngroup: documents\nstatus: untested\n---\n# RetainedDocumentGlyphs\n\n```mermaid\nflowchart LR\nA[RetainedAlpha] --> B[RetainedBeta]\n```\n").unwrap();
+    f.start();
+    let swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let native = f.spawn("claude", &swarm, None);
+    f.expect_cwd(&native, &f.root.join("repository"));
+    let shell = f.spawn("zsh", &swarm, None);
+    f.ctl(&["seat", "type", &shell, "export DOCUMENT_STATE=retained-private-shell; printf 'DOC-BEFORE:%s\\n' \"$DOCUMENT_STATE\""]);
+    f.ctl(&["seat", "key", &shell, "enter"]);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &shell,
+        "--text",
+        "DOC-BEFORE:retained-private-shell",
+        "--timeout",
+        "10000",
+    ]);
+    let native_before = identity(&row(&f, &native));
+    let shell_before = identity(&row(&f, &shell));
+    assert!(
+        native_before["native_session"]
+            .as_str()
+            .is_some_and(|s| !s.is_empty())
+    );
+    let initial = document(&f);
+    let mut owners = f.owners();
+    detach(&mut f);
+    f.start();
+    assert_eq!(f.owners(), owners, "same markers retain healthy logic");
+    assert_eq!(
+        document(&f)["private_test_run"],
+        initial["private_test_run"]
+    );
+    let owner_path = f.root.join("run/logic.owner.json");
+    let mut witnesses = vec![];
+    for (marker, floor) in [("mcp_control_version", 10), ("ui_control_version", 8)] {
+        detach(&mut f);
+        let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        let current = owner["ready"][marker].as_u64().unwrap();
+        assert!(current >= floor);
+        // Both processes run THIS binary. An advertised older contract proves
+        // independent refresh, never compatibility with an older executable.
+        owner["ready"][marker] = json!(current - 1);
+        fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+        f.start();
+        let refreshed = f.owners();
+        assert_eq!(refreshed[0], owners[0], "marker refresh retains supervisor");
+        assert_ne!(
+            refreshed[1], owners[1],
+            "{marker} refreshes logic independently"
+        );
+        assert_eq!(identity(&row(&f, &native)), native_before);
+        assert_eq!(identity(&row(&f, &shell)), shell_before);
+        let observed = document(&f);
+        assert_eq!(observed["private_test_run"], initial["private_test_run"]);
+        assert_eq!(observed["source"], initial["source"]);
+        let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        assert_eq!(owner["ready"][marker], current);
+        witnesses.push(
+            json!({"marker":marker,"advertised":current-1,"activated":current,
+            "owners_before":owners,"owners_after":refreshed,"source":observed["source"],
+            "private_test_run":observed["private_test_run"],"frame":observed["frame_seq"]}),
+        );
+        owners = refreshed;
+    }
+    f.ctl(&["ui", "key", "esc"]);
+    f.ctl(&[
+        "seat",
+        "type",
+        &shell,
+        "printf 'DOC-AFTER:%s\\n' \"$DOCUMENT_STATE\"",
+    ]);
+    f.ctl(&["seat", "key", &shell, "enter"]);
+    f.ctl(&[
+        "seat",
+        "wait",
+        &shell,
+        "--text",
+        "DOC-AFTER:retained-private-shell",
+        "--timeout",
+        "10000",
+    ]);
+    println!(
+        "document activation witness {}",
+        json!({"native":native_before,"shell":shell_before,
+        "markers":witnesses,"same_binary":true,"shell_state":"retained-private-shell"})
+    );
+}
+
 // keeps: scoped native documents — colliding handles and held old-root replies.
 #[test]
 #[ignore = "private ctl/root-provider boundary; make test-scoped-workspaces"]

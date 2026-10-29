@@ -109,6 +109,7 @@ pub struct ConversationLayout {
 pub struct DocumentLayout {
     pub layout: c::Layout,
     pub regions: ui::modules::document_modal::controller::Regions,
+    pub source: Option<bbt_proto::gui::UiDocumentSource>,
     context: ui::Context,
     viewport_size: [f32; 2],
 }
@@ -2086,6 +2087,7 @@ impl Scene {
         Ok(DocumentLayout {
             layout,
             regions,
+            source: host.observation_source(),
             context: ctx,
             viewport_size: size,
         })
@@ -2096,12 +2098,12 @@ impl Scene {
         launcher: Option<&LauncherLayout>,
         hud: Option<&PerfHud>,
         conversation: Option<&ConversationLayout>,
-        document: Option<&DocumentLayout>,
+        document: Option<Vec<c::Paint>>,
         rims: Vec<c::Paint>,
     ) -> Vec<c::Paint> {
         let mut ops = self.foreground_with_conversation(size, launcher, None, conversation, rims);
         if let Some(document) = document {
-            ops.extend(document.paint());
+            ops.extend(document);
         }
         ops.extend(self.overlay(size, hud));
         ops
@@ -2972,7 +2974,7 @@ mod launcher_tests {
             Some(&launcher),
             Some(&hud),
             Some(&conversation),
-            Some(&document),
+            Some(document.paint()),
             rims,
         );
         let mut start = 0;
@@ -3005,8 +3007,14 @@ mod launcher_tests {
         );
         let document_ops = document.paint();
         let hud_ops = scene.overlay(size, Some(&hud));
-        let foreground =
-            scene.foreground_with_document(size, None, Some(&hud), None, Some(&document), vec![]);
+        let foreground = scene.foreground_with_document(
+            size,
+            None,
+            Some(&hud),
+            None,
+            Some(document.paint()),
+            vec![],
+        );
         assert_eq!(foreground.len(), document_ops.len() + hud_ops.len());
         assert_eq!(
             format!("{:?}", &foreground[..document_ops.len()]),
@@ -3383,6 +3391,7 @@ mod identity_note_tests {
         assert_eq!(
             identity_note(&GuiIdentity {
                 state: Certified,
+                private_test_run: None,
                 reason: None
             }),
             "identity certified"
@@ -3390,6 +3399,7 @@ mod identity_note_tests {
         assert_eq!(
             identity_note(&GuiIdentity {
                 state: LocalDev,
+                private_test_run: None,
                 reason: None
             }),
             "unsigned, local only"
@@ -3398,6 +3408,7 @@ mod identity_note_tests {
         assert_eq!(
             identity_note(&GuiIdentity {
                 state: Certified,
+                private_test_run: None,
                 reason: Some(label.into())
             }),
             label
@@ -3406,6 +3417,7 @@ mod identity_note_tests {
         assert_eq!(
             identity_note(&GuiIdentity {
                 state: Held,
+                private_test_run: None,
                 reason: Some(reason.clone())
             }),
             format!("signing held: {reason}")

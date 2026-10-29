@@ -2225,6 +2225,7 @@ struct App {
     clock_frame: animation_clock::Frame,
     animation_landing: Option<(SeatId, FocusSwell)>,
     test_account: bool,
+    document_headless: bool,
     occluded: bool,
     maximum_hz: f64,
     budget: budget::Budget,
@@ -2442,6 +2443,7 @@ impl App {
             clock,
             clock_frame,
             animation_landing: None,
+            document_headless: args.iter().any(|arg| arg == "--headless"),
             test_account: bboxy450_term::cockpit::Config::test_account_from_args(args)
                 .is_ok_and(|account| account.is_some()),
             occluded: false,
@@ -6290,6 +6292,9 @@ impl App {
     fn present_ui(&mut self, frame: u64, mut layout: Result<bbt_proto::gui::UiLayout, String>) {
         if let Ok(layout) = &mut layout {
             layout.frame_seq = frame;
+            if let Some(observed) = &mut layout.document_observation {
+                observed.frame_seq = frame;
+            }
             for launch in &mut layout.starting {
                 launch.first_frame_seq =
                     self.starting.first(launch.op).map(|first| first.frame_seq);
@@ -6872,10 +6877,47 @@ impl App {
         }
         Ok(None)
     }
+    /// Inspect the exact document paint vector that the caller submits once.
+    fn document_paint(
+        &self,
+        frame: u64,
+    ) -> (
+        Option<Vec<bbt_ui::components::Paint>>,
+        Option<bbt_proto::gui::UiDocumentObservation>,
+    ) {
+        let document_paints = self
+            .document_layout
+            .as_ref()
+            .map(scene::DocumentLayout::paint);
+        let document_observation = self
+            .ui_observe
+            .then_some(())
+            .and(self.live_state.as_ref())
+            .and_then(|model| {
+                let run = documents::observation::admitted_test_run(
+                    model.identity.as_ref(),
+                    self.document_headless,
+                )?;
+                let source = self.document.observation_source()?;
+                let document = self.document_layout.as_ref()?;
+                if document.source.as_ref() != Some(&source) {
+                    return None;
+                }
+                documents::observation::collect(
+                    &document.layout,
+                    document_paints.as_deref()?,
+                    source,
+                    run,
+                    frame,
+                )
+            });
+        (document_paints, document_observation)
+    }
     fn ui_layout(
         &self,
         size: [f32; 2],
         layouts: &[bbt_ui::components::Layout],
+        document_observation: Option<bbt_proto::gui::UiDocumentObservation>,
     ) -> Result<bbt_proto::gui::UiLayout, String> {
         use bbt_proto::gui::{UiLayout, UiPane};
         let model = self.live_state.as_ref().ok_or("ui_not_ready: no model")?;
@@ -7007,6 +7049,7 @@ impl App {
                 .to_owned()
             }),
             document: self.document.open.then(|| self.document.target.clone()),
+            document_observation,
             panes,
             tree,
             spawned: None,
@@ -7442,12 +7485,14 @@ impl App {
             vec![]
         };
         pane_overlay.extend(self.paint_terminal_selection());
+        let (document_paints, document_observation) =
+            self.document_paint(self.meter.total_frames() + 1);
         pane_overlay.extend(self.scene.foreground_with_document(
             logical,
             self.launcher_layout.as_ref(),
             overlay.as_ref(),
             self.conversation_layout.as_ref(),
-            self.document_layout.as_ref(),
+            document_paints,
             rims,
         ));
         pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
@@ -7574,7 +7619,7 @@ impl App {
                         self.pane_bounds.iter().map(|(seat, _)| *seat),
                     );
                 }
-                let layout = self.ui_layout(logical, &layouts);
+                let layout = self.ui_layout(logical, &layouts, document_observation);
                 self.present_ui(self.meter.total_frames(), layout);
             }
             if !self.app_ready_sent

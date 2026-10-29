@@ -22,6 +22,21 @@ pub enum GuiIdentityState {
 pub struct GuiIdentity {
     pub state: GuiIdentityState,
     pub reason: Option<String>,
+    /// Internal verified test-run context, never inferred from display text.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "private_test_run"
+    )]
+    pub private_test_run: Option<Ulid>,
+}
+
+fn private_test_run<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Ulid>, D::Error> {
+    let id = Option::<Ulid>::deserialize(d)?;
+    if id == Some(Ulid::nil()) {
+        return Err(serde::de::Error::custom("private test run must be nonnil"));
+    }
+    Ok(id)
 }
 
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.

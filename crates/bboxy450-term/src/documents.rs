@@ -12,6 +12,7 @@ use bbt_ui::modules::document_modal::{
     controller::{Controller, RecordLinks},
 };
 use serde_json::Value;
+pub mod observation;
 use std::{
     collections::{BTreeSet, VecDeque},
     sync::Arc,
@@ -46,6 +47,7 @@ impl Read {
 #[derive(Debug, Clone)]
 pub struct Prepared {
     pub reference: d::RecordRef,
+    pub etag: Option<String>,
     pub markdown: bbt_doc::Markdown,
     pub document: Document,
     pub targets: Vec<String>,
@@ -129,6 +131,7 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
                 .map(Response::Resolved)
                 .map_err(|e| d::CommandError::new("invalid_provider_result", e.to_string())),
             Read::Fetch(expected) => {
+                let etag = value.get("etag").and_then(Value::as_str).map(str::to_owned);
                 let record: d::Record = serde_json::from_value(value)
                     .map_err(|e| d::CommandError::new("invalid_provider_result", e.to_string()))?;
                 if record.reference != *expected {
@@ -159,6 +162,7 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
                 let targets = markdown.link_targets();
                 Ok(Response::Fetched(Arc::new(Prepared {
                     reference: record.reference,
+                    etag,
                     markdown,
                     document,
                     targets,
@@ -332,6 +336,44 @@ impl Host {
     }
     pub fn source(&self) -> Option<&Source> {
         self.source.as_ref()
+    }
+    /// A ready, current provider result, never a reference inferred from display.
+    pub fn observation_source(&self) -> Option<bbt_proto::gui::UiDocumentSource> {
+        if !self.open
+            || self.error.is_some()
+            || self.notice.is_some()
+            || self.pending.is_some()
+            || !self.queued.is_empty()
+        {
+            return None;
+        }
+        let source = self.source.as_ref()?;
+        if self.scope != Some(source.scope) {
+            return None;
+        }
+        let prepared = self.prepared.as_ref()?;
+        let etag = prepared.etag.as_deref()?;
+        for (value, bound) in [
+            (prepared.reference.id.as_str(), 128),
+            (prepared.reference.path.as_str(), 1024),
+            (prepared.reference.digest.as_str(), 128),
+            (etag, 128),
+            (source.root.as_str(), 128),
+        ] {
+            if value.is_empty() || value.len() > bound || value.contains('\0') {
+                return None;
+            }
+        }
+        Some(bbt_proto::gui::UiDocumentSource {
+            record_id: prepared.reference.id.clone(),
+            number: prepared.reference.number,
+            path: prepared.reference.path.clone(),
+            digest: prepared.reference.digest.clone(),
+            etag: etag.to_owned(),
+            workspace: source.scope,
+            root: source.root.clone(),
+            provider_revision: source.provider_revision,
+        })
     }
     pub fn take_retry(&mut self) -> Option<(u64, std::time::Duration)> {
         self.retry_delay.take().map(|delay| (self.epoch, delay))

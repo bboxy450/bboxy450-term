@@ -532,12 +532,20 @@ impl Render<'_> {
                 STYLE.spacing.s2 as f32,
                 STYLE.spacing.s4 as f32,
             ),
-            BlockKind::Heading { content, .. } => (
+            BlockKind::Heading { level, content } => (
                 self.rich(
                     key,
                     content,
                     ui::Text {
-                        size: Some(STYLE.r#type.doc_heading as f32),
+                        // Heading baseline: reuse the existing named type scale.
+                        size: Some(match level {
+                            1 => STYLE.r#type.doc_title,
+                            2 => STYLE.r#type.heading,
+                            3 => STYLE.r#type.subtitle,
+                            4 => STYLE.r#type.doc_heading,
+                            5 => STYLE.r#type.body,
+                            _ => STYLE.r#type.section,
+                        } as f32),
                         ..font(ui::TypeStep::Body, 700, false, ui::Color::Foreground)
                     },
                 ),

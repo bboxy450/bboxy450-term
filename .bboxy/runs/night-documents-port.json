@@ -1,0 +1,114 @@
+{
+  "executor": "Lumen Foxglove",
+  "tasks": [
+    328,
+    342,
+    345,
+    434,
+    437
+  ],
+  "recorded_utc": "2026-10-29T11:41:42.803578+00:00",
+  "source_base": "5fc153c705745f75cb4c04976c9ee3f451b5b1c8",
+  "claim": "Pre-commit component and native evidence. Final exact Make/landing SHA joins are external handoff evidence, not claimed by this historical record.",
+  "origin": {
+    "canonical": "https://github.com/bboxy450/bboxy450-term",
+    "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+    "adapted_from": "Existing native DocumentLayout/Knowledge source binding and unattended e2e runner; scoped existing-design heading baseline201"
+  },
+  "mechanism": {
+    "paint": "One submitted document Paint vector shared by native/headless callers; observation reads its actual text/style/path/transform/rounded clips and joins retained native keys/line geometry, never a second Markdown/Mermaid geometry solver",
+    "admission": "Debug +headless +fresh typed internal verified private test-run +current ready Knowledge ref/etag/workspace/provider source; absent ordinary/release/held/pending/stale",
+    "bounds": "128 text runs,128 paths,2048 total path commands,128 shared rounded clips,16 clip indices per run,64KiB total; bounded4096-node/primitive walks and64depth; any omitted/unsupported fact fails full native verdict",
+    "hierarchy": "Recorded201 baseline: H1 doc_title,H2 heading,H3 subtitle,H4 doc_heading,H5 body,H6 section, existing700 weight/margins; reference exact semantic h1..h6 and unchanged record-title suppression/header",
+    "activation": "Independent MCP10/UI8; advertised9/7 private same-current-binary attach refresh retains supervisor and actual PTYs/native launch session/shell export; not an older-executable compatibility claim"
+  },
+  "verified": {
+    "native_driver_exit": 0,
+    "native_run": "target/documents-night/documents-runs/20261029T1135-calibrated",
+    "D1_full_checks": 12,
+    "D2_full_diagrams": 3,
+    "modal_body_widths": [
+      576,
+      230
+    ],
+    "captured_probe_ink_sizes": [
+      [
+        139,
+        11
+      ],
+      [
+        139,
+        11
+      ]
+    ],
+    "typed_producer_unit_and_activation_make_exit": 0,
+    "strict_make_exit": 0,
+    "reference_DOM_widths": [
+      640,
+      1280
+    ],
+    "reference_DOM_exit": 0,
+    "release_input_copies_identical": 10,
+    "release_input_check_exit": 0
+  },
+  "honest_prior_reds": {
+    "heading": "Initial equal21.59375 heading heights exposed an old missing spec mapping; strict hierarchy became normative after Oracle201 ruling, not an already-proven old-design violation",
+    "budget": "Real narrow/branch native output explicitly omitted facts because repeated actual rounded clip stacks consumed64KiB; same bound now uses interned actual clips, no omission waiver",
+    "harness": "Path logging serialization corrected; true-size check now compares actual retained body width and unchanged natural glyph width; orderly-stop exit is observed with finite3s cleanup bound, no repeated stop",
+    "actual_binary_archive": "/tmp/lumen-documents-native-budget-red-zh29v5c5",
+    "logs": {
+      "/tmp/lumen-documents-calibrated-native.log": "a730c52d8b63d66e2bbad4f3e4a1ebbab0b356e08945fd8723234a5e9188b51c",
+      "/tmp/lumen-documents-activation.log": "00efbafcbfc53e05f528d90190e796b4be8dbddb2f7fac2e8ddc773938b8f49b",
+      "/tmp/lumen-documents-strict-2.log": "96e7a1a09762c1e61bcab16c7d6dbc889cd3f46bf528733630f166d25da865a2",
+      "/tmp/lumen-documents-heading-reference.log": "63a975e40fef0a4060714b97aa4fead4926cfb60fb1bd0206688c09e3fe45728",
+      "/tmp/lumen-documents-integrated-focused-2.log": "431a3886b545e33f23ef74598cf1715bf0a1236feba3dcca1e699438dc227883",
+      "/tmp/lumen-documents-interned-focused.log": "90f590d0e127a06dfe2a2974d95f7a7e38813af019a0631f20c918bc3def5210"
+    }
+  },
+  "remaining_at_record_time": [
+    "production mutation controls",
+    "strict document parity on committed reference",
+    "fresh-main rebase and final focused checks",
+    "exact clean-source make test",
+    "normal signed author landing"
+  ],
+  "untouched": [
+    "D3/D4 remain unimplemented outer night red, standard night exit1 retained alongside D1/D2 full0",
+    "issue39 GUI EOF remains causal mechanism unproven; no quarantine removal",
+    "provider/plugin/schema/custody/enrollment/terminal/input/sidebar semantics"
+  ],
+  "source_files_sha256": {
+    "Makefile": "4043da73c7cb95b7856025d93c33173b530e75c7b9613ef27bbf72f28ab92aa1",
+    "crates/bboxy450-term/release-inputs/lab/web/components.js": "54b0aa425230f7d13631fc125ef8f5bc2037ae174068e74cd9c771c79fff3576",
+    "crates/bboxy450-term/src/app_starting.rs": "b170c7e28b3efe42964b03c91c43e86689687e6ca6827aa71d5d25681c7381ec",
+    "crates/bboxy450-term/src/cockpit.rs": "806d71aca2c187ca9e9638d276e07b872ed9207f538858e780f2493a5715feea",
+    "crates/bboxy450-term/src/documents.rs": "af9db8caaa5738ace76a10070576f145cefea20f1a720936e66581f180546757",
+    "crates/bboxy450-term/src/documents/observation.rs": "304d4fb6fd4236f34f1fbf0d9411b80dabe912225d2397dceaaccab461acc626",
+    "crates/bboxy450-term/src/headless.rs": "3d21ff3343a0f488db127c868dc573ebc148f6c9e2ecf8f64f0e84c322c8b797",
+    "crates/bboxy450-term/src/live.rs": "923ccf7d92f666eadd751b4d1858364f1b31a59d610f5a455dfbd7fc97ad7f42",
+    "crates/bboxy450-term/src/main.rs": "0fe1382e5aeed668c77e62eb2e84ef9be193643fd427df9f36d46419188e0558",
+    "crates/bboxy450-term/src/scene.rs": "fc04804ae3cf6c90b11fc657c461d59d7dfb4be8c057b5e839336222f51b5139",
+    "crates/bboxy450-term/tests/ctl.rs": "059ce86de3dda37a462d95a8c01b6863880b1e360b866d44062492d112bd9b68",
+    "crates/bboxy450-term/tests/documents.rs": "e16b89e269203c10532ff8d922a081a0d439751fd8fe2eac17b5bbaa2dd26921",
+    "crates/bboxy450-term/tests/documents_observation.rs": "6b1e4e003c274eabf45da6dac48fff69a3fc4106c9d68b66e3986d8e41fe8b94",
+    "crates/bboxy450-term/tests/swarm_workdir.rs": "3afa09158678320d386482d08a09cf77a3342ad8ebbcf694e60dfb4acdeef0bd",
+    "crates/bboxybook/release-inputs/lab/web/components.js": "54b0aa425230f7d13631fc125ef8f5bc2037ae174068e74cd9c771c79fff3576",
+    "crates/bbt-doc/src/markdown/layout.rs": "87a23a173ee572406c51e827eeafd9e8f64bb9126ac187dc64be5ca823549a2b",
+    "crates/bbt-doc/tests/layout.rs": "0e379b72144587fd40faf0d8bd77a7b78c12f44e46bb65208413d172f1ed6fca",
+    "crates/bbt-mux/src/gui_capture.rs": "b60c22a2e1cee89c75a4f2530ff080196155973755fe91c3ca88d070fbc0bf24",
+    "crates/bbt-mux/src/logic.rs": "456aa814e2577ddad7588806018f1f482494a34adfa24aa97038505209de3d6c",
+    "crates/bbt-proto/src/gui/identity.rs": "1b0ec23cb3ac71ae7af8f24bf0955394c400abcc48af0235df9c4e823274178e",
+    "crates/bbt-proto/src/gui/mod.rs": "234991c8d1a7f48db045bd1856a47779e11abd103f9ccfd76dc8ff7f5f571db3",
+    "crates/bbt-proto/src/gui/ui.rs": "469b9402620cea6fbb1759b378b1645f8e99a7bdb5e528676705d557694418e6",
+    "crates/bbt-proto/tests/golden/gui_wire.tsv": "7f307b907e6c01974404537ef136543442a2b6d9823fabcba8536cdac553165e",
+    "crates/bbt-proto/tests/ui_document_geometry.rs": "aea3184fed6980478ee9c55e12fdf146f802fef99de217370d501c6eb1faff98",
+    "lab/web/components.js": "54b0aa425230f7d13631fc125ef8f5bc2037ae174068e74cd9c771c79fff3576",
+    "lab/web/lab.css": "0d86298cb9c69feec84ab941a36f79e02d05fdb6425c68362be61140fc44984e",
+    "scripts/e2e/D1.sh": "3c34a7713504c5551895f30d501cc399f293237f6dac46faae4daff5fd0da084",
+    "scripts/e2e/D2.sh": "a38030cd646940d77e781b0dbaf65fbf0d3369ecbe5ebb4c19c5dd47e8716cf8",
+    "scripts/e2e/documents.py": "e2d5150cc9d797d60cb8a4878ba54538f391c256ffc323c44b3b4c8f9d8153da",
+    "scripts/e2e/documents_negative.py": "63a8641b0373eed1f55577d78634a09dd1540ce8153bc459eec66ae8939b78b6",
+    "scripts/e2e/documents_night.py": "bdb4dab785c000cf4b1a8e4d35fa4cb4e3e0331fd5cee71200c5410fe4d428a1",
+    "scripts/e2e/test_document_headings.mjs": "8875526d5e4396d9326c8a812cc7983ba54dfa43f58c7c2643025e3fdead54ef"
+  }
+}

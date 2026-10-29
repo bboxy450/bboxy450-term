@@ -53,6 +53,9 @@ help:
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
 	  'make diagnose-fifty-seat-pty     Bounded Darwin syscall probe; nonzero if an allocation fails' \
+	  'make test-documents-night        Full native D1/D2 private document assertions' \
+	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
+	  'make parity-documents           Existing strict document gallery geometry gate' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
@@ -292,6 +295,46 @@ test-signed-mentions:
 	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-gui-events
+.PHONY: test-document-protocol
+test-document-protocol:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-documents-night
+.PHONY: test-documents-activation
+test-documents-activation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --lib private_document_identity_tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test swarm_workdir document_observations_refresh_independent_markers_and_retain_native_sessions --target-dir '$(TARGET_DIR)' -- --ignored --exact --nocapture
+
+test-documents-night:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true; \
+	cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-doc --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-ui --test documents --test document_host --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test documents --test documents_observation --target-dir '$(TARGET_DIR)'; \
+	python3 -I -B scripts/e2e/documents_night.py --bin '$(abspath $(TARGET_DIR))/debug/$(APP)' --source '$(CURDIR)' --out '$(abspath $(TARGET_DIR))/documents-runs/'$$(date -u +%Y%m%dT%H%M%SZ); \
+	$(MAKE) check-documents
+
+.PHONY: check-documents
+check-documents:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: parity-documents
+parity-documents:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' BBOXYBOOK_GALLERY=documents; \
+	node scripts/e2e/test_document_headings.mjs '$(TARGET_DIR)/document-heading-reference'; \
+	python3 -I -B scripts/release-inputs.py; \
+	PARITY_OUT='$(TARGET_DIR)/parity-documents' sh scripts/parity.sh
+
+.PHONY: test-documents-controls
+test-documents-controls:
+	@python3 -I -B scripts/e2e/documents_negative.py --target '$(TARGET_DIR)' --out '$(TARGET_DIR)/document-controls/'$$(date -u +%Y%m%dT%H%M%SZ)
+
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture

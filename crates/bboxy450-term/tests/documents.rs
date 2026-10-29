@@ -428,6 +428,69 @@ fn scoped_document_chain_retains_flat_root_evidence_and_rejects_cross_root_colli
     );
     assert!(host.next_read().is_none());
 }
+
+// keeps: document paint observation only names a current admitted ready source.
+#[test]
+fn observation_source_requires_the_exact_ready_ref_etag_workspace_and_provider_epoch() {
+    let scope = bbt_proto::gui::SwarmScope {
+        swarm: Ulid(44),
+        revision: 2,
+    };
+    let mut host = Host::default();
+    let mut reader = Reader::default();
+    host.show_scoped("#44".into(), Some(scope));
+    assert!(host.observation_source().is_none());
+    let (resolve, read) = host.next_read().unwrap();
+    reader.admit_scoped(resolve, read, Some(scope)).unwrap();
+    host.apply(&result(
+        &mut reader,
+        resolve,
+        scoped_value(json!(reference(44)), scope, "root-a", 7),
+    ));
+    assert!(host.observation_source().is_none());
+    let (fetch, read) = host.next_read().unwrap();
+    reader.admit_scoped(fetch, read, Some(scope)).unwrap();
+    let record = d::Record {
+        reference: reference(44),
+        frontmatter: json!({"title":"Ready fixture"}),
+        body: "Native source\n".into(),
+        etag: "provider-etag".into(),
+        resources: vec![],
+        parse_error: None,
+    };
+    let reply = result(
+        &mut reader,
+        fetch,
+        scoped_value(json!(record), scope, "root-a", 7),
+    );
+    host.apply(&reply);
+    let source = host.observation_source().unwrap();
+    assert_eq!(source.record_id, reference(44).id);
+    assert_eq!(source.digest, reference(44).digest);
+    assert_eq!(source.etag, "provider-etag");
+    assert_eq!(source.workspace, scope);
+    assert_eq!(source.root, "root-a");
+    assert_eq!(source.provider_revision, 7);
+    std::sync::Arc::make_mut(host.prepared.as_mut().unwrap()).etag = None;
+    assert!(
+        host.observation_source().is_none(),
+        "sparse older provider replies cannot fabricate etags"
+    );
+    host.show_scoped(
+        "#45".into(),
+        Some(bbt_proto::gui::SwarmScope {
+            revision: 3,
+            ..scope
+        }),
+    );
+    assert!(!host.apply(&reply));
+    assert!(
+        host.observation_source().is_none(),
+        "old admitted root cannot observe a new pending workspace"
+    );
+    host.close();
+    assert!(host.observation_source().is_none());
+}
 #[test]
 fn pending_workspace_retry_is_scheduled_bounded_scoped_and_cancel_invalidates_its_wake() {
     let scope = bbt_proto::gui::SwarmScope {
