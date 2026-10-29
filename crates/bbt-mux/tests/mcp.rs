@@ -3665,15 +3665,26 @@ fn mcp_work_item_audit_admission_failure_executes_no_frontmatter_write() {
     )
     .unwrap();
     db.execute_batch("CREATE TRIGGER fixture_work_audit_failure BEFORE INSERT ON kv WHEN substr(NEW.key,1,14)='control/audit/' BEGIN SELECT RAISE(ABORT,'fixture audit failure'); END;").unwrap();
-    let result = f.runtime.block_on(f.client().control_call(
-        f.own.id,
-        1,
-        Call {
-            op_id: Ulid::new(),
-            tool: "task_report".into(),
-            args: json!({"task_path":f.task_path(),"summary":"must not write"}),
-        },
-    ));
+    let call = Call {
+        op_id: Ulid::new(),
+        tool: "task_report".into(),
+        args: json!({"task_path":f.task_path(),"summary":"must not write"}),
+    };
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let result = loop {
+        let result = f
+            .runtime
+            .block_on(f.client().control_call(f.own.id, 1, call.clone()));
+        if !matches!(&result,Ok(value) if value["structuredContent"]["error"]["code"]=="workspace_pending")
+        {
+            break result;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "workspace never settled before audit fault admission"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    };
     assert!(result.is_err());
     assert_eq!(f.task_document().digest, original.digest);
     db.execute_batch("DROP TRIGGER fixture_work_audit_failure")
