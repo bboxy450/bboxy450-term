@@ -24,6 +24,7 @@ use crate::{
 };
 
 pub type ProviderId = String;
+pub(crate) const IDLE_RECEIVE_WAIT: Duration = Duration::from_millis(10);
 
 /// The same namespace as SeatRecord.location, without changing its wire form.
 /// A cloud host and an ssh host with the same label cannot alias one link.
@@ -214,7 +215,7 @@ impl Connections {
     }
     pub fn receive_from(&mut self, host: &HostId) -> Result<Option<Event>> {
         let wait = if *host == HostId::Local {
-            Duration::from_millis(10)
+            IDLE_RECEIVE_WAIT
         } else {
             Duration::ZERO
         };

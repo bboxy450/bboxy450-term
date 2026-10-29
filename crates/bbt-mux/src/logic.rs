@@ -437,6 +437,50 @@ impl Command {
     }
 }
 
+/// The bounded idle cadence belongs to command admission, not a blocking
+/// supervisor read. Tokio's receiver notification interrupts this wait.
+async fn idle_command(commands: &mut mpsc::Receiver<Command>, until: Instant) -> Option<Command> {
+    tokio::time::timeout_at(tokio::time::Instant::from_std(until), commands.recv())
+        .await
+        .ok()
+        .flatten()
+}
+
+#[cfg(test)]
+mod idle_command_tests {
+    use super::*;
+
+    #[tokio::test(start_paused = true)]
+    async fn admitted_command_wakes_idle_wait_without_advancing_its_deadline() {
+        let (send, mut commands) = mpsc::channel(1);
+        let now = tokio::time::Instant::now();
+        let wait = tokio::spawn(async move {
+            idle_command(
+                &mut commands,
+                (now + crate::provider::IDLE_RECEIVE_WAIT).into_std(),
+            )
+            .await
+        });
+        tokio::task::yield_now().await;
+        let (reply, _) = oneshot::channel();
+        assert!(send.send(Command::GuiHosts(reply)).await.is_ok());
+        assert!(matches!(wait.await.unwrap(), Some(Command::GuiHosts(_))));
+        assert_eq!(tokio::time::Instant::now(), now);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn idle_wait_keeps_the_existing_ten_millisecond_fallback() {
+        let (_send, mut commands) = mpsc::channel(1);
+        let until = tokio::time::Instant::now() + crate::provider::IDLE_RECEIVE_WAIT;
+        let wait = tokio::spawn(async move { idle_command(&mut commands, until.into_std()).await });
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_millis(9)).await;
+        assert!(!wait.is_finished());
+        tokio::time::advance(Duration::from_millis(1)).await;
+        assert!(wait.await.unwrap().is_none());
+    }
+}
+
 fn operator_response<T: serde::de::DeserializeOwned>(result: serde_json::Value) -> Result<T> {
     if result["isError"] == true {
         let error = &result["structuredContent"]["error"];
@@ -9060,7 +9104,6 @@ impl Worker {
             );
             self.service_checkpoints(false)?;
             checkpoint_service.finish(Outcome::Ok, 0, 0);
-            let poll_ready = made_progress && pending_events.has_ready();
             made_progress = false;
             let command_span =
                 self.client
@@ -9969,12 +10012,12 @@ impl Worker {
                 self.client
                     .capture_diagnostics
                     .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
+            let idle_until = Instant::now() + crate::provider::IDLE_RECEIVE_WAIT;
             for host in self.connections.host_ids() {
-                let event = if poll_ready {
-                    self.connections.receive_ready_from(&host)?
-                } else {
-                    self.connections.receive_from(&host)?
-                };
+                // The socket probe is bounded/nonblocking. The idle wait below
+                // uses the existing command receiver, so fresh input can wake
+                // this worker instead of waiting inside a 10 ms socket read.
+                let event = self.connections.receive_ready_from(&host)?;
                 if let Some(event) = event {
                     if self.host_for_seat(event.seat())? != host {
                         continue;
@@ -10095,6 +10138,20 @@ impl Worker {
                 // The side-task completion unparks this thread. Contended
                 // nonblocking receive must not create a no-progress spin.
                 std::thread::park_timeout(Duration::from_millis(1));
+            } else if (!made_progress || !pending_events.has_ready())
+                && deferred_commands.is_empty()
+                && commands.is_empty()
+            {
+                let wait =
+                    self.client
+                        .capture_diagnostics
+                        .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
+                if let Some(command) = self.handle.block_on(idle_command(commands, idle_until)) {
+                    // This is the next admitted command, not a replay. Keep the
+                    // ordinary FIFO/checkpoint gates in the next work turn.
+                    deferred_commands.push_back(command);
+                }
+                wait.finish(Outcome::Ok, 0, 0);
             }
             turn.pending(
                 pending_events.seats.len(),

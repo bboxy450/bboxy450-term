@@ -492,6 +492,155 @@ impl GuiChecks {
         self.order.is_empty()
     }
 }
+
+const INPUT_CHECK_INTERVAL: Duration = Duration::from_millis(2);
+const INPUT_CHECK_WINDOW: Duration = Duration::from_millis(40);
+
+struct InputCheck {
+    generation: u64,
+    baseline: Option<(View, u64)>,
+    next: Instant,
+    until: Instant,
+}
+
+/// Only an admitted input to an exact existing watch starts fast checks. The
+/// ordinary 20 ms fallback remains unchanged once its first fresh snapshot lands.
+#[derive(Default)]
+struct InputChecks(BTreeMap<bbt_proto::SeatId, InputCheck>);
+impl InputChecks {
+    fn admitted(
+        &mut self,
+        seat: bbt_proto::SeatId,
+        generation: u64,
+        watched: Option<&GuiView>,
+        now: Instant,
+    ) {
+        let Some(watched) = watched.filter(|view| view.generation == generation) else {
+            return;
+        };
+        self.0.insert(
+            seat,
+            InputCheck {
+                generation,
+                baseline: watched.last,
+                next: now + INPUT_CHECK_INTERVAL,
+                until: now + INPUT_CHECK_WINDOW,
+            },
+        );
+    }
+
+    fn queue_due(
+        &mut self,
+        views: &BTreeMap<bbt_proto::SeatId, GuiView>,
+        checks: &mut GuiChecks,
+        now: Instant,
+    ) {
+        self.0.retain(|seat, input| {
+            let Some(watched) = views.get(seat) else {
+                return false;
+            };
+            if watched.generation != input.generation
+                || watched.last != input.baseline
+                || now >= input.until
+            {
+                return false;
+            }
+            if watched.in_flight.is_none() && now >= input.next {
+                checks.schedule(*seat);
+                input.next = now + INPUT_CHECK_INTERVAL;
+            }
+            true
+        });
+    }
+
+    fn deadline(&self, views: &BTreeMap<bbt_proto::SeatId, GuiView>) -> Option<Instant> {
+        self.0
+            .iter()
+            .filter_map(|(seat, input)| {
+                // Applied already checks immediately. Wait for that ACK instead of
+                // spending fast timer wakes on an in-flight view.
+                views
+                    .get(seat)
+                    .filter(|view| view.in_flight.is_none())
+                    .map(|_| input.next.min(input.until))
+            })
+            .min()
+    }
+}
+
+#[cfg(test)]
+mod input_check_tests {
+    use super::*;
+
+    fn watched() -> GuiView {
+        GuiView {
+            stream: ViewStream::default(),
+            generation: 7,
+            last: Some((
+                View {
+                    seat: Ulid(1),
+                    generation: 7,
+                    view_generation: Ulid(2),
+                },
+                11,
+            )),
+            in_flight: None,
+        }
+    }
+
+    #[test]
+    fn fast_checks_are_exact_generation_bounded_and_stop_on_fresh_snapshot() {
+        let now = Instant::now();
+        let seat = bbt_proto::SeatId::from_u128(1);
+        let mut views = BTreeMap::from([(seat, watched())]);
+        let mut input = InputChecks::default();
+        let mut checks = GuiChecks::default();
+        input.admitted(seat, 6, views.get(&seat), now);
+        input.admitted(bbt_proto::SeatId::from_u128(9), 7, None, now);
+        assert!(input.deadline(&views).is_none());
+        input.admitted(seat, 7, views.get(&seat), now);
+        assert_eq!(input.deadline(&views), Some(now + INPUT_CHECK_INTERVAL));
+        input.queue_due(&views, &mut checks, now);
+        assert!(checks.is_empty());
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL);
+        assert_eq!(checks.next(), Some(seat));
+        assert!(checks.is_empty());
+        views.get_mut(&seat).unwrap().last.as_mut().unwrap().1 = 12;
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL * 2);
+        assert!(input.deadline(&views).is_none());
+        assert!(checks.is_empty());
+        input.admitted(seat, 7, views.get(&seat), now);
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_WINDOW);
+        assert!(input.deadline(&views).is_none());
+        assert!(checks.is_empty());
+    }
+
+    #[test]
+    fn fast_checks_wait_for_ack_and_cannot_follow_a_replaced_or_removed_watch() {
+        let now = Instant::now();
+        let seat = bbt_proto::SeatId::from_u128(1);
+        let mut views = BTreeMap::from([(seat, watched())]);
+        let mut input = InputChecks::default();
+        let mut checks = GuiChecks::default();
+        input.admitted(seat, 7, views.get(&seat), now);
+        let baseline = views[&seat].last;
+        views.get_mut(&seat).unwrap().in_flight = baseline;
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL);
+        assert!(input.deadline(&views).is_none());
+        assert!(checks.is_empty());
+        views.get_mut(&seat).unwrap().in_flight = None;
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL);
+        assert_eq!(checks.next(), Some(seat));
+        views.get_mut(&seat).unwrap().generation = 8;
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL * 2);
+        assert!(input.deadline(&views).is_none());
+        input.admitted(seat, 8, views.get(&seat), now);
+        views.remove(&seat);
+        input.queue_due(&views, &mut checks, now + INPUT_CHECK_INTERVAL);
+        assert!(input.deadline(&views).is_none());
+        assert!(input.0.is_empty());
+    }
+}
 async fn gui_check_view(
     client: &LogicClient,
     write: &mut tokio::net::unix::OwnedWriteHalf,
@@ -796,6 +945,7 @@ async fn gui_session(
     let mut views: BTreeMap<bbt_proto::SeatId, GuiView> = BTreeMap::new();
     let watch_session = client.gui_watch_session();
     let mut checks = GuiChecks::default();
+    let mut input_checks = InputChecks::default();
     let mut state_events = VecDeque::new();
     let mut actions = 0;
     let mut prefer_view = true;
@@ -818,6 +968,8 @@ async fn gui_session(
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
+            input_checks.queue_due(&views,&mut checks,Instant::now());
+            let input_at=input_checks.deadline(&views);
             tokio::select! {
                 biased;
                 Some(done)=window_jobs.join_next(),if !window_jobs.is_empty()=> {
@@ -1088,11 +1240,12 @@ async fn gui_session(
                                 let mut stream=ViewStream::default();stream.offer(snapshot)?;
                                 client.gui_watch_interest(&watch_session,view.seat,Some(view.generation)).await?;
                                 views.insert(seat,GuiView {stream,generation:view.generation,last,in_flight:None});
+                                input_checks.0.remove(&seat);
                                 checks.schedule(seat);
                                 Ok(GuiReply::Ok {op})
                             }
                             GuiAction::Unwatch {seat}=>{
-                                views.remove(&seat);checks.remove(seat);
+                                views.remove(&seat);checks.remove(seat);input_checks.0.remove(&seat);
                                 client.gui_watch_interest(&watch_session,Ulid::from(seat.0.0),None).await?;
                                 Ok(GuiReply::Ok {op})
                             }
@@ -1112,10 +1265,12 @@ async fn gui_session(
                             GuiAction::Input {seat,generation,id,bytes}=> {
                                 if door==crate::mcp::Door::Ctl {
                                     client.ctl_input(Ulid::from(seat.0.0),generation,id,bytes,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
+                                    input_checks.admitted(seat,generation,views.get(&seat),Instant::now());
                                     return Ok(GuiReply::Ok {op:id});
                                 }
                                 let receipt=client.gui_input(Ulid::from(seat.0.0),generation,id,bytes).await?;
                                 if receipt.state==crate::InputState::PartialUnknown {return Err(invalid("input result is partial/unknown; keep the original id"));}
+                                input_checks.admitted(seat,generation,views.get(&seat),Instant::now());
                                 Ok(GuiReply::Ok {op:id})
                             }
                             GuiAction::GetAttention {id,seat,generation}=> {
@@ -1231,6 +1386,7 @@ async fn gui_session(
                     knowledge_budget.release(key)?;
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
                 }
+                _=tokio::time::sleep_until(tokio::time::Instant::from_std(input_at.unwrap_or_else(Instant::now))),if input_at.is_some()=> {}
                 Some(completed)=plugin_jobs.join_next(),if !plugin_jobs.is_empty()=> {
                     let (op,result)=completed.map_err(|_|invalid("plugin reply task interrupted"))?;
                     let reply=match result {
