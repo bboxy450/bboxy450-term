@@ -3636,6 +3636,173 @@ fn document_observations_refresh_independent_markers_and_retain_native_sessions(
     );
 }
 
+// keeps: document-viewer — provenance disclosure changes only presentation;
+// exact private source evidence survives expansion, collapse and reopening.
+#[test]
+#[ignore = "private ctl document disclosure; make test-documents-night"]
+fn document_provenance_disclosure_is_quiet_clickable_and_preserves_evidence() {
+    use serde_json::json;
+    const LOCATOR: &str = "tasks/provenance-disclosure.md";
+    const BODY: &str = "DisclosureFixtureBodyMarker";
+    const TOGGLE: &str = "metadata/provenance/toggle";
+    fn named<'a>(node: &'a Value, key: &str) -> Option<&'a Value> {
+        if node["kind"].as_str().is_some_and(|kind| {
+            kind == format!("named:{key}") || kind.ends_with(&format!("/{key}"))
+        }) {
+            return Some(node);
+        }
+        node["children"]
+            .as_array()?
+            .iter()
+            .find_map(|child| named(child, key))
+    }
+    fn node<'a>(frame: &'a Value, key: &str) -> Option<&'a Value> {
+        frame["tree"]
+            .as_array()?
+            .iter()
+            .find_map(|item| named(item, key))
+    }
+    fn text(value: &Value) -> String {
+        let mut result = value["text"].as_str().unwrap_or_default().to_owned();
+        if let Some(children) = value["children"].as_array() {
+            for child in children {
+                result.push_str(&text(child));
+            }
+        }
+        result
+    }
+    fn visible_text(frame: &Value) -> String {
+        frame["tree"].as_array().unwrap().iter().map(text).collect()
+    }
+    fn wait(f: &Fixture, after: u64, expanded: bool, values: &[String]) -> Value {
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = f.ctl(&["ui", "layout"]);
+            let text = visible_text(&frame);
+            if frame["frame_seq"].as_u64().unwrap() > after
+                && frame["document"] == LOCATOR
+                && node(&frame, TOGGLE).is_some()
+                && text.contains(BODY)
+                && node(&frame, "metadata/provenance/details").is_some() == expanded
+                && values.iter().all(|value| text.contains(value) == expanded)
+            {
+                return frame;
+            }
+            assert!(
+                Instant::now() < until,
+                "provenance expanded={expanded} never produced the expected visible frame: {frame}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    fn click(f: &Fixture, frame: &Value) {
+        let rect = node(frame, TOGGLE).unwrap()["rect"].as_array().unwrap();
+        let [x, y, w, h] = std::array::from_fn(|i| rect[i].as_f64().unwrap());
+        assert!(w > 1. && h > 1.);
+        let point = [(x + w * 0.5).round(), (y + h * 0.5).round()];
+        assert!(point[0] >= x && point[0] < x + w && point[1] >= y && point[1] < y + h);
+        assert!(
+            point
+                .iter()
+                .all(|n| n.is_finite() && *n >= 0. && *n <= u32::MAX as f64)
+        );
+        f.ctl(&[
+            "ui",
+            "click",
+            &(point[0] as u32).to_string(),
+            &(point[1] as u32).to_string(),
+        ]);
+    }
+    let mut fixture = Fixture::new();
+    let path = fixture.root.join("repository/.bboxy").join(LOCATOR);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let values = vec![
+        "da7a".repeat(16),
+        "s1g".repeat(24),
+        "event:private-provenance-fixture/42".into(),
+        format!("ed25519:{}", "5e".repeat(32)),
+        "a91f".repeat(16),
+    ];
+    let metadata = json!({"id":"00000000000000000000000001","number":1,"type":"task",
+        "title":"Private provenance disclosure","status":"open","verify":"true",
+        "provenance":{"digest":values[0],"sig":values[1],"log":values[2],"signer":values[3]},
+        "authorship":{"public_key":values[4],"issued_by":"private-disclosure-fixture"}});
+    let original = format!("---\n{metadata}\n---\n# Ordinary task body\n\n{BODY}\n").into_bytes();
+    fs::write(&path, &original).unwrap();
+    fixture.start();
+    fixture.ctl(&["app", "resize", "180x120"]);
+    let before = fixture.ctl(&["record", "fetch", LOCATOR]);
+    assert_eq!(before["frontmatter"], metadata);
+    let frame = fixture.ctl(&["ui", "layout"]);
+    fixture.ctl(&["ui", "open", "docs", LOCATOR]);
+    fixture.ctl(&["ui", "key", "home"]);
+    let initial = wait(
+        &fixture,
+        frame["frame_seq"].as_u64().unwrap(),
+        false,
+        &values,
+    );
+    click(&fixture, &initial);
+    let expanded = wait(
+        &fixture,
+        initial["frame_seq"].as_u64().unwrap(),
+        true,
+        &values,
+    );
+    click(&fixture, &expanded);
+    let collapsed = wait(
+        &fixture,
+        expanded["frame_seq"].as_u64().unwrap(),
+        false,
+        &values,
+    );
+    // Close while expanded so reopening proves reset, rather than merely
+    // retaining an already collapsed controller.
+    click(&fixture, &collapsed);
+    let expanded = wait(
+        &fixture,
+        collapsed["frame_seq"].as_u64().unwrap(),
+        true,
+        &values,
+    );
+    fixture.ctl(&["ui", "key", "esc"]);
+    let until = Instant::now() + Duration::from_secs(10);
+    let closed = loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if frame["frame_seq"].as_u64().unwrap() > expanded["frame_seq"].as_u64().unwrap()
+            && frame["document"].is_null()
+        {
+            break frame;
+        }
+        assert!(
+            Instant::now() < until,
+            "private document never closed: {frame}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    fixture.ctl(&["ui", "open", "docs", LOCATOR]);
+    fixture.ctl(&["ui", "key", "home"]);
+    let reopened = wait(
+        &fixture,
+        closed["frame_seq"].as_u64().unwrap(),
+        false,
+        &values,
+    );
+    let after = fixture.ctl(&["record", "fetch", LOCATOR]);
+    assert_eq!(after["frontmatter"], before["frontmatter"]);
+    assert_eq!(after["etag"], before["etag"]);
+    assert_eq!(after["digest"], before["digest"]);
+    assert_eq!(
+        fs::read(&path).unwrap(),
+        original,
+        "disclosure rewrote the stored evidence"
+    );
+    println!(
+        "private provenance disclosure frames initial={} reopened={}; source bytes and etag unchanged",
+        initial["frame_seq"], reopened["frame_seq"]
+    );
+}
+
 // keeps: scoped native documents — colliding handles and held old-root replies.
 #[test]
 #[ignore = "private ctl/root-provider boundary; make test-scoped-workspaces"]
