@@ -1,0 +1,17 @@
+ROLE: EXECUTOR
+Source commit: 78d9ab6b671fe9bd4ffcb5479beb270df472979d
+Raw evidence directory: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u
+Worktree: /Users/feral/mydev/bboxy450-term-emoji-rendering
+Branch: feat/shared-color-emoji-20261028
+Base: 17f1219e
+Resource claim: owned target-emoji, jobs=2; no shared target, app build, install, operator account, Keychain or publication.
+2026-10-29T04:43:28.687795+00:00 command: make test-color-emoji TARGET_DIR=target-emoji — EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/renderer.log; SHA256 86a6090fb061bf165bdeafa8f28818bac088a71a1f149aa7e2c265b90afb9cbc
+2026-10-29T04:43:31.833766+00:00 command: make check-color-emoji TARGET_DIR=target-emoji — EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/clippy.log; SHA256 d5df157f0337a5cdd322784b67c63f4f611f30f719904ff760d2bbf748dee883
+2026-10-29T04:43:32.016073+00:00 command: make test-licenses — EXIT 0; raw /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/licenses.log; SHA256 601f996f75a52abbf24cc176a467b1e7aed9e96d2eb4688ec021f72140dbc82a
+Capture: /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-emoji-78d9ab6b-tm041k5u/native-color-emoji-ui.png; SHA256 aeaed47ae714acdce901b8b7e15865cb54d7b528ad11a8eb596948d052c517cd
+Renderer: 74 library tests +13 integration tests passed, including native UI color pixels, tint/opacity, native alpha shadows, cluster ellipsis, mixed mask/BGRA LRU repacks, terminal emoji bounds at1x/2x and existing grayscale parity probes.
+Mechanism: shared text::Format; CoreText color font traits select premultiplied sRGB BGRA; a sibling GlyphAtlas shares the existing LRU/pin/repack budget; chrome shader uses native hue with text opacity. No fonts copied or bundled.
+Swarm validation already permits Unicode scalar values/ZWJ/VS16; production validation unchanged. New registry reopen regression and existing private ctl rename/restart use emoji names.
+Handoff gates for parent warm app target: make test-color-emoji-swarm; make check-color-emoji-all; exact committed integrated make test.
+Gap here: app/mux fixture and dependent Clippy not run in this worktree under disk floor; no cold app build. Parent owns integrated gates and final landing.
+No installation, merge, push, publication or operator data mutation performed.
