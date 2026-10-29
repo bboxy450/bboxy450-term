@@ -1,0 +1,20 @@
+Project bboxy450-term https://github.com/bboxy450/bboxy450-term; policy https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Implementation checkpoint c52a3512335784e0f0eab15e397ba53b1118d20c; signed Boxy <bboxy450@gmail.com>, approved key9B07E849480C68328CA20684844ECC0587DE7AB0; diagnostic partial, not a root-fix claim.
+make test-fifty-seat-startup — exit0; diagnostic redaction control1/1; fifty distinct real zsh echoes1/1; no retries/count/deadline change.
+target/night-fifty-seat-startup/private-exact.log sha256=6b471a60e2ac7036628852af70810b8030ebda5a97fb3e1ab43ec7880e4dd96a
+make diagnose-fifty-seat-pty — make exit2, probe exit1; 16 workers x4000, at most16 pairs;23 total failures,20 retained samples,3 unclassified;20 samples posix_openpt /dev/ptmx errno -6;0 retained ENOENT samples.
+target/night-fifty-seat-startup/retained-allocator.log sha256=082324e77dcb2d1532edbd97b7d8b876da81ac08d4cc50412a9e33205fbed4c1
+make test-licenses — exit0; license fixtures6/6 and source-notice fixtures9/9;27 workspace crate policies held.
+target/night-fifty-seat-startup/licenses.log sha256=32279914f91bb2c68e8e16110162162a5868630a6c00fe8860a358f50d99b68a
+First make test — exit2 on c52a3512335784e0f0eab15e397ba53b1118d20c, 1320.219s; build6m31s and strict Clippy2m27s passed; own guard stopped Cargo/test compilation at4037180KiB to preserve4GiB allocation.
+target/night-fifty-seat-startup/first-ci-local.log sha256=f87492e350b856986e3aa3399b0d82a4baa2868c5fa51dcf54d982b5d2c08bb4
+Second make test — exit2 on c52a3512335784e0f0eab15e397ba53b1118d20c, 88.178s; build+strict Clippy passed; own guard stopped test compilation at4044076KiB; workspace tests/smoke/invariants incomplete.
+target/ci-local.log sha256=cc8e6bb5b975f59ed482f1ab9bbd022353eba7220bf03b58ab05359c6fb62192
+UNMET | Spawn ENOENT is attributed to a retained failing stage and path or a deterministic causal witness | Lost original65927a6c stage/path unavailable; separate negative-errno6 witness does not attribute historical ENOENT.
+UNMET | The root repair has a deterministic regression and adds no product retries or deadline inflation | No root cause/repair established; product source and deadlines unchanged.
+HELD | Original fifty distinct echoes and exactly one supervisor poller remain enforced | tests/supervisor.rs:212,220,239,262-264; src/supervisor.rs:833 creates one production Poll per Supervisor.
+UNMET | Canonical verification and signed self-landing succeed with actual evidence | Both canonical attempts exit2 at resource guard; no green exact gate, no landing attempted or landing SHA.
+Ownership: tests/supervisor.rs:215 retains private cwd/HOME/ZDOTDIR until supervisor teardown; failure index includes existing redacted stage/path error; fixture still runs real /bin/zsh -f.
+Resource disposition: own inactive metadata/object retirement604 files296632362 bytes, hashes retained in target/night-fifty-seat-startup/retired-inactive-products.json; second post-Clippy retirement0; only recorded own Cargo/Rustc descendants terminated.
+Controls: initial native12/64000 failures all retained at /dev/ptmx errno -6; original fifty-seat test also passed during separate16-thread churn. No unchanged green loop and no third unchanged full gate.
+Gaps: original cause and deterministic repair; complete workspace tests/smoke/invariants and landing. Quarantine remains. No release/publish/tag, live app restart, peer target/worktree cleanup, reserved UI/input/KB work or credential access.
