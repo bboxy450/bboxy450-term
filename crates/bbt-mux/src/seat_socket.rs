@@ -789,6 +789,9 @@ async fn gui_session(
     }
     let _reader = Reader(task);
     let mut admitted = false;
+    let mut phase = "admission";
+    let mut requests = 0_u64;
+    let mut last_action = "none";
     let mut lane: Option<GuiLane> = None;
     let mut want_events = None;
     let mut lane_at: Option<Instant> = None;
@@ -832,7 +835,13 @@ async fn gui_session(
                 }
                 line=incoming.recv(),if actions<ACTION_BURST&&(actions==0||checks.is_empty())=> {
                     actions+=1;
-                    let Some(Ok(Some(line)))=line else {break;};
+                    phase="request-read";
+                    let line=match line {
+                        Some(Ok(Some(line)))=>line,
+                        Some(Err(error))=>return Err(error),
+                        _=>break,
+                    };
+                    requests+=1;
                     #[derive(Deserialize)]
                     struct GuiAdmission { version:u16, capability:[u8;32] }
                     // Inspect admission before the action schema, so an old
@@ -849,6 +858,18 @@ async fn gui_session(
                         return Err(invalid("GUI socket version mismatch"));
                     }
                     let request:GuiRequest=serde_json::from_slice(&line)?;
+                    last_action=match &request.action {
+                        GuiAction::AttachEvents {..}=>"attach-events",
+                        GuiAction::EventAck {..}=>"event-ack",
+                        GuiAction::GetEventCursor {..}=>"event-cursor",
+                        GuiAction::MarkEventsRead {..}=>"mark-events-read",
+                        GuiAction::Watch {..}=>"watch",
+                        GuiAction::Applied {..}=>"applied",
+                        GuiAction::Input {..}=>"input",
+                        GuiAction::Resize {..}=>"resize",
+                        _=>"other-control",
+                    };
+                    phase="request-action";
                     if !admitted {
                         admitted=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
@@ -1209,6 +1230,7 @@ async fn gui_session(
                     }.await;
                     let reply=reply.unwrap_or_else(|e|GuiReply::Error {op,reason:e.to_string()});
                     let stop=stopping&&matches!(&reply,GuiReply::App {..});
+                    phase="request-reply";
                     send(&mut write,&reply).await?;
                     // The ctl response is on the socket before stopping its server.
                     if stop {client.captures.app_stopping(op);}
@@ -1264,6 +1286,7 @@ async fn gui_session(
                     if (refresh_retry||filters_at.elapsed()>=Duration::from_secs(1)) && let Some(active)=&mut lane {
                         refresh_retry=false;
                         filters_at=Instant::now();
+                        phase="events-refresh";
                         let filters=async {
                             if client.gui_device().await?.id!=active.lease.reference {
                                 return Err(invalid("GuiOperatorChanged: reattaching current local principal"));
@@ -1307,6 +1330,7 @@ async fn gui_session(
                         }
                     }
                     if state_events.is_empty() && events_at.is_none_or(|at|at.elapsed()>=Duration::from_millis(100)) && let Some(active)=&lane {
+                        phase="events-poll";
                         if let Some(events)=store_reads.read(GuiStoreOperation::Poll,client.bus.gui_poll(&active.lease,crate::gui_events::PAGE_RECORDS,crate::gui_events::PAGE_BYTES).await)? {
                             state_events.extend(events);
                             event_cursors.clear();
@@ -1331,6 +1355,7 @@ async fn gui_session(
                         let cursor=if let crate::bus::Delivery::Event {stream,envelope,..}=event {
                             if envelope.event.subject.ends_with("/message")||envelope.event.subject.ends_with("/receipt") {
                                 if !event_cursors.contains_key(stream) && let Some(active)=&lane {
+                                    phase="events-cursor";
                                     if let Some(cursor)=store_reads.read(GuiStoreOperation::Cursor,client.bus.gui_cursor(&active.lease,stream).await)? {
                                         event_cursors.insert(stream.clone(),crate::gui_events::cursor(cursor));
                                     } else {
@@ -1342,6 +1367,7 @@ async fn gui_session(
                             } else {None}
                         } else {None};
                         let event=state_events.pop_front().expect("front event retained until its cursor is ready");
+                        phase="event-project-write";
                         match gui_event_reply(event,&client,cursor).await {
                             Ok(reply)=>send(&mut write,&reply).await?,
                             Err(error)=>send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:error.to_string()}).await?,
@@ -1358,6 +1384,14 @@ async fn gui_session(
         }
         Ok(())
     }.await;
+    if let Err(error) = &result {
+        eprintln!(
+            "GUI boundary failed: owner_pid={} peer_pid={peer_pid:?} phase={phase} requests={requests} last_action={last_action} admitted={admitted} events_attached={} reason={}",
+            std::process::id(),
+            lane.is_some(),
+            gui_session_error_reason(error),
+        );
+    }
     if let Err(error) = &result
         && error.is::<GuiStorePersistent>()
     {

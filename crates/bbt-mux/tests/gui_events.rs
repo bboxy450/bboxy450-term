@@ -12,6 +12,7 @@
 use bbt_mux::{
     Config, LaunchSpec, Supervisor, Ulid,
     logic::{Logic, LogicConfig, SocketSupervisor},
+    messaging::wire::EnvelopeExt,
     registry::SeatRecord,
     store::{Store, events::Draft, sqlite::SqliteStore},
 };
@@ -23,11 +24,13 @@ use bbt_proto::{
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use std::{
+    cell::RefCell,
     collections::{BTreeMap, VecDeque},
     io::{BufRead, Write},
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
+    rc::Rc,
     time::{Duration, Instant},
 };
 use tokio::io::{AsyncWriteExt, BufReader};
@@ -132,13 +135,51 @@ fn gui_event_fixture_child() {
     logic.shutdown().unwrap();
 }
 
-struct Process(Child);
+// Keep raw subprocess/session diagnostics local, including a libtest panic on
+// stdout. A failed boundary must survive TempDir unwinding for investigation.
+struct FixtureRoot(Option<tempfile::TempDir>);
+impl FixtureRoot {
+    fn new() -> Self {
+        let parent = std::env::var_os("BBOXY_GUI_EVENTS_EVIDENCE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/tmp"));
+        std::fs::create_dir_all(&parent).unwrap();
+        Self(Some(
+            tempfile::Builder::new()
+                .prefix("gui-events-")
+                .tempdir_in(parent)
+                .unwrap(),
+        ))
+    }
+    fn path(&self) -> &Path {
+        self.0.as_ref().unwrap().path()
+    }
+}
+impl Drop for FixtureRoot {
+    fn drop(&mut self) {
+        if std::thread::panicking() || std::env::var_os("BBOXY_GUI_EVENTS_EVIDENCE").is_some() {
+            eprintln!(
+                "gui-events retained private diagnostics: {}",
+                self.0.take().unwrap().keep().display()
+            );
+        }
+    }
+}
+
+struct Process {
+    child: Rc<RefCell<Child>>,
+    diagnostics: PathBuf,
+    started: Instant,
+}
 impl Process {
     fn start(root: &Path, capability: [u8; 32]) -> Self {
         let ready = root.join("ready.json");
         if ready.exists() {
             std::fs::remove_file(&ready).unwrap();
         }
+        let diagnostics = root.join(format!("logic-{}", Ulid::new()));
+        let stdout = std::fs::File::create(diagnostics.with_extension("stdout")).unwrap();
+        let stderr = std::fs::File::create(diagnostics.with_extension("stderr")).unwrap();
         let child = Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
@@ -152,40 +193,72 @@ impl Process {
                 serde_json::to_string(&capability).unwrap(),
             )
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::inherit())
+            .stdout(stdout)
+            .stderr(stderr)
             .spawn()
             .unwrap();
-        eprintln!("gui-events owned logic fixture pid={}", child.id());
-        let mut process = Self(child);
+        let process = Self {
+            child: Rc::new(RefCell::new(child)),
+            diagnostics,
+            started: Instant::now(),
+        };
+        process.record("spawned");
         let started = Instant::now();
         while !ready.exists() {
-            assert!(
-                process.0.try_wait().unwrap().is_none(),
-                "fixture exited before Ready"
-            );
+            let status = process.child.borrow_mut().try_wait().unwrap();
+            if let Some(status) = status {
+                eprintln!(
+                    "gui-events fixture exited before Ready: pid={} status={status:?}; diagnostics={}",
+                    process.child.borrow().id(),
+                    process.diagnostics.display()
+                );
+                panic!("fixture exited before Ready: {status:?}");
+            }
             assert!(
                 started.elapsed() < Duration::from_secs(10),
                 "fixture Ready timed out"
             );
             std::thread::sleep(Duration::from_millis(10));
         }
+        process.record("ready");
         process
     }
+    fn record(&self, phase: &str) {
+        let mut log = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.diagnostics.with_extension("lifecycle"))
+            .unwrap();
+        let mut child = self.child.borrow_mut();
+        let pid = child.id();
+        writeln!(
+            log,
+            "elapsed_us={} phase={phase} pid={pid} status={:?}",
+            self.started.elapsed().as_micros(),
+            child.try_wait().unwrap()
+        )
+        .unwrap();
+    }
     fn emit(&mut self, count: usize) {
-        writeln!(self.0.stdin.as_mut().unwrap(), "emit {count}").unwrap();
+        writeln!(
+            self.child.borrow_mut().stdin.as_mut().unwrap(),
+            "emit {count}"
+        )
+        .unwrap();
     }
     fn kill(&mut self) {
-        self.0.kill().unwrap();
-        self.0.wait().unwrap();
+        self.record("before-kill");
+        self.child.borrow_mut().kill().unwrap();
+        let status = self.child.borrow_mut().wait().unwrap();
+        self.record(&format!("killed exit={status:?}"));
     }
     fn stop(&mut self) {
-        writeln!(self.0.stdin.as_mut().unwrap(), "stop").unwrap();
+        writeln!(self.child.borrow_mut().stdin.as_mut().unwrap(), "stop").unwrap();
         let start = Instant::now();
         loop {
-            if let Some(status) = self.0.try_wait().unwrap() {
+            if let Some(status) = self.child.borrow_mut().try_wait().unwrap() {
                 assert!(status.success());
-                return;
+                break;
             }
             assert!(
                 start.elapsed() < Duration::from_secs(10),
@@ -193,39 +266,84 @@ impl Process {
             );
             std::thread::sleep(Duration::from_millis(10));
         }
+        self.record("stopped");
     }
 }
 impl Drop for Process {
     fn drop(&mut self) {
-        if self.0.try_wait().ok().flatten().is_none() {
-            let _ = self.0.kill();
-            let _ = self.0.wait();
+        let mut child = self.child.borrow_mut();
+        if child.try_wait().ok().flatten().is_none() {
+            let _ = child.kill();
+            let _ = child.wait();
         }
     }
 }
 
 struct Gui {
+    connection: Ulid,
+    started: Instant,
+    child: Rc<RefCell<Child>>,
+    diagnostics: PathBuf,
+    last_action: String,
+    received: usize,
     read: BufReader<tokio::net::unix::OwnedReadHalf>,
     write: tokio::net::unix::OwnedWriteHalf,
     capability: [u8; 32],
     deferred: VecDeque<GuiReply>,
 }
 impl Gui {
-    async fn open(root: &Path) -> Self {
+    async fn open(root: &Path, process: &Process) -> Self {
         let ready: Ready =
             serde_json::from_slice(&std::fs::read(root.join("ready.json")).unwrap()).unwrap();
         let (read, write) = tokio::net::UnixStream::connect(ready.path)
             .await
             .unwrap()
             .into_split();
-        Self {
+        let gui = Self {
+            connection: Ulid::new(),
+            started: process.started,
+            child: process.child.clone(),
+            diagnostics: process.diagnostics.clone(),
+            last_action: String::new(),
+            received: 0,
             read: BufReader::new(read),
             write,
             capability: ready.capability,
             deferred: VecDeque::new(),
-        }
+        };
+        gui.record("connected");
+        gui
+    }
+    fn record(&self, phase: &str) {
+        let mut child = self.child.borrow_mut();
+        let pid = child.id();
+        let status = child.try_wait().unwrap();
+        let mut log = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.diagnostics.with_extension("gui"))
+            .unwrap();
+        writeln!(
+            log,
+            "elapsed_us={} connection={} phase={phase} pid={pid} status={status:?} received={} last_action={}",
+            self.started.elapsed().as_micros(), self.connection, self.received, self.last_action
+        )
+        .unwrap();
     }
     async fn send(&mut self, action: GuiAction) {
+        // Only operation kind/cursor coordinates, never capability or payload.
+        self.last_action = match &action {
+            GuiAction::EventAck { stream, seq } => format!("event_ack stream={stream} seq={seq}"),
+            GuiAction::MarkEventsRead { stream, seq } => {
+                format!("mark_read stream={stream} seq={seq}")
+            }
+            GuiAction::GetEventCursor { stream } => format!("cursor stream={stream}"),
+            _ => serde_json::to_value(&action).unwrap()["kind"]
+                .as_str()
+                .unwrap_or("control")
+                .into(),
+        };
+        self.record("send");
         let mut bytes = serde_json::to_vec(&GuiRequest {
             version: bbt_proto::gui::VERSION,
             capability: self.capability,
@@ -247,15 +365,38 @@ impl Gui {
             let reply = if let Some(reply) = self.deferred.pop_front() {
                 reply
             } else {
-                let line = tokio::time::timeout(
+                let result = tokio::time::timeout(
                     Duration::from_secs(5),
                     bbt_mux::seat_socket::read_line(&mut self.read),
                 )
-                .await
-                .unwrap()
-                .unwrap()
-                .unwrap();
-                serde_json::from_slice(&line).unwrap()
+                .await;
+                let line = match result {
+                    Ok(Ok(Some(line))) => line,
+                    other => {
+                        self.record(&format!("read-failed result={other:?}"));
+                        panic!(
+                            "GUI boundary read failed; diagnostics={}; result={other:?}",
+                            self.diagnostics.display()
+                        );
+                    }
+                };
+                self.received += 1;
+                let reply: GuiReply = serde_json::from_slice(&line).unwrap();
+                match &reply {
+                    GuiReply::Identity(identity) => {
+                        self.record(&format!("identity state={:?}", identity.state))
+                    }
+                    GuiReply::EventCursor { cursor } => self.record(&format!("cursor {cursor:?}")),
+                    GuiReply::Event { stream, seq, .. } => {
+                        self.record(&format!("event stream={stream} seq={seq}"))
+                    }
+                    GuiReply::EventStatus { attached, .. } => {
+                        self.record(&format!("event-status attached={attached}"))
+                    }
+                    GuiReply::Update { .. } => self.record("pty-update"),
+                    _ => {}
+                }
+                reply
             };
             if accept(&reply) {
                 for old in staged.into_iter().rev() {
@@ -329,10 +470,7 @@ impl Gui {
 
 #[test]
 fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls() {
-    let root = tempfile::Builder::new()
-        .prefix("gui-events-")
-        .tempdir_in("/tmp")
-        .unwrap();
+    let root = FixtureRoot::new();
     std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     std::fs::create_dir_all(root.path().join("repository/.bboxy")).unwrap();
     let supervisor = Supervisor::start(Config {
@@ -348,9 +486,9 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         .unwrap();
     let mut process = Process::start(root.path(), supervisor.socket_capability());
     rt.block_on(async {
-        let mut gui=Gui::open(root.path()).await;gui.attach().await;
+        let mut gui=Gui::open(root.path(), &process).await;gui.attach().await;
         // One durable consumer, and a second connection cannot drain it.
-        let mut second=Gui::open(root.path()).await;let id=Ulid::new();second.send(GuiAction::AttachEvents {id}).await;
+        let mut second=Gui::open(root.path(), &process).await;let id=Ulid::new();second.send(GuiAction::AttachEvents {id}).await;
         assert!(matches!(second.until(|r|matches!(r,GuiReply::Error {op,..} if *op==id)).await,
             GuiReply::Error {reason,..} if reason.starts_with("GuiConsumerAttached:")));
         drop(second);
@@ -371,7 +509,8 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         assert!(matches!(mark,GuiReply::EventCursor {cursor} if cursor.unread==0));
         let Response::Messages {page}=gui.messaging(Request::List {thread:None,channel:None,after:0,limit:1}).await else {panic!("expected inbox page")};
         assert_eq!(page.items.len(),1);let first_message=&page.items[0];
-        assert_eq!(first_message.envelope().expect("signed fixture envelope").id,message_id);
+        let signed=first_message.envelope().expect("signed fixture envelope");
+        signed.verify_signature().unwrap();assert_eq!(signed.id,message_id);
         let position=first_message.bus.as_ref().unwrap();assert_eq!(position.stream,stream);assert_eq!(position.seq,seq);
         assert_ne!(first_message.sequence,seq,"fixture exercises separate ledger and bus domains");
         let ledger_cursor=first_message.sequence;
@@ -382,7 +521,8 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         };
         gui.send(GuiAction::EventAck {stream:stream.clone(),seq:second_sequence}).await;
         let Response::Messages {page}=gui.messaging(Request::List {thread:None,channel:None,after:ledger_cursor,limit:1}).await else {panic!("expected next inbox page")};
-        assert_eq!(page.items.len(),1);assert_eq!(page.items[0].envelope().expect("signed fixture envelope").id,second_id);
+        assert_eq!(page.items.len(),1);let signed=page.items[0].envelope().expect("signed fixture envelope");
+        signed.verify_signature().unwrap();assert_eq!(signed.id,second_id);
         assert_eq!(page.items[0].bus.as_ref().unwrap().seq,second_sequence);
         assert_eq!(gui.cursor(&stream).await.unread,1);
         process.emit(2);
@@ -393,7 +533,7 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         // The second row was published, but its ACK is lost with the process.
         process.kill();drop(gui);
         process=Process::start(root.path(),supervisor.socket_capability());
-        let mut gui=Gui::open(root.path()).await;gui.attach().await;
+        let mut gui=Gui::open(root.path(), &process).await;gui.attach().await;
         let replay=gui.artifact().await;assert_eq!((replay.0.as_str(),replay.1), (second.0.as_str(),second.1));
         assert_eq!(published.insert((replay.0.clone(),replay.1),replay.2),Some(second.2));
         assert_eq!(published.len(),2,"at-least-once replay does not add a model row");
@@ -428,6 +568,75 @@ fn durable_gui_survives_real_logic_kill_keeps_unread_and_services_pty_controls()
         gui.send(GuiAction::GetEvents {stream:"../foreign".into(),after:0,limit:128}).await;
         assert!(matches!(gui.until(|r|matches!(r,GuiReply::Error {..})).await,GuiReply::Error {reason,..} if reason.contains("unknown GUI stream")));
         drop(gui);
+    });
+    process.stop();
+    supervisor.shutdown().unwrap();
+}
+
+// keeps: task 183 — retain failed GUI/session diagnostics at the restart boundary.
+// A read failure used to take the clean-disconnect branch in gui_session,
+// destroying the only explanation for the peer's EOF. Exercise the real owner
+// after a kill/reopen, without timing assumptions, retries or operator access.
+#[test]
+fn restarted_gui_retains_truncated_request_diagnostics_before_eof() {
+    let root = FixtureRoot::new();
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::create_dir_all(root.path().join("repository/.bboxy")).unwrap();
+    let supervisor = Supervisor::start(Config {
+        socket_path: Some(root.path().join("supervisor.sock")),
+        journal_directory: Some(root.path().join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let mut process = Process::start(root.path(), supervisor.socket_capability());
+    process.kill();
+    process = Process::start(root.path(), supervisor.socket_capability());
+    rt.block_on(async {
+        let mut gui = Gui::open(root.path(), &process).await;
+        // EOF is intentional here: the request ends halfway through a frame.
+        gui.write.write_all(b"{").await.unwrap();
+        gui.write.shutdown().await.unwrap();
+        let end = tokio::time::timeout(
+            Duration::from_secs(5),
+            bbt_mux::seat_socket::read_line(&mut gui.read),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(
+            end.is_none(),
+            "truncated frame must close its own connection"
+        );
+        let stderr = std::fs::read_to_string(process.diagnostics.with_extension("stderr")).unwrap();
+        assert!(
+            stderr.contains("GUI boundary failed:"),
+            "missing failed boundary diagnostics: {stderr}"
+        );
+        assert!(
+            stderr.contains("phase=request-read"),
+            "missing failing owner phase: {stderr}"
+        );
+        assert!(
+            stderr.contains("admitted=false events_attached=false"),
+            "incorrect admission diagnostic: {stderr}"
+        );
+        assert!(
+            stderr.contains("I/O error (InvalidData, os=None)"),
+            "missing frame error category: {stderr}"
+        );
+        assert!(!stderr.contains("capability"));
+        assert!(
+            process.child.borrow_mut().try_wait().unwrap().is_none(),
+            "session failure must leave the logic process alive"
+        );
+        let mut next = Gui::open(root.path(), &process).await;
+        next.attach().await;
+        drop(next);
     });
     process.stop();
     supervisor.shutdown().unwrap();

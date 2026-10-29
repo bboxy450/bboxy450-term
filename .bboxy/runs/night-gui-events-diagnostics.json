@@ -1,0 +1,67 @@
+{
+  "task": 183,
+  "addendum_task": 194,
+  "base": "618df56f",
+  "worktree": "/Users/feral/mydev/bboxy450-term-night-gui-events",
+  "scope": "issue39 restart diagnostics; historical EOF root cause remains unproven",
+  "mechanism": {
+    "file": "crates/bbt-mux/src/seat_socket.rs",
+    "old": "incoming Some(Err(read_error)) took clean EOF break; gui_session returned Ok and discarded cause",
+    "new": "return the original error and retain sanitized owner/peer/phase/request/action/admission/event-lane diagnostics"
+  },
+  "verification": [
+    {
+      "command": "make test-gui-events",
+      "log": "baseline",
+      "exit_code": 0,
+      "result": "1 passed; 1 private child ignored; normal restart control"
+    },
+    {
+      "command": "make test-gui-events",
+      "log": "truncated-regression",
+      "exit_code": 0,
+      "result": "2 passed; 1 private child ignored; truncated request after real kill/reopen retains diagnostics and leaves logic live"
+    },
+    {
+      "command": "make test-gui-events",
+      "log": "mutation",
+      "exit_code": 2,
+      "nested_cargo_exit": 101,
+      "result": "restoring silent read-error branch fails restarted_gui_retains_truncated_request_diagnostics_before_eof; original control passes"
+    },
+    {
+      "command": "make test-gui-events",
+      "log": "restored",
+      "exit_code": 0,
+      "result": "restored patch: 2 passed; 1 private child ignored"
+    }
+  ],
+  "logs": {
+    "baseline": {
+      "path": "/tmp/lumen-gui-baseline.log",
+      "sha256": "f1b508fc4003f19c2e51d119a8069727cd8a301681e9a459f333678bd2dce442"
+    },
+    "diagnostics": {
+      "path": "/tmp/lumen-gui-diagnostics.log",
+      "sha256": "84aef21d099baa4ad96b4160ebcfd386a856724c84595f85f48b3f1a4c842a1c"
+    },
+    "truncated-regression": {
+      "path": "/tmp/lumen-gui-truncated-regression.log",
+      "sha256": "dc047a3eff650cf2c61778cec892a48f487c4ff40d84a228d39d1a5753912467"
+    },
+    "mutation": {
+      "path": "/tmp/lumen-gui-mutation.log",
+      "sha256": "213253c6c672c6501bb2a5fe39d5ec4faaf9a014e48e2ef3aa74a3ed0139fcc7"
+    },
+    "restored": {
+      "path": "/tmp/lumen-gui-restored.log",
+      "sha256": "9264c1e100419042b1d8a4671c1230bc8b3162b0c391bb824a70446b0a05489c"
+    }
+  },
+  "gaps": [
+    "No retained failure of the historical well-formed restart request has established its EOF cause.",
+    "The diagnostic regression proves error retention, not the historical EOF repair.",
+    "Quarantine row retained; no retries or deadline changes.",
+    "Canonical full gate and signed landing follow this committed source."
+  ]
+}
