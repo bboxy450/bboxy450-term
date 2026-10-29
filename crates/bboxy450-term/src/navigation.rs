@@ -80,6 +80,9 @@ impl App {
     }
     pub(super) fn pointer_pressed(&mut self, at: [f32; 2]) {
         self.pointer = at;
+        if self.overlay_pointer(at) {
+            return;
+        }
         if self.document.open {
             use bbt_ui::modules::document_modal::controller::Action;
             let action = self
@@ -122,7 +125,9 @@ impl App {
             }
             return;
         }
-        if self.titlebar_pressed(at, false) { return; }
+        if self.titlebar_pressed(at, false) {
+            return;
+        }
         if self.begin_sidebar_resize(at) {
             return;
         }
@@ -452,7 +457,10 @@ impl App {
             regions.insert("sidebar-resize".into(), [r.x, r.y, r.w, r.h]);
         }
         if let Some(layout) = &self.conversation_layout {
-            for (name, r) in ["sidebar-conversation-resize", "sidebar-composer-resize"].into_iter().zip(layout.splitters) {
+            for (name, r) in ["sidebar-conversation-resize", "sidebar-composer-resize"]
+                .into_iter()
+                .zip(layout.splitters)
+            {
                 regions.insert(name.into(), [r.x, r.y, r.w, r.h]);
             }
         }
@@ -501,6 +509,9 @@ impl App {
             }
             let r = layout.viewport;
             regions.insert("launcher:viewport".into(), [r.x, r.y, r.w, r.h]);
+        }
+        for (key, r) in self.app_overlays.regions() {
+            regions.insert(key, [r.x, r.y, r.w, r.h]);
         }
         regions
     }

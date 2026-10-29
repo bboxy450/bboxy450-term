@@ -12,6 +12,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "open", "Ui"),
     ("ui", "key", "Ui"),
     ("ui", "click", "Ui"),
+    ("ui", "right-click", "Ui"),
     ("ui", "drag", "Ui"),
     ("ui", "sidebar-scroll", "Ui"),
     ("ui", "launcher-scroll", "Ui"),
@@ -88,6 +89,18 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
                     .map_err(|_| format!("{USAGE_PREFIX}ui click requires unsigned x y"))?,
                 y: y.parse()
                     .map_err(|_| format!("{USAGE_PREFIX}ui click requires unsigned x y"))?,
+            };
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
+        ["ui", "right-click", x, y] => {
+            let request = bbt_proto::gui::UiRequest::RightClick {
+                x: x.parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}ui right-click requires unsigned x y"))?,
+                y: y.parse()
+                    .map_err(|_| format!("{USAGE_PREFIX}ui right-click requires unsigned x y"))?,
             };
             request
                 .validate()
@@ -245,6 +258,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui click 10 20",
+    "ui right-click 10 20",
     "ui drag 258 100 418 100",
     "ui sidebar-scroll -3",
     "ui launcher-scroll -3",

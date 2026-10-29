@@ -235,6 +235,9 @@ pub fn start_with_sink(
                                 request,
                                 prior_spawns,
                             },
+                            OperatorAsk::SwarmMetadata { op, result } => {
+                                UiEvent::SwarmMetadataReply { op, result }
+                            }
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(ask) => UiEvent::FocusFor(ask),
                             OperatorAsk::Close { id, seat, undo } => {
@@ -262,6 +265,10 @@ pub fn start_with_sink(
 /// What another operator door asks of the window, relayed by logic.
 #[derive(Debug)]
 pub enum OperatorAsk {
+    SwarmMetadata {
+        op: Ulid,
+        result: std::result::Result<(), String>,
+    },
     Ui {
         id: Ulid,
         request: bbt_proto::gui::UiRequest,
@@ -318,6 +325,7 @@ fn publish(
         bboxy450_term::window_state::restore(&mut next, saved).map_err(invalid)?;
         next.place_registry_spawns(&records);
     }
+    next.apply_swarm_metadata();
     preparer.prepare(&mut next)?;
     let next = Arc::new(next);
     {
@@ -415,8 +423,68 @@ enum ActionReply {
     Plugin(Ulid, bool),
     Root(Ulid),
     Roles(Ulid),
+    Swarm(Ulid),
+    Swarms(Ulid),
     Events { stream: String },
     EventCursor,
+}
+
+/// Mutation ordering is per swarm, never a global barrier on PTY traffic or
+/// metadata for another swarm. Operation IDs make reconnect replay idempotent.
+#[derive(Default)]
+struct SwarmMutations {
+    busy: BTreeMap<Ulid, (Ulid, GuiAction)>,
+    waiting: BTreeMap<Ulid, VecDeque<GuiAction>>,
+}
+impl SwarmMutations {
+    fn key(action: &GuiAction) -> Option<(Ulid, Ulid)> {
+        match action {
+            GuiAction::SwarmRename { id, swarm, .. }
+            | GuiAction::SwarmWorkdir { id, swarm, .. } => Some((*id, *swarm)),
+            _ => None,
+        }
+    }
+    fn push(&mut self, action: GuiAction, outgoing: &mut VecDeque<GuiAction>) -> bool {
+        let (op, swarm) = Self::key(&action).expect("swarm mutation");
+        if let std::collections::btree_map::Entry::Vacant(entry) = self.busy.entry(swarm) {
+            entry.insert((op, action.clone()));
+            queue_action(outgoing, action);
+        } else {
+            let pending = self.waiting.entry(swarm).or_default();
+            if pending.len() >= 32 {
+                return false;
+            }
+            pending.push_back(action);
+        }
+        true
+    }
+    fn complete(&mut self, op: Ulid, outgoing: &mut VecDeque<GuiAction>) -> Option<SwarmId> {
+        let swarm = self
+            .busy
+            .iter()
+            .find_map(|(swarm, (expected, _))| (*expected == op).then_some(*swarm))?;
+        self.busy.remove(&swarm);
+        if let Some(pending) = self.waiting.get_mut(&swarm) {
+            let next = pending.pop_front();
+            if pending.is_empty() {
+                self.waiting.remove(&swarm);
+            }
+            if let Some(next) = next {
+                self.push(next, outgoing);
+            }
+        }
+        (!self.busy.contains_key(&swarm)).then_some(SwarmId::from_u128(swarm.0))
+    }
+    fn reconnect(&self, outgoing: &mut VecDeque<GuiAction>) {
+        for (op, action) in self.busy.values() {
+            if !outgoing
+                .iter()
+                .any(|queued| Self::key(queued).is_some_and(|(id, _)| id == *op))
+            {
+                queue_action(outgoing, action.clone());
+            }
+        }
+    }
 }
 
 /// Ordinary terminal results retain request order, including GetHistory's
@@ -435,6 +503,10 @@ impl ActionReplies {
         }
         debug_assert!(!self.full());
         self.0.push_back(match action {
+            GuiAction::SwarmList { id } => ActionReply::Swarms(*id),
+            GuiAction::SwarmGet { id, .. }
+            | GuiAction::SwarmRename { id, .. }
+            | GuiAction::SwarmWorkdir { id, .. } => ActionReply::Swarm(*id),
             GuiAction::ListSeats => ActionReply::Seats,
             GuiAction::ListHosts => ActionReply::Hosts,
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
@@ -459,6 +531,8 @@ impl ActionReplies {
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let independent = match reply {
+            GuiReply::Swarm{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarm(*op)),
+            GuiReply::Swarms{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarms(*op)),
             GuiReply::RolesConfigured { id } => self.0.iter().position(|r| *r == ActionReply::Roles(*id)),
             GuiReply::Knowledge { op, .. } => self
                 .0
@@ -470,7 +544,7 @@ impl ActionReplies {
                 .iter()
                 .position(|r| matches!(r,ActionReply::Plugin(id,_) if id==op)),
             GuiReply::Error { op, .. } => self.0.iter().position(
-                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id) if id==op),
+                |r| matches!(r,ActionReply::Knowledge(id)|ActionReply::Plugin(id,_)|ActionReply::Root(id)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
             ),
             _ => None,
         };
@@ -484,6 +558,8 @@ impl ActionReplies {
                     | ActionReply::Plugin(..)
                     | ActionReply::Root(_)
                     | ActionReply::Roles(_)
+                    | ActionReply::Swarm(_)
+                    | ActionReply::Swarms(_)
             )
         })?;
         let expected = &self.0[at];
@@ -589,6 +665,7 @@ fn attach_events(model: &mut Arc<Model>, outgoing: &mut VecDeque<GuiAction>) {
     // Reconcile state changed between the initial catalogue and Start::New.
     queue_action(outgoing, GuiAction::ListSeats);
     queue_action(outgoing, GuiAction::ListHosts);
+    queue_action(outgoing, GuiAction::SwarmList { id: Ulid::new() });
 }
 
 fn disconnected_events(
@@ -993,6 +1070,7 @@ async fn run_with_control(
     let mut controls = PaneControls::default();
     let mut history = History::default();
     let mut action_replies = ActionReplies::default();
+    let mut swarm_mutations = SwarmMutations::default();
     let mut document_reader = documents::Reader::default();
     let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
         None;
@@ -1102,6 +1180,9 @@ async fn run_with_control(
                             updates.publish(model.clone());
                         }
                         discard_uncertain_actions(&mut outgoing);
+                        swarm_mutations.reconnect(&mut outgoing);
+                        Arc::make_mut(&mut model).swarm_metadata_loaded = false;
+                        updates.publish(model.clone());
                         outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
                         if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
                             updates.publish(model.clone());
@@ -1219,8 +1300,10 @@ async fn run_with_control(
                     UiMsg::EventCursor {stream}=>queue_action(&mut outgoing,GuiAction::GetEventCursor {stream:stream.clone()}),
                     UiMsg::Captured {id,error,frame}=>queue_action(&mut outgoing,GuiAction::Captured {id:*id,error:error.clone(),frame:*frame}),
                     UiMsg::SwarmLaunchDefaults {swarm,directory,environment}=> {
+                        if !swarm_mutations.push(GuiAction::SwarmWorkdir{id:Ulid::new(),swarm:Ulid(swarm.0.0),path:Some(directory.clone())},&mut outgoing) {logger.write("swarm directory queue full; keeping the last acknowledged folder");}
+                        else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);}
                         if let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {
-                            row.workdir=Some(directory.clone()); row.launch_environment=Some(environment.clone());
+                            row.launch_environment=Some(environment.clone());
                             row.recent_directories.retain(|p|p!=directory); row.recent_directories.insert(0,directory.clone()); row.recent_directories.truncate(6);
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
@@ -1234,12 +1317,13 @@ async fn run_with_control(
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
                     },
+                    UiMsg::SwarmRename{id,swarm,name}=> {
+                        if !swarm_mutations.push(GuiAction::SwarmRename{id:*id,swarm:Ulid(swarm.0.0),name:name.clone()},&mut outgoing) {capture(OperatorAsk::SwarmMetadata{op:*id,result:Err("swarm metadata queue full".into())});}
+                        else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);updates.publish(model.clone());}
+                    },
                     UiMsg::SwarmWorkdir {swarm,path}=> {
-                        if path.as_deref().is_none_or(bbt_proto::gui::valid_workdir)
-                            && let Some(row)=Arc::make_mut(&mut model).ui.window.sidebar.swarms.iter_mut().find(|row|row.id==*swarm) {
-                            row.workdir=path.clone();
-                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
-                        }
+                        if !swarm_mutations.push(GuiAction::SwarmWorkdir{id:Ulid::new(),swarm:Ulid(swarm.0.0),path:path.clone()},&mut outgoing) {logger.write("swarm directory queue full; keeping the last acknowledged folder");}
+                        else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);updates.publish(model.clone());}
                     },
                     UiMsg::WindowState(state)=>window_writes.observe(state.clone()),
                     UiMsg::Focused {id,result}=>if let Some(action)=window_writes.fence(GuiAction::Focused {id:*id,result:result.clone()}) {queue_action(&mut outgoing,action);},
@@ -1409,6 +1493,22 @@ async fn run_with_control(
                         reply=>Some(reply),
                       };
                       if let Some(reply)=reply {match reply {
+                        GuiReply::Swarms{op,records}=> {
+                            if terminal_reply==Some(ActionReply::Swarms(op)) {
+                                let current=Arc::make_mut(&mut model);let loaded=current.swarm_metadata_loaded;current.swarm_metadata_loaded=true;
+                                if current.hydrate_swarms(records)||!loaded {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                            }
+                        },
+                        GuiReply::Swarm{op,record}=> {
+                            if terminal_reply==Some(ActionReply::Swarm(op)) {
+                                let absent=record.is_none();
+                                let done=swarm_mutations.complete(op,&mut outgoing);
+                                let current=Arc::make_mut(&mut model);let changed=current.hydrate_swarms(record);
+                                let released=done.is_some_and(|swarm|current.swarm_metadata_pending.remove(&swarm));
+                                if changed||released {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                                capture(OperatorAsk::SwarmMetadata{op,result:if absent{Err("Backend returned no swarm metadata".into())}else{Ok(())}});
+                            }
+                        },
                         GuiReply::Hosts(hosts)=> {
                             if model.hosts != hosts {
                                 Arc::make_mut(&mut model).hosts = hosts;
@@ -1492,6 +1592,10 @@ async fn run_with_control(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            if terminal_reply==Some(ActionReply::Swarm(op)) {
+                                if let Some(swarm)=swarm_mutations.complete(op,&mut outgoing) {Arc::make_mut(&mut model).swarm_metadata_pending.remove(&swarm);updates.publish(model.clone());}
+                                capture(OperatorAsk::SwarmMetadata{op,result:Err(reason.clone())});
+                            }
                             Arc::make_mut(&mut model).closes.refused(op);
                             if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Err(reason.clone())); }
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
@@ -1553,7 +1657,7 @@ async fn run_with_control(
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Swarm {op,..}|GuiReply::Swarms {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);
@@ -1585,7 +1689,9 @@ async fn run_with_control(
                              updates.publish(model.clone());
                          }
                          discard_uncertain_actions(&mut outgoing);
-                         outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
+                        swarm_mutations.reconnect(&mut outgoing);
+                        Arc::make_mut(&mut model).swarm_metadata_loaded=false;updates.publish(model.clone());
+outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                          if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
                     cockpit::Event::Disconnected(reason)=> {
@@ -1598,7 +1704,9 @@ async fn run_with_control(
                              updates.publish(model.clone());
                          }
                          discard_uncertain_actions(&mut outgoing);
-                         outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
+                        swarm_mutations.reconnect(&mut outgoing);
+                        Arc::make_mut(&mut model).swarm_metadata_loaded=false;updates.publish(model.clone());
+outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
                          if disconnected_events(&mut model,&mut outgoing,&reason) {updates.publish(model.clone());}
                     }
                 }
@@ -1618,6 +1726,9 @@ async fn run_with_control(
                 updates.publish(model.clone());
             }
             discard_uncertain_actions(&mut outgoing);
+            swarm_mutations.reconnect(&mut outgoing);
+            Arc::make_mut(&mut model).swarm_metadata_loaded = false;
+            updates.publish(model.clone());
             outgoing.retain(|action| !matches!(action, GuiAction::GetHistory { .. }));
             if disconnected_events(&mut model, &mut outgoing, &error.to_string()) {
                 updates.publish(model.clone());
@@ -1653,6 +1764,58 @@ async fn run_with_control(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn swarm_mutations_await_same_swarm_ack_without_blocking_other_swarms_and_replay_once() {
+        let mut writes = SwarmMutations::default();
+        let mut outgoing = VecDeque::new();
+        let first = GuiAction::SwarmRename {
+            id: Ulid(1),
+            swarm: Ulid(11),
+            name: "render crew".into(),
+        };
+        let next = GuiAction::SwarmWorkdir {
+            id: Ulid(2),
+            swarm: Ulid(11),
+            path: None,
+        };
+        let other = GuiAction::SwarmRename {
+            id: Ulid(3),
+            swarm: Ulid(22),
+            name: "other".into(),
+        };
+        assert!(writes.push(first.clone(), &mut outgoing));
+        assert!(writes.push(next.clone(), &mut outgoing));
+        assert!(writes.push(other.clone(), &mut outgoing));
+        assert_eq!(
+            serde_json::to_value(&outgoing).unwrap(),
+            serde_json::to_value(VecDeque::from([first.clone(), other.clone()])).unwrap()
+        );
+        assert_eq!(writes.complete(Ulid(99), &mut outgoing), None);
+        outgoing.clear();
+        writes.reconnect(&mut outgoing);
+        writes.reconnect(&mut outgoing);
+        assert_eq!(
+            serde_json::to_value(&outgoing).unwrap(),
+            serde_json::to_value(VecDeque::from([first, other])).unwrap()
+        );
+        outgoing.clear();
+        assert_eq!(writes.complete(Ulid(1), &mut outgoing), None);
+        assert_eq!(
+            serde_json::to_value(&outgoing).unwrap(),
+            serde_json::to_value(VecDeque::from([next])).unwrap()
+        );
+        assert_eq!(
+            writes.complete(Ulid(2), &mut outgoing),
+            Some(SwarmId::from_u128(11))
+        );
+        assert_eq!(
+            writes.complete(Ulid(3), &mut outgoing),
+            Some(SwarmId::from_u128(22))
+        );
+        outgoing.clear();
+        writes.reconnect(&mut outgoing);
+        assert!(outgoing.is_empty());
+    }
 
     // keeps: spec c1-live-seats §2a
     #[test]

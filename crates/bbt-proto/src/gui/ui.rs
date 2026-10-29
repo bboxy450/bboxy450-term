@@ -7,6 +7,9 @@
 //! Window chrome relayed to the GUI owner: `ctl ui …` and the frame fence's layouts.
 use super::*;
 
+/// Logical input verbs; old logic is refreshed without replacing live PTYs.
+pub const UI_CONTROL_VERSION: u16 = 1;
+
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FocusFrame {
@@ -29,6 +32,11 @@ pub enum UiRequest {
     Key(Vec<String>),
     /// Logical window coordinates through the native pointer handler.
     Click {
+        x: u32,
+        y: u32,
+    },
+    /// Logical secondary-button click; existing Click remains the left-button wire.
+    RightClick {
         x: u32,
         y: u32,
     },
@@ -84,7 +92,7 @@ impl UiRequest {
             {
                 Err("invalid_ui_wheel: expected at most 1000 lines")
             }
-            Self::Click { x, y } if *x > 32768 || *y > 32768 => {
+            Self::Click { x, y } | Self::RightClick { x, y } if *x > 32768 || *y > 32768 => {
                 Err("invalid_ui_click: coordinates exceed window bounds")
             }
             Self::Drag { from, to } if from.iter().chain(to).any(|v| *v > 32768) => {
@@ -326,6 +334,8 @@ pub const UI_KEYS: &[&str] = &[
     "esc",
     "enter",
     "tab",
+    "menu",
+    "shift-f10",
     "shift-tab",
     "up",
     "down",

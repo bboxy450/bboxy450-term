@@ -1,0 +1,24 @@
+ROLE: EXECUTOR
+scope: native/ctl context menus, arbitrary-component dialogs, authoritative swarm rename
+worktree: /Users/feral/mydev/bboxy450-term-ui-dialogs
+branch: feature/ui-overlays-20261028
+base: a2363d1d5d2aa5e7af78c8c4716ada63c991f9ce (signed d700151e fallback on combined3796c4fd foundations)
+verified_utc: 2026-10-29T00:41:55Z
+
+app_overlays.rs: captured swarm/seat targets, generic Modal/controller/action/edit callbacks, rename editor, pending/inline error/cancel lifecycle and retained cursor regions.
+main.rs/navigation.rs/pointer_cursor.rs/headless.rs/desktop_menu.rs/scene.rs: secondary clicks and Menu/Shift-F10; top overlay owns keyboard/release/IME/pointer/wheel input and native/headless paint, while menu actions reuse existing helpers.
+model.rs/live.rs: nonblocking typed SwarmList hydration; >=revision replay guard; explicit loaded/pending metadata; per-swarm mutation acknowledgement ordering and idempotent reconnect replay; actual cwd and launch-default changes reach authority.
+cockpit.rs/proto gui/ui.rs/ctl/ui.rs: bounded RightClick wire preserves left Click; independently defaulted UI_CONTROL_VERSION refreshes old logic while retaining PTYs.
+
+make test-app-overlays: exit 0
+  proto ui_layout_text: 4 passed, 0 failed
+  app lib: 131 passed, 0 failed, 3 pre-existing intentional ignored
+  app bin: 163 passed, 0 failed, 5 pre-existing intentional ignored
+  ctl context_menu_rename_is_trapped_validated_and_persistent: 1 passed, 0 failed; real private headless app/PTY, invalid inline error, cancel no mutation, captured focus, no PTY text leak, persistence across UI restart and independent UI-control marker refresh
+  strict bboxy450-proto + bboxy450-term Clippy --all-targets -- -D warnings: exit 0
+git diff --check: exit 0
+raw_log: /Users/feral/Library/Logs/bboxy450-term/app-overlays-20261028-tests.log
+raw_log_sha256: c2efc6bca5be15bbc684cc57ce89983041bc2967fe71e37ed0e535c053841d45
+
+Earlier make attempts exited 2, all corrected: non-PartialEq queue assertions/exhaustive fixture; existing keyboard source guard; focused Input hiding its error caption; four strict Clippy findings. Raw failed logs remain outside Git beside the final log.
+No operator input, OS input injection, credentials, frontend legacy seeding, document/task scope routing, clipboard bridge, full CI/parity, installation, publication or landing in this scoped change. Parent owns integrated full-source verification and landing.

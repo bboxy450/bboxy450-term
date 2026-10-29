@@ -660,13 +660,18 @@ impl Scene {
             self.layout_revision = self.layout_revision.saturating_add(1);
         }
         self.tree = tree;
-        self.terminal_backgrounds = self.tree.as_ref().into_iter()
+        self.terminal_backgrounds = self
+            .tree
+            .as_ref()
+            .into_iter()
             .flat_map(SplitNode::leaves)
             .filter_map(|id| {
-                model.screens.get(&id).map(|screen| (
-                    id,
-                    bboxy450_term::model::terminal_background(screen, model.ui.window.theme),
-                ))
+                model.screens.get(&id).map(|screen| {
+                    (
+                        id,
+                        bboxy450_term::model::terminal_background(screen, model.ui.window.theme),
+                    )
+                })
             })
             .collect();
         self.closed = model
@@ -1599,7 +1604,9 @@ impl Scene {
                         term.rect,
                         0.,
                         crate::gpu::terminal_background(
-                            *background, ctx.theme, self.focused() == Some(id),
+                            *background,
+                            ctx.theme,
+                            self.focused() == Some(id),
                         ),
                     );
                 }
@@ -1640,11 +1647,19 @@ impl Scene {
         let width = self.sidebar_width_for(size);
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
-        let minimum = view.minimum_height(ctx, width, &self.metrics)?.min(available);
+        let minimum = view
+            .minimum_height(ctx, width, &self.metrics)?
+            .min(available);
         let maximum = (available - 96.).max(minimum);
-        let height = (available * self.sidebar_layout.conversation_fraction).clamp(minimum, maximum);
+        let height =
+            (available * self.sidebar_layout.conversation_fraction).clamp(minimum, maximum);
         let element = view
-            .element_bounded(ctx, [width, height], &self.metrics, self.sidebar_layout.composer_body_height)
+            .element_bounded(
+                ctx,
+                [width, height],
+                &self.metrics,
+                self.sidebar_layout.composer_body_height,
+            )
             .map_err(|e| e.to_string())?;
         let layout = element
             .layout(
@@ -1654,9 +1669,18 @@ impl Scene {
             )
             .map_err(|e| e.to_string())?;
         let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
-        let body_top = named(&layout, "composer-margin").ok_or("composer boundary missing")?.rect.y;
-        let handle = |y: f32| Rect::new(0., (y - 4.).max(STYLE.spacing.title_bar as f32),
-            (width - 4.).max(0.), 8_f32.min((size[1] - footer - y + 4.).max(0.)));
+        let body_top = named(&layout, "composer-margin")
+            .ok_or("composer boundary missing")?
+            .rect
+            .y;
+        let handle = |y: f32| {
+            Rect::new(
+                0.,
+                (y - 4.).max(STYLE.spacing.title_bar as f32),
+                (width - 4.).max(0.),
+                8_f32.min((size[1] - footer - y + 4.).max(0.)),
+            )
+        };
         let splitters = [handle(layout.rect.y), handle(body_top)];
         let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
         actions.record_text_links(&layout, &self.metrics);
@@ -1910,6 +1934,65 @@ impl Scene {
             }
         }
         Ok(ops)
+    }
+    /// App overlays accept the toolkit's arbitrary component tree and use the
+    /// same shaping/context as every other native surface.
+    pub fn context_menu_layout(
+        &self,
+        menu: &ui::overlays::context_menu::Menu,
+        anchor: [f32; 2],
+        size: [f32; 2],
+    ) -> Result<c::Layout, String> {
+        menu.layout(
+            anchor,
+            Rect::new(0., 0., size[0], size[1]),
+            self.ui_context(),
+            &self.metrics,
+        )
+        .map_err(Into::into)
+    }
+    pub fn app_dialog_layout(
+        &self,
+        mut modal: ui::overlays::Modal,
+        size: [f32; 2],
+    ) -> Result<c::Layout, String> {
+        let width = 480_f32.min((size[0] - 24.).max(1.));
+        modal.style.overrides.width = Some(ui::Length::Px(width));
+        let element = modal.element(self.ui_context());
+        let natural = element
+            .layout(
+                Rect::new(0., 0., width, 0.),
+                self.ui_context(),
+                &self.metrics,
+            )
+            .map_err(str::to_owned)?;
+        element
+            .layout(
+                Rect::new(
+                    (size[0] - width) / 2.,
+                    ((size[1] - natural.rect.h) / 2.).max(12.),
+                    width,
+                    0.,
+                ),
+                self.ui_context(),
+                &self.metrics,
+            )
+            .map_err(Into::into)
+    }
+    pub fn app_dialog_backdrop(&self, size: [f32; 2]) -> Vec<c::Paint> {
+        let mut backdrop = c::Overlay::new(c::Element::Spacer);
+        backdrop.style.overrides.width = Some(ui::Length::Px(size[0]));
+        backdrop.style.overrides.height = Some(ui::Length::Px(size[1]));
+        backdrop.style.overrides.radii = Some([ui::Length::Px(0.); 4]);
+        backdrop.min_height = ui::Length::Px(size[1]);
+        c::Element::Overlay(backdrop)
+            .layout(
+                Rect::new(0., 0., size[0], size[1]),
+                self.ui_context(),
+                &self.metrics,
+            )
+            .map(|layout| c::paint(&layout, self.ui_context()))
+            .unwrap_or_default()
     }
     pub fn document_layout(
         &self,
@@ -2952,12 +3035,7 @@ mod launcher_tests {
         };
         let controller = ui::modules::settings::controller::Controller::new("Appearance");
         let page = scene
-            .settings_page_layout(
-                [1600., 960.],
-                &view,
-                &controller.presentation(),
-                "saved",
-            )
+            .settings_page_layout([1600., 960.], &view, &controller.presentation(), "saved")
             .unwrap();
         fn count(node: &c::Layout) -> usize {
             usize::from(matches!(node.kind, c::LayoutKind::ScrollView { .. }))

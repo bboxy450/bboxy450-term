@@ -26,6 +26,9 @@ fn native(cursor: Cursor) -> winit::window::CursorIcon {
 
 impl App {
     pub(super) fn cursor_at(&self, at: [f32; 2]) -> Cursor {
+        if self.app_overlays.open() {
+            return self.app_overlays.cursor(at);
+        }
         // A modal owns the whole window, including its otherwise inert backdrop.
         // Never advertise a control underneath it as clickable.
         if self.document.open {
@@ -61,8 +64,12 @@ impl App {
                     }
                 });
         }
-        if self.titlebar.actionable(at) { return Cursor::Pointer; }
-        if self.sidebar_vertical_drag.is_some() { return Cursor::NsResize; }
+        if self.titlebar.actionable(at) {
+            return Cursor::Pointer;
+        }
+        if self.sidebar_vertical_drag.is_some() {
+            return Cursor::NsResize;
+        }
         if self.sidebar_drag.active() {
             return Cursor::EwResize;
         }
@@ -79,7 +86,9 @@ impl App {
         {
             return Cursor::EwResize;
         }
-        if self.sidebar_vertical_handle(at).is_some() { return Cursor::NsResize; }
+        if self.sidebar_vertical_handle(at).is_some() {
+            return Cursor::NsResize;
+        }
         let child_control = self
             .close_regions
             .iter()

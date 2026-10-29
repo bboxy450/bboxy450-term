@@ -6,11 +6,14 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
 mod animation_clock;
+mod app_overlays;
 mod app_starting;
 mod assets;
 mod budget;
 mod capture;
 mod command_retry;
+mod desktop_menu;
+mod desktop_window;
 mod display_link;
 mod e2e_checklist;
 mod gpu;
@@ -19,8 +22,6 @@ mod live;
 mod log;
 mod navigation;
 mod pointer_cursor;
-mod desktop_window;
-mod desktop_menu;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -78,6 +79,10 @@ pub enum UiEvent {
         token: bbt_mux::Ulid,
         value: String,
         valid: bool,
+    },
+    SwarmMetadataReply {
+        op: bbt_mux::Ulid,
+        result: Result<(), String>,
     },
     SwarmFolderPicked {
         swarm: bbt_proto::SwarmId,
@@ -941,6 +946,8 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
         "esc" => (Key::Named(NamedKey::Escape), KeyCode::Escape),
         "enter" => (Key::Named(NamedKey::Enter), KeyCode::Enter),
         "tab" => (Key::Named(NamedKey::Tab), KeyCode::Tab),
+        "f10" => (Key::Named(NamedKey::F10), KeyCode::F10),
+        "menu" => (Key::Named(NamedKey::ContextMenu), KeyCode::ContextMenu),
         "backspace" => (Key::Named(NamedKey::Backspace), KeyCode::Backspace),
         "up" => (Key::Named(NamedKey::ArrowUp), KeyCode::ArrowUp),
         "down" => (Key::Named(NamedKey::ArrowDown), KeyCode::ArrowDown),
@@ -1154,7 +1161,11 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
     }
     if command && !mods.alt_key() && !mods.shift_key() && !mods.control_key() {
         if shortcut == Some('w') {
-            return if repeat { RoutedKey::Local } else { RoutedKey::CloseFocusedSeat };
+            return if repeat {
+                RoutedKey::Local
+            } else {
+                RoutedKey::CloseFocusedSeat
+            };
         }
         if shortcut == Some(',') {
             return if repeat {
@@ -1808,9 +1819,14 @@ fn mute_command(
     }
     mute_seat_command(Some(model), id)
 }
-fn mute_seat_command(model: Option<&bboxy450_term::model::Model>, id: SeatId) -> Option<live::UiMsg> {
+fn mute_seat_command(
+    model: Option<&bboxy450_term::model::Model>,
+    id: SeatId,
+) -> Option<live::UiMsg> {
     let seat = model?.ui.seats.get(&id)?;
-    if seat.lifecycle != bbt_ui_model::Lifecycle::Open { return None; }
+    if seat.lifecycle != bbt_ui_model::Lifecycle::Open {
+        return None;
+    }
     Some(live::UiMsg::Messaging {
         id: bbt_mux::Ulid::new(),
         swarm_id: bbt_proto::SwarmId::from_u128(seat.swarm.0.0),
@@ -1948,6 +1964,7 @@ struct App {
     document: documents::Host,
     document_return: Option<Stage>,
     document_layout: Option<scene::DocumentLayout>,
+    app_overlays: app_overlays::Host,
     composer: ComposeController,
     composer_client: messaging::Client,
     composer_scope: Option<bbt_proto::SwarmId>,
@@ -2144,6 +2161,7 @@ impl App {
             },
             document_return: None,
             document_layout: None,
+            app_overlays: Default::default(),
             composer: ComposeController::new(composer::Composer {
                 focus: args.iter().any(|arg| arg == "--compose"),
                 ..Default::default()
@@ -2570,13 +2588,15 @@ impl App {
     }
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
-            window.set_ime_allowed(
+            window.set_ime_allowed(if self.app_overlays.open() {
+                self.app_overlays.focused_field().is_some()
+            } else {
                 !self.document.open
                     && (self.launcher.is_some()
                         || self.composer.view.focus
                         || self.reject_focus
-                        || self.settings_ime()),
-            );
+                        || self.settings_ime())
+            });
         }
     }
     fn settings_action(&mut self, action: settings_controller::Action) {
@@ -2812,7 +2832,9 @@ impl App {
         self.request_mute(mute_seat_command(self.live_state.as_deref(), seat));
     }
     fn request_mute(&mut self, message: Option<live::UiMsg>) {
-        if self.mute.pending() { return; }
+        if self.mute.pending() {
+            return;
+        }
         if let Some(message) = message {
             self.mute.requested(&message);
             self.composer_notice();
@@ -5022,7 +5044,10 @@ impl App {
             self.refresh_conversation();
             for (op, outcome) in results {
                 if let bboxy450_term::model::SpawnOutcome::Placed(seat) = &outcome {
-                    if !self.document.open && self.starting.should_focus(op) {
+                    if !self.document.open
+                        && !self.app_overlays.open()
+                        && self.starting.should_focus(op)
+                    {
                         self.focus_action_applied(FocusAction::Activate(
                             *seat,
                             FocusOrigin::Keyboard,
@@ -5069,6 +5094,91 @@ impl App {
             // may not have been posted yet if the producer was descheduled.
             let _ = proxy.send_event(UiEvent::DemoFinished);
         });
+    }
+    /// Returns true for every key while open, including releases and unsupported
+    /// shortcuts: an overlay must never leak terminal protocol bytes.
+    fn overlay_key(&mut self, input: &keyboard::Input<'_>) -> bool {
+        use app_overlays::{Surface, Target};
+        use bbt_ui::overlays::{Outcome, context_menu as menu, dialog};
+        if !self.app_overlays.open() {
+            if input.state.is_pressed()
+                && !input.repeat
+                && (matches!(input.logical_key, Key::Named(NamedKey::ContextMenu))
+                    || (matches!(input.logical_key, Key::Named(NamedKey::F10))
+                        && input.modifiers.state.shift_key()))
+                && let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused)
+            {
+                let anchor = self
+                    .focus_bounds
+                    .iter()
+                    .find(|(id, _)| *id == seat)
+                    .map_or(self.pointer, |(_, r)| [r.x + 16., r.y + 24.]);
+                self.open_context(Target::Seat(seat), anchor);
+                return true;
+            }
+            return false;
+        }
+        if !input.state.is_pressed() {
+            return true;
+        }
+        let mut edit = None;
+        let outcome = match &mut self.app_overlays.surface {
+            Some(Surface::Menu { controller, .. }) => match input.logical_key {
+                Key::Named(NamedKey::Escape) => controller.handle(menu::Command::Cancel),
+                Key::Named(NamedKey::Enter | NamedKey::Space) => {
+                    controller.handle(menu::Command::Submit {
+                        repeat: input.repeat,
+                    })
+                }
+                Key::Named(NamedKey::ArrowUp) => {
+                    controller.handle(menu::Command::Next { backwards: true })
+                }
+                Key::Named(NamedKey::ArrowDown | NamedKey::Tab) => {
+                    controller.handle(menu::Command::Next {
+                        backwards: input.modifiers.state.shift_key(),
+                    })
+                }
+                Key::Named(NamedKey::Home) => controller.handle(menu::Command::First),
+                Key::Named(NamedKey::End) => controller.handle(menu::Command::Last),
+                _ => Outcome::Local,
+            },
+            Some(Surface::Dialog { dialog, .. }) => match input.logical_key {
+                Key::Named(NamedKey::Escape) => {
+                    if dialog.composing {
+                        edit = Some(EditCommand::CancelPreedit);
+                        Outcome::Changed
+                    } else {
+                        dialog
+                            .controller
+                            .handle(dialog::Command::Cancel { composing: false })
+                    }
+                }
+                Key::Named(NamedKey::Enter) => dialog.controller.handle(dialog::Command::Submit {
+                    composing: dialog.composing,
+                    repeat: input.repeat,
+                }),
+                Key::Named(NamedKey::Tab) => {
+                    edit = Some(EditCommand::CancelPreedit);
+                    dialog.controller.handle(dialog::Command::Next {
+                        backwards: input.modifiers.state.shift_key(),
+                    })
+                }
+                _ => {
+                    if let RoutedKey::Composer(ComposeCommand::Edit(command)) =
+                        route_composer(input, 0, ComposeField::Address)
+                    {
+                        edit = Some(command);
+                    }
+                    Outcome::Changed
+                }
+            },
+            None => Outcome::Local,
+        };
+        if let Some(edit) = edit {
+            self.overlay_edit(edit);
+        }
+        self.overlay_outcome(outcome);
+        true
     }
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
@@ -5305,7 +5415,12 @@ impl App {
                 .swarms
                 .iter()
                 .find(|row| row.id == *swarm)
-                .map(|row| row.workdir == *path)
+                .map(|row| {
+                    row.workdir == *path
+                        && model.swarm_metadata_loaded
+                        && !model.swarm_metadata_pending.contains(swarm)
+                        && model.swarm_metadata.contains_key(&bbt_mux::Ulid(swarm.0.0))
+                })
                 .ok_or_else(|| "swarm_unavailable".into()),
             UiEffect::Compose(sent) => Ok(self.composed_entry(sent).is_some()),
             UiEffect::Spawn(id) => {
@@ -5379,10 +5494,17 @@ impl App {
             }
             UiEffect::SidebarLayout(layout) => {
                 if let Some(error) = &self.preferences.error {
-                    Err(format!("ui_resize_refused: sidebar layout was not saved: {error}"))
+                    Err(format!(
+                        "ui_resize_refused: sidebar layout was not saved: {error}"
+                    ))
                 } else if self.preferences.preferences.sidebar != *layout {
-                    Err("ui_frame_refused: a newer vertical sidebar resize superseded this request".into())
-                } else { Ok(self.scene.sidebar_layout == *layout) }
+                    Err(
+                        "ui_frame_refused: a newer vertical sidebar resize superseded this request"
+                            .into(),
+                    )
+                } else {
+                    Ok(self.scene.sidebar_layout == *layout)
+                }
             }
             UiEffect::SidebarWidth(width) => {
                 if self.sidebar_width != Some(*width) {
@@ -5798,13 +5920,18 @@ impl App {
                 let vertical = self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
                 if let Some(effects) = &mut self.ui_collect {
                     if vertical {
-                        effects.push(UiEffect::SidebarLayout(self.preferences.preferences.sidebar));
+                        effects.push(UiEffect::SidebarLayout(
+                            self.preferences.preferences.sidebar,
+                        ));
                         effects.push(UiEffect::Preferences { saved: true });
                     } else {
-                        effects.push(UiEffect::SidebarWidth(self.sidebar_width.expect("completed resize")));
+                        effects.push(UiEffect::SidebarWidth(
+                            self.sidebar_width.expect("completed resize"),
+                        ));
                     }
                 }
             }
+            UiRequest::RightClick { x, y } => self.overlay_right_click([x as f32, y as f32]),
             UiRequest::Click { x, y } => {
                 self.pointer_pressed([x as f32, y as f32]);
                 self.end_sidebar_resize();
@@ -5892,6 +6019,9 @@ impl App {
             UiRequest::Key(keys) => {
                 for (applied, key) in keys.into_iter().enumerate() {
                     let input = chrome_input(&key)?;
+                    if self.overlay_key(&input) {
+                        continue;
+                    }
                     let modes = self
                         .focus
                         .stage
@@ -6015,6 +6145,9 @@ impl App {
         }
         if let Some(document) = &self.document_layout {
             roots.push(&document.layout);
+        }
+        if let Some(overlay) = self.app_overlays.tree() {
+            roots.push(overlay);
         }
         let mut remaining = 4096;
         let mut remaining_text = 16 * 1024;
@@ -6251,6 +6384,7 @@ impl App {
         self.sidebar_resize_region = self.scene.sidebar_resize_region(&layouts, logical);
         self.pane_bounds = bounds;
         self.solve_launcher(logical)?;
+        self.solve_app_overlay(logical)?;
         if self.document.open {
             let context = self.scene.ui_context();
             if self
@@ -6470,14 +6604,17 @@ impl App {
             }
             self.restored_size = None;
         }
-        if let Some(launcher) = &self.launcher_layout {
+        if !self.app_overlays.open()
+            && let Some(launcher) = &self.launcher_layout
+        {
             let caret = launcher.candidate_area();
             self.window.as_ref().unwrap().set_ime_cursor_area(
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
-        if self.launcher.is_none()
+        if !self.app_overlays.open()
+            && self.launcher.is_none()
             && (self.composer.view.focus || self.reject_focus)
             && let Some(layout) = &self.conversation_layout
         {
@@ -6494,7 +6631,8 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
-        if self.launcher.is_none()
+        if !self.app_overlays.open()
+            && self.launcher.is_none()
             && self.settings_ime()
             && let Some(regions) = self
                 .local_page_layout
@@ -6536,6 +6674,7 @@ impl App {
             rims,
         ));
         pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
+        pane_overlay.extend(self.paint_app_overlay());
         if !live {
             ops.append(&mut pane_overlay);
         }
@@ -6755,9 +6894,14 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
             UiEvent::DesktopAction(action) => {
                 if let Some(hard) = self.desktop_action(action) {
-                    if hard { self.request_shutdown(event_loop); } else { self.request_close(event_loop); }
+                    if hard {
+                        self.request_shutdown(event_loop);
+                    } else {
+                        self.request_close(event_loop);
+                    }
                 }
             }
             UiEvent::TitlebarDoubleClick => self.titlebar_double_click(),
@@ -7149,6 +7293,7 @@ impl ApplicationHandler<UiEvent> for App {
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
+                self.overlay_backend_lost();
                 self.command_retry.cancel();
                 self.custody.next(Instant::now(), false);
                 self.pending_commands
@@ -7268,6 +7413,9 @@ impl ApplicationHandler<UiEvent> for App {
                 self.titlebar.moved(self.pointer);
                 self.pointer_inside = true;
                 self.update_cursor();
+                if self.overlay_hover(self.pointer) {
+                    return;
+                }
                 if self.move_sidebar_resize(self.pointer) {
                     return;
                 }
@@ -7342,6 +7490,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
+            WindowEvent::MouseWheel { .. } if self.app_overlays.open() => {}
             WindowEvent::MouseWheel { delta, .. } if self.launcher.is_some() => {
                 let dy = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -y * 28.,
@@ -7423,14 +7572,17 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.launcher.is_none()
                     && self.conversation_layout.as_ref().is_some_and(|layout| {
                         let r = layout.regions.body;
-                        self.pointer[0] >= r.x && self.pointer[0] < r.right()
-                            && self.pointer[1] >= r.y && self.pointer[1] < r.bottom()
+                        self.pointer[0] >= r.x
+                            && self.pointer[0] < r.right()
+                            && self.pointer[1] >= r.y
+                            && self.pointer[1] < r.bottom()
                     }) =>
             {
                 let dy = match delta {
                     MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => -p.y as f32
-                        / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32),
+                    MouseScrollDelta::PixelDelta(p) => {
+                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                    }
                 };
                 self.scroll_composer_body(dy);
             }
@@ -7504,11 +7656,20 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Left,
                 ..
             } => {
-                if !self.document.open && self.launcher.is_none() && self.titlebar_pressed(self.pointer, true) {
+                if !self.app_overlays.open()
+                    && !self.document.open
+                    && self.launcher.is_none()
+                    && self.titlebar_pressed(self.pointer, true)
+                {
                     return;
                 }
                 self.pointer_pressed(self.pointer);
             }
+            WindowEvent::MouseInput {
+                state: ElementState::Released,
+                button: MouseButton::Left,
+                ..
+            } if self.app_overlays.open() => {}
             WindowEvent::MouseInput {
                 state: ElementState::Released,
                 button: MouseButton::Left,
@@ -7522,6 +7683,23 @@ impl ApplicationHandler<UiEvent> for App {
                 }
                 self.update_cursor();
             }
+            WindowEvent::MouseInput {
+                state: ElementState::Pressed,
+                button: MouseButton::Right,
+                ..
+            } => self.overlay_right_click(self.pointer),
+            WindowEvent::Ime(event) if self.app_overlays.open() => match event {
+                Ime::Preedit(text, cursor) => {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.overlay_edit(EditCommand::Preedit { text, caret });
+                }
+                Ime::Commit(text) => self.overlay_edit(EditCommand::Commit(text)),
+                Ime::Disabled => self.overlay_edit(EditCommand::CancelPreedit),
+                _ => {}
+            },
             WindowEvent::Ime(_) if self.document.open => {}
             WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
                 if self.launcher.is_some() {
@@ -7577,6 +7755,10 @@ impl ApplicationHandler<UiEvent> for App {
                     );
                 }
                 let input = self.keyboard.event(&event, self.modifiers);
+                if self.overlay_key(&input) {
+                    self.keyboard.consumed(event.physical_key, event.state);
+                    return;
+                }
                 if event.state.is_pressed() {
                     self.focus.controller.key_pressed(Instant::now());
                 }
@@ -7716,6 +7898,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
             | live::UiMsg::PluginControl { .. }
             | live::UiMsg::KnowledgeControl { .. }
             | live::UiMsg::IdentityControl { .. }
+            | live::UiMsg::SwarmRename { .. }
     )
 }
 
@@ -8350,7 +8533,11 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
     if hook_args.iter().any(|a| a == "--desktop-fixture")
-        && (!cfg!(debug_assertions) || bboxy450_term::cockpit::Config::test_account_from_args(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)?.is_none()) {
+        && (!cfg!(debug_assertions)
+            || bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
+                .map_err(|error| error as Box<dyn std::error::Error>)?
+                .is_none())
+    {
         return Err("--desktop-fixture requires a debug build and --test-account".into());
     }
     let diagnostics_root = diagnostic_root(&hook_args).ok();
@@ -9496,6 +9683,7 @@ mod input_tests {
                 live::UiMsg::NewSwarm(_)
                 | live::UiMsg::ConfigureRoles { .. }
                 | live::UiMsg::SwarmWorkdir { .. }
+                | live::UiMsg::SwarmRename { .. }
                 | live::UiMsg::SwarmLaunchDefaults { .. }
                 | live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
@@ -9791,15 +9979,29 @@ mod layout_shortcut_tests {
     fn close_shortcut_follows_layout_suppresses_repeat_and_preserves_page_context() {
         let mut input = character("w", "w", KeyCode::KeyJ, Some("w"), ModifiersState::SUPER);
         assert_eq!(route_key(&input, 0, None), RoutedKey::CloseFocusedSeat);
-        assert_eq!(route_key(&input, 0, Some("claude")), RoutedKey::CloseFocusedSeat);
-        assert_eq!(route_composer(&input, 0, ComposeField::Body), RoutedKey::CloseFocusedSeat);
-        for routed in [route_local_page(&input, 0), route_settings(&input, 0, true), route_document(&input, 0)] {
+        assert_eq!(
+            route_key(&input, 0, Some("claude")),
+            RoutedKey::CloseFocusedSeat
+        );
+        assert_eq!(
+            route_composer(&input, 0, ComposeField::Body),
+            RoutedKey::CloseFocusedSeat
+        );
+        for routed in [
+            route_local_page(&input, 0),
+            route_settings(&input, 0, true),
+            route_document(&input, 0),
+        ] {
             assert_eq!(routed, RoutedKey::LocalPage(PageCommand::Close));
         }
         input.repeat = true;
         assert_eq!(route_key(&input, 0, None), RoutedKey::Local);
         input.repeat = false;
-        for modifiers in [ModifiersState::SUPER | ModifiersState::SHIFT, ModifiersState::SUPER | ModifiersState::ALT, ModifiersState::SUPER | ModifiersState::CONTROL] {
+        for modifiers in [
+            ModifiersState::SUPER | ModifiersState::SHIFT,
+            ModifiersState::SUPER | ModifiersState::ALT,
+            ModifiersState::SUPER | ModifiersState::CONTROL,
+        ] {
             input.modifiers.state = modifiers;
             assert_ne!(route_key(&input, 0, None), RoutedKey::CloseFocusedSeat);
         }

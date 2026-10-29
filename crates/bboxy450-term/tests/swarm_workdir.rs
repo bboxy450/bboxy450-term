@@ -1503,28 +1503,53 @@ fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
 fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart() {
     let mut fixture = Fixture::new();
     fixture.start();
-    let swarm = fixture.ctl(&["ui", "layout"])["swarm"].as_str().unwrap().to_owned();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     let first = fixture.spawn("claude", &swarm, None);
     let second = fixture.spawn("claude", &swarm, None);
     fixture.ctl(&["ui", "focus", &first]);
     let before = fixture.ctl(&["seat", "ls"]);
     let owners = fixture.owners();
     let muted = |fixture: &Fixture, seat: &str| {
-        fixture.ctl(&["seat", "ls"]).as_array().unwrap().iter()
-            .find(|row| row["record"]["id"] == seat).unwrap()["record"]["muted"].as_bool().unwrap()
+        fixture
+            .ctl(&["seat", "ls"])
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()["record"]["muted"]
+            .as_bool()
+            .unwrap()
     };
     let background = click_region(&fixture, &format!("seat-mute:{second}"));
-    assert_eq!(background["focused"], first, "muting another row never moves focus");
+    assert_eq!(
+        background["focused"], first,
+        "muting another row never moves focus"
+    );
     assert!(muted(&fixture, &second));
     assert!(!muted(&fixture, &first));
     click_region(&fixture, &format!("pane-mute:{first}"));
     assert!(muted(&fixture, &first));
     capture_navigation(&fixture, "seat-mute-controls");
     if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
-        fs::write(PathBuf::from(directory).join("seat-mute-errors.json"), serde_json::to_vec_pretty(&fixture.ctl(&["debug", "errors"])).unwrap()).unwrap();
+        fs::write(
+            PathBuf::from(directory).join("seat-mute-errors.json"),
+            serde_json::to_vec_pretty(&fixture.ctl(&["debug", "errors"])).unwrap(),
+        )
+        .unwrap();
     }
     fixture.ctl(&["seat", "type", &first, "MUTED-OPERATOR-CONTROL\n"]);
-    fixture.ctl(&["seat", "wait", &first, "--text", "MUTED-OPERATOR-CONTROL", "--timeout", "10000"]);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &first,
+        "--text",
+        "MUTED-OPERATOR-CONTROL",
+        "--timeout",
+        "10000",
+    ]);
     fixture.ctl(&["ui", "key", "cmd-m"]);
     assert!(!muted(&fixture, &first));
     assert!(muted(&fixture, &second));
@@ -1540,8 +1565,16 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     let after = fixture.ctl(&["seat", "ls"]);
     for seat in [&first, &second] {
         let identity = |rows: &Value| {
-            let row = rows.as_array().unwrap().iter().find(|row| row["record"]["id"] == *seat).unwrap();
-            (row["record"]["generation"].clone(), row["state"]["process"].clone())
+            let row = rows
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["record"]["id"] == *seat)
+                .unwrap();
+            (
+                row["record"]["generation"].clone(),
+                row["state"]["process"].clone(),
+            )
         };
         assert_eq!(identity(&before), identity(&after));
     }
@@ -2086,7 +2119,11 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     // fixture's owner record. The next ordinary UI attach upgrades logic,
     // preserving the supervisor and every harness PID/generation.
     let owner_path = fixture.root.join("run/logic.owner.json");
-    for field in ["mcp_control_version", "swarm_metadata_version"] {
+    for field in [
+        "mcp_control_version",
+        "swarm_metadata_version",
+        "ui_control_version",
+    ] {
         let old_owners = fixture.owners();
         let mut ui = fixture.app.take().unwrap();
         ui.kill().unwrap();
@@ -2454,4 +2491,128 @@ fn sidebar_vertical_splits_resize_save_and_restore_without_restarting_harnesses(
     assert_eq!(fs::read_to_string(&config).unwrap(), saved);
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+// keeps: app overlays — captured targets, trapped input and authoritative rename persistence.
+#[test]
+#[ignore = "private ctl overlay/metadata/restart boundary; make test-app-overlays"]
+fn context_menu_rename_is_trapped_validated_and_persistent() {
+    fn right_click(fixture: &Fixture, key: &str) -> Value {
+        let layout = fixture.ctl(&["ui", "layout"]);
+        let r = layout["regions"][key]
+            .as_array()
+            .unwrap_or_else(|| panic!("missing {key}: {layout}"));
+        let x = (r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        let y = (r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        fixture.ctl(&["ui", "right-click", &x, &y])
+    }
+    fn text(frame: &Value) -> String {
+        frame.to_string()
+    }
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let layout = fixture.ctl(&["ui", "layout"]);
+    let swarm = layout["swarm"].as_str().unwrap().to_owned();
+    let seat = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&seat, &fixture.root.join("repository"));
+    let original = fixture.ctl(&["ui", "layout"]);
+    let focused = original["focused"].clone();
+    let menu = right_click(&fixture, &format!("toggle-swarm:{swarm}"));
+    assert_eq!(
+        menu["focused"], focused,
+        "secondary click must not focus/toggle underneath"
+    );
+    assert!(menu["regions"]["context-menu:rename"].is_array());
+    let dialog = fixture.ctl(&["ui", "key", "enter"]);
+    assert!(dialog["regions"]["app-dialog:input"].is_array());
+    fixture.ctl(&["ui", "key", "cmd-a", "backspace", "enter"]);
+    let invalid = fixture.ctl(&["ui", "layout"]);
+    assert!(invalid["regions"]["app-dialog:input"].is_array());
+    assert!(
+        text(&invalid).contains("1–64 printable"),
+        "missing inline validation: {invalid}"
+    );
+    type_keys(&fixture, "cancelled purpose");
+    let cancelled = fixture.ctl(&["ui", "key", "esc"]);
+    assert!(cancelled["regions"]["app-dialog:input"].is_null());
+    assert_eq!(cancelled["focused"], focused);
+    assert!(!text(&cancelled).contains("cancelled purpose"));
+    right_click(&fixture, &format!("toggle-swarm:{swarm}"));
+    fixture.ctl(&["ui", "key", "enter"]);
+    type_keys(&fixture, "render crew");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if frame["regions"]["app-dialog:input"].is_null() && text(&frame).contains("RENDER CREW") {
+            break;
+        }
+        assert!(Instant::now() < until, "rename never completed: {frame}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let screen = fixture.ctl(&["seat", "screen", &seat]);
+    assert!(
+        !screen.to_string().contains("render crew")
+            && !screen.to_string().contains("cancelled purpose"),
+        "dialog input leaked to PTY: {screen}"
+    );
+    right_click(&fixture, &format!("pane:{seat}"));
+    fixture.ctl(&["ui", "key", "esc"]);
+    let owners = fixture.owners();
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners, "ordinary UI restart keeps owners");
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if text(&frame).contains("RENDER CREW") {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "authoritative swarm name not hydrated after restart: {frame}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    // The UI-control wire marker independently refreshes old logic, preserving
+    // supervisor, live harness identity and durable swarm metadata.
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let owner_path = fixture.root.join("run/logic.owner.json");
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    owner["ready"]
+        .as_object_mut()
+        .unwrap()
+        .remove("ui_control_version");
+    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    fixture.start();
+    let upgraded = fixture.owners();
+    assert_eq!(upgraded[0], owners[0]);
+    assert_ne!(upgraded[1], owners[1]);
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let frame = fixture.ctl(&["ui", "layout"]);
+        if text(&frame).contains("RENDER CREW") {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "metadata lost during UI-wire refresh: {frame}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    right_click(&fixture, &format!("toggle-swarm:{swarm}"));
+    fixture.ctl(&["ui", "key", "enter"]);
+    let frame = fixture.ctl(&["ui", "key", "tab", "enter"]);
+    assert!(
+        frame["regions"]["app-dialog:input"].is_null(),
+        "Tab focuses Cancel; Enter closes without rename"
+    );
 }

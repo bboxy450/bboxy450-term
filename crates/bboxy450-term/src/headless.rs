@@ -190,13 +190,21 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     UiEvent::DesktopAction(action) => {
                         if let Some(hard) = app.desktop_action(action) {
                             if let Some(commands) = app.live_commands.take() {
-                                if hard { commands.shutdown(); } else { commands.detach(app.window_last.clone()); }
+                                if hard {
+                                    commands.shutdown();
+                                } else {
+                                    commands.detach(app.window_last.clone());
+                                }
                             }
                             closing = true;
                         }
                         dirty = true;
                     }
                     UiEvent::TitlebarDoubleClick => app.titlebar_double_click(),
+                    UiEvent::SwarmMetadataReply { op, result } => {
+                        app.overlay_metadata_reply(op, result);
+                        dirty = true;
+                    }
                     UiEvent::LocalTimeReady => {
                         app.refresh_conversation();
                         dirty = true;
@@ -221,9 +229,14 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         generation = value;
                         custody = custody_backend;
                     }
-                    UiEvent::BackendReady => backend = true,
+                    UiEvent::BackendReady => {
+                        backend = true;
+                        app.backend_lost = false;
+                    }
                     UiEvent::BackendLost(reason) => {
                         backend = false;
+                        app.backend_lost = true;
+                        app.overlay_backend_lost();
                         logger.write(format!("backend lost: {reason}"));
                     }
                     UiEvent::CaptureFor(ask) => {
@@ -496,6 +509,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             rims,
                         );
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
+                        foreground.extend(app.paint_app_overlay());
                         gpu.draw_layers_notifying(
                             base,
                             crate::gpu::Panes {

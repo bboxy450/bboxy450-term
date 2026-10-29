@@ -51,6 +51,7 @@ help:
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
+	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
 	  'make test-desktop-app           Private desktop admission, titlebar gestures and strict lint' \
@@ -545,3 +546,11 @@ test-ui-overlays:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test overlays_interaction; \
 	cargo clippy --locked -p bboxy450-ui --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-app-overlays
+test-app-overlays:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_layout_text; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
+	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

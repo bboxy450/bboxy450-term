@@ -507,6 +507,11 @@ pub struct Model {
     pub gui_seats: Arc<[GuiSeat]>,
     pub messaging_deferred: BTreeMap<SeatId, bbt_ui::modules::seat_row::Deferred>,
     pub hosts: Vec<bbt_proto::GuiHost>,
+    /// Versioned authoritative swarm metadata, independent of the window layout.
+    pub swarm_metadata: BTreeMap<Ulid, registry::SwarmRecord>,
+    /// Unknown startup/disconnect is distinct from an authoritative absent record.
+    pub swarm_metadata_loaded: bool,
+    pub swarm_metadata_pending: std::collections::BTreeSet<ui::SwarmId>,
     pub ui: ui::Model,
     pub screens: BTreeMap<SeatId, Arc<Screen>>,
     pub screen_baselines: BTreeMap<SeatId, (View, u64)>,
@@ -545,6 +550,55 @@ pub struct Model {
     pub closes: crate::close::State,
 }
 
+impl Model {
+    /// Replay can return an older committed record. Never roll a hydrated name
+    /// or cwd backward, and preserve the other metadata field on each update.
+    pub fn hydrate_swarms(
+        &mut self,
+        records: impl IntoIterator<Item = registry::SwarmRecord>,
+    ) -> bool {
+        let mut changed = false;
+        for record in records {
+            if self
+                .swarm_metadata
+                .get(&record.id)
+                .is_some_and(|old| old.revision > record.revision || old == &record)
+            {
+                continue;
+            }
+            self.swarm_metadata.insert(record.id, record);
+            changed = true;
+        }
+        self.apply_swarm_metadata();
+        changed
+    }
+    pub fn apply_swarm_metadata(&mut self) {
+        for record in self.swarm_metadata.values() {
+            let id = ui::SwarmId::from_u128(record.id.0);
+            if !self.ui.window.sidebar.swarms.iter().any(|s| s.id == id) {
+                self.ui
+                    .window
+                    .sidebar
+                    .swarms
+                    .push(ui::Swarm::new(id, "swarm", vec![]));
+                self.ui.window.sidebar.open.insert(id);
+            }
+            let row = self
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter_mut()
+                .find(|s| s.id == id)
+                .expect("inserted swarm");
+            if let Some(name) = &record.name {
+                row.name = name.clone();
+            }
+            row.workdir = record.workdir.clone();
+        }
+    }
+}
+
 /// A focus cue retains its destination across IO publication and frame fences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FocusSwell {
@@ -572,6 +626,9 @@ impl Default for Model {
             knowledge_roots: None,
             attention_read: None,
             hosts: vec![],
+            swarm_metadata: BTreeMap::new(),
+            swarm_metadata_loaded: false,
+            swarm_metadata_pending: Default::default(),
             spawns: BTreeMap::new(),
             operation_results: Arc::default(),
             metadata_initialized: false,
@@ -1172,6 +1229,14 @@ fn build_with_clock(
     let mut model = ui::Model::new(swarms, metadata.into_values().collect())
         .expect("unique records and valid seat trees");
     let fallback_stage = model.window.stage.clone();
+    for swarm in &mut model.window.sidebar.swarms {
+        if let Some(record) = previous.swarm_metadata.get(&Ulid(swarm.id.0.0)) {
+            if let Some(name) = &record.name {
+                swarm.name = name.clone();
+            }
+            swarm.workdir = record.workdir.clone();
+        }
+    }
     let next_swarms = std::mem::take(&mut model.window.sidebar.swarms);
     model.window = layout_source.window.clone();
     model
@@ -1281,6 +1346,9 @@ fn build_with_clock(
         gui_seats: previous.gui_seats.clone(),
         messaging_deferred: previous.messaging_deferred.clone(),
         hosts: previous.hosts.clone(),
+        swarm_metadata: previous.swarm_metadata.clone(),
+        swarm_metadata_loaded: previous.swarm_metadata_loaded,
+        swarm_metadata_pending: previous.swarm_metadata_pending.clone(),
         ui: model,
         screen_baselines: screens
             .keys()
@@ -2416,5 +2484,45 @@ mod event_lane_tests {
         assert!(lane.attach_result(retry, None));
         assert!(!lane.apply(row("index", 1)).unwrap());
         assert_eq!(lane.records().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod swarm_metadata_tests {
+    use super::*;
+    #[test]
+    fn swarm_metadata_versions_survive_rebuild_and_old_replays_cannot_restore_cwd() {
+        let mut model = Model::default();
+        let mut record = registry::SwarmRecord::new(Ulid(8123));
+        record.revision = 2;
+        record.name = Some("render crew".into());
+        record.workdir = Some("/tmp".into());
+        assert!(!model.swarm_metadata_loaded);
+        assert!(model.swarm_metadata.is_empty());
+        model.swarm_metadata_loaded = true;
+        model
+            .swarm_metadata_pending
+            .insert(ui::SwarmId::from_u128(8123));
+        assert!(model.hydrate_swarms([record.clone()]));
+        let mut stale = record.clone();
+        stale.revision = 1;
+        stale.name = Some("old".into());
+        stale.workdir = Some("/old".into());
+        assert!(!model.hydrate_swarms([stale.clone()]));
+        assert_eq!(model.ui.window.sidebar.swarms[0].name, "render crew");
+        let mut reset = record.clone();
+        reset.revision = 3;
+        reset.workdir = None;
+        assert!(model.hydrate_swarms([reset]));
+        assert!(!model.hydrate_swarms([record]));
+        let next = build_at(&[], &Grids::new(), &model, Instant::now(), 0);
+        assert_eq!(next.ui.window.sidebar.swarms[0].name, "render crew");
+        assert_eq!(next.ui.window.sidebar.swarms[0].workdir, None);
+        assert_eq!(next.swarm_metadata[&Ulid(8123)].revision, 3);
+        assert!(next.swarm_metadata_loaded);
+        assert!(
+            next.swarm_metadata_pending
+                .contains(&ui::SwarmId::from_u128(8123))
+        );
     }
 }

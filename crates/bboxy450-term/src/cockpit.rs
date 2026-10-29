@@ -54,6 +54,11 @@ pub enum UiMsg {
         catalog: bbt_proto::gui::RoleCatalog,
     },
     NewSwarm(bbt_proto::SwarmId),
+    SwarmRename {
+        id: bbt_mux::Ulid,
+        swarm: bbt_proto::SwarmId,
+        name: String,
+    },
     SwarmWorkdir {
         swarm: bbt_proto::SwarmId,
         path: Option<String>,
@@ -483,7 +488,7 @@ struct LogicBootstrap {
 fn fixture_hosts_default() -> bool {
     true
 }
-// Includes GUI control verbs: older logic cannot decode UiRequest::Drag.
+// MCP control schema/grants; logical UI input is versioned independently.
 const MCP_CONTROL_VERSION: u16 = 6;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
@@ -496,6 +501,8 @@ pub struct LogicReady {
     /// New metadata verbs need a fresh logic owner even with the same crate version.
     #[serde(default)]
     pub swarm_metadata_version: u16,
+    #[serde(default)]
+    pub ui_control_version: u16,
     /// Private environment compatibility hint; never exports the environment.
     #[serde(default)]
     pub launch_path_fingerprint: Option<String>,
@@ -770,6 +777,7 @@ async fn logic_main() -> Result<()> {
         mcp_control_version: MCP_CONTROL_VERSION,
         gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
         swarm_metadata_version: bbt_proto::gui::SWARM_METADATA_VERSION,
+        ui_control_version: bbt_proto::gui::UI_CONTROL_VERSION,
         launch_path_fingerprint: std::env::var_os("PATH")
             .as_deref()
             .map(shell_path::fingerprint),
@@ -921,6 +929,7 @@ impl Session {
             record.ready.mcp_control_version != MCP_CONTROL_VERSION
                 || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
                 || record.ready.swarm_metadata_version != bbt_proto::gui::SWARM_METADATA_VERSION
+                || record.ready.ui_control_version != bbt_proto::gui::UI_CONTROL_VERSION
                 || record.ready.launch_path_fingerprint.as_deref()
                     != Some(shell_path::fingerprint(&launch_path).as_str())
         }) {
@@ -1545,9 +1554,15 @@ mod gui_io_tests {
         });
         let legacy: LogicReady = serde_json::from_value(value.clone()).unwrap();
         assert_eq!(legacy.swarm_metadata_version, 0);
+        assert_eq!(legacy.ui_control_version, 0);
         value["swarm_metadata_version"] = serde_json::json!(bbt_proto::gui::SWARM_METADATA_VERSION);
+        value["ui_control_version"] = serde_json::json!(bbt_proto::gui::UI_CONTROL_VERSION);
         value["future_ready_hint"] = serde_json::json!(true);
         let current: LogicReady = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            current.ui_control_version,
+            bbt_proto::gui::UI_CONTROL_VERSION
+        );
         assert_eq!(
             current.swarm_metadata_version,
             bbt_proto::gui::SWARM_METADATA_VERSION

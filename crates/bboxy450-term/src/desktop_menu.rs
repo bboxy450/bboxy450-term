@@ -25,6 +25,22 @@ impl App {
     }
     /// Closing is completed by the native/headless event owner using its existing lifecycle.
     pub(super) fn desktop_action(&mut self, action: Action) -> Option<bool> {
+        if self.app_overlays.open() {
+            match action {
+                Action::CloseFocusedSeat => {
+                    self.close_app_overlay();
+                    return None;
+                }
+                Action::NewTab
+                | Action::SplitRight
+                | Action::SplitDown
+                | Action::Settings
+                | Action::MuteFocusedSeat => {
+                    return None;
+                }
+                _ => {}
+            }
+        }
         match action {
             Action::CloseWindow => return Some(false),
             Action::HardQuit => return Some(true),
@@ -40,7 +56,8 @@ impl App {
             | Action::Minimize
             | Action::Zoom => {
                 if let Some(window) = &self.window
-                    && let Err(reason) = bboxy450_term_desktop::apply_window_action(window.as_ref(), action)
+                    && let Err(reason) =
+                        bboxy450_term_desktop::apply_window_action(window.as_ref(), action)
                 {
                     self.logger.write(format!("desktop window: {reason}"));
                 }
