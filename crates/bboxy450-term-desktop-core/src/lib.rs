@@ -33,9 +33,11 @@ pub enum Action {
     Zoom,
     CloseFocusedSeat,
     MuteFocusedSeat,
+    IncreaseTerminalFont,
+    DecreaseTerminalFont,
 }
 impl Action {
-    pub const ALL: [Self; 13] = [
+    pub const ALL: [Self; 15] = [
         Self::ShowWindow,
         Self::NewTab,
         Self::SplitRight,
@@ -49,6 +51,8 @@ impl Action {
         Self::Zoom,
         Self::CloseFocusedSeat,
         Self::MuteFocusedSeat,
+        Self::IncreaseTerminalFont,
+        Self::DecreaseTerminalFont,
     ];
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -65,6 +69,8 @@ impl Action {
             Self::Zoom => "zoom",
             Self::CloseFocusedSeat => "close_focused_seat",
             Self::MuteFocusedSeat => "mute_focused_seat",
+            Self::IncreaseTerminalFont => "increase_terminal_font",
+            Self::DecreaseTerminalFont => "decrease_terminal_font",
         }
     }
     pub fn parse(value: &str) -> Result<Self, Error> {
@@ -169,10 +175,15 @@ pub fn app_menu() -> Vec<MenuGroup> {
         },
         MenuGroup {
             title: "View",
-            items: vec![MenuItem {
-                control: true,
-                ..MenuItem::action("Toggle Full Screen", ToggleFullscreen, "f")
-            }],
+            items: vec![
+                MenuItem::action("Increase Terminal Font Size", IncreaseTerminalFont, "+"),
+                MenuItem::action("Decrease Terminal Font Size", DecreaseTerminalFont, "-"),
+                MenuItem::separator(),
+                MenuItem {
+                    control: true,
+                    ..MenuItem::action("Toggle Full Screen", ToggleFullscreen, "f")
+                },
+            ],
         },
         MenuGroup {
             title: "Window",
@@ -289,6 +300,19 @@ pub fn run_without_native(
 mod tests {
     use super::*;
     #[test]
+    fn terminal_font_menu_uses_standard_command_plus_and_minus() {
+        let menu = app_menu();
+        let view = menu.iter().find(|group| group.title == "View").unwrap();
+        for (key, action) in [
+            ("+", Action::IncreaseTerminalFont),
+            ("-", Action::DecreaseTerminalFont),
+        ] {
+            let item = view.items.iter().find(|item| item.key == key).unwrap();
+            assert_eq!(item.command, MenuCommand::Action(action));
+            assert!(!item.shift && !item.option && !item.control);
+        }
+    }
+    #[test]
     fn action_names_round_trip_and_menus_preserve_session_semantics() {
         for action in Action::ALL {
             assert_eq!(Action::parse(action.as_str()), Ok(action));
@@ -311,11 +335,17 @@ mod tests {
         assert_eq!(quit.command, MenuCommand::Action(Action::CloseWindow));
         let close: Vec<_> = items.iter().filter(|item| item.key == "w").collect();
         assert_eq!(close.len(), 1);
-        assert_eq!(close[0].command, MenuCommand::Action(Action::CloseFocusedSeat));
+        assert_eq!(
+            close[0].command,
+            MenuCommand::Action(Action::CloseFocusedSeat)
+        );
         assert!(!close[0].option && !close[0].shift && !close[0].control);
         let mute: Vec<_> = items.iter().filter(|item| item.key == "m").collect();
         assert_eq!(mute.len(), 1);
-        assert_eq!(mute[0].command, MenuCommand::Action(Action::MuteFocusedSeat));
+        assert_eq!(
+            mute[0].command,
+            MenuCommand::Action(Action::MuteFocusedSeat)
+        );
         assert!(!mute[0].option && !mute[0].shift && !mute[0].control);
         let hard = items
             .iter()

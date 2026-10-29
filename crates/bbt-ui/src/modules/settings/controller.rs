@@ -47,6 +47,7 @@ pub enum Patch {
     },
     Theme(String),
     Density(String),
+    TerminalFontSize(f32),
     Rim(f32),
     Glow(bool),
     Subtitle(bool),
@@ -91,6 +92,7 @@ impl Patch {
             }
             Self::Theme(s) => ["auto", "dark", "light"].contains(&s.as_str()),
             Self::Density(s) => ["touch", "comfortable", "cozy", "compact"].contains(&s.as_str()),
+            Self::TerminalFontSize(v) => v.is_finite() && (1.0..=256.0).contains(v),
             Self::Rim(v) => {
                 v.is_finite()
                     && *v >= TOKENS.glow.rim_min as f32
@@ -121,6 +123,7 @@ impl Patch {
             | Self::HarnessAvailableRoles { .. } => {}
             Self::Theme(v) => appearance.theme = v.clone(),
             Self::Density(v) => appearance.density = v.clone(),
+            Self::TerminalFontSize(v) => appearance.terminal_font_size = *v,
             Self::Rim(v) => appearance.rim = *v,
             Self::Glow(v) => appearance.glow = *v,
             Self::Subtitle(v) => appearance.subtitle = *v,
@@ -791,6 +794,7 @@ impl Controller {
         let field = match &patch {
             Patch::DestinationAvailable { id, .. } => Field::DestinationAvailable(id.clone()),
             Patch::SidebarLayout { .. }
+            | Patch::TerminalFontSize(_)
             | Patch::HarnessLaunch { .. }
             | Patch::RoleUpsert { .. }
             | Patch::RoleDelete(_)

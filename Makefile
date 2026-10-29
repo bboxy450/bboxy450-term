@@ -52,6 +52,8 @@ help:
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
+	  'make test-terminal-font          Global terminal font chords, native menu and retained PTY geometry' \
+	  'make check-terminal-font         Strict all-target Clippy for terminal font paths' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
@@ -643,3 +645,17 @@ test-ctl-workspaces:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::workspace; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
 	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+.PHONY: test-terminal-font check-terminal-font format-terminal-font
+format-terminal-font: fmt-spawn
+
+test-terminal-font:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-desktop-core --target-dir '$(TARGET_DIR)' terminal_font; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib terminal_font; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) terminal_font; \
+	BBOXY_FONT_EVIDENCE='$(abspath $(TARGET_DIR))/terminal-font' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir terminal_font_ -- --ignored --nocapture; \
+	if [ "$$(uname -s)" = Darwin ]; then cargo run --locked -p bboxy450-term-desktop-macos --example native_probe --target-dir '$(TARGET_DIR)'; fi
+
+check-terminal-font:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-ui -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

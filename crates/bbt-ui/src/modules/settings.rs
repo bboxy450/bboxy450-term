@@ -89,11 +89,13 @@ pub struct Harness {
     pub state_from: String,
     pub custom: bool,
 }
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Appearance {
     pub theme: String,
     pub density: String,
+    /// Logical terminal points only; chrome typography and window scale stay independent.
+    pub terminal_font_size: f32,
     /// Rim size in px (glow.rim_min..=glow.rim_max): the alive rim centred on each pane's
     /// border, half outside and half inside; the gutter follows it, so it relayouts (rim-glow §3).
     pub rim: f32,
@@ -103,6 +105,21 @@ pub struct Appearance {
     pub blur: bool,
     #[serde(rename = "blurRadius")]
     pub blur_radius: f32,
+}
+impl Default for Appearance {
+    fn default() -> Self {
+        Self {
+            theme: String::new(),
+            density: String::new(),
+            terminal_font_size: 13.,
+            rim: 0.,
+            glow: false,
+            subtitle: false,
+            opacity: 0.,
+            blur: false,
+            blur_radius: 0.,
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]

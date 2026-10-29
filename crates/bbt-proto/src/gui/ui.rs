@@ -8,7 +8,8 @@
 use super::*;
 
 /// Logical input verbs; old logic is refreshed without replacing live PTYs.
-pub const UI_CONTROL_VERSION: u16 = 1;
+/// Version 2 adds the global terminal font chords accepted by the control door.
+pub const UI_CONTROL_VERSION: u16 = 2;
 
 /// The completed frame which acknowledged a focus command.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -327,6 +328,11 @@ pub const UI_KEYS: &[&str] = &[
     "alt-enter",
     "cmd-g",
     "cmd-m",
+    "cmd-minus",
+    "cmd-equal",
+    "cmd-plus",
+    "cmd-shift-equal",
+    "cmd-shift-plus",
     "cmd-w",
     "cmd-z",
     "cmd-r",

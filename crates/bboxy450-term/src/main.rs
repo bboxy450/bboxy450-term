@@ -137,7 +137,7 @@ pub enum UiEvent {
     NotificationError(String),
     ErrorCount(u64),
     LocalTimeReady,
-    DesktopAction(bboxy450_term_desktop::Action),
+    DesktopAction(bboxy450_term_desktop::Action, Option<u32>),
     TitlebarDoubleClick,
 }
 const NONVISUAL_WAKE_INTERVAL: Duration = Duration::from_millis(8);
@@ -361,14 +361,16 @@ fn cell_grid_size(
     scale: f32,
 ) -> [f32; 2] {
     let cell = model
-        .frames
-        .iter()
-        .find_map(|(id, frame)| {
-            let screen = model.screens.get(id)?;
-            Some([
-                frame.width as f32 / screen.cols.max(1) as f32 / scale,
-                frame.height as f32 / screen.rows.max(1) as f32 / scale,
-            ])
+        .terminal_cell_pixels
+        .map(|cell| cell.map(|v| v as f32 / scale))
+        .or_else(|| {
+            model.frames.iter().find_map(|(id, frame)| {
+                let screen = model.screens.get(id)?;
+                Some([
+                    frame.width as f32 / screen.cols.max(1) as f32 / scale,
+                    frame.height as f32 / screen.rows.max(1) as f32 / scale,
+                ])
+            })
         })
         .unwrap_or([8., 15.]);
     [
@@ -517,17 +519,20 @@ fn pane_controls(
         let Some(metadata) = model.ui.seats.get(id) else {
             continue;
         };
-        let cell =
-            model
-                .frames
-                .get(id)
-                .zip(model.screens.get(id))
-                .map_or([8., 15.], |(frame, screen)| {
-                    [
-                        frame.width as f32 / screen.cols.max(1) as f32 / scale,
-                        frame.height as f32 / screen.rows.max(1) as f32 / scale,
-                    ]
-                });
+        let cell = model
+            .terminal_cell_pixels
+            .map(|cell| cell.map(|v| v as f32 / scale))
+            .unwrap_or_else(|| {
+                model.frames.get(id).zip(model.screens.get(id)).map_or(
+                    [8., 15.],
+                    |(frame, screen)| {
+                        [
+                            frame.width as f32 / screen.cols.max(1) as f32 / scale,
+                            frame.height as f32 / screen.rows.max(1) as f32 / scale,
+                        ]
+                    },
+                )
+            });
         let (cols, rows) = grid.unwrap_or((
             (rect.w / cell[0]).floor().clamp(1., 512.) as u16,
             (rect.h / cell[1]).floor().clamp(1., 256.) as u16,
@@ -736,6 +741,7 @@ enum UiEffect {
     Preferences {
         saved: bool,
     },
+    TerminalFont,
     Clock {
         state: bbt_proto::gui::UiClockState,
         landed: Option<(SeatId, FocusSwell)>,
@@ -937,6 +943,9 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
         "a" => (Key::Character("a".into()), KeyCode::KeyA),
         "g" => (Key::Character("g".into()), KeyCode::KeyG),
         "m" => (Key::Character("m".into()), KeyCode::KeyM),
+        "minus" => (Key::Character("-".into()), KeyCode::Minus),
+        "equal" => (Key::Character("=".into()), KeyCode::Equal),
+        "plus" => (Key::Character("+".into()), KeyCode::Equal),
         "w" => (Key::Character("w".into()), KeyCode::KeyW),
         "z" => (Key::Character("z".into()), KeyCode::KeyZ),
         "r" => (Key::Character("r".into()), KeyCode::KeyR),
@@ -981,6 +990,7 @@ enum RoutedKey {
     OpenGraph,
     OpenSettings,
     MuteFocused,
+    TerminalFont(i8),
     CloseFocusedSeat,
     UndoClose,
     DismissStarting(bbt_mux::Ulid),
@@ -1110,6 +1120,20 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
     let mods = input.modifiers.state;
     let repeat = input.repeat;
     let command = mods.super_key();
+    if command && !mods.alt_key() && !mods.control_key() {
+        // Follow the active layout: plus can be a shifted '=' or an unshifted
+        // character (including Dvorak layouts). Physical positions own releases only.
+        // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        match &input.logical_key {
+            Key::Character(text) if text == "+" => return RoutedKey::TerminalFont(1),
+            Key::Character(text) if text == "-" => return RoutedKey::TerminalFont(-1),
+            _ => match shortcut {
+                Some('=' | '+') => return RoutedKey::TerminalFont(1),
+                Some('-') if !mods.shift_key() => return RoutedKey::TerminalFont(-1),
+                _ => {}
+            },
+        }
+    }
     if command && !mods.shift_key() && !mods.control_key() && shortcut == Some('q') {
         return if repeat {
             RoutedKey::Local
@@ -1337,6 +1361,7 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
+            | RoutedKey::TerminalFont(_)
             | RoutedKey::ToggleHud
             | RoutedKey::Pane(_)
     ) {
@@ -1404,6 +1429,7 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
                 | RoutedKey::OpenGraph
                 | RoutedKey::OpenSettings
                 | RoutedKey::MuteFocused
+                | RoutedKey::TerminalFont(_)
                 | RoutedKey::ToggleHud
                 | RoutedKey::Pane(_)
                 | RoutedKey::LocalPage(PageCommand::Close)
@@ -1451,7 +1477,11 @@ fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     let routed = route_local_page(input, modes);
     if matches!(
         routed,
-        RoutedKey::Quit | RoutedKey::HardQuit | RoutedKey::ToggleHud | RoutedKey::LocalPage(_)
+        RoutedKey::Quit
+            | RoutedKey::HardQuit
+            | RoutedKey::ToggleHud
+            | RoutedKey::TerminalFont(_)
+            | RoutedKey::LocalPage(_)
     ) || input.state == ElementState::Released
     {
         routed
@@ -1473,6 +1503,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
             | RoutedKey::OpenGraph
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
+            | RoutedKey::TerminalFont(_)
             | RoutedKey::CloseFocusedSeat
             | RoutedKey::ToggleHud
     ) {
@@ -2860,6 +2891,33 @@ impl App {
             }
         };
         self.settings_action(action);
+    }
+    fn change_terminal_font(&mut self, delta: i8) {
+        let old = self.preferences.preferences.appearance.terminal_font_size;
+        let size = (old + f32::from(delta)).clamp(1., 256.);
+        if size == old {
+            return;
+        }
+        let result = self
+            .preferences
+            .edit(settings_controller::Patch::TerminalFontSize(size))
+            .and_then(|request| {
+                self.preferences_io
+                    .as_ref()
+                    .ok_or_else(|| "Settings persistence is unavailable".to_owned())?
+                    .submit(request)
+            });
+        if let Err(reason) = result {
+            self.preferences.refused(reason.clone());
+            self.logger.write(format!("terminal font: {reason}"));
+            if let Some(effects) = &mut self.ui_collect {
+                effects.push(UiEffect::Refused(reason));
+            }
+        } else if let Some(effects) = &mut self.ui_collect {
+            effects.push(UiEffect::TerminalFont);
+        }
+        self.apply_preferences();
+        self.request_redraw();
     }
     fn apply_preferences(&mut self) {
         self.sync_role_settings();
@@ -5259,7 +5317,7 @@ impl App {
             return false;
         }
         match route_key(input, 0, Some("")) {
-            RoutedKey::Quit | RoutedKey::HardQuit => return false,
+            RoutedKey::Quit | RoutedKey::HardQuit | RoutedKey::TerminalFont(_) => return false,
             RoutedKey::CloseFocusedSeat => {
                 self.close_app_overlay();
                 return true;
@@ -5389,6 +5447,7 @@ impl App {
             RoutedKey::OpenSettings => self.open_settings("Account"),
             RoutedKey::SettingsKey(key) => self.settings_key(key),
             RoutedKey::MuteFocused => self.mute_focused(),
+            RoutedKey::TerminalFont(delta) => self.change_terminal_font(delta),
             RoutedKey::CloseFocusedSeat => self.close_focused_seat(),
             RoutedKey::UndoClose => self.undo_latest_close(),
             RoutedKey::DismissStarting(op) => {
@@ -5623,6 +5682,36 @@ impl App {
                 || (self.graph_scope.is_some()
                     && model.e2e.is_some()
                     && model.e2e_scope == self.graph_scope)),
+            UiEffect::TerminalFont => {
+                if let Some(reason) = &self.preferences.error {
+                    return Err(format!("ui_frame_refused: terminal font: {reason}"));
+                }
+                Ok(self.preferences.saved()
+                    && model.settings.as_ref().is_some_and(|settings| {
+                        settings.preferences.appearance.terminal_font_size
+                            == self.preferences.preferences.appearance.terminal_font_size
+                    })
+                    && self.pane_bounds.iter().all(|(seat, _)| {
+                        model
+                            .screens
+                            .get(seat)
+                            .zip(self.pane_sizes.get(seat))
+                            .is_some_and(|(screen, (_, cols, rows))| {
+                                (screen.cols, screen.rows)
+                                    == (usize::from(*cols), usize::from(*rows))
+                                    && model
+                                        .frames
+                                        .get(seat)
+                                        .zip(model.prepared_screens.get(seat))
+                                        .zip(model.terminal_cell_pixels)
+                                        .is_some_and(|((frame, source), [cw, ch])| {
+                                            frame.width as usize == source.screen.cols * cw as usize
+                                                && frame.height as usize
+                                                    == source.screen.rows * ch as usize
+                                        })
+                            })
+                    }))
+            }
             UiEffect::Preferences { saved } => Ok(self.preferences.loaded
                 && (!*saved
                     || self.preferences.error.is_some()
@@ -7058,7 +7147,8 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
-            UiEvent::DesktopAction(action) => {
+            UiEvent::DesktopAction(action, scancode) => {
+                self.consume_desktop_font_key(action, scancode);
                 if let Some(hard) = self.desktop_action(action) {
                     if hard {
                         self.request_shutdown(event_loop);
@@ -10139,6 +10229,104 @@ mod layout_shortcut_tests {
     }
 
     #[test]
+    fn terminal_font_shortcuts_follow_layout_in_every_context_and_keep_shell_input() {
+        for (logical, base, physical, modifiers, delta) in [
+            ("-", "-", KeyCode::Quote, ModifiersState::SUPER, -1),
+            ("=", "=", KeyCode::BracketRight, ModifiersState::SUPER, 1),
+            (
+                "+",
+                "=",
+                KeyCode::Equal,
+                ModifiersState::SUPER | ModifiersState::SHIFT,
+                1,
+            ),
+            ("+", "+", KeyCode::Digit1, ModifiersState::SUPER, 1),
+            (
+                "+",
+                "]",
+                KeyCode::BracketRight,
+                ModifiersState::SUPER | ModifiersState::SHIFT,
+                1,
+            ),
+            (
+                "-",
+                "[",
+                KeyCode::BracketLeft,
+                ModifiersState::SUPER | ModifiersState::SHIFT,
+                -1,
+            ),
+        ] {
+            let mut input = character(logical, base, physical, Some(logical), modifiers);
+            for routed in [
+                route_key(&input, 0, None),
+                route_key(&input, 0, Some("claude")),
+                route_composer(&input, 0, ComposeField::Body),
+                route_local_page(&input, 0),
+                route_settings(&input, 0, true),
+                route_document(&input, 0),
+            ] {
+                assert_eq!(routed, RoutedKey::TerminalFont(delta));
+            }
+            input.repeat = true;
+            assert_eq!(route_key(&input, 0, None), RoutedKey::TerminalFont(delta));
+            input.modifiers.state = ModifiersState::empty();
+            input.repeat = false;
+            assert_eq!(
+                route_key(&input, 0, None),
+                RoutedKey::Terminal(logical.as_bytes().to_vec())
+            );
+            for modifier in [ModifiersState::ALT, ModifiersState::CONTROL] {
+                input.modifiers.state = modifiers | modifier;
+                assert!(!matches!(
+                    route_key(&input, 0, None),
+                    RoutedKey::TerminalFont(_)
+                ));
+            }
+        }
+        let underscore = character(
+            "_",
+            "-",
+            KeyCode::Minus,
+            Some("_"),
+            ModifiersState::SUPER | ModifiersState::SHIFT,
+        );
+        assert!(!matches!(
+            route_key(&underscore, 0, None),
+            RoutedKey::TerminalFont(_)
+        ));
+        let mut input = character(
+            "+",
+            "=",
+            KeyCode::Equal,
+            Some("+"),
+            ModifiersState::SUPER | ModifiersState::SHIFT,
+        );
+        let mut state = keyboard::State::default();
+        assert_eq!(
+            route_input(&mut state, &input, 0, None),
+            RoutedKey::TerminalFont(1)
+        );
+        input.modifiers.state = ModifiersState::empty();
+        input.repeat = true;
+        assert_eq!(route_input(&mut state, &input, 0, None), RoutedKey::Local);
+        input.repeat = false;
+        input.state = ElementState::Released;
+        assert_eq!(route_input(&mut state, &input, 0, None), RoutedKey::Local);
+        for (key, delta) in [
+            ("cmd-minus", -1),
+            ("cmd-equal", 1),
+            ("cmd-plus", 1),
+            ("cmd-shift-equal", 1),
+            ("cmd-shift-plus", 1),
+        ] {
+            assert_eq!(
+                route_key(&chrome_input(key).unwrap(), 0, None),
+                RoutedKey::TerminalFont(delta)
+            );
+        }
+    }
+
+    #[test]
     fn close_shortcut_follows_layout_suppresses_repeat_and_preserves_page_context() {
         let mut input = character("w", "w", KeyCode::KeyJ, Some("w"), ModifiersState::SUPER);
         assert_eq!(route_key(&input, 0, None), RoutedKey::CloseFocusedSeat);
@@ -11689,6 +11877,50 @@ mod ctl_ui_layout_tests {
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn terminal_font_native_menu_owns_kitty_release_after_command_is_released() {
+        use bboxy450_term_desktop::Action;
+        use winit::platform::scancode::PhysicalKeyExtScancode;
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake {
+            fn wake(&self) {}
+        }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let updates = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
+        let mut app = App::owner(
+            UiProxy::Headless(Arc::new(|_| {})),
+            inbox,
+            log::Logger::new(),
+            updates,
+            &["--headless".into()],
+            Verify::default(),
+        );
+        for (name, action) in [
+            ("cmd-equal", Action::IncreaseTerminalFont),
+            ("cmd-minus", Action::DecreaseTerminalFont),
+        ] {
+            let mut input = chrome_input(name).unwrap();
+            let scancode = input.physical_key.to_scancode().unwrap();
+            input.state = ElementState::Released;
+            input.modifiers.state = ModifiersState::empty();
+            assert!(
+                keyboard::encode(&input, 31 << 18).is_some(),
+                "fixture must exercise a reportable Kitty release"
+            );
+            app.consume_desktop_font_key(action, Some(scancode));
+            assert_eq!(
+                route_input(&mut app.keyboard, &input, 31 << 18, None),
+                RoutedKey::Local
+            );
+            // Clicking or programmatically activating a menu item owns no physical key.
+            app.consume_desktop_font_key(action, None);
+            assert!(matches!(
+                route_input(&mut app.keyboard, &input, 31 << 18, None),
+                RoutedKey::Terminal(_)
+            ));
+        }
+    }
+
     #[test]
     fn virtual_chords_leave_native_pressed_keys_and_releases_alone() {
         struct QuietWake;

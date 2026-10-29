@@ -165,6 +165,12 @@ pub struct MenuBar {
     native: NativeMenu,
 }
 impl MenuBar {
+    /// Read only inside a menu callback: click/programmatic activation has no KeyDown.
+    /// The host retains this press so its later key-up cannot become terminal input.
+    pub fn current_key_scancode() -> Option<u32> {
+        let event = NSApplication::sharedApplication(MainThreadMarker::new()?).currentEvent()?;
+        (event.r#type() == NSEventType::KeyDown).then(|| u32::from(event.keyCode()))
+    }
     pub fn install(callback: Callback) -> Result<Self, Error> {
         let mtm = MainThreadMarker::new().ok_or(Error::MainThreadRequired)?;
         let mut native = NativeMenu::new(mtm, callback);

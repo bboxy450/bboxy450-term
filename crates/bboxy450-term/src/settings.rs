@@ -287,6 +287,7 @@ impl Default for Preferences {
             appearance: Appearance {
                 theme: "auto".into(),
                 density: "cozy".into(),
+                terminal_font_size: 13.,
                 rim: bbt_ui_model::TOKENS.glow.rim as f32,
                 glow: true,
                 subtitle: false,
@@ -646,6 +647,7 @@ fn key(patch: &Patch) -> (&str, &str) {
         Patch::DestinationAvailable { id, .. } => ("destinations", id),
         Patch::Theme(_) => ("appearance", "theme"),
         Patch::Density(_) => ("appearance", "density"),
+        Patch::TerminalFontSize(_) => ("appearance", "terminal_font_size"),
         Patch::Rim(_) => ("appearance", "rim"),
         Patch::Glow(_) => ("appearance", "glow"),
         Patch::Subtitle(_) => ("appearance", "subtitle"),
@@ -666,7 +668,7 @@ fn value(patch: &Patch) -> Value {
             unreachable!("structured Settings tables handled before scalar patches")
         }
         Patch::Theme(v) | Patch::Density(v) => Value::from(v.clone()),
-        Patch::Rim(v) => Value::from(*v as f64),
+        Patch::Rim(v) | Patch::TerminalFontSize(v) => Value::from(*v as f64),
         Patch::Glow(v)
         | Patch::Subtitle(v)
         | Patch::NotificationsEnabled(v)
@@ -733,7 +735,14 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
         conversation_fraction: read_number("conversation_fraction")?.unwrap_or(0.45),
         composer_body_height: read_number("composer_body_height")?,
     })?;
-    for field in ["theme", "density", "rim", "glow", "subtitle"] {
+    for field in [
+        "theme",
+        "density",
+        "terminal_font_size",
+        "rim",
+        "glow",
+        "subtitle",
+    ] {
         let Some(item) = doc.get("appearance").and_then(|s| s.get(field)) else {
             continue;
         };
@@ -741,6 +750,11 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
         let patch = match field {
             "theme" => Patch::Theme(item.as_str().ok_or_else(invalid)?.into()),
             "density" => Patch::Density(item.as_str().ok_or_else(invalid)?.into()),
+            "terminal_font_size" => Patch::TerminalFontSize(
+                item.as_float()
+                    .or_else(|| item.as_integer().map(|v| v as f64))
+                    .ok_or_else(invalid)? as f32,
+            ),
             "rim" => Patch::Rim(
                 item.as_float()
                     .or_else(|| item.as_integer().map(|v| v as f64))
@@ -1227,6 +1241,36 @@ mod tests {
         let prefs = Store::new(path).load().unwrap();
         assert_eq!(prefs.appearance.theme, "light");
         assert!(!prefs.notifications.enabled);
+    }
+    #[test]
+    fn terminal_font_preferences_keep_legacy_default_and_persist_only_the_requested_value() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let original = "# keep font defaults\n[appearance]\ntheme = 'light'\ndensity = 'compact'\ncustom = 42\n";
+        fs::write(&path, original).unwrap();
+        let store = Store::new(path.clone());
+        let before = store.load().unwrap();
+        assert_eq!(before.appearance.terminal_font_size, 13.);
+        assert_eq!(
+            serde_json::from_str::<Appearance>("{}")
+                .unwrap()
+                .terminal_font_size,
+            13.
+        );
+        store.save(&[Patch::TerminalFontSize(17.)]).unwrap();
+        let mut expected = before;
+        expected.appearance.terminal_font_size = 17.;
+        assert_eq!(Store::new(path.clone()).load().unwrap(), expected);
+        let bytes = fs::read(&path).unwrap();
+        let text = String::from_utf8(bytes.clone()).unwrap();
+        assert!(text.contains("# keep font defaults") && text.contains("custom = 42"));
+        for size in [0., 257., f32::NAN, f32::INFINITY] {
+            assert!(store.save(&[Patch::TerminalFontSize(size)]).is_err());
+            assert_eq!(fs::read(&path).unwrap(), bytes);
+        }
+        for size in [1., 256.] {
+            assert!(Patch::TerminalFontSize(size).validate().is_ok());
+        }
     }
     #[test]
     fn sidebar_split_preferences_survive_reload_and_preserve_unmanaged_keys() {

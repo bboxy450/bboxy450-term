@@ -22,6 +22,9 @@ mod unsupported {
     pub struct MenuBar;
     pub struct Tray;
     impl MenuBar {
+        pub fn current_key_scancode() -> Option<u32> {
+            None
+        }
         pub fn install(_callback: Callback) -> Result<Self, Error> {
             Err(Error::Unsupported)
         }

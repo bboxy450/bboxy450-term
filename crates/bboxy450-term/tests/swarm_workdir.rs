@@ -1431,6 +1431,295 @@ fn new_swarm_cwd_controls_stay_visible_and_launch_in_the_saved_folder() {
 }
 
 #[test]
+#[ignore = "private largest saved font, retained large grid and fresh-seat fixture; make test-terminal-font"]
+fn terminal_font_largest_saved_size_resizes_large_retained_grid_and_new_seat() {
+    fn ready(fixture: &Fixture, seat: &str) -> [f64; 2] {
+        fixture.ctl(&["ui", "focus", seat]);
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = fixture.ctl(&["ui", "layout"]);
+            let pane = frame["panes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|pane| pane["seat"] == seat)
+                .unwrap();
+            let screen = fixture.ctl(&["seat", "screen", seat]);
+            if let Some(pixels) = pane["rendered"]["pixel_size"].as_array()
+                && pane["cols"] == screen["cols"]
+                && pane["rows"].as_u64().unwrap() == screen["rows"].as_array().unwrap().len() as u64
+            {
+                return [
+                    pixels[0].as_f64().unwrap() / pane["cols"].as_f64().unwrap(),
+                    pixels[1].as_f64().unwrap() / pane["rows"].as_f64().unwrap(),
+                ];
+            }
+            assert!(
+                Instant::now() < until,
+                "largest font did not complete geometry negotiation: {frame}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let first = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&first, &fixture.root.join("repository"));
+    let owners = fixture.owners();
+    let before = fixture.ctl(&["seat", "ls"]);
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    fixture.ctl(&["seat", "resize", &first, "512x256"]);
+    bboxy450_term::settings::Store::new(fixture.root.join("account/config.toml"))
+        .save(&[bbt_ui::modules::settings::controller::Patch::TerminalFontSize(256.)])
+        .unwrap();
+    fixture.start();
+    let retained = ready(&fixture, &first);
+    let second = fixture.spawn("claude", &swarm, None);
+    let fresh = ready(&fixture, &second);
+    assert_eq!(retained, fresh);
+    assert!(
+        retained[0] > 100. && retained[1] > 200.,
+        "largest font was not actually applied: {retained:?}"
+    );
+    assert_eq!(
+        fixture.owners(),
+        owners,
+        "font negotiation must not replace backend owners"
+    );
+    let after = fixture.ctl(&["seat", "ls"]);
+    let row = |rows: &Value| {
+        rows.as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == first)
+            .unwrap()
+            .clone()
+    };
+    assert_eq!(
+        row(&before)["record"]["generation"],
+        row(&after)["record"]["generation"]
+    );
+    assert_eq!(
+        row(&before)["state"]["process"],
+        row(&after)["state"]["process"]
+    );
+    println!(
+        "saved font256 negotiates retained512x256 and fresh80x24 grids; supervisor/logic/harness identity retained"
+    );
+}
+
+// Origin: bboxy450-term global terminal font / unchanged chrome and PTY regression.
+// Credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[test]
+#[ignore = "private ctl font, split PTY geometry and retained-session fixture; make test-terminal-font"]
+fn terminal_font_shortcuts_resize_all_seats_and_survive_ui_restart() {
+    fn pane<'a>(frame: &'a Value, seat: &str) -> &'a Value {
+        frame["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|pane| pane["seat"] == seat)
+            .unwrap()
+    }
+    fn ready(fixture: &Fixture, mut frame: Value) -> Value {
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            if frame["panes"].as_array().unwrap().iter().all(|pane| {
+                if !pane["rendered"]["pixel_size"].is_array() {
+                    return false;
+                }
+                let screen = fixture.ctl(&["seat", "screen", pane["seat"].as_str().unwrap()]);
+                pane["cols"] == screen["cols"]
+                    && pane["rows"].as_u64().unwrap()
+                        == screen["rows"].as_array().unwrap().len() as u64
+            }) {
+                return frame;
+            }
+            assert!(
+                Instant::now() < until,
+                "font fixture awaits actual drawn grid and coherent PTY: {}",
+                frame["panes"]
+            );
+            std::thread::sleep(Duration::from_millis(20));
+            frame = fixture.ctl(&["ui", "layout"]);
+        }
+    }
+    fn cell(frame: &Value, seat: &str) -> [f64; 2] {
+        let pane = pane(frame, seat);
+        let pixels = pane["rendered"]["pixel_size"]
+            .as_array()
+            .expect("produced terminal pixels");
+        [
+            pixels[0].as_f64().unwrap() / pane["cols"].as_f64().unwrap(),
+            pixels[1].as_f64().unwrap() / pane["rows"].as_f64().unwrap(),
+        ]
+    }
+    fn coherent(fixture: &Fixture, frame: &Value) {
+        for pane in frame["panes"].as_array().unwrap() {
+            let seat = pane["seat"].as_str().unwrap();
+            let screen = fixture.ctl(&["seat", "screen", seat]);
+            assert_eq!(
+                screen["cols"], pane["cols"],
+                "{seat}: PTY columns disagree with font geometry"
+            );
+            assert_eq!(
+                screen["rows"].as_array().unwrap().len() as u64,
+                pane["rows"].as_u64().unwrap(),
+                "{seat}: PTY rows disagree with font geometry"
+            );
+        }
+    }
+    fn capture(fixture: &Fixture, name: &str, frame: &Value) {
+        if let Some(directory) = std::env::var_os("BBOXY_FONT_EVIDENCE") {
+            fs::create_dir_all(&directory).unwrap();
+            let path = PathBuf::from(directory).join(name);
+            fixture.ctl(&[
+                "seat",
+                "capture",
+                "window",
+                path.with_extension("png").to_str().unwrap(),
+            ]);
+            fs::write(
+                path.with_extension("json"),
+                serde_json::to_vec_pretty(frame).unwrap(),
+            )
+            .unwrap();
+        }
+    }
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let first = fixture.spawn("claude", &swarm, None);
+    fixture.expect_cwd(&first, &fixture.root.join("repository"));
+    fixture.ctl(&["ui", "focus", &first]);
+    fixture.ctl(&["ui", "key", "cmd-d"]);
+    type_keys(&fixture, "claude");
+    fixture.ctl(&["ui", "key", "enter"]);
+    let second = wait_harness(&fixture, "claude", 2);
+    let other = fixture.ctl(&["seat", "spawn", "claude", "--place", "space"]);
+    let third = other["seat"].as_str().unwrap().to_owned();
+    fixture.expect_cwd(&third, &fixture.root.join("repository"));
+    let other_before = ready(&fixture, fixture.ctl(&["ui", "focus", &third]));
+    let before = ready(&fixture, fixture.ctl(&["ui", "focus", &first]));
+    assert_eq!(before["panes"].as_array().unwrap().len(), 2);
+    let identities = fixture.ctl(&["seat", "ls"]);
+    let owners = fixture.owners();
+    capture(&fixture, "font-13", &before);
+    let larger = ready(
+        &fixture,
+        fixture.ctl(&["ui", "key", "cmd-equal", "cmd-shift-equal"]),
+    );
+    assert_eq!(larger["size"], before["size"]);
+    assert_eq!(
+        larger["regions"], before["regions"],
+        "font sizing must preserve chrome geometry"
+    );
+    for seat in [&first, &second] {
+        assert_eq!(pane(&larger, seat)["rect"], pane(&before, seat)["rect"]);
+        assert!(cell(&larger, seat)[0] > cell(&before, seat)[0]);
+        assert!(cell(&larger, seat)[1] > cell(&before, seat)[1]);
+    }
+    coherent(&fixture, &larger);
+    capture(&fixture, "font-15", &larger);
+    let other_after = ready(&fixture, fixture.ctl(&["ui", "focus", &third]));
+    assert!(cell(&other_after, &third)[0] > cell(&other_before, &third)[0]);
+    assert_eq!(
+        cell(&other_after, &third),
+        cell(&larger, &first),
+        "inactive swarm uses the same global font"
+    );
+    coherent(&fixture, &other_after);
+    // A chrome page owns typing, but the terminal size chord remains global.
+    fixture.ctl(&["ui", "key", "cmd-comma"]);
+    fixture.ctl(&["ui", "key", "cmd-plus"]);
+    fixture.ctl(&["ui", "key", "esc"]);
+    fixture.ctl(&["ui", "focus", &first]);
+    let settled = ready(&fixture, fixture.ctl(&["ui", "key", "cmd-minus"]));
+    for seat in [&first, &second] {
+        assert_eq!(cell(&settled, seat), cell(&larger, seat));
+    }
+    coherent(&fixture, &settled);
+    let config = fixture.root.join("account/config.toml");
+    let saved = fs::read_to_string(&config).unwrap();
+    let document: toml_edit::DocumentMut = saved.parse().unwrap();
+    assert_eq!(
+        document["appearance"]["terminal_font_size"].as_float(),
+        Some(15.)
+    );
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    fixture.start();
+    assert_eq!(fixture.owners(), owners);
+    assert_eq!(fs::read_to_string(&config).unwrap(), saved);
+    let restored = ready(&fixture, fixture.ctl(&["ui", "focus", &first]));
+    for seat in [&first, &second] {
+        assert_eq!(cell(&restored, seat), cell(&larger, seat));
+    }
+    coherent(&fixture, &restored);
+    // A same-release older logic owner advertises version 1. Attaching the new UI
+    // must refresh logic before accepting these chords, retaining supervisor/PTYS.
+    let mut ui = fixture.app.take().unwrap();
+    ui.kill().unwrap();
+    ui.wait().unwrap();
+    let owner_path = fixture.root.join("run/logic.owner.json");
+    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+    owner["ready"]["ui_control_version"] =
+        serde_json::json!(bbt_proto::gui::UI_CONTROL_VERSION - 1);
+    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+    fixture.start();
+    let upgraded = fixture.owners();
+    assert_eq!(
+        upgraded[0], owners[0],
+        "font-control upgrade retains supervisor"
+    );
+    assert_ne!(upgraded[1], owners[1], "old UI-control logic must refresh");
+    fixture.ctl(&["ui", "focus", &first]);
+    let smaller = ready(
+        &fixture,
+        fixture.ctl(&["ui", "key", "cmd-minus", "cmd-minus"]),
+    );
+    for seat in [&first, &second] {
+        assert_eq!(cell(&smaller, seat), cell(&before, seat));
+        assert_eq!(pane(&smaller, seat)["cols"], pane(&before, seat)["cols"]);
+        assert_eq!(pane(&smaller, seat)["rows"], pane(&before, seat)["rows"]);
+    }
+    coherent(&fixture, &smaller);
+    let after = fixture.ctl(&["seat", "ls"]);
+    for seat in [&first, &second, &third] {
+        let identity = |rows: &Value| {
+            let row = rows
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["record"]["id"] == *seat)
+                .unwrap();
+            (
+                row["record"]["generation"].clone(),
+                row["state"]["process"].clone(),
+            )
+        };
+        assert_eq!(
+            identity(&after),
+            identity(&identities),
+            "font changes must retain the PTY process"
+        );
+    }
+    println!(
+        "global font13 ->15 across two split seats and inactive swarm; chrome unchanged, PTY geometry coherent, restart15 and logic-only v1upgrade ->13, all3 process identities retained"
+    );
+}
+
+#[test]
 #[ignore = "private ctl close shortcut, split geometry and retained PTY fixture; make test-close-shortcut"]
 fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
     let mut fixture = Fixture::new();

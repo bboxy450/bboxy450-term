@@ -187,7 +187,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok(event) = events.try_recv() {
                 match event {
-                    UiEvent::DesktopAction(action) => {
+                    UiEvent::DesktopAction(action, scancode) => {
+                        app.consume_desktop_font_key(action, scancode);
                         if let Some(hard) = app.desktop_action(action) {
                             if let Some(commands) = app.live_commands.take() {
                                 if hard {

@@ -521,6 +521,8 @@ pub struct Model {
     pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
     pub scroll: Arc<crate::scrollback::Readback>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
+    /// Current worker font metrics, available before an oversized old viewport is resized.
+    pub terminal_cell_pixels: Option<[u32; 2]>,
     /// Provenance from the same screen used to prepare each cached grid.
     pub prepared_screens: BTreeMap<SeatId, PreparedScreen>,
     pub states: BTreeMap<SeatId, SeatState>,
@@ -648,6 +650,7 @@ impl Default for Model {
             history: BTreeMap::new(),
             scroll: Arc::default(),
             frames: BTreeMap::new(),
+            terminal_cell_pixels: None,
             prepared_screens: BTreeMap::new(),
             states: BTreeMap::new(),
             identity: None,
@@ -1312,7 +1315,7 @@ fn build_with_clock(
         }
     }
     model.window.overlay = layout_source.window.overlay.clone();
-    let frames = previous
+    let frames: BTreeMap<_, _> = previous
         .frames
         .iter()
         .filter_map(
@@ -1321,6 +1324,12 @@ fn build_with_clock(
                 _ => None,
             },
         )
+        .collect();
+    let prepared_screens = previous
+        .prepared_screens
+        .iter()
+        .filter(|(seat, _)| frames.contains_key(*seat))
+        .map(|(seat, source)| (*seat, source.clone()))
         .collect();
     let states = previous
         .states
@@ -1390,7 +1399,8 @@ fn build_with_clock(
         history,
         scroll: previous.scroll.clone(),
         frames,
-        prepared_screens: BTreeMap::new(),
+        terminal_cell_pixels: previous.terminal_cell_pixels,
+        prepared_screens,
         states,
         identity: previous.identity.clone(),
         custody_reply: previous.custody_reply.clone(),
@@ -1461,6 +1471,7 @@ struct CachedPane {
 pub struct PanePreparer {
     context: Arc<DeviceContext>,
     renderer: TerminalRenderer,
+    options: terminal::Options,
     cached: BTreeMap<SeatId, CachedPane>,
 }
 impl PanePreparer {
@@ -1473,15 +1484,33 @@ impl PanePreparer {
         options: terminal::Options,
     ) -> bbt_render::Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let renderer = TerminalRenderer::new(&context, options)?;
+        let renderer = TerminalRenderer::new(&context, options.clone())?;
         Ok(Self {
             context,
             renderer,
+            options,
             cached: BTreeMap::new(),
         })
     }
     pub fn prepare(&mut self, model: &mut Model) -> bbt_render::Result<()> {
         bbt_rt::assert_not_ui_thread();
+        if let Some(settings) = &model.settings {
+            let size = settings.preferences.appearance.terminal_font_size;
+            if size != self.options.font.size {
+                // bboxy450-term global font change: discard every seat's old glyph geometry,
+                // then publish complete replacement frames from this IO-owned renderer.
+                // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                let mut options = self.options.clone();
+                options.font.size = size;
+                let renderer = TerminalRenderer::new(&self.context, options.clone())?;
+                self.renderer = renderer;
+                self.options = options;
+                self.cached.clear();
+            }
+        }
+        let metrics = self.renderer.metrics();
+        model.terminal_cell_pixels = Some([metrics.cell_width, metrics.cell_height]);
+        let limit = self.context.device.limits().max_texture_dimension_2d;
         let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::PanePrepare);
         self.cached
             .retain(|seat, _| model.screens.contains_key(seat));
@@ -1493,6 +1522,23 @@ impl PanePreparer {
                 .history
                 .get(&seat)
                 .map_or(screen, |historical| &historical.screen);
+            validate_screen(screen)?;
+            // Resize the PTY from the new metrics before allocating an oversized old
+            // grid texture. Keep the last frame paired with its actual screen/baseline;
+            // every terminal byte stays in model.screens while geometry catches up.
+            if screen.cols > (limit / metrics.cell_width.max(1)) as usize
+                || screen.rows > (limit / metrics.cell_height.max(1)) as usize
+            {
+                if let Some((frame, source)) = model
+                    .frames
+                    .get(&seat)
+                    .zip(model.prepared_screens.get(&seat))
+                {
+                    frames.insert(seat, frame.clone());
+                    prepared_screens.insert(seat, source.clone());
+                }
+                continue;
+            }
             let focused = model.ui.window.stage.focused == Some(seat);
             let reuse = self.cached.get(&seat).is_some_and(|old| {
                 Arc::ptr_eq(&old.screen, screen) && old.focused == focused && old.theme == theme
@@ -1614,8 +1660,7 @@ fn color(screen: &Screen, value: Color, theme: Theme, bold: bool) -> [u8; 4] {
         }
     }
 }
-/// Convert rows only on IO; the cells renderer has no parser/protocol dependency.
-pub fn screen_grid(screen: &Screen, theme: Theme, focused: bool) -> bbt_render::Result<Grid> {
+fn validate_screen(screen: &Screen) -> bbt_render::Result<()> {
     if screen.cols == 0
         || screen.rows == 0
         || screen.cols > 512
@@ -1625,6 +1670,11 @@ pub fn screen_grid(screen: &Screen, theme: Theme, focused: bool) -> bbt_render::
     {
         return Err("invalid terminal screen dimensions".into());
     }
+    Ok(())
+}
+/// Convert rows only on IO; the cells renderer has no parser/protocol dependency.
+pub fn screen_grid(screen: &Screen, theme: Theme, focused: bool) -> bbt_render::Result<Grid> {
+    validate_screen(screen)?;
     let cells = screen
         .cells
         .iter()
@@ -2164,6 +2214,165 @@ mod tests {
         assert_eq!(grid.cursor.unwrap().shape, CursorShape::Bar);
         screen.cells[0].pop();
         assert!(screen_grid(&screen, Theme::Dark, false).is_err());
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "offline Metal largest-font transition fixture"
+    )]
+    fn terminal_font_largest_preserves_old_frame_and_source_until_large_grid_resizes() {
+        let context = Arc::new(bbt_rt::handle().block_on(DeviceContext::new()).unwrap());
+        let mut preparer = PanePreparer::new(context.clone()).unwrap();
+        let record = SeatRecord::new(Ulid::new(), Ulid::new(), "zsh", "font");
+        let mut grids = Grids::new();
+        let seat = install(&mut grids, &record, &bbt_core::Term::new(512, 256, 0));
+        let mut model = build(std::slice::from_ref(&record), &grids, &Model::default());
+        preparer.prepare(&mut model).unwrap();
+        model.history.insert(
+            seat,
+            Arc::new(crate::scrollback::Historical {
+                screen: model.screens[&seat].clone(),
+                gaps: vec![],
+                top_row: 1,
+            }),
+        );
+        preparer.prepare(&mut model).unwrap();
+        let original = model.clone();
+        assert!(original.prepared_screens[&seat].baseline.is_none());
+        let mut settings = crate::settings::Snapshot::default();
+        settings.preferences.appearance.terminal_font_size = 256.;
+        model.settings = Some(Arc::new(settings));
+        preparer.prepare(&mut model).unwrap();
+        let [cw, ch] = model.terminal_cell_pixels.unwrap();
+        assert!(
+            512 * cw > context.device.limits().max_texture_dimension_2d
+                || 256 * ch > context.device.limits().max_texture_dimension_2d
+        );
+        for _ in 0..2 {
+            model = build(std::slice::from_ref(&record), &grids, &model);
+            preparer.prepare(&mut model).unwrap();
+            assert!(Arc::ptr_eq(&model.frames[&seat], &original.frames[&seat]));
+            assert!(Arc::ptr_eq(
+                &model.prepared_screens[&seat].screen,
+                &original.prepared_screens[&seat].screen
+            ));
+            assert_eq!(
+                model.prepared_screens[&seat].baseline,
+                original.prepared_screens[&seat].baseline
+            );
+            assert!(Arc::ptr_eq(&model.screens[&seat], &original.screens[&seat]));
+        }
+        let (view, _) = grids.baseline(seat).unwrap();
+        grids
+            .apply(
+                seat,
+                &Update::Snapshot {
+                    snapshot: Box::new(Snapshot {
+                        view,
+                        sequence: 2,
+                        screen: Screen::from_term(
+                            &bbt_core::Term::new(4, 2, 0),
+                            "resized".into(),
+                            None,
+                            None,
+                        ),
+                    }),
+                },
+            )
+            .unwrap();
+        model = build(&[record], &grids, &model);
+        assert!(
+            !model.history.contains_key(&seat),
+            "resize invalidates the frozen old-size history display"
+        );
+        preparer.prepare(&mut model).unwrap();
+        assert!(model.prepared_screens[&seat].baseline.is_some());
+        assert_eq!(
+            [model.frames[&seat].width, model.frames[&seat].height],
+            [4 * cw, 2 * ch]
+        );
+        assert!(!Arc::ptr_eq(&model.frames[&seat], &original.frames[&seat]));
+        assert!(Arc::ptr_eq(
+            &model.prepared_screens[&seat].screen,
+            &model.screens[&seat]
+        ));
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "offline Metal font-cache regression on a test worker"
+    )]
+    fn terminal_font_reprepares_all_seats_without_changing_screens_or_chrome() {
+        let context = Arc::new(bbt_rt::handle().block_on(DeviceContext::new()).unwrap());
+        let mut preparer = PanePreparer::new(context).unwrap();
+        let records = [
+            SeatRecord::new(Ulid::new(), Ulid::new(), "zsh", "first"),
+            SeatRecord::new(Ulid::new(), Ulid::new(), "zsh", "second"),
+        ];
+        let mut grids = Grids::new();
+        let views = records.each_ref().map(|record| {
+            (
+                SeatId::from_u128(record.id.0),
+                View {
+                    seat: record.id,
+                    generation: record.generation,
+                    view_generation: Ulid::new(),
+                },
+            )
+        });
+        grids.set_watched(&views);
+        for (seat, view) in views {
+            grids
+                .apply(
+                    seat,
+                    &Update::Snapshot {
+                        snapshot: Box::new(Snapshot {
+                            view,
+                            sequence: 1,
+                            screen: Screen::from_term(
+                                &bbt_core::Term::new(8, 2, 0),
+                                "font fixture".into(),
+                                None,
+                                None,
+                            ),
+                        }),
+                    },
+                )
+                .unwrap();
+        }
+        let ids = views.map(|(seat, _)| seat);
+        let mut model = build(&records, &grids, &Model::default());
+        preparer.prepare(&mut model).unwrap();
+        let before = model.clone();
+        let mut settings = crate::settings::Snapshot::default();
+        settings.preferences.appearance.terminal_font_size = 21.;
+        model.settings = Some(Arc::new(settings));
+        preparer.prepare(&mut model).unwrap();
+        assert_eq!(model.ui.window, before.ui.window);
+        for seat in ids {
+            assert!(Arc::ptr_eq(&model.screens[&seat], &before.screens[&seat]));
+            assert!(!Arc::ptr_eq(&model.frames[&seat], &before.frames[&seat]));
+            assert!(model.frames[&seat].width > before.frames[&seat].width);
+            assert!(model.frames[&seat].height > before.frames[&seat].height);
+        }
+        let frames = model.frames.clone();
+        preparer.prepare(&mut model).unwrap();
+        for seat in ids {
+            assert!(Arc::ptr_eq(&model.frames[&seat], &frames[&seat]));
+        }
+        Arc::make_mut(model.settings.as_mut().unwrap())
+            .preferences
+            .appearance
+            .terminal_font_size = 13.;
+        preparer.prepare(&mut model).unwrap();
+        for seat in ids {
+            assert_eq!(model.frames[&seat].width, before.frames[&seat].width);
+            assert_eq!(model.frames[&seat].height, before.frames[&seat].height);
+        }
     }
 
     // keeps: spec c1-live-seats §2a

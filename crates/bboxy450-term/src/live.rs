@@ -232,7 +232,7 @@ pub fn start_with_sink(
                 desktop_config,
                 session.desktop_supervisor.clone(),
                 move |action| {
-                    desktop_events(UiEvent::DesktopAction(action));
+                    desktop_events(UiEvent::DesktopAction(action, None));
                 },
             );
             events(UiEvent::BackendInfo {

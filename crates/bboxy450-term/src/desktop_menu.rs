@@ -15,12 +15,26 @@ impl App {
         }
         let proxy = self.proxy.clone();
         match bboxy450_term_desktop::MenuBar::install(Box::new(move |action| {
-            let _ = proxy.send_event(UiEvent::DesktopAction(action));
+            let _ = proxy.send_event(UiEvent::DesktopAction(
+                action,
+                bboxy450_term_desktop::MenuBar::current_key_scancode(),
+            ));
         })) {
             Ok(menu) => self.desktop_menu = Some(menu),
             Err(reason) => self
                 .logger
                 .write(format!("desktop menu unavailable: {reason}")),
+        }
+    }
+    pub(super) fn consume_desktop_font_key(&mut self, action: Action, scancode: Option<u32>) {
+        use winit::platform::scancode::PhysicalKeyExtScancode;
+        if matches!(
+            action,
+            Action::IncreaseTerminalFont | Action::DecreaseTerminalFont
+        ) && let Some(scancode) = scancode
+        {
+            self.keyboard
+                .consumed(PhysicalKey::from_scancode(scancode), ElementState::Pressed);
         }
     }
     /// Closing is completed by the native/headless event owner using its existing lifecycle.
@@ -50,6 +64,8 @@ impl App {
             Action::SplitRight => self.split_launcher(bbt_proto::seat_state::Side::Right),
             Action::SplitDown => self.split_launcher(bbt_proto::seat_state::Side::Bottom),
             Action::Settings => self.open_settings("Account"),
+            Action::IncreaseTerminalFont => self.change_terminal_font(1),
+            Action::DecreaseTerminalFont => self.change_terminal_font(-1),
             Action::ShowWindow
             | Action::HideWindow
             | Action::ToggleFullscreen

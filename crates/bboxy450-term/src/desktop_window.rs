@@ -164,7 +164,9 @@ impl crate::App {
         );
         match intent {
             Some(Intent::Window(action)) => {
-                let _ = self.proxy.send_event(crate::UiEvent::DesktopAction(action));
+                let _ = self
+                    .proxy
+                    .send_event(crate::UiEvent::DesktopAction(action, None));
             }
             Some(Intent::Titlebar(_)) => {
                 let _ = self.proxy.send_event(crate::UiEvent::TitlebarDoubleClick);

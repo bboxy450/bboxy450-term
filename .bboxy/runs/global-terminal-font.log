@@ -1,0 +1,51 @@
+ROLE: EXECUTOR
+Scope: direct operator request — Cmd+Minus decreases / Cmd+Plus increases terminal text across every seat, with Cmd+Equal alias, terminal-only scaling and existing-session retention.
+Worktree: /Users/feral/mydev/bboxy450-term-global-terminal-font
+Branch: exec/global-terminal-font-20261028
+Base: 243c870be0f7d8b7247fff18f9b9125c724d4c05
+
+Mechanisms / source evidence:
+crates/bbt-ui/src/modules/settings.rs:94 — terminal_font_size defaults13 for existing JSON/Settings records; existing UI typography remains independent.
+crates/bbt-ui/src/modules/settings/controller.rs:95 — finite1..256 validation follows renderer font bounds; no new UI settings control.
+crates/bboxy450-term/src/settings.rs:650 — existing asynchronous revision-coalesced Settings patch and atomic TOML writer persist appearance.terminal_font_size, retaining comments/unmanaged keys.
+crates/bboxy450-term/src/main.rs:1128 — logical shifted punctuation plus active-layout unmodified aliases route global font commands; unmodified shell bytes and modifier release ownership remain intact.
+crates/bboxy450-term-desktop-core/src/lib.rs:179 — native View menu uses standard Command+Plus / Minus font actions.
+crates/bboxy450-term-desktop-macos/src/lib.rs:170 — capture originating menu KeyDown scancode; click/programmatic menu activation supplies none.
+crates/bboxy450-term/src/desktop_menu.rs:30 — native font action consumes its physical press so Command-first release cannot leak a Kitty release to the PTY.
+crates/bboxy450-term/src/model.rs:1498 — IO-owned renderer/cache changes once per desired font; every visible/inactive/reopened seat uses the global font.
+crates/bboxy450-term/src/model.rs:1512 — publish new cell metrics before oversized old viewport preparation; old valid frame remains paired with its actual screen/baseline, terminal bytes retained, lightweight bounds checked before grid cloning/rasterization.
+crates/bboxy450-term/src/main.rs:523 — existing pane-controls negotiate PTY rows/columns from current cell metrics, independent of an old retained frame; terminal chrome/window dimensions unchanged.
+crates/bboxy450-term/src/main.rs:5684 — ctl font acknowledgement waits for saved preference, applied worker settings, matching frame cell metrics and coherent visible PTY dimensions.
+crates/bbt-proto/src/gui/ui.rs:12 — UI_CONTROL_VERSION2 forces logic-only refresh for old same-release services; supervisor and PTYs survive.
+
+Decisions: preserve existing13point default and renderer1..256 valid range. Solve largest-size transition through current font metrics before PTY resize rather than impose an unproven arbitrary cap or remove renderer texture-limit protection. Existing history resize invalidation remains the policy: frozen old-size history returns to live after viewport resize. New worker regression proves the old historical frame/source/baseline pairing is retained until that transition.
+
+Commands and actual results:
+make format-terminal-font — exit0; scoped rustfmt run after subsequent changes; git diff --check — exit0.
+make test-terminal-font — final exit0: menu1; app config/cache/largest historical-grid3; layout+native Kitty-release2; private actualctl2; existing real native probe15menu/4tray callbacks, owned-window lifecycle and runloop disposal all passed.
+make check-terminal-font — exit0: --locked --all-targets strict Clippy, -D warnings, proto/UI/desktop-core/macOS/facade/app; own target, cache-env,2Cargo jobs.
+make test-licenses — exit0:27workspace crate policies/notices preserved;6license negative fixtures+9source-notice fixtures; owned source notices changed0.
+Initial focused command exit2: new two-seat worker test used a singleton watch helper, dropping the first fixture seat; fixture fixed to subscribe both before snapshots. Second focused command exit2: baseline ctl response had not yet supplied rendered-pixel receipts; fixture now waits for actual produced pixels and coherent PTY dimensions. These are corrected fixture failures; no assertions disabled.
+
+Acceptance evidence:
+Private3-seat ctl test:13 ->15 across2split seats plus inactive swarm, exact chrome regions/window/pane rectangles unchanged; PTY sizes match produced geometry; Settings page chord remains global; UI restart reloads15; current-version-minus-one marker refreshes only logic; decrease returns13; original3process identities/generations survive.
+Private largest-font test: saved256 survives UI restart with retained512x256 grid and new default80x24 seat; both negotiate matching font metrics/PTY dimensions and retain supervisor/logic/original harness identities.
+Worker largest-font test: historical512x256 frame retains exact frameArc/screenArc/baseline through repeated publications without rasterization; resized4x2 screen invalidates frozen history and prepares current font frame.
+Layout tests include shifted '+'/'-' on non-US physical keys, '=' alias, every chrome focus context, repeat handling, plain shell bytes and native menu Kitty key-up after Command releases first.
+
+Captured images were viewed: both terminal bodies grow/reflow; titlebar/sidebar/pane chrome stays fixed.
+Capture directory: /Users/feral/mydev/bboxy450-term-global-terminal-font/target/terminal-font
+font-13.json: both81x54,648x810pixels,8x15cells.
+font-15.json: both72x48,648x816pixels,9x17cells.
+font-13.png sha256=58b1de503260e32067ff7d7d31171b898dcfa9e17edd7fb87bee7e188ec21ed8
+font-15.png sha256=05e633e072f0fa2ae23df9229b4bf339fe795cdf5b2ec5d5c0c9399b60bbae6e
+
+Raw logs (outside Git):
+focused-initial: command_log=/Users/feral/Library/Logs/bboxy450-term/global-terminal-font-20261028-focused-initial.log; exit=2; sha256=60b38507b051685cd506bd8b8534c0e7e0d94841a27ca2cd4c68400cb5f66360
+focused-second: command_log=/Users/feral/Library/Logs/bboxy450-term/global-terminal-font-20261028-focused-second.log; exit=2; sha256=c371b98142a51d10ff9ff1b3ba2aa152acd5d6fff37c26aefaa2eac566917d44
+focused-final: command_log=/Users/feral/Library/Logs/bboxy450-term/global-terminal-font-20261028-focused-final.log; exit=0; sha256=b30d6d4aada18bd59659275a0824383a4134e92c984563edc806da803387a8c7
+clippy: command_log=/Users/feral/Library/Logs/bboxy450-term/global-terminal-font-20261028-clippy.log; exit=0; sha256=37b468cb0d6fb8db197ef8af3066baee3cf40a4eb42283ab7edec30fb3550be5
+licenses: command_log=/Users/feral/Library/Logs/bboxy450-term/global-terminal-font-20261028-licenses.log; exit=0; sha256=3b68ebfc3f11cf6fd120c5f9481371d83f94c63dbb1ffa7b98bb674a05a41373
+Product diff sha256 before evidence record=d5ac88f6eb6121f8673dd5f1923633f88e6d69f621af6fb6145187c443183f7b
+
+Not run here: combined exact-commit full make test / landing / install / publication; root explicitly owns combined final gates and installation. No live operator account, session, input, credentials, desktop capture or installed app touched. No OS keystrokes/clicks injected. Own private headless accounts, ctl, renderer captures and owned native probe only. No renderer crate changes or frontend chrome style/geometry changes; no visual reference redesign/parity change.
