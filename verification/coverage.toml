@@ -1,0 +1,199 @@
+# Every workspace crate participates in the mandatory formal gate.
+# contract-model means a bounded design contract, never a proof of arbitrary Rust.
+# implementation-tests entries make remaining formal coverage explicit.
+
+[[crate]]
+name = "bboxy450-term-desktop-core"
+status = "implementation-tests"
+models = []
+scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
+sources = ["crates/bboxy450-term-desktop-core/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-term-desktop-macos"
+status = "implementation-tests"
+models = []
+scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
+sources = ["crates/bboxy450-term-desktop-macos/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-term-desktop"
+status = "implementation-tests"
+models = []
+scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
+sources = ["crates/bboxy450-term-desktop/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-keychain-windows"
+status = "implementation-tests"
+models = []
+scope = "OS/file custody and credential access are verified with private unattended fixtures. OS authorization and failure transitions remain a formal coverage gap."
+sources = ["crates/bboxy450-keychain-windows/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-keychain-file"
+status = "implementation-tests"
+models = []
+scope = "OS/file custody and credential access are verified with private unattended fixtures. OS authorization and failure transitions remain a formal coverage gap."
+sources = ["crates/bboxy450-keychain-file/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-keychain"
+status = "implementation-tests"
+models = []
+scope = "OS/file custody and credential access are verified with private unattended fixtures. OS authorization and failure transitions remain a formal coverage gap."
+sources = ["crates/bboxy450-keychain/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-desktop-notifications-macos"
+status = "implementation-tests"
+models = []
+scope = "Notification submission/completion and OS adapter effects use private recording fixtures; worker revision semantics remain a formal coverage gap."
+sources = ["crates/bboxy450-desktop-notifications-macos/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-desktop-notifications-windows"
+status = "implementation-tests"
+models = []
+scope = "Notification submission/completion and OS adapter effects use private recording fixtures; worker revision semantics remain a formal coverage gap."
+sources = ["crates/bboxy450-desktop-notifications-windows/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-desktop-notifications-linux"
+status = "implementation-tests"
+models = []
+scope = "Notification submission/completion and OS adapter effects use private recording fixtures; worker revision semantics remain a formal coverage gap."
+sources = ["crates/bboxy450-desktop-notifications-linux/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-desktop-notifications"
+status = "implementation-tests"
+models = []
+scope = "Notification submission/completion and OS adapter effects use private recording fixtures; worker revision semantics remain a formal coverage gap."
+sources = ["crates/bboxy450-desktop-notifications/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-plugin"
+status = "implementation-tests"
+models = []
+scope = "Plugin admission/version and execution lifecycle remain a formal coverage gap; current plugin fixtures still gate."
+sources = ["crates/bbt-plugin/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-yarn-macros"
+status = "contract-model"
+models = ["YarnReactor"]
+scope = "Shared reactor parser/validator feeds the scheduling projection; macro expansion correctness still requires Rust runtime and compile-fail tests."
+sources = ["crates/bbt-yarn-macros/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-yarn"
+status = "contract-model"
+models = ["YarnReactor", "FairResponse", "WeakFairFlicker", "StutteringIsNotFairProgress"]
+scope = "Finite reactor scheduling and native checker semantics; arbitrary handler bodies and executor wake behavior remain outside the model."
+sources = ["crates/bbt-yarn/src/model.rs"]
+
+[[crate]]
+name = "bboxy450-term-core"
+status = "implementation-tests"
+models = []
+scope = "Terminal parser and checkpoint bytes need parser/replay/property fixtures; no TLA model currently captures those byte semantics."
+sources = ["crates/bbt-core/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-harness-wake-up"
+status = "implementation-tests"
+models = []
+scope = "Desktop lifecycle and platform effects require real private process/window tests. No platform or OS lifecycle model is claimed."
+sources = ["crates/bboxy450-harness-wake-up/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-mermaid"
+status = "implementation-tests"
+models = []
+scope = "Parser and layout correctness use grammar/golden fixtures; no concurrency protocol is implemented by the layout algorithms."
+sources = ["crates/bbt-mermaid/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-harness-host"
+status = "contract-model"
+models = ["InputReceipt"]
+scope = "One stable input operation across two logic leases; models at-most-once effects, not PTY syscall or OS durability behavior."
+sources = ["crates/bbt-supervisor/src/supervisor.rs"]
+
+[[crate]]
+name = "bboxy450-mux"
+status = "contract-model"
+models = ["CheckpointFence", "InputReceipt"]
+scope = "Immutable save cursor and current-generation confirmation; stable input identity. No complete mux or on-disk refinement proof."
+sources = ["crates/bbt-mux/src/checkpoint.rs"]
+
+[[crate]]
+name = "bboxy450-proto"
+status = "contract-model"
+models = ["InputReceipt"]
+scope = "Input identity/lease protocol contract for the supervisor boundary; serialization and cryptography use implementation tests."
+sources = ["crates/bbt-proto/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-rt"
+status = "implementation-tests"
+models = []
+scope = "Runtime cancellation and IO scheduling remain an explicit formal coverage gap; real process and Tokio tests remain required."
+sources = ["crates/bbt-rt/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-render"
+status = "implementation-tests"
+models = []
+scope = "GPU rendering, fonts and geometry need image/geometry/performance tests; no formal GPU execution model exists here."
+sources = ["crates/bbt-render/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-ui-core"
+status = "implementation-tests"
+models = []
+scope = "Pure layout and model reducers use unit/property/parity tests; a complete UI transition specification has not been modeled."
+sources = ["crates/bbt-ui-model/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-ui"
+status = "implementation-tests"
+models = []
+scope = "UI controls and reducers require scripted interaction and parity; asynchronous boundary contracts must be added when changed."
+sources = ["crates/bbt-ui/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-doc"
+status = "implementation-tests"
+models = []
+scope = "Document layout and source rendering use fixture and parity tests; no model of document interaction is claimed."
+sources = ["crates/bbt-doc/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-book"
+status = "implementation-tests"
+models = []
+scope = "Reference-gallery output is validated by captures and geometry; no formal image equivalence claim."
+sources = ["crates/bboxybook/src/lib.rs"]
+
+[[crate]]
+name = "bboxy450-term"
+status = "contract-model"
+models = ["InputReceipt"]
+scope = "Retained operation identity on unknown input outcomes; rendering, GUI event ordering and all other operations are not modeled by this contract."
+sources = ["crates/bboxy450-term/src/live.rs"]
+
+[[crate]]
+name = "bboxy450-term-firehose"
+status = "implementation-tests"
+models = []
+scope = "Load generation and observation validate measured throughput; a finite model cannot establish elapsed-time performance."
+sources = ["crates/bboxy-firehose/src/main.rs"]
+
+[[crate]]
+name = "bboxy450-tlc"
+status = "contract-model"
+models = ["Counter", "FairResponse", "WeakFairFlicker", "StutteringIsNotFairProgress", "SimultaneousUpdates"]
+scope = "Native finite-state checking and TLA+ export, compared by exact graph and verdict. Full TLA+ parsing and TLC feature completeness are not claimed."
+sources = ["crates/bboxy450-tlc/src/lib.rs"]

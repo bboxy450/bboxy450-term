@@ -41,6 +41,20 @@ Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED
 
 Signed installation never silently falls back to unsigned. `install-unsigned` uses an ad-hoc executable signature needed by arm64 macOS, with no Apple identity/Keychain access. It is a test install, not distribution signing. Notification authorization tests must use the appropriate signed build; ordinary smoke uses file custody and no OS prompt.
 
+## Mandatory formal verification
+
+TLA+/TLC and Yarn verification are mandatory for this codebase and every crate
+(operator decision [[d365-mandatory-formal-verification]]). Run `make test-formal`;
+`make test` includes it. Every workspace crate must occur in
+`verification/coverage.toml` with its model/source mapping or an explicit account
+of behavior still checked only by implementation tests. A new crate cannot pass
+by omission. Changes to concurrency, lifecycle, persistence, ownership, retries
+or event-loop arbitration update the relevant model and its negative controls.
+Yarn is the constrained frontend; native Rust and pinned Java TLC run side by
+side. Java remains the reference until separately recorded conformance evidence
+authorizes retirement. Finite model parity is not a proof of arbitrary Rust or
+complete TLA+ support. See `verification/README.md`.
+
 ## Scope and evidence
 
 - Read the task, `.bboxy/vision.md`, relevant specs/decisions/interfaces and the source/Git state before editing. `.bboxy/tasks/README.md` is the historical task board; GitHub issues track current release findings.

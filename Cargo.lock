@@ -499,6 +499,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-tlc"
+version = "0.1.1"
+
+[[package]]
 name = "bboxy450-ui"
 version = "0.1.1"
 dependencies = [
@@ -520,6 +524,7 @@ dependencies = [
 name = "bboxy450-yarn"
 version = "0.1.1"
 dependencies = [
+ "bboxy450-tlc",
  "bboxy450-yarn-macros",
  "tokio",
  "tokio-util",

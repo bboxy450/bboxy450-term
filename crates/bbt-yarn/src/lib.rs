@@ -16,6 +16,13 @@ extern crate self as bbt_yarn;
 #[cfg(all(feature = "tokio", not(target_os = "none")))]
 extern crate alloc;
 
+#[cfg(feature = "model")]
+extern crate std;
+
+/// Native finite-state checking and TLA+ export for the explicit Yarn subset.
+#[cfg(feature = "model")]
+pub mod model;
+
 /// Control values returned by non-terminal reactor handlers.
 pub mod reactor;
 /// Persistent, selection-loss-preserving reactor sources.
@@ -23,6 +30,10 @@ pub mod source;
 
 #[cfg(feature = "macros")]
 pub use bbt_yarn_macros::reactor;
+
+/// Projects the same reactor grammar into a finite scheduling model.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::reactor_model;
 
 /// Implementation details used by generated code.
 ///

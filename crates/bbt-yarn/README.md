@@ -161,6 +161,23 @@ compile-fail fixtures include the ordinary ownership error `E0382` and the
 negative controls demonstrate raw-runtime bypass, erased constraints and allowed
 doc-comment rationale; they are not proofs of application-wide safety.
 
+## Native verification and TLA+ export
+
+Enable the optional `model` feature for the hosted, pure Rust explicit-state
+checker in `model`. `reactor_model!` projects the same validated grammar into a
+finite scheduling model. Use a shared declaration for executable/model variants;
+`tests/model_projection.rs` demonstrates the link against real source selection.
+Arbitrary handlers and OS/runtime effects remain outside this projection.
+
+The native backend explores exact states, checks invariants/deadlocks and
+analyzes response properties under explicit weak fairness, including stuttering.
+The separate TLA+ exporter feeds upstream TLC. `make test-formal` compares full
+state/edge sets and property outcomes on positive and broken controls. Java is a
+development reference, never an application/runtime dependency. This is the
+initial finite expression/action subset, not a complete TLA+ parser or TLC
+replacement. See the repository's `verification/README.md` and operator decision
+365 for mandatory coverage and promotion rules.
+
 ## Platform support
 
 The core adapters use `core` only. Tokio adapters are enabled on hosted targets
@@ -172,6 +189,7 @@ claim execution on other platforms or bare-metal targets.
 
 - `macros` (default): re-export `reactor!` and its retained comparison backends.
 - `tokio` (default): Tokio channel, one-shot, cancellation and deadline adapters.
+- `model` (opt-in): hosted native finite-state checking and TLA+ export; requires std.
 - `--no-default-features`: the `no_std` core without Tokio or the proc macro.
 - `--no-default-features --features macros`: core adapters plus macro expansion.
 

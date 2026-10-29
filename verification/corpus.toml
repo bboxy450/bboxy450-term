@@ -1,0 +1,56 @@
+# Required independent expectations; removing a corpus member fails the gate.
+[[model]]
+name = "YarnReactor"
+expected = "pass"
+
+[[model]]
+name = "YarnBufferedYield"
+expected = "pass"
+
+[[model]]
+name = "Counter"
+expected = "pass"
+
+[[model]]
+name = "BrokenSafety"
+expected = "safety"
+
+[[model]]
+name = "Deadlock"
+expected = "deadlock"
+
+[[model]]
+name = "FairResponse"
+expected = "pass"
+
+[[model]]
+name = "UnfairResponse"
+expected = "liveness"
+
+[[model]]
+name = "WeakFairFlicker"
+expected = "liveness"
+
+[[model]]
+name = "CheckpointFence"
+expected = "pass"
+
+[[model]]
+name = "BrokenCheckpointFence"
+expected = "safety"
+
+[[model]]
+name = "InputReceipt"
+expected = "pass"
+
+[[model]]
+name = "BrokenInputRetry"
+expected = "safety"
+
+[[model]]
+name = "SimultaneousUpdates"
+expected = "pass"
+
+[[model]]
+name = "StutteringIsNotFairProgress"
+expected = "liveness"

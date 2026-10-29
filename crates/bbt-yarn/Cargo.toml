@@ -16,9 +16,12 @@ revision = "293e134526bb2deee96f1197d6268aee64495482"
 [features]
 default = ["macros", "tokio"]
 macros = ["dep:bbt-yarn-macros"]
+# Hosted, dependency-free explicit-state verification; never part of the runtime.
+model = ["dep:bboxy450-tlc"]
 tokio = ["dep:tokio", "dep:tokio-util"]
 
 [dependencies]
+bboxy450-tlc = { version = "0.1.1", path = "../bboxy450-tlc", optional = true }
 bbt-yarn-macros = { package = "bboxy450-yarn-macros", version = "0.1.1", path = "../bbt-yarn-macros", optional = true }
 
 [target.'cfg(not(target_os = "none"))'.dependencies]
@@ -36,3 +39,7 @@ required-features = ["macros", "tokio"]
 
 [lib]
 name = "bbt_yarn"
+
+[[example]]
+name = "verify"
+required-features = ["macros", "model"]

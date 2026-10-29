@@ -29,6 +29,7 @@ UPSTREAM_PREFIXES = (
 )
 UPSTREAM_FILES = {"crates/bbt-core/src/keyboard.rs"}
 FORK_PREFIXES = ("crates/bbt-yarn/", "crates/bbt-yarn-macros/")
+OWNED_FORK_FILES = {"crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs", "crates/bbt-yarn/tests/model_projection.rs"}
 STRICT_PREFIXES = ("crates/bbt-yarn/tests/ui/",)
 CHECKER_FILES = {"scripts/source-notices.py", "scripts/test-source-notices.py"}
 # The packaged web source is edited canonically; release-inputs copies are synced
@@ -64,6 +65,8 @@ def category(name, text):
         return "generated"
     if name.startswith("crates/bbt-core/"):
         return "core"
+    if name in OWNED_FORK_FILES:
+        return "owned"
     if name.startswith(FORK_PREFIXES):
         return "fork"
     return "owned"

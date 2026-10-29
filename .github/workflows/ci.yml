@@ -10,6 +10,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
+      - run: make test-formal
       - run: sh scripts/layering.sh
       - run: cargo build --workspace --locked
       - run: cargo test --workspace --locked

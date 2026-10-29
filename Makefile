@@ -40,6 +40,11 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
+	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
+	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
+	  'make test-tlc-standalone        Verify the public standalone source, native + TLC' \
+	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
@@ -1118,3 +1123,46 @@ check-terminal-selection:
 test-harness-vocabulary:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
+
+.PHONY: test-formal test-yarn-model
+
+test-yarn-model:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-tlc --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-yarn --features model --target-dir '$(TARGET_DIR)'; \
+	cargo check --locked -p bboxy450-yarn --no-default-features --target-dir '$(TARGET_DIR)'; \
+	cargo check --locked -p bboxy450-yarn --no-default-features --features model --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --locked -p bboxy450-tlc -p bboxy450-yarn -p bboxy450-yarn-macros --features bboxy450-yarn/model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-formal: test-yarn-model
+	@python3 -I scripts/test-formal.py
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
+
+.PHONY: format-yarn-model
+format-yarn-model:
+	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bbt-yarn/src/model.rs crates/bbt-yarn/examples/verify.rs crates/bboxy450-tlc/tests/model_checker.rs crates/bboxy450-tlc/src/lib.rs crates/bboxy450-tlc/examples/verify.rs crates/bbt-yarn/tests/model_projection.rs crates/bbt-yarn-macros/src/lib.rs crates/bbt-yarn/src/lib.rs
+
+.PHONY: prepare-tlc test-tlc-standalone publish-tlc-github
+prepare-tlc:
+	@python3 -I scripts/prepare-tlc.py --target '$(abspath $(TARGET_DIR))'
+
+test-tlc-standalone:
+	@set -eu; mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); $(MAKE) -C "$$mirror" test; \
+	git -C "$$mirror" rev-parse HEAD > '$(TARGET_DIR)/tlc-standalone.passed'
+
+publish-tlc-github:
+	@set -eu; test "$$(gh api user --jq .login)" = bboxy450; test -z "$$(git status --porcelain)"; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
+	mirror=$$(cat '$(TARGET_DIR)/tlc-public.path'); version='$(APP_VERSION)'; \
+	test "$$(cat '$(TARGET_DIR)/tlc-standalone.passed')" = "$$(git -C "$$mirror" rev-parse HEAD)"; \
+	git -C "$$mirror" verify-commit HEAD; test -z "$$(git -C "$$mirror" status --porcelain)"; \
+	python3 -c 'import json,subprocess,sys; d=json.load(open(sys.argv[1]+"/SOURCE.json")); assert d["revision"]==subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip()' "$$mirror"; \
+	file='$(abspath $(TARGET_DIR))/package/bboxy450-tlc-'"$$version"'.crate'; \
+	gpg --verify "$$file.asc" "$$file"; \
+	git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; \
+	gh repo create bboxy450/bboxy450-tlc --public --description 'Experimental pure Rust model checker, checked side by side with TLA+/TLC' --source "$$mirror" --remote origin --push; \
+	git -C "$$mirror" push origin --follow-tags; \
+	gh release create "v$$version" --repo bboxy450/bboxy450-tlc "$$file" "$$file.asc" --title "bboxy450-tlc $$version" --notes 'Experimental finite expression/action subset. Native and upstream Java TLC run side by side; complete TLC compatibility is not claimed. Signed source provenance is recorded in SOURCE.json.'
