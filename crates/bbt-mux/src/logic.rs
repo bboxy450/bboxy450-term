@@ -5139,10 +5139,10 @@ impl Worker {
             .and_then(|tail| tail.split_once('/'))
             .filter(|(_, kind)| *kind == "state")
             .and_then(|(seat, _)| seat.parse::<Ulid>().ok());
-        self.handle.block_on(self.bus.publish(stream, event))?;
         if let Some(seat) = seat.filter(|seat| self.views.contains_key(seat)) {
             self.refresh_attention(seat, false)?;
         }
+        self.handle.block_on(self.bus.publish(stream, event))?;
         Ok(())
     }
     fn scan_workspace(&mut self, binding: &RootBinding) -> Result<()> {
@@ -7134,6 +7134,12 @@ impl Worker {
             check_size(size.cols as usize, size.rows as usize)?;
             view.view_generation = Ulid::new();
         }
+        // Current attention precedes provenance/session/history IO. Replay does not enter here.
+        let attention_changed = if matches!(event, Event::Exited { .. }) {
+            self.refresh_attention(id, false)?
+        } else {
+            self.sync_adapter_attention(id, &before, &self.views[&id].adapter.status, live_wait)?
+        };
         if !provenance_frames.is_empty()
             && let Some(root) = self.provenance_binding(id, generation)
             && let Ok(workspace) = self.workspaces.cache.get_mut(&root)
@@ -7194,8 +7200,7 @@ impl Worker {
         draft.generation = Some(generation);
         self.publish(&format!("seat-{id}"), draft)?;
         let status = self.views[&id].adapter.status.clone();
-        let promoted = self.promote_attention(id, live_wait)?;
-        if !status.same_value(&before) || promoted {
+        if !status.same_value(&before) || attention_changed {
             self.publish_adapter(id, status)?;
         }
         Ok(true)
@@ -7754,7 +7759,7 @@ impl Worker {
             let status = view.adapter.status.clone();
             live_wait |= status.state == crate::adapters::State::Waiting
                 && before.state != crate::adapters::State::Waiting;
-            let promoted = self.promote_attention(id, live_wait)?;
+            let promoted = self.sync_adapter_attention(id, &before, &status, live_wait)?;
             if !status.same_value(&before) || promoted {
                 self.publish_adapter(id, status)?;
             }
@@ -7949,12 +7954,16 @@ impl Worker {
         // publish followed by a crash is deduplicated by its original bus id.
         for (stream, draft) in self.messaging.events()? {
             let id = draft.id;
-            let changed_seat = draft.seat.filter(|seat| self.views.contains_key(seat));
-            let published = self.handle.block_on(self.bus.publish(&stream, draft))?;
-            self.messaging.event_published(&stream, id, published.seq)?;
+            let changed_seat = draft.seat.filter(|seat| {
+                self.views.contains_key(seat)
+                    && draft.subject.starts_with("seat/")
+                    && draft.subject.ends_with("/state")
+            });
             if let Some(seat) = changed_seat {
                 self.refresh_attention(seat, false)?;
             }
+            let published = self.handle.block_on(self.bus.publish(&stream, draft))?;
+            self.messaging.event_published(&stream, id, published.seq)?;
         }
         for (swarm, seat) in targets {
             if self.deliveries.len() >= 32 {
@@ -8191,6 +8200,19 @@ impl Worker {
             self.refresh_attention(id, true)
         } else {
             Ok(false)
+        }
+    }
+    fn sync_adapter_attention(
+        &self,
+        id: Ulid,
+        before: &crate::adapters::Status,
+        status: &crate::adapters::Status,
+        live_wait: bool,
+    ) -> Result<bool> {
+        if !status.same_value(before) {
+            self.refresh_attention(id, live_wait)
+        } else {
+            self.promote_attention(id, live_wait)
         }
     }
     fn seal_active_hold(&mut self) -> Result<()> {
@@ -9842,13 +9864,18 @@ impl Worker {
                                 }
                                 Ok(view.adapter.status.clone())
                             });
+                        let attention_changed =
+                            if let (Some(before), Ok(status)) = (&before, &result) {
+                                self.sync_adapter_attention(id, before, status, live_wait)?
+                            } else {
+                                false
+                            };
                         let result = result.and_then(|status| {
                             self.register_claude_socket(id, generation, &event)?;
                             Ok(status)
                         });
                         if let (Some(before), Ok(status)) = (&before, &result) {
-                            let promoted = self.promote_attention(id, live_wait)?;
-                            if !status.same_value(before) || promoted {
+                            if !status.same_value(before) || attention_changed {
                                 self.publish_adapter(id, status.clone())?;
                             }
                         }
@@ -9894,12 +9921,12 @@ impl Worker {
                             Ok(bound)
                         })();
                         if matches!(result, Ok(true)) {
-                            self.persist_native_session(id)?;
-                            self.promote_attention(
+                            self.refresh_attention(
                                 id,
                                 self.views[&id].adapter.status.state
                                     == crate::adapters::State::Waiting,
                             )?;
+                            self.persist_native_session(id)?;
                             self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                         }
                         let _ = reply.send(result);
@@ -9969,7 +9996,8 @@ impl Worker {
                                 Ok(view.adapter.status.clone())
                             });
                         if let (Some(before), Ok(status)) = (&before, &result) {
-                            let promoted = self.promote_attention(id, live_wait)?;
+                            let promoted =
+                                self.sync_adapter_attention(id, before, status, live_wait)?;
                             if !status.same_value(before) || promoted {
                                 self.publish_adapter(id, status.clone())?;
                             }

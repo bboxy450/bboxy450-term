@@ -266,6 +266,21 @@ mod tests {
         replacement.update(seat(2, true), true).unwrap();
         assert_ne!(replacement.episode(Ulid(1), 2).unwrap().epoch, second.epoch);
     }
+    #[test]
+    fn closed_catalogue_members_do_not_accumulate_generation_tombstones() {
+        let current = CurrentAttention::default();
+        for id in 1..=100 {
+            let mut row = seat(1, true);
+            row.record.id = Ulid(id);
+            current.update(row.clone(), true).unwrap();
+            row.record.lifecycle = bbt_proto::Lifecycle::ClosedRetained;
+            row.state.process = ProcessStatus::Retained;
+            current.update(row, false).unwrap();
+        }
+        let state = current.state.read().unwrap();
+        assert!(state.generations.is_empty());
+        assert!(state.waiting.is_empty());
+    }
     #[tokio::test]
     async fn snapshots_cover_lag_without_replaying_stale_deltas() {
         let current = Arc::new(CurrentAttention::default());

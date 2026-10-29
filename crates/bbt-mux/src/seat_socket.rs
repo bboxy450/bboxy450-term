@@ -1861,6 +1861,8 @@ async fn session(
 }
 
 #[cfg(test)]
+mod attention_tests;
+#[cfg(test)]
 mod gui_tests {
     use super::*;
     use crate::{
