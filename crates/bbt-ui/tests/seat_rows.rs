@@ -10,7 +10,7 @@
 )]
 use bbt_ui::{
     self as ui, components as c,
-    modules::seat_row::{SeatRow, Subagent, named},
+    modules::seat_row::{SeatRow, Subagent, first_name, named, role_label},
 };
 use bbt_ui_model::{
     Activity, Grade, WaitKind,
@@ -205,24 +205,124 @@ fn content_dim_preserves_unrelated_mask_opacity_and_explicit_filters() {
     )));
 }
 
-// keeps: spec gui-components §1.3
+// keeps: operator ROLE-first identity, 2026-10-29; canonical identity remains intact.
 #[test]
-fn shell_role_has_no_seat_or_strip_chip_but_other_roles_keep_theirs() {
+fn role_first_presentation_uses_first_unicode_token_and_honest_missing_roles() {
+    assert_eq!(first_name(" \u{0085}Éowyn\u{2003}Greywind "), "Éowyn");
+    assert_eq!(first_name("Mary-Jane Smith"), "Mary-Jane");
+    assert_eq!(first_name("\u{2003}\t"), "");
+    assert_eq!(role_label(Some(" executor "), "claude"), "EXECUTOR");
+    assert_eq!(role_label(Some("créativité"), "codex"), "CRÉATIVITÉ");
+    assert_eq!(role_label(None, "zsh"), "SHELL");
+    assert_eq!(role_label(Some(" "), "bash"), "SHELL");
+    assert_eq!(role_label(None, "claude"), "UNASSIGNED");
+    assert_eq!(role_label(None, "codex"), "UNASSIGNED");
+
     let ctx = context();
-    let mut row = SeatRow::new("shell", "Shell", "zsh");
-    for (role, has_chip) in [("shell", false), ("executor", true), ("oracle", true)] {
-        row.role = Some(role.into());
+    let mut row = SeatRow::new("canonical-key", "Éowyn\u{2003}Greywind", "zsh");
+    for (role, expected) in [
+        (None, "SHELL"),
+        (Some("shell"), "SHELL"),
+        (Some("executor"), "EXECUTOR"),
+        (Some("oracle"), "ORACLE"),
+    ] {
+        row.role = role.map(str::to_owned);
         let layout = row
             .element(ctx)
             .layout(Rect::new(0., 0., 320., 0.), ctx, &Metrics)
             .unwrap();
-        assert_eq!(find(&layout, "rmark").is_some(), has_chip);
+        assert_eq!(labels(find(&layout, "rmark").unwrap()), [expected]);
+        assert_eq!(labels(find(&layout, "name").unwrap()), ["Éowyn"]);
         let strip = bbt_ui::modules::strip::Strip::new(row.clone());
         let layout = strip
             .element(ctx)
             .layout(Rect::new(0., 0., 320., 40.), ctx, &Metrics)
             .unwrap();
-        assert_eq!(find(&layout, "pane/strip/rmark").is_some(), has_chip);
+        assert_eq!(
+            labels(find(&layout, "pane/strip/rmark").unwrap()),
+            [expected]
+        );
+        assert_eq!(labels(find(&layout, "pane/strip/name").unwrap()), ["Éowyn"]);
+        assert_eq!(row.name, "Éowyn\u{2003}Greywind");
+        assert_eq!(row.role.as_deref(), role);
+        assert_eq!(row.key, "canonical-key");
+    }
+}
+
+// keeps: operator ROLE remains visible before a shrinking first name, 2026-10-29.
+#[test]
+fn role_keeps_natural_width_before_first_name_in_rows_and_pane_strips() {
+    fn check(layout: &c::Layout, role_key: &str, name_key: &str, width: f32) -> f32 {
+        let role = find(layout, role_key).unwrap();
+        let name = find(layout, name_key).unwrap();
+        let c::LayoutKind::Text {
+            runs: role_runs, ..
+        } = &role.children[0].kind
+        else {
+            panic!("role text")
+        };
+        let c::LayoutKind::Text {
+            runs: name_runs, ..
+        } = &name.children[0].kind
+        else {
+            panic!("first-name text")
+        };
+        assert_eq!(role_runs.len(), 1);
+        assert_eq!(name_runs.len(), 1);
+        assert!(
+            role.rect.w + 0.001 >= role_runs[0].rect.w,
+            "role was truncated"
+        );
+        assert!(role.rect.right() <= width + 0.001, "role escaped row");
+        assert!(
+            role.rect.right() <= name.rect.x + 0.001,
+            "role must precede name"
+        );
+        assert!(role_runs[0].style.size >= name_runs[0].style.size);
+        assert!(role_runs[0].style.weight >= name_runs[0].style.weight);
+        assert!(!labels(layout).iter().any(|text| text.contains("Greywind")));
+        name.rect.w
+    }
+    for theme in [ui::Theme::Dark, ui::Theme::Light] {
+        for density in [
+            ui::Density::Touch,
+            ui::Density::Comfortable,
+            ui::Density::Cozy,
+            ui::Density::Compact,
+        ] {
+            let ctx = ui::Context::new(theme, density);
+            for role in [
+                "oracle",
+                "architect",
+                "creativity",
+                "executor",
+                "shell",
+                "unassigned",
+            ] {
+                let mut row = SeatRow::new("routing-key", "Alexandermagnificent Greywind", "codex");
+                row.role = Some(role.into());
+                let mut row_widths = vec![];
+                let mut strip_widths = vec![];
+                for width in [160., 220., 320., 520.] {
+                    // Swarm/shadow rows share this path with the standalone row.
+                    for element in [row.element(ctx), row.element_in_swarm(ctx)] {
+                        let layout = element
+                            .layout(Rect::new(0., 0., width, 0.), ctx, &Metrics)
+                            .unwrap();
+                        let name_width = check(&layout, "role", "name", width);
+                        row_widths.push(name_width);
+                    }
+                    let strip = bbt_ui::modules::strip::Strip::new(row.clone());
+                    let layout = strip
+                        .element(ctx)
+                        .layout(Rect::new(0., 0., width, 40.), ctx, &Metrics)
+                        .unwrap();
+                    strip_widths.push(check(&layout, "pane/strip/role", "pane/strip/name", width));
+                }
+                assert!(row_widths[0] < *row_widths.last().unwrap());
+                assert!(strip_widths[0] < *strip_widths.last().unwrap());
+            }
+        }
     }
 }
 

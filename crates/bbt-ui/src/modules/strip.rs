@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Pane identity strip. The host supplies capabilities and one-shot notice state.
-use super::seat_row::{SeatRow, named, role_color};
+use super::seat_row::{SeatRow, first_name, fixed_role, named, role_label};
 use crate::{self as ui, components as c};
 use bbt_ui_model::{Activity, STYLE, TOKENS};
 
@@ -167,11 +167,26 @@ impl Strip {
             children.push(icon("pane/strip/where", where_, 13., on, 0.85).into());
         }
         children.push(icon("pane/strip/hicon", &seat.harness, 13., on, 1.).into());
+        children.push(fixed_role(named(
+            "pane/strip/rmark",
+            named(
+                "pane/strip/role",
+                text(
+                    role_label(seat.role.as_deref(), &seat.harness),
+                    STYLE.r#type.caption as f32,
+                    600,
+                    false,
+                    on,
+                    1.,
+                    1.4,
+                ),
+            ),
+        )));
         children.push(flexible(
             named(
                 "pane/strip/name",
                 text(
-                    &seat.name,
+                    first_name(&seat.name),
                     STYLE.r#type.caption as f32,
                     600,
                     false,
@@ -182,30 +197,6 @@ impl Strip {
             ),
             0.,
         ));
-        if let Some(role) = seat.role.as_ref().filter(|role| role.as_str() != "shell") {
-            let mark = match role.as_str() {
-                "oracle" => "♔",
-                "creativity" => "♝",
-                "architect" => "♖",
-                "executor" => "♟",
-                _ => "·",
-            };
-            children.push(
-                named(
-                    "pane/strip/rmark",
-                    text(
-                        mark,
-                        ctx.density.tokens().glyph as f32 - 1.,
-                        400,
-                        true,
-                        role_color(role),
-                        0.9,
-                        1.4,
-                    ),
-                )
-                .into(),
-            );
-        }
         if let Some(authority) = &seat.authority {
             children.push(
                 named(

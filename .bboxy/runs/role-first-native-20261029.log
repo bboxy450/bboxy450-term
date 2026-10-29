@@ -1,0 +1,22 @@
+ROLE: EXECUTOR — native ROLE-first identity source handoff
+Worktree: /Users/feral/mydev/bboxy450-term-chat-scroll
+Branch: exec/role-first-names-20261029
+Base: origin/main 71e47d85
+Scope: seat_row.rs, strip.rs, focused seat_rows.rs tests.
+
+Source mechanisms:
+- seat_row::first_name uses split_whitespace (Unicode), leaving canonical DTO names/keys intact.
+- seat_row::role_label uppercases explicit roles; absent shell-kind role -> SHELL, other absent role -> UNASSIGNED. No harness-to-authority inference.
+- SeatRow and pane Strip retain rmark semantic aliases and display fixed intrinsic-width ROLE before shrinking/ellipsizing first name; ROLE and name use equal existing font size/600 weight.
+- Swarm/shadow rows share SeatRow::element_in_swarm. Nested Subagent data has only id/description/detail/activity; task-description labels preserved, no invented role.
+- Window breadcrumb and name-only ClosedStrip remain outside brief.
+
+Checks executed:
+- rustfmt --edition 2024 --config skip_children=true --emit stdout crates/bbt-ui/src/modules/seat_row.rs crates/bbt-ui/src/modules/strip.rs crates/bbt-ui/tests/seat_rows.rs >/dev/null — exit 0 (parse; no build).
+- git diff --check — exit 0.
+- git config user.name/email/signingkey/commit.gpgsign — Boxy, bboxy450@gmail.com, 9B07E849480C68328CA20684844ECC0587DE7AB0, true.
+
+Tests added/updated, NOT EXECUTED in this worktree (brief: no Cargo/cold target; parent owns warm Make checks/parity):
+- role_first_presentation_uses_first_unicode_token_and_honest_missing_roles
+- role_keeps_natural_width_before_first_name_in_rows_and_pane_strips
+  Matrix: both themes, all four densities, 160/220/320/520 widths, oracle/architect/creativity/executor/shell/unassigned; standalone+swarm/shadow row path and pane strip. Asserts full ROLE width and order, ROLE size/weight >= name, no surname displayed, name yields as width narrows.

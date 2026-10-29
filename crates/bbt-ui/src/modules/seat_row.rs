@@ -9,6 +9,48 @@
 use crate::{self as ui, components as c};
 use bbt_ui_model::{Activity, Grade, STYLE, SeatColor, TOKENS};
 
+/// Visible first-name presentation only; canonical names and routing stay intact.
+pub fn first_name(name: &str) -> &str {
+    name.split_whitespace().next().unwrap_or("")
+}
+/// Missing role data never inherits authority from an agent's harness kind.
+pub fn role_label(role: Option<&str>, harness: &str) -> String {
+    if let Some(role) = role.map(str::trim).filter(|role| !role.is_empty()) {
+        return role.to_uppercase();
+    }
+    if matches!(
+        harness,
+        "zsh"
+            | "bash"
+            | "fish"
+            | "sh"
+            | "dash"
+            | "ksh"
+            | "tcsh"
+            | "csh"
+            | "powershell"
+            | "pwsh"
+            | "cmd"
+    ) {
+        "SHELL".into()
+    } else {
+        "UNASSIGNED".into()
+    }
+}
+/// Role text keeps its intrinsic width; the adjacent first name yields first.
+pub(crate) fn fixed_role(element: c::Element) -> c::Item {
+    c::Item {
+        element,
+        extent: c::Extent::Content {
+            grow: 0.,
+            shrink: 0.,
+            min: 0.,
+            max: None,
+            max_fraction: None,
+        },
+    }
+}
+
 pub fn named(name: impl Into<String>, content: c::Element) -> c::Element {
     c::Element::Named {
         name: name.into(),
@@ -156,15 +198,6 @@ pub fn role_color(role: &str) -> ui::Color {
         "executor" => TOKENS.color.role.executor,
         _ => TOKENS.color.role.unsigned,
     })
-}
-fn role_mark(role: &str) -> &'static str {
-    match role {
-        "oracle" => "♔",
-        "creativity" => "♝",
-        "architect" => "♖",
-        "executor" => "♟",
-        _ => "·",
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -411,28 +444,34 @@ impl SeatRow {
         } else {
             color
         };
+        children.push(fixed_role(named(
+            "rmark",
+            named(
+                "role",
+                label(
+                    role_label(self.role.as_deref(), &self.harness),
+                    d.font as f32,
+                    600,
+                    false,
+                    role_color(self.role.as_deref().unwrap_or("")),
+                ),
+            ),
+        )));
         children.push(shrink(
             named(
                 "name",
-                label(&self.name, d.font as f32, 600, false, name_color),
+                label(
+                    first_name(&self.name),
+                    d.font as f32,
+                    600,
+                    false,
+                    name_color,
+                ),
             ),
             0.,
             0.,
             None,
         ));
-        if let Some(role) = self.role.as_ref().filter(|role| role.as_str() != "shell") {
-            let mut mark = label(
-                role_mark(role),
-                d.glyph as f32 - 1.,
-                400,
-                true,
-                role_color(role),
-            );
-            if let c::Element::Text(t) = &mut mark {
-                t.runs[0].style.paint.alpha = ui::Alpha::Value(0.9);
-            }
-            children.push(named("rmark", mark).into());
-        }
         if let Some(cause) = &self.authority {
             let c = rgba(if cause == "expired" {
                 TOKENS.color.state.waiting
