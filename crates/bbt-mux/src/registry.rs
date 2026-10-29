@@ -6,13 +6,14 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Stable seat/session metadata. Activity and close lifecycle are separate axes.
 
+use rusqlite::OptionalExtension;
 use ulid::Ulid;
 
 use crate::store::{Result, Store, invalid, sqlite::SqliteStore};
 
 pub use bbt_proto::registry::{
     AttentionPolicy, AttentionRule, Class, CloseRecord, Lifecycle, Location, Position, Role,
-    SeatRecord,
+    SeatRecord, SwarmRecord,
 };
 
 #[derive(Clone)]
@@ -20,9 +21,114 @@ pub struct Registry {
     store: SqliteStore,
 }
 
+fn valid_swarm(id: Ulid) -> Result<()> {
+    if id == Ulid::nil() {
+        Err(invalid("invalid swarm identity"))
+    } else {
+        Ok(())
+    }
+}
+
+fn canonical_workdir(path: &str) -> Result<String> {
+    if !bbt_proto::gui::valid_workdir(path) {
+        return Err(invalid(
+            "invalid_swarm_workdir: expected an absolute folder path",
+        ));
+    }
+    let path = std::path::Path::new(path)
+        .canonicalize()
+        .map_err(|error| invalid(format!("swarm_workdir_unavailable: {error}")))?;
+    if !path.is_dir() {
+        return Err(invalid(
+            "swarm_workdir_unavailable: expected an existing directory",
+        ));
+    }
+    let path = path
+        .to_str()
+        .filter(|path| bbt_proto::gui::valid_workdir(path))
+        .ok_or_else(|| invalid("invalid_swarm_workdir: expected a bounded UTF-8 folder path"))?;
+    Ok(path.to_owned())
+}
+
 impl Registry {
     pub fn new(store: SqliteStore) -> Self {
         Self { store }
+    }
+    pub fn swarm(&self, id: Ulid) -> Result<Option<SwarmRecord>> {
+        valid_swarm(id)?;
+        self.store
+            .get(&format!("swarm/{id}"))?
+            .map(|bytes| serde_json::from_slice(&bytes).map_err(Into::into))
+            .transpose()
+    }
+    pub fn swarms(&self) -> Result<Vec<SwarmRecord>> {
+        self.store
+            .list("swarm/")?
+            .into_iter()
+            .map(|(_, bytes)| serde_json::from_slice(&bytes).map_err(Into::into))
+            .collect()
+    }
+    /// A no-op keeps its revision, but still records an explicit initial reset.
+    fn change_swarm(&self, id: Ulid, change: impl FnOnce(&mut SwarmRecord)) -> Result<SwarmRecord> {
+        valid_swarm(id)?;
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let key = format!("swarm/{id}");
+        let bytes: Option<Vec<u8>> = tx
+            .query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        let mut record = bytes
+            .as_deref()
+            .map(serde_json::from_slice)
+            .transpose()?
+            .unwrap_or_else(|| SwarmRecord::new(id));
+        let previous = record.clone();
+        change(&mut record);
+        if record != previous {
+            record.revision = record
+                .revision
+                .checked_add(1)
+                .ok_or_else(|| invalid("swarm revision exhausted"))?;
+        }
+        tx.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", rusqlite::params![key, serde_json::to_vec(&record)?])?;
+        tx.commit()?;
+        Ok(record)
+    }
+    pub fn rename_swarm(&self, id: Ulid, name: &str) -> Result<SwarmRecord> {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
+            return Err(invalid("a swarm name is 1 to 64 printable characters"));
+        }
+        self.change_swarm(id, |record| record.name = Some(name.to_owned()))
+    }
+    pub fn update_swarm_workdir(&self, id: Ulid, path: Option<&str>) -> Result<SwarmRecord> {
+        let path = path.map(canonical_workdir).transpose()?;
+        self.change_swarm(id, |record| record.workdir = path)
+    }
+    /// Import only absent metadata. A missing legacy folder stays named, never
+    /// silently becomes the startup repository. Explicit edits always win.
+    pub(crate) fn import_swarm_workdir(&self, id: Ulid, path: &str) -> Result<()> {
+        valid_swarm(id)?;
+        if self.swarm(id)?.is_some() {
+            return Ok(());
+        }
+        if !bbt_proto::gui::valid_workdir(path) {
+            return Err(invalid(
+                "invalid_swarm_workdir: expected an absolute folder path",
+            ));
+        }
+        let record = SwarmRecord {
+            workdir: Some(canonical_workdir(path).unwrap_or_else(|_| path.to_owned())),
+            revision: 1,
+            ..SwarmRecord::new(id)
+        };
+        self.store.connection()?.execute(
+            "INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO NOTHING",
+            rusqlite::params![format!("swarm/{id}"), serde_json::to_vec(&record)?],
+        )?;
+        Ok(())
     }
     pub fn insert(&self, record: &SeatRecord) -> Result<()> {
         if record.id == Ulid::nil() || record.swarm == Ulid::nil() || record.generation == 0 {

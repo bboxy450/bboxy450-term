@@ -30,9 +30,9 @@ use tokio::{
     sync::mpsc,
 };
 
+pub mod desktop;
 mod fixture_hosts;
 mod owners;
-pub mod desktop;
 mod shell_path;
 use owners::ManagedChild as Child;
 pub use owners::{Exit as ProcessExit, Process};
@@ -493,6 +493,9 @@ pub struct LogicReady {
     pub mcp_control_version: u16,
     #[serde(default)]
     pub gui_state_version: u16,
+    /// New metadata verbs need a fresh logic owner even with the same crate version.
+    #[serde(default)]
+    pub swarm_metadata_version: u16,
     /// Private environment compatibility hint; never exports the environment.
     #[serde(default)]
     pub launch_path_fingerprint: Option<String>,
@@ -766,6 +769,7 @@ async fn logic_main() -> Result<()> {
     let ready = LogicReady {
         mcp_control_version: MCP_CONTROL_VERSION,
         gui_state_version: bbt_proto::gui::WINDOW_STATE_VERSION,
+        swarm_metadata_version: bbt_proto::gui::SWARM_METADATA_VERSION,
         launch_path_fingerprint: std::env::var_os("PATH")
             .as_deref()
             .map(shell_path::fingerprint),
@@ -916,6 +920,7 @@ impl Session {
         if existing.as_ref().is_some_and(|record| {
             record.ready.mcp_control_version != MCP_CONTROL_VERSION
                 || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
+                || record.ready.swarm_metadata_version != bbt_proto::gui::SWARM_METADATA_VERSION
                 || record.ready.launch_path_fingerprint.as_deref()
                     != Some(shell_path::fingerprint(&launch_path).as_str())
         }) {
@@ -962,7 +967,9 @@ impl Session {
             config,
             launch_path,
             _frontend: frontend,
-            desktop_supervisor: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(supervisor_ready.pid)),
+            desktop_supervisor: std::sync::Arc::new(std::sync::atomic::AtomicU32::new(
+                supervisor_ready.pid,
+            )),
             supervisor_ready,
             supervisor,
             supervisor_control,
@@ -1170,6 +1177,8 @@ impl Session {
                 GuiReply::Identity(identity) => self.endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
                 GuiReply::WindowSaved { .. }
+                | GuiReply::Swarm { .. }
+                | GuiReply::Swarms { .. }
                 | GuiReply::GuiHello { .. }
                 | GuiReply::Seat(_)
                 | GuiReply::Spawned { .. }
@@ -1524,6 +1533,26 @@ async fn stop_child(
 )]
 mod gui_io_tests {
     use super::*;
+
+    #[test]
+    fn legacy_logic_ready_defaults_swarm_api_marker_and_accepts_additive_fields() {
+        let mut value = serde_json::json!({
+            "root":"/private/fixture",
+            "capability":vec![0;32],
+            "identity":{"state":"held","reason":"private fixture"},
+            "mcp_control_version":MCP_CONTROL_VERSION,
+            "gui_state_version":bbt_proto::gui::WINDOW_STATE_VERSION
+        });
+        let legacy: LogicReady = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(legacy.swarm_metadata_version, 0);
+        value["swarm_metadata_version"] = serde_json::json!(bbt_proto::gui::SWARM_METADATA_VERSION);
+        value["future_ready_hint"] = serde_json::json!(true);
+        let current: LogicReady = serde_json::from_value(value).unwrap();
+        assert_eq!(
+            current.swarm_metadata_version,
+            bbt_proto::gui::SWARM_METADATA_VERSION
+        );
+    }
 
     // keeps: spec mux-daemon; a failed logic shutdown cannot require a second UI launch
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

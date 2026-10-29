@@ -32,6 +32,7 @@ mod plugin;
 mod record;
 mod roles;
 mod seat;
+mod swarm;
 mod task;
 mod ui;
 use self::app::{app_actions, app_replies};
@@ -44,6 +45,8 @@ use self::plugin::{plugin_actions, plugin_replies};
 use self::record::{record_actions, record_replies};
 use self::roles::{role_actions, role_replies};
 use self::seat::{seat_actions, seat_replies};
+pub use self::swarm::SWARM_METADATA_VERSION;
+use self::swarm::{swarm_actions, swarm_replies};
 use self::task::{task_actions, task_replies};
 use self::ui::{ui_actions, ui_replies};
 pub use self::{
@@ -98,7 +101,7 @@ macro_rules! common_replies {
 flat_enum! {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
-    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, events_actions, message_actions, task_actions, record_actions, role_actions]
+    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, swarm_actions, events_actions, message_actions, task_actions, record_actions, role_actions]
 }
 
 flat_enum! {
@@ -108,7 +111,7 @@ flat_enum! {
     clippy::large_enum_variant,
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
-    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, events_replies, message_replies, task_replies, record_replies, role_replies, common_replies]
+    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, swarm_replies, events_replies, message_replies, task_replies, record_replies, role_replies, common_replies]
 }
 
 #[cfg(test)]

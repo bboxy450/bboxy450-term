@@ -48,6 +48,7 @@ help:
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
+	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
 	  'make test-desktop               Portable actions and real native macOS menu/window probe' \
@@ -365,6 +366,22 @@ test-spawn-e2e:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir spawn_parameters_ctl_flow -- --ignored --nocapture
 
 .PHONY: test-spawn-wire
+.PHONY: test-swarm-metadata check-swarm-metadata format-swarm-metadata
+test-swarm-metadata:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata --test storage_bus_index; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses -- --ignored --exact --nocapture
+
+check-swarm-metadata:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+format-swarm-metadata:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/registry.rs crates/bbt-proto/src/gui/swarm.rs crates/bbt-proto/src/gui/mod.rs crates/bbt-mux/src/registry.rs crates/bbt-mux/src/window_journal.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bbt-mux/tests/swarm_metadata.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
 test-spawn-wire:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) launch_parameters_wire -- --nocapture
 

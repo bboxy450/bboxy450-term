@@ -10,6 +10,28 @@ use ulid::Ulid;
 
 use crate::messaging::{MessageClass, WakeMode};
 
+/// Account-owned swarm metadata; window layout is a separate projection.
+/// An absent workdir retains the startup repository as the default. New paths
+/// are canonical existing directories; unavailable legacy absolute paths stay
+/// visible so a future root mount can refuse rather than select another root.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SwarmRecord {
+    pub id: Ulid,
+    pub name: Option<String>,
+    pub workdir: Option<String>,
+    pub revision: u64,
+}
+impl SwarmRecord {
+    pub fn new(id: Ulid) -> Self {
+        Self {
+            id,
+            name: None,
+            workdir: None,
+            revision: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Role {
     pub name: String,

@@ -199,9 +199,13 @@ pub fn start_with_sink(
             // Desktop setup is best effort and runs beside the IO owner. It
             // never gates backend readiness, messaging or the frame loop.
             let desktop_events = events.clone();
-            let _desktop = cockpit::desktop::attach(desktop_config, session.desktop_supervisor.clone(), move |action| {
-                desktop_events(UiEvent::DesktopAction(action));
-            });
+            let _desktop = cockpit::desktop::attach(
+                desktop_config,
+                session.desktop_supervisor.clone(),
+                move |action| {
+                    desktop_events(UiEvent::DesktopAction(action));
+                },
+            );
             events(UiEvent::BackendInfo {
                 generation: session.endpoint.generation,
                 custody_backend: session.endpoint.custody_backend.clone(),
@@ -1549,7 +1553,7 @@ async fn run_with_control(
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Swarm {op,..}|GuiReply::Swarms {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

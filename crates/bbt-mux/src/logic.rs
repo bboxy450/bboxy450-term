@@ -151,6 +151,11 @@ enum Command {
     ),
     RecoverSeats(oneshot::Sender<Result<()>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
+    GuiSwarm(
+        Box<bbt_proto::GuiAction>,
+        crate::mcp::Origin,
+        oneshot::Sender<Result<bbt_proto::GuiReply>>,
+    ),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
     ControlCall(
         Ulid,
@@ -377,6 +382,7 @@ impl Command {
         matches!(
             self,
             Self::GuiHosts(_)
+                | Self::GuiSwarm(..)
                 | Self::GuiEndpoint(_)
                 | Self::GuiHello(_)
                 | Self::GuiSeats(_)
@@ -805,6 +811,21 @@ impl LogicClient {
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
             self.unavailable("task outcome unknown; retry the original operation ID")
+        })?
+    }
+    /// Swarm metadata uses only the already-admitted operator GUI/ctl door.
+    pub async fn gui_swarm(
+        &self,
+        action: bbt_proto::GuiAction,
+        origin: crate::mcp::Origin,
+    ) -> Result<bbt_proto::GuiReply> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::GuiSwarm(Box::new(action), origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| {
+            self.unavailable("swarm outcome unknown; retry the original operation ID")
         })?
     }
     /// `ctl record write`: the operator's signed `e2e` record write (e2e acceptance §2).
@@ -5526,6 +5547,103 @@ impl Worker {
             )
         })
     }
+    /// Canonicalization and account writes run off the logic worker. A retry
+    /// retains the exact metadata receipt under the operator's operation ID.
+    fn start_gui_swarm(
+        &self,
+        action: bbt_proto::GuiAction,
+        origin: crate::mcp::Origin,
+        reply: oneshot::Sender<Result<bbt_proto::GuiReply>>,
+    ) {
+        use bbt_proto::{GuiAction, GuiReply};
+        let mutation = match &action {
+            GuiAction::SwarmList { .. } | GuiAction::SwarmGet { .. } => false,
+            GuiAction::SwarmRename { .. } | GuiAction::SwarmWorkdir { .. } => true,
+            _ => {
+                let _ = reply.send(Err(invalid("operator swarm metadata action required")));
+                return;
+            }
+        };
+        let principal = if mutation {
+            let origin = self.identity.bind_origin(origin);
+            match self.operator_device_for_effect() {
+                Ok(device_id) => Some(crate::mcp::Principal::Operator {
+                    device_id,
+                    door: origin.door,
+                    issued_by: origin.issued_by,
+                }),
+                Err(error) => {
+                    let _ = reply.send(Err(error));
+                    return;
+                }
+            }
+        } else {
+            None
+        };
+        let registry = self.registry.clone();
+        let journal = self.operator_journal.clone();
+        self.handle.spawn_blocking(move || {
+            let result = (|| -> Result<GuiReply> {
+                let (id, swarm, tool, args) = match &action {
+                    GuiAction::SwarmList { id } => {
+                        return Ok(GuiReply::Swarms {
+                            op: *id,
+                            records: registry.swarms()?,
+                        });
+                    }
+                    GuiAction::SwarmGet { id, swarm } => {
+                        return Ok(GuiReply::Swarm {
+                            op: *id,
+                            record: registry.swarm(*swarm)?,
+                        });
+                    }
+                    GuiAction::SwarmRename { id, swarm, name } => (
+                        *id,
+                        *swarm,
+                        "swarm_rename",
+                        serde_json::json!({"swarm":swarm,"name":name}),
+                    ),
+                    GuiAction::SwarmWorkdir { id, swarm, path } => (
+                        *id,
+                        *swarm,
+                        "swarm_workdir",
+                        serde_json::json!({"swarm":swarm,"path":path}),
+                    ),
+                    _ => unreachable!("swarm action checked before IO"),
+                };
+                let call = crate::mcp::Call {
+                    op_id: id,
+                    tool: tool.into(),
+                    args,
+                };
+                call.validate()?;
+                let value = journal.effect(
+                    principal.expect("mutation has operator principal"),
+                    &call,
+                    || {
+                        let record = match &action {
+                            GuiAction::SwarmRename { name, .. } => {
+                                registry.rename_swarm(swarm, name)
+                            }
+                            GuiAction::SwarmWorkdir { path, .. } => {
+                                registry.update_swarm_workdir(swarm, path.as_deref())
+                            }
+                            _ => unreachable!("only mutation actions continue"),
+                        };
+                        match record {
+                            Ok(record) => crate::mcp::success(id, serde_json::json!(record)),
+                            Err(error) => crate::mcp::error(id, "rejected", &error.to_string()),
+                        }
+                    },
+                )?;
+                Ok(GuiReply::Swarm {
+                    op: id,
+                    record: Some(operator_response(value)?),
+                })
+            })();
+            let _ = reply.send(result);
+        });
+    }
     /// Resize through `ctl`: the window's resize path, journaled as `gui_resize`.
     fn ctl_resize(
         &mut self,
@@ -7898,6 +8016,9 @@ impl Worker {
                     Command::RecoverSeats(reply) => {
                         let result = self.recover_seats();
                         let _ = reply.send(result);
+                    }
+                    Command::GuiSwarm(action, origin, reply) => {
+                        self.start_gui_swarm(*action, origin, reply);
                     }
                     Command::GuiSpawn(id, spec, door, reply) => {
                         let result = self.gui_spawn(id, spec, door);

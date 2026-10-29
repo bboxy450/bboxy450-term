@@ -36,6 +36,14 @@ impl Journal {
             .get(STATE)?
             .and_then(|bytes| serde_json::from_slice::<WindowState>(&bytes).ok())
             .filter(|state| validate(state).is_ok());
+        if let Some(state) = &state {
+            let registry = crate::registry::Registry::new(store.clone());
+            for swarm in &state.swarms {
+                if let Some(path) = &swarm.workdir {
+                    registry.import_swarm_workdir(swarm.id, path)?;
+                }
+            }
+        }
         Ok(Self {
             store,
             latest: Arc::new(Mutex::new((0, state.map(Arc::new)))),
@@ -303,5 +311,61 @@ mod tests {
         invalid.size[0] = f32::NAN;
         assert!(journal.save(first.epoch, invalid).await.is_err());
         assert_eq!(journal.claim().await.unwrap().state, Some(valid));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn legacy_swarm_workdirs_import_once_and_never_overwrite_metadata() {
+        use bbt_proto::gui::WindowSwarm;
+        let root = tempfile::tempdir().unwrap();
+        let existing = root.path().join("legacy-project");
+        let replacement = root.path().join("new-project");
+        let missing = root.path().join("unavailable-project");
+        std::fs::create_dir(&existing).unwrap();
+        std::fs::create_dir(&replacement).unwrap();
+        let run = root.path().join("run");
+        let journal = Journal::open(&run).unwrap();
+        let mut legacy = empty();
+        let ids = [Ulid::new(), Ulid::new(), Ulid::new()];
+        for (id, path) in ids.into_iter().zip([&existing, &missing, &existing]) {
+            legacy.swarms.push(WindowSwarm {
+                id,
+                workdir: Some(path.to_str().unwrap().into()),
+                launch_environment: None,
+                recent_directories: vec![],
+                tabs: vec![],
+            });
+        }
+        let first = journal.claim().await.unwrap();
+        journal.save(first.epoch, legacy.clone()).await.unwrap();
+        let registry = crate::registry::Registry::new(
+            SqliteStore::open(&object_dir(&run, "account").unwrap()).unwrap(),
+        );
+        let explicit_reset = registry.update_swarm_workdir(ids[2], None).unwrap();
+        let reopened = Journal::open(&run).unwrap();
+        let imported = registry.swarm(ids[0]).unwrap().unwrap();
+        assert_eq!(
+            imported.workdir.as_deref(),
+            existing.canonicalize().unwrap().to_str()
+        );
+        assert_eq!(
+            registry.swarm(ids[1]).unwrap().unwrap().workdir.as_deref(),
+            missing.to_str()
+        );
+        assert_eq!(registry.swarm(ids[2]).unwrap(), Some(explicit_reset));
+        registry
+            .rename_swarm(ids[0], "Build the next release")
+            .unwrap();
+        let edited = registry
+            .update_swarm_workdir(ids[0], replacement.to_str())
+            .unwrap();
+        let next = reopened.claim().await.unwrap();
+        reopened.save(next.epoch, legacy).await.unwrap();
+        assert_eq!(registry.swarm(ids[0]).unwrap(), Some(edited.clone()));
+        Journal::open(&run).unwrap();
+        assert_eq!(registry.swarm(ids[0]).unwrap(), Some(edited));
+        assert_eq!(
+            registry.swarm(ids[1]).unwrap().unwrap().workdir.as_deref(),
+            missing.to_str()
+        );
     }
 }

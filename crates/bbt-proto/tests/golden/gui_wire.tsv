@@ -202,3 +202,11 @@ action	{"kind":"KnowledgeControl","body":{"id":"00000000000000000000000001","req
 reply	{"kind":"KnowledgeControl","body":{"op":"00000000000000000000000001","status":{"roots":[{"id":"repo","path":"/private/root/.bboxy","provider":{"id":"bboxy450-term-data_source-bboxy","name":"bboxy450-term-data_source-bboxy","sha256":null},"revision":0,"records":1,"process":null,"refusal":null}],"offered":[{"id":"bboxy450-term-data_source-bboxy","name":"bboxy450-term-data_source-bboxy","sha256":null}]}}}
 action	{"kind":"ConfigureRoles","body":{"id":"00000000000000000000000000","catalog":{"roles":{},"harnesses":{}}}}
 reply	{"kind":"RolesConfigured","body":{"id":"00000000000000000000000000"}}
+action	{"kind":"SwarmList","body":{"id":"00000000000000000000000001"}}
+action	{"kind":"SwarmGet","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001"}}
+action	{"kind":"SwarmRename","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","name":"Ship terminal"}}
+action	{"kind":"SwarmWorkdir","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","path":"/private/project"}}
+action	{"kind":"SwarmWorkdir","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","path":null}}
+reply	{"kind":"Swarms","body":{"op":"00000000000000000000000001","records":[{"id":"00000000000000000000000001","name":"Ship terminal","workdir":"/private/project","revision":2}]}}
+reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":{"id":"00000000000000000000000001","name":null,"workdir":null,"revision":0}}}
+reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":null}}

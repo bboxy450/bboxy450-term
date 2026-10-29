@@ -782,6 +782,7 @@ async fn gui_session(
     let mut debug_reads = tokio::task::JoinSet::new();
     let mut plugin_jobs = tokio::task::JoinSet::new();
     let mut root_jobs = tokio::task::JoinSet::new();
+    let mut swarm_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
@@ -813,6 +814,20 @@ async fn gui_session(
                     if !admitted {
                         admitted=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
+                    }
+                    if matches!(&request.action, GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}) {
+                        let op = match &request.action {
+                            GuiAction::SwarmList {id}|GuiAction::SwarmGet {id,..}|GuiAction::SwarmRename {id,..}|GuiAction::SwarmWorkdir {id,..} => *id,
+                            _ => unreachable!(),
+                        };
+                        if swarm_jobs.len() >= 8 {
+                            send(&mut write,&GuiReply::Error {op,reason:"swarm_busy: at most eight metadata requests per connection".into()}).await?;
+                        } else {
+                            let client=client.clone();
+                            let origin=crate::mcp::Origin {door,issued_by:issued_by.clone()};
+                            swarm_jobs.spawn(async move { (op,client.gui_swarm(request.action,origin).await) });
+                        }
+                        continue;
                     }
                     if let GuiAction::Knowledge {id,method,args} = request.action {
                         if knowledge_reads.len() >= 2 {
@@ -888,6 +903,7 @@ async fn gui_session(
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
+                            GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}=>unreachable!("swarm metadata dispatched independently"),
                             GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
                             GuiAction::GuiHello {id,claim}=> {
                                 if claim {
@@ -1161,6 +1177,11 @@ async fn gui_session(
                         Ok(status)=>GuiReply::KnowledgeControl {op,status},
                         Err(error)=>GuiReply::Error {op,reason:error.to_string()},
                     };
+                    send(&mut write,&reply).await?;
+                }
+                Some(completed)=swarm_jobs.join_next(),if !swarm_jobs.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("swarm metadata task interrupted"))?;
+                    let reply=result.unwrap_or_else(|error|GuiReply::Error {op,reason:error.to_string()});
                     send(&mut write,&reply).await?;
                 }
                 Some(completed)=debug_reads.join_next(),if !debug_reads.is_empty()=> {

@@ -1452,16 +1452,38 @@ fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
     let restored = fixture.ctl(&["ui", "key", "cmd-z"]);
     assert_eq!(restored["focused"], first);
     let geometry = |layout: &Value| {
-        layout["panes"].as_array().unwrap().iter().map(|pane| (
-            pane["seat"].clone(), pane["rect"].clone(), pane["cols"].clone(), pane["rows"].clone(),
-        )).collect::<Vec<_>>()
+        layout["panes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|pane| {
+                (
+                    pane["seat"].clone(),
+                    pane["rect"].clone(),
+                    pane["cols"].clone(),
+                    pane["rows"].clone(),
+                )
+            })
+            .collect::<Vec<_>>()
     };
-    assert_eq!(geometry(&restored), geometry(&focused), "undo restores the same split and cell bounds");
+    assert_eq!(
+        geometry(&restored),
+        geometry(&focused),
+        "undo restores the same split and cell bounds"
+    );
     let after = fixture.ctl(&["seat", "ls"]);
     for seat in [&first, &second] {
         let identity = |rows: &Value| {
-            let row = rows.as_array().unwrap().iter().find(|row| row["record"]["id"] == *seat).unwrap();
-            (row["record"]["generation"].clone(), row["state"]["process"].clone())
+            let row = rows
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["record"]["id"] == *seat)
+                .unwrap();
+            (
+                row["record"]["generation"].clone(),
+                row["state"]["process"].clone(),
+            )
         };
         assert_eq!(identity(&before), identity(&after));
     }
@@ -2063,31 +2085,33 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     // Simulate an installed older control service using only this private
     // fixture's owner record. The next ordinary UI attach upgrades logic,
     // preserving the supervisor and every harness PID/generation.
-    let old_owners = fixture.owners();
-    let mut ui = fixture.app.take().unwrap();
-    ui.kill().unwrap();
-    ui.wait().unwrap();
     let owner_path = fixture.root.join("run/logic.owner.json");
-    let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
-    owner["ready"]
-        .as_object_mut()
-        .unwrap()
-        .remove("mcp_control_version");
-    fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
-    fixture.start();
-    let upgraded = fixture.owners();
-    assert_eq!(upgraded[0], old_owners[0]);
-    assert_ne!(upgraded[1], old_owners[1]);
-    let upgraded_seats = fixture.ctl(&["seat", "ls"]);
-    for old in after.as_array().unwrap() {
-        let current = upgraded_seats
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["record"]["id"] == old["record"]["id"])
-            .unwrap();
-        assert_eq!(current["record"]["generation"], old["record"]["generation"]);
-        assert_eq!(current["state"]["process"], old["state"]["process"]);
+    for field in ["mcp_control_version", "swarm_metadata_version"] {
+        let old_owners = fixture.owners();
+        let mut ui = fixture.app.take().unwrap();
+        ui.kill().unwrap();
+        ui.wait().unwrap();
+        let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        owner["ready"].as_object_mut().unwrap().remove(field);
+        fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
+        fixture.start();
+        let upgraded = fixture.owners();
+        assert_eq!(
+            upgraded[0], old_owners[0],
+            "{field} replaced the supervisor"
+        );
+        assert_ne!(upgraded[1], old_owners[1], "{field} kept old logic");
+        let upgraded_seats = fixture.ctl(&["seat", "ls"]);
+        for old in after.as_array().unwrap() {
+            let current = upgraded_seats
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|r| r["record"]["id"] == old["record"]["id"])
+                .unwrap();
+            assert_eq!(current["record"]["generation"], old["record"]["generation"]);
+            assert_eq!(current["state"]["process"], old["state"]["process"]);
+        }
     }
     call(
         &mut bridge,
@@ -2108,7 +2132,7 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
     assert_eq!(old_owners[0], recovered_owners[0]);
     assert_ne!(old_owners[1], recovered_owners[1]);
     let recovered = fixture.ctl(&["seat", "ls"]);
-    for old in upgraded_seats.as_array().unwrap() {
+    for old in after.as_array().unwrap() {
         let current = recovered
             .as_array()
             .unwrap()
