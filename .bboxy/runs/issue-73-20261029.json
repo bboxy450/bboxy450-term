@@ -1,0 +1,40 @@
+{
+  "base": "014e555ca341cf5f4037360a74bf75a7c96c23a4",
+  "checks": [
+    {
+      "command": "make test-chat-backlog",
+      "exit": 0,
+      "sha256": "3f40a173a56f7dbc58e48542910ff760274cd0a4fbbd203cdf33e1456bc812bd"
+    },
+    {
+      "command": "make test-licenses",
+      "exit": 0,
+      "sha256": "d0aca7a7324bf2b29cc4f58a3ddb0a4e8d7516b085320856990e39f61077db9d"
+    },
+    {
+      "command": "make test-chat-backlog (direct subject fix disabled)",
+      "exit": 2,
+      "sha256": "c9f835bef8dce9897366bb4fb504389fabdbcf123dbea9662ca59a8466b7d4da"
+    },
+    {
+      "command": "make test-chat-backlog (receipt coalescing disabled)",
+      "exit": 2,
+      "sha256": "57de114dc83fe22b56f429cf2ef8f3c1329ae60a53836650fe28dbcd56ec4253"
+    },
+    {
+      "command": "make test-chat-backlog-frame (before live recovery)",
+      "exit": 2,
+      "sha256": "c9f115ffff9141a9948aa9cf0888fbd1deb50b5ea2c159340da1bc06b07e318f"
+    },
+    {
+      "command": "make test-chat-backlog test-chat-sections test-boundaries",
+      "exit": 0,
+      "sha256": "9e5292a042b992ebf87bd6bb9aa1546f0dfd04569416037a78e98e3a8835c9fa"
+    },
+    {
+      "command": "make test-gui-events (before live recovery)",
+      "exit": 2,
+      "sha256": "56df0eaac3feeef329c481cb7c602c16b91e44824e0fdad6138de77e8ed924df"
+    }
+  ]
+}

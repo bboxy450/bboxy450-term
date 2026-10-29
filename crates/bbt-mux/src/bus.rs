@@ -2217,9 +2217,14 @@ mod gui_tests {
         let filters = crate::gui_events::filters(messaging.operator_subjects().unwrap());
         assert_eq!(
             filters.len(),
-            65,
-            "43 retained members + seven swarms + fixed subjects"
+            108,
+            "43 retained members + 43 canonical inboxes + seven swarms + fixed subjects"
         );
+        let mut direct: Vec<_> = registry.list().unwrap().iter()
+            .map(|seat| format!("seats/{}/inbox/message", seat.id)).collect();
+        direct.sort();
+        let actual: Vec<_> = filters.iter().filter(|subject| subject.starts_with("seats/")).cloned().collect();
+        assert_eq!(actual, direct, "only exact authorized canonical inbox subjects");
         assert!(
             memberships
                 .iter()

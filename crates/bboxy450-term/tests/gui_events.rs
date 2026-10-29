@@ -10,9 +10,11 @@
 )]
 use bbt_mux::{
     Ulid,
+    bus::Broker,
     registry::{Lifecycle, Registry, SeatRecord},
-    store::{object_dir, sqlite::SqliteStore},
+    store::{Events, Store, events::EventLog, object_dir, sqlite::SqliteStore},
 };
+use ed25519_dalek::SigningKey;
 use serde_json::Value;
 use std::{
     collections::BTreeSet,
@@ -80,9 +82,10 @@ impl Fixture {
             seat.lifecycle == Lifecycle::ClosedRetained && seat.harness_session_id.is_none()
         }));
         // Production operator_subjects: two operator sinks, four root folders,
-        // one folder per swarm, one link per retained seat; GUI adds nine.
+        // one folder per swarm, one link and canonical inbox per retained seat;
+        // GUI adds nine.
         // This is membership data, never a fabricated consumer/filter vector.
-        assert_eq!(2 + 4 + swarms.len() + retained.len() + 9, 65);
+        assert_eq!(2 + 4 + swarms.len() + 2 * retained.len() + 9, 108);
         Self {
             directory: Some(directory),
             root,
@@ -121,6 +124,15 @@ impl Fixture {
             .open(self.root.join("ctl.jsonl"))
             .unwrap();
         writeln!(log, "{}", serde_json::json!({"args":args,"exit":output.status.code(),"stdout":String::from_utf8_lossy(&output.stdout),"stderr":String::from_utf8_lossy(&output.stderr)})).unwrap();
+        if !output.status.success() && args.starts_with(&["ui", "compose"]) {
+            // Read-only failure witness; never retry an unknown send.
+            let layout = self.raw_ctl(&["ui", "layout"]);
+            fs::write(
+                self.root.join("failed-produced-layout.json"),
+                &layout.stdout,
+            )
+            .unwrap();
+        }
         assert!(
             output.status.success(),
             "{args:?}: {} {}\n{}",
@@ -135,8 +147,71 @@ impl Fixture {
     fn log(&self) -> String {
         fs::read_to_string(self.root.join("app.log")).unwrap_or_default()
     }
+    fn retain_receipt_backlog(&mut self, swarm: &str, message: &str) -> (u64, u64) {
+        // Only this fixture's UI/logic owners stop. Its supervisor and PTY stay
+        // alive; no runtime reset, cursor write or operator identity is used.
+        let owner: Value =
+            serde_json::from_slice(&fs::read(self.root.join("run/logic.owner.json")).unwrap())
+                .unwrap();
+        let pid = u32::try_from(owner["process"]["pid"].as_u64().unwrap()).unwrap();
+        let start = bbt_mux::adapters::native::process_start(pid).unwrap();
+        let mut app = self.app.take().unwrap();
+        app.kill().unwrap();
+        app.wait().unwrap();
+        assert_eq!(unsafe { libc::kill(pid as i32, libc::SIGTERM) }, 0);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while bbt_mux::adapters::native::process_start(pid).is_ok_and(|now| now == start) {
+            assert!(
+                Instant::now() < deadline,
+                "private logic owner did not stop"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let stream = format!("swarm-{swarm}");
+        let directory = self.root.join("run").join(&stream);
+        let log = EventLog::open(&directory).unwrap();
+        let original = log
+            .after(0, 128)
+            .unwrap()
+            .into_iter()
+            .find(|event| {
+                event.event.subject.ends_with("/receipt")
+                    && event.event.payload["message"] == message
+            })
+            .expect("real seed receipt on its canonical stream");
+        let before = log.last_sequence().unwrap();
+        // A labelled legacy workload, not fabricated model acknowledgement:
+        // clone the private seed receipt's shape and append fixture-signed
+        // no-effect/pending history. Production retry behavior is independently
+        // exercised through the real expired-readiness guard in messaging_flow.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let mut broker =
+            Broker::open(&self.root.join("run"), SigningKey::from_bytes(&[73; 32])).unwrap();
+        for i in 0..16_384 {
+            let mut draft = original.event.clone();
+            draft.id = Ulid::new();
+            draft.issued_by = None; // Fixture signer claims no app/account attribution.
+            draft.payload["evidence"] = "recipient-stored".into();
+            draft.payload["note"] = if i % 2 == 0 {
+                "attempt journaled before native/PTY effects; result pending"
+            } else {
+                "readiness indication expired or replaced"
+            }
+            .into();
+            draft.payload["fixture"] = "retained-legacy-no-effect-workload".into();
+            broker.publish(&stream, draft).unwrap();
+        }
+        drop(broker);
+        let high = log.last_sequence().unwrap();
+        assert_eq!(high - before, 16_384);
+        (before, high)
+    }
     fn start(&mut self) {
-        let log = fs::File::create(self.root.join("app.log")).unwrap();
+        let log = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(self.root.join("app.log"))
+            .unwrap();
         self.app = Some(
             self.command()
                 .args(["--headless", "--ctl", "--unattended", "--test-account"])
@@ -353,4 +428,119 @@ fn retained_membership_over_64_keeps_events_chat_and_tasks_live() {
     assert_eq!(capture["offscreen"], true);
     assert_eq!(capture["stale"], false);
     assert!(capture["frame_seq"].as_u64().unwrap() >= shown["frame_seq"].as_u64().unwrap());
+}
+
+// keeps: #73 a retained unsuccessful-receipt lane must not hide a new composer
+// write or monopolize terminal controls. All evidence is private produced data.
+#[test]
+#[ignore = "private retained app/PTY fixture; make test-chat-backlog-frame runs this unattended"]
+fn retained_receipt_backlog_keeps_fresh_composer_and_terminal_live() {
+    let mut fixture = Fixture::new();
+    fixture.start();
+    let spawned = fixture.ctl(&["seat", "spawn", "zsh", "--name", "retained receipt fixture"]);
+    let seat = spawned["seat"].as_str().unwrap().to_owned();
+    fixture.ctl(&["ui", "focus", &seat]);
+    let seed = fixture.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        &seat,
+        "--text",
+        "private retained seed",
+    ]);
+    let seed = seed["composed"]["messages"][0].as_str().unwrap().to_owned();
+    let rows = fixture.ctl(&["seat", "ls"]);
+    let swarm = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["record"]["id"] == seat)
+        .unwrap()["record"]["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let (before, high) = fixture.retain_receipt_backlog(&swarm, &seed);
+    let account = SqliteStore::open(&fixture.root.join("run/account")).unwrap();
+    let read_key = format!("read/swarm-{swarm}");
+    let read_before = account.get(&read_key).unwrap();
+    fixture.start();
+    fixture.ctl(&["ui", "focus", &seat]);
+    let started = Instant::now();
+    let frame = fixture.ctl(&[
+        "ui",
+        "compose",
+        "--to",
+        &seat,
+        "--text",
+        "fresh message through retained receipts",
+    ]);
+    assert!(
+        started.elapsed() < Duration::from_secs(15),
+        "existing control budget"
+    );
+    let fresh = frame["composed"]["messages"][0].as_str().unwrap();
+    let chat = find(&frame, &|n| n["kind"] == "named:conversation/rows").unwrap();
+    assert!(visible_in(rect(&frame["composed"]), rect(chat)));
+    assert_eq!(
+        account.get(&read_key).unwrap(),
+        read_before,
+        "live recovery must not mark history read"
+    );
+    let receipts = fixture.ctl(&["message", "receipts", fresh]);
+    assert!(
+        receipts
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|row| row["receipt"]["recipient"] == seat
+                && matches!(
+                    serde_json::from_value::<bbt_proto::messaging::Evidence>(
+                        row["receipt"]["evidence"].clone()
+                    ),
+                    Ok(bbt_proto::messaging::Evidence::RecipientStored
+                        | bbt_proto::messaging::Evidence::NativeQueued
+                        | bbt_proto::messaging::Evidence::NativeWritten
+                        | bbt_proto::messaging::Evidence::NativeUnknown)
+                ))
+    );
+    let compose_ms = started.elapsed().as_millis();
+    let input_at = Instant::now();
+    fixture.ctl(&[
+        "seat",
+        "type",
+        &seat,
+        "printf 'RETAINED-%s-FAIR\\n' INPUT\n",
+    ]);
+    fixture.ctl(&[
+        "seat",
+        "wait",
+        &seat,
+        "--text",
+        "RETAINED-INPUT-FAIR",
+        "--timeout",
+        "5000",
+    ]);
+    assert!(input_at.elapsed() < Duration::from_secs(5));
+    let log = EventLog::open(&fixture.root.join("run").join(format!("swarm-{swarm}"))).unwrap();
+    assert!(log.last_sequence().unwrap() >= high);
+    assert_eq!(
+        log.at(before + 1).unwrap().unwrap().event.payload["fixture"],
+        "retained-legacy-no-effect-workload"
+    );
+    fs::write(
+        fixture.root.join("backlog-produced-frame.json"),
+        serde_json::to_vec_pretty(&frame).unwrap(),
+    )
+    .unwrap();
+    fs::write(fixture.root.join("backlog-witness.json"), serde_json::to_vec_pretty(&serde_json::json!({
+        "before":before,"retained_high":high,"fresh_message":fresh,"receipt":receipts,"frame_seq":frame["frame_seq"],"compose_ms":compose_ms,"input_ms":input_at.elapsed().as_millis(),"read_mark_unchanged":true
+    })).unwrap()).unwrap();
+    let capture = fixture.ctl(&[
+        "seat",
+        "capture",
+        "window",
+        fixture.root.join("backlog-produced.png").to_str().unwrap(),
+    ]);
+    assert_eq!(capture["offscreen"], true);
+    assert_eq!(capture["stale"], false);
 }

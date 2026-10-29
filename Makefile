@@ -49,6 +49,7 @@ help:
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
+	  'make test-chat-backlog           Exact direct subjects and retained no-effect wake receipt bounds' \
 	  'make test-make-isolation         Private signing fixtures ignore outer Make target overrides' \
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
@@ -372,11 +373,22 @@ parity-documents:
 test-documents-controls:
 	@python3 -I -B scripts/e2e/documents_negative.py --target '$(TARGET_DIR)' --out '$(TARGET_DIR)/document-controls/'$$(date -u +%Y%m%dT%H%M%SZ)
 
+.PHONY: test-chat-backlog test-chat-backlog-frame
+test-chat-backlog-frame:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_receipt_backlog_keeps_fresh_composer_and_terminal_live --nocapture --test-threads=1
+
+test-chat-backlog:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib operator_subjects_include_exact_authorized_direct_inboxes_without_granting_seats -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture
+
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_membership_over_64_keeps_events_chat_and_tasks_live --nocapture --test-threads=1
+	$(MAKE) test-chat-backlog test-chat-backlog-frame
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \

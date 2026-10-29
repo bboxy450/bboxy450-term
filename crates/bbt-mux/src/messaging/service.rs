@@ -1039,15 +1039,24 @@ impl Messaging {
         ]);
         for swarm in self.swarms.values() {
             let mut folders = vec![
+                "seats".to_owned(),
                 "channels".to_owned(),
                 "swarms".to_owned(),
                 "groups".to_owned(),
                 "ext".to_owned(),
             ];
             while let Some(path) = folders.pop() {
-                subjects.insert(format!("{path}/message"));
+                if path != "seats" && !path.starts_with("seats/") {
+                    subjects.insert(format!("{path}/message"));
+                }
                 for node in swarm.tree.ls(Actor::Operator, &path)? {
-                    subjects.insert(format!("{}/message", node.path));
+                    // Direct publications use the canonical inbox context, not
+                    // the membership link. Enumerate only authorized sinks,
+                    // never a wildcard grant over the seat namespace.
+                    if !node.path.starts_with("seats/") || node.kind == super::tree::EntryKind::Sink
+                    {
+                        subjects.insert(format!("{}/message", node.path));
+                    }
                     if node.kind == super::tree::EntryKind::Folder {
                         folders.push(node.path);
                     }
@@ -3162,6 +3171,39 @@ mod reference_tests {
         registry.insert(&recipient).unwrap();
         let messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
         (root, messaging, recipient)
+    }
+
+    #[test]
+    fn operator_subjects_include_exact_authorized_direct_inboxes_without_granting_seats() {
+        let (_root, mut messaging, recipient) = recent_fixture();
+        messaging.operator_reference(None).unwrap();
+        let before = messaging
+            .swarm(recipient.swarm)
+            .unwrap()
+            .tree
+            .ls(Actor::Operator, &format!("seats/{}", recipient.id))
+            .unwrap();
+        let subjects = messaging.operator_subjects().unwrap();
+        assert!(subjects.contains(&format!("seats/{}/inbox/message", recipient.id)));
+        let seat_subjects: Vec<_> = subjects
+            .iter()
+            .filter(|subject| subject.starts_with("seats/"))
+            .collect();
+        assert_eq!(
+            seat_subjects,
+            vec![&format!("seats/{}/inbox/message", recipient.id)]
+        );
+        assert!(subjects.iter().all(|subject| !subject.contains(['*', '>'])));
+        let after = messaging
+            .swarm(recipient.swarm)
+            .unwrap()
+            .tree
+            .ls(Actor::Operator, &format!("seats/{}", recipient.id))
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(before).unwrap(),
+            serde_json::to_value(after).unwrap()
+        );
     }
     fn recent(
         messaging: &mut Messaging,
