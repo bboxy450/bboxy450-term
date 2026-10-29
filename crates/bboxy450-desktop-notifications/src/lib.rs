@@ -46,6 +46,70 @@ pub enum Authorization {
     Undetermined,
 }
 
+/// One system-controlled notification feature, independent of app authorization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Setting {
+    /// The system enables this feature for the app.
+    Enabled,
+    /// The system disables this feature for the app.
+    Disabled,
+    /// This feature is unavailable on the current system.
+    NotSupported,
+    /// The system returned a value this version does not recognize.
+    Unknown,
+}
+
+/// The configured visual presentation, independent of scheduling permission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertStyle {
+    /// Notifications have no onscreen alert presentation.
+    None,
+    /// Notifications use transient banners.
+    Banner,
+    /// Notifications use persistent alerts.
+    Alert,
+    /// The system returned a style this version does not recognize.
+    Unknown,
+}
+
+/// A read-only native settings snapshot, not proof that a banner was presented.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Settings {
+    /// Whether the system permits scheduling and receiving notifications.
+    pub authorization: Authorization,
+    /// Whether visual alerts are enabled.
+    pub alerts: Setting,
+    /// The visual presentation configured by the operator.
+    pub alert_style: AlertStyle,
+    /// Whether notifications may appear in Notification Center.
+    pub notification_center: Setting,
+    /// Whether notification sounds are enabled; posts remain silent in v1.
+    pub sound: Setting,
+}
+
+/// Read native settings without requesting permission or installing a delegate.
+///
+/// This synchronous query belongs on an IO worker. It never calls [`open`],
+/// authorizes an account, posts a notification or changes system settings.
+///
+/// # Errors
+/// Returns a named unsupported platform, absent bundle identity or native completion failure.
+pub fn settings() -> Result<Settings, Error> {
+    #[cfg(target_os = "macos")]
+    {
+        bboxy450_desktop_notifications_macos::settings()
+            .map(Settings::from)
+            .map_err(native_error)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err(Error::Unsupported {
+            os: std::env::consts::OS,
+            note: "DO RESEARCH BEFORE IMPLEMENTING: .bboxy/research/desktop-notifications-research.md",
+        })
+    }
+}
+
 /// A named unsupported platform or native failure. There is no fallback.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -171,6 +235,35 @@ fn native_error(error: bboxy450_desktop_notifications_macos::Error) -> Error {
 }
 
 #[cfg(target_os = "macos")]
+impl From<bboxy450_desktop_notifications_macos::Settings> for Settings {
+    fn from(settings: bboxy450_desktop_notifications_macos::Settings) -> Self {
+        use bboxy450_desktop_notifications_macos as native;
+        let setting = |value| match value {
+            native::Setting::Enabled => Setting::Enabled,
+            native::Setting::Disabled => Setting::Disabled,
+            native::Setting::NotSupported => Setting::NotSupported,
+            native::Setting::Unknown => Setting::Unknown,
+        };
+        Self {
+            authorization: match settings.authorization {
+                native::Authorization::Granted => Authorization::Granted,
+                native::Authorization::Denied => Authorization::Denied,
+                native::Authorization::Undetermined => Authorization::Undetermined,
+            },
+            alerts: setting(settings.alerts),
+            alert_style: match settings.alert_style {
+                native::AlertStyle::None => AlertStyle::None,
+                native::AlertStyle::Banner => AlertStyle::Banner,
+                native::AlertStyle::Alert => AlertStyle::Alert,
+                native::AlertStyle::Unknown => AlertStyle::Unknown,
+            },
+            notification_center: setting(settings.notification_center),
+            sound: setting(settings.sound),
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
 struct Mac(bboxy450_desktop_notifications_macos::Handle);
 #[cfg(target_os = "macos")]
 impl Notifier for Mac {
@@ -213,6 +306,47 @@ mod tests {
                 ..
             }
         ));
+        assert!(matches!(
+            settings(),
+            Err(Error::Unsupported {
+                note: "DO RESEARCH BEFORE IMPLEMENTING: .bboxy/research/desktop-notifications-research.md",
+                ..
+            })
+        ));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn native_settings_conversion_does_not_turn_scheduling_permission_into_alerts() {
+        use bboxy450_desktop_notifications_macos as native;
+        let actual = Settings::from(native::Settings {
+            authorization: native::Authorization::Granted,
+            alerts: native::Setting::Disabled,
+            alert_style: native::AlertStyle::None,
+            notification_center: native::Setting::Enabled,
+            sound: native::Setting::NotSupported,
+        });
+        assert_eq!(
+            actual,
+            Settings {
+                authorization: Authorization::Granted,
+                alerts: Setting::Disabled,
+                alert_style: AlertStyle::None,
+                notification_center: Setting::Enabled,
+                sound: Setting::NotSupported,
+            }
+        );
+        let unknown = Settings::from(native::Settings {
+            authorization: native::Authorization::Undetermined,
+            alerts: native::Setting::Unknown,
+            alert_style: native::AlertStyle::Unknown,
+            notification_center: native::Setting::Unknown,
+            sound: native::Setting::Unknown,
+        });
+        assert_eq!(unknown.alerts, Setting::Unknown);
+        assert_eq!(unknown.alert_style, AlertStyle::Unknown);
+        assert_eq!(unknown.notification_center, Setting::Unknown);
+        assert_eq!(unknown.sound, Setting::Unknown);
     }
     // keeps: spec desktop-notifications §2 — dyn Notifier is a Send + Sync public port
     #[test]

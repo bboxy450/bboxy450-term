@@ -17,7 +17,7 @@ links:
   - { to: "[[licensing]]", rel: licence }
   - { to: "[[desktop-notifications-research]]", rel: research }
 created: 2026-10-23T23:04:45Z
-updated: "2026-10-25T08:24:43Z"
+updated: "2026-10-29T21:42:25Z"
 ---
 # Desktop notifications
 
@@ -63,6 +63,8 @@ pub fn open(on_response: Box<dyn Fn(Response) + Send + Sync + 'static>) -> Resul
 ```
 
 `open` is called once at launch, before any window shows, because the OS delegate must exist before a notification can be delivered to the process. `on_response` runs on the backend's thread; the caller forwards into its own event loop (the app uses its winit proxy) and the facade knows nothing about windows. No images, no actions beyond the default click, no sounds in v1: attention needs none of them.
+
+`settings() -> Result<Settings, Error>` is a separate read-only IO-worker query. It never requests authorization, installs a delegate or posts; it may run before `open`. Its plain snapshot keeps `authorization` separate from `alerts`, `alert_style`, `notification_center` and `sound`. Feature settings report enabled, disabled, unsupported or unknown; alert style reports none, banner, alert or unknown. Scheduling permission alone does not establish enabled banners, and neither a granted snapshot nor a successful post claims OS presentation. macOS reads `getNotificationSettingsWithCompletionHandler` after the bundle check; the known dummy platforms return their named `Unsupported` error.
 
 ## 3. The macOS crate
 

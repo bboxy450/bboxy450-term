@@ -7,7 +7,6 @@
 #![doc = include_str!("../README.md")]
 #![warn(rustdoc::broken_intra_doc_links)]
 #![deny(missing_docs)]
-
 #![cfg(target_os = "macos")]
 
 use block2::{DynBlock, RcBlock};
@@ -18,10 +17,11 @@ use objc2::{
 };
 use objc2_foundation::{NSArray, NSBundle, NSError, NSString};
 use objc2_user_notifications::{
-    UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent,
+    UNAlertStyle, UNAuthorizationOptions, UNAuthorizationStatus, UNMutableNotificationContent,
     UNNotificationDefaultActionIdentifier, UNNotificationDismissActionIdentifier,
     UNNotificationPresentationOptions, UNNotificationRequest, UNNotificationResponse,
-    UNNotificationSettings, UNUserNotificationCenter, UNUserNotificationCenterDelegate,
+    UNNotificationSetting, UNNotificationSettings, UNUserNotificationCenter,
+    UNUserNotificationCenterDelegate,
 };
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -41,6 +41,47 @@ pub enum Authorization {
     Denied,
     /// The system has not decided authorization.
     Undetermined,
+}
+
+/// One independently configured native notification feature.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Setting {
+    /// The system enables the feature.
+    Enabled,
+    /// The system disables the feature.
+    Disabled,
+    /// The current system does not support the feature.
+    NotSupported,
+    /// An unrecognized native value; never treated as enabled.
+    Unknown,
+}
+
+/// The system's configured visual notification presentation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertStyle {
+    /// No onscreen alert presentation.
+    None,
+    /// Transient banner presentation.
+    Banner,
+    /// Persistent alert presentation.
+    Alert,
+    /// An unrecognized native style.
+    Unknown,
+}
+
+/// Read-only native settings, independent of a notification delivery receipt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Settings {
+    /// Scheduling and receiving authorization.
+    pub authorization: Authorization,
+    /// Whether visual alerts are enabled.
+    pub alerts: Setting,
+    /// The configured visual alert style.
+    pub alert_style: AlertStyle,
+    /// Whether Notification Center presentation is enabled.
+    pub notification_center: Setting,
+    /// Whether sounds are enabled; v1 posts still request no sound.
+    pub sound: Setting,
 }
 
 /// Native callback values contain only an owned identifier.
@@ -170,6 +211,68 @@ fn completed<T>(receiver: mpsc::Receiver<T>, operation: &str) -> Result<T, Error
         .map_err(|reason| Error::Backend(format!("{operation} completion: {reason}")))
 }
 
+fn normalize_settings(
+    authorization: UNAuthorizationStatus,
+    alerts: UNNotificationSetting,
+    alert_style: UNAlertStyle,
+    notification_center: UNNotificationSetting,
+    sound: UNNotificationSetting,
+) -> Settings {
+    let setting = |value| match value {
+        UNNotificationSetting::Enabled => Setting::Enabled,
+        UNNotificationSetting::Disabled => Setting::Disabled,
+        UNNotificationSetting::NotSupported => Setting::NotSupported,
+        _ => Setting::Unknown,
+    };
+    Settings {
+        authorization: match authorization {
+            UNAuthorizationStatus::Authorized
+            | UNAuthorizationStatus::Provisional
+            | UNAuthorizationStatus::Ephemeral => Authorization::Granted,
+            UNAuthorizationStatus::Denied => Authorization::Denied,
+            _ => Authorization::Undetermined,
+        },
+        alerts: setting(alerts),
+        alert_style: match alert_style {
+            UNAlertStyle::None => AlertStyle::None,
+            UNAlertStyle::Banner => AlertStyle::Banner,
+            UNAlertStyle::Alert => AlertStyle::Alert,
+            _ => AlertStyle::Unknown,
+        },
+        notification_center: setting(notification_center),
+        sound: setting(sound),
+    }
+}
+
+/// Read native notification settings without requesting permission.
+///
+/// This query neither installs a delegate nor calls the authorization or post
+/// APIs. Invoke it on an IO worker, never a UI turn.
+///
+/// # Errors
+/// Refuses absent bundle identity or failure to complete the native query within two seconds.
+pub fn settings() -> Result<Settings, Error> {
+    if NSBundle::mainBundle().bundleIdentifier().is_none() {
+        return Err(Error::NoBundle);
+    }
+    let center = UNUserNotificationCenter::currentNotificationCenter();
+    let (send, receive) = mpsc::sync_channel(1);
+    let callback = RcBlock::new(move |settings: std::ptr::NonNull<UNNotificationSettings>| {
+        // SAFETY: settings remains non-null and valid for this native callback.
+        let settings = unsafe { settings.as_ref() };
+        let state = normalize_settings(
+            settings.authorizationStatus(),
+            settings.alertSetting(),
+            settings.alertStyle(),
+            settings.notificationCenterSetting(),
+            settings.soundSetting(),
+        );
+        let _ = send.try_send(state);
+    });
+    center.getNotificationSettingsWithCompletionHandler(&callback);
+    completed(receive, "settings")
+}
+
 /// The sole post submission port receives the actual platform request. Unit
 /// fixtures replace only this IO step; request construction remains production code.
 fn submit_request(request: &UNNotificationRequest, completion: &DynBlock<dyn Fn(*mut NSError)>) {
@@ -188,25 +291,11 @@ impl Handle {
     /// # Errors
     /// Returns a native error or failure to complete settings or authorization within two seconds.
     pub fn authorize(&self) -> Result<Authorization, Error> {
-        let center = UNUserNotificationCenter::currentNotificationCenter();
-        let (send, receive) = mpsc::sync_channel(1);
-        let callback = RcBlock::new(move |settings: std::ptr::NonNull<UNNotificationSettings>| {
-            // SAFETY: settings is non-null and valid for this native callback.
-            let status = unsafe { settings.as_ref() }.authorizationStatus();
-            let state = match status {
-                UNAuthorizationStatus::Authorized
-                | UNAuthorizationStatus::Provisional
-                | UNAuthorizationStatus::Ephemeral => Authorization::Granted,
-                UNAuthorizationStatus::Denied => Authorization::Denied,
-                _ => Authorization::Undetermined,
-            };
-            let _ = send.try_send(state);
-        });
-        center.getNotificationSettingsWithCompletionHandler(&callback);
-        let state = completed(receive, "settings")?;
+        let state = settings()?.authorization;
         if state != Authorization::Undetermined {
             return Ok(state);
         }
+        let center = UNUserNotificationCenter::currentNotificationCenter();
         let (send, receive) = mpsc::sync_channel(1);
         let callback = RcBlock::new(move |granted: objc2::runtime::Bool, native: *mut NSError| {
             let result = error(native).map(|()| {
@@ -290,6 +379,104 @@ pub fn delivered_ids() -> Result<Vec<String>, Error> {
 mod tests {
     use super::*;
     use std::cell::RefCell;
+
+    #[test]
+    fn settings_normalization_keeps_alert_features_independent_of_authorization() {
+        let cases = [
+            (
+                UNAuthorizationStatus::Authorized,
+                UNNotificationSetting::Disabled,
+                UNAlertStyle::Banner,
+                UNNotificationSetting::Enabled,
+                UNNotificationSetting::Disabled,
+                Settings {
+                    authorization: Authorization::Granted,
+                    alerts: Setting::Disabled,
+                    alert_style: AlertStyle::Banner,
+                    notification_center: Setting::Enabled,
+                    sound: Setting::Disabled,
+                },
+            ),
+            (
+                UNAuthorizationStatus::Authorized,
+                UNNotificationSetting::Enabled,
+                UNAlertStyle::None,
+                UNNotificationSetting::Disabled,
+                UNNotificationSetting::Enabled,
+                Settings {
+                    authorization: Authorization::Granted,
+                    alerts: Setting::Enabled,
+                    alert_style: AlertStyle::None,
+                    notification_center: Setting::Disabled,
+                    sound: Setting::Enabled,
+                },
+            ),
+            (
+                UNAuthorizationStatus::Provisional,
+                UNNotificationSetting::NotSupported,
+                UNAlertStyle::Alert,
+                UNNotificationSetting::NotSupported,
+                UNNotificationSetting(99),
+                Settings {
+                    authorization: Authorization::Granted,
+                    alerts: Setting::NotSupported,
+                    alert_style: AlertStyle::Alert,
+                    notification_center: Setting::NotSupported,
+                    sound: Setting::Unknown,
+                },
+            ),
+            (
+                UNAuthorizationStatus::Denied,
+                UNNotificationSetting::Enabled,
+                UNAlertStyle::Banner,
+                UNNotificationSetting::Enabled,
+                UNNotificationSetting::Enabled,
+                Settings {
+                    authorization: Authorization::Denied,
+                    alerts: Setting::Enabled,
+                    alert_style: AlertStyle::Banner,
+                    notification_center: Setting::Enabled,
+                    sound: Setting::Enabled,
+                },
+            ),
+            (
+                UNAuthorizationStatus::NotDetermined,
+                UNNotificationSetting(99),
+                UNAlertStyle(99),
+                UNNotificationSetting::Disabled,
+                UNNotificationSetting::NotSupported,
+                Settings {
+                    authorization: Authorization::Undetermined,
+                    alerts: Setting::Unknown,
+                    alert_style: AlertStyle::Unknown,
+                    notification_center: Setting::Disabled,
+                    sound: Setting::NotSupported,
+                },
+            ),
+        ];
+        for (authorization, alerts, style, center, sound, expected) in cases {
+            assert_eq!(
+                normalize_settings(authorization, alerts, style, center, sound),
+                expected,
+            );
+        }
+        for (native, expected) in [
+            (UNAuthorizationStatus::Ephemeral, Authorization::Granted),
+            (UNAuthorizationStatus(99), Authorization::Undetermined),
+        ] {
+            assert_eq!(
+                normalize_settings(
+                    native,
+                    UNNotificationSetting::Disabled,
+                    UNAlertStyle::None,
+                    UNNotificationSetting::Disabled,
+                    UNNotificationSetting::Disabled,
+                )
+                .authorization,
+                expected,
+            );
+        }
+    }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
     struct Submitted {
