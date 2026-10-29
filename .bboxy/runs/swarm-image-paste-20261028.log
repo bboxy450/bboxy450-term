@@ -15,3 +15,7 @@ Checks: git diff --check — exit 0.
 Not run here: make test-image-paste-app, check-image-paste, make test/full smoke. Root explicitly owns app verification and final combined exact-source gate on its existing warm target, avoiding a duplicate cold app target under the 10GiB free-space precondition. No operator input or real clipboard mutation needed.
 Raw logs: /private/tmp/bboxy450-image-paste-final-focused.log /private/tmp/bboxy450-image-paste-desktop.log /private/tmp/bboxy450-image-paste-ui.log /private/tmp/bboxy450-image-paste-licenses.log.
 Commit handoff: feature baseline 26457d73; root boundary fix imported as 75975c55 from 2eb0196e (exclude imported commit from feature cherry-pick). Followup commit carries lifecycle fixes and this evidence.
+
+Bounded custody followup: removed all completed-image history from Client. replies_with_images returns at most 32 newly committed paths once per pending batch; Images.committed transfers preservation, and reconcile retains only current draft/pending tokens. Completed cleared sends leave zero active ownership while their PNGs stay readable. Added 128-completed-send/later-text/replayed-receipt/restart-readability regression and strengthened real signed-send test with zero-active-owner assertions. These app tests remain assigned to root warm-target verification.
+Checks: make test-image-paste-desktop test-image-paste-ui test-ui-overlays — exit 0 (native/UI checks and strict UI Clippy); raw /private/tmp/bboxy450-image-paste-custody-bounded.log.
+Checks: git diff --check — exit 0.

@@ -529,6 +529,7 @@ struct Pending {
     held: Vec<String>,
     last: Option<Ulid>,
     brief: Option<UiMsg>,
+    images_committed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -555,7 +556,6 @@ pub struct Client {
     seen: BTreeMap<Ulid, u64>,
     pub status: Status,
     groups: VecDeque<SendGroup>,
-    retained_image_paths: BTreeSet<String>,
 }
 /// Presentation metadata binds a role pick to its actual journaled sends.
 /// Receipts always come from the shared MessageRow projections.
@@ -609,13 +609,11 @@ pub fn ui_compose_draft(
 }
 impl Client {
     pub fn has_pending(&self) -> bool { self.pending.is_some() }
-    /// Owned image paths still referenced by an admitted/ambiguous or durable send.
+    /// At most the current batch's 32 image references; no completed-send history.
     pub fn protected_image_paths(&self) -> Vec<String> {
-        let mut paths = self.retained_image_paths.clone();
-        if let Some(pending) = &self.pending {
-            paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
-        }
-        paths.into_iter().collect()
+        self.pending.as_ref().map_or_else(Vec::new, |pending| {
+            pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()).collect()
+        })
     }
     pub fn groups(&self) -> &VecDeque<SendGroup> {
         &self.groups
@@ -793,6 +791,7 @@ impl Client {
                 held: vec![],
                 last: None,
                 brief,
+                images_committed: false,
             },
         })
     }
@@ -856,10 +855,18 @@ impl Client {
     /// Only replies carrying this batch's operation ids may affect its draft.
     /// A delegate's optional brief is sent after frontmatter delegation succeeds.
     pub fn replies(&mut self, results: &Results) -> (Option<Submission>, Vec<UiMsg>) {
+        let (completed, follow_up, _) = self.replies_with_images(results);
+        (completed, follow_up)
+    }
+    /// The window consumes newly durable image paths in this same update. Each batch
+    /// emits at most 32 paths once, even for fan-out or replayed/late receipts.
+    /// No committed path queue or sent-image index survives the reply operation.
+    pub fn replies_with_images(&mut self, results: &Results) -> (Option<Submission>, Vec<UiMsg>, Vec<String>) {
         let Some(pending) = &mut self.pending else {
-            return (None, vec![]);
+            return (None, vec![], vec![]);
         };
         let mut follow_up = vec![];
+        let mut committed_images = vec![];
         for result in results.rows() {
             let Some(task) = pending.remaining.get(&result.op).copied() else {
                 continue;
@@ -872,17 +879,19 @@ impl Client {
                 continue;
             }
             self.seen.insert(result.op, result.serial);
+            if !task && !pending.images_committed && matches!(&result.reply, Reply::Messaging(Response::Stored { .. } | Response::Held { .. })) {
+                committed_images.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
+                pending.images_committed = true;
+            }
             match &result.reply {
                 Reply::Unknown(reason) => {
                     self.status = Status::Unknown(reason.clone());
                     continue;
                 }
                 Reply::Messaging(Response::Held { reason, .. }) if !task => {
-                    self.retained_image_paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
                     pending.held.push(reason.clone());
                 }
                 Reply::Messaging(Response::Stored { .. }) if !task => {
-                    self.retained_image_paths.extend(pending.draft.attach.iter().filter(|a| a.kind == "image").map(|a| a.path.clone()));
                     pending.stored += 1;
                 }
                 Reply::Messaging(Response::Refused { error }) if !task => {
@@ -910,7 +919,7 @@ impl Client {
             pending.remaining.remove(&result.op);
         }
         if !pending.remaining.is_empty() {
-            return (None, follow_up);
+            return (None, follow_up, committed_images);
         }
         let pending = self.pending.take().unwrap();
         if pending.failures.is_empty() {
@@ -922,7 +931,7 @@ impl Client {
             } else {
                 Status::Held(pending.held.join("; "))
             };
-            (Some(pending.draft), follow_up)
+            (Some(pending.draft), follow_up, committed_images)
         } else {
             let reason = pending.failures.join("; ");
             self.status = if pending.stored > 0 {
@@ -933,7 +942,7 @@ impl Client {
             } else {
                 Status::Refused(reason)
             };
-            (None, follow_up)
+            (None, follow_up, committed_images)
         }
     }
 }

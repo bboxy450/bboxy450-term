@@ -5302,7 +5302,8 @@ impl App {
                 );
                 self.document_layout = None;
             }
-            let (completed, follow_up) = self.composer_client.replies(&state.operation_results);
+            let (completed, follow_up, committed_images) = self.composer_client.replies_with_images(&state.operation_results);
+            self.composer_images.committed(&committed_images);
             if let Some(draft) = completed {
                 if draft.delegate {
                     self.task_records.refresh();

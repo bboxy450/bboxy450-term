@@ -18,6 +18,7 @@ use std::{
 pub struct OwnedImage {
     path: PathBuf,
     preserve: bool,
+    committed: bool,
 }
 impl OwnedImage {
     pub fn path(&self) -> &Path {
@@ -46,6 +47,7 @@ impl OwnedImage {
         Ok(Self {
             path,
             preserve: false,
+            committed: false,
         })
     }
 }
@@ -80,12 +82,23 @@ impl Images {
                 .is_some_and(|image| image.path == Path::new(&a.path))
         })
     }
-    /// Pending/ambiguous and durable sends preserve their files even after GUI detach.
-    /// A definitive refusal releases only files whose marker has also been removed.
+    /// Transfer newly accepted files to message custody once, before clearing its draft.
+    /// The bounded map contains only current draft/pending images; sent history is never scanned.
+    pub fn committed(&mut self, paths: &[String]) {
+        for image in self.owned.values_mut() {
+            if paths.iter().any(|p| image.path == Path::new(p)) {
+                image.committed = true;
+                image.preserve = true;
+            }
+        }
+    }
+    /// Keep only current draft or pending/unknown tokens. Committed files remain
+    /// readable after relinquishing the token; refused unsent tokens still unlink.
     pub fn reconcile(&mut self, draft: &[Attachment], protected: &[String]) {
         self.owned.retain(|id, image| {
-            image.preserve = protected.iter().any(|p| image.path == Path::new(p));
-            image.preserve || draft.iter().any(|a| a.kind == "image" && a.id == *id)
+            let pending = protected.iter().any(|p| image.path == Path::new(p));
+            image.preserve = image.committed || pending;
+            pending || draft.iter().any(|a| a.kind == "image" && a.id == *id)
         });
     }
 }
@@ -290,10 +303,16 @@ mod tests {
                 message: Box::new(stored),
             }),
         );
-        let submitted = client.replies(&results).0.unwrap();
-        editor.stored(&submitted);
+        let (submitted, _, committed) = client.replies_with_images(&results);
+        images.committed(&committed);
+        editor.stored(&submitted.unwrap());
         assert!(editor.view.attach.is_empty());
         images.reconcile(&editor.view.attach, &client.protected_image_paths());
+        assert!(
+            images.owned.is_empty(),
+            "successful send relinquishes its owned token"
+        );
+        assert!(client.protected_image_paths().is_empty());
         drop(images);
         drop(editor);
         drop(client);
@@ -311,5 +330,104 @@ mod tests {
         );
         assert_eq!(std::fs::read(&path).unwrap(), png);
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn image_custody_many_completed_sends_bound_active_ownership_and_keep_prior_pngs_readable() {
+        use crate::{
+            cockpit::UiMsg,
+            messaging::{Client, Reply, Results},
+        };
+        use bbt_proto::{SwarmId, messaging::Response};
+        use bbt_ui::modules::composer::{Address, Submission};
+        let mut png = Vec::new();
+        {
+            let mut writer = png::Encoder::new(&mut png, 1, 1).write_header().unwrap();
+            writer.write_image_data(&[123]).unwrap();
+        }
+        let mut images = Images::default();
+        let mut client = Client::default();
+        let mut paths = vec![];
+        let mut results = Results::default();
+        let draft = |attach: Vec<Attachment>| Submission {
+            delegate: false,
+            to: vec![Address {
+                destination: "seats/fixture/inbox".into(),
+                ..Default::default()
+            }],
+            attach,
+            text: "fixture message".into(),
+            kind: "text".into(),
+            priority: 0,
+        };
+        for index in 0..128 {
+            let image = OwnedImage::save_png(&png).unwrap();
+            let path = image.path.clone();
+            let attachment = attachment(&image, &format!("fixture-{index}"));
+            images
+                .ready(&attachment.id, image, std::slice::from_ref(&attachment))
+                .unwrap();
+            let commands = client.admitted(
+                client
+                    .prepare(Some(SwarmId::from_u128(1)), draft(vec![attachment.clone()]))
+                    .unwrap(),
+            );
+            let UiMsg::Messaging { id, .. } = commands[0] else {
+                panic!("send")
+            };
+            images.reconcile(
+                std::slice::from_ref(&attachment),
+                &client.protected_image_paths(),
+            );
+            assert_eq!(images.owned.len(), 1);
+            assert_eq!(client.protected_image_paths().len(), 1);
+            results.push(
+                id,
+                Reply::Messaging(Response::Held {
+                    id,
+                    reason: "durably accepted fixture".into(),
+                }),
+            );
+            let (completed, _, committed) = client.replies_with_images(&results);
+            assert!(completed.is_some());
+            assert_eq!(committed, vec![attachment.path]);
+            images.committed(&committed);
+            images.reconcile(&[], &client.protected_image_paths());
+            assert!(
+                images.owned.is_empty(),
+                "completed sends must relinquish all active tokens"
+            );
+            assert!(client.protected_image_paths().is_empty());
+            assert!(
+                client.replies_with_images(&results).2.is_empty(),
+                "replayed completion is idempotent"
+            );
+            paths.push(path);
+        }
+        let commands = client.admitted(
+            client
+                .prepare(Some(SwarmId::from_u128(1)), draft(vec![]))
+                .unwrap(),
+        );
+        let UiMsg::Messaging { id, .. } = commands[0] else {
+            panic!("text send")
+        };
+        results.push(
+            id,
+            Reply::Messaging(Response::Held {
+                id,
+                reason: "durably accepted text fixture".into(),
+            }),
+        );
+        let (_, _, committed) = client.replies_with_images(&results);
+        assert!(committed.is_empty());
+        images.committed(&committed);
+        images.reconcile(&[], &client.protected_image_paths());
+        assert!(images.owned.is_empty());
+        drop(images);
+        drop(client);
+        for path in paths {
+            assert_eq!(std::fs::read(&path).unwrap(), png);
+            std::fs::remove_file(path).unwrap();
+        }
     }
 }

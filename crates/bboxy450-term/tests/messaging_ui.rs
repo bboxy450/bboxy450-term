@@ -948,14 +948,19 @@ fn image_attachment_transport_retains_pending_unknown_stored_and_releases_only_r
                 _ => Reply::Refused("explicit refusal".into()),
             },
         );
-        client.replies(&results);
+        let (_, _, committed) = client.replies_with_images(&results);
         assert_eq!(
-            client.protected_image_paths(),
+            committed,
             if outcome == "refused" {
                 vec![]
             } else {
                 vec![path]
             }
+        );
+        assert!(client.protected_image_paths().is_empty());
+        assert!(
+            client.replies_with_images(&results).2.is_empty(),
+            "late receipts cannot re-commit images"
         );
     }
 }
