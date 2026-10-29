@@ -533,9 +533,28 @@ mod tests {
         );
         // A separate real child has a different kernel peer PID despite the same uid.
         let output = tokio::process::Command::new("/usr/bin/python3")
-            .args(["-c", "import socket,sys; s=socket.socket(socket.AF_UNIX); s.connect(sys.argv[1]); s.sendall(b'\\\"hard_quit\\\"\\n')", config.run_dir.join(SOCKET).to_str().unwrap()])
-            .output().await.unwrap();
-        assert!(output.status.success());
+            .args([
+                "-c",
+                r#"import socket,sys
+s=socket.socket(socket.AF_UNIX)
+s.settimeout(2)
+s.connect(sys.argv[1])
+try:
+    s.sendall(b'"hard_quit"\n')
+    assert s.recv(8) != b'ok\n', 'unrecorded peer received acknowledgement'
+except (BrokenPipeError, ConnectionResetError):
+    pass
+"#,
+                config.run_dir.join(SOCKET).to_str().unwrap(),
+            ])
+            .output()
+            .await
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         assert!(
             tokio::time::timeout(Duration::from_millis(50), received.recv())
                 .await
