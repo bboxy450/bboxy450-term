@@ -296,3 +296,60 @@ Catalogue total: 43 tools. `how` and `find` share the index; `code_search` reads
 - **Knowledge tools.** `knowledge_fetch`, `knowledge_search`, `knowledge_write` surface the [[knowledge-base]] contract to seats; `artifact_claim` stays claim-only. Write authority by class: worker-class seats create and update `e2e`, `comment`, `research`, `note`, `artifact`, and the `result` fields of their own `task`; `spec`, `decision`, `invariant`, `proposal` status and `task` creation are Oracle class and operator only; the Index signs with the caller's seat key and refuses outside the table by name. **Field policy for the two authority-bearing types (Kestrel's question, 2026-10-24).** *Tasks:* a worker's `knowledge_write` on a task is **routed through the existing Report transition** and may change only `report.summary`, `report.commit` and `verify_result`, on a task assigned to the calling seat; status becomes `reported` by that transition, the delegator's notice fires, `task_accept`'s exit-0 rule is untouched; every other field and the body must equal the current record or the write is refused as `task_field_protected`. The body is the brief and no worker edits it. Oracle class and the operator create a task only in `open` and may edit its brief, `verify` and `allowed_paths` only while it is `open`; every lifecycle and assignment change (`delegate`, `reassign`, `status`, `accept`, `reject`) goes through `task_*`, never through a generic write. *Artifacts:* a generic write never changes the claim-, observation- or lineage-owned fields: `claimed`, `produced_by`, `grade`, `history`, `for`, `derived_from`, and `ref` and `digest` once the artifact is observed or claimed; those move only through `artifact_claim`, `artifact_release` and the detector (`reconcile_claim`). A generic create by a worker gets honest defaults: `claimed: false`, `produced_by: seat:<caller>` (the writer, which is true), `grade: inferred`, `history: []`; the creator may correct `ref` and `digest` while the artifact is unclaimed and unobserved; a write touching a protected field is refused as `artifact_field_protected`; **`observed` is itself detector-owned and immutable to generic writes** (otherwise a write could reset it and reopen `ref` and `digest`), and **a generic update never changes a record's `type`** for any record, so a relabel from `artifact` to `note` cannot erase a claim or lineage (`type_immutable`; Kestrel's closure, same day). *Decisions:* a create supplies `decisions/<slug>.md` and the Index stores `decisions/d<N>-<slug>.md` from the number it allocates, returning the final path; a basename already prefixed `d<digits>-` must equal the allocated number or is refused as `decision_filename_required` with the authoritative name ([[d47-decision-nodes]]).
 - **Counts are never null.** `unread: { count, basis: cursor | no_cursor_yet }`; `pending_ack: { count, ids, action }`.
 - **The shape of `orient`.** Who I am; what I can do now (tools open to my class, one line each); destinations with rights; my tasks or the empty reason; pending acks and unread with basis; how to reach the operator ([[d264-reply-routes-to-sender]]); "ids are minted for you unless you retry". One call, enough to act on cold.
+
+
+### Own-seat error diagnostics (#75, direct operator batch 2026-10-30)
+
+Owners: mux logic/diagnostic IO worker and authenticated seat MCP. The additive
+`diagnostic_errors` reader accepts optional `seat_id` (only the caller),
+`scope: seat`, `since_ms`, `limit: 1..64` (default 32), and an opaque cursor up to
+4096 bytes. Another seat, swarm or account scope is refused even for Oracle:
+there is no explicit diagnostic swarm-read grant in the current authority model.
+The operator's `ctl debug errors` door and its acknowledgement remain separate.
+
+At most one read runs per seat; another request gets `diagnostics_busy` without
+queuing. Independent seats use independent IO jobs. Reads never wait on provider
+scans, signing custody or the operator. Logic rechecks the exact actor and swarm
+workspace revision before publication, including A-B-A changes. A cancelled
+client cannot cause effects or acknowledgements. Logic restart retires pending
+reads; a new read/cursor starts from the retained journal. MCP owner marker 13
+activates the new reader on normal reattach without replacing PTY owners.
+
+The reader opens only the run's fixed three retained journal files, read-only,
+with no-follow/nonblocking flags and private regular-file/owner checks. Total
+input is at most three times (1 MiB + 16 KiB); lines are bounded at 16 KiB.
+Oversized/incomplete lines stop that file and set `incomplete: true`; malformed
+rows are omitted. Missing or unsafe/unreadable stores return
+`diagnostics_unavailable`; an existing empty journal is a successful empty page.
+No operator acknowledgement file is opened, created or updated.
+
+Rows are own-seat observations, newest first, deduplicated by stable error ID,
+with `error_ref: diagnostic:<id>`, named source/operation, optional original
+operation ULID, timestamp, bounded message/stderr, observed exit/duration and
+repeat count. Only whitelisted fields are returned. Redaction precedes field
+truncation; pages are at most 64 KiB before the MCP envelope. New MCP producers
+retain the validated original operation ID alongside the tool name and the
+classified error reason, without request arguments. Old rows lacking that ID
+return null, never an invented reference. An observation or absent row does not
+establish cause, effect failure, successful recovery or complete history.
+
+Journal v1 records seat identity, **not historical root/swarm provenance**.
+The reader therefore exposes only the caller's own retained seat history and
+reports `root_scope: not_recorded_by_journal_v1`; it does not claim that a
+historical observation belongs to the current root or swarm. No cross-seat or
+swarm inference is authorized by a current roster. A future wider projection
+requires explicit grants and producer provenance before it can be enabled.
+
+Cursors bind the complete current actor/workspace revision, filter and redacted
+scoped snapshot; their original five-minute age is retained across pages. Expired
+cursors return `cursor_expired`, changed scoped data/retention returns
+`stale_cursor`, and a wrong actor/filter or malformed cursor returns
+`invalid_cursor`. Start a fresh walk after these refusals. Concurrent rotation
+is best effort; incomplete data is labeled, never evidence of absence.
+
+Verification: `make test-cli-error-isolation` includes the producer/reader unit
+fixtures and authenticated `mcp_seat_diagnostics_is_paginated_redacted_own_only_and_preserves_operator_mark`;
+`make test-oracle-control` also runs the MCP suite. `DiagnosticRead` and its
+broken controls check own-row publication, current revision and unchanged
+operator read mark. Secret sentinels, file safety, cursor byte/age/snapshot
+bounds and oversized rows remain implementation tests.

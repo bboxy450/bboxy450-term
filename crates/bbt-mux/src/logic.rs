@@ -2593,6 +2593,12 @@ struct GuiKnowledgeCompletion {
     reply: oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
     result: crate::knowledge::data_source::Result<serde_json::Value>,
 }
+struct DiagnosticCompletion {
+    context: crate::mcp::diagnostics::Context,
+    op: Ulid,
+    reply: oneshot::Sender<Result<serde_json::Value>>,
+    value: serde_json::Value,
+}
 fn workspace_command_error(
     error: &(dyn std::error::Error + 'static),
 ) -> crate::knowledge::data_source::CommandError {
@@ -2619,6 +2625,8 @@ struct Worker {
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
+    diagnostic_jobs: tokio::task::JoinSet<DiagnosticCompletion>,
+    diagnostic_pending: BTreeSet<Ulid>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
     effect_roots: BTreeSet<String>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
@@ -2858,6 +2866,8 @@ impl Worker {
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
+            diagnostic_jobs: tokio::task::JoinSet::new(),
+            diagnostic_pending: BTreeSet::new(),
             effect_jobs: tokio::task::JoinSet::new(),
             effect_roots: BTreeSet::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
@@ -3546,6 +3556,66 @@ impl Worker {
         reply: oneshot::Sender<Result<serde_json::Value>>,
     ) {
         self.start_knowledge_read_at(id, generation, call, reply, None);
+    }
+    fn start_diagnostic_read(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        let context = (|| -> Result<_> {
+            let (actor, _) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let workspace_revision = self
+                .registry
+                .swarm(actor.swarm_id)?
+                .map_or(0, |s| s.revision);
+            Ok(crate::mcp::diagnostics::Context {
+                actor,
+                workspace_revision,
+            })
+        })();
+        let context = match context {
+            Ok(context) => context,
+            Err(error) => {
+                let _ = reply.send(Err(error));
+                return;
+            }
+        };
+        if !self.diagnostic_pending.insert(id) {
+            let _ = reply.send(Ok(crate::mcp::error(
+                call.op_id,
+                "diagnostics_busy",
+                "a diagnostic read is already active for your seat; no read queued",
+            )));
+            return;
+        }
+        let root = self.config.run_dir.clone();
+        let captured = context.clone();
+        let op = call.op_id;
+        self.diagnostic_jobs.spawn_on(
+            async move {
+                let value = tokio::task::spawn_blocking(move || {
+                    crate::mcp::diagnostics::read(&root, &captured, &call)
+                })
+                .await
+                .unwrap_or_else(|_| {
+                    crate::mcp::error(
+                        op,
+                        "diagnostics_unavailable",
+                        "diagnostic reader interrupted",
+                    )
+                });
+                DiagnosticCompletion {
+                    context,
+                    op,
+                    reply,
+                    value,
+                }
+            },
+            &self.handle,
+        );
     }
     fn start_knowledge_read_at(
         &mut self,
@@ -7795,6 +7865,34 @@ impl Worker {
             }
         }
         self.service_identity_jobs()?;
+        while let Some(joined) = self.diagnostic_jobs.try_join_next() {
+            if let Ok(done) = joined {
+                self.diagnostic_pending.remove(&done.context.actor.seat_id);
+                let current = self
+                    .control_actor(
+                        done.context.actor.seat_id,
+                        done.context.actor.process_generation,
+                    )
+                    .and_then(|(actor, _)| {
+                        let revision = self
+                            .registry
+                            .swarm(actor.swarm_id)?
+                            .map_or(0, |s| s.revision);
+                        Ok(done.context.current(&actor, revision))
+                    })
+                    .unwrap_or(false);
+                let value = if current {
+                    done.value
+                } else {
+                    crate::mcp::error(
+                        done.op,
+                        "forbidden",
+                        "seat authority or workspace changed during diagnostic read",
+                    )
+                };
+                let _ = done.reply.send(Ok(value));
+            }
+        }
         self.workspaces.poll(&self.registry);
         for root in self.workspaces.take_ready_scans() {
             if let Err(error) = self.publish_root_outbox(&root) {
@@ -9244,7 +9342,9 @@ impl Worker {
                         } else {
                             call
                         };
-                        if call.tool == "task_import" {
+                        if call.tool == "diagnostic_errors" {
+                            self.start_diagnostic_read(id, generation, call, reply);
+                        } else if call.tool == "task_import" {
                             self.start_seat_task_import(id, generation, call, reply);
                         } else if crate::knowledge::seat_reads::handles(&call) {
                             self.start_knowledge_read(id, generation, call, reply);

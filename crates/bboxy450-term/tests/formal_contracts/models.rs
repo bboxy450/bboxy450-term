@@ -998,7 +998,8 @@ fn sidebar_reveal(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 22] = [
+    let families: [fn(bool) -> Model; 23] = [
+        seat_models::diagnostics,
         seat_models::recovery,
         sidebar_reveal,
         async_render_preparation,

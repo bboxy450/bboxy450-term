@@ -289,3 +289,13 @@ frontend = "project"
 name = "BrokenOperationRecovery"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "DiagnosticRead"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDiagnosticRead"
+expected = "safety"
+frontend = "project"

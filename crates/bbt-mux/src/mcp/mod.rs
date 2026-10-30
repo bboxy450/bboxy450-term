@@ -8,6 +8,7 @@
 
 pub(crate) mod attention;
 pub mod bridge;
+pub(crate) mod diagnostics;
 pub(crate) mod journal;
 pub(crate) mod knowledge;
 pub(crate) mod messaging;

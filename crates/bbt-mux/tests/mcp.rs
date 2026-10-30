@@ -1395,7 +1395,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 27);
+    assert_eq!(tools.len(), 28);
     assert!(tools.iter().any(|tool| tool["name"] == "knowledge_status"));
     assert!(
         tools
@@ -2462,8 +2462,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 27);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 47);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 28);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 48);
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
@@ -5755,6 +5755,84 @@ fn mcp_number_collision_reports_its_class_and_keeps_unrelated_fetches_available(
     let healthy = data(knowledge_fetch(&f, f.own.id, "#1"));
     assert_eq!(healthy["id"], json!(f.task));
     knowledge_denied(knowledge_fetch(&f, f.own.id, "#2"), "number_conflict");
+}
+
+// #75: an authenticated seat sees its redacted errors without acknowledging the operator.
+#[test]
+fn mcp_seat_diagnostics_is_paginated_redacted_own_only_and_preserves_operator_mark() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Fixture::new();
+    let mark = f.config.run_dir.join(".diagnostics-read");
+    std::fs::write(&mark, "operator-mark-sentinel").unwrap();
+    let mut rows = String::new();
+    let original = Ulid::new();
+    for (n, seat) in [(1, f.own.id), (2, f.peer.id), (3, f.own.id)] {
+        let row = json!({"version":1,"id":format!("100-{n}-0"),"at_ms":100,"pid":n,
+            "source":"mcp","operation":format!("knowledge_fetch/{original}"),
+            "message":"token=seat-secret-sentinel","stderr":"capability: diagnostic-secret-sentinel",
+            "seat":seat,"harness":"codex","exit_code":null,"duration_ms":null});
+        rows.push_str(&format!("{row}\n"));
+    }
+    let file = f.config.run_dir.join("diagnostics.jsonl");
+    std::fs::write(&file, rows).unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
+    let first = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "diagnostic_errors",
+        json!({"limit":1}),
+    ));
+    assert_eq!(first["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(first["rows"][0]["seat"], json!(f.own.id));
+    assert_eq!(first["rows"][0]["original_op_id"], json!(original));
+    assert!(!first.to_string().contains("seat-secret-sentinel"));
+    assert!(!first.to_string().contains("diagnostic-secret-sentinel"));
+    let next = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "diagnostic_errors",
+        json!({"limit":1,"cursor":first["next"]}),
+    ));
+    assert_ne!(first["rows"][0]["id"], next["rows"][0]["id"]);
+    assert!(next["next"].is_null());
+    assert_eq!(
+        std::fs::read_to_string(&mark).unwrap(),
+        "operator-mark-sentinel"
+    );
+    for actor in [f.own.id, f.oracle.id] {
+        refused(
+            f.call(
+                actor,
+                Ulid::new(),
+                "diagnostic_errors",
+                json!({"seat_id":f.peer.id}),
+            ),
+            "forbidden",
+        );
+        refused(
+            f.call(
+                actor,
+                Ulid::new(),
+                "diagnostic_errors",
+                json!({"scope":"swarm"}),
+            ),
+            "forbidden",
+        );
+    }
+    refused(
+        f.call(
+            f.peer.id,
+            Ulid::new(),
+            "diagnostic_errors",
+            json!({"cursor":first["next"]}),
+        ),
+        "invalid_cursor",
+    );
+    std::fs::remove_file(file).unwrap();
+    refused(
+        f.call(f.own.id, Ulid::new(), "diagnostic_errors", json!({})),
+        "diagnostics_unavailable",
+    );
 }
 fn knowledge_denied(value: Value, code: &str) {
     assert_eq!(value["isError"], true, "{value}");

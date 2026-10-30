@@ -69,3 +69,19 @@ launch can recover its original document effect, within the same swarm, issuer
 and root. Cross-context entries are refused. Byte bounds are the existing MCP
 bounds. `make test-workspace-boundary` includes the collision and journal/API
 witnesses; `make test-formal` checks `OperationRecovery` and its broken controls.
+
+
+### Seat diagnostics, #75 (2026-10-30 direct operator batch)
+
+Mux diagnostic IO ↔ authenticated seat MCP adds `diagnostic_errors`, specified
+in [[mcp-control-plane]] “Own-seat error diagnostics”. Scope is strictly the
+calling seat's retained history; no current policy grants swarm diagnostic
+reads. Journal v1 has no historical root/swarm provenance, and responses label
+that limit explicitly. Admission and completion check current actor/workspace
+revision; independent per-seat jobs never queue behind another seat or a
+provider scan. Fixed private files, bounded lines/pages and scoped five-minute
+cursors fail closed on unsafe stores or changed snapshots. Seat reads never
+open or change the operator read mark. Stable error IDs and available original
+operation IDs link observations without claiming a cause or effect result.
+Evidence: `make test-cli-error-isolation`, `make test-oracle-control` and the
+`DiagnosticRead` model/broken controls in `make test-formal`.

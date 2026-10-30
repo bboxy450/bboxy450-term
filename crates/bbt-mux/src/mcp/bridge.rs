@@ -125,6 +125,35 @@ impl TransportFailure {
             "os":self.os,"elapsed_ms":self.elapsed_ms})
     }
 }
+fn diagnostic_failure(
+    seat: Ulid,
+    request: &Value,
+    response: &Value,
+) -> bbt_rt::error_journal::Failure {
+    let tool = if request["method"] == "tools/call" {
+        request["params"]["name"].as_str().unwrap_or("invalid_tool")
+    } else {
+        request["method"].as_str().unwrap_or("invalid_request")
+    };
+    let data = &response["result"]["structuredContent"];
+    let op = data["op_id"]
+        .as_str()
+        .or_else(|| response["error"]["data"]["op_id"].as_str())
+        .and_then(|id| id.parse::<Ulid>().ok())
+        .filter(|op| *op != Ulid::nil());
+    // Whitespace keeps the validated ULID separate from the tool name during
+    // token redaction. No request arguments are copied into this observation.
+    let operation = op.map_or_else(|| tool.to_owned(), |op| format!("{tool} {op}"));
+    let reason = response["error"]["message"]
+        .as_str()
+        .or(data["error"]["message"].as_str())
+        .or(response["result"]["reason"].as_str())
+        .unwrap_or("tool returned an error or refusal");
+    let reason = data["error"]["code"]
+        .as_str()
+        .map_or_else(|| reason.to_owned(), |code| format!("{code}: {reason}"));
+    bbt_rt::error_journal::Failure::new("mcp", &operation, reason).seat(seat)
+}
 impl Bridge {
     pub fn new(config: Config) -> Self {
         Self {
@@ -190,19 +219,7 @@ impl Bridge {
                 || response["result"]["kind"] == "Rejected")
         {
             let request = serde_json::from_slice::<Value>(bytes).unwrap_or(Value::Null);
-            let operation = if request["method"] == "tools/call" {
-                request["params"]["name"].as_str().unwrap_or("invalid_tool")
-            } else {
-                request["method"].as_str().unwrap_or("invalid_request")
-            };
-            let reason = response["error"]["message"]
-                .as_str()
-                .or(response["result"]["reason"].as_str())
-                .unwrap_or("tool returned an error or refusal");
-            bbt_rt::error_journal::report(
-                bbt_rt::error_journal::Failure::new("mcp", operation, reason)
-                    .seat(self.config.seat),
-            );
+            bbt_rt::error_journal::report(diagnostic_failure(self.config.seat, &request, response));
         }
         reply
     }
@@ -419,4 +436,24 @@ impl Bridge {
 pub fn run_cli() -> io::Result<()> {
     let config = Config::from_env()?;
     Bridge::new(config).run(&mut io::stdin().lock(), &mut io::stdout().lock())
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    #[test]
+    fn diagnostic_producer_preserves_original_operation_and_class_without_arguments() {
+        let op = Ulid::new();
+        let request = json!({"method":"tools/call","params":{"name":"knowledge_fetch","arguments":{"locator":"raw-secret-sentinel"}}});
+        let response = json!({"result":super::super::error(op,"number_conflict","knowledge lookup refused: number_conflict")});
+        let failure = diagnostic_failure(Ulid::from(7_u128), &request, &response);
+        assert_eq!(failure.operation, format!("knowledge_fetch {op}"));
+        assert!(failure.message.starts_with("number_conflict:"));
+        assert!(!failure.message.contains("raw-secret-sentinel"));
+        assert_eq!(
+            bbt_rt::error_journal::scrub(&failure.operation, 128),
+            failure.operation
+        );
+        assert_eq!(failure.seat, Some(Ulid::from(7_u128).to_string()));
+    }
 }

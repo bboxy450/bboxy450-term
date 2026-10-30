@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 21 contract families and 21 broken controls to the
-14 checker/Yarn conformance cases: **56 models** in total. The declarations live
+The project corpus adds 23 contract families and 23 broken controls to the
+14 checker/Yarn conformance cases: **60 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
@@ -72,6 +72,8 @@ is added to the terminal runtime.
 | Notification replacement | A queued replacement wins after slow authorization |
 | Notification recovery | Enabled policy checks permission before a question; finite IO failures retry and cancellation eventually withdraws |
 | Current notification lifecycle | UI detach retains desktop/current episode; old context and captured clicks cannot target a newer A → B → A incarnation |
+| Original-operation recovery | Fresh lookup preserves unknown outcomes, never redispatches and confines results to the original seat/root |
+| Seat error diagnostics | Current authority/workspace and own-row filters fence pages; seat reads never acknowledge the operator |
 | Workspace reads | Root, revision and authority still match at publication, including A → B → A |
 | Plugin inspection | Source digest, approval and activation generation still match |
 | Harness readiness | Input ownership and single-use proof remain current; unknown outcomes fence retries |

@@ -220,3 +220,13 @@ implementation_tests = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/tes
 assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof."
 property = "A lookup neither dispatches effects nor exposes another actor/root's result nor converts missing evidence to a terminal verdict. Broken controls redispatch an unknown write, leak another context and treat missing as terminal."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DiagnosticRead"
+title = "Seat diagnostic pages never cross authority or acknowledge the operator"
+models = ["DiagnosticRead", "BrokenDiagnosticRead"]
+sources = ["crates/bbt-mux/src/mcp/diagnostics.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/diagnostics.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One asynchronous read, one own/foreign row and two workspace revision changes including A-B-A. Admission and completion checks are atomic logic actions; there is no IO fairness assumption. Per-seat capacity refuses immediately; no provider scan, shared diagnostic queue or signing dependency. Byte/file/cursor bounds and secret redaction are real API/fixture checks, not Rust refinement proofs. Journal v1 stores seat identity but no historical root/swarm, so only own-seat history is exposed and root scope is explicitly unknown; no swarm/account diagnostic grant is inferred."
+property = "Only own-seat rows publish under the captured current authority/workspace revision. Seat reads never change the operator read mark. Broken controls omit row filtering, compare root ID alone and acknowledge from a seat."
+checks = ["make test-formal", "make test"]

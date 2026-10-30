@@ -76,6 +76,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     tools.extend(super::knowledge::catalogue(actor));
     tools.extend(super::skills::catalogue());
     tools.push(super::recovery::catalogue());
+    tools.push(super::diagnostics::catalogue());
     for tool in &mut tools {
         tool["inputSchema"]["properties"]["op_id"] = json!({
             "type":"string",
