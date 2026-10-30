@@ -322,7 +322,7 @@ impl DataSourceProvider {
                 if initialize_limit.is_zero() {
                     return Err(error(
                         "deadline_exceeded",
-                        "Document commit deadline exhausted before initialization",
+                        "Operation deadline exhausted before initialization",
                     ));
                 }
                 let mut client = Client::spawn_with_home(
@@ -357,7 +357,7 @@ impl DataSourceProvider {
             if budget.is_zero() {
                 return Err(error(
                     "deadline_exceeded",
-                    "Document commit deadline exhausted before provider dispatch",
+                    "Operation deadline exhausted before provider dispatch",
                 ));
             }
             let name = contract.wire_name(method).map_err(refused)?;
@@ -498,6 +498,19 @@ impl DataSource for DataSourceProvider {
     }
     fn graph(&self, request: d::GraphRequest) -> d::Result<d::GraphPage> {
         self.request("graph", request)
+    }
+    fn graph_until(&self, request: d::GraphRequest, deadline: Instant) -> d::Result<d::GraphPage> {
+        self.request_before("graph", request, Some(deadline))
+    }
+    fn list_until(
+        &self,
+        request: d::ListRequest,
+        deadline: Instant,
+    ) -> d::Result<d::Page<d::RecordRef>> {
+        self.request_before("list", request, Some(deadline))
+    }
+    fn fetch_until(&self, request: d::FetchRequest, deadline: Instant) -> d::Result<d::Record> {
+        self.fetch_before(request, Some(deadline))
     }
     fn changes_since(&self, request: d::ChangesRequest) -> d::Result<d::Changes> {
         self.request("changes_since", request)

@@ -932,6 +932,39 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         assert_eq!(item, &client.resolve(item["slug"].as_str().unwrap()));
     }
     assert!(listed.iter().any(|item| item["slug"] == "notes/shared"));
+    // Every graph node, batched (committed-only) or exact, carries exactly
+    // what fetch returns.
+    let mut batched = 0;
+    let mut request = json!({"scope": {"kind": "all", "graph": "markdown"}, "limit": 128});
+    loop {
+        let page = client.call("graph", request.clone());
+        for node in page["nodes"].as_array().unwrap() {
+            if node["ref"]["slug"] == image_slug.as_str() {
+                continue; // Its fetch is refused above: the image is now a symlink.
+            }
+            let record = client.call("fetch", json!({"ref": node["ref"]}));
+            assert_eq!(
+                node["frontmatter"], record["frontmatter"],
+                "{}",
+                node["ref"]
+            );
+            assert_eq!(node["ref"]["digest"], record["digest"]);
+            assert_eq!(node["id"], record["id"]);
+            assert_eq!(node["title"], record["frontmatter"]["title"]);
+            assert_eq!(node["type"], record["frontmatter"]["type"]);
+            if record["gitkb"]["source"]["kind"] == "committed" {
+                batched += 1;
+            }
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        request["cursor"] = page["next"].clone();
+    }
+    assert!(
+        batched > 0,
+        "no committed-only node exercised the batch path"
+    );
     let committed_ref = client.resolve("notes/shared");
     client.call(
         "write",

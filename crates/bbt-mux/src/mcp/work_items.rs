@@ -8,6 +8,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
+use std::time::{Duration, Instant};
 
 use bbt_proto::messaging::{
     Recipient, TaskCard, TaskDoc, TaskRequest, TaskResponse, TaskVerifySummary,
@@ -23,6 +24,21 @@ use crate::knowledge::{DataSource, data_source as d};
 use crate::registry::{Class, Registry, SeatRecord};
 
 type Checked<T> = std::result::Result<T, String>;
+
+/// One task inventory read answers well inside the seat bridge's 10 s socket
+/// timeout (`mcp/bridge.rs`), across every graph, list and fetch call it makes.
+pub(crate) const TASK_LIST_BUDGET: Duration = Duration::from_secs(8);
+/// Code of the named refusal when [`TASK_LIST_BUDGET`] runs out.
+pub(crate) const DEADLINE_EXCEEDED: &str = "deadline_exceeded";
+
+/// Refusal code for a task read failure message: the named deadline or `rejected`.
+pub(crate) fn failure_code(reason: &str) -> &'static str {
+    if reason.starts_with(DEADLINE_EXCEEDED) {
+        DEADLINE_EXCEEDED
+    } else {
+        "rejected"
+    }
+}
 
 #[cfg(test)]
 #[path = "work_items_inventory_tests.rs"]
@@ -60,7 +76,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                 locator: locator.into(),
             })
             .map_err(|e| e.to_string())?;
-        self.fetch(reference)
+        self.fetch(reference, None)
     }
     fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
         if self
@@ -75,6 +91,7 @@ impl TaskDocuments for ProviderTasks<'_> {
             .or_else(|| actor.seat().map(|seat| seat.swarm_id));
         let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
         let limit = tools::page_limit(args.limit)?;
+        let deadline = Instant::now() + TASK_LIST_BUDGET;
         let mut candidates = BTreeMap::new();
         // Native imports retain unassigned tasks with a scoped delegator. Their
         // metadata is already in the bundled Index; external sources retain the
@@ -92,17 +109,15 @@ impl TaskDocuments for ProviderTasks<'_> {
                 let mut cursor = None;
                 let mut seen = BTreeSet::new();
                 for page_number in 0..64 {
-                    let page = self
-                        .0
-                        .graph(d::GraphRequest {
-                            scope: d::Scope::Type {
-                                graph: d::DocumentGraph::Markdown,
-                                record_type: kind.into(),
-                            },
-                            cursor,
-                            limit: Some(d::MAX_PAGE),
-                        })
-                        .map_err(|e| e.to_string())?;
+                    let request = d::GraphRequest {
+                        scope: d::Scope::Type {
+                            graph: d::DocumentGraph::Markdown,
+                            record_type: kind.into(),
+                        },
+                        cursor,
+                        limit: Some(d::MAX_PAGE),
+                    };
+                    let page = within(deadline, || self.0.graph_until(request, deadline))?;
                     for node in page.nodes {
                         let Some(reference) = node.reference else {
                             continue;
@@ -160,19 +175,17 @@ impl TaskDocuments for ProviderTasks<'_> {
                         let mut cursor = None;
                         let mut seen = BTreeSet::new();
                         for page_number in 0..64 {
-                            let page = self
-                                .0
-                                .list(d::ListRequest {
-                                    filter: d::Filter {
-                                        record_type: Some(kind.into()),
-                                        status: args.status.clone(),
-                                        assignee: Some(selector.clone()),
-                                        ..Default::default()
-                                    },
-                                    cursor,
-                                    limit: Some(d::MAX_PAGE),
-                                })
-                                .map_err(|e| e.to_string())?;
+                            let request = d::ListRequest {
+                                filter: d::Filter {
+                                    record_type: Some(kind.into()),
+                                    status: args.status.clone(),
+                                    assignee: Some(selector.clone()),
+                                    ..Default::default()
+                                },
+                                cursor,
+                                limit: Some(d::MAX_PAGE),
+                            };
+                            let page = within(deadline, || self.0.list_until(request, deadline))?;
                             for reference in page.items {
                                 task_candidate(&mut candidates, reference, args.after)?;
                             }
@@ -191,7 +204,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         }
         let mut result = Vec::new();
         for reference in candidates.into_values() {
-            let document = self.fetch_record(reference)?;
+            let document = self.fetch_record(reference, Some(deadline))?;
             if listed(&document, registry, actor, args, assignee, scope) {
                 result.push(document);
                 if result.len() > limit {
@@ -203,18 +216,23 @@ impl TaskDocuments for ProviderTasks<'_> {
     }
 }
 impl ProviderTasks<'_> {
-    fn fetch(&self, reference: d::RecordRef) -> Checked<Document> {
-        let doc = self.fetch_record(reference)?;
+    fn fetch(&self, reference: d::RecordRef, deadline: Option<Instant>) -> Checked<Document> {
+        let doc = self.fetch_record(reference, deadline)?;
         task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
         Ok(doc)
     }
-    fn fetch_record(&self, reference: d::RecordRef) -> Checked<Document> {
-        let record = self
-            .0
-            .fetch(d::FetchRequest {
-                reference: reference.clone(),
-            })
-            .map_err(|e| e.to_string())?;
+    fn fetch_record(
+        &self,
+        reference: d::RecordRef,
+        deadline: Option<Instant>,
+    ) -> Checked<Document> {
+        let request = d::FetchRequest {
+            reference: reference.clone(),
+        };
+        let record = match deadline {
+            Some(deadline) => within(deadline, || self.0.fetch_until(request, deadline))?,
+            None => self.0.fetch(request).map_err(|e| e.to_string())?,
+        };
         if record.reference != reference
             || record.parse_error.is_some()
             || reference.id.parse::<Ulid>().is_err()
@@ -242,6 +260,27 @@ impl ProviderTasks<'_> {
         }
         Ok(doc)
     }
+}
+
+/// One provider read under the task inventory deadline. A call that fails once
+/// the deadline has passed reports the named deadline, never its transport timeout.
+fn within<T>(deadline: Instant, read: impl FnOnce() -> d::Result<T>) -> Checked<T> {
+    let exhausted = || {
+        format!(
+            "{DEADLINE_EXCEEDED}: task_list exceeded its {} s budget; narrow it with assignee, status or swarm_id, or page with after",
+            TASK_LIST_BUDGET.as_secs()
+        )
+    };
+    if Instant::now() >= deadline {
+        return Err(exhausted());
+    }
+    read().map_err(|error| {
+        if Instant::now() >= deadline {
+            exhausted()
+        } else {
+            error.to_string()
+        }
+    })
 }
 
 fn task_candidate(

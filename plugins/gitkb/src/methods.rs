@@ -577,34 +577,42 @@ impl GitKb {
         } else {
             Map::new()
         };
-        // Nodes carry exact frontmatter, so they use exact (cached) reads.
-        // Half the result budget stays for up to 512 edges.
+        // Nodes carry the frontmatter an exact read returns: committed-only
+        // records build it from one batched read, workspace records read
+        // exactly. Half the result budget stays for up to 512 edges.
         let mut nodes = Vec::new();
         let mut members = Vec::new();
         let mut budget = Budget(0, PAGE_BYTES / 2);
         let mut examined = 0;
-        while offset < slugs.len() && nodes.len() < limit {
+        'page: while offset < slugs.len() && nodes.len() < limit {
             // Twice the reserve: the native edge read still follows.
             if examined > 0 && self.ctx.remaining() < RESERVE * 2 {
                 break;
             }
-            let Some((summary, record)) = self.exact(&catalog, &slugs[offset])? else {
+            let n = self.chunk(limit - nodes.len(), slugs.len() - offset);
+            let found = self.nodes(&catalog, &slugs[offset..offset + n], RESERVE * 2)?;
+            if found.is_empty() {
+                break;
+            }
+            for found in found {
+                if let Some((summary, frontmatter)) = found
+                    && summary.matches(&swarm_filter)
+                {
+                    let node = json!({"id": summary.reference["id"], "ref": summary.reference,
+                        "title": frontmatter["title"], "type": frontmatter["type"],
+                        "frontmatter": frontmatter});
+                    if !budget.admit(&node, nodes.is_empty()) {
+                        break 'page;
+                    }
+                    members.push(slugs[offset].clone());
+                    nodes.push(node);
+                }
                 offset += 1;
                 examined += 1;
-                continue;
-            };
-            if summary.matches(&swarm_filter) {
-                let node = json!({"id": record["id"], "ref": reference(&record),
-                    "title": record["frontmatter"]["title"], "type": record["frontmatter"]["type"],
-                    "frontmatter": record["frontmatter"]});
-                if !budget.admit(&node, nodes.is_empty()) {
+                if nodes.len() >= limit {
                     break;
                 }
-                members.push(slugs[offset].clone());
-                nodes.push(node);
             }
-            offset += 1;
-            examined += 1;
         }
         let (edges, _) = self.edges(&members, 1)?;
         let ids: BTreeSet<&str> = nodes.iter().filter_map(|n| n["id"].as_str()).collect();

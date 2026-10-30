@@ -64,6 +64,30 @@ pub trait DataSource {
     fn links(&self, request: d::FetchRequest) -> d::Result<d::Links>;
     /// Page a document-owned graph, never an execution/messaging graph.
     fn graph(&self, request: d::GraphRequest) -> d::Result<d::GraphPage>;
+    /// Graph, list and fetch bounded by one multi-call host operation's
+    /// deadline, which narrows each provider call's own budget. A source with
+    /// no provider process ignores it; the caller still checks it between calls.
+    fn graph_until(
+        &self,
+        request: d::GraphRequest,
+        _deadline: std::time::Instant,
+    ) -> d::Result<d::GraphPage> {
+        self.graph(request)
+    }
+    fn list_until(
+        &self,
+        request: d::ListRequest,
+        _deadline: std::time::Instant,
+    ) -> d::Result<d::Page<d::RecordRef>> {
+        self.list(request)
+    }
+    fn fetch_until(
+        &self,
+        request: d::FetchRequest,
+        _deadline: std::time::Instant,
+    ) -> d::Result<d::Record> {
+        self.fetch(request)
+    }
     /// Apply an admitted mutation through the Index's signed, checked writer.
     fn write(
         &self,

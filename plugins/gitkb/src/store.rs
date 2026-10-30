@@ -178,10 +178,136 @@ pub fn reference(record: &Value) -> Value {
     Value::Object(out)
 }
 
+/// A native document's portable frontmatter and the values lifted from it.
+pub struct Projected {
+    pub frontmatter: Map<String, Value>,
+    pub native_status: Value,
+    pub number: Value,
+    pub signed_record: Option<Value>,
+}
+
+/// The one frontmatter projection for exact and batched reads: graph-derived
+/// keys dropped, identity, slug, title and type from the document, the task
+/// status mapped, the number and signed record lifted. `doc` supplies `slug`
+/// and `title`; `slug` is the requested slug used for the number fallback.
+pub fn project(
+    id: &str,
+    slug: &str,
+    doc: &Value,
+    kind: &Value,
+    mut fm: Map<String, Value>,
+) -> Result<Projected, Refusal> {
+    // GitKB declares these projections graph-derived, never source YAML.
+    fm.retain(|k, _| !matches!(k.as_str(), "references" | "blocks" | "children"));
+    fm.insert("id".into(), id.into());
+    fm.insert("slug".into(), doc["slug"].clone());
+    fm.insert("title".into(), doc["title"].clone());
+    fm.insert("type".into(), kind.clone());
+    let native_status = fm.get("status").cloned().unwrap_or(Value::Null);
+    if fm["type"] == "task" {
+        let bboxy = fm.remove("bboxy_status");
+        fm.insert("status".into(), task_status(bboxy.as_ref(), &native_status));
+    }
+    let number = number(Some(&fm), slug)?;
+    let signed_record = fm.remove("bboxy_signed_record");
+    if !number.is_null() {
+        fm.insert("number".into(), number.clone());
+    }
+    Ok(Projected {
+        frontmatter: fm,
+        native_status,
+        number,
+        signed_record,
+    })
+}
+
+/// `Option<String>` fields of GitKB's typed `Frontmatter`; null is omitted.
+const NATIVE_STRINGS: [&str; 12] = [
+    "$schema",
+    "status",
+    "priority",
+    "assignee",
+    "agent_id",
+    "worktree",
+    "component",
+    "repo",
+    "created_by",
+    "estimated_effort",
+    "actual_effort",
+    "rank",
+];
+
+/// The frontmatter GitKB's exact `show` returns for these committed source
+/// bytes: the YAML block through GitKB's typed `Frontmatter` round trip
+/// (serde_yaml 0.9, as GitKB parses it), without document-level keys and
+/// without the relationship keys GitKB stores as edges. `None` when a field
+/// needs GitKB's own normalization (dates, external refs, typed mismatches);
+/// the caller then reads exactly.
+/// Mirrors (does not copy) GitKB `crates/gitkb-types/src/document.rs`
+/// `Frontmatter` and `crates/gitkb-parser/src/parser/markdown.rs`.
+pub fn native_frontmatter(raw: &str) -> Option<Map<String, Value>> {
+    let rest = raw.strip_prefix("---\n")?;
+    let header = rest
+        .split_once("\n---\n")
+        .map(|(header, _)| header)
+        .or_else(|| rest.strip_suffix("\n---"))?;
+    if header.contains('\r') {
+        return None;
+    }
+    let mut fm: Map<String, Value> = if header.trim().is_empty() {
+        Map::new()
+    } else {
+        serde_yaml::from_str(header).ok()?
+    };
+    for key in [
+        "id",
+        "slug",
+        "title",
+        "type",
+        "parent",
+        "in",
+        "depends_on",
+        "blocked_by",
+        "implements",
+    ] {
+        fm.remove(key);
+    }
+    for key in NATIVE_STRINGS {
+        match fm.get(key) {
+            Some(Value::Null) => {
+                fm.remove(key);
+            }
+            None | Some(Value::String(_)) => {}
+            Some(_) => return None,
+        }
+    }
+    match fm.get("tags") {
+        None => {}
+        Some(Value::Array(tags)) if tags.is_empty() => {
+            fm.remove("tags");
+        }
+        Some(Value::Array(tags)) if tags.iter().all(Value::is_string) => {}
+        Some(_) => return None,
+    }
+    match fm.get("due_date") {
+        None => {}
+        Some(Value::Null) => {
+            fm.remove("due_date");
+        }
+        Some(_) => return None,
+    }
+    if fm.contains_key("external_refs") {
+        return None;
+    }
+    Some(fm)
+}
+
 struct Cached {
     fingerprint: String,
     summary: Summary,
     record: Option<Value>,
+    /// Portable frontmatter, equal to the exact record's, when known.
+    frontmatter: Option<Value>,
 }
 
 /// Opaque page tokens; the oldest is dropped beyond 128.
@@ -410,24 +536,18 @@ impl GitKb {
         };
         let native_id = doc["id"].as_str().unwrap_or("");
         let id = portable(native_id)?;
-        // GitKB declares these projections graph-derived, never source YAML.
-        let mut fm: Map<String, Value> = doc["frontmatter"]
-            .as_object()
-            .into_iter()
-            .flatten()
-            .filter(|(k, _)| !matches!(k.as_str(), "references" | "blocks" | "children"))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        fm.insert("id".into(), id.clone().into());
-        fm.insert("slug".into(), doc["slug"].clone());
-        fm.insert("title".into(), doc["title"].clone());
-        fm.insert("type".into(), doc["doc_type"].clone());
-        let native_status = fm.get("status").cloned().unwrap_or(Value::Null);
-        if fm["type"] == "task" {
-            let bboxy = fm.remove("bboxy_status");
-            fm.insert("status".into(), task_status(bboxy.as_ref(), &native_status));
-        }
-        let number = number(Some(&fm), &slug)?;
+        let Projected {
+            frontmatter: fm,
+            native_status,
+            number,
+            signed_record,
+        } = project(
+            &id,
+            &slug,
+            doc,
+            &doc["doc_type"],
+            doc["frontmatter"].as_object().cloned().unwrap_or_default(),
+        )?;
         let source = result["documentSource"].clone();
         let mut record = json!({
             "id": id, "external_id": native_id, "number": number, "slug": slug,
@@ -439,14 +559,11 @@ impl GitKb {
                       "version": doc["version"], "created_at": doc["created_at"],
                       "modified_at": doc["modified_at"], "raw_content": raw},
         });
-        if let Some(signed) = fm.remove("bboxy_signed_record") {
+        if let Some(signed) = signed_record {
             record["signed_record"] = signed;
         }
         if truthy(&workspace_generation) {
             record["gitkb"]["workspace_generation"] = workspace_generation;
-        }
-        if !number.is_null() {
-            fm.insert("number".into(), number);
         }
         record["frontmatter"] = Value::Object(fm);
         // Refresh: a cached summary with another reference is stale.
@@ -530,9 +647,53 @@ impl GitKb {
                 fingerprint,
                 summary: summary.clone(),
                 record: Some(record.clone()),
+                frontmatter: Some(record["frontmatter"].clone()),
             },
         );
         Ok(Some((summary, record)))
+    }
+
+    /// Graph nodes for `slugs` in order: each summary with the frontmatter an
+    /// exact read returns. Committed-only records take one batched read and
+    /// build their frontmatter from its source bytes; workspace records and
+    /// any batch entry that needs GitKB's own normalization are read exactly.
+    /// Returns a prefix (at least one entry) when time runs short; `None`
+    /// marks a listed record whose source read is absent.
+    pub fn nodes(
+        &mut self,
+        catalog: &Catalog,
+        slugs: &[String],
+        reserve: Duration,
+    ) -> Result<Vec<Option<(Summary, Value)>>, Refusal> {
+        let hit = |cache: &HashMap<String, Cached>, slug: &str| {
+            cache
+                .get(slug)
+                .filter(|c| c.fingerprint == catalog.fingerprint(slug))
+                .and_then(|c| Some((c.summary.clone(), c.frontmatter.clone()?)))
+        };
+        let batch: Vec<&str> = slugs
+            .iter()
+            .filter(|s| !catalog.workspace(s) && hit(&self.cache, s).is_none())
+            .map(String::as_str)
+            .collect();
+        if !batch.is_empty() {
+            self.batch(catalog, &batch)?;
+        }
+        let mut out = Vec::new();
+        for slug in slugs {
+            if let Some(node) = hit(&self.cache, slug) {
+                out.push(Some(node));
+                continue;
+            }
+            if !out.is_empty() && self.ctx.remaining() < reserve {
+                break;
+            }
+            out.push(
+                self.exact(catalog, slug)?
+                    .map(|(summary, record)| (summary, record["frontmatter"].clone())),
+            );
+        }
+        Ok(out)
     }
 
     /// One `git-kb show --raw-content --json -- <slug>...` for committed-only
@@ -563,12 +724,27 @@ impl GitKb {
                 continue;
             }
             if let Some(summary) = Summary::from_batch(&self.root_text, slug, doc)? {
+                let frontmatter = doc["rawContent"]
+                    .as_str()
+                    .and_then(native_frontmatter)
+                    .map(|fm| {
+                        project(
+                            summary.reference["id"].as_str().unwrap_or(""),
+                            slug,
+                            doc,
+                            &doc["type"],
+                            fm,
+                        )
+                    })
+                    .transpose()?
+                    .map(|projected| Value::Object(projected.frontmatter));
                 self.cache.insert(
                     slug.into(),
                     Cached {
                         fingerprint: catalog.fingerprint(slug),
                         summary,
                         record: None,
+                        frontmatter,
                     },
                 );
             }
@@ -742,6 +918,71 @@ mod tests {
             Summary::from_batch("/kb", "notes/b", &batch)
                 .unwrap()
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn batch_node_frontmatter_equals_exact_read() {
+        let (exact, batch) = native_pair();
+        let doc = &exact["document"];
+        let id = portable(doc["id"].as_str().unwrap()).unwrap();
+        let from_exact = project(
+            &id,
+            "notes/a",
+            doc,
+            &doc["doc_type"],
+            doc["frontmatter"].as_object().unwrap().clone(),
+        )
+        .unwrap();
+        let native = native_frontmatter(batch["rawContent"].as_str().unwrap()).unwrap();
+        let from_batch = project(&id, "notes/a", &batch, &batch["type"], native).unwrap();
+        assert_eq!(from_batch.frontmatter, from_exact.frontmatter);
+        assert_eq!(from_exact.frontmatter["status"], "claimed");
+        assert_eq!(from_exact.frontmatter["number"], 77);
+        assert!(!from_exact.frontmatter.contains_key("bboxy_status"));
+    }
+
+    #[test]
+    fn native_frontmatter_follows_gitkb_typed_round_trip() {
+        // What GitKB 0.2.19 `show --source committed` returns for this YAML:
+        // document-level and relationship keys removed, null typed fields and
+        // empty typed lists omitted, extra fields (null and dates) kept as YAML gives them.
+        let raw = "---\nid: 01a18d68-6fe0-7d03-92fd-8b75477fbe85\nslug: notes/a\ntitle: A\ntype: note\n\
+            status: draft\nassignee: null\ntags: []\nparent: notes/p\nin:\n  notes/p: a0\n\
+            depends_on: [notes/b]\nblocked_by: [notes/c]\nimplements: [specs/s]\n\
+            references: [notes/d]\ncustom: null\ncreated: 2026-10-30T15:09:46Z\nnested: {k: [1, two]}\n---\n\nBody\n";
+        assert_eq!(
+            Value::Object(native_frontmatter(raw).unwrap()),
+            json!({"status": "draft", "references": ["notes/d"], "custom": null,
+                "created": "2026-10-30T15:09:46Z", "nested": {"k": [1, "two"]}})
+        );
+        let doc = json!({"slug": "notes/a", "title": "A"});
+        let projected = project(
+            "01JBAAAAAAAAAAAAAAAAAAAAAA",
+            "notes/a",
+            &doc,
+            &"note".into(),
+            native_frontmatter(raw).unwrap(),
+        )
+        .unwrap();
+        assert!(!projected.frontmatter.contains_key("references"));
+        assert_eq!(projected.frontmatter["status"], "draft");
+        // Fields GitKB normalizes itself, and malformed blocks, read exactly.
+        for fallback in [
+            "---\ndue_date: 2026-11-01\n---\n",
+            "---\nexternal_refs: []\n---\n",
+            "---\npriority: 1\n---\n",
+            "---\ntags: [1]\n---\n",
+            "---\nstatus: [open\n---\n",
+            "---\r\nstatus: open\r\n---\r\n",
+            "no frontmatter\n",
+        ] {
+            assert!(native_frontmatter(fallback).is_none(), "{fallback:?}");
+        }
+        assert_eq!(native_frontmatter("---\n\n---\nBody\n"), Some(Map::new()));
+        assert_eq!(
+            native_frontmatter("---\nstatus: open\n---"),
+            Some(json!({"status": "open"}).as_object().unwrap().clone())
         );
     }
 

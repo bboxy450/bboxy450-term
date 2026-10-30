@@ -12,7 +12,10 @@ use crate::{
     messaging::wire::IssuerKind,
     store::sqlite::SqliteStore,
 };
-use std::{sync::Mutex, time::Instant};
+use std::{
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
 #[derive(Default)]
 struct Calls {
@@ -20,11 +23,15 @@ struct Calls {
     graphs: usize,
     fetches: Vec<String>,
     resolves: usize,
+    /// The operation deadline each bounded provider call received.
+    deadlines: Vec<Instant>,
 }
 struct Corpus {
     rows: Vec<d::Record>,
     calls: Mutex<Calls>,
     native: bool,
+    /// A slow provider: each graph page takes this long, clipped by a deadline.
+    delay: Option<Duration>,
 }
 fn record(n: u128, kind: &str, assignee: Option<Value>) -> d::Record {
     let id = Ulid::from(n).to_string();
@@ -69,6 +76,7 @@ impl Corpus {
             rows,
             calls: Mutex::default(),
             native: false,
+            delay: None,
         }
     }
     fn reset(&self) {
@@ -165,6 +173,53 @@ impl DataSource for Corpus {
         })
     }
     fn graph(&self, request: d::GraphRequest) -> d::Result<d::GraphPage> {
+        if let Some(delay) = self.delay {
+            std::thread::sleep(delay);
+        }
+        self.pages(request)
+    }
+    // Like DataSourceProvider::request_before: the deadline clips the call,
+    // and an exhausted call fails as a transport timeout.
+    fn graph_until(&self, request: d::GraphRequest, deadline: Instant) -> d::Result<d::GraphPage> {
+        self.calls.lock().unwrap().deadlines.push(deadline);
+        if let Some(delay) = self.delay {
+            std::thread::sleep(delay.min(deadline.saturating_duration_since(Instant::now())));
+        }
+        if Instant::now() >= deadline {
+            return Err(d::CommandError::new(
+                "plugin_timeout",
+                "fixture call timed out",
+            ));
+        }
+        self.pages(request)
+    }
+    fn list_until(
+        &self,
+        request: d::ListRequest,
+        deadline: Instant,
+    ) -> d::Result<d::Page<d::RecordRef>> {
+        self.calls.lock().unwrap().deadlines.push(deadline);
+        self.list(request)
+    }
+    fn fetch_until(&self, request: d::FetchRequest, deadline: Instant) -> d::Result<d::Record> {
+        self.calls.lock().unwrap().deadlines.push(deadline);
+        self.fetch(request)
+    }
+    fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
+        unreachable!()
+    }
+    fn links(&self, _: d::FetchRequest) -> d::Result<d::Links> {
+        unreachable!()
+    }
+    fn write(&self, _: d::WriteRequest, _: &WriteContext<'_>) -> d::Result<d::WriteResult> {
+        unreachable!()
+    }
+    fn changes_since(&self, _: d::ChangesRequest) -> d::Result<d::Changes> {
+        unreachable!()
+    }
+}
+impl Corpus {
+    fn pages(&self, request: d::GraphRequest) -> d::Result<d::GraphPage> {
         self.calls.lock().unwrap().graphs += 1;
         let d::Scope::Type {
             graph: d::DocumentGraph::Markdown,
@@ -201,18 +256,6 @@ impl DataSource for Corpus {
             next: (end < rows.len()).then(|| end.to_string()),
             edges_truncated: false,
         })
-    }
-    fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
-        unreachable!()
-    }
-    fn links(&self, _: d::FetchRequest) -> d::Result<d::Links> {
-        unreachable!()
-    }
-    fn write(&self, _: d::WriteRequest, _: &WriteContext<'_>) -> d::Result<d::WriteResult> {
-        unreachable!()
-    }
-    fn changes_since(&self, _: d::ChangesRequest) -> d::Result<d::Changes> {
-        unreachable!()
     }
 }
 
@@ -557,4 +600,50 @@ fn task_inventory_historical_records_do_not_poison_live_work_or_gain_task_author
         .expect("historical status cannot gain native task authority");
         assert_eq!(error, "invalid task status");
     }
+}
+
+// keeps: G6 — one task_list read answers inside the seat bridge's 10 s socket
+// timeout with a named deadline error, however slow its provider pages are.
+#[test]
+fn task_inventory_stops_at_one_overall_deadline_with_a_named_error() {
+    let mut f = Fixture::new();
+    // Ten graph pages at 0.9 s each take 9 s without an overall deadline.
+    f.source.delay = Some(Duration::from_millis(900));
+    let actor = Actor::Operator {
+        device_id: Ulid::new(),
+        door: Door::Gui,
+        issued_by: None,
+    };
+    let tasks = ProviderTasks(&f.source, None);
+    let started = Instant::now();
+    let refused = prepare(
+        &tasks,
+        &f.registry,
+        &actor,
+        &Call {
+            op_id: Ulid::new(),
+            tool: "task_list".into(),
+            args: json!({"limit":2}),
+        },
+    )
+    .err()
+    .expect("a slow provider must exhaust the task_list budget");
+    let elapsed = started.elapsed();
+    assert_eq!(failure_code(&refused), DEADLINE_EXCEEDED, "{refused}");
+    assert!(
+        refused.contains("after"),
+        "the refusal names how to narrow or page: {refused}"
+    );
+    assert!(
+        elapsed >= TASK_LIST_BUDGET && elapsed < TASK_LIST_BUDGET + Duration::from_millis(500),
+        "{elapsed:?}"
+    );
+    let calls = f.source.calls.lock().unwrap();
+    assert!(!calls.deadlines.is_empty(), "provider calls were unbounded");
+    assert!(
+        calls.deadlines.iter().all(|at| *at == calls.deadlines[0]
+            && *at > started
+            && *at <= started + TASK_LIST_BUDGET + Duration::from_millis(100)),
+        "every call shares the one operation deadline"
+    );
 }

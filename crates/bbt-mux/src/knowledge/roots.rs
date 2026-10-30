@@ -104,6 +104,19 @@ impl DataSource for BoundSource<'_> {
     fn graph(&self, r: d::GraphRequest) -> d::Result<d::GraphPage> {
         self.call(|s| s.graph(r))
     }
+    fn graph_until(&self, r: d::GraphRequest, at: std::time::Instant) -> d::Result<d::GraphPage> {
+        self.call(|s| s.graph_until(r, at))
+    }
+    fn list_until(
+        &self,
+        r: d::ListRequest,
+        at: std::time::Instant,
+    ) -> d::Result<d::Page<d::RecordRef>> {
+        self.call(|s| s.list_until(r, at))
+    }
+    fn fetch_until(&self, r: d::FetchRequest, at: std::time::Instant) -> d::Result<d::Record> {
+        self.call(|s| s.fetch_until(r, at))
+    }
     fn changes_since(&self, r: d::ChangesRequest) -> d::Result<d::Changes> {
         self.call(|s| s.changes_since(r))
     }

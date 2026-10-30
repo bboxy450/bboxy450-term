@@ -191,10 +191,14 @@ fn harmony_probe() {
             ),
         ] {
             let first = probe.call(&mut client, method, request.clone());
+            let mut pages = vec![first.clone()];
             if !first["next"].is_null() {
                 let mut next = request;
                 next["cursor"] = first["next"].clone();
-                probe.call(&mut client, method, next);
+                pages.push(probe.call(&mut client, method, next));
+            }
+            if method == "graph" {
+                graph_parity(&mut probe, &mut client, &pages);
             }
         }
         // Status filters: the portable and the native value both select tasks.
@@ -238,9 +242,52 @@ fn harmony_probe() {
             .push(json!({"run": run, "process_exit": exit}));
         let _ = std::fs::remove_dir_all(&data);
     }
-    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, all calls read-only and below 2 seconds".into();
+    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds".into();
     probe.save();
     println!("{}", serde_json::to_string_pretty(&probe.evidence).unwrap());
+}
+
+/// Graph pages with a continuation hold `limit` (32) nodes within the call
+/// budget, and every node of the first page carries exactly what fetch returns.
+fn graph_parity(probe: &mut Probe, client: &mut Client, pages: &[Value]) {
+    for page in pages.iter().filter(|page| !page["next"].is_null()) {
+        let held = page["nodes"].as_array().unwrap().len();
+        if held != 32 {
+            probe.evidence["result"] = format!("failed; graph page held {held} of 32").into();
+            probe.save();
+        }
+        assert_eq!(held, 32, "graph page did not fill to its limit");
+    }
+    let nodes = pages[0]["nodes"].as_array().unwrap().clone();
+    let mut equal = 0;
+    for node in &nodes {
+        let record = probe.call(client, "fetch", json!({"ref": node["ref"]}));
+        if record["frontmatter"] == node["frontmatter"]
+            && record["id"] == node["id"]
+            && record["frontmatter"]["title"] == node["title"]
+            && record["frontmatter"]["type"] == node["type"]
+        {
+            equal += 1;
+        }
+    }
+    let row = json!({"run": probe.run, "compared": nodes.len(), "equal": equal});
+    if probe.evidence.get("graph_fetch_parity").is_none() {
+        probe.evidence["graph_fetch_parity"] = json!([]);
+    }
+    probe.evidence["graph_fetch_parity"]
+        .as_array_mut()
+        .unwrap()
+        .push(row);
+    if equal != nodes.len() {
+        probe.evidence["result"] = "failed; graph node frontmatter differs from fetch".into();
+    }
+    probe.save();
+    assert!(nodes.len() >= 10, "too few graph nodes to compare");
+    assert_eq!(
+        equal,
+        nodes.len(),
+        "graph node frontmatter differs from fetch"
+    );
 }
 
 /// Compare the plugin record with a direct native read of the same source.

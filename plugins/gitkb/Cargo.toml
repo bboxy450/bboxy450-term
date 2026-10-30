@@ -14,6 +14,8 @@ build = "build.rs"
 bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.1.1", path = "../../crates/bbt-plugin-sdk" }
 libc = "0.2"
 serde_json = "1"
+# GitKB parses frontmatter with this exact release; node frontmatter must match.
+serde_yaml = "=0.9.34"
 sha2 = "0.10"
 
 [build-dependencies]

@@ -89,7 +89,7 @@ struct ReadFailure {
 impl From<String> for ReadFailure {
     fn from(message: String) -> Self {
         Self {
-            code: "rejected".into(),
+            code: mcp::work_items::failure_code(&message).into(),
             message,
         }
     }

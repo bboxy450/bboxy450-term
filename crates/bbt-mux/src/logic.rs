@@ -3945,7 +3945,11 @@ impl Worker {
             Err(reason) => journal.checked(
                 actor,
                 call,
-                crate::mcp::error(call.op_id, "rejected", &reason),
+                crate::mcp::error(
+                    call.op_id,
+                    crate::mcp::work_items::failure_code(&reason),
+                    &reason,
+                ),
             ),
         }
     }
@@ -8921,7 +8925,11 @@ impl Worker {
                                 crate::mcp::success(id, value)
                             }
                             Ok(_) => return Err(invalid("scheduled task read cannot mutate")),
-                            Err(reason) => crate::mcp::error(id, "rejected", &reason),
+                            Err(reason) => crate::mcp::error(
+                                id,
+                                crate::mcp::work_items::failure_code(&reason),
+                                &reason,
+                            ),
                         };
                     let value = journal.checked_authorized(&actor, &call, value, |old| {
                         crate::mcp::work_items::retained_allowed(

@@ -479,6 +479,46 @@ async fn reset_is_independent_of_a_held_provider_read_and_refuses_its_old_comple
     f.unchanged();
 }
 
+// keeps: G6 — an operation deadline narrows a real provider call's own budget,
+// so a held read ends at that deadline instead of its 30 s command budget.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn operation_deadline_bounds_a_held_provider_read() {
+    let gate = tempfile::tempdir().unwrap();
+    let path = gate.path().join("gate.sock");
+    let listener = tokio::net::UnixListener::bind(&path).unwrap();
+    let f = Fixture::new(2, Some(&path));
+    let entry = f.checked().await;
+    f.select(&entry).await;
+    let reference = f.read("resolve", json!({"locator":"#1"})).await.unwrap();
+    let host = f.host.clone();
+    let index = f.index.clone();
+    let registry = f.seats.clone();
+    let started = std::time::Instant::now();
+    let deadline = started + std::time::Duration::from_millis(500);
+    let read = tokio::task::spawn_blocking(move || {
+        host.with_source(&index, &registry, |source| {
+            source.fetch_until(
+                d::FetchRequest {
+                    reference: serde_json::from_value(reference).unwrap(),
+                },
+                deadline,
+            )
+        })
+    });
+    // Keep the barrier connection open: the fixture never answers this fetch.
+    let (_held, _) = tokio::time::timeout(std::time::Duration::from_secs(30), listener.accept())
+        .await
+        .expect("fixture did not reach its explicit read barrier")
+        .unwrap();
+    let result = tokio::time::timeout(std::time::Duration::from_secs(5), read)
+        .await
+        .expect("the operation deadline did not bound the held provider read")
+        .unwrap();
+    assert!(result.is_err());
+    assert!(started.elapsed() < std::time::Duration::from_secs(2));
+    f.unchanged();
+}
+
 // keeps: ctl-cli operation replay; an uncompleted durable admission never dispatches again.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn retained_unknown_selection_keeps_its_reason_and_never_executes_or_retries() {
