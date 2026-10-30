@@ -1172,6 +1172,7 @@ enum RoutedKey {
     DismissStarting(bbt_mux::Ulid),
     SettingsKey(SettingsKey),
     LocalPage(PageCommand),
+    Document(bbt_ui::modules::document_modal::controller::Action),
     ToggleHud,
     Launcher(LauncherCommand),
     Composer(ComposeCommand),
@@ -1675,6 +1676,16 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
     }
 }
 fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
+    use bbt_ui::modules::document_modal::controller::Action;
+    let mods=input.modifiers.state;
+    if input.state.is_pressed() && !input.repeat && !mods.alt_key() && !mods.control_key() {
+        if mods.super_key() && keyboard::shortcut_key(input)==Some('c') {
+            return RoutedKey::Document(if mods.shift_key() {Action::CopyPath} else {Action::Copy});
+        }
+        if matches!(input.logical_key,Key::Named(NamedKey::Enter)) && !mods.shift_key() {
+            return RoutedKey::Document(Action::Feed);
+        }
+    }
     let routed = route_local_page(input, modes);
     if matches!(
         routed,
@@ -2249,6 +2260,7 @@ struct App {
     local_page_layout: Option<scene::LocalPageLayout>,
     document: documents::Host,
     document_return: Option<Stage>,
+    document_recipient: Option<(SeatId,u64)>,
     document_layout: Option<scene::DocumentLayout>,
     app_overlays: app_overlays::Host,
     composer: ComposeController,
@@ -2458,6 +2470,7 @@ impl App {
                 host
             },
             document_return: None,
+            document_recipient: None,
             document_layout: None,
             app_overlays: Default::default(),
             composer: ComposeController::new(composer::Composer {
@@ -2620,6 +2633,9 @@ impl App {
     ) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
+            self.document_recipient=self.focus.stage.as_ref().and_then(|s|s.focused)
+                .and_then(|seat|Some((seat,self.live_state.as_ref()?.ui.seats.get(&seat)?.process_generation)));
+
         }
         match binding {
             Ok(scope) => self.document.show_scoped(target, scope),
@@ -2653,6 +2669,7 @@ impl App {
     }
     fn close_document(&mut self) {
         self.document.close();
+        self.document_recipient=None;
         if let Some(stage) = self.document_return.take()
             && let Some(model) = &self.live_state
         {
@@ -5109,9 +5126,11 @@ impl App {
             self.close_seat(seat, bbt_mux::Ulid::new(), false);
         }
     }
-    fn queue(&mut self, mut message: live::UiMsg) {
+    fn queue(&mut self, message: live::UiMsg) { self.try_queue(message); }
+    /// Local bounded admission only; transport/PTY completion remains asynchronous.
+    fn try_queue(&mut self, mut message: live::UiMsg) -> bool {
         if self.closing || self.live_commands.is_none() {
-            return;
+            return false;
         }
         let launch = match self.prepare_starting(&mut message) {
             Ok(launch) => launch,
@@ -5120,7 +5139,7 @@ impl App {
                 if let Some(effects) = &mut self.ui_collect {
                     effects.push(UiEffect::Refused(reason));
                 }
-                return;
+                return false;
             }
         };
         let superseding_scroll = match &message {
@@ -5132,13 +5151,14 @@ impl App {
             .ui_collect
             .as_ref()
             .and_then(|_| UiEffect::from_message(&message, self.live_state.as_deref()));
-        match queue_pending(&mut self.pending_commands, message) {
+        let admitted=match queue_pending(&mut self.pending_commands, message) {
             Err(kind) => {
                 self.admission_refusals.record(kind);
                 self.logger.write(self.admission_refusals.report());
                 if let Some(effects) = &mut self.ui_collect {
                     effects.push(UiEffect::Refused("ui_command_queue_full".into()));
                 }
+                false
             }
             Ok(()) => {
                 if let Some(launch) = launch {
@@ -5163,9 +5183,11 @@ impl App {
                 if let (Some(effect), Some(effects)) = (effect, &mut self.ui_collect) {
                     effects.push(effect);
                 }
+                true
             }
-        }
+        };
         self.flush_commands();
+        admitted
     }
     fn scroll_pane(&mut self, seat: SeatId, request: ScrollRequest) {
         self.terminal_selection.clear();
@@ -6037,7 +6059,7 @@ impl App {
     }
     fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
         terminal_copy_chord(input, || {
-            self.ui_selection.text().is_some() || self.terminal_copy_text().is_some()
+            self.ui_selection.text().is_some() || (!self.document.open && self.terminal_copy_text().is_some())
         })
     }
     /// Choose a UI command without changing the physical keyboard lifecycle.
@@ -6098,6 +6120,7 @@ impl App {
     }
     fn dispatch_chrome(&mut self, routed: RoutedKey) -> Option<RoutedKey> {
         match routed {
+            RoutedKey::Document(action) => self.document_action(action),
             RoutedKey::TerminalCopy => {
                 self.copy_terminal_selection();
             }
@@ -13110,6 +13133,44 @@ mod ctl_ui_layout_tests {
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing() {
+        if crate::lazy_projection_tests::isolated_ui_case("ctl_ui_key_tests::document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing") { return; }
+        use bbt_ui::modules::document_modal::controller::Action;
+        let (mut app,_)=crate::lazy_projection_tests::fixture();
+        app.test_account=true;
+        let seat=SeatId::from_u128(1);
+        let record=bbt_proto::SeatRecord::new(bbt_mux::Ulid(1),bbt_mux::Ulid(90),"original harness","zsh");
+        let mut model=bboxy450_term::model::build_at(&[record],&bboxy450_term::grids::Grids::new(),&Default::default(),Instant::now(),1000);
+        model.screens.insert(seat,Arc::new(bbt_proto::Screen::from_term(&bbt_core::Term::new(40,10,0),String::new(),None,None)));
+        app.focus.stage=Some(model.ui.window.stage.clone());
+        app.live_state=Some(Arc::new(model));
+        app.open_document_bound("#1".into(),Ok(None));
+        let captured=app.document_recipient.unwrap();
+        let markdown=bbt_doc::parse("**exact body** 日本語\n");
+        app.document.error=None;
+        app.document.prepared=Some(Arc::new(bboxy450_term::documents::Prepared {
+            reference:bbt_mux::knowledge::data_source::RecordRef {id:"id".into(),number:Some(1),slug:"doc".into(),path:"notes/doc.md".into(),digest:"digest".into(),external_id:None},
+            etag:Some("etag".into()),document:markdown.document("notes/doc.md"),markdown,targets:vec![],images:vec![],
+        }));
+        for generation in [captured.1+1,captured.1+2] {
+            Arc::make_mut(app.live_state.as_mut().unwrap()).ui.seats.get_mut(&seat).unwrap().process_generation=generation;
+            app.document_action(Action::Feed);
+            assert!(app.document.open);
+            assert!(app.document.notice.as_deref().unwrap().contains("changed"));
+            assert!(app.pending_commands.is_empty());
+        }
+        app.document_recipient=Some((seat,captured.1+2));
+        app.document_action(Action::Feed);
+        assert!(app.document.open);
+        assert!(app.document.notice.as_deref().unwrap().contains("queue"));
+        app.document_action(Action::Copy);
+        assert_eq!(app.private_clipboard.as_deref(),Some("**exact body** 日本語\n"));
+        app.document_action(Action::Close);
+        assert!(!app.document.open);
+        assert!(app.document_recipient.is_none());
+    }
+
     #[test]
     fn structured_key_lifecycle_keeps_local_repeat_and_release_owned() {
         let mut state = keyboard::State::default();

@@ -7,6 +7,52 @@
 //! Native pointer input and launcher navigation share one dispatch boundary.
 use crate::*;
 impl App {
+    pub(super) fn document_action(&mut self, action: bbt_ui::modules::document_modal::controller::Action) {
+        use bbt_ui::modules::document_modal::controller::Action;
+        if !self.document.open { return; }
+        match action {
+            Action::Open(target)=>self.follow_document_link(target),
+            Action::Close=>self.close_document(),
+            Action::ToggleProvenance=> {
+                self.document.scroll.provenance_expanded = !self.document.scroll.provenance_expanded;
+                self.document_layout=None;self.request_redraw();
+            }
+            Action::Copy | Action::CopyPath=> {
+                if let Some(prepared)=&self.document.prepared {
+                    let text=if action==Action::CopyPath {prepared.reference.path.clone()} else {prepared.markdown.source.clone()};
+                    self.copy_text(text);
+                }
+            }
+            Action::Feed=> {
+                let ready=self.live_state.clone().is_some_and(|model|self.document_binding(&model));
+                if !ready || self.document.error.is_some() { return; }
+                let target=self.document_recipient.and_then(|(seat,generation)| {
+                    let model=self.live_state.as_ref()?;
+                    let row=model.ui.seats.get(&seat)?;
+                    if row.process_generation!=generation || row.lifecycle!=bbt_ui_model::Lifecycle::Open
+                        || self.focus.stage.as_ref().and_then(|s|s.focused)!=Some(seat) {return None;}
+                    Some((seat,generation,model.screens.get(&seat)?.modes))
+                });
+                let result=match (target,self.document.prepared.as_ref()) {
+                    (Some((seat,generation,modes)),Some(prepared))=> {
+                        let mut bytes=bboxy450_term::ctl::bracketed(prepared.markdown.source.as_bytes(),modes);
+                        bytes.push(b'\r');
+                        if self.try_queue(live::UiMsg::Input {seat,generation,id:bbt_mux::Ulid::new(),bytes}) {
+                            self.close_document();return;
+                        }
+                        "Harness input queue is unavailable; document kept open"
+                    }
+                    (None,_)=>"Focused harness changed or is unavailable; reopen the document",
+                    _=>"Document is still loading",
+                };
+                self.document.notice=Some(result.into());self.document_layout=None;self.request_redraw();
+            }
+            Action::Unavailable(name)=> {
+                self.document.notice=Some(format!("{name} is not available yet"));
+                self.document_layout=None;self.request_redraw();
+            }
+        }
+    }
     pub(super) fn solve_launcher(&mut self, size: [f32; 2]) -> Result<(), String> {
         self.launcher_layout = if let Some(controller) = &self.launcher {
             let launcher = &controller.launcher;
@@ -106,31 +152,12 @@ impl App {
             return;
         }
         if self.document.open {
-            use bbt_ui::modules::document_modal::controller::Action;
             let action = self
                 .document_layout
                 .as_ref()
                 .and_then(|l| l.regions.hit(self.pointer));
-            match action {
-                Some(Action::Open(target)) => self.follow_document_link(target),
-                Some(Action::Close) => self.close_document(),
-                Some(Action::ToggleProvenance) => {
-                    self.document.scroll.provenance_expanded =
-                        !self.document.scroll.provenance_expanded;
-                    self.document_layout = None;
-                    self.request_redraw();
-                }
-                Some(Action::Unavailable(name)) => {
-                    self.document.notice = Some(format!("{name} is not available yet"));
-                    self.document_layout = None;
-                    self.request_redraw();
-                }
-                None => {
-                    if self.ui_selection.begin(at, self.scene.text_metrics()) {
-                        self.request_redraw();
-                    }
-                }
-            }
+            if let Some(action)=action { self.document_action(action); }
+            else if self.ui_selection.begin(at,self.scene.text_metrics()) { self.request_redraw(); }
             return;
         }
         if self.launcher.is_some() {

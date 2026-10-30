@@ -77,7 +77,7 @@ help:
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
 	  'make diagnose-fifty-seat-pty     Bounded Darwin syscall probe; nonzero if an allocation fails' \
 	  'make test-keyboard-input         Headless normalized native Kitty input and navigation' \
-	  'make test-documents-night        Full native D1/D2/D3 private document assertions' \
+	  'make test-documents-night        Full native D1/D2/D3/D4 private document assertions' \
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
 	  'make test-document-provenance   Collapsed task evidence, retained clicks and source preservation' \
@@ -417,6 +417,7 @@ test-documents-night:
 	cargo test --locked -p bboxy450-render --lib dynamic_bitmaps --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-ui --test documents --test document_host --test flow --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test documents --test documents_observation --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --bin $(APP) document --target-dir '$(TARGET_DIR)'; \
 	python3 -I -B scripts/e2e/documents_night.py --bin '$(abspath $(TARGET_DIR))/debug/$(APP)' --source '$(CURDIR)' --out '$(abspath $(TARGET_DIR))/documents-runs/'$$(date -u +%Y%m%dT%H%M%SZ); \
 	$(MAKE) check-documents
 

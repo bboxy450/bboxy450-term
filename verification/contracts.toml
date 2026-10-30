@@ -291,3 +291,13 @@ implementation_tests = ["crates/bboxy450-term/src/main.rs", "scripts/e2e/keyboar
 assumptions = "One physical key, local ownership bit and Command bit, initially clear. Press, modifier change, repeat and release are atomic UI-owner turns; all interleavings including returning to the same key are explored. No fairness/liveness claim: the app cannot force a platform release. Character mapping, locks, IME bytes, pointer geometry, transport and PTY scheduling use native/API and raw-process tests."
 property = "A locally owned press cannot leak its repeat or release after Command disappears. A new terminal press clears the old local ownership. The broken control drops that ownership guard."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DocumentFeed"
+title = "One document feed into the captured live harness"
+models = ["DocumentFeed", "BrokenDocumentFeed"]
+sources = ["crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/navigation.rs", "crates/bboxy450-term/src/terminal_clipboard.rs", "crates/bbt-ui/src/modules/document_modal/controller.rs"]
+implementation_tests = ["crates/bboxy450-term/src/main.rs", "scripts/e2e/documents_actions.py"]
+assumptions = "One modal, one seat identity with three monotonically increasing process incarnations (apparent A-B-A), one body and a bounded local input queue. Open, copy, body load, restart, capacity change, feed admission and close are atomic UI-owner actions. No fairness or eventual operator feed is assumed. Delivery after local admission uses the existing stable InputReceipt contract; real bracketed-paste UTF-8 plus submit bytes and no duplicate repeat/release use the private PTY stub. The provider exposes exact body bytes and semantic metadata; no original frontmatter serialization is claimed."
+property = "Feed needs the captured current generation, a loaded body and local admission; it emits at most once per open and closes after admission. Copy/close do not feed, and a replaced process cannot inherit the action. Broken controls bypass generation and repeat ownership."
+checks = ["make test-formal", "make test"]

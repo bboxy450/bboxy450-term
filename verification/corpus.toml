@@ -362,3 +362,13 @@ frontend = "project"
 name = "BrokenNativeInputOwnership"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "DocumentFeed"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDocumentFeed"
+expected = "safety"
+frontend = "project"

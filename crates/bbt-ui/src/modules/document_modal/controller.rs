@@ -58,6 +58,9 @@ pub fn link(element: c::Element, target: &str, enabled: bool) -> c::Element {
 pub enum Action {
     Open(String),
     ToggleProvenance,
+    Feed,
+    Copy,
+    CopyPath,
     Close,
     Unavailable(&'static str),
 }
@@ -130,11 +133,13 @@ impl Regions {
                         (name == "action6" || name.ends_with("/action6")).then_some(Action::Close)
                     })
                     .or_else(|| {
+                        [("action0",Action::Feed),("action2",Action::Copy),("action3",Action::CopyPath)]
+                            .into_iter().find(|(key,_)|name==key || name.ends_with(&format!("/{key}"))).map(|(_,action)|action)
+                    })
+                    .or_else(|| {
                         [
-                            ("action0", "feed"),
+
                             ("action1", "feed selection"),
-                            ("action2", "copy"),
-                            ("action3", "copy path"),
                             ("action4", "find"),
                             ("action5", "pin"),
                         ]
@@ -217,7 +222,7 @@ impl Regions {
     pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
         use crate::cursor::Cursor;
         match self.hit(at) {
-            Some(Action::Open(_) | Action::ToggleProvenance | Action::Close) => Cursor::Pointer,
+            Some(Action::Open(_) | Action::ToggleProvenance | Action::Feed | Action::Copy | Action::CopyPath | Action::Close) => Cursor::Pointer,
             Some(Action::Unavailable(_)) | None => Cursor::Default,
         }
     }

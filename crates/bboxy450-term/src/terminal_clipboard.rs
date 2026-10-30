@@ -178,10 +178,13 @@ impl App {
         let Some(text) = self
             .ui_selection
             .text()
-            .or_else(|| self.terminal_copy_text())
+            .or_else(|| if self.document.open {self.document.prepared.as_ref().map(|p|p.markdown.source.clone())} else {self.terminal_copy_text()})
         else {
             return false;
         };
+        self.copy_text(text)
+    }
+    pub(super) fn copy_text(&mut self, text: String) -> bool {
         // Test-account windows have a private in-memory clipboard provider. Neither native
         // nor ctl tests can read or mutate the operator's general pasteboard.
         // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md

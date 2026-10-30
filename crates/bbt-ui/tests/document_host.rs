@@ -177,21 +177,21 @@ fn modal_scroll_clamps_at_both_ends_and_the_footer_closes() {
         regions.cursor([r.x + r.w / 2., r.y + r.h / 2.]),
         ui::cursor::Cursor::Pointer
     );
-    fn unavailable(n: &c::Layout) -> Option<Rect> {
+    fn feed(n: &c::Layout) -> Option<Rect> {
         if matches!(&n.kind, c::LayoutKind::Named(s) if s == "action0") {
             Some(n.rect)
         } else {
-            n.children.iter().find_map(unavailable)
+            n.children.iter().find_map(feed)
         }
     }
-    let r = unavailable(&layout).unwrap();
+    let r = feed(&layout).unwrap();
     assert!(matches!(
         regions.hit([r.x + r.w / 2., r.y + r.h / 2.]),
-        Some(Action::Unavailable(_))
+        Some(Action::Feed)
     ));
     assert_eq!(
         regions.cursor([r.x + r.w / 2., r.y + r.h / 2.]),
-        ui::cursor::Cursor::Default
+        ui::cursor::Cursor::Pointer
     );
 }
 // keeps: spec document-viewer §What it is — only the modal backdrop dismisses.

@@ -65,7 +65,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | D1 | `scripts/e2e/D1.sh` | full | — | Private admitted records; all six native heading levels, lists, tables, code, task lists and footnotes; actual paint fonts/lines and unchanged glyph ink across retained modal widths |
 | D2 | `scripts/e2e/D2.sh` | full | — | Three real native Mermaid fences; submitted path commands/transforms, node non-overlap and border endpoints; dispose/rebuild geometry and capture-region pixel hashes |
 | D3 | `scripts/e2e/D3.sh` | full | — | Slug/number/alias activation, inert broken links, canonical bboxy bitmap geometry and sampled native pixels |
-| D4 | `scripts/e2e/D4.sh` | partial | script not implemented: the modal opens, scrolls, copies, closes, and feeds the document into the focused harness | |
+| D4 | `scripts/e2e/D4.sh` | full | — | Native scroll/copy/close and footer/keyboard Feed; exact bracketed-paste bytes in a private raw PTY |
 | N1 | `scripts/e2e/N1.sh` | partial | script not implemented: every record has a unique number; a new record created through the app takes the next free one; a duplicate or invalid number is refused and shown as broken | |
 | N2 | `scripts/e2e/N2.sh` | partial | script not implemented: every decision is its own node; the Graph tab shows a decision with its decides, constrains, evidence, answers, amends edges | |
 | N3 | `scripts/e2e/N3.sh` | partial | script not implemented: a comment pinned to a digest shows beside the version it was made on; the RFC loop runs in the app: proposal, comments, decision, spec | |

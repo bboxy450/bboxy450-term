@@ -1251,6 +1251,26 @@ fn native_input(b: bool) -> Model {
     m
 }
 
+fn document_feed(b: bool) -> Model {
+    let mut m=model("DocumentFeed",b,&[("open",1,0),("ready",1,0),("generation",3,1),("captured",3,0),("emissions",2,0),("queue_ready",1,1),("bad",1,0)]);
+    action(&mut m,"Open",eq(0,0),&[(0,Int(1)),(1,Int(0)),(3,Var(2)),(4,Int(0))]);
+    action(&mut m,"LoadBody",eq(0,1),&[(1,Int(1))]);
+    action(&mut m,"Restart",Var(2).lt(Int(3)),&[(2,Var(2).plus(Int(1)))]);
+    action(&mut m,"QueueFull",Bool(true),&[(5,Int(0))]);
+    action(&mut m,"QueueReady",Bool(true),&[(5,Int(1))]);
+    action(&mut m,"Copy",all([eq(0,1),eq(1,1)]),&[]);
+    action(&mut m,"Close",eq(0,1),&[(0,Int(0))]);
+    let current=all([eq(0,1),eq(1,1),Var(2).eq(Var(3)),eq(5,1)]);
+    action(&mut m,"Feed",current,&[(0,Int(0)),(4,Var(4).plus(Int(1)))]);
+    if b {
+        action(&mut m,"FeedReplacement",all([eq(0,1),eq(1,1),Var(2).eq(Var(3)).negate()]),&[(6,Int(1))]);
+        action(&mut m,"RepeatAfterClose",all([eq(0,0),eq(4,1)]),&[(4,Int(2))]);
+    }
+    safe(&mut m,"AtMostOneFeedPerOpen",Var(4).lt(Int(2)));
+    no_bad(&mut m,6);
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
     let families: [fn(bool) -> Model; 27] = [
         terminal_reply_progress,
@@ -1258,6 +1278,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         seat_models::diagnostics,
         transport_capture,
         seat_models::recovery,
+        document_feed,
         native_input,
         sidebar_reveal,
         async_render_preparation,
