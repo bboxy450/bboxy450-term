@@ -301,3 +301,13 @@ implementation_tests = ["crates/bboxy450-term/src/main.rs", "scripts/e2e/documen
 assumptions = "One modal, one seat identity with three monotonically increasing process incarnations (apparent A-B-A), one body and a bounded local input queue. Open, copy, body load, restart, capacity change, feed admission and close are atomic UI-owner actions. No fairness or eventual operator feed is assumed. Delivery after local admission uses the existing stable InputReceipt contract; real bracketed-paste UTF-8 plus submit bytes and no duplicate repeat/release use the private PTY stub. The provider exposes exact body bytes and semantic metadata; no original frontmatter serialization is claimed."
 property = "Feed needs the captured current generation, a loaded body and local admission; it emits at most once per open and closes after admission. Copy/close do not feed, and a replaced process cannot inherit the action. Broken controls bypass generation and repeat ownership."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GraphQueryCursors"
+title = "Query-local Graph pagination ownership"
+models = ["GraphQueryCursors", "BrokenGraphQueryCursors"]
+sources = ["crates/bboxy450-term/src/knowledge.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/knowledge_e2e.rs", "crates/bbt-ui/tests/graphs.rs", "scripts/e2e/decisions.py"]
+assumptions = "Two queries and one opaque token, initially unseen in each query. Page admission is atomic in the existing single-outstanding Graph consumer. No scheduling/fairness claim. Existing WorkspaceFence covers provider/root epochs; real query DTOs, repeated-token refusals, decision type filtering, typed edges and produced native paint use API/process tests."
+property = "The same opaque token can occur in independent E2E/decision queries without a false duplicate refusal. A repeat inside one query still fails in the real loader. The broken control shares the cursor set across queries."
+checks = ["make test-formal", "make test"]

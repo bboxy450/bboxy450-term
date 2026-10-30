@@ -277,7 +277,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
         calls
     };
     // The changes page, the list page, then one fetch per record.
-    assert_eq!(drive(&mut watch), records + 2);
+    assert_eq!(drive(&mut watch), records + 3);
     let snapshot = watch.publication().unwrap();
     assert_eq!(snapshot.project().summary.tone, Tone::Green);
     assert!(watch.next_action().is_none(), "idle never polls");
@@ -286,7 +286,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     }
     assert_eq!(
         drive(&mut watch),
-        records + 2,
+        records + 3,
         "wakes coalesce to one bounded refresh"
     );
     assert!(
@@ -343,7 +343,7 @@ fn observer_coalesces_wakes_stops_when_hidden_and_refuses_previous_epoch_replies
     watch.observe(true);
     assert_eq!(
         drive(&mut watch),
-        records + 2,
+        records + 3,
         "reopen forces a fresh snapshot"
     );
     assert_eq!(
@@ -447,4 +447,73 @@ fn graph_root_switches_do_not_wait_for_retired_reads_or_fill_the_shared_gui_ledg
     };
     assert_eq!(scope, Some(ready));
     assert!(!old.contains(&id));
+}
+
+#[test]
+fn decision_query_preserves_all_typed_edges_in_the_current_workspace_snapshot() {
+    let mut fixture = Fixture::new();
+    let relations = ["decides", "constrains", "evidence", "answers", "amends"];
+    fixture.write("decisions/native-choice.md",json!({
+        "type":"decision","title":"Live decision","status":"decided",
+        "links":relations.iter().map(|rel|json!({"to":format!("[[target-{rel}]]"),"rel":rel})).collect::<Vec<_>>()
+    }));
+    let mut loader = E2eLoader::new(promises().unwrap());
+    drive(&mut loader, &fixture);
+    assert!(
+        loader.snapshot().faults.is_empty(),
+        "{:?}",
+        loader.snapshot().faults
+    );
+    let decisions = &loader.snapshot().decisions;
+    assert_eq!(
+        decisions.len(),
+        1,
+        "the decision query must publish its returned record"
+    );
+    assert_eq!(decisions[0].title, "Live decision");
+    assert!(decisions[0].number.is_some());
+    assert_eq!(
+        decisions[0]
+            .links
+            .iter()
+            .map(|edge| edge.rel.as_str())
+            .collect::<Vec<_>>(),
+        relations
+    );
+    assert_eq!(decisions[0].path, "decisions/d1-native-choice.md");
+}
+
+#[test]
+fn graph_queries_own_their_opaque_cursor_names_and_still_reject_within_query_repeats() {
+    let mut loader = E2eLoader::new(vec![]);
+    loader.next_request().unwrap();
+    loader.respond(Ok(json!({"changed":[],"next":"activity"})));
+    for decision in [false, true] {
+        for next in [Some("same"), None] {
+            let call = loader.next_request().unwrap();
+            assert_eq!(call.method, "list");
+            assert_eq!(
+                call.args["filter"]["type"],
+                if decision {
+                    json!("decision")
+                } else {
+                    Value::Null
+                }
+            );
+            loader.respond(Ok(json!({"items":[],"next":next})));
+        }
+    }
+    assert!(loader.next_request().is_none());
+    assert!(loader.snapshot().faults.is_empty());
+    loader.reconnect();
+    loader.next_request();
+    loader.respond(Ok(json!({"changed":[],"next":"activity"})));
+    loader.next_request();
+    loader.respond(Ok(json!({"items":[],"next":null})));
+    loader.next_request();
+    loader.respond(Ok(json!({"items":[],"next":"duplicate"})));
+    loader.next_request();
+    loader.respond(Ok(json!({"items":[],"next":"duplicate"})));
+    assert!(loader.next_request().is_none());
+    assert!(loader.snapshot().faults[0].contains("decision catalogue repeated"));
 }

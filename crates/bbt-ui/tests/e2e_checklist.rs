@@ -65,6 +65,7 @@ fn missing_malformed_or_inconsistent_specs_fail_instead_of_empty_success() {
 
 fn checklist(status: &str) -> Checklist {
     Checklist {
+        decisions: vec![],
         promises: vec![Promise {
             id: "T1".into(),
             group: "terminal".into(),

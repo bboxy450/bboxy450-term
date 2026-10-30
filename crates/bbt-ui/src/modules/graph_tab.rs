@@ -174,9 +174,28 @@ pub struct Channels {
     pub links: Vec<ChannelLink>,
     pub bridges: Vec<ChannelBridge>,
 }
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DecisionEdge {
+    pub to: String,
+    pub rel: String,
+}
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Decision {
+    pub id: String,
+    pub path: String,
+    pub number: Option<u64>,
+    pub title: String,
+    pub status: String,
+    pub links: Vec<DecisionEdge>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GraphTab {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub decisions: Vec<Decision>,
     pub harnesses: Vec<Harness>,
     pub seats: Vec<Seat>,
     pub epics: Vec<Epic>,
@@ -595,6 +614,85 @@ impl GraphTab {
             );
         }
         card(ctx, key, &format!("Agents · {}", self.swarm), children)
+    }
+    fn decisions_card(&self, ctx: ui::Context, m: &dyn c::Measure) -> c::Element {
+        let mut nodes = vec![];
+        if let Some(checklist) = &self.e2e {
+            for (i, fault) in checklist.faults.iter().enumerate() {
+                nodes.push(
+                    text(
+                        format!("decisions/fault{i}"),
+                        fault,
+                        11.,
+                        400,
+                        false,
+                        color(Some(TOKENS.color.state.errored), ui::Color::Muted),
+                    )
+                    .into(),
+                );
+            }
+        }
+        for (i, decision) in self.decisions.iter().enumerate() {
+            let key = format!("decisions/node{i}");
+            let mut children = vec![
+                row(
+                    format!("{key}/heading").as_str(),
+                    plain(None, [0.; 4], 0.),
+                    8.,
+                    vec![
+                        kind_label(&format!("{key}/type"), "decision").into(),
+                        text(
+                            format!("{key}/number"),
+                            decision
+                                .number
+                                .map_or_else(String::new, |n| format!("#{n}")),
+                            11.,
+                            400,
+                            true,
+                            ui::Color::Muted,
+                        )
+                        .into(),
+                        text(
+                            format!("{key}/title"),
+                            &decision.title,
+                            12.,
+                            600,
+                            false,
+                            ui::Color::Foreground,
+                        )
+                        .into(),
+                        text(
+                            format!("{key}/status"),
+                            &decision.status,
+                            11.,
+                            400,
+                            true,
+                            ui::Color::Muted,
+                        )
+                        .into(),
+                    ],
+                )
+                .into(),
+            ];
+            for (n, edge) in decision.links.iter().enumerate() {
+                let target = if edge.to.starts_with("[[") {
+                    edge.to.clone()
+                } else {
+                    format!("[[{}]]", edge.to)
+                };
+                children.push(
+                    links(
+                        &format!("{key}/edge{n}"),
+                        &format!("{target}{{{}}}", edge.rel),
+                        ctx,
+                        m,
+                    )
+                    .into(),
+                );
+            }
+            nodes.push(column(&key, plain(None, [4., 0., 6., 0.], 0.), 4., children).into());
+        }
+        card(ctx, "decisions", "Decisions", nodes)
     }
     fn work(&self, ctx: ui::Context) -> c::Element {
         let mut rows = vec![];
@@ -1269,6 +1367,7 @@ impl GraphTab {
         width: f32,
     ) -> c::Element {
         match which {
+            "decisions" => self.decisions_card(ctx, m),
             "e2e" => self
                 .e2e
                 .as_ref()
@@ -1292,6 +1391,9 @@ impl GraphTab {
     pub fn element_width(&self, ctx: ui::Context, m: &dyn c::Measure, width: f32) -> c::Element {
         let want = |k: &str| self.only.as_ref().is_none_or(|v| v.iter().any(|s| s == k));
         let mut children = vec![];
+        if want("decisions") && !self.decisions.is_empty() {
+            children.push(self.decisions_card(ctx, m).into());
+        }
         if want("e2e")
             && let Some(e2e) = &self.e2e
         {

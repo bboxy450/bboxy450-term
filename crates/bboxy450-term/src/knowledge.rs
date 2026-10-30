@@ -16,6 +16,8 @@ use std::collections::{BTreeSet, VecDeque};
 
 const MAX_LIST_PAGES: usize = 32;
 const MAX_RECORDS: usize = 128;
+// Current repository: 89 decisions; preserve room within the existing 1 MiB snapshot.
+const MAX_DECISIONS: usize = 128;
 const MAX_TASKS: usize = 128;
 const MAX_SNAPSHOT_BYTES: usize = 1024 * 1024;
 
@@ -30,6 +32,8 @@ enum Work {
     Changes,
     List(Option<String>),
     Record(d::RecordRef),
+    DecisionsList(Option<String>),
+    Decision(d::RecordRef),
     ResolveTask(String),
     Task(String, d::RecordRef),
 }
@@ -62,6 +66,10 @@ pub struct E2eLoader {
     pending: Option<Work>,
     queue: VecDeque<Work>,
     records: Vec<Record>,
+    decisions: Vec<bbt_ui::modules::graph_tab::Decision>,
+    decision_pages: usize,
+    decision_cursors: BTreeSet<String>,
+    decision_references: BTreeSet<(String, String)>,
     tasks: Vec<Task>,
     tasks_started: bool,
     list_pages: usize,
@@ -83,6 +91,10 @@ impl E2eLoader {
             pending: None,
             queue: VecDeque::new(),
             records: vec![],
+            decisions: vec![],
+            decision_pages: 0,
+            decision_cursors: BTreeSet::new(),
+            decision_references: BTreeSet::new(),
             tasks: vec![],
             tasks_started: false,
             list_pages: 0,
@@ -111,6 +123,10 @@ impl E2eLoader {
         self.dirty = false;
         self.loading = true;
         self.records.clear();
+        self.decisions.clear();
+        self.decision_pages = 0;
+        self.decision_cursors.clear();
+        self.decision_references.clear();
         self.tasks.clear();
         self.tasks_started = false;
         self.list_pages = 0;
@@ -142,6 +158,7 @@ impl E2eLoader {
         let next = Checklist {
             promises: self.snapshot.promises.clone(),
             records: std::mem::take(&mut self.records),
+            decisions: std::mem::take(&mut self.decisions),
             tasks: std::mem::take(&mut self.tasks),
             faults: vec![],
         };
@@ -179,7 +196,20 @@ impl E2eLoader {
                             limit: Some(d::MAX_PAGE),
                         }),
                     ),
-                    Work::Record(reference) | Work::Task(_, reference) => (
+                    Work::DecisionsList(cursor) => (
+                        "list",
+                        value(d::ListRequest {
+                            filter: d::Filter {
+                                record_type: Some("decision".into()),
+                                ..Default::default()
+                            },
+                            cursor: cursor.clone(),
+                            limit: Some(d::MAX_PAGE),
+                        }),
+                    ),
+                    Work::Record(reference)
+                    | Work::Decision(reference)
+                    | Work::Task(_, reference) => (
                         "fetch",
                         value(d::FetchRequest {
                             reference: reference.clone(),
@@ -307,7 +337,47 @@ impl E2eLoader {
                         return Err(error("knowledge list repeated an invalid cursor"));
                     }
                     self.queue.push_back(Work::List(Some(next)));
+                } else {
+                    self.queue.push_back(Work::DecisionsList(None));
                 }
+            }
+            Work::DecisionsList(_) => {
+                let page: d::Page<d::RecordRef> = decode(value)?;
+                self.decision_pages += 1;
+                if page.items.len() > d::MAX_PAGE || self.decision_pages > MAX_LIST_PAGES {
+                    return Err(error("decision catalogue page bound exceeded"));
+                }
+                for reference in page.items {
+                    if !self
+                        .decision_references
+                        .insert((reference.id.clone(), reference.path.clone()))
+                    {
+                        return Err(error("decision catalogue repeated a record"));
+                    }
+                    if self.decision_references.len() > MAX_DECISIONS {
+                        return Err(error("decision record bound exceeded"));
+                    }
+                    self.queue.push_back(Work::Decision(reference));
+                }
+                if let Some(next) = page.next {
+                    if next.is_empty() || !self.decision_cursors.insert(next.clone()) {
+                        return Err(error("decision catalogue repeated an invalid cursor"));
+                    }
+                    self.queue.push_back(Work::DecisionsList(Some(next)));
+                }
+            }
+            Work::Decision(reference) => {
+                let record: d::Record = decode(value)?;
+                validate_record(&record, &reference)?;
+                if record.frontmatter["type"] != "decision" {
+                    return Err(error("decision query returned another record type"));
+                }
+                let mut decision: bbt_ui::modules::graph_tab::Decision =
+                    decode(record.frontmatter)?;
+                decision.id = reference.id;
+                decision.path = reference.path;
+                decision.number = reference.number;
+                self.decisions.push(decision);
             }
             Work::Record(reference) => {
                 let record: d::Record = decode(value)?;

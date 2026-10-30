@@ -1657,8 +1657,9 @@ impl Scene {
         let ctx = self.ui_context();
         let width = (size[0] - self.sidebar_width_for(size)).max(1.);
         let graph = ui::modules::graph_tab::GraphTab {
+            decisions: checklist.decisions.clone(),
             e2e: Some(checklist.clone()),
-            only: Some(vec!["e2e".into()]),
+            only: Some(vec!["decisions".into(), "e2e".into()]),
             ..Default::default()
         };
         self.local_page_layout(

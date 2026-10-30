@@ -372,3 +372,13 @@ frontend = "project"
 name = "BrokenDocumentFeed"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "GraphQueryCursors"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenGraphQueryCursors"
+expected = "safety"
+frontend = "project"

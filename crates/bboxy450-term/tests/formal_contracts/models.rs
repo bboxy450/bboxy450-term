@@ -170,7 +170,7 @@ fn workspace(b: bool) -> Model {
         &[(2, Var(0)), (3, Var(1)), (4, Int(1)), (8, Var(7))],
     );
     // Record and decoded bitmap bytes stay one captured job across worker preparation.
-    action(&mut m,"PrepareCapturedImages",eq(4,1),&[(4,Int(2))]);
+    action(&mut m, "PrepareCapturedImages", eq(4, 1), &[(4, Int(2))]);
     action(
         &mut m,
         "SwitchRoot",
@@ -201,7 +201,12 @@ fn workspace(b: bool) -> Model {
     // A root can stay unchanged while its provider changes, including A -> B -> A.
     // Checking the directory ID alone also misses workspace revisions and revocation.
     if b {
-        action(&mut m,"DecodeImagesFromCurrentRoot",all([eq(4,1),Var(3).eq(Var(1)).negate()]),&[(6,Int(1))]);
+        action(
+            &mut m,
+            "DecodeImagesFromCurrentRoot",
+            all([eq(4, 1), Var(3).eq(Var(1)).negate()]),
+            &[(6, Int(1))],
+        );
         action(
             &mut m,
             "PublishByRootIdOnly",
@@ -1233,51 +1238,139 @@ fn terminal_replay_quiet(b: bool) -> Model {
 
 // One physical key; UI turns are atomic. Command may disappear before repeat/release.
 fn native_input(b: bool) -> Model {
-    let mut m = model("NativeInputOwnership", b,
-        &[("held_local",1,0),("command",1,0),("event_local",1,0),("emitted",1,0)]);
-    action(&mut m,"LocalPress",Bool(true),&[(0,Int(1)),(1,Int(1)),(2,Int(1)),(3,Int(0))]);
-    action(&mut m,"DropCommand",Bool(true),&[(1,Int(0))]);
-    action(&mut m,"TerminalPress",Bool(true),&[(0,Int(0)),(1,Int(0)),(2,Int(0)),(3,Int(1))]);
-    for (name, release) in [("Repeat",false),("Release",true)] {
+    let mut m = model(
+        "NativeInputOwnership",
+        b,
+        &[
+            ("held_local", 1, 0),
+            ("command", 1, 0),
+            ("event_local", 1, 0),
+            ("emitted", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "LocalPress",
+        Bool(true),
+        &[(0, Int(1)), (1, Int(1)), (2, Int(1)), (3, Int(0))],
+    );
+    action(&mut m, "DropCommand", Bool(true), &[(1, Int(0))]);
+    action(
+        &mut m,
+        "TerminalPress",
+        Bool(true),
+        &[(0, Int(0)), (1, Int(0)), (2, Int(0)), (3, Int(1))],
+    );
+    for (name, release) in [("Repeat", false), ("Release", true)] {
         for local in 0..=1 {
             for command in 0..=1 {
                 let emits = local == 0 || (b && command == 0);
-                action(&mut m,&format!("{name}{local}{command}"),all([eq(0,local),eq(1,command)]),
-                    &[(0,Int(if release {0} else {local})),(2,Int(local)),(3,Int(i64::from(emits)))]);
+                action(
+                    &mut m,
+                    &format!("{name}{local}{command}"),
+                    all([eq(0, local), eq(1, command)]),
+                    &[
+                        (0, Int(if release { 0 } else { local })),
+                        (2, Int(local)),
+                        (3, Int(i64::from(emits))),
+                    ],
+                );
             }
         }
     }
-    safe(&mut m,"LocalLifecycleCannotEmit",implies(eq(2,1),eq(3,0)));
+    safe(
+        &mut m,
+        "LocalLifecycleCannotEmit",
+        implies(eq(2, 1), eq(3, 0)),
+    );
     m
 }
 
 fn document_feed(b: bool) -> Model {
-    let mut m=model("DocumentFeed",b,&[("open",1,0),("ready",1,0),("generation",3,1),("captured",3,0),("emissions",2,0),("queue_ready",1,1),("bad",1,0)]);
-    action(&mut m,"Open",eq(0,0),&[(0,Int(1)),(1,Int(0)),(3,Var(2)),(4,Int(0))]);
-    action(&mut m,"LoadBody",eq(0,1),&[(1,Int(1))]);
-    action(&mut m,"Restart",Var(2).lt(Int(3)),&[(2,Var(2).plus(Int(1)))]);
-    action(&mut m,"QueueFull",Bool(true),&[(5,Int(0))]);
-    action(&mut m,"QueueReady",Bool(true),&[(5,Int(1))]);
-    action(&mut m,"Copy",all([eq(0,1),eq(1,1)]),&[]);
-    action(&mut m,"Close",eq(0,1),&[(0,Int(0))]);
-    let current=all([eq(0,1),eq(1,1),Var(2).eq(Var(3)),eq(5,1)]);
-    action(&mut m,"Feed",current,&[(0,Int(0)),(4,Var(4).plus(Int(1)))]);
+    let mut m = model(
+        "DocumentFeed",
+        b,
+        &[
+            ("open", 1, 0),
+            ("ready", 1, 0),
+            ("generation", 3, 1),
+            ("captured", 3, 0),
+            ("emissions", 2, 0),
+            ("queue_ready", 1, 1),
+            ("bad", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Open",
+        eq(0, 0),
+        &[(0, Int(1)), (1, Int(0)), (3, Var(2)), (4, Int(0))],
+    );
+    action(&mut m, "LoadBody", eq(0, 1), &[(1, Int(1))]);
+    action(
+        &mut m,
+        "Restart",
+        Var(2).lt(Int(3)),
+        &[(2, Var(2).plus(Int(1)))],
+    );
+    action(&mut m, "QueueFull", Bool(true), &[(5, Int(0))]);
+    action(&mut m, "QueueReady", Bool(true), &[(5, Int(1))]);
+    action(&mut m, "Copy", all([eq(0, 1), eq(1, 1)]), &[]);
+    action(&mut m, "Close", eq(0, 1), &[(0, Int(0))]);
+    let current = all([eq(0, 1), eq(1, 1), Var(2).eq(Var(3)), eq(5, 1)]);
+    action(
+        &mut m,
+        "Feed",
+        current,
+        &[(0, Int(0)), (4, Var(4).plus(Int(1)))],
+    );
     if b {
-        action(&mut m,"FeedReplacement",all([eq(0,1),eq(1,1),Var(2).eq(Var(3)).negate()]),&[(6,Int(1))]);
-        action(&mut m,"RepeatAfterClose",all([eq(0,0),eq(4,1)]),&[(4,Int(2))]);
+        action(
+            &mut m,
+            "FeedReplacement",
+            all([eq(0, 1), eq(1, 1), Var(2).eq(Var(3)).negate()]),
+            &[(6, Int(1))],
+        );
+        action(
+            &mut m,
+            "RepeatAfterClose",
+            all([eq(0, 0), eq(4, 1)]),
+            &[(4, Int(2))],
+        );
     }
-    safe(&mut m,"AtMostOneFeedPerOpen",Var(4).lt(Int(2)));
-    no_bad(&mut m,6);
+    safe(&mut m, "AtMostOneFeedPerOpen", Var(4).lt(Int(2)));
+    no_bad(&mut m, 6);
+    m
+}
+
+fn graph_query_cursors(b: bool) -> Model {
+    let mut m = model(
+        "GraphQueryCursors",
+        b,
+        &[("e2e_seen", 1, 0), ("decision_seen", 1, 0), ("bad", 1, 0)],
+    );
+    action(&mut m, "E2ePage", eq(0, 0), &[(0, Int(1))]);
+    action(&mut m, "DecisionPage", eq(1, 0), &[(1, Int(1))]);
+    if b {
+        action(
+            &mut m,
+            "SharedCursorSet",
+            all([eq(0, 1), eq(1, 0)]),
+            &[(2, Int(1))],
+        );
+    }
+    no_bad(&mut m, 2);
     m
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 27] = [
+    let families: [fn(bool) -> Model; 29] = [
         terminal_reply_progress,
         terminal_replay_quiet,
         seat_models::diagnostics,
         transport_capture,
         seat_models::recovery,
+        graph_query_cursors,
         document_feed,
         native_input,
         sidebar_reveal,

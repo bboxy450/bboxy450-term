@@ -119,6 +119,8 @@ pub struct Record {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Checklist {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub decisions: Vec<super::graph_tab::Decision>,
     pub promises: Vec<Promise>,
     pub records: Vec<Record>,
     pub tasks: Vec<Task>,

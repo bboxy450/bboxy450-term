@@ -76,6 +76,8 @@ help:
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
 	  'make diagnose-fifty-seat-pty     Bounded Darwin syscall probe; nonzero if an allocation fails' \
+	  'make test-decision-graph         Typed decision edges in the private native Graph' \
+	  'make parity-decision-graph       Existing native Graph/reference parity gate' \
 	  'make test-keyboard-input         Headless normalized native Kitty input and navigation' \
 	  'make test-documents-night        Full native D1/D2/D3/D4 private document assertions' \
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
@@ -388,6 +390,23 @@ test-document-protocol:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'
 
+.PHONY: test-decision-graph
+test-decision-graph: build
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --test graphs --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test knowledge_e2e --target-dir '$(TARGET_DIR)'; \
+	'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group records --scripts '$(CURDIR)/scripts/e2e' > '$(TARGET_DIR)/decision-night.jsonl' || true; \
+	cat '$(TARGET_DIR)/decision-night.jsonl'; \
+	python3 -I -B scripts/e2e/decisions.py --check-night '$(TARGET_DIR)/decision-night.jsonl'
+
+.PHONY: parity-decision-graph
+parity-decision-graph:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	graph_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="graphs"]; assert selected; print(json.dumps(selected))'); \
+	PARITY_OUT='$(TARGET_DIR)/parity-decision-graph' sh scripts/parity.sh --cases "$$graph_cases"
+
 .PHONY: test-keyboard-input
 test-keyboard-input: build
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -433,7 +452,7 @@ test-document-provenance:
 
 check-documents:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-render -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: parity-documents
 parity-documents:

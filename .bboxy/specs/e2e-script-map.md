@@ -8,7 +8,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-26T17:47:10Z"
+updated: "2026-10-30T20:54:17Z"
 ---
 # e2e script map
 
@@ -67,7 +67,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | D3 | `scripts/e2e/D3.sh` | full | — | Slug/number/alias activation, inert broken links, canonical bboxy bitmap geometry and sampled native pixels |
 | D4 | `scripts/e2e/D4.sh` | full | — | Native scroll/copy/close and footer/keyboard Feed; exact bracketed-paste bytes in a private raw PTY |
 | N1 | `scripts/e2e/N1.sh` | partial | script not implemented: every record has a unique number; a new record created through the app takes the next free one; a duplicate or invalid number is refused and shown as broken | |
-| N2 | `scripts/e2e/N2.sh` | partial | script not implemented: every decision is its own node; the Graph tab shows a decision with its decides, constrains, evidence, answers, amends edges | |
+| N2 | `scripts/e2e/N2.sh` | full | — | Distinct native decision node, all five typed endpoints and fresh offscreen Graph capture |
 | N3 | `scripts/e2e/N3.sh` | partial | script not implemented: a comment pinned to a digest shows beside the version it was made on; the RFC loop runs in the app: proposal, comments, decision, spec | |
 | N4 | `scripts/e2e/N4.sh` | partial | script not implemented: the Graph tab shows agents (seat, role, now, blocked on), the work tree, the provenance card and what each seat listens to | |
 | I1 | `scripts/e2e/I1.sh` | partial | script not implemented: first launch enrols one device key under the GPG root with exactly one custody prompt request, later launches request none; the night proves it against an isolated non-operator native-custody test backend that counts enrollments and prompt requests, never the login Keychain, whose real first launch is the operator's own and is judged, not scripted | |

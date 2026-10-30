@@ -40,6 +40,7 @@ impl Graph {
                 records,
                 tasks,
                 faults: vec![],
+                decisions: vec![],
             }),
             scroll: 0.,
         })

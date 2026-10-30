@@ -247,3 +247,47 @@ fn channels_compose_published_edges_at_true_size_and_scroll_in_the_viewport() {
     assert!(find(&big, "channels/traffic0").is_some());
     assert!(find(&big, "channels/link1").is_none());
 }
+
+#[test]
+fn decision_node_carries_decides_constrains_evidence_answers_and_amends_edges() {
+    let relations = ["decides", "constrains", "evidence", "answers", "amends"];
+    let view = GraphTab {
+        decisions: vec![Decision {
+            id: "decision-7".into(),
+            path: "decisions/choice.md".into(),
+            number: Some(7),
+            title: "Use the shared native reader".into(),
+            status: "decided".into(),
+            links: relations
+                .iter()
+                .map(|rel| DecisionEdge {
+                    to: format!("[[target-{rel}|{rel} target]]"),
+                    rel: (*rel).into(),
+                })
+                .collect(),
+        }],
+        only: Some(vec!["decisions".into()]),
+        ..Default::default()
+    };
+    let root = layout(&view, 1000.);
+    fn node<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&layout.kind,c::LayoutKind::Named(name) if name==key) {
+            Some(layout)
+        } else {
+            layout.children.iter().find_map(|n| node(n, key))
+        }
+    }
+    let decision = node(&root, "decisions/node0").expect("decision is its own retained node");
+    let text = labels(decision);
+    assert!(text.contains("#7"));
+    assert!(text.contains("Use the shared native reader"));
+    for (i, rel) in relations.iter().enumerate() {
+        assert!(text.contains(rel), "lost typed {rel} relation");
+        assert!(
+            text.contains(&format!("{rel} target")),
+            "lost {rel} endpoint"
+        );
+        assert!(node(decision, &format!("decisions/node0/edge{i}/l0")).is_some());
+    }
+    assert_eq!(view.decisions[0].links.len(), 5);
+}
