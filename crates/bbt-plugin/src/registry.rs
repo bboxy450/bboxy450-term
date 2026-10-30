@@ -59,6 +59,25 @@ impl Approval {
             grants: Grants::default(),
         }
     }
+
+    /// The operator's grants at the contract minimum raised by what they
+    /// expose: a payload or a `records.*` grant needs export, a write host
+    /// API method (or message destinations) write.
+    pub fn implied(name: &PluginName, grants: Grants) -> Self {
+        let mut tier = name.system.tier();
+        if !grants.payload_events.is_empty() {
+            tier = tier.max(Tier::Export);
+        }
+        for method in &grants.host_api {
+            if let Some((_, raised)) = crate::shape::HOST_API.iter().find(|(m, _)| m == method) {
+                tier = tier.max(*raised);
+            }
+        }
+        if !grants.messages_to.is_empty() {
+            tier = tier.max(Tier::Write);
+        }
+        Self { tier, grants }
+    }
 }
 
 /// Actual descriptor inspection, not a production conformance-test claim.

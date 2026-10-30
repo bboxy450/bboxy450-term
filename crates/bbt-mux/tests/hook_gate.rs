@@ -72,6 +72,14 @@ async fn plugin(
             "DECISION = \"allow\"",
             &format!("DECISION = {decision:?}"),
             1,
+        )
+        .replacen(
+            "HOOK_LOG = None",
+            &format!(
+                "HOOK_LOG = {:?}",
+                temp.join("hooks.jsonl").to_str().unwrap()
+            ),
+            1,
         );
     let path = repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
@@ -174,7 +182,11 @@ fn hook_shim_child() {
     std::process::exit(code);
 }
 
-async fn case(decision: &str, block: Option<FailurePolicy>) -> (Option<Gate>, Shim, Shim) {
+async fn case(
+    decision: &str,
+    block: Option<FailurePolicy>,
+    command: &str,
+) -> (Option<Gate>, Shim, Shim, Vec<serde_json::Value>) {
     let temp = tempfile::tempdir().unwrap();
     let run = temp.path().join("run");
     let repo = temp.path().join("repo");
@@ -234,7 +246,8 @@ async fn case(decision: &str, block: Option<FailurePolicy>) -> (Option<Gate>, Sh
         .map(|bytes| serde_json::from_slice::<Gate>(&bytes).unwrap());
     let tool = json!({
         "hook_event_name":"PreToolUse","session_id":"gate-fixture",
-        "tool_name":"Bash","tool_use_id":"gate-tool"
+        "tool_name":"Bash","tool_use_id":"gate-tool",
+        "tool_input":{"command":command,"description":"fixture command"}
     })
     .to_string();
     let pre = run_shim(tool).await.unwrap();
@@ -245,8 +258,22 @@ async fn case(decision: &str, block: Option<FailurePolicy>) -> (Option<Gate>, Sh
     })
     .to_string();
     let after = run_shim(post).await.unwrap();
+    // Gated or queued (Command::Hook -> notify), the plugin receives the hook.
+    let log = temp.path().join("hooks.jsonl");
+    let until = Instant::now() + Duration::from_secs(10);
+    let received = loop {
+        let lines: Vec<serde_json::Value> = fs::read_to_string(&log)
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect();
+        if !lines.is_empty() || Instant::now() > until {
+            break lines;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    };
     logic.shutdown().unwrap();
-    (gate, pre, after)
+    (gate, pre, after, received)
 }
 
 // keeps: G3 production veto / PluginHookGate — a blocking plugin's deny is
@@ -272,8 +299,16 @@ async fn gated_hooks_veto_allow_time_out_by_policy_and_keep_the_fast_path() {
         ("slow", Some(FailurePolicy::FailOpen), 0, None),
         ("deny", None, 0, None),
     ] {
-        let (gate, pre, post) = case(decision, block).await;
+        let (gate, pre, post, received) = case(decision, block, "ls").await;
         let label = format!("{decision} {block:?}: {}", pre.stderr);
+        // Decided (gated) or queued by Command::Hook -> notify, the plugin
+        // got the PreToolUse hook for this seat, payload granted.
+        let hook = received
+            .iter()
+            .find(|hook| hook["event"] == "PreToolUse")
+            .unwrap_or_else(|| panic!("{label}: no hook delivered: {received:?}"));
+        assert!(hook["seat"].is_string(), "{label}");
+        assert_eq!(hook["payload"]["tool_name"], "Bash", "{label}");
         match block {
             Some(policy) => {
                 let gate = gate.unwrap_or_else(|| panic!("{label}: no gate file"));
@@ -323,5 +358,23 @@ async fn gated_hooks_veto_allow_time_out_by_policy_and_keep_the_fast_path() {
                 pre.elapsed
             );
         }
+    }
+}
+
+// keeps: plugins §3b veto payload — a block + payload plugin sees the Bash
+// command it decides on, so it denies one specific command and allows another.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_veto_plugin_sees_the_command_and_denies_only_the_dangerous_one() {
+    for (command, code) in [("rm -rf /private/fixture", 2), ("ls -la", 0)] {
+        let (_, pre, _, received) = case("deny-rm", Some(FailurePolicy::FailClosed), command).await;
+        assert_eq!(pre.code, code, "{command}: {}", pre.stderr);
+        if code == 2 {
+            assert!(pre.stderr.contains("fixture veto"), "{}", pre.stderr);
+        }
+        let hook = received
+            .iter()
+            .find(|hook| hook["event"] == "PreToolUse")
+            .unwrap();
+        assert_eq!(hook["payload"]["tool_input"]["command"], command);
     }
 }

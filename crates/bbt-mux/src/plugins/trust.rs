@@ -27,6 +27,9 @@ pub(super) struct FixtureAccount {
     store: SqliteStore,
     pub record: TrustRecord,
     pub shape_runs: usize,
+    /// Standalone `plugin check --declared-grants`: check with every grant
+    /// the shape requests, as an operator granting all of them would.
+    pub declared_grants: bool,
 }
 
 pub(super) fn open_regular(path: &Path) -> Result<File, Refusal> {
@@ -290,6 +293,7 @@ impl FixtureAccount {
             store,
             record,
             shape_runs: 0,
+            declared_grants: false,
         };
         // This is before --shape; a repository-side JSON file is never consulted.
         result.persist()?;

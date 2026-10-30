@@ -171,7 +171,10 @@ pub enum Field {
     RoleClass(String),
     RoleDelete(String),
     HarnessRole(String),
-    HarnessAvailableRole { harness: String, role: String },
+    HarnessAvailableRole {
+        harness: String,
+        role: String,
+    },
     Choice(usize),
     Theme,
     Density,
@@ -182,10 +185,15 @@ pub enum Field {
     Background,
     Harness(String),
     IdentityUnlock,
-    Attention { destination: String, class: String },
+    Attention {
+        destination: String,
+        class: String,
+    },
     PluginEnable(String),
     PluginTrust(String),
     PluginSetup(String),
+    /// (candidate, grant name) of a requested grant to grant or revoke.
+    PluginGrant(String, String),
     KnowledgeProvider(String),
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -216,7 +224,16 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginIntent {
     Trust(String),
-    Enabled { candidate: String, enabled: bool },
+    Enabled {
+        candidate: String,
+        enabled: bool,
+    },
+    /// Re-trust the same digest with `grant` granted (`on`) or revoked.
+    Grant {
+        candidate: String,
+        grant: String,
+        on: bool,
+    },
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KnowledgeIntent {
@@ -409,6 +426,16 @@ impl Controller {
                         plugin.control_key() == id && plugin.actionable && plugin.root.is_none()
                     })
             }
+            Field::PluginGrant(id, grant) => {
+                (self.section == "Plugins" || !self.query.trim().is_empty())
+                    && values.plugin_controls
+                    && values.plugins.iter().any(|plugin| {
+                        plugin.control_key() == id
+                            && plugin.actionable
+                            && plugin.trust == "trusted"
+                            && plugin.grants.iter().any(|row| row.name == *grant)
+                    })
+            }
             Field::PluginSetup(_) => false,
             Field::KnowledgeProvider(root) => {
                 (self.section == "Knowledge" || !self.query.trim().is_empty())
@@ -528,7 +555,10 @@ impl Controller {
         }
         if matches!(
             field,
-            Field::PluginEnable(_) | Field::PluginTrust(_) | Field::KnowledgeProvider(_)
+            Field::PluginEnable(_)
+                | Field::PluginTrust(_)
+                | Field::PluginGrant(..)
+                | Field::KnowledgeProvider(_)
         ) && self.editable(field, values)
         {
             return false;
@@ -544,6 +574,7 @@ impl Controller {
                     |root| format!("Cannot disable the provider of {root}"),
                 ),
             Field::PluginTrust(_) => "Plugin trust is unavailable in this build".into(),
+            Field::PluginGrant(..) => "Trust the plugin before changing its grants".into(),
             Field::PluginSetup(_) => "Plugin setup is unavailable in this build".into(),
             Field::KnowledgeProvider(_) => {
                 "Provider swap is unavailable: the bundled provider remains active".into()
@@ -665,6 +696,21 @@ impl Controller {
                         self.error = None;
                         return None;
                     }
+                    Field::PluginGrant(candidate, grant) => {
+                        let on = !values
+                            .plugins
+                            .iter()
+                            .find(|p| p.control_key() == candidate)
+                            .and_then(|p| p.grants.iter().find(|row| row.name == grant))
+                            .is_some_and(|row| row.granted);
+                        self.plugin = Some(PluginIntent::Grant {
+                            candidate,
+                            grant,
+                            on,
+                        });
+                        self.error = None;
+                        return None;
+                    }
                     Field::PluginEnable(candidate) => {
                         let enabled = !values
                             .plugins
@@ -726,7 +772,10 @@ impl Controller {
                     }
                     Field::Theme => Patch::Theme(defaults.appearance.theme.clone()),
                     Field::IdentityUnlock => return None,
-                    Field::PluginEnable(_) | Field::PluginTrust(_) | Field::PluginSetup(_) => {
+                    Field::PluginEnable(_)
+                    | Field::PluginTrust(_)
+                    | Field::PluginSetup(_)
+                    | Field::PluginGrant(..) => {
                         return None;
                     }
                     Field::Density => Patch::Density(defaults.appearance.density.clone()),
@@ -764,8 +813,10 @@ impl Controller {
                     return None;
                 }
                 Focus::Control(
-                    field
-                    @ (Field::PluginEnable(_) | Field::PluginTrust(_) | Field::PluginSetup(_)),
+                    field @ (Field::PluginEnable(_)
+                    | Field::PluginTrust(_)
+                    | Field::PluginSetup(_)
+                    | Field::PluginGrant(..)),
                 ) => {
                     let field = field.clone();
                     self.unavailable(&field, values);
@@ -875,6 +926,57 @@ impl Controller {
 #[cfg(test)]
 mod production_plugin_tests {
     use super::*;
+    // keeps: plugins §3b/§3c operator grants — a requested grant toggles to a
+    // re-trust intent only on a trusted plugin; the row is not changed early.
+    #[test]
+    fn grant_toggles_emit_grant_intents_for_trusted_plugins_only() {
+        use super::super::plugins::{GrantRow, Plugin};
+        let row = |granted| GrantRow {
+            name: "block:fail_closed".into(),
+            granted,
+        };
+        let mut records = Records {
+            plugin_controls: true,
+            plugins: vec![Plugin {
+                candidate: "candidate".into(),
+                name: "stub".into(),
+                trust: "trusted".into(),
+                actionable: true,
+                grants: vec![row(false)],
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        let field = Field::PluginGrant("candidate".into(), "block:fail_closed".into());
+        let mut control = Controller::new("Plugins");
+        control.handle(
+            Action::Toggle(field.clone()),
+            &mut records,
+            &Default::default(),
+        );
+        assert_eq!(
+            control.take_plugin(),
+            Some(PluginIntent::Grant {
+                candidate: "candidate".into(),
+                grant: "block:fail_closed".into(),
+                on: true
+            })
+        );
+        assert_eq!(records.plugins[0].grants, vec![row(false)]);
+        records.plugins[0].grants = vec![row(true)];
+        control.handle(
+            Action::Toggle(field.clone()),
+            &mut records,
+            &Default::default(),
+        );
+        assert!(matches!(
+            control.take_plugin(),
+            Some(PluginIntent::Grant { on: false, .. })
+        ));
+        records.plugins[0].trust = "untrusted".into();
+        control.handle(Action::Toggle(field), &mut records, &Default::default());
+        assert_eq!(control.take_plugin(), None);
+    }
     #[test]
     fn live_controls_emit_intents_without_optimistically_changing_registry_facts() {
         let mut records = Records {
@@ -1047,6 +1149,14 @@ impl Regions {
                             plugin.control_key() == id && plugin.actionable && plugin.root.is_none()
                         })
                 }
+                Field::PluginGrant(id, _) => {
+                    view.values.plugin_controls
+                        && view.values.plugins.iter().any(|plugin| {
+                            plugin.control_key() == id
+                                && plugin.actionable
+                                && plugin.trust == "trusted"
+                        })
+                }
                 Field::PluginSetup(_) => false,
                 Field::KnowledgeProvider(root) => {
                     view.values.knowledge_controls
@@ -1105,6 +1215,21 @@ impl Regions {
                     };
                     let disabled = !view.values.plugin_controls || !plugin.actionable;
                     self.hits.push((node.rect, Hit::Toggle(field), disabled));
+                }
+                for (j, grant) in plugin.grants.iter().enumerate() {
+                    if let Some(node) = find(layout, &format!("card0/plugin{i}/grant{j}")) {
+                        let disabled = !view.values.plugin_controls
+                            || !plugin.actionable
+                            || plugin.trust != "trusted";
+                        self.hits.push((
+                            node.rect,
+                            Hit::Toggle(Field::PluginGrant(
+                                plugin.control_key().into(),
+                                grant.name.clone(),
+                            )),
+                            disabled,
+                        ));
+                    }
                 }
                 if let Some(node) = find(layout, &format!("card0/plugin{i}/setup")) {
                     self.hits.push((

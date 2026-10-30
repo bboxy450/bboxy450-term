@@ -17,23 +17,14 @@ use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,
     identity::TestAccount,
     logic::{Logic, LogicClient, LogicConfig},
-    mcp::{Actor, Call, Door},
+    mcp::{Call, Door, Origin},
     messaging::api::Request,
-    plugins::{DiscoveryRoots, HostConfig, ProviderConfig, Registry, RegistryConfig},
+    plugins::{HostConfig, ProviderConfig, RegistryConfig},
     registry::SeatRecord,
-    store::sqlite::SqliteStore,
 };
-use bbt_plugin::{policy::Tier, registry::Approval, trust::Grants};
+use bbt_proto::gui::{PluginGrants, PluginRequest, PluginTier, SwarmScope};
 use serde_json::{Value, json};
 use std::{fs, os::unix::fs::PermissionsExt, time::Duration};
-
-fn operator() -> Actor {
-    Actor::Operator {
-        device_id: Ulid::from(91_u128),
-        door: Door::Ctl,
-        issued_by: None,
-    }
-}
 
 fn config() -> RegistryConfig {
     RegistryConfig {
@@ -67,54 +58,17 @@ async fn a_plugin_message_reaches_its_granted_seat_signed_by_the_host_as_the_plu
     let custody = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
     let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
         .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
-        .replacen("HOST_API = []", r#"HOST_API = ["messages.send"]"#, 1);
+        .replacen(
+            "HOST_API = []",
+            r#"HOST_API = ["messages.send", "records.search"]"#,
+            1,
+        );
     let path = repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(&path, source).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
     let (caller, recipient, swarm) = (Ulid::new(), Ulid::new(), Ulid::new());
     let granted = format!("seats/{recipient}/inbox");
-    let registry = Registry::with_config(
-        SqliteStore::open(&run.join("account")).unwrap(),
-        DiscoveryRoots::new(temp.path(), &repo),
-        config(),
-    )
-    .unwrap();
-    let entry = registry.refresh().unwrap().remove(0);
-    let candidate = entry.candidate.id.clone();
-    let approval = Approval {
-        tier: Tier::Write,
-        grants: Grants {
-            host_api: ["messages.send".to_owned()].into(),
-            messages_to: [granted.clone()].into(),
-            ..Default::default()
-        },
-    };
-    registry
-        .trust(
-            &operator(),
-            &candidate,
-            entry.candidate.sha256.as_deref().unwrap(),
-            Some(approval),
-        )
-        .unwrap();
-    let inspected = registry
-        .inspection(&candidate)
-        .unwrap()
-        .unwrap()
-        .run()
-        .await;
-    registry.finish_inspection(inspected).unwrap();
-    let checked = registry
-        .conformance(&operator(), &candidate)
-        .unwrap()
-        .unwrap()
-        .run()
-        .await;
-    let checked = registry.finish_conformance(checked).unwrap();
-    assert!(checked.conformance.as_ref().unwrap().ok, "{checked:?}");
-    registry.set_enabled(&operator(), &candidate, true).unwrap();
-
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = Logic::start_custodied_with_plugin_config(
         supervisor.connect().unwrap(),
@@ -131,6 +85,50 @@ async fn a_plugin_message_reaches_its_granted_seat_signed_by_the_host_as_the_plu
         &tokio::runtime::Handle::current(),
     )
     .unwrap();
+    // The operator's product path: trust with grants (the tier is implied:
+    // records.search needs export), check, enable.
+    let scope = Some(SwarmScope { swarm, revision: 0 });
+    let origin = || Origin {
+        door: Door::Ctl,
+        issued_by: None,
+    };
+    let trusted = logic
+        .client
+        .gui_plugin_scoped(
+            Ulid::new(),
+            PluginRequest::Trust {
+                path: path.to_str().unwrap().into(),
+                sha256: None,
+                grants: Some(PluginGrants {
+                    host_api: ["messages.send".to_owned(), "records.search".to_owned()].into(),
+                    messages_to: [granted.clone()].into(),
+                    ..Default::default()
+                }),
+                tier: None,
+            },
+            scope,
+            origin(),
+        )
+        .await
+        .unwrap();
+    let candidate = trusted[0].candidate.id.clone();
+    let record = trusted[0].trust.as_ref().unwrap();
+    assert_eq!(record.approved_tier, PluginTier::Export);
+    assert_eq!(record.grants.messages_to, [granted.clone()].into());
+    for request in [
+        PluginRequest::Check {
+            candidate: candidate.clone(),
+        },
+        PluginRequest::Enable {
+            candidate: candidate.clone(),
+        },
+    ] {
+        logic
+            .client
+            .gui_plugin_scoped(Ulid::new(), request, scope, origin())
+            .await
+            .unwrap();
+    }
     for id in [caller, recipient] {
         let record = SeatRecord::new(id, swarm, "plugin message fixture", "zsh");
         let mut spec = LaunchSpec::new("/bin/cat", temp.path());
@@ -140,6 +138,16 @@ async fn a_plugin_message_reaches_its_granted_seat_signed_by_the_host_as_the_plu
     }
     let ask = |destination: String| json!({"method": "messages.send", "params": {"destination": destination, "text": "build finished"}});
     let tool = "plugin_tool_reference_host";
+    // The workspace mount installs the root's record reader for the host API.
+    let searched = call(
+        &logic.client,
+        caller,
+        tool,
+        json!({"method": "records.search", "params": {"query": "fixture"}}),
+    )
+    .await;
+    let found = &searched["structuredContent"]["result"]["answer"]["result"];
+    assert!(found["items"].is_array(), "{searched:#}");
     let sent = call(&logic.client, caller, tool, ask(granted.clone())).await;
     let answer = &sent["structuredContent"]["result"]["answer"];
     assert_eq!(answer["result"]["destination"], granted, "{sent:#}");

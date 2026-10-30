@@ -30,6 +30,70 @@ pub struct Grants {
     pub messages_to: BTreeSet<String>,
 }
 
+/// `payload_events` entry granting the payload of every payload-carrying hook
+/// the trusted shape declares (the operator's `--grant payload_events`).
+pub const ALL_REQUESTED: &str = "*";
+
+impl Grants {
+    /// Every extra authority `shape` asks for: the payload of each
+    /// payload-carrying hook (`bus` for bus hooks) and each requested host
+    /// API method. A block grant and message destinations are never
+    /// requested by a shape; only the operator chooses them.
+    pub fn requested_by(shape: &crate::shape::Shape) -> Self {
+        Self {
+            payload_events: shape
+                .hooks
+                .iter()
+                .filter(|hook| hook.is_bus() || hook.carries_payload().unwrap_or(false))
+                .map(|hook| hook.event.clone())
+                .collect(),
+            block: None,
+            host_api: shape.host_api.iter().cloned().collect(),
+            messages_to: BTreeSet::new(),
+        }
+    }
+
+    /// Grants are only ever a subset of what the trusted shape requests: a
+    /// payload event of a hook it declares, a host API method it asks for,
+    /// a block grant only with a `before` hook, and message destinations
+    /// only with `messages.send`.
+    pub fn within(&self, shape: &crate::shape::Shape) -> Result<(), Refusal> {
+        let mut requested = Self::requested_by(shape);
+        requested.payload_events.insert(ALL_REQUESTED.into());
+        if let Some(event) = self
+            .payload_events
+            .difference(&requested.payload_events)
+            .next()
+        {
+            return Err(Refusal::new(
+                "grant_not_requested",
+                format!("payload_events:{event}"),
+            ));
+        }
+        if let Some(method) = self.host_api.difference(&requested.host_api).next() {
+            return Err(Refusal::new(
+                "grant_not_requested",
+                format!("host_api:{method}"),
+            ));
+        }
+        if self.block.is_some()
+            && !shape
+                .hooks
+                .iter()
+                .any(|hook| hook.phase == crate::policy::Phase::Before)
+        {
+            return Err(Refusal::new("grant_not_requested", "block: no before hook"));
+        }
+        if !self.messages_to.is_empty() && !self.host_api.contains("messages.send") {
+            return Err(Refusal::new(
+                "grant_not_requested",
+                "messages_to needs the messages.send grant",
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// The account record pins one executable, its approved policy and cached shape.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TrustRecord {
@@ -63,8 +127,9 @@ impl TrustRecord {
                 "effective tier exceeds the operator grant",
             ));
         }
+        self.grants.within(shape)?;
         for hook in &shape.hooks {
-            if hook.carries_payload()? && !self.grants.payload_events.contains(&hook.event) {
+            if hook.carries_payload()? && !self.payload_granted(hook) {
                 return Err(Refusal::new("payload_grant_required", &hook.event));
             }
             // Bus payloads are opt-in per grant; with it the plugin exports them.
@@ -91,5 +156,6 @@ impl TrustRecord {
     /// Whether `hook`'s event payload may reach the plugin.
     pub fn payload_granted(&self, hook: &crate::policy::Hook) -> bool {
         self.grants.payload_events.contains(&hook.event)
+            || self.grants.payload_events.contains(ALL_REQUESTED)
     }
 }

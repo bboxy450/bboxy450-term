@@ -54,20 +54,20 @@ pub fn prepare(mut raw: Value, agent: &str) -> Result<ShimEvent> {
         items.truncate(32);
         raw["background_tasks_total"] = total.into();
     }
-    // Keep original status/provenance fields, not command output or file contents.
+    // Keep original status/provenance fields, not command output. Tool input
+    // (a command, a path, a file's new text) is kept for plugins that must
+    // see what they veto: each other field bounded, with a marker, never
+    // silently dropped.
     // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-    for (field, keep) in [
-        (
-            "tool_input",
-            &["description", "questions", "question", "file_path", "path"][..],
-        ),
-        ("tool_response", &["agentId"][..]),
-    ] {
-        if let Some(object) = raw.get_mut(field).and_then(Value::as_object_mut) {
-            object.retain(|key, _| keep.contains(&key.as_str()));
-        } else if let Some(object) = raw.as_object_mut() {
-            object.remove(field);
-        }
+    if let Some(object) = raw.get_mut("tool_input").and_then(Value::as_object_mut) {
+        bound_tool_input(object);
+    } else if let Some(object) = raw.as_object_mut() {
+        object.remove("tool_input");
+    }
+    if let Some(object) = raw.get_mut("tool_response").and_then(Value::as_object_mut) {
+        object.retain(|key, _| key == "agentId");
+    } else if let Some(object) = raw.as_object_mut() {
+        object.remove("tool_response");
     }
     let object = raw
         .as_object_mut()
@@ -103,6 +103,56 @@ pub fn prepare(mut raw: Value, agent: &str) -> Result<ShimEvent> {
         return Err(invalid("hook payload exceeds 64 KiB"));
     }
     Ok(frame)
+}
+/// Largest serialized tool-input field kept whole, in bytes.
+pub const TOOL_INPUT_FIELD: usize = 1024;
+/// Tool-input fields kept; the count of the rest is recorded.
+pub const TOOL_INPUT_FIELDS: usize = 16;
+/// Fields the projection reads; always kept whole (the frame bound still applies).
+const TOOL_INPUT_WHOLE: [&str; 5] = ["description", "questions", "question", "file_path", "path"];
+
+/// Bound every tool-input field: a long string keeps its first
+/// [`TOOL_INPUT_FIELD`] bytes and an explicit `…[bboxy truncated N of M bytes]`
+/// marker; any other oversized value becomes `{"bboxy_truncated_bytes": M}`;
+/// fields beyond [`TOOL_INPUT_FIELDS`] are counted in `bboxy_truncated_fields`.
+fn bound_tool_input(input: &mut serde_json::Map<String, Value>) {
+    let total = input.len();
+    let keys: Vec<String> = input.keys().cloned().collect();
+    for (index, key) in keys.iter().enumerate() {
+        if index >= TOOL_INPUT_FIELDS {
+            input.remove(key);
+            continue;
+        }
+        if TOOL_INPUT_WHOLE.contains(&key.as_str()) {
+            continue;
+        }
+        let Some(value) = input.get_mut(key) else {
+            continue;
+        };
+        let size = serde_json::to_string(value).map_or(usize::MAX, |text| text.len());
+        if size <= TOOL_INPUT_FIELD {
+            continue;
+        }
+        *value = match value {
+            Value::String(text) => {
+                let cut = text.floor_char_boundary(TOOL_INPUT_FIELD);
+                format!(
+                    "{}…[bboxy truncated {} of {} bytes]",
+                    &text[..cut],
+                    text.len() - cut,
+                    text.len()
+                )
+                .into()
+            }
+            _ => serde_json::json!({ "bboxy_truncated_bytes": size }),
+        };
+    }
+    if total > TOOL_INPUT_FIELDS {
+        input.insert(
+            "bboxy_truncated_fields".into(),
+            (total - TOOL_INPUT_FIELDS).into(),
+        );
+    }
 }
 /// Encode a hook OSC frame, or return `None` when the terminal-frame bound would be exceeded.
 ///
@@ -728,10 +778,29 @@ mod input_tests {
         let event = prepare(decode_input(&bytes).unwrap(), "claude").unwrap();
         assert_eq!(event.raw["tool_input"]["file_path"], "/private/fixture.rs");
         assert_eq!(event.raw["tool_response"]["agentId"], "worker");
-        assert!(event.raw["tool_input"].get("content").is_none());
+        // Tool input is kept for veto plugins, bounded with an explicit marker.
+        let content = event.raw["tool_input"]["content"].as_str().unwrap();
+        assert!(content.starts_with(&"x".repeat(TOOL_INPUT_FIELD)));
+        assert!(content.ends_with(&format!(
+            "…[bboxy truncated {} of {} bytes]",
+            256 * 1024 - TOOL_INPUT_FIELD,
+            256 * 1024
+        )));
         assert!(event.raw["tool_response"].get("output").is_none());
         assert!(serde_json::to_vec(&event).unwrap().len() < MAX_RAW);
         assert!(osc(Ulid::from(1_u128), &event).unwrap().is_some());
+        let many: serde_json::Map<String, Value> = (0..40)
+            .map(|i| (format!("f{i:02}"), Value::from(vec![i; 600])))
+            .collect();
+        let event = prepare(
+            serde_json::json!({"hook_event_name":"PreToolUse","tool_input":many}),
+            "codex",
+        )
+        .unwrap();
+        let input = event.raw["tool_input"].as_object().unwrap();
+        assert_eq!(input["bboxy_truncated_fields"], 40 - TOOL_INPUT_FIELDS);
+        assert!(input["f00"]["bboxy_truncated_bytes"].as_u64().unwrap() > TOOL_INPUT_FIELD as u64);
+        assert_eq!(input.len(), TOOL_INPUT_FIELDS + 1);
         assert!(decode_input(&vec![b' '; MAX_INPUT + 1]).is_err());
         assert!(
             prepare(

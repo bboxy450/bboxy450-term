@@ -163,7 +163,12 @@ impl Job {
                     Instant::now() + BUDGET,
                 ) {
                     Ok(value) => mcp::success(call.op_id, json!({"result": value})),
-                    Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
+                    Err(reason) => mcp::error_retry(
+                        call.op_id,
+                        &reason.code,
+                        &reason.message,
+                        reason.retry_after_ms,
+                    ),
                 };
                 if tool.read {
                     journal.checked_authorized(&actor, &call, dispatch(), |_| current().is_some())
@@ -179,5 +184,25 @@ impl Job {
             reply,
             result,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // keeps: plugin seat tools — a busy refusal keeps its retry hint in both
+    // the structured and the text form; other refusals carry none.
+    #[test]
+    fn busy_plugin_tool_refusals_carry_retry_after_ms() {
+        let op = crate::Ulid::from(7_u128);
+        let busy = mcp::error_retry(op, "provider_busy", "busy", Some(100));
+        assert_eq!(busy["isError"], true);
+        assert_eq!(busy["structuredContent"]["error"]["retry_after_ms"], 100);
+        let text: Value =
+            serde_json::from_str(busy["content"][0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(text, busy["structuredContent"]);
+        let plain = mcp::error_retry(op, "rejected", "no", None);
+        assert_eq!(plain, mcp::error(op, "rejected", "no"));
     }
 }

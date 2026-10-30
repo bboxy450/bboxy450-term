@@ -393,6 +393,16 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
                 "run-dir" => {
                     endpoint = Some(PathBuf::from(value).join(bbt_mux::ctl_door::ENDPOINT))
                 }
+                // `plugin trust --grant` repeats; each value is one grant.
+                "grant" => {
+                    flags
+                        .entry("grant".to_owned())
+                        .and_modify(|all: &mut String| {
+                            all.push('\n');
+                            all.push_str(value);
+                        })
+                        .or_insert_with(|| value.clone());
+                }
                 _ => {
                     flags.insert(flag.to_owned(), value.clone());
                 }
@@ -537,6 +547,19 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}import flags apply only to task import"
         ));
     }
+    if (flags.contains_key("grant") || flags.contains_key("tier"))
+        && !matches!(
+            &command,
+            Command::Plugin {
+                request: bbt_proto::gui::PluginRequest::Trust { .. },
+                ..
+            }
+        )
+    {
+        return Err(format!(
+            "{USAGE_PREFIX}--grant and --tier apply only to plugin trust"
+        ));
+    }
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
         return Err(format!("{USAGE_PREFIX}--to applies only to ui compose"));
     }
@@ -594,6 +617,8 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "source-dir",
             "expected-root",
             "owner-seat",
+            "grant",
+            "tier",
         ]
         .contains(&k.as_str())
     }) {
@@ -2353,6 +2378,51 @@ mod tests {
             assert!(line.starts_with(&format!("{noun} {verb}")));
             // #320: the command a verb parses to is listed by that verb's own noun.
             assert_eq!(parsed.command.noun(), noun, "{line}");
+        }
+    }
+    // keeps: plugins §3b/§3c operator grants — ctl plugin trust carries the
+    // operator's grants and tier; no flag keeps the contract minimum.
+    #[test]
+    fn plugin_trust_parses_operator_grants_and_tier() {
+        use bbt_proto::gui::{
+            PLUGIN_ALL_REQUESTED, PluginFailurePolicy, PluginRequest, PluginTier,
+        };
+        let parsed = parse_full(&args(
+            "plugin trust /private/bboxy450-term-repo_graph-stub --grant payload_events --grant block:fail_closed --grant host_api:messages.send --grant messages_to:seats/x/inbox --tier export",
+        ))
+        .unwrap();
+        let Command::Plugin {
+            request: PluginRequest::Trust { grants, tier, .. },
+            ..
+        } = parsed.command
+        else {
+            panic!("not a trust request");
+        };
+        let grants = grants.unwrap();
+        assert_eq!(
+            grants.payload_events,
+            [PLUGIN_ALL_REQUESTED.to_owned()].into()
+        );
+        assert_eq!(grants.block, Some(PluginFailurePolicy::FailClosed));
+        assert_eq!(grants.host_api, ["messages.send".to_owned()].into());
+        assert_eq!(grants.messages_to, ["seats/x/inbox".to_owned()].into());
+        assert_eq!(tier, Some(PluginTier::Export));
+        let Command::Plugin {
+            request: PluginRequest::Trust { grants, tier, .. },
+            ..
+        } = parse_full(&args("plugin trust /private/x"))
+            .unwrap()
+            .command
+        else {
+            panic!("not a trust request");
+        };
+        assert_eq!((grants, tier), (None, None));
+        for bad in [
+            "plugin trust /private/x --grant block:sometimes",
+            "plugin trust /private/x --grant",
+            "plugin trust /private/x --tier root",
+        ] {
+            assert!(parse_full(&args(bad)).is_err(), "{bad}");
         }
     }
     #[test]

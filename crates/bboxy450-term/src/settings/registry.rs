@@ -96,6 +96,98 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
     }
 }
 
+/// Requested versus granted: every payload event, host API method and (with a
+/// `before` hook) block policy the trusted shape can be granted, plus any
+/// message destination already granted.
+fn grant_rows(
+    record: &bbt_proto::gui::PluginTrustRecord,
+    shape: &bbt_proto::gui::PluginShape,
+) -> Vec<bbt_ui::modules::settings::plugins::GrantRow> {
+    use bbt_proto::gui::{PLUGIN_ALL_REQUESTED, PluginFailurePolicy, PluginGrants};
+    use bbt_ui::modules::settings::plugins::GrantRow;
+    let requested = PluginGrants::requested_by(shape);
+    let granted = &record.grants;
+    let mut rows = Vec::new();
+    for event in &requested.payload_events {
+        rows.push(GrantRow {
+            name: format!("payload_events:{event}"),
+            granted: granted.payload_events.contains(event)
+                || granted.payload_events.contains(PLUGIN_ALL_REQUESTED),
+        });
+    }
+    for method in &requested.host_api {
+        rows.push(GrantRow {
+            name: format!("host_api:{method}"),
+            granted: granted.host_api.contains(method),
+        });
+    }
+    if shape
+        .hooks
+        .iter()
+        .any(|hook| hook.phase == bbt_proto::gui::PluginPhase::Before)
+    {
+        for (policy, name) in [
+            (PluginFailurePolicy::FailOpen, "block:fail_open"),
+            (PluginFailurePolicy::FailClosed, "block:fail_closed"),
+        ] {
+            rows.push(GrantRow {
+                name: name.into(),
+                granted: granted.block == Some(policy),
+            });
+        }
+    }
+    for destination in &granted.messages_to {
+        rows.push(GrantRow {
+            name: format!("messages_to:{destination}"),
+            granted: true,
+        });
+    }
+    rows
+}
+
+/// Apply one grant toggle; a revoked `*` payload grant becomes the explicit rest.
+fn set_grant(
+    grants: &mut bbt_proto::gui::PluginGrants,
+    grant: &str,
+    on: bool,
+) -> Result<(), String> {
+    use bbt_proto::gui::{PLUGIN_ALL_REQUESTED, PluginFailurePolicy};
+    match grant.split_once(':') {
+        Some(("payload_events", event)) => {
+            grants.payload_events.remove(PLUGIN_ALL_REQUESTED);
+            if on {
+                grants.payload_events.insert(event.into());
+            } else {
+                grants.payload_events.remove(event);
+            }
+        }
+        Some(("host_api", method)) => {
+            if on {
+                grants.host_api.insert(method.into());
+            } else {
+                grants.host_api.remove(method);
+            }
+        }
+        Some(("block", policy)) => {
+            let policy = match policy {
+                "fail_open" => PluginFailurePolicy::FailOpen,
+                "fail_closed" => PluginFailurePolicy::FailClosed,
+                _ => return Err(format!("unknown block policy {policy}")),
+            };
+            grants.block = on.then_some(policy);
+        }
+        Some(("messages_to", destination)) => {
+            if on {
+                grants.messages_to.insert(destination.into());
+            } else {
+                grants.messages_to.remove(destination);
+            }
+        }
+        _ => return Err(format!("unknown grant {grant}")),
+    }
+    Ok(())
+}
+
 fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
     use bbt_proto::gui::PluginState as State;
     use bbt_ui::modules::settings::plugins::{Contract, Health};
@@ -162,7 +254,13 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         }
         .into(),
         repo_local: entry.candidate.scope.name() == "repository",
-        grant: approved.map(|_| "no additional grants".into()),
+        grant: approved
+            .filter(|record| record.grants == Default::default())
+            .map(|_| "no additional grants".into()),
+        grants: approved
+            .zip(shape)
+            .map(|(record, shape)| grant_rows(record, shape))
+            .unwrap_or_default(),
         version: shape.map(|s| s.version.clone()),
         auth: shape
             .and_then(|s| s.auth.as_ref())
@@ -221,6 +319,31 @@ pub fn request(
             PluginRequest::Trust {
                 path: entry.candidate.source.clone(),
                 sha256: entry.candidate.sha256.clone(),
+                grants: None,
+                tier: None,
+            }
+        }
+        PluginIntent::Grant {
+            candidate,
+            grant,
+            on,
+        } => {
+            let entry = model
+                .plugin_registry
+                .as_ref()
+                .and_then(|entries| entries.iter().find(|e| e.candidate.id == candidate))
+                .ok_or("Plugin is no longer in the current inventory")?;
+            let record = entry
+                .trust
+                .as_ref()
+                .ok_or("Trust the plugin before changing its grants")?;
+            let mut grants = record.grants.clone();
+            set_grant(&mut grants, &grant, on)?;
+            PluginRequest::Trust {
+                path: entry.candidate.source.clone(),
+                sha256: Some(record.sha256.clone()),
+                grants: Some(grants),
+                tier: None,
             }
         }
         PluginIntent::Enabled {
@@ -413,6 +536,68 @@ mod tests {
         assert_eq!(plugin.contract.ok, None);
         assert!(!out.plugin_notice.as_ref().unwrap().contains("examples"));
     }
+    // keeps: plugins §3b/§3c operator grants — the card lists what the shape
+    // requests with the current grant, and a toggle re-trusts the same digest
+    // with exactly that grant changed.
+    #[test]
+    fn plugin_card_shows_requested_versus_granted_and_toggles_re_trust() {
+        use bbt_ui::modules::settings::controller::PluginIntent;
+        let mut value = serde_json::to_value(entry(Some(2))).unwrap();
+        value["trust"] = json!({"sha256":"a".repeat(64),"source":"/private/plugins/bboxy450-term-repo_graph-stub",
+            "copy":"/private/copy","data_dir":"/private/data","name":{"system":"repo_graph","provider":"stub"},
+            "scope":"repository","approved_tier":"export",
+            "grants":{"payload_events":["PreToolUse"]},
+            "shape":{"name":"stub","version":"1.0","shape_version":"1.0","health_command":"health","systems":[],
+                "hooks":[{"event":"PreToolUse","phase":"before","budget_ms":500}],"host_api":["messages.send"]}});
+        let entry: PluginEntry = serde_json::from_value(value).unwrap();
+        let rows = plugin(&entry).grants;
+        let shown: Vec<_> = rows.iter().map(|r| (r.name.as_str(), r.granted)).collect();
+        assert_eq!(
+            shown,
+            [
+                ("payload_events:PreToolUse", true),
+                ("host_api:messages.send", false),
+                ("block:fail_open", false),
+                ("block:fail_closed", false),
+            ]
+        );
+        let model = crate::model::Model {
+            plugin_registry: Some(std::sync::Arc::new(vec![entry])),
+            ..Default::default()
+        };
+        for (grant, on, check) in [
+            ("block:fail_closed", true, 0),
+            ("payload_events:PreToolUse", false, 1),
+            ("host_api:messages.send", true, 2),
+        ] {
+            let PluginRequest::Trust {
+                sha256,
+                grants: Some(grants),
+                tier: None,
+                ..
+            } = request(
+                &model,
+                PluginIntent::Grant {
+                    candidate: "candidate".into(),
+                    grant: grant.into(),
+                    on,
+                },
+            )
+            .unwrap()
+            else {
+                panic!("{grant}: not a re-trust with grants");
+            };
+            assert_eq!(sha256.as_deref(), Some(&*"a".repeat(64)));
+            match check {
+                0 => assert_eq!(
+                    grants.block,
+                    Some(bbt_proto::gui::PluginFailurePolicy::FailClosed)
+                ),
+                1 => assert!(grants.payload_events.is_empty()),
+                _ => assert!(grants.host_api.contains("messages.send")),
+            }
+        }
+    }
     #[test]
     fn stale_inventory_cannot_erase_a_more_recent_activation() {
         let current = entry(Some(3));
@@ -454,6 +639,8 @@ mod tests {
         let request = PluginRequest::Trust {
             path: entry(None).candidate.source,
             sha256: Some("a".repeat(64)),
+            grants: None,
+            tier: None,
         };
         let Some(crate::cockpit::UiMsg::PluginControl { id, .. }) =
             requests.issue(&model, request).unwrap()

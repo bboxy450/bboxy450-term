@@ -157,3 +157,19 @@ pub(crate) fn error(op_id: Ulid, code: &str, message: &str) -> Value {
     let data = json!({"op_id":op_id,"status":if code=="unknown"{"unknown"}else{"rejected"},"error":{"code":code,"message":message}});
     json!({"content":[{"type":"text","text":data.to_string()}],"structuredContent":data,"isError":true})
 }
+
+/// [`error`] carrying a provider's retry hint (`error.retry_after_ms`), as a
+/// busy plugin connection answers.
+pub(crate) fn error_retry(
+    op_id: Ulid,
+    code: &str,
+    message: &str,
+    retry_after_ms: Option<u64>,
+) -> Value {
+    let mut value = error(op_id, code, message);
+    if let Some(retry) = retry_after_ms {
+        value["structuredContent"]["error"]["retry_after_ms"] = retry.into();
+        value["content"][0]["text"] = value["structuredContent"].to_string().into();
+    }
+    value
+}

@@ -3953,10 +3953,11 @@ impl Worker {
             let _ = reply.send(journal.checked(
                 &actor,
                 &call,
-                crate::mcp::error(
+                crate::mcp::error_retry(
                     call.op_id,
                     "provider_busy",
                     "Knowledge read capacity is occupied; retry the call.",
+                    Some(100),
                 ),
             ));
             return;

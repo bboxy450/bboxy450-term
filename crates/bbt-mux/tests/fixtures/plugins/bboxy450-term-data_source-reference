@@ -18,8 +18,9 @@ DECLARED = [{"name":"echo","description":"Echo the arguments","role":"worker","t
   {"name":"audit","description":"Oracle-only audit","role":"oracle","timeout_ms":2000,
   "input_schema":{"type":"object"},"output_schema":{"type":"object"}}] if TOOLS else []
 # Hook tests: declared hooks; each delivered `hook` call is appended to
-# HOOK_LOG as one JSON line. DECISION is "allow", "deny" or "slow" (answers
-# after 1.5 s, beyond any test budget).
+# HOOK_LOG as one JSON line. DECISION is "allow", "deny", "deny-rm" (denies
+# only a payload whose tool_input.command contains "rm -rf") or "slow"
+# (answers after 1.5 s, beyond any test budget).
 HOOKS = []
 HOOK_LOG = None
 DECISION = "allow"
@@ -116,14 +117,21 @@ for line in sys.stdin:
             if HOOK_LOG:
                 with open(HOOK_LOG,"a") as log: log.write(json.dumps(args)+"\n")
             if DECISION=="slow": time.sleep(1.5)
-            decision={"decision":"deny","reason":"fixture veto"} if DECISION=="deny" else {"decision":"allow"}
+            command=((args.get("payload") or {}).get("tool_input") or {}).get("command","")
+            veto=DECISION=="deny" or (DECISION=="deny-rm" and "rm -rf" in str(command))
+            decision={"decision":"deny","reason":"fixture veto"} if veto else {"decision":"allow"}
             reply(req,{"structuredContent":decision});continue
         if name=="tool_host" and HOST_API:
+            # A delayed ask lets a test change the plugin's authority mid-call;
+            # the host's answer is also logged, since a superseded result is refused.
+            if DELAY_FILE and os.path.exists(DELAY_FILE): time.sleep(1)
             asked="h-"+str(req["id"])
             emit({"jsonrpc":"2.0","id":asked,"method":"host/"+args["method"],"params":args.get("params",{})})
             while True:
                 answer=json.loads(sys.stdin.readline())
                 if answer.get("id")==asked: break
+            if HOOK_LOG:
+                with open(HOOK_LOG,"a") as log: log.write(json.dumps({"host_answer":answer})+"\n")
             reply(req,{"structuredContent":{"answer":answer}});continue
         if DELAY_FILE and name!="health" and os.path.exists(DELAY_FILE):
             if CONCURRENT and name==SYSTEM+"_changes_since":

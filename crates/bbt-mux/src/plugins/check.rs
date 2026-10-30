@@ -71,7 +71,14 @@ async fn descriptor(account: &mut FixtureAccount, report: &mut CheckReport) -> R
     if let Some(fields) = value.as_object_mut() {
         fields.insert("p0_future_minor_field".into(), json!(true));
     }
-    account.cache_shape(parse_descriptor(value, &account.record.name)?)?;
+    let shape = parse_descriptor(value, &account.record.name)?;
+    if account.declared_grants {
+        account.record.grants = bbt_plugin::trust::Grants::requested_by(&shape);
+        report
+            .checks
+            .push("checked with every grant the shape requests (--declared-grants)".into());
+    }
+    account.cache_shape(shape)?;
     report.checks.push(
         "shape, versions, method names, fixed authority, hook ceilings and tool-name bounds".into(),
     );
@@ -683,8 +690,18 @@ pub(super) async fn prepared_with_deadline(
 
 /// Run only on an IO thread; all state and child processes belong to a temp root.
 pub async fn check(binary: &Path) -> CheckReport {
+    check_with(binary, false).await
+}
+
+/// [`check`], optionally granting everything the shape requests
+/// (`plugin check <binary> --declared-grants`), so a plugin with payload
+/// hooks or host API methods can pass without production trust.
+pub async fn check_with(binary: &Path, declared_grants: bool) -> CheckReport {
     match FixtureAccount::prepare(binary) {
-        Ok(mut account) => prepared(&mut account).await,
+        Ok(mut account) => {
+            account.declared_grants = declared_grants;
+            prepared(&mut account).await
+        }
         Err(error) => CheckReport {
             refusal: Some(error),
             ..Default::default()
@@ -822,7 +839,7 @@ pub async fn measure(binary: &Path, samples: usize) -> Result<Measurement, Refus
 pub fn run_cli(args: &[String]) -> i32 {
     if args.is_empty() || args.iter().any(|s| s == "--help" || s == "-h") {
         println!(
-            "bboxy450-term plugin check <binary>\nbboxy450-term plugin measure <binary> [--samples N]\nRuns in an isolated fixture account; never writes production trust."
+            "bboxy450-term plugin check <binary> [--declared-grants]\nbboxy450-term plugin measure <binary> [--samples N]\nRuns in an isolated fixture account; never writes production trust.\n--declared-grants checks with every grant the shape requests (payload events, host API)."
         );
         return 0;
     }
@@ -830,8 +847,10 @@ pub fn run_cli(args: &[String]) -> i32 {
         let [mode, binary, rest @ ..] = args else {
             return Err(failure("plugin_usage", "expected check|measure <binary>"));
         };
+        let declared = mode == "check" && rest == ["--declared-grants"];
         let samples = match rest {
             [] => 100,
+            [_] if declared => 100,
             [flag, count] if flag == "--samples" && mode == "measure" => count
                 .parse()
                 .map_err(|_| failure("invalid_sample_count", "expected an integer"))?,
@@ -843,7 +862,7 @@ pub fn run_cli(args: &[String]) -> i32 {
             .map_err(|e| failure("runtime_unavailable", e))?;
         match mode.as_str() {
             "check" => {
-                let report = runtime.block_on(check(Path::new(binary)));
+                let report = runtime.block_on(check_with(Path::new(binary), declared));
                 let ok = report.ok;
                 println!(
                     "{}",
@@ -983,6 +1002,38 @@ mod tests {
                 .unwrap_err()
                 .code,
             "major_mismatch"
+        );
+    }
+
+    // keeps: plugins §3b — the standalone checker passes a payload-hook
+    // plugin only when explicitly checked with the shape's declared grants.
+    #[tokio::test]
+    async fn standalone_check_applies_declared_grants_only_when_asked() {
+        let files = tempfile::tempdir().unwrap();
+        let source = files.path().join("bboxy450-term-repo_graph-reference");
+        let bytes =
+            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference")
+                .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
+                .replacen(
+                    "HOOKS = []",
+                    r#"HOOKS = [{"event":"PreToolUse","phase":"before","budget_ms":500}]"#,
+                    1,
+                );
+        fs::write(&source, bytes).unwrap();
+        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        let plain = check(&source).await;
+        assert!(!plain.ok);
+        assert_eq!(
+            plain.refusal.as_ref().map(|r| r.code.as_str()),
+            Some("payload_grant_required")
+        );
+        let declared = check_with(&source, true).await;
+        assert!(declared.ok, "{declared:?}");
+        assert!(
+            declared
+                .checks
+                .iter()
+                .any(|check| check.contains("--declared-grants"))
         );
     }
 }

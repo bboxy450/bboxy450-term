@@ -373,3 +373,67 @@ fn presentation_metadata_round_trips_and_legacy_shapes_still_validate() {
         assert_eq!(serde_json::to_value(&cached).unwrap()[field], value[field]);
     }
 }
+
+// keeps: plugins §3b/§3c operator grants — a grant is only ever a subset of
+// what the trusted shape requests, and grants raise the implied tier.
+#[test]
+fn operator_grants_are_a_subset_of_the_shape_request_and_imply_their_tier() {
+    use bbt_plugin::{
+        policy::{FailurePolicy, Tier},
+        registry::Approval,
+        trust::{ALL_REQUESTED, Grants},
+    };
+    let name = PluginName::parse("bboxy450-term", "bboxy450-term-repo_graph-reference").unwrap();
+    let shape: Shape = serde_json::from_value(json!({"name":"repo","version":"1.0","shape_version":"1.0","health_command":"health",
+        "systems":[{"contract":"repo_graph","contract_version":"1.0","commands":Contract::RepoGraph.methods().iter().map(|name|json!({
+            "name":name,"args":{},"result":{},"timeout_ms":1000})).collect::<Vec<_>>()}],
+        "hooks":[{"event":"PreToolUse","phase":"before","budget_ms":500}],
+        "host_api":["messages.send"]}))
+    .unwrap();
+    let requested = Grants::requested_by(&shape);
+    assert_eq!(requested.payload_events, ["PreToolUse".to_owned()].into());
+    assert_eq!(requested.host_api, ["messages.send".to_owned()].into());
+    let mut grants = requested.clone();
+    grants.block = Some(FailurePolicy::FailClosed);
+    grants.messages_to.insert("seats/x/inbox".into());
+    grants.within(&shape).unwrap();
+    let all = Grants {
+        payload_events: [ALL_REQUESTED.to_owned()].into(),
+        ..Grants::default()
+    };
+    all.within(&shape).unwrap();
+    for (grant, code) in [
+        (
+            Grants {
+                payload_events: ["PostToolUse".to_owned()].into(),
+                ..Grants::default()
+            },
+            "payload_events:PostToolUse",
+        ),
+        (
+            Grants {
+                host_api: ["records.search".to_owned()].into(),
+                ..Grants::default()
+            },
+            "host_api:records.search",
+        ),
+        (
+            Grants {
+                messages_to: ["seats/x/inbox".to_owned()].into(),
+                ..Grants::default()
+            },
+            "messages_to needs the messages.send grant",
+        ),
+    ] {
+        let refused = grant.within(&shape).unwrap_err();
+        assert_eq!(refused.code, "grant_not_requested");
+        assert_eq!(refused.message, code);
+    }
+    assert_eq!(Approval::implied(&name, Grants::default()).tier, Tier::Read);
+    assert_eq!(Approval::implied(&name, grants).tier, Tier::Export);
+    let write = Grants {
+        host_api: ["messages.send".to_owned()].into(),
+        ..Grants::default()
+    };
+    assert_eq!(Approval::implied(&name, write).tier, Tier::Write);
+}

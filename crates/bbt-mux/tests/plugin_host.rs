@@ -750,3 +750,43 @@ async fn host_api_requests_without_grants_are_refused() {
         );
     }
 }
+
+// keeps: G7 host API / PluginHostApi — a request on a connection whose
+// activation was superseded mid-call (disable then enable: A -> B -> A) is
+// refused with provider_changed, never served under the old authority.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_host_request_after_the_activation_changed_is_refused_provider_changed() {
+    let f = Fixture::with(host_api_variant(&["events.publish"])).await;
+    f.bus();
+    let host = f.host.clone();
+    let tool = host
+        .seat_tools()
+        .iter()
+        .find(|tool| tool.name.ends_with("_host"))
+        .cloned()
+        .unwrap();
+    fs::write(&f.delay, b"").unwrap();
+    let asked = tokio::task::spawn_blocking(move || {
+        host.call_seat_tool(
+            &tool,
+            json!({"method": "events.publish", "params": {"subject": "late"}}),
+            Instant::now() + Duration::from_secs(10),
+        )
+    });
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    f.enable(false);
+    f.enable(true);
+    let call = asked.await.unwrap();
+    assert!(
+        call.is_err(),
+        "the superseded call's result is refused: {call:?}"
+    );
+    let answers: Vec<_> = f
+        .wait_for_hooks(1)
+        .await
+        .into_iter()
+        .filter_map(|line| line.get("host_answer").cloned())
+        .collect();
+    assert_eq!(answers.len(), 1, "{answers:?}");
+    assert_eq!(answers[0]["error"]["data"]["code"], "provider_changed");
+}

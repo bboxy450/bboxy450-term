@@ -250,7 +250,31 @@ fn prepare(
                     "plugin_changed_since_observed: refresh the registry and explicitly trust the current digest",
                 ));
             }
-            registry.trust(actor, id, digest, None).map_err(refusal)?
+            let approval = match request {
+                PluginRequest::Trust {
+                    grants: None,
+                    tier: None,
+                    ..
+                } => None,
+                PluginRequest::Trust { grants, tier, .. } => {
+                    let name =
+                        entry.candidate.name.as_ref().ok_or_else(|| {
+                            invalid("plugin_refused: candidate has no parsed name")
+                        })?;
+                    let mut approval = bbt_plugin::registry::Approval::implied(
+                        name,
+                        grants.clone().unwrap_or_default(),
+                    );
+                    if let Some(tier) = tier {
+                        approval.tier = *tier;
+                    }
+                    Some(approval)
+                }
+                _ => None,
+            };
+            registry
+                .trust(actor, id, digest, approval)
+                .map_err(refusal)?
         }
         PluginRequest::Enable { .. } => registry.set_enabled(actor, id, true).map_err(refusal)?,
         PluginRequest::Disable { .. } => registry.set_enabled(actor, id, false).map_err(refusal)?,

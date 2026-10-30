@@ -4,7 +4,8 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Account-owned plugin controls. Setup and grant widening have no CLI in this cut.
+//! Account-owned plugin controls. `plugin trust` takes the operator's grants;
+//! setup has no CLI in this cut.
 use super::*;
 use bbt_proto::gui::PluginRequest;
 
@@ -32,9 +33,15 @@ pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, Str
             ["plugin", "list"] => PluginRequest::List,
             ["plugin", "trust", path] => {
                 let path = std::path::absolute(path).map_err(|error| error.to_string())?;
+                let (grants, tier) = approval(
+                    cx.flags.get("grant").map(String::as_str),
+                    cx.flags.get("tier").map(String::as_str),
+                )?;
                 PluginRequest::Trust {
                     path: path.to_str().ok_or("plugin path must be UTF-8")?.into(),
                     sha256: None,
+                    grants,
+                    tier,
                 }
             }
             ["plugin", "enable", candidate] => PluginRequest::Enable {
@@ -49,6 +56,56 @@ pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, Str
             _ => return Ok(None),
         },
     }))
+}
+
+/// `[--tier T] [--grant payload_events[:<event>]] [--grant block:<fail_open|fail_closed>]
+/// [--grant host_api:<method>] [--grant messages_to:<destination>]…`. No flag
+/// keeps the contract minimum; the host refuses a grant the shape never requested.
+type Approval = (
+    Option<bbt_proto::gui::PluginGrants>,
+    Option<bbt_proto::gui::PluginTier>,
+);
+fn approval(grant: Option<&str>, tier: Option<&str>) -> Result<Approval, String> {
+    use bbt_proto::gui::{PluginFailurePolicy as FailurePolicy, PluginTier as Tier};
+    let tier = tier
+        .map(|value| match value {
+            "read" => Ok(Tier::Read),
+            "write" => Ok(Tier::Write),
+            "export" => Ok(Tier::Export),
+            "transport" => Ok(Tier::Transport),
+            _ => Err(format!("unknown tier {value}")),
+        })
+        .transpose()?;
+    let mut grants = bbt_proto::gui::PluginGrants::default();
+    let values: Vec<&str> = grant
+        .map(|all| all.split('\n').collect())
+        .unwrap_or_default();
+    for value in &values {
+        match value.split_once(':') {
+            None if *value == "payload_events" => {
+                grants
+                    .payload_events
+                    .insert(bbt_proto::gui::PLUGIN_ALL_REQUESTED.into());
+            }
+            Some(("payload_events", event)) if !event.is_empty() => {
+                grants.payload_events.insert(event.into());
+            }
+            Some(("block", "fail_open")) => grants.block = Some(FailurePolicy::FailOpen),
+            Some(("block", "fail_closed")) => grants.block = Some(FailurePolicy::FailClosed),
+            Some(("host_api", method)) if !method.is_empty() => {
+                grants.host_api.insert(method.into());
+            }
+            Some(("messages_to", destination)) if !destination.is_empty() => {
+                grants.messages_to.insert(destination.into());
+            }
+            _ => {
+                return Err(format!(
+                    "unknown grant {value}: payload_events[:<event>], block:<fail_open|fail_closed>, host_api:<method>, messages_to:<destination>"
+                ));
+            }
+        }
+    }
+    Ok(((!values.is_empty()).then_some(grants), tier))
 }
 
 pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {

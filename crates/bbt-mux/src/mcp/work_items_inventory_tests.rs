@@ -203,6 +203,15 @@ impl DataSource for Corpus {
     }
     fn fetch_until(&self, request: d::FetchRequest, deadline: Instant) -> d::Result<d::Record> {
         self.calls.lock().unwrap().deadlines.push(deadline);
+        if let Some(delay) = self.delay {
+            std::thread::sleep(delay.min(deadline.saturating_duration_since(Instant::now())));
+        }
+        if Instant::now() >= deadline {
+            return Err(d::CommandError::new(
+                "plugin_timeout",
+                "fixture call timed out",
+            ));
+        }
         self.fetch(request)
     }
     fn search(&self, _: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
@@ -645,5 +654,57 @@ fn task_inventory_stops_at_one_overall_deadline_with_a_named_error() {
             && *at > started
             && *at <= started + TASK_LIST_BUDGET + Duration::from_millis(100)),
         "every call shares the one operation deadline"
+    );
+}
+
+// keeps: G6 — replaying a retained task_list rechecks its items under the
+// same one overall deadline; what it cannot recheck in time is not replayed.
+#[test]
+fn task_list_replay_recheck_stops_at_the_same_overall_deadline() {
+    let mut f = Fixture::new();
+    let actor = Actor::Operator {
+        device_id: Ulid::new(),
+        door: Door::Gui,
+        issued_by: None,
+    };
+    let call = Call {
+        op_id: Ulid::new(),
+        tool: "task_list".into(),
+        args: json!({"limit":12}),
+    };
+    let items: Vec<_> = f.source.rows[10_000..10_012]
+        .iter()
+        .map(|row| json!({"path": row.reference.path}))
+        .collect();
+    let retained = json!({"isError": false, "structuredContent": {"items": items}});
+    assert!(retained_allowed(
+        &ProviderTasks(&f.source, None),
+        &f.registry,
+        &actor,
+        &call,
+        &retained
+    ));
+    // Twelve fetches at 0.9 s each take 10.8 s without the replay deadline.
+    f.source.delay = Some(Duration::from_millis(900));
+    f.source.calls.lock().unwrap().deadlines.clear();
+    let started = Instant::now();
+    let allowed = retained_allowed(
+        &ProviderTasks(&f.source, None),
+        &f.registry,
+        &actor,
+        &call,
+        &retained,
+    );
+    let elapsed = started.elapsed();
+    assert!(!allowed, "an unverified retained item must not be replayed");
+    assert!(
+        elapsed < TASK_LIST_BUDGET + Duration::from_millis(500),
+        "{elapsed:?}"
+    );
+    let calls = f.source.calls.lock().unwrap();
+    assert!(!calls.deadlines.is_empty(), "replay fetches were unbounded");
+    assert!(
+        calls.deadlines.iter().all(|at| *at == calls.deadlines[0]),
+        "every replay fetch shares the one deadline"
     );
 }

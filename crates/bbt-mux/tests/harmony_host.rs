@@ -349,6 +349,8 @@ async fn reference_provider_schemas_fit_a_multi_provider_inventory() {
                 PluginRequest::Trust {
                     path: source.to_str().unwrap().into(),
                     sha256: None,
+                    grants: None,
+                    tier: None,
                 },
                 origin(),
             )
@@ -580,6 +582,8 @@ async fn selected_source_owns_signed_documents_and_slug_task_lifecycle_without_b
                     .unwrap()
                     .into(),
                 sha256: None,
+                grants: None,
+                tier: None,
             },
             Some(scope_a),
             origin(),
@@ -1361,6 +1365,8 @@ async fn real_gitkb_host_lifecycle() {
             PluginRequest::Trust {
                 path: source.to_str().unwrap().into(),
                 sha256: None,
+                grants: None,
+                tier: None,
             },
             Some(scope),
             origin(),

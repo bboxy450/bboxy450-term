@@ -44,6 +44,15 @@ pub struct Call {
 pub struct IntentPending {
     pub verb: String,
 }
+/// One grant the trusted shape requests (`payload_events:<event>`,
+/// `host_api:<method>`, `block:<fail_open|fail_closed>`), and whether the
+/// operator granted it. Toggling it re-trusts with the changed grants.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GrantRow {
+    pub name: String,
+    pub granted: bool,
+}
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct IntentRefused {
@@ -68,6 +77,9 @@ pub struct Plugin {
     pub trust: String,
     pub repo_local: bool,
     pub grant: Option<String>,
+    /// What the trusted shape requests, each with the operator's current grant.
+    #[serde(skip)]
+    pub grants: Vec<GrantRow>,
     pub version: Option<String>,
     pub auth: Option<String>,
     pub health: Health,
@@ -516,6 +528,18 @@ impl Settings {
             }
             if let Some(grant) = &plugin.grant {
                 chips.push(chip(b, &format!("{key}/grant"), grant, None).into());
+            }
+            // Requested versus granted: each button grants or revokes one.
+            for (j, grant) in plugin.grants.iter().enumerate() {
+                let label = if grant.granted {
+                    format!("granted {} · revoke", grant.name)
+                } else {
+                    format!("requested {} · grant", grant.name)
+                };
+                chips.push(
+                    b.button(&format!("{key}/grant{j}"), &label, None, "quiet")
+                        .into(),
+                );
             }
             if plugin.trace {
                 chips.push(chip(b, &format!("{key}/trace"), "trace", None).into());

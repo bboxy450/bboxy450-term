@@ -48,6 +48,10 @@ mod inventory_tests;
 pub(crate) trait TaskDocuments {
     fn import_root(&self) -> Checked<std::path::PathBuf>;
     fn locate(&self, locator: &str) -> Checked<Document>;
+    /// [`TaskDocuments::locate`] bounded by `deadline` (local sources need no bound).
+    fn locate_before(&self, locator: &str, _deadline: Instant) -> Checked<Document> {
+        self.locate(locator)
+    }
     /// Return an authorized page plus one lookahead, with no unrelated body reads.
     fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>>;
 }
@@ -77,6 +81,15 @@ impl TaskDocuments for ProviderTasks<'_> {
             })
             .map_err(|e| e.to_string())?;
         self.fetch(reference, None)
+    }
+    fn locate_before(&self, locator: &str, deadline: Instant) -> Checked<Document> {
+        let locator = locator.strip_prefix(".bboxy/").unwrap_or(locator);
+        let reference = within(deadline, || {
+            self.0.resolve(d::ResolveRequest {
+                locator: locator.into(),
+            })
+        })?;
+        self.fetch(reference, Some(deadline))
     }
     fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
         if self
@@ -909,11 +922,15 @@ pub(crate) fn retained_allowed(
     if value["isError"] == true {
         return true;
     }
+    // A replay rechecks every retained item under the same overall budget as
+    // the first run; an item it cannot recheck in time is not replayed.
+    let deadline = Instant::now() + TASK_LIST_BUDGET;
     let allowed = |item: &Value| {
-        item["path"]
-            .as_str()
-            .and_then(|path| index.locate(path).ok())
-            .is_some_and(|doc| authorize(&doc, registry, actor).is_ok())
+        Instant::now() < deadline
+            && item["path"]
+                .as_str()
+                .and_then(|path| index.locate_before(path, deadline).ok())
+                .is_some_and(|doc| authorize(&doc, registry, actor).is_ok())
     };
     match call.tool.as_str() {
         "task_status" => allowed(&value["structuredContent"]),

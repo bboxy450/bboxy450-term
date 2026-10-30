@@ -103,6 +103,8 @@ impl Fixture {
             PluginRequest::Trust {
                 path: self.path.to_string_lossy().into_owned(),
                 sha256: None,
+                grants: None,
+                tier: None,
             },
         )
         .await
@@ -156,6 +158,8 @@ async fn operator_controls_inspect_once_replay_and_refuse_a_changed_source() {
     let trust = PluginRequest::Trust {
         path: f.path.to_str().unwrap().into(),
         sha256: None,
+        grants: None,
+        tier: None,
     };
     let op = Ulid::new();
     let trusted = f.ask(op, trust.clone()).await.unwrap();
@@ -218,7 +222,9 @@ async fn arbitrary_path_and_symlink_never_authorize_a_run() {
             Ulid::new(),
             PluginRequest::Trust {
                 path: outside.to_string_lossy().into_owned(),
-                sha256: None
+                sha256: None,
+                grants: None,
+                tier: None,
             }
         )
         .await
@@ -233,7 +239,9 @@ async fn arbitrary_path_and_symlink_never_authorize_a_run() {
             Ulid::new(),
             PluginRequest::Trust {
                 path: linked.to_string_lossy().into_owned(),
-                sha256: None
+                sha256: None,
+                grants: None,
+                tier: None,
             }
         )
         .await
@@ -259,6 +267,8 @@ async fn observed_digest_change_is_refused_before_trust_or_inspection() {
             PluginRequest::Trust {
                 path: f.path.to_string_lossy().into_owned(),
                 sha256: entry.candidate.sha256,
+                grants: None,
+                tier: None,
             },
         )
         .await
@@ -290,6 +300,8 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
                 PluginRequest::Trust {
                     path: f.path.to_string_lossy().into_owned(),
                     sha256: None,
+                    grants: None,
+                    tier: None,
                 },
             )
             .await
@@ -308,6 +320,8 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
             PluginRequest::Trust {
                 path: other.to_string_lossy().into_owned(),
                 sha256: None,
+                grants: None,
+                tier: None,
             },
         )
         .await
@@ -610,6 +624,8 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
             PluginRequest::Trust {
                 path: other.to_string_lossy().into_owned(),
                 sha256: None,
+                grants: None,
+                tier: None,
             },
         )
         .await

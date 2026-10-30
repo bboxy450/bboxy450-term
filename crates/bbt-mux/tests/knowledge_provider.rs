@@ -178,6 +178,8 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         PluginRequest::Trust {
             path: source.to_str().unwrap().into(),
             sha256: None,
+            grants: None,
+            tier: None,
         },
     )
     .await;
@@ -623,6 +625,8 @@ async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
         PluginRequest::Trust {
             path: source.to_str().unwrap().into(),
             sha256: None,
+            grants: None,
+            tier: None,
         },
     )
     .await;
