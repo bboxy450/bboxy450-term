@@ -1,0 +1,33 @@
+{
+  "role": "Executor",
+  "request": "Repair terminal and UI text selection and enable terminal link clicks.",
+  "worktree": "/Users/feral/mydev/bboxy450-term-spawn-params",
+  "branch": "fix/selection-links-20261029",
+  "scope": [
+    "crates/bbt-ui/src/text_selection.rs shared retained read-only selection",
+    "crates/bboxy450-term/src terminal gestures, copy, cursors and async URL opening",
+    "private unit/process witnesses and formal SelectionGesture pair"
+  ],
+  "acceptance": {
+    "terminal": "Unmodified primary drag works even if the TUI sets mouse mode; Unicode copy uses displayed cells and generation fencing.",
+    "ui": "Read-only Settings/chat/doc text uses retained shaped runs and clip geometry; native Copy and Cmd-C share private/native clipboard paths.",
+    "links": "Cmd-click displayed OSC 8 and detected HTTP/HTTPS/mailto/local-file URLs; test accounts never open a browser.",
+    "formal": "Selection source replacement invalidates capture, with a failing broken control."
+  },
+  "verified": [
+    {
+      "command": "make test-text-selection test-text-selection-e2e check-text-selection",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/text-selection-tests-20261029.log"
+    }
+  ],
+  "pending": [
+    "exact-commit make test and formal receipt",
+    "parity",
+    "signed install and installed smoke"
+  ],
+  "limits": [
+    "No OS pointer injection or operator clipboard access in tests.",
+    "Plain local path detection and other URI schemes are outside this cut."
+  ]
+}

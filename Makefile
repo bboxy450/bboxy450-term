@@ -1311,3 +1311,17 @@ publish-tlc-crate:
 	if git -C "$$mirror" rev-parse -q --verify "refs/tags/v$$version" >/dev/null; then git -C "$$mirror" verify-tag "v$$version"; else git -C "$$mirror" tag -s "v$$version" -m "bboxy450-tlc $$version"; fi; \
 	python3 -I scripts/crates-publisher.py --receipt '$(abspath $(TARGET_DIR))/crates-publisher.json' --target '$(abspath $(TARGET_DIR))'; \
 	gpg --verify "$$file.asc" "$$file"
+
+.PHONY: test-text-selection check-text-selection
+test-text-selection:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --lib text_selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib terminal_selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) selection
+
+check-text-selection:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-text-selection-e2e
+test-text-selection-e2e:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir selection_ -- --ignored --nocapture

@@ -4346,7 +4346,7 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
         ]);
     }
     let mut f = Fixture::new();
-    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[2J\\033[Hcopy 界e\u{301}  row\\r\\nsecond   \\r\\n'\nexec /bin/cat\n").unwrap();
+    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[?1000h\\033[2J\\033[Hcopy 界e\u{301}  row\\r\\nsecond   \\r\\n'\nexec /bin/cat\n").unwrap();
     f.start();
     let initial = f.ctl(&["ui", "layout"]);
     let swarm = initial["swarm"].as_str().unwrap();
@@ -4578,4 +4578,43 @@ fn seat_context_actions_assign_captured_tasks_and_confirm_only_the_target_kill()
             .is_empty(),
         "kill is distinct from undo-close grace"
     );
+}
+
+#[test]
+#[ignore = "private retained settings drag/copy; make test-text-selection-e2e"]
+fn ui_selection_copies_read_only_settings_text_through_native_copy() {
+    fn find(nodes: &Value, text: &str) -> Option<Value> {
+        for n in nodes.as_array()? {
+            if n["text"].as_str() == Some(text) {
+                return Some(n.clone());
+            }
+            if let Some(found) = find(&n["children"], text) {
+                return Some(found);
+            }
+        }
+        None
+    }
+    let mut f = Fixture::new();
+    f.start();
+    f.ctl(&["ui", "key", "cmd-t"]);
+    type_keys(&f, "settings roles");
+    f.ctl(&["ui", "key", "enter"]);
+    let label = "Default system prompt";
+    let frame = f.ctl(&["ui", "layout"]);
+    let node =
+        find(&frame["tree"], label).unwrap_or_else(|| panic!("missing settings text: {frame}"));
+    let r = node["rect"].as_array().unwrap();
+    let x = r[0].as_f64().unwrap();
+    let y = r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.;
+    let end = x + r[2].as_f64().unwrap() - 0.5;
+    let coords = [x + 0.5, y, end, y].map(|n| n.round().to_string());
+    f.ctl(&[
+        "ui", "select", &coords[0], &coords[1], &coords[2], &coords[3],
+    ]);
+    f.ctl(&["ui", "key", "cmd-c"]);
+    assert_eq!(f.ctl(&["ui", "clipboard-read"])["test_clipboard"], label);
+    f.ctl(&["ui", "copy"]);
+    assert_eq!(f.ctl(&["ui", "clipboard-read"])["test_clipboard"], label);
+    f.ctl(&["app", "stop"]);
+    assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }

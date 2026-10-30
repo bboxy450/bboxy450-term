@@ -7,7 +7,16 @@
 //! GUI selection over the exact displayed cells. No parser, IO or clipboard effects.
 use std::sync::Arc;
 
-use bbt_core::term::{TermMode, cell::Flags};
+use bbt_core::term::cell::Flags;
+
+pub fn web_link(uri: &str) -> bool {
+    (uri.starts_with("https://")
+        || uri.starts_with("http://")
+        || uri.starts_with("mailto:")
+        || uri.starts_with("file:///")
+        || uri.starts_with("file://localhost/"))
+        && !uri.chars().any(|c| c.is_control() || c.is_whitespace())
+}
 use bbt_proto::{Screen, SeatId, View};
 use bbt_ui_model::layout::Rect;
 
@@ -46,8 +55,54 @@ impl Display {
             && self.cell == other.cell
             && self.historical_row == other.historical_row
     }
-    pub fn allows_selection(&self, shift: bool) -> bool {
-        shift || self.screen.modes & TermMode::MOUSE_MODE.bits() as u64 == 0
+    pub fn allows_selection(&self, _shift: bool) -> bool {
+        // The host currently owns pointer gestures; it does not forward mouse reports.
+        // Enabling a TUI mouse mode must not leave that gesture with no owner.
+        true
+    }
+    /// OSC 8 labels and ordinary web URLs use exactly the last displayed cells.
+    pub fn link_at(&self, at: [f32; 2]) -> Option<String> {
+        if !self.contains(at) {
+            return None;
+        }
+        let row = ((at[1] - self.rect.y) / self.cell[1]).floor() as usize;
+        let col = ((at[0] - self.rect.x) / self.cell[0]).floor() as usize;
+        let cells = self.screen.cells.get(row)?;
+        if let Some(link) = cells.get(col)?.hyperlink() {
+            return web_link(link.uri()).then(|| link.uri().to_owned());
+        }
+        let index = row * self.screen.cols + col;
+        let cell = |n: usize| {
+            self.screen
+                .cells
+                .get(n / self.screen.cols)?
+                .get(n % self.screen.cols)
+        };
+        let joins = |left: usize| cell(left).is_some_and(|c| c.flags.contains(Flags::WRAPLINE));
+        let valid = |c: char| !c.is_whitespace() && !matches!(c, '<' | '>' | '"' | '\'' | '`');
+        let mut a = index;
+        let mut b = index + 1;
+        while a > 0
+            && (!a.is_multiple_of(self.screen.cols) || joins(a - 1))
+            && cell(a - 1).is_some_and(|c| valid(c.c))
+        {
+            a -= 1;
+        }
+        while b < self.screen.rows * self.screen.cols
+            && (!b.is_multiple_of(self.screen.cols) || joins(b - 1))
+            && cell(b).is_some_and(|c| valid(c.c))
+        {
+            b += 1;
+        }
+        let token: String = (a..b)
+            .filter_map(cell)
+            .filter(|c| !c.flags.contains(Flags::WIDE_CHAR_SPACER))
+            .map(|c| c.c)
+            .collect();
+        let target = token
+            .trim_start_matches(['(', '[', '{'])
+            .trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '}']);
+        web_link(target).then(|| target.to_owned())
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -244,6 +299,7 @@ impl SelectionState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbt_core::term::TermMode;
     fn display(bytes: &[u8], cols: usize, rows: usize) -> Display {
         let mut term = bbt_core::Term::new(cols, rows, 0);
         term.advance(bytes);
@@ -266,6 +322,44 @@ mod tests {
         assert!(s.extend(d, b));
         s.release();
         s
+    }
+    #[test]
+    fn terminal_links_osc8_plain_wrapped_urls_and_inert_schemes() {
+        let d = display(b"see https://example.com/a then", 40, 2);
+        assert_eq!(
+            d.link_at([70., 1.]).as_deref(),
+            Some("https://example.com/a")
+        );
+        assert_eq!(d.link_at([0., 1.]), None);
+        let d = display(b"https://example.com/path", 12, 3);
+        assert_eq!(
+            d.link_at([10., 21.]).as_deref(),
+            Some("https://example.com/path")
+        );
+        let d = display(
+            b"\x1b]8;;https://example.com/hidden\x1b\\label\x1b]8;;\x1b\\",
+            40,
+            2,
+        );
+        assert_eq!(
+            d.link_at([10., 1.]).as_deref(),
+            Some("https://example.com/hidden")
+        );
+        for uri in [
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "file://remote/tmp/no",
+            "https://evil.example/\nrun",
+        ] {
+            assert!(!web_link(uri));
+        }
+        let d = display(
+            b"\x1b]8;;javascript:alert(1)\x1b\\label\x1b]8;;\x1b\\",
+            40,
+            2,
+        );
+        assert!(d.link_at([10., 1.]).is_none());
+        assert!(d.link_at([-10., 1.]).is_none());
     }
     #[test]
     fn repeated_drag_inside_a_cell_or_at_a_clamped_edge_has_no_changed_work() {
@@ -377,7 +471,7 @@ mod tests {
         let mut other = d.clone();
         Arc::make_mut(&mut other.screen).modes = TermMode::MOUSE_REPORT_CLICK.bits() as u64;
         let mut s = SelectionState::default();
-        assert!(!s.begin(other.clone(), [0., 1.], false));
+        assert!(s.begin(other.clone(), [0., 1.], false));
         assert!(s.begin(other, [0., 1.], true));
     }
 }

@@ -138,7 +138,11 @@ impl App {
         self.terminal_selection.text(&display)
     }
     pub(super) fn copy_terminal_selection(&mut self) -> bool {
-        let Some(text) = self.terminal_copy_text() else {
+        let Some(text) = self
+            .ui_selection
+            .text()
+            .or_else(|| self.terminal_copy_text())
+        else {
             return false;
         };
         // Test-account windows have a private in-memory clipboard provider. Neither native
@@ -177,5 +181,127 @@ impl App {
             );
         }
         vec![bbt_ui::components::Paint::Draw(draw)]
+    }
+}
+
+impl App {
+    pub(super) fn open_terminal_link(&mut self, seat: SeatId, at: [f32; 2]) -> bool {
+        let Some(uri) = self.terminal_display(seat).and_then(|d| d.link_at(at)) else {
+            return false;
+        };
+        self.logger.write(format!("terminal link: {uri}"));
+        if !self.test_account {
+            let logger = self.logger.clone();
+            bbt_rt::handle().spawn(async move {
+                #[cfg(target_os = "macos")]
+                let mut command = tokio::process::Command::new("/usr/bin/open");
+                #[cfg(target_os = "linux")]
+                let mut command = tokio::process::Command::new("xdg-open");
+                #[cfg(target_os = "windows")]
+                let mut command = {
+                    let mut c = tokio::process::Command::new("rundll32.exe");
+                    c.arg("url.dll,FileProtocolHandler");
+                    c
+                };
+                #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+                {
+                    logger.write("opening links is unavailable on this platform");
+                    return;
+                }
+                #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+                {
+                    command.arg(uri).kill_on_drop(true);
+                    match tokio::time::timeout(Duration::from_secs(10), command.status()).await {
+                        Ok(Ok(status)) if status.success() => {}
+                        result => logger.write(format!("open terminal link failed: {result:?}")),
+                    }
+                }
+            });
+        }
+        true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn selection_pointer_owns_mouse_mode_and_command_link_uses_displayed_frame() {
+        if crate::lazy_projection_tests::isolated_ui_case(
+            "terminal_clipboard::tests::selection_pointer_owns_mouse_mode_and_command_link_uses_displayed_frame",
+        ) {
+            return;
+        }
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(1), bbt_mux::Ulid(90), "link seat", "zsh");
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        let view = bbt_proto::View {
+            seat: bbt_mux::Ulid(1),
+            generation: model.ui.seats[&seat].process_generation,
+            view_generation: bbt_mux::Ulid(7),
+        };
+        model.screen_baselines.insert(seat, (view, 0));
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.scene.set_model(&model, &model.ui.window.stage);
+        app.live_state = Some(Arc::new(model));
+        app.solve_ui([1400., 1000.]).unwrap();
+        let body = app
+            .pane_bounds
+            .iter()
+            .find(|(id, _)| *id == seat)
+            .unwrap()
+            .1;
+        let mut term = bbt_core::Term::new(40, 2, 0);
+        term.advance(b"\x1b[?1000hhttps://example.com/path");
+        let display = Display {
+            seat,
+            view,
+            screen: Arc::new(bbt_proto::Screen::from_term(
+                &term,
+                String::new(),
+                None,
+                None,
+            )),
+            rect: Rect::new(body.x, body.y, body.w.min(400.), 40.),
+            cell: [10., 20.],
+            historical_row: None,
+        };
+        app.frame_observations.record_displayed([display]);
+        let at = [body.x + 1., body.y + 1.];
+        app.pointer_pressed(at);
+        assert!(
+            app.terminal_selection.dragging,
+            "ordinary native drag must own TUI mouse mode"
+        );
+        app.extend_terminal_selection([body.x + 50., body.y + 1.]);
+        app.pointer_released();
+        assert_eq!(app.terminal_copy_text().as_deref(), Some("https"));
+        app.modifiers = ModifiersState::SUPER;
+        assert_eq!(app.cursor_at(at), bbt_ui::cursor::Cursor::Pointer);
+        app.pointer_pressed(at);
+        assert!(
+            !app.terminal_selection.dragging,
+            "command click must activate the link rather than start selection"
+        );
+        assert!(
+            app.open_terminal_link(seat, at),
+            "private account must consume link without launching browser"
+        );
+        let mut other = app.live_state.as_deref().unwrap().clone();
+        other.screen_baselines.get_mut(&seat).unwrap().0.generation += 1;
+        app.live_state = Some(Arc::new(other));
+        assert!(
+            !app.open_terminal_link(seat, at),
+            "stale displayed frame must never launch"
+        );
     }
 }

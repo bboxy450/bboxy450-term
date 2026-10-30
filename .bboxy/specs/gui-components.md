@@ -551,3 +551,15 @@ preference and system click interval. Fill restores the prior frame on the
 next invocation. Native dragging consumes only a physical NSEvent; ctl clicks
 never inject an operating-system drag. Menus, keyboard shortcuts and title-bar
 controls share the application's action dispatcher.
+
+### Native read-only selection (operator, 2026-10-29)
+
+Retained selectable text in Settings, chat and document content supports primary
+pointer drag and native Copy/⌘C. Selection uses painted text runs and their clips;
+editable fields retain their own editor and actionable controls retain their clicks.
+Changing text/geometry retires the read-only range. Terminal pointer gestures are
+host-owned until terminal mouse forwarding exists, so a TUI's mouse-reporting flag
+does not disable dragging. ⌘-click opens OSC 8 HTTP/HTTPS/mailto and local file targets or detected
+web URLs from the displayed terminal grid; ordinary dragging still selects them.
+Platform URL launch is asynchronous and test accounts record it without opening a
+browser. Other URI schemes remain inert in this cut.

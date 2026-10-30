@@ -770,8 +770,59 @@ fn landing_verification(b: bool) -> Model {
     m
 }
 
+// Atomic host actions: publish, press, move, release, copy; no IO completion.
+// Two source changes cover A -> B -> A while capture from A must remain retired.
+fn selection_gesture(b: bool) -> Model {
+    let mut m = model(
+        "SelectionGesture",
+        b,
+        &[
+            ("source", 2, 0),
+            ("captured", 2, 0),
+            ("gesture", 1, 0),
+            ("range", 1, 0),
+            ("bad_copy", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Press",
+        Bool(true),
+        &[(1, Var(0)), (2, Int(1)), (3, Int(0))],
+    );
+    action(
+        &mut m,
+        "Drag",
+        all([eq(2, 1), Var(1).eq(Var(0))]),
+        &[(3, Int(1))],
+    );
+    action(&mut m, "Release", eq(2, 1), &[(2, Int(0))]);
+    action(
+        &mut m,
+        "ReplaceSource",
+        eq(0, 2).negate(),
+        &[
+            (0, Var(0).plus(Int(1))),
+            (2, if b { Var(2) } else { Int(0) }),
+            (3, if b { Var(3) } else { Int(0) }),
+        ],
+    );
+    action(&mut m, "Copy", all([eq(3, 1), Var(1).eq(Var(0))]), &[]);
+    if b {
+        action(
+            &mut m,
+            "CopyStale",
+            all([eq(3, 1), Var(1).eq(Var(0)).negate()]),
+            &[(4, Int(1))],
+        );
+    }
+    no_bad(&mut m, 4);
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 16] = [
+    let families: [fn(bool) -> Model; 17] = [
+        selection_gesture,
         landing_verification,
         dirty_wake,
         notification,

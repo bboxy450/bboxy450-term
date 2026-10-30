@@ -159,9 +159,9 @@ sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack
 [[crate]]
 name = "bboxy450-ui"
 status = "contract-model"
-models = ["FocusFrame", "WindowDurability"]
+models = ["FocusFrame", "WindowDurability", "SelectionGesture"]
 scope = "Host focus acknowledgement and durable UI-reply boundaries; control geometry, layout and all UI transitions are not formally proven."
-sources = ["crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
+sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
 [[crate]]
 name = "bboxy450-doc"
@@ -180,9 +180,9 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery"]
+models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture"]
 scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
-sources = ["scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
+sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-term-firehose"

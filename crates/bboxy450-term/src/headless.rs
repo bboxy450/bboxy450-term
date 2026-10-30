@@ -535,6 +535,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             rims,
                         );
                         foreground.splice(0..0, app.paint_terminal_selection());
+                        foreground.push(bbt_ui::components::Paint::Draw(
+                            app.ui_selection.paint(app.scene.text_metrics()),
+                        ));
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         foreground.extend(app.paint_app_overlay());
                         gpu.draw_layers_notifying(

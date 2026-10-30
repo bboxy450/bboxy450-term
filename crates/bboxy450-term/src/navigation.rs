@@ -84,6 +84,7 @@ impl App {
     /// Complete the same pointer gesture for native input and private ctl clicks.
     pub(super) fn pointer_released(&mut self) {
         self.terminal_selection.release();
+        self.ui_selection.release();
         if self.app_overlays.open() {
             return;
         }
@@ -97,6 +98,10 @@ impl App {
     }
     pub(super) fn pointer_pressed(&mut self, at: [f32; 2]) {
         self.pointer = at;
+        if self.ui_selection.text().is_some() {
+            self.request_redraw();
+        }
+        self.ui_selection.clear();
         if self.overlay_pointer(at) {
             return;
         }
@@ -120,7 +125,11 @@ impl App {
                     self.document_layout = None;
                     self.request_redraw();
                 }
-                None => {}
+                None => {
+                    if self.ui_selection.begin(at, self.scene.text_metrics()) {
+                        self.request_redraw();
+                    }
+                }
             }
             return;
         }
@@ -196,6 +205,15 @@ impl App {
             } else {
                 None
             };
+            if hit.is_none()
+                && self
+                    .ui_selection
+                    .begin(self.pointer, self.scene.text_metrics())
+            {
+                self.terminal_selection.clear();
+                self.request_redraw();
+                return;
+            }
             self.blur_reject();
             match hit {
                 Some(Hit::Body) => {
@@ -268,6 +286,11 @@ impl App {
             .as_ref()
             .is_some_and(|p| p.focuses(self.pointer))
         {
+            if self.ui_selection.begin(at, self.scene.text_metrics()) {
+                self.terminal_selection.clear();
+                self.request_redraw();
+                return;
+            }
             self.blur_reject();
             self.composer.handle(ComposeCommand::Blur);
             self.composer_dragging = false;
@@ -365,6 +388,9 @@ impl App {
         }) {
             let id = *id;
             self.focus_action(FocusAction::Activate(id, FocusOrigin::Pane));
+            if self.modifiers.super_key() && self.open_terminal_link(id, at) {
+                return;
+            }
             self.begin_terminal_selection(id, at);
         }
     }

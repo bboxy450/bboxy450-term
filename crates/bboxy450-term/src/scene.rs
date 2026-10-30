@@ -3753,3 +3753,20 @@ mod identity_note_tests {
         );
     }
 }
+
+impl Scene {
+    pub fn selection_runs(
+        &self,
+        layout: &c::Layout,
+        clip: Rect,
+        out: &mut Vec<bbt_ui::text_selection::Run>,
+    ) {
+        bbt_ui::text_selection::collect(layout, clip, out);
+    }
+}
+
+impl Scene {
+    pub fn text_metrics(&self) -> &dyn TextMeasure {
+        &self.metrics
+    }
+}

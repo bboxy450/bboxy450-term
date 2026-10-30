@@ -160,3 +160,13 @@ implementation_tests = ["scripts/test-landing.py"]
 assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof."
 property = "Publishing needs clean current-source Rust and formal evidence, matching model inputs and remote base; old or partial evidence cannot authorize a push."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SelectionGesture"
+title = "Read-only text gesture source ownership"
+models = ["SelectionGesture", "BrokenSelectionGesture"]
+sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bboxy450-term/src/terminal_selection.rs", "crates/bboxy450-term/src/navigation.rs"]
+implementation_tests = ["crates/bbt-ui/src/text_selection.rs", "crates/bboxy450-term/src/terminal_selection.rs", "crates/bboxy450-term/tests/swarm_workdir.rs"]
+assumptions = "One host-owned pointer gesture, one nonempty range, two source replacements A to B to A. Publish/press/drag/copy are atomic UI turns. Pixel hit geometry, Unicode, native mouse delivery and clipboard/browser effects require implementation/process tests; no temporal scheduling claim."
+property = "Replacing displayed source retires its captured range; later return to the same text cannot resurrect a stale copy. Broken control retains that range across source changes."
+checks = ["make test-formal", "make test"]

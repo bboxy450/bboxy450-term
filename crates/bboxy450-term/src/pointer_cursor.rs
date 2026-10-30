@@ -35,7 +35,14 @@ impl App {
             return self
                 .document_layout
                 .as_ref()
-                .map_or(Cursor::Default, |layout| layout.regions.cursor(at));
+                .map_or(Cursor::Default, |layout| {
+                    let cursor = layout.regions.cursor(at);
+                    if cursor == Cursor::Default && self.ui_selection.contains(at) {
+                        Cursor::Text
+                    } else {
+                        cursor
+                    }
+                });
         }
         if self.launcher.is_some() {
             if self.query_dragging {
@@ -67,7 +74,11 @@ impl App {
         if self.sidebar_drag.active() {
             return Cursor::EwResize;
         }
-        if self.composer_dragging || self.query_dragging || self.terminal_selection.dragging {
+        if self.composer_dragging
+            || self.query_dragging
+            || self.terminal_selection.dragging
+            || self.ui_selection.dragging
+        {
             return Cursor::Text;
         }
         if matches!(&self.local_tab, Some(LocalTab::Settings {controller,..}) if controller.dragging())
@@ -105,7 +116,11 @@ impl App {
             if layout.regions.hit(at).is_some() {
                 return layout.regions.cursor(at, &self.composer);
             }
-            return layout.actions.cursor(at);
+            return if self.ui_selection.contains(at) && layout.actions.hit(at).is_none() {
+                Cursor::Text
+            } else {
+                layout.actions.cursor(at)
+            };
         }
         if let Some(page) = &self.local_page_layout {
             if page.closes(at) {
@@ -117,7 +132,11 @@ impl App {
                 return settings.cursor(at);
             }
             if page.focuses(at) {
-                return Cursor::Default;
+                return if self.ui_selection.contains(at) {
+                    Cursor::Text
+                } else {
+                    Cursor::Default
+                };
             }
         }
         if let Some(layout) = &self.conversation_layout
@@ -149,6 +168,18 @@ impl App {
             } else {
                 Cursor::Default
             };
+        }
+        if self.modifiers.super_key()
+            && self.pane_bounds.iter().any(|(seat, _)| {
+                self.terminal_display(*seat)
+                    .and_then(|d| d.link_at(at))
+                    .is_some()
+            })
+        {
+            return Cursor::Pointer;
+        }
+        if self.ui_selection.contains(at) {
+            return Cursor::Text;
         }
         if self.pane_bounds.iter().any(|(seat, _)| {
             self.terminal_display(*seat)

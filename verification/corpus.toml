@@ -229,3 +229,13 @@ frontend = "project"
 name = "BrokenAttentionLifecycle"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "SelectionGesture"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenSelectionGesture"
+expected = "safety"
+frontend = "project"

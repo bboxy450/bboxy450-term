@@ -477,9 +477,11 @@ fn notification_test_account(selected: bool, identity: Option<&bbt_proto::GuiIde
             && identity.reason.as_deref()
                 .and_then(|reason| reason.split(" · ").next())
                 .and_then(|label| label.strip_prefix("test-account:"))
-                .is_some_and(|run| run.parse::<bbt_mux::Ulid>()
-                    .is_ok_and(|run| run != bbt_mux::Ulid::nil()))
-    })
+                .is_some_and(|run| {
+                    run.parse::<bbt_mux::Ulid>()
+                        .is_ok_and(|run| run != bbt_mux::Ulid::nil())
+                })
+        })
 }
 
 #[cfg(test)]
@@ -2226,6 +2228,7 @@ struct App {
     conversation_cache: conversation_cache::Cache,
     composer_dragging: bool,
     terminal_selection: bboxy450_term::terminal_selection::SelectionState,
+    ui_selection: bbt_ui::text_selection::Selection,
     private_clipboard: Option<String>,
     compose_startup: bool,
     operation_backlog: VecDeque<live::UiMsg>,
@@ -2445,6 +2448,7 @@ impl App {
             chat_notice_timer: None,
             composer_dragging: false,
             terminal_selection: Default::default(),
+            ui_selection: Default::default(),
             private_clipboard: None,
             compose_startup: args.iter().any(|arg| arg == "--compose"),
             operation_backlog: VecDeque::new(),
@@ -5869,7 +5873,9 @@ impl App {
         true
     }
     fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
-        terminal_copy_chord(input, || self.terminal_copy_text().is_some())
+        terminal_copy_chord(input, || {
+            self.ui_selection.text().is_some() || self.terminal_copy_text().is_some()
+        })
     }
     /// Choose a UI command without changing the physical keyboard lifecycle.
     /// ctl sends logical chords; only the native adapter tracks held keys.
@@ -6784,21 +6790,18 @@ impl App {
             }
             UiRequest::TerminalSelect { from, to, shift } => {
                 let at = from.map(|n| n as f32);
-                if !self.pane_bounds.iter().any(|(_, r)| {
-                    at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom()
-                }) {
-                    return Err(
-                        "selection_unavailable: drag must start in a visible terminal body".into(),
-                    );
-                }
                 let original = self.modifiers;
                 self.modifiers.set(ModifiersState::SHIFT, shift);
                 self.pointer_pressed(at);
                 self.modifiers = original;
-                if !self.terminal_selection.dragging {
-                    return Err("selection_unavailable: terminal screen unavailable or mouse reporting active; use shift-select".into());
+                if self.ui_selection.dragging {
+                    self.ui_selection
+                        .extend(to.map(|n| n as f32), self.scene.text_metrics());
+                } else if self.terminal_selection.dragging {
+                    self.extend_terminal_selection(to.map(|n| n as f32));
+                } else {
+                    return Err("selection_unavailable: drag must start in displayed terminal or selectable UI text".into());
                 }
-                self.extend_terminal_selection(to.map(|n| n as f32));
                 self.pointer_released();
             }
             UiRequest::Copy => {
@@ -7332,6 +7335,21 @@ impl App {
             }
         }
         self.titlebar.retain(&layouts);
+        let mut text_runs = Vec::new();
+        let clip = Rect::new(0., 0., logical[0], logical[1]);
+        if let Some(doc) = &self.document_layout {
+            self.scene.selection_runs(&doc.layout, clip, &mut text_runs);
+        } else if !self.app_overlays.open() && self.launcher.is_none() {
+            if let Some(page) = &self.local_page_layout {
+                self.scene
+                    .selection_runs(&page.layout, clip, &mut text_runs);
+            }
+            if let Some(chat) = &self.conversation_layout {
+                self.scene
+                    .selection_runs(&chat.layout, clip, &mut text_runs);
+            }
+        }
+        self.ui_selection.retain(text_runs);
         self.update_cursor();
         self.chat_scroll.layout_solved();
         self.task_wheel.layout_solved();
@@ -7585,6 +7603,9 @@ impl App {
             self.conversation_layout.as_ref(),
             document_paints,
             rims,
+        ));
+        pane_overlay.push(bbt_ui::components::Paint::Draw(
+            self.ui_selection.paint(self.scene.text_metrics()),
         ));
         pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
         pane_overlay.extend(self.paint_app_overlay());
@@ -7866,7 +7887,9 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Clicked(id)) => {
                 self.notification_clicked(id)
             }
-            UiEvent::DesktopNotification { id, episode } => self.desktop_notification_clicked(id, episode),
+            UiEvent::DesktopNotification { id, episode } => {
+                self.desktop_notification_clicked(id, episode)
+            }
             UiEvent::Notification(bboxy450_desktop_notifications::Response::Dismissed(_)) => {}
             UiEvent::NotificationReady => {
                 if let Some(worker) = &mut self.notifications {
@@ -8273,6 +8296,9 @@ impl ApplicationHandler<UiEvent> for App {
         }
         match event {
             WindowEvent::Focused(focused) => {
+                if !focused {
+                    self.pointer_released();
+                }
                 self.set_frontmost(focused);
             }
             WindowEvent::ThemeChanged(theme) => {
@@ -8318,6 +8344,7 @@ impl ApplicationHandler<UiEvent> for App {
             WindowEvent::ModifiersChanged(modifiers) => {
                 self.modifiers = modifiers.state();
                 self.keyboard.modifiers_changed(modifiers);
+                self.update_cursor();
             }
             WindowEvent::CursorEntered { .. } => {
                 self.pointer_inside = true;
@@ -8334,6 +8361,15 @@ impl ApplicationHandler<UiEvent> for App {
                 self.pointer_inside = true;
                 self.update_cursor();
                 if self.overlay_hover(self.pointer) {
+                    return;
+                }
+                if self.ui_selection.dragging {
+                    if self
+                        .ui_selection
+                        .extend(self.pointer, self.scene.text_metrics())
+                    {
+                        self.request_redraw();
+                    }
                     return;
                 }
                 if self.extend_terminal_selection(self.pointer) {
@@ -9618,43 +9654,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
-    let notifications = if record_notifications
-        || notification_test_account
-        || cfg!(target_os = "macos")
-    {
-        None
-    } else {
-        match bboxy450_desktop_notifications::open(Box::new(move |response| {
-            let _ = callback_proxy.send_event(UiEvent::Notification(response));
-        })) {
-            Ok(notifier) => {
-                let progress = proxy.clone();
-                match bboxy450_term::notifications::Worker::start(
-                    notifier,
-                    Arc::new(move |event| {
-                        let _ = progress.send_event(match event {
-                            bboxy450_term::notifications::Event::Ready => {
-                                UiEvent::NotificationReady
-                            }
-                            bboxy450_term::notifications::Event::Error(reason) => {
-                                UiEvent::NotificationError(reason)
-                            }
-                        });
-                    }),
-                ) {
-                    Ok(worker) => Some(worker),
-                    Err(error) => {
-                        logger.write(format!("notifications unavailable: {error}"));
-                        None
+    let notifications =
+        if record_notifications || notification_test_account || cfg!(target_os = "macos") {
+            None
+        } else {
+            match bboxy450_desktop_notifications::open(Box::new(move |response| {
+                let _ = callback_proxy.send_event(UiEvent::Notification(response));
+            })) {
+                Ok(notifier) => {
+                    let progress = proxy.clone();
+                    match bboxy450_term::notifications::Worker::start(
+                        notifier,
+                        Arc::new(move |event| {
+                            let _ = progress.send_event(match event {
+                                bboxy450_term::notifications::Event::Ready => {
+                                    UiEvent::NotificationReady
+                                }
+                                bboxy450_term::notifications::Event::Error(reason) => {
+                                    UiEvent::NotificationError(reason)
+                                }
+                            });
+                        }),
+                    ) {
+                        Ok(worker) => Some(worker),
+                        Err(error) => {
+                            logger.write(format!("notifications unavailable: {error}"));
+                            None
+                        }
                     }
                 }
+                Err(error) => {
+                    logger.write(error.to_string());
+                    None
+                }
             }
-            Err(error) => {
-                logger.write(error.to_string());
-                None
-            }
-        }
-    };
+        };
     let (render_context, rendering) = tokio::sync::oneshot::channel();
     let (stall, live_commands) = if let Some(config) = stall_config {
         let proxy = proxy.clone();
