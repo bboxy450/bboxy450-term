@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-29T06:34:57Z"
+updated: "2026-10-30T15:04:48Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -49,6 +49,13 @@ created: 2026-10-21T19:04:00Z
 updated: 2026-10-23T23:48:12Z
 ---
 ```
+
+Task inventory classifies lifecycle records independently: historical task/bug/epic
+Markdown with missing or unsupported lifecycle status remains knowledge, but is
+omitted from the native task page. It must not reject the other valid tasks or
+silently become `open`. Direct task reads and every task transition keep strict
+status, identity and authority validation. Provider/reference/parse failures still
+surface; they are not swallowed as historical records.
 
 Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]]` anywhere in frontmatter or body resolve to items in `.bboxy/` by id or slug; plain URLs and repo paths are links too. The terminal indexes both the typed `links` and inline wikilinks into one graph. The filename is `<type>s/<date>-<slug>.md`; the id in the frontmatter is the identity, the filename is for humans.
 

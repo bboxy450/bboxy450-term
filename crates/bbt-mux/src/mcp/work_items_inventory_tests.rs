@@ -513,3 +513,48 @@ fn task_inventory_still_rejects_cross_swarm_ownership_and_honors_captured_scope(
         .is_err()
     );
 }
+
+#[test]
+fn task_inventory_historical_records_do_not_poison_live_work_or_gain_task_authority() {
+    let mut f = Fixture::new();
+    f.source.native = true;
+    for (n, state) in [
+        (19_001, None),
+        (19_002, Some("legacy-complete")),
+        (19_003, Some("")),
+    ] {
+        let mut row = record(n, "task", Some(json!(format!("seat:{}", f.worker.id))));
+        if let Some(state) = state {
+            row.frontmatter["status"] = json!(state);
+        } else {
+            row.frontmatter.as_object_mut().unwrap().remove("status");
+        }
+        f.source.rows.push(row);
+    }
+    let actor = Fixture::actor(&f.oracle);
+    let result = f.read(&actor, "task_list", json!({"limit":128}));
+    let ids: Vec<_> = result["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&Ulid::from(20_001_u128).to_string().as_str()));
+    for n in 19_001..=19_003 {
+        let tasks = ProviderTasks(&f.source, Some(f.oracle.swarm));
+        assert!(!ids.contains(&Ulid::from(n as u128).to_string().as_str()));
+        let error = prepare(
+            &tasks,
+            &f.registry,
+            &actor,
+            &Call {
+                op_id: Ulid::new(),
+                tool: "task_status".into(),
+                args: json!({"task_id":Ulid::from(n as u128)}),
+            },
+        )
+        .err()
+        .expect("historical status cannot gain native task authority");
+        assert_eq!(error, "invalid task status");
+    }
+}

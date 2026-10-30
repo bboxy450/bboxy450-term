@@ -79,9 +79,8 @@ impl TaskDocuments for ProviderTasks<'_> {
         // Native imports retain unassigned tasks with a scoped delegator. Their
         // metadata is already in the bundled Index; external sources retain the
         // assignee queries below rather than scanning unrelated documents.
-        let native_inventory = assignee.is_none()
-            && actor.class() == Class::Oracle
-            && self.0.import_root().is_ok();
+        let native_inventory =
+            assignee.is_none() && actor.class() == Class::Oracle && self.0.import_root().is_ok();
         if args.unassigned
             || assignee == Some(None)
             || scope.is_none() && assignee.is_none()
@@ -192,7 +191,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         }
         let mut result = Vec::new();
         for reference in candidates.into_values() {
-            let document = self.fetch(reference)?;
+            let document = self.fetch_record(reference)?;
             if listed(&document, registry, actor, args, assignee, scope) {
                 result.push(document);
                 if result.len() > limit {
@@ -205,6 +204,11 @@ impl TaskDocuments for ProviderTasks<'_> {
 }
 impl ProviderTasks<'_> {
     fn fetch(&self, reference: d::RecordRef) -> Checked<Document> {
+        let doc = self.fetch_record(reference)?;
+        task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
+        Ok(doc)
+    }
+    fn fetch_record(&self, reference: d::RecordRef) -> Checked<Document> {
         let record = self
             .0
             .fetch(d::FetchRequest {
@@ -236,7 +240,6 @@ impl ProviderTasks<'_> {
         if !is_task(&doc) {
             return Err("record is not a task".into());
         }
-        task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
         Ok(doc)
     }
 }
@@ -273,6 +276,11 @@ fn listed(
     scope: Option<Ulid>,
 ) -> bool {
     is_task(doc)
+        // Historical task/bug/epic Markdown can predate the native lifecycle.
+        // Keep it addressable as knowledge, without poisoning the entire task page
+        // or inventing an actionable state. Direct reads/transitions stay strict.
+        // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        && task_state(doc.metadata["status"].as_str().unwrap_or_default()).is_ok()
         && !scope.is_some_and(|scope| {
             doc.metadata["swarm"]
                 .as_str()
