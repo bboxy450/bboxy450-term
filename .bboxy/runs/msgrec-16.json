@@ -1,0 +1,22 @@
+{
+  "issue": 16,
+  "scope": "Non-operator mute delay, exactly-once release, device-signed mute journal; operator excluded amber pixel assertion.",
+  "checks": [
+    {
+      "command": "cargo test --locked -p bboxy450-mux --test messaging mute -- --nocapture",
+      "exit": 0,
+      "passed": 4
+    },
+    {
+      "command": "cargo test --locked -p bboxy450-mux --lib mute_reply_refreshes_authoritative_seat_before_receipt_without_events -- --ignored --nocapture",
+      "exit": 0,
+      "passed": 1,
+      "custody": "Certified throwaway file custody; separate random broker fallback key; original journal signatures, payload and foreign-signer controls."
+    },
+    {
+      "command": "cargo clippy --locked -p bboxy450-mux --all-targets -- -D warnings",
+      "exit": 0
+    }
+  ],
+  "decision": "Retain production mute policy; exercise durable hold/reopen/idempotent unmute/completion/reopen and original signed device journal. No lifecycle implementation change."
+}

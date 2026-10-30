@@ -2034,46 +2034,30 @@ mod gui_tests {
     #[ignore = "night: real supervisor, PTY and GUI socket boundary"]
     async fn mute_reply_refreshes_authoritative_seat_before_receipt_without_events() {
         use bbt_proto::messaging::{Request, Response};
-        struct Keys;
-        impl crate::identity::DeviceKeyStore for Keys {
-            fn custody(&self) -> crate::identity::Custody {
-                crate::identity::Custody::Memory
-            }
-            fn load(&self, _: Ulid) -> crate::identity::Result<Option<ed25519_dalek::SigningKey>> {
-                Ok(Some(ed25519_dalek::SigningKey::from_bytes(&[91; 32])))
-            }
-            fn create(
-                &self,
-                _: Ulid,
-                _: &ed25519_dalek::SigningKey,
-            ) -> crate::identity::Result<()> {
-                Err(crate::identity::PendingReason::JournalConflict)
-            }
-        }
         let root = tempfile::tempdir().unwrap();
         let repository = root.path().join("repository");
         std::fs::create_dir(&repository).unwrap();
         let run = root.path().join("run");
-        assert!(matches!(
-            crate::identity::local_dev_issuer_with_store(&run, &Keys),
-            crate::identity::LocalIssuerOutcome::Ready(_)
-        ));
+        let account = crate::identity::TestAccount::open(&root.path().join("keys"), &run).unwrap();
+        let key_store = account.key_store();
         let supervisor = Supervisor::start(crate::Config {
             journal_directory: Some(root.path().join("supervisor-journal")),
             ..Default::default()
         })
         .unwrap();
-        let logic = Logic::start(
+        let logic = Logic::start_custodied_with_store(
             supervisor.connect().unwrap(),
             LogicConfig {
                 run_dir: run,
                 repository,
                 ring: Default::default(),
             },
-            ed25519_dalek::SigningKey::from_bytes(&[91; 32]),
+            key_store.clone(),
             &tokio::runtime::Handle::current(),
         )
         .unwrap();
+        let device = logic.client.gui_device().await.unwrap().id;
+        let device_public = key_store.load(device).unwrap().unwrap().verifying_key().to_bytes();
         let spec = LaunchSpec::new("/bin/cat", root.path());
         let seat = spec.seat;
         let swarm = Ulid::new();
@@ -2142,6 +2126,31 @@ mod gui_tests {
                 checked?;
                 stopped?;
             }
+            // Read original retained envelopes, not the unsigned GUI projection.
+            // File custody supplies the certified device key; the temporary broker
+            // starts with a separate random fallback key.
+            let mut after = 0;
+            let mut muted_states = vec![];
+            while muted_states.len() < 4 {
+                let (rows, _, through) = logic.client.bus.read_page_wait(
+                    &format!("seat-{seat}"), vec![format!("seat/{seat}/state")],
+                    after, 128, Some(5000),
+                ).await?;
+                assert!(through > after, "mute journal publication did not progress");
+                after = through;
+                for row in rows.into_iter().filter(|row| row.event.source == "mute") {
+                    row.verify()?;
+                    assert_eq!(row.provenance.signer, device_public);
+                    muted_states.push(row.event.payload["muted"].as_bool().unwrap());
+                    let mut tampered = row.clone();
+                    tampered.event.payload["muted"] = serde_json::json!("forged");
+                    assert!(tampered.verify().is_err(), "journal signature must cover mute state");
+                    let mut foreign = row;
+                    foreign.provenance.signer = ed25519_dalek::SigningKey::from_bytes(&[92; 32]).verifying_key().to_bytes();
+                    assert!(foreign.verify().is_err(), "another device must not verify this journal entry");
+                }
+            }
+            assert_eq!(muted_states, [true, false, true, false]);
             Ok::<_, crate::store::Error>(())
         }).await;
         logic.shutdown().unwrap();

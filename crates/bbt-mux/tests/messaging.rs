@@ -663,6 +663,68 @@ fn idle_mute_publishes_a_durable_seat_state_without_an_activity_transition() {
     assert_eq!(changed.payload["muted"], false);
 }
 
+// keeps: K2 / issue 16 — a peer message survives mute and one release.
+#[test]
+fn muted_non_operator_delivery_is_durable_and_released_exactly_once() {
+    let mut f = Fixture::new();
+    f.messaging
+        .set_mute(Actor::Operator, f.b.id, true, State::Idle, 1000)
+        .unwrap();
+    let message = f.send(f.a.id, "wait for unmute", 1001);
+    let id = message.view().id;
+    for now in [1002, 2000] {
+        assert!(f.messaging.ready(now).unwrap().is_empty());
+        assert!(
+            f.messaging
+                .prepare(f.b.swarm, f.b.id, now)
+                .unwrap()
+                .is_none()
+        );
+        let receipts = f.messaging.receipts(f.a.id, id).unwrap();
+        assert_eq!(receipts.len(), 1);
+        assert_eq!(receipts[0].evidence, Evidence::RecipientStored);
+        assert_eq!(receipts[0].held.as_deref(), Some("recipient muted"));
+        f.reopen();
+    }
+    let notice = f
+        .messaging
+        .set_mute(Actor::Operator, f.b.id, false, State::Idle, 3000)
+        .unwrap();
+    assert_eq!(
+        f.messaging
+            .set_mute(Actor::Operator, f.b.id, false, State::Idle, 3001)
+            .unwrap(),
+        notice
+    );
+    let work = f.take(3002);
+    assert_eq!(
+        work.messages
+            .iter()
+            .map(|m| m.view().id)
+            .collect::<Vec<_>>(),
+        vec![id]
+    );
+    assert!(
+        f.messaging
+            .prepare(f.b.swarm, f.b.id, 3003)
+            .unwrap()
+            .is_none()
+    );
+    f.finish(&work, Evidence::NativeWritten, 3004);
+    f.reopen();
+    assert!(f.messaging.ready(4000).unwrap().is_empty());
+    assert!(
+        f.messaging
+            .prepare(f.b.swarm, f.b.id, 4000)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        f.messaging.receipts(f.a.id, id).unwrap()[0].evidence,
+        Evidence::NativeWritten
+    );
+}
+
 // keeps: spec messaging
 #[test]
 fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
