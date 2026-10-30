@@ -92,6 +92,8 @@ help:
 	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
 	  'make profile-input-ui            Repeatable CPU host-layout profile (no GPU latency claim)' \
 	  'make profile-render-input        Layout and cached chrome text CPU profiles' \
+	  'make test-power                  Pending-outbox cost, migration and delivery regressions' \
+	  'make profile-power               Before/after aged-outbox CPU/query-work profile' \
 	  'make test-render-input           Native glyph-plan, memory, worker and cancellation checks' \
 	  'make check-terminal-replay       Strict all-target Clippy for mux and app' \
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
@@ -741,6 +743,21 @@ profile-input-ui:
 .PHONY: profile-render-input
 profile-render-input: profile-input-ui
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_RENDER_PROFILE=1 cargo test --locked -p bboxy450-render --target-dir '$(TARGET_DIR)' --lib repeated_text_frame_cpu_profile -- --nocapture
+
+.PHONY: fmt-power test-power check-power profile-power
+fmt-power:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/messaging/tree.rs crates/bbt-mux/src/messaging/ledger.rs crates/bbt-mux/src/messaging/ledger/power_tests.rs
+
+test-power:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::ledger::power_tests -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging --test messaging_flow
+
+check-power:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+profile-power:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib pending_outbox_cpu_profile -- --ignored --nocapture --test-threads=1
 
 .PHONY: test-render-input check-render-input
 test-render-input:

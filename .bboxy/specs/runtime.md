@@ -44,6 +44,14 @@ Tokio because quinn and the MCP stack already need it; one runtime, not one per 
 ## 4. Frame pacing — 120 Hz
 
 - **On demand.** A frame is drawn only when something changed (damage, input, message) or an animation is live. Idle draws zero frames.
+- **Retained history is not idle work.** The messaging publication outbox uses
+  a pending-only index, including for existing ledgers on open. An empty poll
+  reads no historical sent rows; pending events remain in durable row order,
+  at most 128 per page. Publication acknowledgement removes index membership,
+  never the retained event. `make test-power` checks SQLite instruction/scan
+  counts with and without history, FIFO, acknowledgement and restart recovery;
+  `make profile-power` compares the old scan and indexed path on 100,000 events.
+  These are query/CPU measurements, not watts or a battery-life guarantee.
 - **Display-locked when animating.** Drive frames from the display link (`CAMetalDisplayLink` on macOS 14+, `CVDisplayLink` fallback) with `preferredFrameRateRange` 80–120–120; without the explicit range ProMotion parks Metal apps at 60. Animation time comes from the link's target timestamp, never wall-clock deltas.
 - **Present.** `PresentMode::Fifo`, `maximumDrawableCount` 3, frame latency 2. Never `Immediate`.
 - **Budget at 120 Hz: 8.33 ms.** UI-thread CPU ≤ 4 ms (drain, layout, draw list, encode), GPU ≤ 6 ms. Retained geometry and damage per [[renderer]] §1 are what make this cheap; no other optimisation until the meter says so.

@@ -1,0 +1,28 @@
+{
+  "scope": "Remove retained publication history from empty messaging pump work; no delivery-state, timer or rendering policy changes.",
+  "files": [
+    "crates/bbt-mux/src/messaging/tree.rs",
+    "crates/bbt-mux/src/messaging/ledger.rs",
+    "crates/bbt-mux/src/messaging/ledger/power_tests.rs",
+    "Makefile",
+    ".bboxy/specs/runtime.md",
+    "verification/coverage.toml"
+  ],
+  "commands": [
+    {
+      "command": "BBOXY_CACHE_MODE=off make fmt-power test-power check-power profile-power",
+      "exit": 0
+    }
+  ],
+  "acceptance": {
+    "old_ledger_migration": "Two new unit tests pass; ordered 128-event page, ack idempotency, lost-ack restart replay, all 1130 fixture rows retained.",
+    "complexity": "10000 archived rows: zero full-scan steps; empty query <32 VM steps. Deliberately unindexed control scans >=9999 rows.",
+    "profile": "100000 archived rows, 50 samples: median 8632.833 -> 1.875 us; VM steps 300009 -> 10; fullscan steps 99999 -> 0.",
+    "live": "Additive index installed on one existing 438960-event ledger in 0.196 s, no rows removed, no process stopped. 10 s owner CPU sample 45.499% -> 11.548% of one core, same owner PIDs."
+  },
+  "limits": [
+    "CPU and query work, not watts/battery life.",
+    "Concurrent build and live workload make process samples indicative; remaining identity namespace scan being addressed separately.",
+    "Formal and full exact-source CI, push and signed install follow at final source."
+  ]
+}

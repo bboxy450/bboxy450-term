@@ -24,7 +24,14 @@ use crate::{
     store::{Result, Store, events::Draft, invalid, sqlint, sqlite::SqliteStore},
 };
 
+#[cfg(test)]
+mod power_tests;
 mod suppression;
+
+// The partial index holds only pending events. SQLite orders equal index keys
+// by rowid, preserving durable FIFO without reading retained sent payloads.
+const BUS_OUTBOX_QUERY: &str =
+    "SELECT draft FROM msg_bus_outbox WHERE sent=0 ORDER BY rowid LIMIT 128";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReceiptEvent {
@@ -1292,9 +1299,7 @@ impl Ledger {
 
     pub fn bus_outbox(&self) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
-        let mut q = db.prepare_cached(
-            "SELECT draft FROM msg_bus_outbox WHERE sent=0 ORDER BY rowid LIMIT 128",
-        )?;
+        let mut q = db.prepare_cached(BUS_OUTBOX_QUERY)?;
         q.query_map([], |r| r.get::<_, Vec<u8>>(0))?
             .map(|r| Ok(serde_json::from_slice(&r?)?))
             .collect()

@@ -88,7 +88,8 @@ pub struct Tree {
 }
 pub(crate) fn schema(store: &SqliteStore) -> Result<()> {
     store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS msg_tree(path TEXT PRIMARY KEY,kind TEXT NOT NULL,target TEXT,filter BLOB NOT NULL,rate BLOB NOT NULL,paused INTEGER NOT NULL,grants BLOB NOT NULL);
-        CREATE TABLE IF NOT EXISTS msg_bus_outbox(id TEXT PRIMARY KEY,draft BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);")?;
+        CREATE TABLE IF NOT EXISTS msg_bus_outbox(id TEXT PRIMARY KEY,draft BLOB NOT NULL,sent INTEGER NOT NULL DEFAULT 0);
+        CREATE INDEX IF NOT EXISTS msg_bus_pending ON msg_bus_outbox(sent) WHERE sent=0;")?;
     Ok(())
 }
 pub(crate) fn queue_event(tx: &rusqlite::Transaction<'_>, draft: &Draft) -> Result<()> {
@@ -178,9 +179,14 @@ impl Tree {
     }
     /// Bounded operator settings read over only the channel prefix, never the seat tree.
     pub(crate) fn attention_channels(&self, limit: usize) -> (Vec<String>, bool) {
-        let mut paths: Vec<_> = self.nodes.range("channels/".to_owned()..)
-            .map(|(path, _)| path).take_while(|path| path.starts_with("channels/"))
-            .take(limit.saturating_add(1)).cloned().collect();
+        let mut paths: Vec<_> = self
+            .nodes
+            .range("channels/".to_owned()..)
+            .map(|(path, _)| path)
+            .take_while(|path| path.starts_with("channels/"))
+            .take(limit.saturating_add(1))
+            .cloned()
+            .collect();
         let complete = paths.len() <= limit;
         paths.truncate(limit);
         (paths, complete)
