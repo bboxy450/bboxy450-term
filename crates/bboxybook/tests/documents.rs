@@ -93,3 +93,36 @@ fn document_mermaid_uses_the_real_engine_and_only_source_scroll_state_from_old_r
         format!("{:?}", documents::layout_case(&case).unwrap())
     );
 }
+
+#[test]
+fn partial_gallery_catalogue_distinguishes_unknown_slugs_from_missing_numbers() {
+    let mut case = documents::cases().remove(0);
+    case.fixture = Some(
+        json!({"layer":"documents","backdrop":{"crop":{"x":0,"y":0}},"frames":[{
+            "view":{"document":{"type":"note","title":"Partial catalogue","path":"note.md","body":"[[unlisted|friendly slug]] and [[#999]] and [[#7]]."}},
+            "record_index":[{"n":7,"type":"note","title":"present","path":".bboxy/notes/present.md","slug":"present"}],
+            "host":{"x":0,"y":0,"w":1218,"h":0},"parts":[]
+        }]}),
+    );
+    fn labels(layout: &bbt_ui::components::Layout, text: &mut String) {
+        if let bbt_ui::components::LayoutKind::Text { runs, .. } = &layout.kind {
+            for run in runs {
+                text.push_str(&run.text);
+            }
+        }
+        for child in &layout.children {
+            labels(child, text);
+        }
+    }
+    let mut text = String::new();
+    for layout in documents::layout_case(&case).unwrap() {
+        labels(&layout, &mut text);
+    }
+    assert!(text.contains("friendly slug"));
+    assert!(
+        !text.contains("friendly slug · no record"),
+        "a partial index is not an authoritative missing probe"
+    );
+    assert!(text.contains("#999 · no record"));
+    assert!(text.contains("#7"));
+}

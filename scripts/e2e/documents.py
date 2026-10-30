@@ -5,7 +5,7 @@
 # License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 # Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-"""D1/D2 assertions over admitted Knowledge reads and the native produced frame.
+"""D1/D2/D3 assertions over admitted Knowledge reads and the native produced frame.
 
 No parser/engine in this driver predicts production geometry. Expected edge
 relationships are finite fixture data; coordinates come from the actual modal.
@@ -178,7 +178,7 @@ class Documents:
         self.ctl("ui","key","end")
         while True:
             layout = self.ctl("ui","layout")
-            if all(any(text in str(node.get("text", "")) for _,node in nodes(layout)) for text in wanted):
+            if layout.get("document_observation") is not None and all(any(text in str(node.get("text", "")) for _,node in nodes(layout)) for text in wanted):
                 break
             require(time.monotonic() < deadline, "native modal omitted required fixture text")
             time.sleep(0.05)
@@ -518,12 +518,90 @@ def d2(app):
         app.checks.append({"fixture":name,"node_bounds":bounds,"edges":edges,"first_frame":layout["frame_seq"],"repeat_frame":repeated["frame_seq"],"capture_region":rect,"pixels_sha256":pixels,"geometry_sha256":hashlib.sha256(json.dumps([observed["texts"],observed["paths"],observed["clips"]],sort_keys=True).encode()).hexdigest()})
 
 
+def d3(app):
+    target=app.fixture("target","D3_LINK_TARGET_BODY\n")
+    bad="D3-never-created"
+    body=f"[[{target['slug']}]] [[#{target['number']}]] [[{target['slug']}|D3 alias]] [[{bad}]]\n"
+    links=app.fixture("links",body)
+    def named(layout,key):
+        return [node for _,node in nodes(layout) if node["kind"]=="named:"+key]
+    def click(rect):
+        x,y,w,h=rect
+        return app.ctl("ui","input",json.dumps(dict(kind="click",x=round(x+w/2),y=round(y+h/2))))
+    for token,index in [(target["slug"],0),("#"+str(target["number"]),0),(target["slug"],1)]:
+        layout,image=app.open(links,[bad+" · no record"])
+        observed=app.observation(layout,links)
+        require(not named(layout,"record-link:"+bad),"broken link remained actionable")
+        candidates=named(layout,"record-link:"+token)
+        require(len(candidates)>index,f"missing retained wiki link {token}/{index}")
+        click(candidates[index]["rect"])
+        deadline=time.monotonic()+20
+        while True:
+            opened=app.ctl("ui","layout")
+            observation=opened.get("document_observation")
+            if observation and observation["source"]["record_id"]==target["id"]:
+                break
+            require(time.monotonic()<deadline,f"wiki {token}/{index} did not resolve to its admitted target")
+            time.sleep(0.02)
+        app.observation(opened,target)
+        app.checks.append({"target":token,"alias_index":index,"source_frame":layout["frame_seq"],"target_frame":opened["frame_seq"]})
+    layout,image=app.open(links,[bad+" · no record"])
+    broken=next(node for _,node in nodes(layout) if bad+" · no record" in node.get("text", ""))
+    click(broken["rect"])
+    still=app.ctl("ui","layout")
+    require(still["document"]==layout["document"],"broken link navigated silently")
+    app.checks.append({"broken":bad,"frame":still["frame_seq"]})
+    image_dir=app.work.parent/"repository"/".bboxy"/"images"
+    image_dir.mkdir(parents=True,exist_ok=True)
+    source=Path(__file__).resolve().parents[2]/".bboxy/images/bboxy.png"
+    shutil.copyfile(source,image_dir/"bboxy.png")
+    figure=app.fixture("image","![[bboxy.png]]\n")
+    layout,captured=app.open(figure,[])
+    observed=app.observation(layout,figure)
+    # Locate the actual rectangular image and intersect its renderer-owned clips.
+    def images(node,clip=None):
+        rect=node["rect"]
+        if node["kind"]=="scroll_view":
+            if clip is None:clip=rect
+            else:
+                x,y=max(clip[0],rect[0]),max(clip[1],rect[1])
+                clip=[x,y,min(clip[0]+clip[2],rect[0]+rect[2])-x,min(clip[1]+clip[3],rect[1]+rect[3])-y]
+        if node["kind"]=="image":yield rect,clip
+        for child in node.get("children",[]):yield from images(child,clip)
+    root=next(node for _,node in nodes(layout) if node["kind"]=="named:document")
+    entries=list(images(root))
+    require(len(entries)==1,"document did not paint exactly one resolved image")
+    rect,clip=entries[0]
+    width,height,rows=png(source)
+    require(abs(rect[2]-width)<0.01 and abs(rect[3]-height)<0.01,"image was scaled instead of drawn at true size")
+    require(clip is not None and clip[2]>10 and clip[3]>10,"image has no visible clipped area")
+    left,top=max(rect[0],clip[0]),max(rect[1],clip[1])
+    right,bottom=min(rect[0]+rect[2],clip[0]+clip[2]),min(rect[1]+rect[3],clip[1]+clip[3])
+    # Compare several opaque source pixels against the native GPU capture.
+    samples=[]
+    for fx,fy in [(0.25,0.25),(0.5,0.5),(0.75,0.75)]:
+        x,y=math.floor(left+(right-left)*fx),math.floor(top+(bottom-top)*fy)
+        source_x,source_y=x-rect[0],y-rect[1]
+        sx,sy=math.floor(source_x),math.floor(source_y)
+        dx,dy=source_x-sx,source_y-sy
+        texels=[rows[sy+yy][(sx+xx)*4:(sx+xx)*4+4] for yy in [0,1] for xx in [0,1]]
+        weights=[(1-dx)*(1-dy),dx*(1-dy),(1-dx)*dy,dx*dy]
+        # A fractional retained origin samples adjacent texels bilinearly even
+        # at true size. Compare that known GPU sampling contract, not a floor.
+        expected=[sum(pixel[c]*weight for pixel,weight in zip(texels,weights)) for c in range(4)]
+        actual=captured[2][y][x*4:x*4+4]
+        require(all(pixel[3]==255 for pixel in texels) and max(abs(a-b) for a,b in zip(actual,expected))<=2,
+                f"native image pixel mismatch at {(x,y)}: {list(actual)} != {expected}")
+        samples.append({"capture":[x,y],"source":[sx,sy],"rgba":list(actual)})
+    app.checks.append({"image":".bboxy/images/bboxy.png","sha256":hashlib.sha256(source.read_bytes()).hexdigest(),"rect":rect,"clip":clip,"samples":samples,"frame":observed["frame_seq"]})
+
+
 def main():
     app, failure = None,None
     try:
-        require(sys.argv[1:] in [["D1"],["D2"]],"expected one document promise")
+        require(sys.argv[1:] in [["D1"],["D2"],["D3"]],"expected one document promise")
         app = Documents(sys.argv[1])
-        (d1 if app.promise == "D1" else d2)(app)
+        {"D1":d1,"D2":d2,"D3":d3}[app.promise](app)
     except Exception as error:
         failure = f"{type(error).__name__}: {error}"
     finally:

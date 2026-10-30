@@ -629,7 +629,7 @@ fn image_inlines(values: &[bbt_doc::Inline], targets: &mut Vec<(String, bool)>) 
     use bbt_doc::Inline;
     for (index, value) in values.iter().enumerate() {
         match value {
-            Inline::Image { target, .. } => targets.push((target.clone(), false)),
+            Inline::Image { target, wiki, .. } => targets.push((target.clone(), *wiki)),
             Inline::WikiLink { target, .. }
                 if index > 0
                     && matches!(&values[index-1],Inline::Text(text) if text.ends_with('!')) =>

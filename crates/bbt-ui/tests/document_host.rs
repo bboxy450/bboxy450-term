@@ -372,3 +372,15 @@ fn a_nested_diagram_viewport_never_replaces_the_document_scroll_owner() {
     assert!(scroll.scroll([0., 300.], regions.extent));
     assert_eq!(scroll.offset[1], 300.);
 }
+
+#[test]
+fn missing_slug_aliases_and_numbers_are_broken_and_inert() {
+    let mut links=RecordLinks::new();
+    links.insert("missing".into(),None);links.insert("#12".into(),None);
+    for (target,display,label) in [("missing","friendly alias","friendly alias · no record"),("#12","friendly alias","#12 · no record")] {
+        let (actual,enabled)=presentation(target,display,Some(&links));
+        assert_eq!(actual,label);assert!(!enabled);
+        let linked=link(c::Element::Spacer,target,enabled);
+        assert!(!matches!(linked,c::Element::Named { .. }));
+    }
+}

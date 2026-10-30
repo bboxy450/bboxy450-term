@@ -636,3 +636,49 @@ fn latest_document_reader_supersedes_held_roots_and_bounds_retired_replies() {
     assert_eq!(reply.id, fresh);
     assert!(matches!(reply.response, Response::Bound { .. }));
 }
+
+#[test]
+#[allow(clippy::disallowed_methods, reason = "private image fixture IO outside the UI thread")]
+fn captured_image_roots_and_superseded_reads_keep_bitmap_bytes_local() {
+    bbt_rt::assert_not_ui_thread();
+    use std::sync::Arc;
+    fn root(color: [u8; 4]) -> tempfile::TempDir {
+        let root=tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(root.path().join(".bboxy/images")).unwrap();
+        let mut bytes=Vec::new();
+        {
+            let mut encoder=png::Encoder::new(&mut bytes,2,1);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder.set_depth(png::BitDepth::Eight);
+            encoder.write_header().unwrap().write_image_data(&[color,color].concat()).unwrap();
+        }
+        std::fs::write(root.path().join(".bboxy/images/proof.png"),bytes).unwrap();
+        root
+    }
+    let a=root([255,0,0,255]);let b=root([0,0,255,255]);
+    let mut reader=Reader::default();
+    let record=d::Record { reference:reference(1),frontmatter:json!({"type":"note","number":1}),
+        body:"![[proof.png]] ![[proof.png]] ![escape](../proof.png)".into(),etag:"etag".into(),resources:vec![],parse_error:None };
+    let first=Ulid::new();
+    reader.image_root(a.path().canonicalize().unwrap());
+    reader.admit(first,Read::Fetch(reference(1))).unwrap();
+    // Even changing the next admission's root cannot change this captured read.
+    reader.image_root(b.path().canonicalize().unwrap());
+    let Response::Fetched(prepared)=&result(&mut reader,first,json!(record)).response else {panic!("fetched image")};
+    assert_eq!(prepared.images.len(),1,"duplicate targets share one immutable snapshot");
+    assert_eq!(prepared.images[0].rgba,[255,0,0,255].repeat(2));
+    assert_eq!([prepared.images[0].width,prepared.images[0].height],[2,1]);
+    assert!(prepared.markdown.source.contains("../proof.png"),"source is never rewritten");
+    let old=Ulid::new();reader.admit(old,Read::Fetch(reference(1))).unwrap();
+    let new=Ulid::new();reader.image_root(a.path().canonicalize().unwrap());
+    reader.admit_latest_scoped(new,Read::Fetch(reference(1)),None).unwrap();
+    assert!(reader.response(old,Ok(json!(record))).is_none(),"B completion cannot cross the new A admission");
+    let Response::Fetched(new)=&result(&mut reader,new,json!(record)).response else {panic!("fetched A")};
+    assert_eq!(new.images[0].rgba,prepared.images[0].rgba);
+    assert!(!Arc::ptr_eq(&new.images[0],&prepared.images[0]));
+    #[cfg(unix)] {
+        std::os::unix::fs::symlink(b.path().join(".bboxy/images/proof.png"),a.path().join(".bboxy/images/escape.png")).unwrap();
+        let mut doc=bbt_doc::parse("![[escape.png]]");
+        assert!(bboxy450_term::documents::images::load(&mut doc,&a.path().canonicalize().unwrap()).is_empty());
+    }
+}

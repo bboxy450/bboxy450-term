@@ -7883,6 +7883,12 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
+        if let Some(prepared)=&self.document.prepared
+            && let Err(reason)=self.gpu.as_mut().unwrap().install_document_images(&prepared.images)
+        {
+            self.document.image_failed(reason);
+            self.document_layout=None;
+        }
         let layouts = self.solve_ui(logical)?;
         let bounds = self.pane_bounds.clone();
         self.focus_layout_ready();

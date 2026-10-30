@@ -481,6 +481,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         .is_some_and(|m| m.metadata_initialized)
                 {
                     app.project_scene(true);
+                    if let Some(prepared)=&app.document.prepared
+                        && let Err(reason)=gpu.install_document_images(&prepared.images)
+                    {
+                        app.document.image_failed(reason);
+                        app.document_layout=None;
+                    }
                     let layouts = app.solve_ui(size)?;
                     app.focus_layout_ready();
                     let (next, changed) = crate::pane_controls(

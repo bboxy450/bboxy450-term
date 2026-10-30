@@ -65,9 +65,9 @@ checks = ["make test-formal", "make test"]
 name = "WorkspaceFence"
 title = "Workspace reads and authority"
 models = ["WorkspaceFence", "BrokenWorkspaceFence"]
-sources = ["crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/knowledge/seat_reads.rs", "crates/bbt-mux/src/knowledge/roots.rs"]
-implementation_tests = ["crates/bbt-mux/tests/workspace_roots.rs", "crates/bbt-mux/tests/harmony_host.rs"]
-assumptions = "Two roots, three workspace and provider revisions (including A -> B -> A), one captured job and revocable authority. Atomic selection/capture/publication may interleave; no fairness or eventual provider response is assumed. Read-only provider status uses the same captured root/revision publication fence and stays available without provider IO. Hashes, filesystem safety, native writes, durable commits, MCP text/structured equality, real backend deadlines and unknown mutation outcomes use implementation tests."
+sources = ["crates/bboxy450-term/src/documents.rs", "crates/bboxy450-term/src/documents/images.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/knowledge/seat_reads.rs", "crates/bbt-mux/src/knowledge/roots.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/documents.rs", "crates/bbt-mux/tests/workspace_roots.rs", "crates/bbt-mux/tests/harmony_host.rs"]
+assumptions = "Document bitmap snapshots carry the same captured request/scope identity as their record; PNG/file custody and A-B-A image bytes use the real Reader witness. Two roots, three workspace and provider revisions (including A -> B -> A), one captured job and revocable authority. Atomic selection/capture/publication may interleave; no fairness or eventual provider response is assumed. Read-only provider status uses the same captured root/revision publication fence and stays available without provider IO. Hashes, filesystem safety, native writes, durable commits, MCP text/structured equality, real backend deadlines and unknown mutation outcomes use implementation tests."
 property = "Publication requires the captured workspace revision, root and provider revision plus current authority. Removing the provider fence must fail even when the root and workspace revision stay unchanged."
 checks = ["make test-formal", "make test"]
 

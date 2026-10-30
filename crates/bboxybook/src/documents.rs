@@ -149,7 +149,14 @@ pub fn layout_case(case: &Case) -> Result<Vec<c::Layout>> {
                     )
                     .ok()
                     .and_then(|resolved| resolved.record.markdown.frontmatter.number());
-                    links.insert(target, number);
+                    // The reference's partial index resolves numbered links;
+                    // an unlisted free-form slug is unknown, not a provider refusal.
+                    // Real document hosts separately supply authoritative missing probes.
+                    if number.is_some()
+                        || bbt_ui::modules::document_modal::controller::numbered(&target).is_some()
+                    {
+                        links.insert(target, number);
+                    }
                 }
                 view.record_links = Some(links);
             }

@@ -528,6 +528,7 @@ enum Piece {
         relation: Option<String>,
         weight: Option<f32>,
     },
+    Image(super::ImageAsset),
     Break,
 }
 impl Render<'_> {
@@ -838,7 +839,8 @@ impl Render<'_> {
                 }
                 Inline::SoftBreak => out.push(text(" ".into(), f)),
                 Inline::HardBreak => out.push(Piece::Break),
-                Inline::Image { target, alt } => out.push(text(
+                Inline::Image { asset: Some(asset), .. } => out.push(Piece::Image(asset.clone())),
+                Inline::Image { target, alt, .. } => out.push(text(
                     format!("[image: {alt}] ({target})"),
                     ui::Text {
                         paint: ui::Paint::solid(ui::Color::Muted),
@@ -898,6 +900,17 @@ impl Render<'_> {
             match p {
                 Piece::Break => {
                     lines.push(Self::flow(key, std::mem::take(&mut children)));
+                }
+                Piece::Image(asset) => {
+                    if !children.is_empty() { lines.push(Self::flow(key, std::mem::take(&mut children))); }
+                    let name = format!("{key}/image{i}");
+                    let image = c::Element::ImageRect { asset: asset.key, size:[asset.width as f32,asset.height as f32], radius:ui::Length::Px(0.) };
+                    lines.push(named(&name,c::Element::ScrollView(c::ScrollView {
+                        viewport:[self.width.min(asset.width as f32),asset.height as f32],
+                        offset:[self.scrolls.and_then(|s|s.get(&name)).copied().unwrap_or(0.),0.],
+                        content_width:Some(asset.width as f32),content:Box::new(image),
+                    })));
+                    i+=1;
                 }
                 Piece::Wiki {
                     target,
@@ -1390,6 +1403,11 @@ impl Render<'_> {
                     minimum = minimum.max(width);
                     hard = hard.max(width);
                     line += width;
+                }
+                Piece::Image(asset) => {
+                    minimum=minimum.max(asset.width as f32);
+                    hard=hard.max(asset.width as f32);
+                    line+=asset.width as f32;
                 }
                 Piece::Break => {
                     minimum = minimum.max(word);

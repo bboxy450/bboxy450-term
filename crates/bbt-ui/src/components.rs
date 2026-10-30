@@ -523,6 +523,8 @@ pub enum Element {
         size: Length,
         radius: Length,
     },
+    /// Untinted bitmap at its own aspect ratio; the host owns decoding and custody.
+    ImageRect { asset: String, size: [f32; 2], radius: Length },
     Path(Path),
     Rects(Rects),
 }
@@ -1027,6 +1029,11 @@ impl Element {
                 radius.resolve(ctx.density)?;
                 Ok(([s, s], s))
             }
+            Self::ImageRect { asset, size, radius } => {
+                if asset.is_empty() || size.iter().any(|n| !n.is_finite() || *n <= 0.) { return Err("invalid rectangular image"); }
+                radius.resolve(ctx.density)?;
+                Ok((*size, size[1]))
+            }
             Self::ScrollView(s) => Ok((s.viewport, s.viewport[1])),
             Self::Overlay(o) => {
                 let s = o.style.resolve(ctx)?;
@@ -1267,7 +1274,7 @@ impl Element {
                 },
                 vec![],
             ),
-            Self::Image { asset, radius, .. } => (
+            Self::Image { asset, radius, .. } | Self::ImageRect { asset, radius, .. } => (
                 LayoutKind::Image {
                     asset: asset.clone(),
                     radius: radius.resolve(ctx.density)?,

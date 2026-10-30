@@ -156,7 +156,7 @@ fn workspace(b: bool) -> Model {
             ("root", 1, 0),
             ("job_revision", 3, 0),
             ("job_root", 1, 0),
-            ("job", 2, 0),
+            ("job", 3, 0),
             ("authorized", 1, 1),
             ("bad", 1, 0),
             ("provider_revision", 3, 1),
@@ -169,6 +169,8 @@ fn workspace(b: bool) -> Model {
         eq(4, 0),
         &[(2, Var(0)), (3, Var(1)), (4, Int(1)), (8, Var(7))],
     );
+    // Record and decoded bitmap bytes stay one captured job across worker preparation.
+    action(&mut m,"PrepareCapturedImages",eq(4,1),&[(4,Int(2))]);
     action(
         &mut m,
         "SwitchRoot",
@@ -187,28 +189,29 @@ fn workspace(b: bool) -> Model {
     action(
         &mut m,
         "PublishCurrentRead",
-        all([eq(4, 1), valid.clone()]),
-        &[(4, Int(2))],
+        all([eq(4, 2), valid.clone()]),
+        &[(4, Int(3))],
     );
     action(
         &mut m,
         "RefuseStaleRead",
-        all([eq(4, 1), valid.clone().negate()]),
-        &[(4, Int(2))],
+        all([eq(4, 2), valid.clone().negate()]),
+        &[(4, Int(3))],
     );
     // A root can stay unchanged while its provider changes, including A -> B -> A.
     // Checking the directory ID alone also misses workspace revisions and revocation.
     if b {
+        action(&mut m,"DecodeImagesFromCurrentRoot",all([eq(4,1),Var(3).eq(Var(1)).negate()]),&[(6,Int(1))]);
         action(
             &mut m,
             "PublishByRootIdOnly",
-            all([eq(4, 1), Var(3).eq(Var(1)), valid.negate()]),
+            all([eq(4, 2), Var(3).eq(Var(1)), valid.negate()]),
             &[(6, Int(1))],
         );
         action(
             &mut m,
             "PublishByWorkspaceOnly",
-            all([eq(4, 1), workspace_valid, Var(8).eq(Var(7)).negate()]),
+            all([eq(4, 2), workspace_valid, Var(8).eq(Var(7)).negate()]),
             &[(6, Int(1))],
         );
     }

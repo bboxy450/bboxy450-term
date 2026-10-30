@@ -108,11 +108,22 @@ pub enum Inline {
     Task(bool),
     SoftBreak,
     HardBreak,
-    /// Image decoding/registration is deferred; its alt text stays readable.
+    /// Hosts decode bounded local images off-thread. Missing assets keep alt text readable.
     Image {
         target: String,
         alt: String,
+        #[serde(default)]
+        wiki: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        asset: Option<ImageAsset>,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImageAsset {
+    pub key: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Inline {

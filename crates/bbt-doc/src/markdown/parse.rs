@@ -330,9 +330,11 @@ impl Reader<'_> {
                         }
                     }
                 }
-                Event::Start(Tag::Image { dest_url, .. }) => Inline::Image {
-                    target: dest_url.into_string(),
+                Event::Start(Tag::Image { dest_url, link_type, .. }) => Inline::Image {
+                    target: if matches!(link_type, LinkType::WikiLink { has_pothole:true }) { dest_url.strip_suffix('\\').unwrap_or(&dest_url).into() } else {dest_url.into_string()},
+                    wiki: matches!(link_type,LinkType::WikiLink {..}),
                     alt: Inline::plain_text(&self.inlines(Some(TagEnd::Image))),
+                    asset: None,
                 },
                 _ => continue,
             };

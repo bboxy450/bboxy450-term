@@ -13,6 +13,7 @@ use bbt_ui::modules::document_modal::{
 };
 use serde_json::Value;
 pub mod observation;
+pub mod images;
 use std::{
     collections::{BTreeSet, VecDeque},
     sync::Arc,
@@ -51,6 +52,7 @@ pub struct Prepared {
     pub markdown: bbt_doc::Markdown,
     pub document: Document,
     pub targets: Vec<String>,
+    pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
 }
 /// Flat router evidence is retained before portable provider DTO parsing.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,7 +115,7 @@ pub struct Reply {
     pub id: Ulid,
     pub response: Response,
 }
-fn decode(read: &Read, value: d::Result<Value>) -> Response {
+fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) -> Response {
     let result = (|| {
         let value = value?;
         if serde_json::to_vec(&d::Result::Ok(&value))
@@ -145,6 +147,7 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
                     .set_metadata(&record.frontmatter)
                     .map_err(|e| d::CommandError::new("invalid_frontmatter", e.to_string()))?;
                 markdown.frontmatter.error = record.parse_error;
+                let images = root.map_or_else(Vec::new,|root| images::load(&mut markdown,root));
                 let mut document = markdown.document(&record.reference.path);
                 document.prov.digest = record.reference.digest.clone();
                 if let Some(label) = record.frontmatter["authorship"]["issued_by"]
@@ -166,6 +169,7 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
                     markdown,
                     document,
                     targets,
+                    images,
                 })))
             }
         }
@@ -184,13 +188,15 @@ fn decode(read: &Read, value: d::Result<Value>) -> Response {
 /// One result is retained until consumed, even if Latest replaces a frame.
 #[derive(Default)]
 pub struct Reader {
-    pending: Option<(Ulid, Read, Option<bbt_proto::gui::SwarmScope>)>,
+    pending: Option<(Ulid, Read, Option<bbt_proto::gui::SwarmScope>, Option<std::path::PathBuf>)>,
     outstanding: BTreeSet<Ulid>,
+    image_root: Option<std::path::PathBuf>,
 }
 pub struct Work {
     id: Ulid,
     read: Read,
     value: d::Result<Value>,
+    image_root: Option<std::path::PathBuf>,
     scope: Option<bbt_proto::gui::SwarmScope>,
 }
 impl Work {
@@ -205,10 +211,10 @@ impl Work {
         let response = match source {
             Some(Ok(source)) => Response::Bound {
                 source,
-                response: Box::new(decode(&self.read, self.value)),
+                response: Box::new(decode(&self.read, self.value, self.image_root.as_deref())),
             },
             Some(Err(reason)) => Response::Failed(reason),
-            None => decode(&self.read, self.value),
+            None => decode(&self.read, self.value, self.image_root.as_deref()),
         };
         Arc::new(Reply {
             id: self.id,
@@ -217,6 +223,7 @@ impl Work {
     }
 }
 impl Reader {
+    pub fn image_root(&mut self, root: std::path::PathBuf) { self.image_root=Some(root); }
     pub fn admit(&mut self, id: Ulid, read: Read) -> Option<bbt_proto::GuiAction> {
         self.admit_scoped(id, read, None)
     }
@@ -247,7 +254,7 @@ impl Reader {
         }
         let action = read.action_scoped(id, scope);
         self.outstanding.insert(id);
-        self.pending = Some((id, read, scope));
+        self.pending = Some((id, read, scope, self.image_root.take()));
         Ok(action)
     }
     pub fn response(&mut self, id: Ulid, value: d::Result<Value>) -> Option<Work> {
@@ -255,17 +262,18 @@ impl Reader {
         if self.pending.as_ref()?.0 != id {
             return None;
         }
-        let (_, read, scope) = self.pending.take()?;
+        let (_, read, scope, image_root) = self.pending.take()?;
         Some(Work {
             id,
             read,
             value,
+            image_root,
             scope,
         })
     }
     pub fn disconnected(&mut self, reason: &str) -> Option<Arc<Reply>> {
         self.outstanding.clear();
-        let (id, _, _) = self.pending.take()?;
+        let (id, _, _, _) = self.pending.take()?;
         Some(Arc::new(Reply {
             id,
             response: Response::Failed(format!("document_read_disconnected: {reason}")),
@@ -301,6 +309,15 @@ pub struct Host {
     retries: u8,
 }
 impl Host {
+    /// Failed GPU custody leaves readable source placeholders, never an app-fatal draw.
+    pub fn image_failed(&mut self, reason: String) {
+        if let Some(prepared)=&mut self.prepared {
+            let prepared=Arc::make_mut(prepared);
+            images::clear(&mut prepared.markdown);
+            prepared.images.clear();
+        }
+        self.notice=Some(format!("Image unavailable: {reason}"));
+    }
     /// Deliberate startup-root path for legacy CLI/test callers.
     pub fn show(&mut self, target: String) {
         self.show_scoped(target, None)

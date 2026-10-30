@@ -241,6 +241,11 @@ fn target(view: &wgpu::TextureView, scale: f32) -> ChromeTarget<'_> {
 }
 
 impl Gpu {
+    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
+        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+        Ok(())
+    }
+
     /// Clone handles to the same device while bootstrap still owns Gpu on IO.
     pub fn shared_context(&self) -> std::sync::Arc<DeviceContext> {
         std::sync::Arc::new(DeviceContext {
@@ -800,6 +805,11 @@ pub(crate) struct VerificationFrame {
     cells: CellTextures,
 }
 impl VerificationFrame {
+    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
+        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+        Ok(())
+    }
+
     pub async fn new() -> Result<Self, String> {
         bbt_rt::assert_not_ui_thread();
         let context = DeviceContext::new().await.map_err(|e| e.to_string())?;

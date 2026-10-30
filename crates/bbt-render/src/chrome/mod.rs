@@ -63,6 +63,8 @@ pub struct ChromeRenderer {
 impl ChromeRenderer {
     /// A submission boundary: per-draw buffer slices may be reused from here on. Call it
     /// before encoding each submitted command buffer, never while one is being encoded.
+    /// Register a worker-decoded immutable bitmap; the next draw uploads its dirty atlas region.
+    pub fn add_image(&mut self, image: &icons::Image) -> Result<()> { self.icons.add_bitmap(image) }
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();
     }

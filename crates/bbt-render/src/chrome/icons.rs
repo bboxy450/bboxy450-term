@@ -8,6 +8,7 @@
 //! at their requested physical size; a warm draw does no rasterisation/upload.
 use crate::Result;
 use std::collections::HashMap;
+#[derive(Debug, Clone)]
 pub struct Image {
     pub name: String,
     pub width: u32,
@@ -18,6 +19,21 @@ pub struct Image {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dynamic_bitmaps_keep_uvs_stable_and_refuse_invalid_geometry() {
+        let mut atlas=IconAtlas::new(Vec::<Image>::new()).unwrap();
+        let image=Image {name:"document/A".into(),width:2,height:1,rgba:[255,0,0,255].repeat(2)};
+        atlas.add_bitmap(&image).unwrap();
+        let original=atlas.rects["document/A"];
+        let shelf=atlas.shelf;
+        atlas.add_bitmap(&image).unwrap();
+        assert_eq!(atlas.shelf,shelf,"an immutable repeated key cannot allocate twice");
+        atlas.add_bitmap(&Image {name:"document/B".into(),..image.clone()}).unwrap();
+        assert_eq!(atlas.rects["document/A"],original);
+        assert!(atlas.add_bitmap(&Image {name:"invalid".into(),width:0,..image}).is_err());
+        assert!(!atlas.rects.contains_key("invalid"));
+    }
 
     const SVG: &str = r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 3L21 21M3 21L21 3" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round"/></svg>"#;
 
@@ -155,18 +171,7 @@ impl IconAtlas {
             shelf: [0; 3],
             dirty: Vec::new(),
         };
-        for mut image in assets.bitmaps {
-            atlas.validate_size(image.width, image.height, image.rgba.len())?;
-            for pixel in image.rgba.as_chunks_mut::<4>().0 {
-                let alpha = u32::from(pixel[3]);
-                for channel in &mut pixel[..3] {
-                    *channel = ((u32::from(*channel) * alpha + 127) / 255) as u8;
-                }
-            }
-            let rect = atlas.insert(image.width, image.height, &image.rgba)?;
-            atlas.rects.insert(image.name.clone(), rect);
-            atlas.bitmaps.insert(image.name.clone(), image);
-        }
+        for image in assets.bitmaps { atlas.add_bitmap(&image)?; }
         for (name, source) in assets.svgs {
             if atlas.rects.contains_key(&name) || atlas.trees.contains_key(&name) {
                 return Err(format!("duplicate icon asset: {name}").into());
@@ -176,6 +181,21 @@ impl IconAtlas {
             atlas.trees.insert(name, tree);
         }
         Ok(atlas)
+    }
+    /// Immutable host asset keys. Decoding and file IO belong to the caller's worker.
+    pub fn add_bitmap(&mut self, image: &Image) -> Result<()> {
+        if self.bitmaps.contains_key(&image.name) { return Ok(()); }
+        self.validate_size(image.width,image.height,image.rgba.len())?;
+        if self.trees.contains_key(&image.name) { return Err("duplicate SVG/image key".into()); }
+        let mut image=image.clone();
+        for pixel in image.rgba.as_chunks_mut::<4>().0 {
+            let alpha=u32::from(pixel[3]);
+            for channel in &mut pixel[..3] { *channel=((u32::from(*channel)*alpha+127)/255) as u8; }
+        }
+        let rect=self.insert(image.width,image.height,&image.rgba)?;
+        self.rects.insert(image.name.clone(),rect);
+        self.bitmaps.insert(image.name.clone(),image);
+        Ok(())
     }
     fn validate_size(&self, width: u32, height: u32, bytes: usize) -> Result<()> {
         if width == 0

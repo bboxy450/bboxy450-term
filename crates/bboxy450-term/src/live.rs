@@ -1481,6 +1481,10 @@ async fn run_with_control(
                         } else if scroll_refused(&mut model,*seat,*generation,*request,"history_view_unavailable") { updates.publish(model.clone()); }
                     }
                     UiMsg::DocumentRead {id,read,scope}=> {
+                        let root=scope.and_then(|scope|model.ui.window.sidebar.swarms.iter()
+                            .find(|row|row.id.0.0==scope.swarm.0).and_then(|row|row.workdir.as_ref()))
+                            .map_or_else(||cwd.clone(),PathBuf::from);
+                        document_reader.image_root(root);
                         if let Some((_,previous))=document_preparation.take() {previous.abort();}
                         match document_reader.admit_latest_scoped(*id,read.clone(),*scope) {
                             Ok(action)=>queue_action(&mut outgoing,action),

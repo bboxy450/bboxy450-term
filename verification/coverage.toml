@@ -180,7 +180,7 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["NativeInputOwnership", "TransportCapture", "LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "AsyncRenderPreparation"]
+models = ["WorkspaceFence", "NativeInputOwnership", "TransportCapture", "LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "AsyncRenderPreparation"]
 scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement. Scrollback viewport-based heap admission/accounting and refusal paint are implementation-tested in tests/scrollback.rs and live/scene unit tests; these arithmetic and presentation checks do not change the history IO protocol."
 sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/gpu.rs"]
 

@@ -125,7 +125,7 @@ fn resolution_fetch_and_images_use_one_root_and_the_existing_record_handles() {
     std::fs::create_dir_all(f.root.join("images")).unwrap();
     let image = include_bytes!("../../bbt-plugin/tests/fixtures/data_source/seed/images/pixel.png");
     std::fs::write(f.root.join("images/pixel space.png"), image).unwrap();
-    let body = "# Alpha\n\n![[images/pixel space.png]]\n\n`![[missing.png]]`\n\n```text\n![[also-missing.png]]\n```\n";
+    let body = "# Alpha\n\n![[pixel space.png]]\n\n`![[missing.png]]`\n\n```text\n![[also-missing.png]]\n```\n";
     f.seed(
         70,
         "notes/alpha.md",

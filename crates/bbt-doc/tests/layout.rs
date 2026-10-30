@@ -648,3 +648,19 @@ fn long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source() {
     assert_eq!(doc.source, source);
     assert!(doc.source.contains(&token));
 }
+
+#[test]
+fn resolved_images_keep_aspect_and_true_size_inside_horizontal_clips() {
+    let mut doc=parse("![[proof.png]]\n");
+    let bbt_doc::BlockKind::Paragraph(values)=&mut doc.blocks[0].kind else {panic!("image paragraph")};
+    let bbt_doc::Inline::Image {asset,..}=&mut values[0] else {panic!("wiki image")};
+    *asset=Some(bbt_doc::markdown::ImageAsset {key:"test-bitmap".into(),width:800,height:300});
+    let layout=doc.body_element(ctx(),&Fonts,400.,&[]).layout(Rect::new(0.,0.,400.,0.),ctx(),&Fonts).unwrap();
+    fn images(node:&c::Layout,out:&mut Vec<[f32;2]>) {
+        if matches!(node.kind,c::LayoutKind::Image {..}) {out.push([node.rect.w,node.rect.h]);}
+        for child in &node.children {images(child,out);}
+    }
+    let mut sizes=vec![];images(&layout,&mut sizes);
+    assert_eq!(sizes,[[800.,300.]]);
+    assert_eq!(doc.source,"![[proof.png]]\n");
+}

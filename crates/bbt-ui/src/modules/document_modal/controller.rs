@@ -23,6 +23,9 @@ pub fn numbered(target: &str) -> Option<u64> {
 }
 
 pub fn presentation(target: &str, display: &str, links: Option<&RecordLinks>) -> (String, bool) {
+    if links.and_then(|links| links.get(target)) == Some(&None) {
+        return (format!("{} · no record", numbered(target).map_or_else(|| display.to_owned(), |n| format!("#{n}"))), false);
+    }
     if numbered(target).is_none() && numbered(display).is_none() {
         return (display.into(), true);
     }
