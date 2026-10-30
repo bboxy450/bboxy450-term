@@ -116,6 +116,10 @@ Delivery: work in the worktree `~/mydev/bboxy450-term-plugin-sdk`, because anoth
 9f. **Decisions left by P6/P7, now the Oracle's to make:**
     - Production hook vetoes need the harness hook shim to wait up to 2 s for a reply and encode a veto for each harness.
     - `host/messages.send` needs a plugin sender identity in messaging (wire, ledger, signing).
+9g. **Fixture deadline review** (quarantine is over five entries, 2026-10-30): eight plugin conformance and client tests fail only inside the parallel full gate under load 7-11, with "--shape/initialize exceeded its fixed deadline". They pass alone. An earlier sample showed fresh pinned copies parked at `_dyld_start` (macOS first-exec scanning).
+    - Measure first-exec latency of fresh copies.
+    - Make fixture deadlines injectable in tests while production keeps 2 s.
+    - Remove the quarantine entries.
 10a. **Monorepo end state** (operator, 2026-10-30):
     - The SDK is only `crates/bbt-plugin-sdk` and the GitKB plugin is only `plugins/gitkb`, both inside the `~/mydev/bboxy450-term` monorepo.
     - `~/mydev/bboxy450-term-plugin-sdk` is a temporary git worktree of that same repository, used because another agent works in the main checkout.
