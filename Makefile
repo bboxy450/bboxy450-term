@@ -94,6 +94,7 @@ help:
 	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make test-history-admission       Core heap admission and private S4 night assertions' \
 	  'make test-input-backend          Admission wake, watched echo latency and replay safety' \
 	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
 	  'make profile-input-ui            Repeatable CPU host-layout profile (no GPU latency claim)' \
@@ -1483,3 +1484,12 @@ test-remote-launch:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib spawn_params::; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
 	cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-render -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-history-admission
+test-history-admission:
+	@set -eu; . scripts/cache-env.sh; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --lib allocated_core_viewport; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --test scrollback; \
+	cargo build --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
+	BBT='$(abspath $(TARGET_DIR))/debug/$(APP)' sh scripts/e2e-night.sh scrollback >'$(TARGET_DIR)/history-night.jsonl'; \
+	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; s4=[r for r in rows if r.get("function")=="S4" and r.get("kind")=="e2e"]; assert len(s4)==1 and s4[0]["verdict"]=="pass" and s4[0]["coverage"]=="full",s4; print(s4[0])' '$(TARGET_DIR)/history-night.jsonl'

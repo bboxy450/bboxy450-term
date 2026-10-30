@@ -147,7 +147,7 @@ def history_sample(app, label):
     require(type(history["retained_history_bytes"]) is int, "heap is unobserved")
     for row in history["panes"]:
         require(type(row["retained_history_bytes"]) is int, "pane heap is unobserved")
-        require(0 < row["retained_history_bytes"] <= row["budget_bytes"] == 4_000_000,
+        require(0 < row["retained_history_bytes"] <= row["budget_bytes"] <= history["per_pane_budget_bytes"],
                 "history pane exceeds its documented budget")
         require(0 <= row["pages_resident"] <= 1, "more than one input page resident")
         require(row["pages_fetched"] == row["pages_evicted"] + row["pages_resident"],
@@ -237,7 +237,7 @@ def s3(app):
 
 def s4(app):
     seat = app.spawn("S4 history admission")
-    app.ctl("app", "resize", "512x256", label="s4-resize")
+    app.ctl("app", "resize", "512x64", label="s4-resize")
     layout = app.ctl("ui", "focus", seat)
     view = pane(layout, seat)
     # Use a real core-valid viewport. No giant synthetic Screen or ctl seat-resize
@@ -257,19 +257,24 @@ def s4(app):
     app.line(seat, "for i in {1..1000}; do printf 'S4_%04d\\n' $i; done; printf 'S4_BEFORE\\n'")
     app.wait(seat, "(?m)^S4_BEFORE$")
     generation = app.ctl("seat", "screen", seat)["generation"]
-    error = app.ctl("ui", "scroll", seat, "top", label="s4-refusal", refused=True)
-    require("history_viewport_exceeds_budget" in error["message"],
-            f"unrelated history refusal: {error}")
-    require("history_dimensions_unsupported" not in error["message"],
-            "valid viewport mislabeled unsupported")
+    # #83 admits supported large panes with a dimension-scaled budget.
+    app.ctl("ui", "scroll", seat, "top", label="s4-supported")
+    sample = history_sample(app, "s4-heap")
+    require(any(p["seat"] == seat for p in sample["panes"]), "supported pane has no heap sample")
+    probe = app.ctl("debug", "history-admission", "2048x128", label="s4-refusal")
+    require(probe["cells"] == 2048 * 128 and probe["core_retained_heap_bytes"] > 0,
+            "over-budget fixture has no real core cells")
+    require(probe["refusal"] == "history_viewport_exceeds_budget", f"unrelated refusal: {probe}")
+    require(probe["retained_heap_bytes"] == 0, "refused fixture retained Playback heap")
+    app.ctl("ui", "scroll", seat, "bottom")
     app.line(seat, "printf 'S4_AFTER\\n'")
     app.wait(seat, "(?m)^S4_AFTER$")
     screen = app.ctl("seat", "screen", seat, label="s4-live")
     require(screen["generation"] == generation, "history refusal replaced the live process")
     layout = app.ctl("ui", "layout", label="s4-layout")
     require(pane(layout, seat)["scroll"]["live"], "history refusal stranded the live pane")
-    print(f"S4: valid {view['cols']}x{view['rows']} history refused by name; "
-          "same-generation live input still works; history heap bytes unobserved")
+    print(f"S4: supported live {view['cols']}x{view['rows']} heap bounded; allocated core 2048x128 "
+          "refused history_viewport_exceeds_budget with zero Playback heap; same-generation live input works")
 
 
 def k2(app):

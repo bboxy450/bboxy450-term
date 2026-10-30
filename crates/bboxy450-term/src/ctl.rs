@@ -122,6 +122,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   debug report                            offline hints for evidence gathering and gh issue reporting
   debug journal <account/OP|seat/SEAT/OP>  one retained operation; no SQL or key namespace
   debug metrics                           logic + GUI history heap/page counters
+  debug history-admission COLSxROWS       test-account bounded core viewport/heap fixture
   debug fault ring-gap <seat> <from>..<to>  test-account retained-history gap mask
   debug fault spawn-hold                  test-account: hold the next admitted launch
   debug fault spawn-release <op>          release that exact launch once

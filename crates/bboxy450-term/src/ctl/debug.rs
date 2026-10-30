@@ -112,6 +112,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("debug", "errors", "Debug"),
     ("debug", "journal", "Debug"),
     ("debug", "metrics", "Debug"),
+    ("debug", "history-admission", "-"),
     ("debug", "fault", "Debug"),
     ("debug", "snapshot", "Debug"),
     ("debug", "ps", "Debug"),
@@ -123,6 +124,7 @@ macro_rules! debug_commands {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)* "debug": [
             DebugReport,
+            DebugHistoryAdmission { cols: usize, rows: usize },
             DebugNotifications,
             DebugNativeNotifications,
             DebugFault {
@@ -147,6 +149,13 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     let flag = |name: &str| flags.get(name).cloned();
     Ok(Some(match *words {
         ["debug", "report"] => Command::DebugReport,
+        ["debug", "history-admission", size] => {
+            let (cols, rows) = size.split_once('x')
+                .and_then(|(c, r)| Some((c.parse::<usize>().ok()?, r.parse::<usize>().ok()?)))
+                .filter(|(c, r)| *c >= 2 && *r > 0 && c.checked_mul(*r).is_some_and(|n| n <= 262_144))
+                .ok_or_else(|| format!("{USAGE_PREFIX}history-admission: core-valid COLSxROWS, at most 262144 cells"))?;
+            Command::DebugHistoryAdmission { cols, rows }
+        }
         ["debug", "notifications"] => Command::DebugNotifications,
         ["debug", "notifications", "native"] => Command::DebugNativeNotifications,
         ["debug", "errors"] => Command::Debug {
@@ -303,6 +312,18 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     } = cx;
     let data = match command {
         Command::DebugReport => report(),
+        Command::DebugHistoryAdmission { cols, rows } => {
+            client.seats()?;
+            if !client
+                .identity
+                .as_ref()
+                .and_then(|i| i.reason.as_deref())
+                .is_some_and(|r| r.starts_with("test-account:"))
+            {
+                return Err("history_admission_requires_test_account".into());
+            }
+            history_admission(cols, rows)
+        }
         Command::DebugSpawnGate(command) => {
             serde_json::to_value(client.ui(bbt_proto::gui::UiRequest::SpawnGate(command))?)
                 .map_err(|error| error.to_string())?
@@ -328,6 +349,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "debug report",
+    "debug history-admission 2048x128",
     "debug notifications",
     "debug logs app",
     "debug errors",
@@ -474,5 +496,51 @@ mod tests {
             ])
             .is_err()
         );
+    }
+}
+
+// A core-valid fixture, independent of the live Replica's 32768-cell limit.
+// Uses real allocated cells and the production admission path; no fake Screen dimensions.
+fn history_admission(cols: usize, rows: usize) -> Value {
+    let term = bbt_core::Term::new_with_spare_rows(cols, rows, 0, 0);
+    let core_heap = term.retained_heap_bytes();
+    let screen = std::sync::Arc::new(bbt_proto::Screen::from_term(
+        &term,
+        String::new(),
+        None,
+        None,
+    ));
+    let view = bbt_proto::View {
+        seat: Ulid::new(),
+        generation: 1,
+        view_generation: Ulid::new(),
+    };
+    let result = crate::scrollback::Playback::new(view, 0, screen);
+    let (refusal, heap, budget) = match result {
+        Ok(playback) => (
+            None,
+            playback.retained_heap_bytes(),
+            Some(playback.heap_budget()),
+        ),
+        Err(reason) => (Some(reason), Some(0), None),
+    };
+    json!({"basis":"core-valid allocated fixture; independent of live GUI dimensions",
+        "cols":cols,"rows":rows,"cells":cols * rows,"core_retained_heap_bytes":core_heap,
+        "refusal":refusal,"retained_heap_bytes":heap,"budget_bytes":budget,
+        "maximum_budget_bytes":crate::scrollback::MAX_HEAP_BUDGET})
+}
+
+#[cfg(test)]
+mod admission_tests {
+    use super::*;
+    #[test]
+    fn allocated_core_viewport_refuses_over_budget_and_reports_heap() {
+        let fitting = history_admission(80, 24);
+        assert!(fitting["refusal"].is_null());
+        assert!(fitting["retained_heap_bytes"].as_u64().unwrap() > 0);
+        let large = history_admission(2048, 128);
+        assert_eq!(large["refusal"], "history_viewport_exceeds_budget");
+        assert!(large["core_retained_heap_bytes"].as_u64().unwrap() > 0);
+        assert_eq!(large["retained_heap_bytes"], 0);
     }
 }
