@@ -1872,6 +1872,105 @@ mod gui_tests {
         registry::SeatRecord,
     };
 
+    // keeps: spec e2e-acceptance S2; real committed-ring loss, no debug mask.
+    #[test]
+    fn torn_ring_suffix_projects_one_gap_at_the_boundary_row() {
+        use crate::ring::{Playback, Ring, Settings};
+        let dir = tempfile::tempdir().unwrap();
+        let seat = Ulid::new();
+        let mut live = Playback::new(seat, 1, crate::SeatSize::default());
+        let mut ring = Ring::open(dir.path(), seat, 1, 0, Settings::default()).unwrap();
+        ring.checkpoint(live.saved().encode().unwrap()).unwrap();
+        let mut first_boundary = 0;
+        for (seq, bytes) in [
+            (
+                1,
+                b"before1\r\nbefore2\r\nbefore3\r\nbefore4\r\n".as_slice(),
+            ),
+            (2, b"lost\r\n".as_slice()),
+        ] {
+            let event = crate::Event::Output {
+                seat,
+                generation: 1,
+                seq,
+                bytes: bytes.to_vec(),
+            };
+            ring.append_event(&event).unwrap();
+            live.apply(&event).unwrap();
+            ring.flush().unwrap();
+            if seq == 1 {
+                let raw = std::fs::read(dir.path().join("committed")).unwrap();
+                let meta: serde_json::Value =
+                    serde_json::from_slice(&raw[..raw.len() - 4]).unwrap();
+                let path = dir.path().join(meta["file"].as_str().unwrap());
+                let len = std::fs::metadata(&path).unwrap().len();
+                first_boundary = len;
+            }
+        }
+        let raw = std::fs::read(dir.path().join("committed")).unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&raw[..raw.len() - 4]).unwrap();
+        let path = dir.path().join(meta["file"].as_str().unwrap());
+
+        drop(ring);
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_len(first_boundary + 2)
+            .unwrap();
+        let ring = Ring::open(dir.path(), seat, 1, 0, Settings::default()).unwrap();
+        let history = ring.history(1, 2).unwrap();
+        assert_eq!(history.status.committed_sequence, 1);
+        assert_eq!(history.gap.as_ref().unwrap().retained_to, Some(1));
+        let GuiReply::History { records, next, .. } =
+            gui_history_reply(bbt_proto::SeatId::from_u128(seat.0), 1, 1, 2, history, &[]).unwrap()
+        else {
+            panic!("history reply")
+        };
+        assert!(next.is_none());
+        assert_eq!(records.len(), 2);
+        assert!(matches!(
+            records[1],
+            bbt_proto::gui::HistoryRecord::Gap { from: 2, to: 2, .. }
+        ));
+        let mut term = bbt_core::Term::new_with_spare_rows(80, 24, 100, 0);
+        for record in records {
+            match record {
+                bbt_proto::gui::HistoryRecord::Bytes { bytes, .. } => term.advance(&bytes),
+                bbt_proto::gui::HistoryRecord::Gap { from, to, reason } => {
+                    // The ctl history projection's public marker representation.
+                    term.advance(format!("\r\n[gap {from}..{to}: {reason}]\r\n").as_bytes());
+                }
+            }
+        }
+        let bounds = term.history_bounds();
+        let rows = term
+            .history_window(bounds.start, (bounds.end - bounds.start) as usize)
+            .unwrap();
+        let text: Vec<String> = rows
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|c| c.c)
+                    .collect::<String>()
+                    .trim_end()
+                    .to_owned()
+            })
+            .collect();
+        assert_eq!(text[3], "before4");
+        let markers: Vec<_> = text
+            .iter()
+            .enumerate()
+            .filter(|(_, row)| row.starts_with("[gap "))
+            .collect();
+        assert_eq!(markers.len(), 1);
+        assert_eq!(markers[0].0, 5);
+        assert!(!text.iter().any(|row| row.contains("lost")));
+        // A complete-ring control must never claim that a gap exists.
+        let full = ring.history(1, 1).unwrap();
+        assert!(full.gap.is_none());
+    }
+
     // keeps: spec c1-live-seats; large GUI replies do not widen seat/MCP requests
     #[tokio::test]
     async fn gui_reply_budget_accepts_large_frames_without_widening_seat_requests() {
