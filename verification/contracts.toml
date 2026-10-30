@@ -261,3 +261,23 @@ implementation_tests = ["crates/bboxy450-term/tests/remote_launch.rs", "crates/b
 assumptions = "One launcher owner, one machine record present before capture, two configured transport values, one captured launch and one successful/failed completion. Settings edits, capture, launch, remember and a known-exited generation restart are atomic actions. Later Settings changes, including A -> B -> A, may interleave. No fairness or remote availability is assumed: this is safety, not network progress. Existing operation-journal and lifecycle models cover at-most-once admission and process ownership. Shell quoting, exact ssh/mosh/et flags, remote/local cwd separation, Settings TOML replacement, native editor routing, machine catalogue creation/availability and legacy wire defaults use Rust/API/private-process tests. Remote servers, authentication, remote MCP/hooks and transport plugins are outside this cut."
 property = "Spawn and known-exited restart use the captured command; only a successful result remembers the captured machine choices. A broken control re-resolves current Settings at launch/restart and allows failed completions to remember; both guards must hold in the good model. compose_machine_fields_equals_spawned_argv_for_every_transport runs fake private executables and compares actual argv against the preview and the exact helper called by logic; machine_choices_persist_without_changing_local_directory_or_role_defaults witnesses durable machine homes and later Settings edits."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TerminalReplyProgress"
+title = "Live terminal query reply progress"
+models = ["TerminalReplyProgress", "BrokenTerminalReplyProgress"]
+sources = ["crates/bbt-supervisor/src/ring.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-supervisor/tests/terminal_replies.rs", "scripts/e2e/shared_codex.py", "crates/bboxy450-term/src/gpu/streaming_tests.rs"]
+assumptions = "One live query in a stable generation, fewer than 32 pending replies and fair successful host delivery. Existing InputReceipt covers stable-ID retries; identities/capture order, byte-accurate positions, restored-event suppression and real Codex stream/resize use native witnesses. Pending reply survival across owner restart, saturation and physical scanout are not established by this projection."
+property = "A live parsed query eventually delivers its reply; dropping the live effect must fail progress."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TerminalReplayQuiet"
+title = "Historical terminal queries have no output effects"
+models = ["TerminalReplayQuiet", "BrokenTerminalReplayQuiet"]
+sources = ["crates/bbt-supervisor/src/ring.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-supervisor/tests/terminal_replies.rs", "scripts/e2e/shared_codex.py", "crates/bboxy450-term/src/gpu/streaming_tests.rs"]
+assumptions = "One live query in a stable generation, fewer than 32 pending replies and fair successful host delivery. Existing InputReceipt covers stable-ID retries; identities/capture order, byte-accurate positions, restored-event suppression and real Codex stream/resize use native witnesses. Pending reply survival across owner restart, saturation and physical scanout are not established by this projection."
+property = "Historical reconstruction emits no terminal writes; forwarding replayed replies must fail safety."
+checks = ["make test-formal", "make test"]

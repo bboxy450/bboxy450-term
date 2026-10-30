@@ -61,6 +61,8 @@ def main():
     parser.add_argument("binary", type=Path)
     parser.add_argument("--cold", action="store_true")
     parser.add_argument("--render-check", action="store_true")
+    parser.add_argument("--stream-check", action="store_true",
+                        help="stream synthetic local text while resizing and sample actual Codex source grids")
     parser.add_argument("--color-check", action="store_true",
                         help="prove real Codex foreground colors despite inherited automation settings")
     parser.add_argument("--codex", help="Codex executable (defaults to PATH)")
@@ -109,6 +111,9 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import first_turn
 
+    stream_started, stream_finished = threading.Event(), threading.Event()
+    stream_stats = {"deltas": 0}
+
     class Provider(http.server.BaseHTTPRequestHandler):
         requests = []
 
@@ -146,7 +151,27 @@ def main():
                                  json.dumps(dict(type=name, **data)) + "\n\n").encode())
                 self.wfile.flush()
 
-            first_turn.Provider.send_responses(event, body, stage, stem, {})
+            streaming = options.stream_check and label == "A" and wake and stage == "done"
+            if streaming:
+                marker = first_turn.MARKER
+                first_turn.MARKER = "\n\n".join(
+                    f"STREAM {index:03} " + "W" * 384 for index in range(64)
+                ) + "\n\n" + marker
+
+            def stream_event(name, **data):
+                if name == "response.output_text.delta":
+                    stream_started.set()
+                    for fragment in data["delta"].splitlines(keepends=True):
+                        event(name, **dict(data, delta=fragment))
+                        stream_stats["deltas"] += 1
+                        time.sleep(.05)
+                else:
+                    event(name, **data)
+                if name == "response.completed":
+                    stream_finished.set()
+
+            first_turn.Provider.send_responses(stream_event if streaming else event,
+                                               body, stage, stem, {})
 
     server = http.server.HTTPServer(("127.0.0.1", 0), Provider)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
@@ -327,7 +352,8 @@ def main():
         os.kill(daemon_pid, 0)
         def captured_output(seat):
             chunks = []
-            for path in sorted((run / ("seat-" + seat) / "ring-1").glob("data-*.log")):
+            generation = after[seat]["record"]["generation"]
+            for path in sorted((run / ("seat-" + seat) / ("ring-" + str(generation))).glob("data-*.log")):
                 data, offset = path.read_bytes(), 0
                 while offset + 56 <= len(data) and data[offset:offset + 4] == b"BBR1":
                     kind, length = struct.unpack_from("<HI", data, offset + 6)
@@ -383,8 +409,34 @@ def main():
             for seat in (a, b):
                 assert before[seat]["state"]["process"] == after[seat]["state"]["process"]
                 assert before[seat]["record"]["generation"] == after[seat]["record"]["generation"]
+        if options.stream_check:
+            focused = ctl("ui", "focus", a)["data"]
+            assert focused["focused"] == a, focused
         sent = ctl("message", "send", a, "WAKE_ONLY_A")
         delivered(sent, a)
+        if options.stream_check:
+            assert stream_started.wait(20), "local Codex text stream never started"
+            samples = []
+            sizes = ("159x58", "91x31", "180x43", "80x24", "137x39", "159x58")
+            for index in range(24):
+                if stream_finished.is_set():
+                    break
+                ctl("app", "resize", sizes[index % len(sizes)])
+                snapshot = ctl("seat", "screen", a)["data"]
+                ink = [row for row in snapshot["rows"] if "W" * 8 in row]
+                samples.append(dict(cols=snapshot["cols"], rows=len(snapshot["rows"]),
+                                    sequence=snapshot["sequence"], ink_rows=len(ink),
+                                    # Character offsets are diagnostic, not a glyph-width oracle.
+                                    max_w_end=max((row.rfind("W") + 1 for row in ink), default=None)))
+                time.sleep(.05)
+            assert stream_finished.wait(20), "local Codex text stream did not finish"
+            stream_stats["samples"] = samples
+            stream_stats["basis"] = "real private Codex 0.164 local SSE; source grids only, no forced capture or per-present GPU/scanout claim"
+            (root / "stream-evidence.json").write_text(json.dumps(stream_stats, indent=2) + "\n")
+            print("Streaming observations: " + json.dumps(stream_stats), flush=True)
+            assert stream_stats["deltas"] >= 64, stream_stats
+            assert len(samples) >= 4 and sum(row["ink_rows"] > 0 for row in samples) >= 4, stream_stats
+            assert len({(row["cols"], row["rows"]) for row in samples}) >= 3, stream_stats
         wait(lambda: screen(a), lambda text: "WAKE_ACK_A" in text, "native shared-daemon wake")
         assert "WAKE_ONLY_A" not in screen(b)
         assert not any(request["seat"] == "B" and request["wake"] for request in Provider.requests)
@@ -406,6 +458,8 @@ def main():
                      requests=Provider.requests, wake_operation=sent["op"],
                      daemon_survived_seat_close_and_app_stop=True,
                      external_model_calls=0, operator_input=0)
+        if options.stream_check:
+            proof["stream_observations"] = stream_stats
         if options.color_check:
             proof["color_observations"] = color_observations
         (root / "evidence.json").write_text(json.dumps(proof, indent=2) + "\n")

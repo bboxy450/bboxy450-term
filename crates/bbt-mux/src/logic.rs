@@ -7197,7 +7197,17 @@ impl Worker {
             .client
             .capture_diagnostics
             .start(Phase::Parse, id, generation, seq, seq);
-        view.state.apply(&event)?;
+        // Live terminal queries must reach the PTY. Replay/catch-up retain
+        // apply()'s effect suppression; retries reuse the existing input IDs.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let replies = &mut view.replies;
+        view.state.apply_with_effects(&event, |effect| {
+            if let bbt_core::Event::PtyWrite(bytes) = effect
+                && replies.len() < 32
+            {
+                replies.push_back((Ulid::new(), bytes.into_bytes()));
+            }
+        })?;
         let bytes = match &event {
             Event::Output { bytes, .. } => bytes.len() as u64,
             _ => 0,

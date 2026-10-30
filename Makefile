@@ -89,6 +89,9 @@ help:
 	  'make test-wake-causes            Typed wake causes, legacy replay, MCP refusal and retained-logic refresh' \
 	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
 	  'make test-codex-rendering        Large catalog relay, idle frames and resized logic recovery' \
+	  'make test-terminal-replies       Live query responses, quiet replay and bounded models' \
+	  'make test-terminal-streaming     Private Metal streaming/resize and injected strip controls' \
+	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
 	  'make test-input-backend          Admission wake, watched echo latency and replay safety' \
@@ -713,6 +716,24 @@ test-wake-causes:
 .PHONY: test-codex-rendering
 test-codex-rendering: build test-harness-proxy
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --render-check
+
+.PHONY: test-codex-streaming
+test-codex-streaming: build test-harness-proxy
+	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --render-check --stream-check
+
+.PHONY: test-terminal-replies
+test-terminal-replies:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test terminal_replies; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test ring; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts project_contracts_and_broken_controls; \
+	cargo clippy --locked -p bboxy450-harness-host -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+.PHONY: test-terminal-streaming
+test-terminal-streaming:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) gpu::streaming_tests:: -- --nocapture; \
+	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 .PHONY: test-checkpoint-resize
 test-checkpoint-resize:

@@ -332,3 +332,23 @@ frontend = "project"
 name = "BrokenTransportCapture"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TerminalReplyProgress"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTerminalReplyProgress"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "TerminalReplayQuiet"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTerminalReplayQuiet"
+expected = "safety"
+frontend = "project"

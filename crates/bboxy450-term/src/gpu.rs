@@ -1496,3 +1496,7 @@ mod clear_fold_tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "gpu/streaming_tests.rs"]
+mod streaming_tests;

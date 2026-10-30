@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 26 contract families and 26 broken controls to the
-14 checker/Yarn conformance cases: **66 models** in total. The declarations live
+The project corpus adds 28 contract families and 28 broken controls to the
+14 checker/Yarn conformance cases: **70 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
@@ -82,6 +82,7 @@ is added to the terminal runtime.
 | Retained process ownership | UI detach preserves owners; explicit stop checks process birth |
 | Window persistence | Only the matching durable version releases a fenced reply |
 | Focus receipt | A completed frame has the current visible, focused process generation |
+| Terminal query replies | Live terminal queries progress through bounded delivery; historical apply/restore cannot emit PTY writes. Saturation and pending-reply owner restart remain explicit implementation gaps. |
 | Terminal checkpoint | Restore excludes queued output effects |
 | Seat ingestion | The watched quota permits background progress and pauses stay local |
 | Render arena | Live slices are disjoint, uploads precede submit, rewind follows its boundary |

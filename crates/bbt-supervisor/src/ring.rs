@@ -382,6 +382,22 @@ impl Playback {
     /// # Errors
     /// Refuses another process identity or generation, or an event-sequence discontinuity.
     pub fn apply(&mut self, event: &Event) -> Result<()> {
+        self.apply_with_effects(event, |_| {})
+    }
+
+    /// Apply one live capture and return non-title terminal effects to its owner.
+    /// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+    /// Credit reuse accurately: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    /// The callback must enqueue bounded work without blocking. Historical replay
+    /// uses `apply`, which discards effects; callbacks are never checkpointed.
+    ///
+    /// # Errors
+    /// Refuses another process identity/generation or a capture discontinuity.
+    pub fn apply_with_effects(
+        &mut self,
+        event: &Event,
+        mut emit: impl FnMut(bbt_core::Event),
+    ) -> Result<()> {
         if event.seat() != self.seat
             || event_generation(event) != self.generation
             || event.sequence() != Some(self.sequence + 1)
@@ -405,7 +421,7 @@ impl Playback {
             match effect {
                 bbt_core::Event::Title(title) => self.title = title,
                 bbt_core::Event::ResetTitle => self.title.clear(),
-                _ => (),
+                other => emit(other),
             }
         }
         self.sequence += 1;

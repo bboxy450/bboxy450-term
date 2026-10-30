@@ -1184,8 +1184,54 @@ fn transport_capture(b: bool) -> Model {
     m
 }
 
+// One live query in a stable generation. Parsing/capture is atomic here;
+// reply delivery is weakly fair and uses InputReceipt's existing stable retry ID.
+// Queue saturation, terminal byte semantics, OS timing and owner restart are
+// implementation witnesses/explicit assumptions, not inferred from this model.
+fn terminal_reply_progress(b: bool) -> Model {
+    let mut m = model(
+        "TerminalReplyProgress",
+        b,
+        &[("captured", 1, 0), ("queued", 1, 0), ("delivered", 1, 0)],
+    );
+    action(
+        &mut m,
+        "LiveQuery",
+        eq(0, 0),
+        &[(0, Int(1)), (1, Int(i64::from(!b)))],
+    );
+    action(&mut m, "Deliver", eq(1, 1), &[(1, Int(0)), (2, Int(1))]);
+    m.responses.push(Response {
+        name: "LiveQueryGetsReply".into(),
+        request: eq(0, 1),
+        response: eq(2, 1),
+    });
+    m.weak_fair.push(vec![1]);
+    m
+}
+
+// Replay reconstructs cells and parser state, never terminal output effects.
+// The broken control routes a historical query to the live effect consumer.
+fn terminal_replay_quiet(b: bool) -> Model {
+    let mut m = model(
+        "TerminalReplayQuiet",
+        b,
+        &[("replayed", 1, 0), ("effects", 1, 0)],
+    );
+    action(
+        &mut m,
+        "ReplayQuery",
+        eq(0, 0),
+        &[(0, Int(1)), (1, Int(i64::from(b)))],
+    );
+    safe(&mut m, "NoHistoricalTerminalWrite", eq(1, 0));
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 24] = [
+    let families: [fn(bool) -> Model; 26] = [
+        terminal_reply_progress,
+        terminal_replay_quiet,
         seat_models::diagnostics,
         transport_capture,
         seat_models::recovery,

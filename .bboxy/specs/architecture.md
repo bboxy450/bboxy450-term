@@ -20,7 +20,7 @@ links:
   - { to: "[[mux-daemon]]", rel: supersedes-in-part }
   - { to: "[[runtime]]", rel: spec }
 created: 2026-10-22T19:12:38Z
-updated: "2026-10-24T19:15:36Z"
+updated: "2026-10-30T21:03:04Z"
 ---
 # Architecture — as built
 
@@ -107,7 +107,7 @@ sequenceDiagram
 6. Commit = fsync + CRC'd `committed` marker, previous kept (`ring.rs:846-904`); on 1 MiB, 20 ms, or any non-output record (`writer.rs:104, 316-328`, `ring.rs:838-841`). At 4 MiB the hot file seals into a zstd blob (`ring.rs:55, 647-707`).
 7. `publish_pending` sends one event to the active writer client; with a ring and no writer the event is dropped (`supervisor.rs:1172-1184, 823-840`).
 8. `Worker::event`; a sequence gap triggers `catch_up` via `ReadRing` (`M/logic.rs:930-1032`).
-9. `Playback::apply`: vte parse + bbt-core `Term::advance` with `history_size` 0; keeps only Title events, drops `PtyWrite` (`M/ring.rs:227-311`). Unknown OSC → `OscTap` → `Session::on_osc` (`C/lib.rs:137-172`, `M/adapters/observe.rs:418-430`, `M/logic.rs:952-959`).
+9. `Playback::apply_with_effects`: live capture ingestion parses through bbt-core and enqueues generated `PtyWrite` replies in the existing per-seat bounded reply queue; the same stable input ID is retained until host admission finishes. `Playback::apply` remains the quiet historical/recovery path and drops effects; checkpoints never carry callbacks or pending terminal effects (`crates/bbt-supervisor/src/ring.rs`, `crates/bbt-mux/src/logic.rs::event_inner`). Unknown OSC → `OscTap` → `Session::on_osc` (`C/lib.rs:137-172`, `M/adapters/observe.rs:418-430`, `M/logic.rs:952-959`).
 10. Checkpoint: zstd JSON ≤ 128 KiB as `Action::PublishCheckpoint`, a kind-4 ring record + blob (`logic.rs:915-929, 986-991`, `ring.rs:161-172, 742-769`).
 11. Each subscribed socket connection, every 20 ms: `LogicClient::snapshot` (`M/seat_socket.rs:231-236`, `M/logic.rs:869-891`); `Screen::from_term` copies the visible grid and serialises the whole checkpoint to read palette and cursor style (`M/streams.rs:30-60`).
 12. `ViewStream`: full Snapshot, or a changed-rows Delta against the acked baseline, one in flight, acked by `Applied{view, sequence}` (`streams.rs:121-178`). `Replica` is the client-side applier and nothing in production uses it (`185-256`).
@@ -180,7 +180,7 @@ Only those that change a decision or a brief ([[c1-live-seats]] consumes most of
 - The seat socket has no input action (`M/seat_socket.rs:30-58`). `Adapter::{launch, attach, wake, input_guard}`, `ArbiterView`, `submit_pty` have no production callers (`resume_command` too: resume goes through the launch planner since C1c-1, and the trait method is cleanup in C1c-2) (`M/adapters/mod.rs:171-193`, `guard.rs:9-21, 80`); `foreground_pid`, `canonical`, `echo` have no source. Closed by W2.5e (e49e4cb, 2026-10-23): `seat_input_text` builds an `ArbiterView` in production (`M/logic.rs:2794-2842`) and runs the guard before any injected text; the arbiter is reachable and tested through the MCP tools.
 - Closed by C1b and C1a: `Replica` has its first production user in `A/grids.rs`; the model is built by `A/model.rs` and published as `Latest<Arc<Model>>` from `A/live.rs:47-62`. `Screen::from_term` serialises a whole checkpoint per snapshot every 20 ms per connection (`streams.rs:30-60`): a cost to measure in the 1000-seat gate before optimising.
 - Closed 2026-10-22: messaging is wired into logic (W2.4) and signs with the chain when a root is pinned (ID1b); the seat socket carries `Action::Messaging`. Input over the seat socket is still C1a's.
-- `PtyWrite` replies are dropped (`M/ring.rs:293-299`): programs that query the terminal get no answer except the 7501 probe. Unverified effect.
+- Live `PtyWrite` replies now use `Playback::apply_with_effects` and the existing protocol-response queue (operator issue #72 batch, 2026-10-30). The private real-Codex stream/resize probe initially stalled on an unanswered CSI 6n query; scripted cursor reports restored streamed text. Historical apply/restore stays quiet. Core effect position/identity/duplicate guards and the progress/replay models verify this boundary. Saturation above the existing 32-reply limit and pending reply loss across a logic-owner crash remain coverage limits; this does not claim physical display/scanout equivalence or all terminal effect variants.
 - Closed by C1a: logic and the supervisor are separate processes, each initialising its own process-wide runtime (`A/cockpit.rs:103-111`); the app's runtime serves the app alone.
 - Risks not executed: an index path with whitespace or > 16 tokens fails subject validation and ends logic (`M/index.rs:259-262`, `M/bus.rs:21-27`, `M/logic.rs:536`); a resize beyond 512×256 passes the supervisor and ends the logic thread (`M/logic.rs:966-967`).
 - Unused but harmless: `alarms` API, `stream` table, `Index::write`, `try_publish`, `Ring::replay`, `LaunchPlan::cleanup`.
