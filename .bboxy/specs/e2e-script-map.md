@@ -8,13 +8,13 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-30T20:54:17Z"
+updated: "2026-10-30T23:24:00Z"
 ---
 # e2e script map
 
 **Lens.** Each promise of [[e2e-acceptance]] §1 has one night script, `scripts/e2e/<ID>.sh`. Decision [[d316-pass-means-the-whole-promise]]: its prefix-matched `# coverage:` header is the source of current coverage; only `full` is green. Whoever changes a header updates its row in the same commit.
 
-The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts the test-account retained-read gap boundary; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 separately proves a supported live viewport and a real allocated over-budget core viewport with a named admission refusal; the core fixture is not presented as a live Replica. There are 56 current promises, including T9 and M7. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
+The original coverage index read script presence and headers at `114ce13d897384d6f83689febd783d73426def5f`; S1–S4, K2 and L1 now agree with their checked-in night scripts. S2 asserts produced historical cells and captured gap-marker placement at the test-account retained-read boundary; `make test-history-gap` also runs the real torn-ring production/control witness; S3 asserts three sequential real Playback budgets/page lifetimes (their remaining claims stay partial); S4 separately proves a supported live viewport and a real allocated over-budget core viewport with a named admission refusal; the core fixture is not presented as a live Replica. There are 56 current promises, including T9 and M7. A present script without a coverage header is `partial` with `unstated` missing assertions; an absent script has its whole promise missing. Blank `tracked-by` means no open task number was identified, so the partial is untracked/red, never an implied waiver. This record creates no tasks and claims no script execution.
 
 The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their code baseline is `afff4758`, their spec baseline is `e48d6f8f`; their steps, assertions, missing hooks and source lines are a dated plan, not a claim about current implementation. Some hooks have since landed. Current coverage comes from the index, not from that historical gap list. T9 was added later and is indexed from its script; it is outside the archived 54-row plan.
 
@@ -34,7 +34,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | L3 | `scripts/e2e/L3.sh` | full | harness: installed clients, scripted local model | App startup/launch preserves user config bytes; native MCP/plugin/skill consumption and exact hook recipe; each native write listed by path/cause; real zsh shell hooks and unchanged user zshrc |
 | L4 | `scripts/e2e/L4.sh` | full | harness: installed clients; model: scripted localhost | Fresh delegated fixture tasks; native orient→report API result order, read-only MCP journals and seat/generation attribution; exact verification and one seat-authored report |
 | S1 | `scripts/e2e/S1.sh` | partial | displayed historical bytes are not exported by ctl (row-coordinate traversal is not a cell proof); bounded lazy history page metrics | |
-| S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
+| S2 | `scripts/e2e/S2.sh` | full | — | `make test-history-gap`: real torn-ring native witness, exact produced historical cells and captured row-5 marker ink |
 | S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; paging hitch meter | |
 | S4 | `scripts/e2e/S4.sh` | full | — | #14: supported live Replica, allocated core admission/refusal, exported retained heap and unchanged live input |
 | K1 | `scripts/e2e/K1.sh` | full | — | Private native input; 1,346 exact Kitty/Unicode/IME cases plus reserved navigation |

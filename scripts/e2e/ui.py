@@ -159,6 +159,7 @@ def history_sample(app, label):
 
 def s2(app):
     import shlex
+    app.ctl("ui", "clock", "freeze")
     seat = app.spawn("S2 retained gap")
     script = app.work / "gap.py"
     script.write_text("import sys, termios\n"
@@ -200,13 +201,54 @@ def s2(app):
     text = "\n".join(str(r) for r in rows)
     require("S2_BEFORE_04" in text and "S2_AFTER_001" in text, "surviving side was lost")
     require("S2_LOST_" not in text, "mask silently reintroduced missing bytes")
-    app.capture(seat,"s2-gap",frame(top))
+    visible = pane(top, seat)
+    historical = visible.get("historical")
+    require(historical is not None and historical.get("lines") is not None,
+            "produced frame has no observed historical cells")
+    lines = historical["lines"]
+    require(historical["top_row"] == 0 and lines[:7] == [
+        "S2_BEFORE_01", "S2_BEFORE_02", "S2_BEFORE_03", "S2_BEFORE_04",
+        "S2_READY_A", "", "S2_AFTER_001"], f"wrong rendered cells at boundary: {lines[:8]}")
+    require(not any("S2_LOST_" in line for line in lines), "lost cells reached the GPU source")
+    path = app.capture(seat,"s2-gap",frame(top))
+    sys.dont_write_bytecode = True
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from rim_clock import png, region
+    from collections import Counter
+    image = png(path)
+    cell_height = historical["pixel_size"][1] / len(lines)
+    require(cell_height.is_integer(), "historical grid has fractional device cells")
+    height = int(cell_height)
+    # The prepared cell row is empty. Only the actual foreground gap caption
+    # can put ink here; a missing or one-row-shifted marker leaves it blank.
+    area = [2, 5 * height, min(image[0], historical["pixel_size"][0]) - 2, 6 * height]
+    pixels = region(image, area)
+    background = Counter(pixels[i:i+4] for i in range(0,len(pixels),4)).most_common(1)[0][0]
+    def marker_ink(raw):
+        return sum(raw[i:i+4] != background for i in range(0,len(raw),4))
+    require(marker_ink(pixels) > 20, "gap marker has no rendered ink at boundary row5")
+    stride = (area[2] - area[0]) * 4
+    require(sum(marker_ink(pixels[y*stride:(y+1)*stride]) > 0 for y in range(height)) >= 4,
+            "gap caption is missing; only a horizontal rule was rendered")
+    require(marker_ink(background * (len(pixels)//4)) == 0,
+            "blank-row negative control was accepted")
+    evidence = Path(__file__).resolve().parents[2] / "target" / "history-gap"
+    evidence.mkdir(parents=True, exist_ok=True)
+    import shutil
+    retained = evidence / f"{seat}.png"
+    shutil.copyfile(path, retained)
+    proof = evidence / f"{seat}.json"
+    proof.write_text(json.dumps({
+        "frame_seq":frame(top), "historical":historical, "marker_device_rect":area,
+        "marker_ink_pixels":marker_ink(pixels), "capture":str(retained),
+    }, indent=2) + "\n")
     app.ctl("ui","scroll",seat,"bottom")
     app.line(seat,"NONCE")
     app.wait(seat,"(?m)^S2_LIVE-NONCE$")
     require(app.ctl("seat","screen",seat)["generation"] == middle["generation"],
             "gap replaced the live process")
-    print("S2: test-account retained-read gap once at row5, both surviving sides, original live bytes and input preserved; ring-level gap production not exercised")
+    print("S2: gap once at row5; actual produced historical cells and captured marker ink at that empty row; both surviving sides and live input preserved. Torn-ring production: native torn_ring_suffix_projects_one_gap_at_the_boundary_row witness.")
+    print(f"S2 retained proof: {proof}; marker_ink_pixels={marker_ink(pixels)}")
 
 
 def s3(app):

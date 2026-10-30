@@ -611,6 +611,17 @@ pub struct UiPane {
     /// unavailable grids and historical displays. This is not a logic screen read.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rendered: Option<UiRenderedScreen>,
+    /// Historical cells paired with the exact prepared grid in this frame.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub historical: Option<UiHistoricalScreen>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiHistoricalScreen {
+    pub top_row: u64,
+    /// Complete grid or None when the shared frame text budget is exhausted.
+    pub lines: Option<Vec<String>>,
+    pub pixel_size: [u32; 2],
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

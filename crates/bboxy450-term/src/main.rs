@@ -7438,6 +7438,18 @@ impl App {
                                 rendered
                             })
                     }),
+                    historical: model.history.get(seat).and_then(|history| {
+                        let source = model.prepared_screens.get(seat)?;
+                        if !Arc::ptr_eq(&source.screen, &history.screen) {
+                            return None;
+                        }
+                        let grid = model.frames.get(seat)?;
+                        Some(bbt_proto::gui::UiHistoricalScreen {
+                            top_row: history.top_row,
+                            lines: bboxy450_term::frame_observation::bounded_lines(source, &mut terminal_text),
+                            pixel_size: [grid.width, grid.height],
+                        })
+                    }),
                 })
             })
             .collect();
@@ -13240,6 +13252,7 @@ mod ctl_ui_key_tests {
             focused: true,
             scroll: Default::default(),
             rendered: None,
+            historical: None,
         };
         assert!(
             !terminal_font_display_ready(&display, &pane, cell, 1.),

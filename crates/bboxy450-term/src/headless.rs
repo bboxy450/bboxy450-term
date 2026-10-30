@@ -541,6 +541,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             rims,
                         );
                         foreground.splice(0..0, app.paint_terminal_selection());
+                        foreground.splice(0..0, app.scene.history_foreground(&model, &app.pane_bounds, 1.)?);
                         foreground.push(bbt_ui::components::Paint::Draw(
                             app.ui_selection.paint(app.scene.text_metrics()),
                         ));

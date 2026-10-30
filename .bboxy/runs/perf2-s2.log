@@ -1,0 +1,11 @@
+2026-10-30 perf2 / issue #12 / ROLE: EXECUTOR
+Scope: optional produced-history ctl observation, headless history foreground, S2 scripted cell/pixel witness and canonical make test-history-gap.
+Decision: observe the prepared source actually paired with a produced grid (Arc identity guard), sharing the existing bounded frame text budget. Historical cells stay separate from live-cursor/ingestion evidence. Add the native window's missing history foreground pass to the headless driver. No replay, ring or owner lifecycle changes.
+New S2 assertion against the prior binary — exit 1 at the script: produced frame has no observed historical cells. The night reports fail, rather than treating its outer tracked-amber exit as acceptance.
+make test-history-gap — exit 0; torn_ring_suffix_projects_one_gap_at_the_boundary_row passed, including complete-range control; full S2 e2e verdict passed.
+Cell witness: top_row=0; rows 0..4 are S2_BEFORE_01..04 and S2_READY_A; row5 is empty; row6 is S2_AFTER_001; no lost-row bytes; retained projection has one gap only. Live nonce/input and process generation checks passed.
+Pixel witness: 1762 non-background pixels occupy the otherwise empty row5, across at least four glyph scanlines; blank-row control has zero. Retained PNG visually inspected: caption is between READY_A and AFTER_001.
+target/history-gap/01M67J1J6HXP3FN789SHTJXPHX.json SHA256 6dc39b57622838ed2f4cc47ceebe09c30be70c3dbc26e8354d07fdedeb22a5f8
+target/history-gap/01M67J1J6HXP3FN789SHTJXPHX.png SHA256 b256370c25f14b007f76c1a3b086d6770f3bcbdd18f8fb1c8848b88fe569c683
+target/s2-night.jsonl SHA256 e13d93445e69d1fecf17f4dd79a9a5c8e62803a18c4ebd7e94b51b3245441328
+The actual PNG and JSON remain in ignored target/history-gap; no throwaway identity or raw fixture transcript is committed. Dependent tests, strict Clippy, wire golden and mandatory formal evidence remain the landing gate.

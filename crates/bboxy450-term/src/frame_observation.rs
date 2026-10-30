@@ -119,7 +119,7 @@ impl Frames {
     }
 }
 
-fn bounded_lines(source: &PreparedScreen, remaining: &mut usize) -> Option<Vec<String>> {
+pub fn bounded_lines(source: &PreparedScreen, remaining: &mut usize) -> Option<Vec<String>> {
     let mut lines = Vec::new();
     let mut bytes = 0;
     for row in &source.screen.cells {
