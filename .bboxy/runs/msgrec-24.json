@@ -1,0 +1,16 @@
+{
+  "issue": 24,
+  "decision": "Keep the existing receiver-local scheduler; add exhaustive ID/count assertions across credit overflow and bounded batches without replenishing credit. No production lifecycle change.",
+  "checks": [
+    {
+      "command": "cargo test --locked -p bboxy450-mux --test messaging priority_ -- --nocapture",
+      "exit": 0,
+      "passed": 2
+    },
+    {
+      "command": "make test-licenses",
+      "exit": 0
+    }
+  ],
+  "witness": "crates/bbt-mux/tests/messaging.rs:priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo"
+}

@@ -783,6 +783,81 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     assert_eq!(take(&mut f), (Class::Oracle, ids[4..30].to_vec()));
     assert_eq!(take(&mut f), (Class::Worker, ids[30..].to_vec()));
 }
+
+// keeps: M6 / issue 24 — priority spends scheduling credit, never messages.
+#[test]
+fn priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo() {
+    let mut f = Fixture::new();
+    let mut expected = BTreeMap::<_, Vec<_>>::new();
+    for i in 0..96 {
+        // Interleave the classes and exceed both the 30-message Oracle credit
+        // and the bounded native batch. No clock advance replenishes credit.
+        for sender in [f.a.id, f.o.id] {
+            let message = f.send(sender, &format!("burst {i}"), 1000);
+            expected.entry(sender).or_default().push(message.view().id);
+        }
+    }
+    let count_in: usize = expected.values().map(Vec::len).sum();
+    let mut delivered = BTreeMap::<_, Vec<_>>::new();
+    let mut wakes = 0;
+    let mut overflow = false;
+    while let Some(work) = {
+        f.messaging.ready(1000).unwrap();
+        f.messaging.prepare(f.b.swarm, f.b.id, 1000).unwrap()
+    } {
+        wakes += 1;
+        assert!(wakes <= count_in, "queue must make bounded progress");
+        assert!(
+            f.messaging
+                .prepare(f.b.swarm, f.b.id, 1000)
+                .unwrap()
+                .is_none()
+        );
+        for message in &work.messages {
+            let envelope = message.envelope().unwrap();
+            overflow |= work.class == Class::Worker && envelope.priority_class == Class::Oracle;
+            delivered
+                .entry(envelope.seat)
+                .or_default()
+                .push(envelope.id);
+        }
+        if wakes == 1 {
+            assert!(
+                work.messages.len() < count_in,
+                "later wakes must carry delayed messages"
+            );
+            let pending = expected[&f.o.id].last().unwrap();
+            assert_eq!(
+                f.messaging.receipts(f.o.id, *pending).unwrap()[0].evidence,
+                Evidence::RecipientStored
+            );
+        }
+        f.finish(&work, Evidence::NativeWritten, 1000);
+    }
+    assert!(overflow, "exercise the credit-exhausted priority path");
+    assert!(wakes > 1);
+    assert_eq!(delivered.values().map(Vec::len).sum::<usize>(), count_in);
+    assert_eq!(
+        delivered, expected,
+        "no loss, duplicate or per-priority reordering"
+    );
+    for (sender, ids) in expected {
+        for id in ids {
+            assert_eq!(
+                f.messaging.receipts(sender, id).unwrap()[0].evidence,
+                Evidence::NativeWritten
+            );
+        }
+    }
+    f.reopen();
+    assert!(f.messaging.ready(2000).unwrap().is_empty());
+    assert!(
+        f.messaging
+            .prepare(f.b.swarm, f.b.id, 2000)
+            .unwrap()
+            .is_none()
+    );
+}
 // keeps: spec messaging
 #[test]
 fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
