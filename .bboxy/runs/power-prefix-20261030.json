@@ -1,0 +1,28 @@
+{
+  "scope": "Replace SQL substring filtering with indexed literal namespace ranges. Preserve delivery, polling cadence, frame pacing and persistence ownership.",
+  "sources": [
+    "crates/bbt-mux/src/store/sqlite.rs",
+    "crates/bbt-mux/src/store/sqlite/power_tests.rs",
+    ".bboxy/specs/storage.md",
+    "verification/coverage.toml",
+    "Makefile"
+  ],
+  "commands": [
+    {
+      "command": "BBOXY_CACHE_MODE=off make fmt-power test-power check-power profile-power",
+      "exit": 0
+    }
+  ],
+  "acceptance": {
+    "literal_prefix": "Real Store API equals Rust starts_with over case, Unicode, emoji, wildcard punctuation, NUL, surrogate-gap and maximum-scalar cases.",
+    "complexity": "Two returned records cost 26 VM steps and zero fullscan steps with 0 or 10000 unrelated rows. Previous substring query is a deliberate broken performance control.",
+    "profile": "100000 unrelated rows, 50 samples: median 4026.667 -> 2.958 us; VM steps 600030 -> 26; fullscan steps 100001 -> 0.",
+    "regressions": "Identity unit, messaging and messaging_flow suites pass; strict mux/app all-target Clippy passes."
+  },
+  "formal": "No concurrency/lifecycle/state machine change; existing finite delivery models remain. Coverage maps SQL sources and specialized migration/query-work controls explicitly. Full formal checks refresh at final HEAD.",
+  "limits": [
+    "Query/CPU measurements do not claim watts or battery life.",
+    "Running backend received the compatible outbox index only; changed namespace-read code loads on its next normal logic start. No sessions killed or reset.",
+    "Full exact-source CI, signed push, installation and installed smoke follow."
+  ]
+}

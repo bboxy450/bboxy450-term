@@ -15,6 +15,28 @@ use rusqlite::{Connection, OptionalExtension, params, params_from_iter, types::V
 
 use super::{Result, Store, invalid};
 
+#[cfg(test)]
+mod power_tests;
+
+const PREFIX_RANGE: &str = "SELECT key,value FROM kv WHERE key>=?1 AND key<?2 ORDER BY key";
+const PREFIX_TAIL: &str = "SELECT key,value FROM kv WHERE key>=?1 ORDER BY key";
+
+/// Exclusive end of a prefix's BINARY text range. Carry across maximum Unicode
+/// scalars and skip the surrogate gap. Empty/all-maximum prefixes have no end.
+/// Unlike LIKE/GLOB, punctuation and embedded NULs remain literal key bytes.
+fn prefix_end(prefix: &str) -> Option<String> {
+    for (offset, ch) in prefix.char_indices().rev() {
+        if ch == char::MAX {
+            continue;
+        }
+        let next = char::from_u32(ch as u32 + 1).unwrap_or('\u{e000}');
+        let mut end = prefix[..offset].to_owned();
+        end.push(next);
+        return Some(end);
+    }
+    None
+}
+
 /// Connections are leased for one operation from a small process-wide pool:
 /// a hot object reuses its open connection (pragmas once, WAL kept open), while
 /// at most `POOL` idle connections stay open in all, so 1000 cold objects do
@@ -187,11 +209,22 @@ impl Store for SqliteStore {
     }
     fn list(&self, prefix: &str) -> Result<Vec<(String, Vec<u8>)>> {
         let db = self.connection()?;
-        let mut query =
-            db.prepare("SELECT key,value FROM kv WHERE substr(key,1,length(?1))=?1 ORDER BY key")?;
-        Ok(query
-            .query_map([prefix], |r| Ok((r.get(0)?, r.get(1)?)))?
-            .collect::<std::result::Result<_, _>>()?)
+        let end = prefix_end(prefix);
+        let mut query = db.prepare_cached(if end.is_some() {
+            PREFIX_RANGE
+        } else {
+            PREFIX_TAIL
+        })?;
+        let mut rows = if let Some(end) = end.as_deref() {
+            query.query(params![prefix, end])?
+        } else {
+            query.query([prefix])?
+        };
+        let mut values = Vec::new();
+        while let Some(row) = rows.next()? {
+            values.push((row.get(0)?, row.get(1)?));
+        }
+        Ok(values)
     }
     fn sql(&self, query: &str, args: &[Value]) -> Result<Vec<Vec<Value>>> {
         let db = self.connection()?;

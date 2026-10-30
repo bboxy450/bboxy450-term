@@ -19,6 +19,14 @@ Why not one central database: the supervisor already needs its own file for cras
 ## Traits
 
 - `Store`: get, put, list, sql, alarm. Implementations: SQLite file (now), Cloudflare Durable Objects storage API (sketch in the research; later).
+
+`Store::list(prefix)` returns literal, case-sensitive UTF-8 key prefixes in
+BINARY key order. SQLite uses the existing primary-key index over an inclusive
+lower and exclusive upper bound, carrying Unicode scalars across the surrogate
+gap; empty/all-maximum prefixes use the remaining tail. Wildcards and embedded
+NULs are literal. Small namespaces never scan unrelated retained keys.
+`make test-power` checks against Rust `starts_with` and SQLite scan/instruction
+counts, with the previous `substr` query as a broken performance control.
 - `Blobs`: put by digest, get, list. Implementations: local content-addressed directory (now), `object_store` 0.14 over R2, S3, MinIO (later). Everything large goes here: rings beyond the hot window, lab PNGs, transcripts, binaries, PR diffs, zstd-compressed.
 - `Events`: one append-only `events.sqlite` per object, Ed25519-signed rows, hash-chained; the [[provenance]] activity log is written here first and projected to `.bboxy/log/*.jsonl`. This is what an enterprise tails.
 
