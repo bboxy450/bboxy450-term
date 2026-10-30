@@ -467,7 +467,10 @@ fn notification_foreground_admission(
     if debug && test_account && recording && !native_window {
         Ok(())
     } else {
-        Err("notification_foreground_refused: requires a debug headless recording test account".into())
+        Err(
+            "notification_foreground_refused: requires a debug headless recording test account"
+                .into(),
+        )
     }
 }
 
@@ -502,7 +505,11 @@ mod notification_foreground_tests {
         assert!(notification_test_account(true, Some(&identity)));
         assert!(!notification_test_account(false, Some(&identity)));
         assert!(!notification_test_account(true, None));
-        for reason in ["ordinary account", "test-account:invalid", "test-account:00000000000000000000000000"] {
+        for reason in [
+            "ordinary account",
+            "test-account:invalid",
+            "test-account:00000000000000000000000000",
+        ] {
             identity.reason = Some(reason.into());
             assert!(!notification_test_account(true, Some(&identity)), "{reason}");
         }
@@ -522,10 +529,13 @@ mod notification_foreground_tests {
             ("non-recording", true, true, false, false),
             ("native window", true, true, true, true),
         ] {
-            let refusal = notification_foreground_admission(
-                debug, test_account, recording, native_window,
-            ).expect_err(context);
-            assert!(refusal.starts_with("notification_foreground_refused:"), "{context}: {refusal}");
+            let refusal =
+                notification_foreground_admission(debug, test_account, recording, native_window)
+                    .expect_err(context);
+            assert!(
+                refusal.starts_with("notification_foreground_refused:"),
+                "{context}: {refusal}"
+            );
         }
     }
 
@@ -1283,6 +1293,10 @@ fn terminal_copy_chord(input: &keyboard::Input<'_>, selected: impl FnOnce() -> b
 }
 
 /// This is the same routing entry point used by winit and the synthetic tests.
+fn kitty_owns_all_keys(modes: u64) -> bool {
+    modes & u64::from(bbt_core::term::TermMode::REPORT_ALL_KEYS_AS_ESC.bits()) != 0
+}
+
 fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> RoutedKey {
     if input.state == ElementState::Released {
         return if query.is_none() {
@@ -1401,7 +1415,8 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             };
         }
     }
-    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
+    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key()
+    {
         let motion = match key {
             Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
             Key::Named(NamedKey::PageDown) => Some(ScrollKey::PageDown),
@@ -2194,7 +2209,11 @@ struct App {
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
-    pending_notification: Option<(SeatId, Instant, Option<bboxy450_term::attention::EpisodeKey>)>,
+    pending_notification: Option<(
+        SeatId,
+        Instant,
+        Option<bboxy450_term::attention::EpisodeKey>,
+    )>,
     notification_ui: Option<bboxy450_term::focus_ack::Ask>,
     #[cfg(debug_assertions)]
     notification_recorder: Option<bboxy450_term::notifications::recording::Recorder>,
@@ -5926,7 +5945,10 @@ impl App {
             if self.document.open || self.launcher.is_some() || self.local_tab.is_some() {
                 return false;
             }
-            if input.state.is_pressed()
+            let kitty = self.focus.stage.as_ref().and_then(|stage| stage.focused)
+                .and_then(|seat| self.live_state.as_ref()?.screens.get(&seat))
+                .is_some_and(|screen| kitty_owns_all_keys(screen.modes));
+            if !kitty && input.state.is_pressed()
                 && !input.repeat
                 && (matches!(input.logical_key, Key::Named(NamedKey::ContextMenu))
                     || (matches!(input.logical_key, Key::Named(NamedKey::F10))
@@ -6892,6 +6914,160 @@ impl App {
             );
         }
     }
+    // Shared by the winit callback and the private ctl normalized-input seam.
+    fn ime_input(&mut self, event: Ime) {
+        match event {
+            event if self.app_overlays.open() => match event {
+                Ime::Preedit(text, cursor) => {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.overlay_edit(EditCommand::Preedit { text, caret });
+                }
+                Ime::Commit(text) => self.overlay_edit(EditCommand::Commit(text)),
+                Ime::Disabled => self.overlay_edit(EditCommand::CancelPreedit),
+                _ => {}
+            },
+            _ if self.document.open => {}
+            Ime::Preedit(text, cursor) => {
+                if self.launcher.is_some() {
+                    self.launcher_command(preedit_command(text, cursor));
+                } else if self.settings_ime() {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.settings_action(settings_controller::Action::Search(
+                        EditCommand::Preedit { text, caret },
+                    ));
+                } else if self.composer.view.focus || self.reject_focus {
+                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
+                    else {
+                        unreachable!()
+                    };
+                    self.composer_command(ComposeCommand::Edit(EditCommand::Preedit {
+                        text,
+                        caret,
+                    }));
+                }
+            }
+            Ime::Disabled => {
+                if self.settings_ime() {
+                    self.settings_action(settings_controller::Action::Search(
+                        EditCommand::CancelPreedit,
+                    ));
+                }
+                self.launcher_command(LauncherCommand::Preedit {
+                    text: String::new(),
+                    caret: None,
+                });
+                if self.composer.view.focus || self.reject_focus {
+                    self.composer_command(ComposeCommand::Edit(EditCommand::CancelPreedit));
+                }
+            }
+            Ime::Commit(text) => {
+                if self.launcher.is_some() {
+                    self.launcher_command(LauncherCommand::Commit(text));
+                } else if self.settings_ime() {
+                    self.settings_action(settings_controller::Action::Search(EditCommand::Commit(
+                        text,
+                    )));
+                } else if self.composer.view.focus || self.reject_focus {
+                    self.composer_command(ComposeCommand::Edit(EditCommand::Commit(text)));
+                } else {
+                    self.send_terminal_bytes(text.into_bytes());
+                }
+            }
+            _ => {}
+        }
+    }
+    fn key_input(&mut self, input: &keyboard::Input<'_>) -> Option<RoutedKey> {
+        if self.overlay_key(input) {
+            self.keyboard.consumed(input.physical_key, input.state);
+            return None;
+        }
+        if input.state.is_pressed() {
+            self.focus.controller.key_pressed(Instant::now());
+        }
+        let modes = self
+            .focus
+            .stage
+            .as_ref()
+            .and_then(|stage| stage.focused)
+            .and_then(|seat| {
+                self.live_state
+                    .as_ref()?
+                    .screens
+                    .get(&seat)
+                    .map(|screen| screen.modes)
+            });
+        let routed = if self.terminal_copy_shortcut(input) {
+            finish_route(&mut self.keyboard, input, RoutedKey::TerminalCopy)
+        } else if self.document.open
+            || (self.launcher.is_none()
+                && (self.local_tab.is_some() || self.composer.view.focus || self.reject_focus))
+        {
+            let routed = self.route_chrome(input, modes.unwrap_or_default());
+            finish_route(&mut self.keyboard, input, routed)
+        } else {
+            // The live PTY boundary keeps physical repeat/release
+            // suppression and the focused Screen's actual modes.
+            route_input(
+                &mut self.keyboard,
+                input,
+                modes.unwrap_or_default(),
+                self.launcher
+                    .as_ref()
+                    .map(|launcher| launcher.launcher.query.as_str()),
+            )
+        };
+        match self.dispatch_chrome(routed) {
+            None => {}
+            Some(key @ (RoutedKey::Quit | RoutedKey::HardQuit)) => return Some(key),
+            Some(RoutedKey::Scroll(motion)) => {
+                if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
+                    let page = self
+                        .live_state
+                        .as_ref()
+                        .and_then(|model| model.screens.get(&seat))
+                        .map_or(1, |screen| screen.rows.saturating_sub(1).max(1))
+                        as i64;
+                    let request = match motion {
+                        ScrollKey::PageUp => ScrollRequest::lines(page),
+                        ScrollKey::PageDown => ScrollRequest::lines(-page),
+                        ScrollKey::Top => ScrollRequest::top(),
+                        ScrollKey::Live => ScrollRequest::live(),
+                    };
+                    self.scroll_pane(seat, request);
+                }
+            }
+            Some(RoutedKey::Terminal(bytes)) => {
+                if modes.is_some() {
+                    self.send_terminal_bytes(bytes);
+                }
+            }
+            Some(RoutedKey::Local) => {}
+            Some(_) => unreachable!("chrome routed above"),
+        }
+        None
+    }
+    fn send_terminal_bytes(&mut self, bytes: Vec<u8>) {
+        if let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused)
+            && let Some(generation) = self
+                .live_state
+                .as_ref()
+                .and_then(|model| model.ui.seats.get(&seat))
+                .map(|seat| seat.process_generation)
+        {
+            self.queue(live::UiMsg::Input {
+                seat,
+                generation,
+                id: bbt_mux::Ulid::new(),
+                bytes,
+            });
+        }
+    }
     fn apply_ui(
         &mut self,
         id: bbt_mux::Ulid,
@@ -6899,6 +7075,49 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::Input(inputs) => {
+                if !self.test_account
+                    || self
+                        .live_state
+                        .as_ref()
+                        .and_then(|s| s.identity.as_ref())
+                        .and_then(|identity| identity.private_test_run)
+                        .is_none()
+                {
+                    return Err(
+                        "test_account_required: native input requires a verified test account"
+                            .into(),
+                    );
+                }
+                use bbt_proto::gui::UiInput;
+                for input in &inputs {
+                    input.validate().map_err(str::to_owned)?;
+                    match input {
+                        UiInput::Key { .. } => {
+                            let key = self.keyboard.structured(input)?;
+                            if matches!(
+                                route_key(&key, 0, None),
+                                RoutedKey::Quit | RoutedKey::HardQuit
+                            ) {
+                                return Err("invalid_ui_input: use app stop for shutdown".into());
+                            }
+                            self.key_input(&key);
+                        }
+                        UiInput::Preedit { text, cursor } => {
+                            self.ime_input(Ime::Preedit(text.clone(), *cursor))
+                        }
+                        UiInput::Commit { text } => self.ime_input(Ime::Commit(text.clone())),
+                        UiInput::CancelComposition => self.ime_input(Ime::Disabled),
+                        UiInput::Click { x, y, modifiers } => {
+                            let original = self.modifiers;
+                            self.modifiers = keyboard::structured_modifiers(*modifiers).state;
+                            self.pointer_pressed([*x as f32, *y as f32]);
+                            self.pointer_released();
+                            self.modifiers = original;
+                        }
+                    }
+                }
+            }
             UiRequest::NotificationForeground { frontmost } => {
                 self.notification_foreground_allowed()?;
                 self.set_frontmost(frontmost);
@@ -8768,66 +8987,7 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Right,
                 ..
             } => self.overlay_right_click(self.pointer),
-            WindowEvent::Ime(event) if self.app_overlays.open() => match event {
-                Ime::Preedit(text, cursor) => {
-                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
-                    else {
-                        unreachable!()
-                    };
-                    self.overlay_edit(EditCommand::Preedit { text, caret });
-                }
-                Ime::Commit(text) => self.overlay_edit(EditCommand::Commit(text)),
-                Ime::Disabled => self.overlay_edit(EditCommand::CancelPreedit),
-                _ => {}
-            },
-            WindowEvent::Ime(_) if self.document.open => {}
-            WindowEvent::Ime(Ime::Preedit(text, cursor)) => {
-                if self.launcher.is_some() {
-                    self.launcher_command(preedit_command(text, cursor));
-                } else if self.settings_ime() {
-                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
-                    else {
-                        unreachable!()
-                    };
-                    self.settings_action(settings_controller::Action::Search(
-                        EditCommand::Preedit { text, caret },
-                    ));
-                } else if self.composer.view.focus || self.reject_focus {
-                    let LauncherCommand::Preedit { text, caret } = preedit_command(text, cursor)
-                    else {
-                        unreachable!()
-                    };
-                    self.composer_command(ComposeCommand::Edit(EditCommand::Preedit {
-                        text,
-                        caret,
-                    }));
-                }
-            }
-            WindowEvent::Ime(Ime::Disabled) => {
-                if self.settings_ime() {
-                    self.settings_action(settings_controller::Action::Search(
-                        EditCommand::CancelPreedit,
-                    ));
-                }
-                self.launcher_command(LauncherCommand::Preedit {
-                    text: String::new(),
-                    caret: None,
-                });
-                if self.composer.view.focus || self.reject_focus {
-                    self.composer_command(ComposeCommand::Edit(EditCommand::CancelPreedit));
-                }
-            }
-            WindowEvent::Ime(Ime::Commit(text)) => {
-                if self.launcher.is_some() {
-                    self.launcher_command(LauncherCommand::Commit(text));
-                } else if self.settings_ime() {
-                    self.settings_action(settings_controller::Action::Search(EditCommand::Commit(
-                        text,
-                    )));
-                } else if self.composer.view.focus || self.reject_focus {
-                    self.composer_command(ComposeCommand::Edit(EditCommand::Commit(text)));
-                }
-            }
+            WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
@@ -8835,13 +8995,6 @@ impl ApplicationHandler<UiEvent> for App {
                     );
                 }
                 let input = self.keyboard.event(&event, self.modifiers);
-                if self.overlay_key(&input) {
-                    self.keyboard.consumed(event.physical_key, event.state);
-                    return;
-                }
-                if event.state.is_pressed() {
-                    self.focus.controller.key_pressed(Instant::now());
-                }
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if event.state.is_pressed()
@@ -8877,82 +9030,10 @@ impl ApplicationHandler<UiEvent> for App {
                     self.keyboard.consumed(event.physical_key, event.state);
                     return;
                 }
-                let modes = self
-                    .focus
-                    .stage
-                    .as_ref()
-                    .and_then(|stage| stage.focused)
-                    .and_then(|seat| {
-                        self.live_state
-                            .as_ref()?
-                            .screens
-                            .get(&seat)
-                            .map(|screen| screen.modes)
-                    });
-                let routed = if self.terminal_copy_shortcut(&input) {
-                    finish_route(&mut self.keyboard, &input, RoutedKey::TerminalCopy)
-                } else if self.document.open
-                    || (self.launcher.is_none()
-                        && (self.local_tab.is_some()
-                            || self.composer.view.focus
-                            || self.reject_focus))
-                {
-                    let routed = self.route_chrome(&input, modes.unwrap_or_default());
-                    finish_route(&mut self.keyboard, &input, routed)
-                } else {
-                    // The live PTY boundary keeps physical repeat/release
-                    // suppression and the focused Screen's actual modes.
-                    route_input(
-                        &mut self.keyboard,
-                        &input,
-                        modes.unwrap_or_default(),
-                        self.launcher
-                            .as_ref()
-                            .map(|launcher| launcher.launcher.query.as_str()),
-                    )
-                };
-                match self.dispatch_chrome(routed) {
-                    None => {}
+                match self.key_input(&input) {
                     Some(RoutedKey::Quit) => self.request_close(event_loop),
                     Some(RoutedKey::HardQuit) => self.request_shutdown(event_loop),
-                    Some(RoutedKey::Scroll(motion)) => {
-                        if let Some(seat) = self.focus.stage.as_ref().and_then(|s| s.focused) {
-                            let page = self
-                                .live_state
-                                .as_ref()
-                                .and_then(|model| model.screens.get(&seat))
-                                .map_or(1, |screen| screen.rows.saturating_sub(1).max(1))
-                                as i64;
-                            let request = match motion {
-                                ScrollKey::PageUp => ScrollRequest::lines(page),
-                                ScrollKey::PageDown => ScrollRequest::lines(-page),
-                                ScrollKey::Top => ScrollRequest::top(),
-                                ScrollKey::Live => ScrollRequest::live(),
-                            };
-                            self.scroll_pane(seat, request);
-                        }
-                    }
-                    Some(RoutedKey::Terminal(bytes)) => {
-                        // No terminal input before the focused live Screen supplies modes.
-                        if modes.is_some()
-                            && let Some(seat) =
-                                self.focus.stage.as_ref().and_then(|stage| stage.focused)
-                            && let Some(generation) = self
-                                .live_state
-                                .as_ref()
-                                .and_then(|model| model.ui.seats.get(&seat))
-                                .map(|seat| seat.process_generation)
-                        {
-                            self.queue(live::UiMsg::Input {
-                                seat,
-                                generation,
-                                id: bbt_mux::Ulid::new(),
-                                bytes,
-                            });
-                        }
-                    }
-                    Some(RoutedKey::Local) => {}
-                    Some(_) => unreachable!("chrome routed above"),
+                    _ => {}
                 }
             }
             WindowEvent::RedrawRequested => {
@@ -13023,6 +13104,29 @@ mod ctl_ui_layout_tests {
 #[cfg(test)]
 mod ctl_ui_key_tests {
     use super::*;
+    #[test]
+    fn structured_key_lifecycle_keeps_local_repeat_and_release_owned() {
+        let mut state = keyboard::State::default();
+        let parse = |event: &str, command: bool| {
+            serde_json::from_value::<bbt_proto::gui::UiInput>(serde_json::json!({
+            "kind":"key","logical":"ArrowRight","unmodified":"ArrowRight","physical":"ArrowRight",
+            "event":event,"modifiers":{"command":command,"alt":command}
+        })).unwrap()
+        };
+        for (event, command) in [("press", true), ("repeat", false), ("release", false)] {
+            let value = parse(event, command);
+            let input = state.structured(&value).unwrap();
+            let routed = route_input(&mut state, &input, 11 << 18, None);
+            assert!(!matches!(routed, RoutedKey::Terminal(_)), "{event}");
+        }
+        let value = parse("press", false);
+        let input = state.structured(&value).unwrap();
+        assert!(matches!(
+            route_input(&mut state, &input, 11 << 18, None),
+            RoutedKey::Terminal(_)
+        ));
+    }
+
     #[test]
     fn terminal_font_receipts_reject_stale_resize_and_mixed_produced_geometry() {
         let desired = [72, 48];

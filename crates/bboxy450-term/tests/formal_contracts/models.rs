@@ -1228,13 +1228,34 @@ fn terminal_replay_quiet(b: bool) -> Model {
     m
 }
 
+// One physical key; UI turns are atomic. Command may disappear before repeat/release.
+fn native_input(b: bool) -> Model {
+    let mut m = model("NativeInputOwnership", b,
+        &[("held_local",1,0),("command",1,0),("event_local",1,0),("emitted",1,0)]);
+    action(&mut m,"LocalPress",Bool(true),&[(0,Int(1)),(1,Int(1)),(2,Int(1)),(3,Int(0))]);
+    action(&mut m,"DropCommand",Bool(true),&[(1,Int(0))]);
+    action(&mut m,"TerminalPress",Bool(true),&[(0,Int(0)),(1,Int(0)),(2,Int(0)),(3,Int(1))]);
+    for (name, release) in [("Repeat",false),("Release",true)] {
+        for local in 0..=1 {
+            for command in 0..=1 {
+                let emits = local == 0 || (b && command == 0);
+                action(&mut m,&format!("{name}{local}{command}"),all([eq(0,local),eq(1,command)]),
+                    &[(0,Int(if release {0} else {local})),(2,Int(local)),(3,Int(i64::from(emits)))]);
+            }
+        }
+    }
+    safe(&mut m,"LocalLifecycleCannotEmit",implies(eq(2,1),eq(3,0)));
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 26] = [
+    let families: [fn(bool) -> Model; 27] = [
         terminal_reply_progress,
         terminal_replay_quiet,
         seat_models::diagnostics,
         transport_capture,
         seat_models::recovery,
+        native_input,
         sidebar_reveal,
         async_render_preparation,
         render_line_plan,

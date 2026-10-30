@@ -37,7 +37,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | S2 | `scripts/e2e/S2.sh` | partial | ring-level gap production not exercised; GUI historical cell bytes; headless gap-marker pixels | |
 | S3 | `scripts/e2e/S3.sh` | partial | 50 watched GUI panes with history; paging hitch meter | |
 | S4 | `scripts/e2e/S4.sh` | full | — | #14: supported live Replica, allocated core admission/refusal, exported retained heap and unchanged live input |
-| K1 | `scripts/e2e/K1.sh` | partial | every platform key combination and modifier; native press/repeat/release and IME/composition; Cmd-Opt navigation through the app | |
+| K1 | `scripts/e2e/K1.sh` | full | — | Private native input; 1,346 exact Kitty/Unicode/IME cases plus reserved navigation |
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
 | K3 | `scripts/e2e/K3.sh` | partial | Cmd-click on a .md path or a wikilink opens the document modal | |
 | R1 | `scripts/e2e/R1.sh` | full | | |

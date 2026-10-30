@@ -352,3 +352,13 @@ frontend = "project"
 name = "BrokenTerminalReplayQuiet"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "NativeInputOwnership"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenNativeInputOwnership"
+expected = "safety"
+frontend = "project"

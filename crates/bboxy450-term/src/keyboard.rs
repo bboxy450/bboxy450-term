@@ -79,6 +79,60 @@ pub struct State {
     local_keys: BTreeSet<PhysicalKey>,
 }
 impl State {
+    /// Test-account fields enter at the same normalized boundary as winit events.
+    pub fn structured<'a>(
+        &mut self,
+        input: &'a bbt_proto::gui::UiInput,
+    ) -> Result<Input<'a>, String> {
+        use bbt_proto::gui::{UiInput, UiKeyEvent};
+        let UiInput::Key {
+            logical,
+            physical,
+            unmodified,
+            text,
+            text_all_modifiers,
+            event,
+            modifiers,
+            location,
+        } = input
+        else {
+            return Err("invalid_ui_input: expected key".into());
+        };
+        fn named<T: serde::de::DeserializeOwned>(s: &str) -> Result<T, String> {
+            serde_json::from_value(serde_json::Value::String(s.into()))
+                .map_err(|e| format!("invalid_ui_input: {e}"))
+        }
+        fn key(s: &str) -> Result<Key, String> {
+            if s.chars().count() == 1 {
+                Ok(Key::Character(s.into()))
+            } else {
+                named(s).map(Key::Named)
+            }
+        }
+        // Parse every field before mutating modifier ownership.
+        let logical_key = key(logical)?;
+        let unmodified_key = key(unmodified)?;
+        let physical_key = PhysicalKey::Code(named(physical)?);
+        let location = named(location)?;
+        let state = if *event == UiKeyEvent::Release {
+            ElementState::Released
+        } else {
+            ElementState::Pressed
+        };
+        let mut modifiers = structured_modifiers(*modifiers);
+        modifiers.state = self.event_modifiers(physical_key, state, modifiers.state);
+        Ok(Input {
+            logical_key,
+            physical_key,
+            unmodified_key,
+            text: text.as_deref(),
+            text_all_modifiers: text_all_modifiers.as_deref(),
+            location,
+            state,
+            repeat: *event == UiKeyEvent::Repeat,
+            modifiers,
+        })
+    }
     pub fn modifiers_changed(&mut self, modifiers: WinitModifiers) {
         let states = [
             modifiers.lshift_state(),
@@ -158,6 +212,21 @@ impl State {
         if state.is_pressed() {
             self.local_keys.insert(physical);
         }
+    }
+}
+
+pub fn structured_modifiers(mods: bbt_proto::gui::UiModifiers) -> Modifiers {
+    let mut state = ModifiersState::empty();
+    state.set(ModifiersState::SHIFT, mods.shift);
+    state.set(ModifiersState::ALT, mods.alt);
+    state.set(ModifiersState::CONTROL, mods.control);
+    state.set(ModifiersState::SUPER, mods.command);
+    Modifiers {
+        state,
+        locks: Locks {
+            caps: mods.caps_lock,
+            num: mods.num_lock,
+        },
     }
 }
 
@@ -650,16 +719,20 @@ pub(crate) fn source_guard() {
     ] {
         assert!(!route.contains(bypass), "key-to-bytes bypass: {bypass}");
     }
+    let callback = source.split_once("WindowEvent::KeyboardInput { event, .. } =>").unwrap().1
+        .split_once("WindowEvent::RedrawRequested =>").unwrap().0;
+    assert!(callback.contains("self.keyboard.event("));
+    assert!(callback.contains("self.key_input(&input)"));
     let input = source
-        .split_once("WindowEvent::KeyboardInput { event, .. } =>")
+        .split_once("fn key_input(")
         .unwrap()
         .1
-        .split_once("WindowEvent::RedrawRequested =>")
+        .split_once("fn apply_ui(")
         .unwrap()
         .0;
     let compact: String = input.chars().filter(|c| !c.is_whitespace()).collect();
     for required in [
-        "self.keyboard.event(",
+        "self.keyboard.consumed(",
         "route_input(",
         "screen.modes",
         "modes.is_some()",

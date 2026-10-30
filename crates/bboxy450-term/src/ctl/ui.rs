@@ -11,6 +11,7 @@ use super::*;
 pub(super) const VERBS: &[super::Verb] = &[
     ("ui", "open", "Ui"),
     ("ui", "key", "Ui"),
+    ("ui", "input", "Ui"),
     ("ui", "click", "Ui"),
     ("ui", "right-click", "Ui"),
     ("ui", "drag", "Ui"),
@@ -54,6 +55,25 @@ pub(super) use ui_commands;
 /// when the words are not this noun's.
 pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Command>, String> {
     Ok(Some(match *words {
+        ["ui", "input", json] => {
+            if json.len() > 32768 {
+                return Err(format!("{USAGE_PREFIX}native input exceeds 32 KiB"));
+            }
+            let value: Value = serde_json::from_str(json)
+                .map_err(|e| format!("{USAGE_PREFIX}native input: {e}"))?;
+            let values = if value.is_array() {
+                value
+            } else {
+                Value::Array(vec![value])
+            };
+            let inputs = serde_json::from_value(values)
+                .map_err(|e| format!("{USAGE_PREFIX}native input: {e}"))?;
+            let request = bbt_proto::gui::UiRequest::Input(inputs);
+            request
+                .validate()
+                .map_err(|e| format!("{USAGE_PREFIX}{e}"))?;
+            Command::Ui(request)
+        }
         ["ui", verb @ ("select" | "shift-select"), x0, y0, x1, y1] => {
             let values: Result<Vec<u32>, _> =
                 [x0, y0, x1, y1].into_iter().map(str::parse).collect();
@@ -157,9 +177,14 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             Command::Ui(bbt_proto::gui::UiRequest::SwarmWorkdir { swarm, path })
         }
         ["ui", "paste-image", path] => {
-            let path = std::path::absolute(path).map_err(|error| format!("{USAGE_PREFIX}image path: {error}"))?;
-            let request = bbt_proto::gui::UiRequest::PasteImage {path:path.to_string_lossy().into_owned()};
-            request.validate().map_err(|error| format!("{USAGE_PREFIX}{error}"))?;
+            let path = std::path::absolute(path)
+                .map_err(|error| format!("{USAGE_PREFIX}image path: {error}"))?;
+            let request = bbt_proto::gui::UiRequest::PasteImage {
+                path: path.to_string_lossy().into_owned(),
+            };
+            request
+                .validate()
+                .map_err(|error| format!("{USAGE_PREFIX}{error}"))?;
             Command::Ui(request)
         }
         ["ui", "compose"] => {
@@ -321,6 +346,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "ui task-wheel 56",
     "ui open graph",
     "ui key cmd-t esc",
+    "ui input {\"kind\":\"cancel_composition\"}",
     "ui focus s",
     "ui scroll s top",
     "ui layout",
@@ -350,15 +376,54 @@ pub(super) fn compose(client: &mut Client, to: String, text: String) -> Result<V
 mod tests {
     use super::*;
     #[test]
+    fn structured_input_is_bounded_and_accepts_one_or_many_native_events() {
+        let parse =
+            |json: &str| super::super::parse_full(&["ui".into(), "input".into(), json.into()]);
+        for json in [
+            r#"{"kind":"commit","text":"日本語"}"#,
+            r#"[{"kind":"cancel_composition"}]"#,
+        ] {
+            let parsed = parse(json).unwrap();
+            assert!(
+                matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::Input(events)) if events.len()==1)
+            );
+        }
+        for json in [
+            "[]",
+            r#"{"kind":"click","x":32769,"y":0}"#,
+            r#"{"kind":"preedit","text":"に","cursor":[1,2]}"#,
+            r#"{"kind":"commit","text":"a","extra":true}"#,
+        ] {
+            assert!(parse(json).is_err(), "{json}");
+        }
+        let events = serde_json::json!(vec![serde_json::json!({"kind":"cancel_composition"}); 33]);
+        assert!(parse(&events.to_string()).is_err());
+    }
+
+    #[test]
     fn section_wheel_parses_signed_pixels_and_refuses_nonfinite_or_oversized_values() {
-        let parse = |words: &[&str]| super::super::parse_full(&words.iter().map(|word|(*word).to_owned()).collect::<Vec<_>>());
-        let parsed = parse(&["ui","chat-wheel","-28.5"]).unwrap();
-        assert!(matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::ChatWheel {dy}) if dy == -28.5));
-        let parsed = parse(&["ui","task-wheel","56"]).unwrap();
-        assert!(matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::TaskWheel {dy}) if dy == 56.));
-        for section in ["chat-wheel","task-wheel"] {
-            for dy in ["NaN","inf","-inf","32769","-32769","1e100","pixels"] {
-                assert!(parse(&["ui",section,dy]).is_err(),"{section} accepted {dy}");
+        let parse = |words: &[&str]| {
+            super::super::parse_full(
+                &words
+                    .iter()
+                    .map(|word| (*word).to_owned())
+                    .collect::<Vec<_>>(),
+            )
+        };
+        let parsed = parse(&["ui", "chat-wheel", "-28.5"]).unwrap();
+        assert!(
+            matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::ChatWheel {dy}) if dy == -28.5)
+        );
+        let parsed = parse(&["ui", "task-wheel", "56"]).unwrap();
+        assert!(
+            matches!(parsed.command,Command::Ui(bbt_proto::gui::UiRequest::TaskWheel {dy}) if dy == 56.)
+        );
+        for section in ["chat-wheel", "task-wheel"] {
+            for dy in ["NaN", "inf", "-inf", "32769", "-32769", "1e100", "pixels"] {
+                assert!(
+                    parse(&["ui", section, dy]).is_err(),
+                    "{section} accepted {dy}"
+                );
             }
             assert!(parse(&["ui",section]).is_err());
         }

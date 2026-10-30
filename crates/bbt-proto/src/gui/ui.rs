@@ -16,7 +16,7 @@ use super::*;
 /// Version 10 adds saved Tasks/Chat folds; version 11 adds the Cmd-V logical chord.
 // Version 12: disclosure acknowledgements observe settled live-clock frames;
 // frozen clocks expose the requested intermediate frame for deterministic ctl.
-pub const UI_CONTROL_VERSION: u16 = 12;
+pub const UI_CONTROL_VERSION: u16 = 13;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -32,6 +32,8 @@ pub struct FocusFrame {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body", rename_all = "snake_case")]
 pub enum UiRequest {
+    /// Verified test accounts only; normalized native input, never OS injection.
+    Input(Vec<UiInput>),
     /// Set a swarm's default launch folder; None restores the app default.
     SwarmWorkdir {
         swarm: Ulid,
@@ -116,6 +118,10 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::Input(inputs) => {
+                if inputs.is_empty() || inputs.len() > 32 { return Err("invalid_ui_input: expected 1-32 events"); }
+                inputs.iter().try_for_each(UiInput::validate)
+            },
             Self::ChatWheel { dy } | Self::TaskWheel { dy }
                 if !dy.is_finite() || dy.abs() > MAX_SECTION_WHEEL_DY =>
             {
@@ -185,6 +191,67 @@ impl UiRequest {
             }
             _ => Ok(()),
         }
+    }
+}
+
+/// Normalized winit boundary fields. Named/physical identities use winit's names;
+/// a single Unicode scalar is a character. No terminal encoding occurs here.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum UiInput {
+    Key {
+        logical: String,
+        physical: String,
+        unmodified: String,
+        #[serde(default)]
+        text: Option<String>,
+        #[serde(default)]
+        text_all_modifiers: Option<String>,
+        event: UiKeyEvent,
+        #[serde(default)]
+        modifiers: UiModifiers,
+        #[serde(default = "standard_location")]
+        location: String,
+    },
+    Preedit { text: String, cursor: Option<(usize, usize)> },
+    Commit { text: String },
+    CancelComposition,
+    Click { x: u32, y: u32, #[serde(default)] modifiers: UiModifiers },
+}
+
+fn standard_location() -> String { "Standard".into() }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UiKeyEvent { Press, Repeat, Release }
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct UiModifiers {
+    pub shift: bool,
+    pub alt: bool,
+    pub control: bool,
+    pub command: bool,
+    pub caps_lock: bool,
+    pub num_lock: bool,
+}
+
+impl UiInput {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let bounded = |s: &str| s.len() <= 4096;
+        let valid = match self {
+            Self::Key { logical, physical, unmodified, text, text_all_modifiers, location, .. } => {
+                [logical, physical, unmodified, location].iter().all(|s| !s.is_empty() && bounded(s))
+                    && text.iter().chain(text_all_modifiers).all(|s| bounded(s))
+            }
+            Self::Preedit { text, cursor } => bounded(text) && cursor.is_none_or(|(a,b)| {
+                a <= b && text.is_char_boundary(a) && text.is_char_boundary(b)
+            }),
+            Self::Commit { text } => bounded(text),
+            Self::Click { x, y, .. } => *x <= 32768 && *y <= 32768,
+            Self::CancelComposition => true,
+        };
+        if valid { Ok(()) } else { Err("invalid_ui_input: invalid or oversized native input fields") }
     }
 }
 

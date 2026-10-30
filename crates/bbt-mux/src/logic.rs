@@ -6478,6 +6478,12 @@ impl Worker {
         origin: crate::mcp::Origin,
     ) -> Result<UiAdmission> {
         request.validate().map_err(invalid)?;
+        if matches!(&request, bbt_proto::gui::UiRequest::Input(_))
+            && self.gui_identity()?.private_test_run.is_none()
+        {
+            return Err(invalid("test_account_required: native input requires a verified test account"));
+        }
+
         if matches!(&request, bbt_proto::gui::UiRequest::Clock(_))
             && !self
                 .identity

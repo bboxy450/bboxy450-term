@@ -76,6 +76,7 @@ help:
 	  'make test-signed-mentions        Signed names, receiver admission, replay and composer boundaries' \
 	  'make test-fifty-seat-startup     Real fifty-seat startup and bounded failure diagnostics' \
 	  'make diagnose-fifty-seat-pty     Bounded Darwin syscall probe; nonzero if an allocation fails' \
+	  'make test-keyboard-input         Headless normalized native Kitty input and navigation' \
 	  'make test-documents-night        Full native D1/D2 private document assertions' \
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
@@ -386,6 +387,16 @@ test-signed-mentions:
 test-document-protocol:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-keyboard-input
+test-keyboard-input: build
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib keyboard; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) key; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) scroll_input_tests; \
+	'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group keyboard --scripts '$(CURDIR)/scripts/e2e' > '$(TARGET_DIR)/keyboard-night.jsonl'; \
+	cat '$(TARGET_DIR)/keyboard-night.jsonl'; \
+	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; k=next(r for r in rows if r.get("kind")=="e2e" and r.get("function")=="K1"); assert k["exit"]==0 and k["verdict"]=="pass" and k["coverage"]=="full" and not k["missing"],k' '$(TARGET_DIR)/keyboard-night.jsonl'
 
 .PHONY: test-documents-night
 .PHONY: test-documents-activation

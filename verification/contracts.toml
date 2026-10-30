@@ -281,3 +281,13 @@ implementation_tests = ["crates/bbt-supervisor/tests/terminal_replies.rs", "scri
 assumptions = "One live query in a stable generation, fewer than 32 pending replies and fair successful host delivery. Existing InputReceipt covers stable-ID retries; identities/capture order, byte-accurate positions, restored-event suppression and real Codex stream/resize use native witnesses. Pending reply survival across owner restart, saturation and physical scanout are not established by this projection."
 property = "Historical reconstruction emits no terminal writes; forwarding replayed replies must fail safety."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "NativeInputOwnership"
+title = "Native and ctl key press ownership"
+models = ["NativeInputOwnership", "BrokenNativeInputOwnership"]
+sources = ["crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs"]
+implementation_tests = ["crates/bboxy450-term/src/main.rs", "scripts/e2e/keyboard_checks.py"]
+assumptions = "One physical key, local ownership bit and Command bit, initially clear. Press, modifier change, repeat and release are atomic UI-owner turns; all interleavings including returning to the same key are explored. No fairness/liveness claim: the app cannot force a platform release. Character mapping, locks, IME bytes, pointer geometry, transport and PTY scheduling use native/API and raw-process tests."
+property = "A locally owned press cannot leak its repeat or release after Command disappears. A new terminal press clears the old local ownership. The broken control drops that ownership guard."
+checks = ["make test-formal", "make test"]
