@@ -1553,8 +1553,15 @@ async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>
             Err(error) => Err(error),
         };
         let failed = reply.is_err();
+        let waited = std::time::Instant::now();
         if sender.send(reply).await.is_err() || failed {
             return;
+        }
+        // Logic drops a GUI whose reply write stalls 2 s (#79); record the
+        // consumer lag that causes it while the connection still works.
+        let waited = waited.elapsed();
+        if waited >= Duration::from_secs(1) {
+            eprintln!("GUI reply consumer stalled {waited:?} with a full reply queue");
         }
     }
 }
