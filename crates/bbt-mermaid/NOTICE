@@ -62,5 +62,13 @@ in crates/bboxy-firehose/reference/vendor/LICENSE and unicode11-LICENSE.
 Exact asset versions and hashes are in that directory's provenance.json.
 These reference assets are excluded from the Cargo package.
 
+GitKB data_source plugin (plugins/gitkb)
+Uses the separately installed GitKB CLI as a hash-pinned dependency.
+GitKB: https://github.com/gitkb/gitkb-core (MIT; its own notices apply).
+No GitKB source is copied or distributed with the plugin. GitKB's versioned
+document.read.v1/workspace.write.v1 contracts and source-aware workflow informed
+this integration; source references are beside the implementation. The plugin
+embeds the data_source schema from crates/bbt-plugin under the project LICENSE.
+
 Harness/provider logos remain the marks of their respective owners. This
 inventory asserts no ownership of upstream logos and implies no endorsement.

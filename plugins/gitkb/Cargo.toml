@@ -1,0 +1,20 @@
+[package]
+readme = "README.md"
+name = "bboxy450-term-data_source-gitkb"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "GitKB data_source plugin for bboxy450-term: source-aware documents and tasks over the hash-pinned git-kb CLI"
+build = "build.rs"
+
+[dependencies]
+bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.1.1", path = "../../crates/bbt-plugin-sdk" }
+libc = "0.2"
+serde_json = "1"
+sha2 = "0.10"
+
+[build-dependencies]
+sha2 = "0.10"

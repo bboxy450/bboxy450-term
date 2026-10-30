@@ -1,7 +1,8 @@
 # GitKB data source
 
-`bboxy450-term-data_source-gitkb` is a single executable MCP stdio adapter over
-the installed GitKB CLI. It implements the eight `data_source` 1.0 methods and
+`bboxy450-term-data_source-gitkb` is a single Rust executable, built on
+`bboxy450-term-plugin-sdk`, serving MCP over stdio in front of the installed
+GitKB CLI. It implements the eight `data_source` 1.0 methods and
 the optional explicit `commit` method. GitKB owns its storage, workspace tracking,
 UUIDs, parsing, relationships, generation checks and native commits. The host
 owns signing, role policy, delegation and task acceptance.
@@ -15,19 +16,23 @@ make probe-gitkb-harmony PLUGIN_WORKSPACE=/absolute/project
 make install-gitkb-plugin-local PLUGIN_WORKSPACE=/absolute/project
 ```
 
-`GITKB_BIN` selects the installed backend at build time; `TARGET_DIR` selects the
-worktree-local output. The builder embeds the canonical contract schema, backend
-path/version/SHA256 and build interpreter path. The executable needs no adjacent
-source, schema or skill files. `plugins/gitkb/SKILL.md` is the canonical UTF-8
-skill: its exact contents and frontmatter metadata are embedded in `Shape.skills`.
-Rebuilding after a skill edit changes the executable digest and requires retrust.
-A changed GitKB binary produces `backend_changed` before its next invocation,
-including through an already initialized client, until
-the adapter is rebuilt and retrusted. Python 3.9 or later and the pinned GitKB
-installation remain runtime dependencies; this does not package either runtime.
+`GITKB_BIN` selects the installed backend at build time (`build.rs` reads it as
+`BBOXY_GITKB_BIN`; unset, `git-kb` on PATH); `TARGET_DIR` selects the
+worktree-local output. The build pins the backend's canonical path, SHA-256 and
+`--version`. Contract schemas come from the shared `bboxy450-plugin` crate, so
+the executable needs no adjacent source, schema or skill files.
+`plugins/gitkb/SKILL.md` is the canonical UTF-8 skill: its exact contents and
+frontmatter metadata are embedded in `Shape.skills`. Rebuilding after a skill
+edit changes the executable digest and requires retrust. The pinned GitKB
+installation is the only runtime dependency.
+
+`initialize` hashes the backend once and refuses `backend_changed` when it differs
+from the pin. Every later call compares the binary's file identity (device,
+inode, size, modification and change times) with the identity that was hashed;
+only a changed identity triggers a new hash, and a different digest refuses
+`backend_changed` before the binary runs, including through an already
+initialized client, until the plugin is rebuilt and retrusted.
 This provider requires the host's optional commit and signed-writer extensions.
-`GITKB_SCHEMA` can select the canonical host schema during split-worktree checks;
-the integrated tree uses its own canonical schema by default.
 
 Installation requires an explicit project, creates only its local plugin and
 notice directories, and grants no host trust. This assignment installs only into
@@ -61,8 +66,9 @@ knowledge inventory while preserving every license and notice on disk.
 `make probe-gitkb-harmony` checks three fresh read-only sessions without retries,
 including exact native raw/body/identity/generation parity, first/continuation
 pages, links, changes and repeated resolution. Its JSON evidence records failed
-operations too. Pages contain at most one source-aware record to leave room for
-native inventory, search and edge reads within the unchanged two-second cap.
+operations too. It also requires `status:active` lists and `type:task
+status:running` searches to return items, and every call to finish within two
+seconds; the evidence records each call's elapsed time and item count.
 
 `--shape`, a terminal run, or a run with closed stdin prints the descriptor. An
 open stdin pipe serves newline-delimited MCP JSON-RPC, including the host's
@@ -132,9 +138,30 @@ documents remain pending. Native commit has no generation-CAS option: an
 external edit between preflight and commit can change the committed bytes.
 The adapter promises the native transaction, not a stronger atomic guard.
 
-Pages currently contain at most two records, even for a larger requested limit,
-to keep real source reads within two seconds. Follow `next` through empty pages
-as well. Search pages use GitKB's strict `--all-terms` matching and native FTS
+Pages fill up to the requested `limit` (default 32, at most 128) while the call
+budget lasts: a page stops with a `next` cursor when about 400 ms of the
+two-second budget remain (graph pages keep twice that for their edge read), or
+before its serialized items would approach the 256 KiB result cap. Each call
+examines at least one record, and keeps scanning past filtered-out records, so
+empty pages with a `next` cursor occur only when the budget ran out. Follow
+`next` through them as well.
+
+Committed-only records (no workspace file) are read in one batched
+`git-kb show --raw-content --json -- <slug>...` call; their raw bytes equal the
+committed source, so their references and digests equal an exact read's.
+Records with a workspace file use the exact source-aware read. A per-process
+cache keyed by slug and the record's full catalog row (including the committed
+`modified_at` or the exact workspace file stat) reuses earlier summaries and
+exact graph records; `fetch`, `write`, `commit` and reference checks always read
+exactly. Known gap: a document deleted in the workspace but not yet committed has
+no workspace file, so a listing shows its committed reference and an exact fetch
+then answers `not_found`; detecting it needs `git-kb status`, which costs about a
+second on a large KB.
+
+Status filters match the portable status (`running`) or the native one
+(`active`), so `status:active` and `type:task status:running` both select active
+tasks. Graph edges to non-document targets, such as GitKB code-symbol
+references, are omitted. Search pages use GitKB's strict `--all-terms` matching and native FTS
 ordering. The paged workspace supplement also requires every term, because
 native FTS excludes uncommitted edits. Cursor
 tokens are root/query/snapshot-specific, expire when source metadata changes,
@@ -146,8 +173,7 @@ from cursor/change fingerprints; exact workspace file stats fence edits instead.
 Committed-only rows retain their native modification timestamp.
 Native filters are prefilters: fetched frontmatter is checked again for type,
 status, assignee and swarm because 0.2.19 can include nonmatching workspace
-overlays. Swarm graph pages apply the same source check. Empty pages still
-advance their cursor within the existing two-record read cap.
+overlays. Swarm graph pages apply the same source check.
 
 Image links are copied from regular, confined GitKB files to the plugin's private
 resource directory and linked from there. Symlinks, hard links and oversized
@@ -155,14 +181,20 @@ resources are refused. A serialized portable result above 256 KiB returns
 `response_too_large`; there is no silent truncation. Cancellation or timeout of
 a mutation can leave a completed native write: inspect its source before retrying.
 
-`check-gitkb-plugin` uses fresh private homes, projects and native GitKB stores.
-It covers create/update, native source CAS, lifecycle projection and proof
+`check-gitkb-plugin` runs the ignored Rust test `tests/conformance.rs` against
+the built executable, with fresh private homes, projects and native GitKB
+stores. It covers create/update, native source CAS, lifecycle projection and proof
 storage, graph and resources, paging, bootstrap, colliding slugs in two roots,
 and selected-only native commit. This suite checks storage; cryptographic
 admission and real host task transitions are verified by `test-harmony-host`.
-The read-only probe records method durations, references and hashes without
+The read-only probe (`tests/harmony_probe.rs`) records method durations, references and hashes without
 recording document bodies. Its project-brief locator is an explicit Harmony
 probe convention, not adapter initialization behavior.
 
-See [NOTICE](NOTICE) for GitKB attribution. The adapter invokes the backend;
+`install-gitkb-plugin` (an example in this crate, so it is never installed as a binary; decision 362) performs the installation with
+private temporary files renamed into place: the plugin at mode 0755, and
+LICENSE, NOTICE and ATTRIBUTION.md at 0644. It refuses a missing `.kb`, the home
+directory, and symlinked `.bboxy`, plugin, notice or destination paths.
+
+See [NOTICE](NOTICE) for GitKB attribution. The plugin invokes the backend;
 it does not copy or distribute GitKB source.

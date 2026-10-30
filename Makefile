@@ -12,9 +12,8 @@ PROFILE ?= release
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
 GITKB_BIN ?= $(shell command -v git-kb)
-GITKB_SCHEMA ?= crates/bbt-plugin/schemas/data_source-1.0.schema.json
-GITKB_SOURCE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-GITKB_PLUGIN := $(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
+GITKB_CRATE := bboxy450-term-data_source-gitkb
+GITKB_PLUGIN :=$(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
 # Each fixture owns real app/PTY/provider processes. Leave fixed provider deadlines
 # for its own scenario rather than unrelated GUI fixture startup.
 SWARM_TEST_THREADS ?= 2
@@ -167,7 +166,7 @@ help:
 	  'make notification-status         Read installed macOS alert settings without a permission prompt' \
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
-	  'make build-gitkb-plugin          Build self-contained GitKB provider, pin installed CLI' \
+	  'make build-gitkb-plugin          Build the Rust GitKB provider, pin the installed CLI' \
 	  'make check-gitkb-plugin          Unattended real GitKB private-fixture conformance' \
 	  'make probe-gitkb-harmony         Read-only Harmony resolution and paging timings' \
 	  'make test-harmony-host           Focused plugin, knowledge and Harmony host checks' \
@@ -190,7 +189,7 @@ help:
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
-	  'GitKB: GITKB_BIN=... GITKB_SCHEMA=... PLUGIN_WORKSPACE=/explicit/local/project'
+	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -1315,19 +1314,36 @@ test-harness-vocabulary:
 
 .PHONY: build-gitkb-plugin check-gitkb-plugin install-gitkb-plugin-local
 build-gitkb-plugin:
-	@python3 -I '$(GITKB_SOURCE_DIR)scripts/build-gitkb-plugin.py' --gitkb '$(GITKB_BIN)' --schema '$(abspath $(GITKB_SCHEMA))' --output '$(GITKB_PLUGIN)'
+	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
+	test -n '$(GITKB_BIN)' || { echo 'GITKB_BIN is required: git-kb is not on PATH' >&2; exit 2; }; \
+	. ./scripts/cache-env.sh; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo build --locked -p $(GITKB_CRATE) --bin $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' $$flag; \
+	mkdir -p '$(dir $(GITKB_PLUGIN))'; \
+	cp '$(TARGET_DIR)/$(PROFILE)/$(GITKB_CRATE)' '$(GITKB_PLUGIN).tmp'; chmod 0755 '$(GITKB_PLUGIN).tmp'; \
+	mv -f '$(GITKB_PLUGIN).tmp' '$(GITKB_PLUGIN)'; \
+	{ shasum -a 256 '$(GITKB_PLUGIN)' 2>/dev/null || sha256sum '$(GITKB_PLUGIN)'; }
 
 check-gitkb-plugin: build-gitkb-plugin
-	@python3 -I scripts/test-gitkb-plugin.py --plugin '$(abspath $(GITKB_PLUGIN))' --gitkb '$(GITKB_BIN)' --schema '$(abspath $(GITKB_SCHEMA))' --evidence '$(abspath $(TARGET_DIR))/gitkb-plugin-check.json'
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo build --locked -p $(GITKB_CRATE) --example install-gitkb-plugin --target-dir '$(TARGET_DIR)'; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' BBOXY_GITKB_PLUGIN='$(abspath $(GITKB_PLUGIN))' \
+	BBOXY_GITKB_INSTALLER='$(abspath $(TARGET_DIR))/debug/examples/install-gitkb-plugin' \
+	BBOXY_GITKB_EVIDENCE='$(abspath $(TARGET_DIR))/gitkb-plugin-check.json' \
+	BBOXY_GITKB_TRACE_TARGET='$(abspath $(TARGET_DIR))/gitkb-traced' \
+	cargo test --locked -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test conformance -- --ignored --exact conformance --nocapture
 
 .PHONY: probe-gitkb-harmony
 probe-gitkb-harmony: build-gitkb-plugin
 	@test -n '$(PLUGIN_WORKSPACE)' || { echo 'PLUGIN_WORKSPACE is required (explicit local project)' >&2; exit 2; }
-	@python3 -I scripts/probe-gitkb-plugin.py --plugin '$(abspath $(GITKB_PLUGIN))' --workspace '$(PLUGIN_WORKSPACE)' --evidence '$(abspath $(TARGET_DIR))/gitkb-harmony-readonly.json'
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GITKB_PLUGIN='$(abspath $(GITKB_PLUGIN))' PLUGIN_WORKSPACE='$(PLUGIN_WORKSPACE)' \
+	BBOXY_GITKB_EVIDENCE='$(abspath $(TARGET_DIR))/gitkb-harmony-readonly.json' \
+	cargo test --locked -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test harmony_probe -- --ignored --exact harmony_probe --nocapture
 
 install-gitkb-plugin-local: check-gitkb-plugin
 	@test -n '$(PLUGIN_WORKSPACE)' || { echo 'PLUGIN_WORKSPACE is required (explicit local project)' >&2; exit 2; }
-	@python3 -I scripts/install-gitkb-plugin.py '$(abspath $(GITKB_PLUGIN))' --workspace '$(PLUGIN_WORKSPACE)'
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo run --locked --release -p $(GITKB_CRATE) --example install-gitkb-plugin --target-dir '$(TARGET_DIR)' -- '$(abspath $(GITKB_PLUGIN))' --workspace '$(PLUGIN_WORKSPACE)'
 
 .PHONY: test-harmony-host
 test-harmony-host:

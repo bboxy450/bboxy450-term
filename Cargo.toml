@@ -13,6 +13,7 @@ members = [
   "crates/bboxy450-desktop-notifications",
   "crates/bbt-plugin",
   "crates/bbt-plugin-sdk",
+  "plugins/gitkb",
   "crates/bboxy450-tlc",
   "crates/bbt-yarn-macros",
   "crates/bbt-yarn",

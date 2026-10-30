@@ -52,7 +52,7 @@ fn print_shape<P: Plugin>() {
 }
 
 fn stdin_is_terminal_or_closed() -> bool {
-    // SAFETY: isatty and a zero-timeout poll only inspect descriptor 0.
+    // SAFETY: isatty, a zero-timeout poll and FIONREAD only inspect descriptor 0.
     unsafe {
         if libc::isatty(0) == 1 {
             return true;
@@ -65,19 +65,21 @@ fn stdin_is_terminal_or_closed() -> bool {
         if libc::poll(&mut fd, 1, 0) <= 0 {
             return false;
         }
+        // macOS cannot poll devices such as /dev/null: nothing will arrive.
+        if fd.revents & libc::POLLNVAL != 0 {
+            return true;
+        }
         if fd.revents & (libc::POLLIN | libc::POLLHUP) == 0 {
             return false;
         }
-        // Readable: closed (zero bytes) means EOF. Bytes mean a client spoke
-        // first; peek without consuming so the server still reads them.
-        let mut byte = 0u8;
-        libc::recv(
-            0,
-            (&raw mut byte).cast(),
-            1,
-            libc::MSG_PEEK | libc::MSG_DONTWAIT,
-        ) == 0
-            || (fd.revents & libc::POLLHUP != 0 && fd.revents & libc::POLLIN == 0)
+        // Readable with zero pending bytes is EOF: a closed pipe. Pending
+        // bytes mean a client spoke first; nothing is consumed here. (recv
+        // with MSG_PEEK fails with ENOTSOCK on the pipes hosts use.)
+        let mut pending: libc::c_int = 0;
+        if libc::ioctl(0, libc::FIONREAD, &raw mut pending) == 0 {
+            return pending == 0;
+        }
+        fd.revents & libc::POLLHUP != 0 && fd.revents & libc::POLLIN == 0
     }
 }
 

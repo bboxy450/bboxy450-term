@@ -413,6 +413,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-term-data_source-gitkb"
+version = "0.1.1"
+dependencies = [
+ "bboxy450-term-plugin-sdk",
+ "libc",
+ "serde_json",
+ "sha2 0.10.9",
+]
+
+[[package]]
 name = "bboxy450-term-desktop"
 version = "0.1.1"
 dependencies = [

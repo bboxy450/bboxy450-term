@@ -87,6 +87,13 @@ scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlin
 sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
 
 [[crate]]
+name = "bboxy450-term-data_source-gitkb"
+status = "implementation-tests"
+models = []
+scope = "GitKB data_source plugin over the pinned git-kb CLI: identifier, slug, number and status mappings, batched-vs-exact digest equality and the status filter are unit-tested; source-aware reads, writes, paging, cursors, commit, resources, scrubbed backend environment and pin enforcement are checked by the ignored real-GitKB conformance test (make check-gitkb-plugin) and the read-only Harmony probe. Page filling within the call budget and the per-process record cache are implementation-tested only; host activation stays modelled by PluginActivation."
+sources = ["plugins/gitkb/src/main.rs", "plugins/gitkb/src/backend.rs", "plugins/gitkb/src/store.rs", "plugins/gitkb/src/methods.rs", "plugins/gitkb/src/native.rs", "plugins/gitkb/examples/install-gitkb-plugin.rs", "plugins/gitkb/build.rs"]
+
+[[crate]]
 name = "bboxy450-yarn-macros"
 status = "contract-model"
 models = ["YarnReactor"]
