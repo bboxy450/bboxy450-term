@@ -1,0 +1,9 @@
+2026-10-30 perf2 / issue #10 / ROLE: EXECUTOR
+Scope: messaging/ledger.rs, messaging/ledger/power_tests.rs, messaging/service.rs.
+Decision: index unfinished attempts by recipient; memoize only pure route walks inside one immutable-tree reconciliation pass. Validate every message authority/signature as before. Preserve durable receipts, fair queue, 32 delivery slots, 13299 ms and 420 MiB budgets.
+Regression before fix: cargo test --release --locked --target-dir target -p bboxy450-term-mux --lib recipient_busy_lookup_does_not_scan_other_recipients_or_finished_attempts (cache-env; release debug assertions=true) — exit 101; VM steps=40014, fullscan steps=9999.
+Regression after index: same profile, messaging::ledger::power_tests — exit 0; 3 passed, 1 explicitly ignored CPU profile. Broken NOT INDEXED control scans all 10000 retained attempts.
+Baseline optimized gate_bus — exit 101; p99=17144 ms, delivered=30000/30000, budget=13299 ms.
+make test-perf-p2 — exit 0; full P2 verdict; bus verifies all 30000 distinct recipient/sequence deliveries within unchanged budget; 400 owned idle PTYs peak RSS=406.344 MiB <420 MiB.
+target/p2-night.jsonl SHA256 eb7c3445cd16d88a6a59fcf0240066cf57f93898ace9d25b7ce626191f27595f
+No scheduling, delivery lifecycle or persistence semantics changed. Formal and dependent-crate/strict-Clippy presubmit remains the mandatory landing gate.

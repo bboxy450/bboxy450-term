@@ -42,6 +42,43 @@ fn query_cost(db: &rusqlite::Connection, query: &str) -> (i32, i32) {
 }
 
 #[test]
+fn recipient_busy_lookup_does_not_scan_other_recipients_or_finished_attempts() {
+    let root = tempfile::tempdir().unwrap();
+    let ledger = Ledger::open(SqliteStore::open(root.path()).unwrap(), Ulid::new()).unwrap();
+    let db = ledger.store.connection().unwrap();
+    db.execute_batch(
+        "WITH RECURSIVE rows(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM rows WHERE n<10000)
+        INSERT INTO msg_attempts(id,recipient,data,outcome)
+        SELECT 'attempt-' || n,CASE WHEN n%2=0 THEN 'target' ELSE 'other' END,x'7b7d',
+            CASE WHEN n%2=0 THEN x'7b7d' ELSE NULL END FROM rows;",
+    )
+    .unwrap();
+    let query =
+        "SELECT EXISTS(SELECT 1 FROM msg_attempts WHERE recipient='target' AND outcome IS NULL)";
+    let cost = query_cost(&db, query);
+    assert_eq!(cost.1, 0, "busy lookup scanned retained attempts: {cost:?}");
+    assert!(
+        cost.0 < 32,
+        "absent recipient must be an indexed lookup: {cost:?}"
+    );
+    let broken = query_cost(&db, &query.replace(" WHERE", " NOT INDEXED WHERE"));
+    assert!(
+        broken.1 >= 9999,
+        "broken control did not scan history: {broken:?}"
+    );
+    db.execute(
+        "INSERT INTO msg_attempts VALUES('active','target',x'7b7d',NULL)",
+        [],
+    )
+    .unwrap();
+    assert!(
+        db.query_row(query, [], |row| row.get::<_, bool>(0))
+            .unwrap()
+    );
+    assert_eq!(query_cost(&db, query).1, 0);
+}
+
+#[test]
 fn pending_outbox_work_is_independent_of_sent_history() {
     let mut costs = Vec::new();
     for count in [0, 10_000] {

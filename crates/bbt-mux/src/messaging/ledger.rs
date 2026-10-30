@@ -177,6 +177,7 @@ impl Ledger {
             CREATE TABLE IF NOT EXISTS msg_deliveries(message INTEGER NOT NULL REFERENCES msg_messages(seq),recipient TEXT NOT NULL,agent TEXT NOT NULL,evidence TEXT NOT NULL,class INTEGER NOT NULL,held TEXT,eligible_ms INTEGER NOT NULL,batch_key TEXT NOT NULL,attempt TEXT,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
             CREATE TABLE IF NOT EXISTS msg_receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT,message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS msg_attempts(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,data BLOB NOT NULL,outcome BLOB);
+            CREATE INDEX IF NOT EXISTS msg_attempts_active_recipient ON msg_attempts(recipient) WHERE outcome IS NULL;
             CREATE TABLE IF NOT EXISTS msg_wake_receipt_state(message INTEGER NOT NULL,recipient TEXT NOT NULL,agent TEXT NOT NULL,data BLOB NOT NULL,PRIMARY KEY(message,recipient,agent));
             CREATE TABLE IF NOT EXISTS msg_thread_roots(message INTEGER PRIMARY KEY REFERENCES msg_messages(seq),sender TEXT NOT NULL,root_id TEXT);
             CREATE TABLE IF NOT EXISTS msg_digest_windows(id TEXT PRIMARY KEY,recipient TEXT NOT NULL,agent TEXT NOT NULL,destination TEXT NOT NULL,class TEXT NOT NULL,deadline_ms INTEGER NOT NULL,messages INTEGER NOT NULL,sealed INTEGER NOT NULL);

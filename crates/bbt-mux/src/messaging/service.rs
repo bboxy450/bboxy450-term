@@ -173,8 +173,8 @@ struct Swarm {
 }
 
 /// A message's sender class, operator-direct flag and routes by (seat, agent), or the reason it cannot route.
-type Resolved =
-    std::result::Result<(Class, bool, HashMap<(Recipient, Option<String>), Route>), String>;
+type Routes = Arc<HashMap<(Recipient, Option<String>), Route>>;
+type Resolved = std::result::Result<(Class, bool, Routes), String>;
 
 fn hash128(bytes: &[u8]) -> u128 {
     // Two independent multiply-rotate lanes over 8-byte words, then a
@@ -2639,6 +2639,10 @@ impl Messaging {
             // whose stored bytes, message resolution and recipient mute all match
             // the previous pass would reconcile to itself, so it is not decoded.
             let mut messages: HashMap<u64, (Option<Resolved>, bool)> = HashMap::new();
+            // The tree is immutable during this pass. A broadcast burst shares
+            // one route walk, while every message still validates its own sender
+            // and signature. Never retain this cache across policy changes.
+            let mut routes = HashMap::new();
             let mut targets: HashMap<Recipient, (std::result::Result<bool, String>, bool)> =
                 HashMap::new();
             let mut seen = HashMap::new();
@@ -2654,7 +2658,8 @@ impl Messaging {
                     if let Some((h, sequence, recipient)) = prev
                         && h == hash
                     {
-                        let message_same = self.resolve_once(swarm_id, sequence, &mut messages)?;
+                        let message_same =
+                            self.resolve_once(swarm_id, sequence, &mut messages, &mut routes)?;
                         let recipient_same = self.muted_once(swarm_id, recipient, &mut targets).1;
                         if message_same && recipient_same {
                             seen.insert(*rowid, (hash, sequence, recipient));
@@ -2663,7 +2668,12 @@ impl Messaging {
                     }
                     let receipt: Receipt = serde_json::from_slice(bytes)?;
                     seen.insert(*rowid, (hash, receipt.message_sequence, receipt.recipient));
-                    self.resolve_once(swarm_id, receipt.message_sequence, &mut messages)?;
+                    self.resolve_once(
+                        swarm_id,
+                        receipt.message_sequence,
+                        &mut messages,
+                        &mut routes,
+                    )?;
                     let Some(resolved) = &messages[&receipt.message_sequence].0 else {
                         continue;
                     };
@@ -2729,6 +2739,7 @@ impl Messaging {
         swarm_id: Ulid,
         sequence: u64,
         memo: &mut HashMap<u64, (Option<Resolved>, bool)>,
+        routes: &mut HashMap<String, Routes>,
     ) -> Result<bool> {
         if let Some(hit) = memo.get(&sequence) {
             return Ok(hit.1);
@@ -2759,26 +2770,37 @@ impl Messaging {
                 if sender.as_ref().is_some_and(|sender| sender.muted) && !direct && !notice {
                     return Err(invalid("sender muted"));
                 }
-                let routes = self.swarm(swarm_id)?.tree.resolve(
-                    if direct || notice {
-                        Actor::Operator
-                    } else {
-                        sender
-                            .as_ref()
-                            .map_or(Actor::Operator, |sender| Actor::Seat {
-                                seat: sender.id,
-                                class: sender.role.class,
-                            })
-                    },
-                    message.view().context,
-                    message.view().kind,
+                let actor = if direct || notice {
+                    Actor::Operator
+                } else {
+                    sender
+                        .as_ref()
+                        .map_or(Actor::Operator, |sender| Actor::Seat {
+                            seat: sender.id,
+                            class: sender.role.class,
+                        })
+                };
+                let view = message.view();
+                let key = format!(
+                    "{:?}",
+                    (actor, view.context, view.kind, class, view.priority)
+                );
+                if let Some(routes) = routes.get(&key) {
+                    return Ok((class, direct, routes.clone()));
+                }
+                let resolved = self.swarm(swarm_id)?.tree.resolve(
+                    actor,
+                    view.context,
+                    view.kind,
                     class,
-                    message.view().priority,
+                    view.priority,
                 )?;
                 let mut by = HashMap::new();
-                for r in routes {
+                for r in resolved {
                     by.entry((r.recipient, r.agent.clone())).or_insert(r);
                 }
+                let by = Arc::new(by);
+                routes.insert(key, by.clone());
                 Ok((class, direct, by))
             })()
             .map_err(|e| e.to_string()),
