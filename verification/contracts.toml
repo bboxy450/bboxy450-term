@@ -195,8 +195,18 @@ checks = ["make test-formal", "make test"]
 name = "SidebarAccordions"
 title = "Independent persistent sidebar accordion choices"
 models = ["SidebarAccordions", "BrokenSidebarAccordions"]
-sources = ["crates/bbt-ui/src/modules/accordion.rs", "crates/bboxy450-term/src/sidebar.rs", "crates/bboxy450-term/src/scene.rs", "crates/bbt-mux/src/window_journal.rs"]
+sources = ["crates/bbt-proto/src/gui/ui.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/conversation_cache.rs", "crates/bbt-ui/src/modules/accordion.rs", "crates/bboxy450-term/src/sidebar.rs", "crates/bboxy450-term/src/scene.rs", "crates/bbt-mux/src/window_journal.rs"]
 implementation_tests = ["crates/bbt-ui/tests/sidebar_tasks.rs", "crates/bbt-mux/src/window_journal.rs", "crates/bboxy450-term/tests/chat_sections.rs"]
 assumptions = "Four fold bits, two focus identities, one saved mask. Toggle, explicit focus, save and restore are atomic host actions. Save abstracts a completed durable write; WindowDurability separately covers asynchronous persistence. Geometry, resizing, clipping, draft retention and actual process restart use implementation tests. No arbitrary Rust refinement or scheduling/liveness claim."
 property = "Toggling one of Hosts/Cloud/Tasks/Chat changes only that fold bit, preserves focus, and save/restore returns the saved choices. The broken control makes Tasks also flip Chat."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SidebarReveal"
+title = "Retargetable disclosure reaches a frame-free endpoint"
+models = ["SidebarReveal", "BrokenSidebarReveal"]
+sources = ["crates/bbt-ui/src/modules/accordion.rs", "crates/bbt-ui/src/modules/sidebar.rs", "crates/bbt-ui/src/modules/composer/conversation.rs", "crates/bboxy450-term/src/sidebar.rs", "crates/bboxy450-term/src/scene.rs"]
+implementation_tests = ["crates/bbt-ui/src/modules/accordion.rs", "crates/bbt-ui/tests/sidebar_tasks.rs", "crates/bboxy450-term/tests/chat_sections.rs"]
+assumptions = "One disclosure target and three displayed fractions. Retarget and tick are atomic owner calls. Safety assumes no fairness; after the final toggle, advancing the caller clock through 120ms reaches the endpoint (real clock/unit and ctl witnesses). Native pacing, continuous floating-point geometry and platform frame delivery are not modeled. No timer or fair OS delivery is claimed."
+property = "Settled display never retains frame demand. The broken control keeps requesting frames after settlement. Clock-driven tests also check reversal continuity, clipped layout, unrelated focus and retained drafts."
 checks = ["make test-formal", "make test"]

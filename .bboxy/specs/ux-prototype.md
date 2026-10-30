@@ -4,7 +4,7 @@ type: "spec"
 number: 92
 title: "UX prototype spec — bboxy450-term sidebar and panes"
 created: "2026-10-21T20:07:02Z"
-updated: "2026-10-30T03:07:34Z"
+updated: "2026-10-30T15:04:48Z"
 ---
 # UX prototype spec — bboxy450-term sidebar and panes
 
@@ -50,6 +50,16 @@ Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with
 - **`+ new seat ⌘T`**: last seat row of every open swarm, like Arc's New Tab inside the space. It never moves with focus.
 - **Closed strip**: a seat in grace after close (see 5.3): struck name, grey icon, countdown, `undo ⌘Z`.
 - **SHADOWS**: a group of other people's harnesses in this swarm's channels (published remote participants). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
+
+Disclosure motion (operator, 2026-10-30): native sidebar cards reveal/fold over
+120 ms on the shared frame clock, with an ease-out curve. A repeat toggle starts
+from the currently displayed height. Card clips, bumpers and following sections
+move together. Focus, drafts and saved expansion choices keep their existing
+ownership; only the final choice is persisted. Once settled, disclosure requests
+no further frames. Frozen ctl clocks permit deterministic intermediate captures.
+UI control version 12 acknowledges settled disclosure under a live clock, and the
+requested intermediate frame under a frozen clock. The existing startup handshake
+refreshes older logic while retaining the supervisor and live PTYs.
 
 ### 3.3 Tasks and Chat accordions
 

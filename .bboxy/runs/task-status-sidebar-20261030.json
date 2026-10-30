@@ -1,0 +1,42 @@
+{
+  "role": "Executor",
+  "request": "Fix invalid task status in sidebar; inspect retained diagnostics; add fast sidebar disclosure motion.",
+  "at": "2026-10-30T15:15:08.429985+00:00",
+  "scope": [
+    "Native task inventory skips historical lifecycle-invalid records while preserving strict actions and provider identity checks.",
+    "Raw hook ingress has an independent 2 MiB cap; verbose tool/conversation content is projected before the unchanged 64 KiB event/4 KiB OSC bounds and 50 ms deadline.",
+    "120 ms reversible frame-clock disclosure for Swarms/Hosts/Cloud/Tasks/Chat, shared display and hit geometry, settled-frame ctl acknowledgments; UI control 12 uses existing logic refresh while preserving PTYs."
+  ],
+  "diagnostics": {
+    "command": "installed bboxy450-term ctl debug errors",
+    "ok": true,
+    "entries": 186,
+    "source_counts": {
+      "ctl": 4,
+      "provider": 3,
+      "mcp": 66,
+      "hook": 113
+    },
+    "acknowledged": true,
+    "unread_after": 0,
+    "hook_input_bound": 113,
+    "limits": "66 historical MCP failures retain only generic refusal text; their individual causes are unclassified. A separate app-status probe failed because normal launch did not enable its ctl endpoint."
+  },
+  "verified": [
+    {
+      "command": "BBOXY_CACHE_MODE=off make fmt-task-sidebar test-task-sidebar check-task-sidebar test-formal-contracts test-sidebar-panels-e2e test-boundaries",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/task-sidebar-final-focused-20261030.log",
+      "sha256": "6e65b1587bb480df248ec9743cbde1f421db17115c72a992b7dd11474097e555"
+    }
+  ],
+  "visual_review": [
+    "target/sidebar-panels/accordion-motion-middle.png",
+    "target/sidebar-panels/accordion-motion-settled.png"
+  ],
+  "pending": [
+    "Exact signed-source full CI including Java/native 56-model comparison",
+    "Existing visual parity",
+    "Main push and signed installation"
+  ]
+}

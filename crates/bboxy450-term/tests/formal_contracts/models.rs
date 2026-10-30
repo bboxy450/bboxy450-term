@@ -945,8 +945,48 @@ fn async_render_preparation(b: bool) -> Model {
     m
 }
 
+// Target and three displayed disclosure steps; one owner ticks or retargets.
+// This safety projection does not assume a clock or fair OS frame delivery.
+fn sidebar_reveal(b: bool) -> Model {
+    let mut m = model(
+        "SidebarReveal",
+        b,
+        &[("target", 1, 0), ("display", 2, 0), ("frames", 1, 0)],
+    );
+    for target in 0..=1 {
+        for display in 0..=2 {
+            let next = 1 - target;
+            action(
+                &mut m,
+                &format!("Toggle_{target}_{display}"),
+                all([eq(0, target), eq(1, display)]),
+                &[(0, Int(next)), (2, Int(i64::from(display != next * 2)))],
+            );
+            if display != target * 2 {
+                let step = display + if target == 1 { 1 } else { -1 };
+                action(
+                    &mut m,
+                    &format!("Tick_{target}_{display}"),
+                    all([eq(0, target), eq(1, display)]),
+                    &[(1, Int(step)), (2, Int(i64::from(b || step != target * 2)))],
+                );
+            }
+        }
+    }
+    safe(
+        &mut m,
+        "NoFramesAfterSettlement",
+        implies(
+            all([eq(0, 0), eq(1, 0)]).or(all([eq(0, 1), eq(1, 2)])),
+            eq(2, 0),
+        ),
+    );
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 20] = [
+    let families: [fn(bool) -> Model; 21] = [
+        sidebar_reveal,
         async_render_preparation,
         render_line_plan,
         sidebar_accordions,

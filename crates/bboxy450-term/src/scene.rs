@@ -241,6 +241,8 @@ pub struct Scene {
     pub sidebar_layout: ui::modules::composer::SidebarLayout,
     pub open_swarms: BTreeSet<bbt_ui_model::SwarmId>,
     pub sidebar_sections_closed: BTreeSet<String>,
+    sidebar_reveals: BTreeMap<String, ui::modules::accordion::Reveal>,
+    sidebar_motion_now: Instant,
     selected_swarm: Option<bbt_ui_model::SwarmId>,
     #[cfg(test)]
     projections: usize,
@@ -417,6 +419,8 @@ impl Scene {
             sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
+            sidebar_reveals: BTreeMap::new(),
+            sidebar_motion_now: Instant::now(),
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -498,6 +502,9 @@ impl Scene {
     }
     /// Whether any swell or attention loop still needs frames at `now`.
     pub fn animating(&self, now: Instant) -> bool {
+        if self.sidebar_reveals.values().any(|r| r.active(now)) {
+            return true;
+        }
         if self.restart_generations.values().any(|(_, at, _)| {
             at.is_some_and(|at| now.saturating_duration_since(at).as_secs_f32() < 4.)
         }) {
@@ -541,6 +548,8 @@ impl Scene {
             sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
+            sidebar_reveals: BTreeMap::new(),
+            sidebar_motion_now: Instant::now(),
             selected_swarm: None,
             #[cfg(test)]
             projections: 0,
@@ -808,6 +817,38 @@ impl Scene {
                     .map(|key| (key.to_owned(), !self.sidebar_sections_closed.contains(key))),
             )
             .collect()
+    }
+    pub fn animate_sidebar_open(&mut self, key: &str, open: bool, now: Instant) {
+        let Some(current) = self.sidebar_open().get(key).copied() else {
+            return;
+        };
+        let from = self.sidebar_reveal(key, current, now);
+        if self.set_sidebar_open(key, open) {
+            self.sidebar_reveals.insert(
+                key.into(),
+                ui::modules::accordion::Reveal::new(from, open, now),
+            );
+        }
+    }
+    pub fn sidebar_animating(&self, key: &str, now: Instant) -> bool {
+        self.sidebar_reveals.get(key).is_some_and(|r| r.active(now))
+    }
+    pub fn advance_sidebar_motion(&mut self, now: Instant) {
+        self.sidebar_motion_now = now;
+        self.sidebar_reveals.retain(|_, r| r.active(now));
+    }
+    fn sidebar_reveal(&self, key: &str, open: bool, now: Instant) -> f32 {
+        self.sidebar_reveals
+            .get(key)
+            .filter(|r| r.target == open)
+            .map_or(u8::from(open) as f32, |r| r.value(now))
+    }
+    fn panel_reveal(&self) -> [f32; 2] {
+        let open = self.panel_open();
+        ["panels/Tasks", "panels/Chat"].map(|key| {
+            let index = usize::from(key == "panels/Chat");
+            self.sidebar_reveal(key, open[index], self.sidebar_motion_now)
+        })
     }
     pub fn set_sidebar_open(&mut self, key: &str, open: bool) -> bool {
         if let Some(id) = key
@@ -1342,7 +1383,22 @@ impl Scene {
             .layout(Rect::new(0., 0., size[0], title), ctx, &self.metrics)
             .map_err(|e| e.to_string())?,
             sidebar
-                .element(ctx)
+                .element_with_reveals(
+                    ctx,
+                    None,
+                    &self
+                        .sidebar_reveals
+                        .iter()
+                        .filter(|(_, r)| r.active(now))
+                        .map(|(key, r)| {
+                            (
+                                key.strip_prefix("swarm:").unwrap_or(key).to_owned(),
+                                r.value(now),
+                            )
+                        })
+                        .collect(),
+                    &self.metrics,
+                )
                 .layout(
                     Rect::new(0., title, sidebar_width, sidebar_height),
                     ctx,
@@ -1667,6 +1723,7 @@ impl Scene {
             sidebar,
             context: self.ui_context(),
             open: self.panel_open(),
+            reveal: self.panel_reveal(),
         }
     }
     fn panel_open(&self) -> [bool; 2] {
@@ -1685,22 +1742,32 @@ impl Scene {
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
         let open = self.panel_open();
-        let minimum = view
-            .minimum_sidebar_height(ctx, width, &self.metrics, open)?
-            .min(available);
-        let maximum = (available - 96.).max(minimum);
-        let wanted = if open[1] {
-            available * self.sidebar_layout.conversation_fraction
-        } else if open[0] {
-            self.sidebar_layout.tasks_height.unwrap_or(96.)
-                + bbt_ui::modules::accordion::Accordion::chrome_height(ctx, false)
-                + bbt_ui_model::TOKENS.layout.cohort_gap as f32
-        } else {
-            minimum
-        };
-        let height = wanted.clamp(minimum, maximum);
+        let reveal = self.panel_reveal();
+        let mut height = 0.;
+        for bits in 0..4 {
+            let state = [bits & 1 != 0, bits & 2 != 0];
+            let weight = (if state[0] { reveal[0] } else { 1. - reveal[0] })
+                * (if state[1] { reveal[1] } else { 1. - reveal[1] });
+            if weight == 0. {
+                continue;
+            }
+            let minimum = view
+                .minimum_sidebar_height(ctx, width, &self.metrics, state)?
+                .min(available);
+            let maximum = (available - 96.).max(minimum);
+            let wanted = if state[1] {
+                available * self.sidebar_layout.conversation_fraction
+            } else if state[0] {
+                self.sidebar_layout.tasks_height.unwrap_or(96.)
+                    + ui::modules::accordion::Accordion::chrome_height(ctx, false)
+                    + TOKENS.layout.cohort_gap as f32
+            } else {
+                minimum
+            };
+            height += weight * wanted.clamp(minimum, maximum);
+        }
         let element = view
-            .element_sidebar_open(
+            .element_sidebar_revealed(
                 ctx,
                 [width, height],
                 &self.metrics,
@@ -1708,7 +1775,7 @@ impl Scene {
                     self.sidebar_layout.composer_body_height,
                     self.sidebar_layout.tasks_height,
                 ],
-                open,
+                reveal,
             )
             .map_err(|e| e.to_string())?;
         let layout = element
@@ -1718,7 +1785,7 @@ impl Scene {
                 &self.metrics,
             )
             .map_err(|e| e.to_string())?;
-        let regions = if open[1] {
+        let regions = if open[1] && reveal[1] > 0. {
             ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?
         } else {
             Default::default()

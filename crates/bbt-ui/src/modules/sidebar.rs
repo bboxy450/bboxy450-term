@@ -53,6 +53,25 @@ impl Sidebar {
         ctx: ui::Context,
         anchor: Option<&c::ScrollAnchor>,
     ) -> c::Element {
+        self.compose(ctx, anchor, &Default::default(), None)
+    }
+    /// Disclosure fractions are caller-owned; settled frames use the original tree.
+    pub fn element_with_reveals(
+        &self,
+        ctx: ui::Context,
+        anchor: Option<&c::ScrollAnchor>,
+        reveals: &std::collections::BTreeMap<String, f32>,
+        metrics: &dyn c::Measure,
+    ) -> c::Element {
+        self.compose(ctx, anchor, reveals, Some(metrics))
+    }
+    fn compose(
+        &self,
+        ctx: ui::Context,
+        anchor: Option<&c::ScrollAnchor>,
+        reveals: &std::collections::BTreeMap<String, f32>,
+        metrics: Option<&dyn c::Measure>,
+    ) -> c::Element {
         let border = STYLE.material.hairline_px as f32;
         // The sidebar's own left inset from the window edge.
         let edge = bbt_ui_model::TOKENS.sidebar.edge as f32;
@@ -151,6 +170,7 @@ impl Sidebar {
             .cards
             .iter()
             .position(|card| card.key.starts_with("providers/"));
+        let card_width = (width - 2. * STYLE.spacing.s3 as f32).max(1.);
         for (i, card) in self.cards.iter().enumerate() {
             if self.new_swarm && before == Some(i) {
                 content.push(creator().into());
@@ -167,7 +187,30 @@ impl Sidebar {
                     .into(),
                 );
             }
-            let mut e = card.element(ctx);
+            let mut e = if let Some((&reveal, metrics)) = reveals.get(&card.key).zip(metrics) {
+                let mut full = card.clone();
+                full.body = true;
+                full.expanded = true;
+                full.closed = false;
+                let mut folded = card.clone();
+                folded.body = false;
+                folded.expanded = false;
+                folded.closed = true;
+                let mut element = full.element(ctx);
+                let low = folded
+                    .element(ctx)
+                    .natural(card_width, ctx, metrics)
+                    .expect("folded card")
+                    .0[1];
+                let high = element
+                    .natural(card_width, ctx, metrics)
+                    .expect("open card")
+                    .0[1];
+                super::accordion::reveal_frame(&mut element, low + (high - low) * reveal);
+                element
+            } else {
+                card.element(ctx)
+            };
             c::namespace(&mut e, &format!("swarm{i}/"));
             content.push(e.into());
             content.push(

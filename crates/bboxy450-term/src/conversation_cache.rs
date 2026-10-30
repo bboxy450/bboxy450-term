@@ -16,6 +16,7 @@ pub(super) struct Geometry {
     pub sidebar: composer::SidebarLayout,
     pub context: bbt_ui::Context,
     pub open: [bool; 2],
+    pub reveal: [f32; 2],
 }
 struct Inputs<'a> {
     geometry: Geometry,

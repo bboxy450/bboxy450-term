@@ -14,7 +14,7 @@ impl App {
         };
         let open = !current;
         self.sidebar_accordion_overrides.insert(key.into(), open);
-        self.scene.set_sidebar_open(key, open);
+        self.scene.animate_sidebar_open(key, open, self.clock.now());
         if key == "panels/Chat" && !open {
             self.blur_reject();
             self.composer.handle(ComposeCommand::Blur);

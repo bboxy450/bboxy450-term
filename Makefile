@@ -1386,3 +1386,18 @@ test-sidebar-panels-regressions:
 .PHONY: test-cache-env
 test-cache-env:
 	@python3 -I scripts/test-resource-ledger.py CacheEnvTests
+
+.PHONY: fmt-task-sidebar test-task-sidebar check-task-sidebar
+fmt-task-sidebar:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/mcp/work_items.rs crates/bbt-mux/src/mcp/work_items_inventory_tests.rs crates/bbt-ui/src/modules/accordion.rs crates/bbt-ui/src/modules/sidebar.rs crates/bbt-ui/src/modules/composer/conversation.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/sidebar.rs crates/bboxy450-term/src/conversation_cache.rs crates/bbt-ui/tests/sidebar_tasks.rs crates/bboxy450-term/tests/chat_sections.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-harness-wake-up/src/hook.rs
+
+test-task-sidebar:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_inventory; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --lib accordion_reveal; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test sidebar_tasks; \
+	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib large_hook_fields
+
+check-task-sidebar:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-proto -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings

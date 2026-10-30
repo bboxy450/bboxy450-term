@@ -101,7 +101,30 @@ impl Conversation {
         requested: [Option<f32>; 2],
         open: [bool; 2],
     ) -> ui::style::Result<c::Element> {
+        self.element_sidebar_revealed(
+            ctx,
+            size,
+            m,
+            requested,
+            open.map(|open| if open { 1. } else { 0. }),
+        )
+    }
+    /// The same bounded layout at any disclosure fraction; endpoints are exact.
+    pub fn element_sidebar_revealed(
+        &self,
+        ctx: ui::Context,
+        size: [f32; 2],
+        m: &dyn c::Measure,
+        requested: [Option<f32>; 2],
+        reveal: [f32; 2],
+    ) -> ui::style::Result<c::Element> {
         use crate::modules::accordion::Accordion;
+        let reveal = reveal.map(|r| r.clamp(0., 1.));
+        let open = reveal.map(|r| r > 0.);
+        let chrome = |r: f32| {
+            Accordion::chrome_height(ctx, false)
+                + (Accordion::chrome_height(ctx, true) - Accordion::chrome_height(ctx, false)) * r
+        };
         let Some(tasks) = &self.tasks else {
             return self.element_bounded(ctx, size, m, requested[0]);
         };
@@ -111,24 +134,20 @@ impl Conversation {
         let left = edge + sp.s3 as f32;
         let right = sp.s3 as f32 + STYLE.material.hairline_px as f32;
         let width = (size[0] - left - right).max(1.);
-        let task_chrome = Accordion::chrome_height(ctx, open[0]);
-        let chat_chrome = Accordion::chrome_height(ctx, open[1]);
+        let task_chrome = chrome(reveal[0]);
+        let chat_chrome = chrome(reveal[1]);
         let height = size[1].max(0.);
         let chat_min_body = if open[1] {
-            self.chat_minimum(ctx, width, m)?
+            self.chat_minimum(ctx, width, m)? * reveal[1]
         } else {
             0.
         };
         let max_tasks = (height - chat_chrome - chat_min_body - gap).max(task_chrome);
-        let tasks_height = if !open[0] {
-            task_chrome.min(height)
-        } else if !open[1] {
-            max_tasks
-        } else {
-            requested[1]
-                .unwrap_or(3. * task_chrome)
-                .clamp(task_chrome.min(max_tasks), max_tasks)
-        };
+        let requested_tasks = requested[1]
+            .unwrap_or(3. * task_chrome)
+            .clamp(task_chrome.min(max_tasks), max_tasks);
+        let expanded_tasks = max_tasks + (requested_tasks - max_tasks) * reveal[1];
+        let tasks_height = (task_chrome + (expanded_tasks - task_chrome) * reveal[0]).min(height);
         let chat_height = (height - tasks_height - gap).max(0.);
         let task_size = Accordion::body_size(ctx, [width, tasks_height], open[0]);
         let chat_size = Accordion::body_size(ctx, [width, chat_height], open[1]);

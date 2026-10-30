@@ -14,7 +14,9 @@ use super::*;
 /// Version 7 adds the headless recording account's logical notification foreground control.
 /// Version 8 adds bounded private native document paint observations.
 /// Version 10 adds saved Tasks/Chat folds; version 11 adds the Cmd-V logical chord.
-pub const UI_CONTROL_VERSION: u16 = 11;
+// Version 12: disclosure acknowledgements observe settled live-clock frames;
+// frozen clocks expose the requested intermediate frame for deterministic ctl.
+pub const UI_CONTROL_VERSION: u16 = 12;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.

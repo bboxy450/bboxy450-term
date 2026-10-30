@@ -265,3 +265,60 @@ fn tasks_and_chat_fold_independently_without_discarding_draft_or_actions() {
         assert_eq!(view.composer.text, draft);
     }
 }
+
+#[test]
+fn sidebar_disclosure_uses_intermediate_clipped_card_bounds_with_natural_rows() {
+    use ui::modules::{sidebar::Sidebar, swarm_card::SwarmCard};
+    fn card_rect(node: &c::Layout, key: &str) -> Option<Rect> {
+        if matches!(&node.kind,c::LayoutKind::Named(name) if name==key) {
+            Some(node.rect)
+        } else {
+            node.children.iter().find_map(|n| card_rect(n, key))
+        }
+    }
+    for key in ["swarm-one", "providers/Hosts", "providers/Cloud"] {
+        let card = SwarmCard {
+            key: key.into(),
+            name: "Disclosure".into(),
+            color: [0.2, 0.4, 1., 1.],
+            seats: vec![],
+            expanded: true,
+            closed: false,
+            unfocused: false,
+            tabs: vec![],
+            body: true,
+            new_seat: true,
+            extra: vec![],
+            shadows: vec![],
+        };
+        let mut sidebar = Sidebar {
+            cards: vec![card],
+            size: [400., 700.],
+            scroll: 0.,
+            phone: false,
+            new_swarm: false,
+        };
+        let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Compact);
+        let bounds = Rect::new(0., 0., 400., 700.);
+        let full = sidebar.element(ctx).layout(bounds, ctx, &Metrics).unwrap();
+        let name = "swarm0/card";
+        let high = card_rect(&full, name).unwrap().h;
+        sidebar.cards[0].closed = true;
+        sidebar.cards[0].body = false;
+        sidebar.cards[0].expanded = false;
+        let folded = sidebar.element(ctx).layout(bounds, ctx, &Metrics).unwrap();
+        let low = card_rect(&folded, name).unwrap().h;
+        let map = std::collections::BTreeMap::from([(key.into(), 0.5)]);
+        let middle = sidebar
+            .element_with_reveals(ctx, None, &map, &Metrics)
+            .layout(bounds, ctx, &Metrics)
+            .unwrap();
+        let displayed = card_rect(&middle, name).unwrap();
+        assert!(
+            low < displayed.h && displayed.h < high,
+            "{key}: {low} {} {high}",
+            displayed.h
+        );
+        assert!((displayed.h - (low + high) / 2.).abs() < 0.1);
+    }
+}

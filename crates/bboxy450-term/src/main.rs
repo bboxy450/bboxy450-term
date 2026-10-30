@@ -6311,7 +6311,9 @@ impl App {
                 if self.sidebar_accordion_overrides.get(key) != Some(open) {
                     Err("ui_frame_refused: a newer accordion toggle superseded this request".into())
                 } else {
-                    Ok(self.scene.sidebar_open().get(key) == Some(open))
+                    Ok(self.scene.sidebar_open().get(key) == Some(open)
+                        && (self.clock.is_frozen()
+                            || !self.scene.sidebar_animating(key, self.clock_frame.now)))
                 }
             }
             UiEffect::Size([w, h]) => {
@@ -7205,6 +7207,7 @@ impl App {
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
         self.clock_frame = self.clock.frame();
+        self.scene.advance_sidebar_motion(self.clock_frame.now);
         self.scene.sidebar_layout = self.effective_sidebar_layout();
         self.solved_size = logical;
         if let Some(width) = self.sidebar_width {

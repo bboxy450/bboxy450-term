@@ -39,6 +39,19 @@ impl Fixture {
                 "---\nid: {id}\nnumber: {number}\ntype: task\ntitle: Private section task {number:02}\nstatus: open\nassignee: none\nverify: 'true'\n---\nPrivate repository task body.\n"
             )).unwrap();
         }
+        // Historical Markdown remains knowledge, without becoming a native task
+        // or rejecting the valid task page beside it.
+        for number in 25..=26 {
+            let id = bbt_mux::Ulid(100 + number);
+            let status = if number == 25 {
+                ""
+            } else {
+                "status: legacy-complete\n"
+            };
+            fs::write(tasks.join(format!("{id}.md")),format!(
+                "---\nid: {id}\nnumber: {number}\ntype: task\ntitle: Historical record\n{status}---\nHistorical body.\n"
+            )).unwrap();
+        }
         Self {
             directory,
             root,
@@ -497,4 +510,45 @@ fn tasks_and_chat_are_last_independent_accordions_and_restore_after_ui_restart()
     f.capture("accordions-open-tasks-chat-last", &reopened);
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
+#[ignore = "private deterministic frame clock; make test-sidebar-panels-e2e"]
+fn accordion_motion_has_intermediate_frames_reverses_and_keeps_task_inventory_live() {
+    fn click(f: &Fixture, key: &str) -> Value {
+        let frame = f.ctl(&["ui", "layout"]);
+        let r = frame["regions"][key].as_array().unwrap();
+        f.ctl(&[
+            "ui",
+            "click",
+            &(r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.)
+                .round()
+                .to_string(),
+            &(r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.)
+                .round()
+                .to_string(),
+        ])
+    }
+    let mut f = Fixture::new();
+    f.start("dark");
+    f.wait_frame("valid tasks survive historical records", |v| {
+        v.to_string().contains("Private section task")
+    });
+    f.ctl(&["ui", "clock", "freeze"]);
+    let start = f.ctl(&["ui", "layout"]);
+    let high = rect(&start, "named:conversation/task-section")[3];
+    let focus = start["focused"].clone();
+    click(&f, "toggle-section:panels/Tasks");
+    let half = f.ctl(&["ui", "clock", "advance", "60"]);
+    let middle = rect(&half, "named:conversation/task-section")[3];
+    assert!(middle < high - 1. && middle > 20., "{middle} / {high}");
+    f.capture("accordion-motion-middle", &half);
+    let reverse = click(&f, "toggle-section:panels/Tasks");
+    assert!((rect(&reverse, "named:conversation/task-section")[3] - middle).abs() < 0.1);
+    let done = f.ctl(&["ui", "clock", "advance", "120"]);
+    assert!((rect(&done, "named:conversation/task-section")[3] - high).abs() < 0.1);
+    assert_eq!(done["focused"], focus);
+    f.capture("accordion-motion-settled", &done);
+    f.ctl(&["ui", "clock", "resume"]);
+    drop(f);
 }
