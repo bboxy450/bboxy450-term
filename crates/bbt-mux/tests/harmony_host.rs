@@ -1408,14 +1408,21 @@ async fn real_gitkb_host_lifecycle() {
     assert_eq!(enabled["plugins"][0]["state"], "enabled");
     assert_eq!(enabled["plugins"][0]["checked"], true);
     let unselected = success(call(&logic.client, worker, "skill_list", json!({})).await);
-    assert!(
-        unselected["skills"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|skill| skill["name"] != "gitkb"),
-        "enabled but unselected providers do not supply instructions"
+    assert!(unselected["provider_error"].is_null());
+    let unselected = unselected["skills"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|skill| skill["name"] == "gitkb")
+        .cloned()
+        .collect::<Vec<_>>();
+    assert_eq!(
+        unselected.len(),
+        1,
+        "an enabled, checked plugin supplies its instructions without selection"
     );
+    assert_eq!(unselected[0]["origin"], candidate);
+    assert_eq!(unselected[0]["plugin_sha256"], artifact_sha256);
     logic
         .client
         .gui_knowledge_control_scoped(
@@ -1452,6 +1459,10 @@ async fn real_gitkb_host_lifecycle() {
     assert_eq!(skill["origin"], candidate);
     assert_eq!(skill["root_id"], before.roots[0].id);
     assert_eq!(skill["plugin_sha256"], artifact_sha256);
+    assert_eq!(
+        skill, &unselected[0],
+        "selection does not change a plugin skill's identity"
+    );
     let skill_uri = skill["uri"].clone();
     let instruction = success(
         call(

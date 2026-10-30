@@ -152,6 +152,27 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     let untrusted = plugin(&logic.client, PluginRequest::List).await;
     assert_eq!(untrusted[0].state(), bbt_plugin::registry::State::Untrusted);
     assert!(!trace.exists());
+    let mut seat = SeatRecord::new(seat_id, swarm, "private provider reader", "zsh");
+    seat.role.class = Class::Oracle;
+    seat.role.name = "oracle".into();
+    let mut launch = LaunchSpec::new("/bin/cat", temp.path());
+    launch.seat = seat.id;
+    launch.generation = seat.generation;
+    logic.client.spawn(seat, launch).await.unwrap();
+    let fixture_names = |reply: &Value| {
+        reply["structuredContent"]["skills"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|skill| skill["name"] == "root-fixture")
+            .count()
+    };
+    let untrusted_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(fixture_names(&untrusted_skills), 0);
+    assert!(
+        !trace.exists(),
+        "skill_list started an untrusted plugin process"
+    );
     let trusted = plugin(
         &logic.client,
         PluginRequest::Trust {
@@ -169,6 +190,12 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     )
     .await;
     assert!(checked[0].conformance.as_ref().unwrap().ok);
+    let disabled_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(
+        fixture_names(&disabled_skills),
+        0,
+        "a checked but disabled plugin supplied instructions"
+    );
     plugin(
         &logic.client,
         PluginRequest::Enable {
@@ -177,22 +204,20 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     )
     .await;
     let before = roots(&logic.client, KnowledgeRequest::Status).await;
-    let mut seat = SeatRecord::new(seat_id, swarm, "private provider reader", "zsh");
-    seat.role.class = Class::Oracle;
-    seat.role.name = "oracle".into();
-    let mut launch = LaunchSpec::new("/bin/cat", temp.path());
-    launch.seat = seat.id;
-    launch.generation = seat.generation;
-    logic.client.spawn(seat, launch).await.unwrap();
     let before_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
     assert_eq!(before_skills["isError"], false);
-    assert!(
-        before_skills["structuredContent"]["skills"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|skill| skill["name"] != "root-fixture"),
-        "enabled but unselected provider instructions leaked into the root"
+    assert!(before_skills["structuredContent"]["provider_error"].is_null());
+    let unselected_skill = before_skills["structuredContent"]["skills"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|skill| skill["name"] == "root-fixture")
+        .cloned()
+        .expect("an enabled, checked plugin supplies its instructions without selection");
+    assert_eq!(unselected_skill["origin"], candidate);
+    assert_eq!(
+        unselected_skill["plugin_sha256"],
+        json!(checked[0].conformance.as_ref().unwrap().sha256)
     );
     let choice = before.offered.iter().find(|p| p.id == candidate).unwrap();
     // Exercise the new operation-correlated GUI socket port, not only a library call.
@@ -261,6 +286,10 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         .iter()
         .find(|skill| skill["name"] == "root-fixture")
         .unwrap();
+    assert_eq!(
+        fixture_skill, &unselected_skill,
+        "selection does not change a plugin skill's identity"
+    );
     let expected_skill = "---\nname: root-fixture\ndescription: Root fixture knowledge instructions.\n---\n\n# Root fixture\n\nResolve before fetch; preserve é and exact source bytes.\n";
     assert_eq!(fixture_skill["root_id"], swapped.roots[0].id);
     assert_eq!(fixture_skill["size"], expected_skill.len());
@@ -391,8 +420,8 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     );
     fs::remove_file(&armed).unwrap();
     // Cache a successful instruction read under the current worker grant before
-    // reset, so the next replay refusal proves provider fencing independently
-    // of the earlier role-change refusal.
+    // disable, so the next replay refusal proves plugin-enablement fencing
+    // independently of the earlier role-change refusal.
     let skill_call = Call {
         op_id: Ulid::new(),
         ..skill_call
@@ -416,10 +445,61 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     .await;
     assert_eq!(back.roots[0].provider.id, "bboxy450-term-data_source-bboxy");
     assert_eq!(back.roots[0].records, Some(2));
+    // Reset deselects the provider but leaves the plugin enabled and checked,
+    // so its instructions keep their identity and remain readable.
     let reset_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
     assert_eq!(reset_skills["isError"], false);
     assert_eq!(
         reset_skills["structuredContent"]["skills"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    assert_eq!(fixture_names(&reset_skills), 1);
+    let still = tool(
+        &logic.client,
+        seat_id,
+        "skill_read",
+        skill_call.args.clone(),
+    )
+    .await;
+    assert_eq!(still["isError"], false);
+    assert_eq!(
+        still["structuredContent"]["skill"]["content"],
+        expected_skill
+    );
+    // One plugin's failed pin is reported for that plugin only; host guides stay.
+    let copy = checked[0].trust.as_ref().unwrap().copy.clone();
+    fs::set_permissions(&copy, fs::Permissions::from_mode(0o700)).unwrap();
+    let failed = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    fs::set_permissions(&copy, fs::Permissions::from_mode(0o500)).unwrap();
+    assert_eq!(failed["isError"], false);
+    assert_eq!(fixture_names(&failed), 0);
+    assert_eq!(
+        failed["structuredContent"]["skills"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    assert_eq!(
+        failed["structuredContent"]["provider_error"],
+        json!([{"origin":candidate,"plugin_sha256":unselected_skill["plugin_sha256"],
+            "code":"plugin_copy_writable",
+            "message":"Plugin guidance is unavailable; other guidance remains available."}])
+    );
+    plugin(
+        &logic.client,
+        PluginRequest::Disable {
+            candidate: candidate.clone(),
+        },
+    )
+    .await;
+    let disabled_skills = tool(&logic.client, seat_id, "skill_list", json!({})).await;
+    assert_eq!(disabled_skills["isError"], false);
+    assert_eq!(
+        disabled_skills["structuredContent"]["skills"]
             .as_array()
             .unwrap()
             .len(),
@@ -434,7 +514,7 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     .await;
     assert_eq!(
         old_skill["isError"], true,
-        "reset provider URI still returned instructions"
+        "disabled plugin URI still returned instructions"
     );
     let old_skill = logic
         .client
@@ -443,7 +523,7 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         .unwrap();
     assert_eq!(
         old_skill["isError"], true,
-        "cached plugin instructions bypassed provider reset"
+        "cached plugin instructions bypassed plugin disable"
     );
     let replay = logic.client.control_call(seat_id, 1, call).await.unwrap();
     assert_eq!(

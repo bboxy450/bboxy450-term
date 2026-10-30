@@ -29,12 +29,6 @@ use tokio::{runtime::Handle, sync::Semaphore};
 pub(crate) const BUNDLED: &str = "bboxy450-term-data_source-bboxy";
 const PREFIX: &str = "knowledge/roots/";
 
-pub(crate) struct ProviderSkills {
-    pub origin: String,
-    pub sha256: Option<String>,
-    pub skills: Vec<bbt_plugin::skills::Skill>,
-}
-
 pub(crate) fn root_identity(root: &std::path::Path) -> Result<String> {
     let path = root
         .to_str()
@@ -371,26 +365,14 @@ impl Host {
         }
         Ok(())
     }
-    /// Read only the selected provider's pinned descriptor, never discovery
-    /// candidates or sidecar files. No provider process or document scan runs.
-    pub(crate) fn skill_documents(&self) -> d::Result<ProviderSkills> {
+    /// Pinned descriptor skills of every enabled, checked plugin this root's
+    /// workspace discovers, selected or not. Never reads sidecar files; no
+    /// provider process or document scan runs.
+    pub(crate) fn plugin_skills(
+        &self,
+    ) -> std::result::Result<Vec<crate::plugins::EnabledSkills>, Refusal> {
         bbt_rt::assert_not_ui_thread();
-        let (binding, external) = {
-            let selected = self.0.selected.lock().map_err(portable)?;
-            (selected.binding.clone(), selected.external.clone())
-        };
-        let external =
-            external.map_err(|reason| d::CommandError::new(reason.code, reason.message))?;
-        let skills = match external {
-            Some(source) => source.skill_documents()?,
-            None => vec![],
-        };
-        self.current(binding.revision)?;
-        Ok(ProviderSkills {
-            origin: binding.provider,
-            sha256: binding.sha256,
-            skills,
-        })
+        self.0.plugins.enabled_skills()
     }
     pub(crate) fn with_source<T>(
         &self,

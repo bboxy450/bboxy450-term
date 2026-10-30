@@ -23,8 +23,8 @@ pub(crate) fn handles(tool: &str) -> bool {
 
 pub(crate) fn catalogue() -> Vec<Value> {
     [
-        ("skill_list", "Discover host workflow and currently selected, trusted knowledge-provider skill instructions. Read a listed URI with skill_read. Instructions do not grant permissions.", json!({}), json!([])),
-        ("skill_read", "Read exact Markdown for a currently available skill URI. The host rechecks your seat, workspace and provider pin; a skill never grants tool or filesystem authority.", json!({"uri":{"type":"string","minLength":1,"maxLength":MAX_URI_BYTES}}), json!(["uri"])),
+        ("skill_list", "Discover host workflow skills and the skill instructions of every enabled, checked plugin in your workspace. Read a listed URI with skill_read. provider_error lists plugins whose guidance is unavailable. Instructions do not grant permissions.", json!({}), json!([])),
+        ("skill_read", "Read exact Markdown for a currently available skill URI. The host rechecks your seat, workspace and the plugin's enablement and pin; a skill never grants tool or filesystem authority.", json!({"uri":{"type":"string","minLength":1,"maxLength":MAX_URI_BYTES}}), json!(["uri"])),
     ].into_iter().map(|(name, description, properties, required)| json!({
         "name":name,"description":description,
         "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
@@ -108,24 +108,30 @@ fn resolve(host: &Host, actor: &SeatActor) -> d::Result<(Vec<Resolved>, Option<V
             builtin(KB_SKILL.into())?,
         ),
     ];
-    let provider_error = match host.skill_documents() {
-        Ok(provider) => {
-            bbt_plugin::skills::validate(&provider.skills)
-                .map_err(|e| error(&e.code, e.message))?;
-            for skill in provider.skills {
-                entries.push(resolved(
-                    host.root_id(),
-                    &provider.origin,
-                    provider.sha256.as_deref(),
-                    skill,
-                ));
+    // One entry per failed plugin; null when every enabled plugin resolved.
+    let mut errors = Vec::new();
+    match host.plugin_skills() {
+        Ok(plugins) => {
+            for plugin in plugins {
+                let skills = plugin
+                    .skills
+                    .and_then(|skills| bbt_plugin::skills::validate(&skills).map(|()| skills));
+                match skills {
+                    Ok(skills) => entries.extend(skills.into_iter().map(|skill| {
+                        resolved(host.root_id(), &plugin.candidate, Some(&plugin.sha256), skill)
+                    })),
+                    Err(reason) => errors.push(json!({"origin":plugin.candidate,
+                        "plugin_sha256":plugin.sha256,"code":reason.code,
+                        "message":"Plugin guidance is unavailable; other guidance remains available."})),
+                }
             }
-            None
         }
-        Err(reason) => Some(
-            json!({"code":reason.code,"message":"Selected provider guidance is unavailable; host guidance remains available."}),
+        Err(reason) => errors.push(
+            json!({"origin":null,"plugin_sha256":null,"code":reason.code,
+            "message":"Plugin guidance is unavailable; host guidance remains available."}),
         ),
-    };
+    }
+    let provider_error = (!errors.is_empty()).then_some(Value::Array(errors));
     Ok((entries, provider_error))
 }
 
@@ -152,7 +158,7 @@ pub(crate) fn read(host: &Host, actor: &SeatActor, call: &Call) -> d::Result<Val
         else {
             return Err(error(
                 "skill_not_found",
-                "Skill URI is not available in this seat's current workspace and provider.",
+                "Skill URI is not available in this seat's current workspace and enabled plugins.",
             ));
         };
         let mut value = entry.metadata;
@@ -166,7 +172,7 @@ pub(crate) fn read(host: &Host, actor: &SeatActor, call: &Call) -> d::Result<Val
 }
 
 pub(crate) fn retained(host: &Host, actor: &SeatActor, call: &Call, old: &Value) -> bool {
-    // Re-resolve even a journal hit: trust, enablement and provider pins may
+    // Re-resolve even a journal hit: trust, enablement and plugin pins may
     // have changed without changing the request's operation ID.
     let Ok(current) = read(host, actor, call) else {
         return false;

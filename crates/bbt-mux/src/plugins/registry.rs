@@ -63,6 +63,14 @@ impl Default for RegistryConfig {
     }
 }
 
+/// One enabled, checked plugin's instructions under its candidate and pin.
+#[derive(Debug, Clone)]
+pub struct EnabledSkills {
+    pub candidate: String,
+    pub sha256: String,
+    pub skills: Result<Vec<bbt_plugin::skills::Skill>, Refusal>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Registry {
     account: SqliteStore,
@@ -226,6 +234,40 @@ impl Registry {
     /// The caller publishes only when this projection differs from its last one.
     pub fn refresh(&self) -> Result<Vec<Entry>, Refusal> {
         self.project(None)
+    }
+
+    /// Descriptor skills of every enabled plugin whose conformance result
+    /// matches its activation pin, in candidate order. Reads account records
+    /// and pinned copies only; no plugin process runs. A plugin whose current
+    /// authority fails is returned with its own refusal.
+    pub fn enabled_skills(&self) -> Result<Vec<EnabledSkills>, Refusal> {
+        Ok(self
+            .refresh()?
+            .into_iter()
+            .filter_map(|entry| {
+                let activation = entry.activation.as_ref()?;
+                let checked = entry
+                    .conformance
+                    .as_ref()
+                    .is_some_and(|result| result.ok && result.sha256 == activation.sha256);
+                if entry.state() != State::Enabled || !checked {
+                    return None;
+                }
+                let skills = self.authority(&entry).and_then(|(_, record)| {
+                    self.verify_copy(record)?;
+                    Ok(record
+                        .shape
+                        .as_ref()
+                        .map(|shape| shape.skills.clone())
+                        .unwrap_or_default())
+                });
+                Some(EnabledSkills {
+                    candidate: entry.candidate.id.clone(),
+                    sha256: activation.sha256.clone(),
+                    skills,
+                })
+            })
+            .collect())
     }
 
     fn project(&self, only_digest: Option<&str>) -> Result<Vec<Entry>, Refusal> {
