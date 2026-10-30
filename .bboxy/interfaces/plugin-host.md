@@ -126,3 +126,18 @@ within the unchanged two-second contract. The read-only Harmony probe runs
 fresh sessions without retries,
 checks first/continuation pages and exact native source parity, and retains
 every operation's timing or failure before asserting its deadline.
+
+## Hooks — G3, 2026-10-30
+
+Agreement in [[plugins]] §3b. Both sides: the host (`bbt-mux` `plugins/hooks.rs`) and plugins (`bboxy450-term-plugin-sdk` `Plugin::on_hook`).
+
+| Boundary | Agreement |
+|---|---|
+| Declaration | `Shape.hooks: [{event, phase, budget_ms, subject?}]`. `subject` is required for, and only allowed on, event `bus` (phase `after`; a bus pattern whose first token is a public literal, never `inbox` or `plugin`). Budgets above the §1b ceiling are refused at trust. |
+| Wire | One MCP `tools/call` of tool `hook` on the plugin's hook connection (a second process, separate from its call connection), arguments `{event, phase, budget_ms, subject?, seat?, payload?}`, result `{decision: "allow" \| "deny", reason?}` (reason at most 4 KiB). `event_sink` plugins use the same wire; their contract `deliver` stays a host-only contract method. |
+| Grants | `payload` appears only when the trust record's `payload_events` contains the hook's event (`bus` for bus hooks; that grant needs the export tier). A `deny` decides only for a `before` hook whose record holds a `block` grant, through `PluginHost::decide`; the grant's `FailurePolicy` decides a timeout, transport failure or superseded activation. |
+| Timing | Each call is bounded by `min(budget_ms, ceiling_ms)`; non-blocking delivery is queued (64 per root), dropped and counted when full, and never runs on the logic thread. |
+| Lifetime | A queued item carries its activation generation; a disabled, re-enabled or re-trusted plugin receives nothing from older offers. |
+| Outcomes | `plugin/<candidate>/hook/<outcome>` on the account stream: `allowed`, `denied`, `ignored`, `failed_open`, `failed_closed`, `failed`, `stale`, `dropped`. |
+| Open | The harness shim does not yet wait for `decide`, so no harness tool use is vetoed in production; that needs the shim to read a reply within the 2 s ceiling and encode a veto per harness. |
+| Verification | `PluginHook`/`BrokenPluginHook` (native and Java TLC); `tests/plugin_host.rs` hook tests; `bbt-plugin` policy and shape tests; SDK runtime hook test. |

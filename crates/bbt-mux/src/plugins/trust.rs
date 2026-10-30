@@ -128,6 +128,9 @@ impl FixtureAccount {
                 "trusted bytes changed during fixture preparation",
             ));
         }
+        // The operator's grants (payload events, block) were approved with
+        // this record; without them a payload hook could never be checked.
+        fixture.record.grants = record.grants.clone();
         fixture.cache_shape(shape.clone())?;
         Ok(fixture)
     }

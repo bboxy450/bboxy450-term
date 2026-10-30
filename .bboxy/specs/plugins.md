@@ -18,7 +18,7 @@ links:
   - { to: "[[events]]", rel: contract }
   - { to: "[[plugins-sota]]", rel: research }
 created: 2026-10-23T19:37:52Z
-updated: "2026-10-24T19:04:44Z"
+updated: "2026-10-30T00:00:00Z"
 ---
 # Plugins
 
@@ -132,6 +132,20 @@ An integration is **a binary + MCP + a skill**: the binary implements a system c
 - **Migration.** The official `io.modelcontextprotocol/skills` extension is Beta at pinned revision `ff224337`, against base protocol `2026-07-28`. This cut does not implement or advertise its `server/discover`, `skills/list` or `skills/get` interface. Future support maps the shared model to per-file URI/digest/size manifests, preserving server origin, canonical bytes and trust checks; supporting files arrive with that extension rather than an invented archive format. Harness support is negotiated or explicitly configured, never inferred from its name.
 
 Verification covers legacy shapes with no skills, descriptor bounds, agreement between tools and resources, exact content reads, enabled-and-checked plugin admission (unchecked and disabled plugins contribute nothing), selection-independent identity, per-plugin `provider_error`, stale generation/enable/trust/digest refusal, and unchanged role authority. The Rust GitKB plugin (`plugins/gitkb`, on `bboxy450-term-plugin-sdk`) embeds its skill and resource content from the same source bytes at compile time; its compile-time backend pin remains part of that integration's validation.
+
+## 3b. Hooks delivered to plugins (G3, 2026-10-30)
+
+A plugin whose trusted shape declares `hooks` receives matching events from its root's `PluginHost` (`crates/bbt-mux/src/plugins/hooks.rs`); the wire is in [[plugin-host]] § Hooks.
+
+- **Two sources.** Harness hook events (every `Command::Hook` the seat socket admits, matched by event name in any spelling: `PreToolUse` = `pre_tool_use`) and bus events. A bus hook is `{event: "bus", phase: "after", subject: <pattern>}`; the pattern uses the bus's `*` (one token) and `>` (the tail) and must start with a public literal namespace, never `inbox` or `plugin`, so private mail and hook activity are never observed.
+- **Payload by grant.** Subscribing exposes the event name, phase, seat and (bus) subject. The payload goes only to a plugin whose trust record's `payload_events` contains the hook's event (`bus` for bus hooks). Payload-carrying harness events still need that grant at trust (§1a), and a bus payload grant needs the export tier.
+- **Never stalls logic.** Delivery is queued per root (64 items), dropped and counted when full, and drained by one worker on the plugin's own hook connection, separate from its call connection. Each call is bounded by `min(budget_ms, ceiling_ms)` (§1b).
+- **Generation.** A queued item carries the activation generation it was offered under. A disabled plugin, or one re-enabled or re-trusted since, receives nothing; the item is recorded `stale` or `failed`.
+- **Blocking.** `PluginHost::decide` waits only for a `before` subscriber whose trust record holds a `block` grant, within its ceiling; its `deny` vetoes, and a timeout, transport failure or superseded activation follows the grant's `FailurePolicy` (fail-open allows, fail-closed denies). Every other reply is recorded and ignored. **Enforcement point is open:** the harness hook shim answers within 50 ms and reads no reply, so no harness action waits for `decide` yet; making the shim wait (up to the 2 s ceiling) and translate a veto per harness is a separate process-boundary change.
+- **Outcomes.** Each delivery publishes `plugin/<candidate>/hook/<allowed|denied|ignored|failed_open|failed_closed|failed|stale|dropped>` on the account stream, with `dropped_total`.
+- **Conformance.** The production conformance fixture carries the record's grants, so a plugin with a granted payload hook can pass its check. The standalone `plugin check <binary>` still uses no grants.
+
+Modelled by `PluginHook`/`BrokenPluginHook` (verification/contracts.toml); `tests/plugin_host.rs` holds the API witnesses.
 
 ## 4. Out of scope now
 

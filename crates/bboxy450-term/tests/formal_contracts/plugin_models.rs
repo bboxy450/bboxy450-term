@@ -10,7 +10,7 @@
 use super::*;
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 1] = [plugin_connection];
+    let families: [fn(bool) -> Model; 2] = [plugin_connection, plugin_hook];
     families
         .into_iter()
         .flat_map(|family| {
@@ -116,6 +116,188 @@ fn plugin_connection(b: bool) -> Model {
         &mut m,
         "NoConnectionSurvivesDisable",
         implies(all([eq(1, 0), eq(6, 0)]), eq(2, 0)),
+    );
+    m
+}
+
+fn plugin_hook(b: bool) -> Model {
+    let mut m = model(
+        "PluginHook",
+        b,
+        &[
+            ("generation", 3, 1),
+            ("enabled", 1, 1),
+            ("snapshot", 3, 1),
+            ("queued", 2, 0),
+            ("slot0", 3, 0),
+            ("slot1", 3, 0),
+            ("dropped", 1, 0),
+            ("decision", 2, 0),
+            ("waited", 3, 0),
+            ("captured", 3, 0),
+            ("reply", 2, 0),
+            ("verdict", 2, 0),
+            ("block_grant", 1, 1),
+            ("fail_closed", 1, 0),
+            ("bad", 1, 0),
+        ],
+    );
+    let bump = Var(0).plus(Int(1));
+    action(
+        &mut m,
+        "Disable",
+        all([eq(1, 1), Var(0).lt(Int(3))]),
+        &[(1, Int(0)), (0, bump.clone())],
+    );
+    action(
+        &mut m,
+        "Enable",
+        all([eq(1, 0), Var(0).lt(Int(3))]),
+        &[(1, Int(1)), (0, bump.clone())],
+    );
+    // Re-trust without the block grant is a new, disabled activation.
+    action(
+        &mut m,
+        "RetrustWithoutBlock",
+        all([eq(12, 1), Var(0).lt(Int(3))]),
+        &[(12, Int(0)), (1, Int(0)), (0, bump)],
+    );
+    action(
+        &mut m,
+        "ChooseFailClosed",
+        all([eq(7, 0), eq(13, 0)]),
+        &[(13, Int(1))],
+    );
+    action(
+        &mut m,
+        "ReconcileEnabled",
+        all([eq(1, 1), Var(2).eq(Var(0)).negate()]),
+        &[(2, Var(0))],
+    );
+    action(
+        &mut m,
+        "ReconcileDisabled",
+        all([eq(1, 0), ne(2, 0)]),
+        &[(2, Int(0))],
+    );
+    // notify: offer to the bounded queue, or drop and count; never wait.
+    action(
+        &mut m,
+        "OfferFirst",
+        all([ne(2, 0), eq(3, 0)]),
+        &[(4, Var(2)), (3, Int(1))],
+    );
+    action(
+        &mut m,
+        "OfferSecond",
+        all([ne(2, 0), eq(3, 1)]),
+        &[(5, Var(2)), (3, Int(2))],
+    );
+    action(
+        &mut m,
+        "OfferWhenFull",
+        all([ne(2, 0), eq(3, 2), eq(6, 0)]),
+        &[(6, Int(1))],
+    );
+    let shift = [(4, Var(5)), (5, Int(0)), (3, Var(3).minus(Int(1)))];
+    let deliverable = all([eq(1, 1), Var(4).eq(Var(0))]);
+    action(
+        &mut m,
+        "DeliverCurrent",
+        all([ne(3, 0), deliverable.clone()]),
+        &shift,
+    );
+    action(
+        &mut m,
+        "RefuseStale",
+        all([ne(3, 0), deliverable.clone().negate()]),
+        &shift,
+    );
+    // decide: only a subscriber holding the block grant is waited for.
+    action(
+        &mut m,
+        "StartDecision",
+        all([eq(7, 0), ne(2, 0), eq(12, 1)]),
+        &[(7, Int(1)), (8, Int(0)), (9, Var(2)), (10, Int(0))],
+    );
+    action(
+        &mut m,
+        "AllowWithoutBlocker",
+        all([eq(7, 0), eq(2, 0).or(eq(12, 0))]),
+        &[(7, Int(2)), (11, Int(1))],
+    );
+    action(
+        &mut m,
+        "Tick",
+        all([eq(7, 1), Var(8).lt(Int(2))]),
+        &[(8, Var(8).plus(Int(1)))],
+    );
+    action(
+        &mut m,
+        "PluginAllows",
+        all([eq(7, 1), eq(10, 0)]),
+        &[(10, Int(1))],
+    );
+    action(
+        &mut m,
+        "PluginDenies",
+        all([eq(7, 1), eq(10, 0)]),
+        &[(10, Int(2))],
+    );
+    let current = all([eq(1, 1), eq(12, 1), Var(9).eq(Var(0))]);
+    action(
+        &mut m,
+        "AcceptReply",
+        all([eq(7, 1), ne(10, 0), current.clone()]),
+        &[(7, Int(2)), (11, Var(10))],
+    );
+    for (name, guard) in [
+        (
+            "SupersededFailsOpen",
+            all([ne(10, 0), current.negate(), eq(13, 0)]),
+        ),
+        ("TimeoutFailsOpen", all([eq(10, 0), eq(8, 2), eq(13, 0)])),
+    ] {
+        action(
+            &mut m,
+            name,
+            all([eq(7, 1), guard]),
+            &[(7, Int(2)), (11, Int(1))],
+        );
+    }
+    let current = all([eq(1, 1), eq(12, 1), Var(9).eq(Var(0))]);
+    for (name, guard) in [
+        (
+            "SupersededFailsClosed",
+            all([ne(10, 0), current.negate(), eq(13, 1)]),
+        ),
+        ("TimeoutFailsClosed", all([eq(10, 0), eq(8, 2), eq(13, 1)])),
+    ] {
+        action(
+            &mut m,
+            name,
+            all([eq(7, 1), guard]),
+            &[(7, Int(2)), (11, Int(2))],
+        );
+    }
+    if b {
+        // Without the generation fence a queued item reaches a disabled or
+        // superseded activation.
+        let mut stale = shift.to_vec();
+        stale.push((14, Int(1)));
+        action(
+            &mut m,
+            "DeliverWithoutGenerationCheck",
+            all([ne(3, 0), deliverable.negate()]),
+            &stale,
+        );
+    }
+    no_bad(&mut m, 14);
+    safe(&mut m, "WaitWithinCeiling", Var(8).le(Int(2)));
+    safe(
+        &mut m,
+        "UndecidedOnlyWhileWaiting",
+        implies(eq(11, 0), eq(7, 0).or(eq(7, 1))),
     );
     m
 }

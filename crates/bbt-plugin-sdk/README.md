@@ -51,6 +51,19 @@ output_schema, RoleClass::Worker | RoleClass::Oracle)` and serve it in
 `tool_<name>`. The host validates arguments and results against the declared
 schemas and treats every declared tool as an effect, admitted once per op_id.
 
+Hooks: declare `Manifest::hook(event, Phase::Before | Phase::After,
+budget_ms)` for a harness event (`PreToolUse`, `PostToolUse`,
+`UserPromptSubmit`, `PermissionRequest`, `SessionStart`, `SessionEnd`,
+`Interrupt`, `SeatState`) or `Manifest::bus_hook(subject_pattern, budget_ms)`
+for bus events (`*` one token, `>` the tail; never `inbox/…` or `plugin/…`).
+The host calls MCP tool `hook`; the runtime passes a [`HookEvent`] to
+`Plugin::on_hook`, which returns `HookReply::Allow` (the default) or
+`HookReply::Deny { reason }`. The budget is `min(budget_ms, ceiling)`
+(1 s for ending events, 2 s before a tool, else 5 s). `payload` is present
+only when the operator granted the event's payload, and a deny only vetoes a
+`before` hook holding the operator's block grant; every other reply is
+recorded and ignored.
+
 [`testkit::Client`] drives a built plugin executable over stdio for
 conformance tests and probes.
 

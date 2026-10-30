@@ -139,6 +139,12 @@
           "budget_ms": {
             "type": "integer",
             "minimum": 1
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "$comment": "Only for event \"bus\": a subject pattern (`*` one token, `>` the tail) whose first token is a public namespace, never inbox or plugin. Delivered after publication."
           }
         },
         "required": [

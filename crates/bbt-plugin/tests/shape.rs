@@ -262,6 +262,23 @@ fn descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant(
         .payload_events
         .insert("UserPromptSubmit".into());
     record.validate_shape(&shape).unwrap();
+
+    // A bus hook needs no grant to subscribe; its payload grant needs export.
+    let mut value = serde_json::to_value(&shape).unwrap();
+    value["hooks"] =
+        json!([{"event":"bus","phase":"after","budget_ms":500,"subject":"task/*/status"}]);
+    let bus: Shape = serde_json::from_value(value).unwrap();
+    record.grants = Grants::default();
+    record.approved_tier = Tier::Read;
+    record.validate_shape(&bus).unwrap();
+    record.grants.payload_events.insert("bus".into());
+    assert_eq!(
+        record.validate_shape(&bus).unwrap_err().code,
+        "tier_not_approved"
+    );
+    record.approved_tier = Tier::Export;
+    record.validate_shape(&bus).unwrap();
+    assert!(record.payload_granted(&bus.hooks[0]));
 }
 
 // keeps: plugins — human identity survives descriptor caching without granting authority.

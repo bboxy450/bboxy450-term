@@ -10165,6 +10165,19 @@ impl Worker {
                             {
                                 workspace.provenance.hook(id, generation, &event);
                             }
+                            // Plugin hooks of the seat's root: queued, never awaited here.
+                            if let Ok(record) = self.registry.get(id)
+                                && let Ok(port) =
+                                    self.workspaces.select(&self.registry, record.swarm, None)
+                            {
+                                port.host.plugin_host().notify(
+                                    &crate::plugins::HookEvent::harness(
+                                        &event.event,
+                                        Some(id),
+                                        event.raw.clone(),
+                                    ),
+                                );
+                            }
                             self.persist_native_session(id)?;
                         }
                         let _ = reply.send(result);

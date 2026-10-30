@@ -75,15 +75,15 @@ sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-
 [[crate]]
 name = "bboxy450-plugin"
 status = "contract-model"
-models = ["PluginActivation", "PluginConnection"]
-scope = "Host activation generation/source-digest contract; guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); JSON-RPC demultiplexing uses private host fixtures."
-sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs"]
+models = ["PluginActivation", "PluginHook", "PluginConnection"]
+scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); JSON-RPC demultiplexing uses private host fixtures."
+sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-sdk"
 status = "implementation-tests"
 models = []
-scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits and refusal encoding are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Host activation stays modelled by PluginActivation."
+scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits, refusal encoding and hook routing (on_hook) are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Host activation stays modelled by PluginActivation and host hook delivery by PluginHook."
 sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
 
 [[crate]]

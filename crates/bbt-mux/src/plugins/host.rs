@@ -12,10 +12,16 @@
 //! result is delivered from a connection whose generation is no longer
 //! current. Disable, re-trust and re-check all advance the generation.
 //! Modelled by `PluginConnection` in verification/contracts.toml.
+//!
+//! Hooks (`hooks.rs`) use a second connection per plugin, so a slow seat
+//! call never delays a hook and a hook never takes a call's slot.
 use super::*;
+#[path = "hooks.rs"]
+mod hooks;
 use crate::knowledge::data_source as d;
 use crate::plugins::client::Shared;
 use bbt_plugin::policy::RoleClass;
+pub use hooks::{HOOK_QUEUE, HookEvent, HookOutcome, Verdict};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
@@ -167,7 +173,17 @@ struct Authority {
     record: TrustRecord,
 }
 
+/// Each plugin has up to one connection per lane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Lane {
+    /// Seat tools and contract calls; a busy connection refuses.
+    Calls,
+    /// Hook deliveries; one at a time, each waiting within its own budget.
+    Hooks,
+}
+
 struct Connection {
+    lane: Lane,
     authority: Authority,
     copy: PathBuf,
     directory: PathBuf,
@@ -235,7 +251,7 @@ impl Connection {
 
 #[derive(Default)]
 struct Held {
-    connections: BTreeMap<String, Arc<Connection>>,
+    connections: BTreeMap<(String, Lane), Arc<Connection>>,
     closed: bool,
 }
 
@@ -247,6 +263,8 @@ struct Inner {
     state: StdMutex<Held>,
     /// Seat tools of the enabled, checked plugins, as of the last refresh.
     tools: StdMutex<Arc<Vec<SeatTool>>>,
+    /// Hook subscriptions, delivery queue and outcomes.
+    hooks: hooks::Hooks,
 }
 
 /// One per knowledge root, owned by its workspace. Cloning shares it.
@@ -276,6 +294,7 @@ impl PluginHost {
                 "host deadline must be positive",
             ));
         }
+        let (hooks, queue) = hooks::Hooks::new();
         let host = Self(Arc::new(Inner {
             registry,
             root,
@@ -283,33 +302,40 @@ impl PluginHost {
             config,
             state: StdMutex::default(),
             tools: StdMutex::default(),
+            hooks,
         }));
+        host.start_hook_worker(queue);
         host.refresh_tools();
         Ok(host)
     }
 
-    /// Recompute the seat tool snapshot from account records and pinned
-    /// copies; no plugin process runs. Blocking IO.
+    /// Recompute the seat tool and hook snapshots from account records and
+    /// pinned copies; no plugin process runs. Blocking IO.
     fn refresh_tools(&self) {
         let registry = &self.0.registry;
-        let tools = registry
-            .refresh()
-            .map(|entries| {
-                entries
-                    .iter()
-                    .filter(|entry| enabled_and_checked(entry))
-                    .filter_map(|entry| {
-                        let (_, record) = registry.authority(entry).ok()?;
-                        registry.verify_copy(record).ok()?;
-                        Some(seat_tools(entry, record))
-                    })
-                    .flatten()
-                    .collect()
-            })
-            .unwrap_or_default();
+        let mut tools = Vec::new();
+        let mut subscriptions = Vec::new();
+        for entry in registry.refresh().unwrap_or_default() {
+            if !enabled_and_checked(&entry) {
+                continue;
+            }
+            let Ok((activation, record)) = registry.authority(&entry) else {
+                continue;
+            };
+            if registry.verify_copy(record).is_err() {
+                continue;
+            }
+            tools.extend(seat_tools(&entry, record));
+            subscriptions.extend(hooks::subscriptions(
+                &entry.candidate.id,
+                activation.generation,
+                record,
+            ));
+        }
         if let Ok(mut held) = self.0.tools.lock() {
             *held = Arc::new(tools);
         }
+        self.set_subscriptions(subscriptions);
     }
 
     /// The seat tools as of the workspace mount or the last plugin control
@@ -342,7 +368,7 @@ impl PluginHost {
             Target::Declared(name) => name,
         };
         bbt_rt::assert_not_ui_thread();
-        let connection = self.connection(&tool.candidate)?;
+        let connection = self.connection(&tool.candidate, Lane::Calls)?;
         let declared = connection
             .shape()
             .tools
@@ -397,8 +423,8 @@ impl PluginHost {
         ))
     }
 
-    /// The live connection for the current authority, replacing a stale one.
-    fn connection(&self, candidate: &str) -> d::Result<Arc<Connection>> {
+    /// The live connection on `lane` for the current authority, replacing a stale one.
+    fn connection(&self, candidate: &str, lane: Lane) -> d::Result<Arc<Connection>> {
         let (authority, copy) = self.authorize(candidate)?;
         let mut state = self
             .0
@@ -411,12 +437,13 @@ impl PluginHost {
                 "this root's plugin host is closed",
             ));
         }
-        if let Some(current) = state.connections.get(candidate)
+        let key = (candidate.to_owned(), lane);
+        if let Some(current) = state.connections.get(&key)
             && current.authority == authority
         {
             return Ok(current.clone());
         }
-        if let Some(old) = state.connections.remove(candidate) {
+        if let Some(old) = state.connections.remove(&key) {
             self.retire(old);
         }
         let parent = Path::new(&authority.record.data_dir).join("roots");
@@ -431,21 +458,20 @@ impl PluginHost {
             .shape
             .as_ref()
             .ok_or_else(|| error("shape_not_cached", "inspect the plugin first"))?;
-        let slots = if shape.concurrent {
+        let slots = if shape.concurrent && lane == Lane::Calls {
             MAX_CONCURRENT_CALLS
         } else {
             1
         };
         let connection = Arc::new(Connection {
+            lane,
             authority,
             copy,
             directory,
             slots: Arc::new(Semaphore::new(slots)),
             shared: tokio::sync::Mutex::new(None),
         });
-        state
-            .connections
-            .insert(candidate.to_owned(), connection.clone());
+        state.connections.insert(key, connection.clone());
         Ok(connection)
     }
 
@@ -455,12 +481,13 @@ impl PluginHost {
 
     /// Remove `connection` if it is still the one held for `candidate`.
     fn drop_connection(&self, candidate: &str, connection: &Arc<Connection>) {
+        let key = (candidate.to_owned(), connection.lane);
         let removed = self.0.state.lock().ok().and_then(|mut state| {
             state
                 .connections
-                .get(candidate)
+                .get(&key)
                 .is_some_and(|held| Arc::ptr_eq(held, connection))
-                .then(|| state.connections.remove(candidate))
+                .then(|| state.connections.remove(&key))
                 .flatten()
         });
         if let Some(removed) = removed {
@@ -481,7 +508,7 @@ impl PluginHost {
     ) -> d::Result<Value> {
         bbt_rt::assert_not_ui_thread();
         let wire = contract.wire_name(method).map_err(refused)?;
-        let connection = self.connection(candidate)?;
+        let connection = self.connection(candidate, Lane::Calls)?;
         let command = connection
             .shape()
             .systems
@@ -544,14 +571,26 @@ impl PluginHost {
         for (schema, code) in requests {
             validate(schema, &args, code)?;
         }
-        let _permit = connection.slots.clone().try_acquire_owned().map_err(|_| {
-            let mut reason = error(
-                "provider_busy",
-                "this plugin connection is serving its request limit",
-            );
-            reason.retry_after_ms = Some(100);
-            reason
-        })?;
+        let slots = connection.slots.clone();
+        let _permit = match connection.lane {
+            Lane::Calls => slots.try_acquire_owned().map_err(|_| {
+                let mut reason = error(
+                    "provider_busy",
+                    "this plugin connection is serving its request limit",
+                );
+                reason.retry_after_ms = Some(100);
+                reason
+            })?,
+            // A hook waits for the previous hook, never beyond its own budget.
+            Lane::Hooks => self
+                .0
+                .handle
+                .block_on(async {
+                    tokio::time::timeout_at(deadline.into(), slots.acquire_owned()).await
+                })
+                .map_err(|_| error("deadline_exceeded", "an earlier hook held the hook lane"))?
+                .map_err(|_| error("provider_closed", "the hook lane is closed"))?,
+        };
         // A transport failure closes the connection; a plugin refusal does not.
         let outcome: Result<Value, (d::CommandError, bool)> = self.0.handle.block_on(async {
             let shared = connection
@@ -642,7 +681,7 @@ impl PluginHost {
                 state
                     .connections
                     .iter()
-                    .map(|(candidate, connection)| (candidate.clone(), connection.clone()))
+                    .map(|((candidate, _), connection)| (candidate.clone(), connection.clone()))
                     .collect()
             })
             .unwrap_or_default();
@@ -657,8 +696,17 @@ impl PluginHost {
         self.refresh_tools();
     }
 
-    /// Held connections as (candidate, activation generation), for tests and status.
+    /// Held call connections as (candidate, activation generation), for tests and status.
     pub fn connected(&self) -> Vec<(String, u64)> {
+        self.held(Lane::Calls)
+    }
+
+    /// Held hook connections as (candidate, activation generation).
+    pub fn hook_connections(&self) -> Vec<(String, u64)> {
+        self.held(Lane::Hooks)
+    }
+
+    fn held(&self, lane: Lane) -> Vec<(String, u64)> {
         self.0
             .state
             .lock()
@@ -666,7 +714,8 @@ impl PluginHost {
                 state
                     .connections
                     .iter()
-                    .map(|(candidate, held)| {
+                    .filter(|((_, held_lane), _)| *held_lane == lane)
+                    .map(|((candidate, _), held)| {
                         (candidate.clone(), held.authority.activation.generation)
                     })
                     .collect()
@@ -690,6 +739,7 @@ impl PluginHost {
     /// Workspace drop: refuse new calls and reap every process. Blocking IO;
     /// never call it from an async task or the UI thread.
     pub fn close(&self) {
+        self.stop_hooks();
         let connections = self
             .0
             .state

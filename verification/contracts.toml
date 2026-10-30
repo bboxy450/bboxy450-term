@@ -92,6 +92,16 @@ property = "A result is delivered only when the connection's generation equals t
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "PluginHook"
+title = "Hook delivery: bounded queue, activation generation and blocking decisions"
+models = ["PluginHook", "BrokenPluginHook"]
+sources = ["crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-plugin/src/policy.rs", "crates/bbt-plugin/src/trust.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs", "crates/bbt-plugin/tests/policy.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
+assumptions = "One plugin, activation generations 1..3 (disable, enable and re-trust without the block grant each advance it), a host subscription snapshot that lags until a reconcile, a two-slot queue standing for HOOK_QUEUE, and one blocking decision with a two-tick ceiling. notify, reconcile, queue offers and dequeues are atomic and interleave freely; no fairness is assumed. Several subscribers, payload grants, bus subject matching, JSON-RPC transport and real deadlines use implementation tests."
+property = "A queued hook is delivered only to the enabled activation whose generation it was offered under, otherwise it is refused as stale; an offer beyond the queue is dropped and counted, never waited for. A blocking decision is made only for a subscriber holding the block grant, waits at most the ceiling, and a timeout or a reply from a superseded activation follows the grant's failure policy. The broken control delivers queued items without the generation check and must fail safety. tests/plugin_host.rs hooks_receive_harness_and_bus_events_with_payload_only_when_granted and blocking_hooks_veto_only_with_a_grant_and_time_out_by_policy are API witnesses."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "HarnessToken"
 title = "Guarded single-use readiness"
 models = ["HarnessToken", "BrokenHarnessToken"]

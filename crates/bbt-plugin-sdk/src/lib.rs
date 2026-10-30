@@ -21,7 +21,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 pub use bbt_plugin::contracts::Contract;
-pub use bbt_plugin::policy::RoleClass;
+pub use bbt_plugin::policy::{Hook, Phase, RoleClass};
 pub use bbt_plugin::shape::{Command, Shape, System, Tool};
 pub use bbt_plugin::skills::Skill;
 pub use runtime::{run, serve};
@@ -178,6 +178,8 @@ pub struct Manifest {
     pub skills: Vec<Skill>,
     /// Seat tools beyond the contracts, served as MCP tools `tool_<name>`.
     pub tools: Vec<Tool>,
+    /// Harness and bus events delivered to [`Plugin::on_hook`].
+    pub hooks: Vec<Hook>,
     /// Prefix of embedded skill resource URIs, e.g. `gitkb`.
     pub resource_scheme: String,
     pub signed_writer: bool,
@@ -197,6 +199,7 @@ impl Manifest {
             contracts: Vec::new(),
             skills: Vec::new(),
             tools: Vec::new(),
+            hooks: Vec::new(),
             resource_scheme: scheme,
             signed_writer: false,
             fixture_bootstrap: false,
@@ -262,6 +265,37 @@ impl Manifest {
         if let Some(tool) = self.tools.iter_mut().find(|t| t.name == name) {
             tool.timeout_ms = ms;
         }
+        self
+    }
+
+    /// Subscribe to a harness event (`PreToolUse`, `PostToolUse`,
+    /// `UserPromptSubmit`, `PermissionRequest`, `SessionStart`, `SessionEnd`,
+    /// `Interrupt`, `SeatState`) at `phase`, within `budget_ms` (at most the
+    /// host ceiling: 1 s for ending events, 2 s before a tool, else 5 s).
+    /// Events arrive in [`Plugin::on_hook`]. Their payload arrives only when
+    /// the operator granted it; a `before` reply can veto only with the
+    /// operator's block grant.
+    pub fn hook(mut self, event: &str, phase: Phase, budget_ms: u64) -> Self {
+        self.hooks.push(Hook {
+            event: event.into(),
+            phase,
+            budget_ms,
+            subject: None,
+        });
+        self
+    }
+
+    /// Subscribe to bus events whose subject matches `subject` (`*` one
+    /// token, `>` the tail; never `inbox/…` or `plugin/…`). Delivered after
+    /// publication as event `bus`; the envelope payload only with the
+    /// operator's `bus` payload grant.
+    pub fn bus_hook(mut self, subject: &str, budget_ms: u64) -> Self {
+        self.hooks.push(Hook {
+            event: bbt_plugin::policy::BUS_EVENT.into(),
+            phase: Phase::After,
+            budget_ms,
+            subject: Some(subject.into()),
+        });
         self
     }
 
@@ -367,7 +401,7 @@ impl Manifest {
             "version": self.version,
             "shape_version": SHAPE_VERSION,
             "systems": systems,
-            "hooks": [],
+            "hooks": self.hooks,
             "health_command": "health",
             "signed_writer": self.signed_writer,
             "fixture_bootstrap": self.fixture_bootstrap,
@@ -391,6 +425,47 @@ impl Manifest {
         shape.validate(&name)?;
         bbt_plugin::skills::validate(&self.skills)?;
         Ok(())
+    }
+}
+
+/// The MCP tool name the host calls to deliver one hook event.
+pub const HOOK_TOOL: &str = "hook";
+
+/// One delivered hook event: the `hook` tool's arguments.
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+pub struct HookEvent {
+    /// The harness event as the harness spelled it, or `bus`.
+    pub event: String,
+    /// The phase of the matching declared hook.
+    pub phase: Phase,
+    /// Bus events: the published subject.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    /// The seat the event belongs to, when there is one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seat: Option<String>,
+    /// The delivery budget, `min(budget_ms, ceiling)`.
+    pub budget_ms: u64,
+    /// Present only when the operator granted this event's payload.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub payload: Option<Value>,
+}
+
+/// A hook's answer. Only a `before` hook holding the operator's block grant
+/// can veto; every other reply is recorded and ignored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HookReply {
+    Allow,
+    Deny { reason: String },
+}
+
+impl HookReply {
+    /// The `hook` tool result.
+    pub fn value(&self) -> Value {
+        match self {
+            Self::Allow => json!({"decision": "allow"}),
+            Self::Deny { reason } => json!({"decision": "deny", "reason": reason}),
+        }
     }
 }
 
@@ -421,6 +496,12 @@ pub trait Plugin: Sized + 'static {
             "unknown_tool",
             format!("this plugin does not serve tool {name}"),
         ))
+    }
+
+    /// Receive one hook event declared with [`Manifest::hook`] or
+    /// [`Manifest::bus_hook`], within `event.budget_ms`. The default allows.
+    fn on_hook(&mut self, _event: &HookEvent, _ctx: &Ctx) -> Result<HookReply, Refusal> {
+        Ok(HookReply::Allow)
     }
 
     /// `health_command`; extend with plugin-specific facts.
@@ -561,6 +642,39 @@ mod tests {
         ] {
             assert_eq!(bad.validate().unwrap_err().code, code);
         }
+    }
+
+    // keeps: G3 hooks — declared hooks reach the shape and the host validator.
+    #[test]
+    fn declared_hooks_reach_the_shape_and_are_validated_by_the_host() {
+        let m = manifest()
+            .hook("PreToolUse", Phase::Before, 2_000)
+            .bus_hook("task/*/status", 500);
+        m.validate().unwrap();
+        let shape = m.shape();
+        assert_eq!(
+            shape["hooks"],
+            json!([{"event":"PreToolUse","phase":"before","budget_ms":2000},
+                   {"event":"bus","phase":"after","budget_ms":500,"subject":"task/*/status"}])
+        );
+        assert_eq!(manifest().shape()["hooks"], json!([]));
+        for (bad, code) in [
+            (
+                manifest().hook("PreToolUse", Phase::Before, 2_001),
+                "hook_budget_exceeded",
+            ),
+            (manifest().hook("Nope", Phase::After, 10), "unknown_hook"),
+            (manifest().bus_hook("inbox/>", 10), "invalid_subject"),
+        ] {
+            assert_eq!(bad.validate().unwrap_err().code, code);
+        }
+        assert_eq!(
+            HookReply::Deny {
+                reason: "no".into()
+            }
+            .value(),
+            json!({"decision":"deny","reason":"no"})
+        );
     }
 
     #[test]

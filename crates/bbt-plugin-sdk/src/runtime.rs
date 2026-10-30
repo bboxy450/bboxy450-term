@@ -327,6 +327,11 @@ impl<P: Plugin> Worker<P> {
         let plugin = self.plugin.as_mut().expect("bound");
         let result = if name == "health" {
             plugin.health(&Ctx::new(cancelled, budget(crate::DEFAULT_TIMEOUT_MS)))?
+        } else if name == crate::HOOK_TOOL && !self.manifest.hooks.is_empty() {
+            let event: crate::HookEvent = crate::args(args)?;
+            // The host's ceiling is at most 5 s; never trust a larger budget.
+            let ctx = Ctx::new(cancelled, budget(event.budget_ms.min(5_000)));
+            plugin.on_hook(&event, &ctx)?.value()
         } else if let Some(tool) = self.manifest.declared_tool(name) {
             let ctx = Ctx::new(cancelled, budget(tool.timeout_ms));
             let declared = tool.name.clone();
@@ -415,6 +420,20 @@ mod tests {
                     json!({"type":"object"}),
                     crate::RoleClass::Worker,
                 )
+                .hook("PreToolUse", crate::Phase::Before, 1000)
+        }
+        fn on_hook(
+            &mut self,
+            event: &crate::HookEvent,
+            ctx: &Ctx,
+        ) -> Result<crate::HookReply, Refusal> {
+            assert!(ctx.remaining() <= Duration::from_millis(950));
+            Ok(match &event.payload {
+                Some(payload) if payload["tool_name"] == "rm" => crate::HookReply::Deny {
+                    reason: format!("{} refused for {}", event.event, self.root),
+                },
+                _ => crate::HookReply::Allow,
+            })
         }
         fn call_tool(&mut self, name: &str, args: Value, ctx: &Ctx) -> Result<Value, Refusal> {
             assert_eq!(name, "echo");
@@ -451,19 +470,20 @@ mod tests {
         }
     }
 
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
     fn session(lines: &[Value]) -> Vec<Value> {
         let input: String = lines.iter().map(|l| encoded(l) + "\n").collect();
         let output = Arc::new(Mutex::new(Vec::<u8>::new()));
-        struct Sink(Arc<Mutex<Vec<u8>>>);
-        impl Write for Sink {
-            fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
-                self.0.lock().unwrap().extend_from_slice(b);
-                Ok(b.len())
-            }
-            fn flush(&mut self) -> std::io::Result<()> {
-                Ok(())
-            }
-        }
         serve::<Echo>(Cursor::new(input), Sink(output.clone()));
         let bytes = output.lock().unwrap().clone();
         String::from_utf8(bytes)
@@ -562,6 +582,76 @@ mod tests {
         assert_eq!(by_id(10)["error"]["data"]["code"], "already_initialized");
         assert_eq!(by_id(11)["error"]["code"], -32601);
         assert_eq!(by_id(12)["result"]["structuredContent"]["healthy"], true);
+    }
+
+    // keeps: G3 hooks — the host's `hook` tool reaches Plugin::on_hook within
+    // the delivered budget; a plugin without hooks refuses it.
+    #[test]
+    fn hook_events_reach_on_hook_and_reply_with_a_decision() {
+        let hook = |id: u64, payload: Value| {
+            call(
+                id,
+                "hook",
+                json!({"event":"PreToolUse","phase":"before","seat":"s1","budget_ms":1000,"payload":payload}),
+            )
+        };
+        let replies = session(&[
+            json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"root":"/r"}}),
+            hook(2, json!({"tool_name":"rm"})),
+            hook(3, json!({"tool_name":"ls"})),
+            call(
+                4,
+                "hook",
+                json!({"event":"bus","phase":"after","subject":"task/1/status","budget_ms":500}),
+            ),
+            call(5, "hook", json!({"event":"PreToolUse"})),
+        ]);
+        let by_id = |id: u64| replies.iter().find(|r| r["id"] == id).unwrap().clone();
+        assert_eq!(
+            by_id(2)["result"]["structuredContent"],
+            json!({"decision":"deny","reason":"PreToolUse refused for /r"})
+        );
+        assert_eq!(
+            by_id(3)["result"]["structuredContent"],
+            json!({"decision":"allow"})
+        );
+        assert_eq!(
+            by_id(4)["result"]["structuredContent"],
+            json!({"decision":"allow"})
+        );
+        assert_eq!(
+            by_id(5)["result"]["structuredContent"]["code"],
+            "invalid_arguments"
+        );
+
+        struct Bare;
+        impl Plugin for Bare {
+            fn manifest() -> Manifest {
+                Manifest::new("bboxy450-term-repo_graph-bare", "Bare", "No hooks")
+                    .contract(Contract::RepoGraph)
+            }
+            fn initialize(_: Init, _: &Ctx) -> Result<Self, Refusal> {
+                Ok(Bare)
+            }
+            fn call(&mut self, _: Contract, _: &str, _: Value, _: &Ctx) -> Result<Value, Refusal> {
+                Ok(json!({}))
+            }
+        }
+        let input: String = [
+            json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"root":"/r"}}),
+            hook(2, json!({})),
+        ]
+        .iter()
+        .map(|l| encoded(l) + "\n")
+        .collect();
+        let output = Arc::new(Mutex::new(Vec::<u8>::new()));
+        serve::<Bare>(Cursor::new(input), Sink(output.clone()));
+        let text = String::from_utf8(output.lock().unwrap().clone()).unwrap();
+        let last: Value = serde_json::from_str(text.lines().last().unwrap()).unwrap();
+        assert_eq!(
+            last["result"]["structuredContent"]["code"],
+            "unknown_method"
+        );
     }
 
     #[test]

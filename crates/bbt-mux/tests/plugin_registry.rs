@@ -623,7 +623,8 @@ async fn higher_tier_and_payload_grants_need_explicit_reapproval_and_reuse_obser
             descriptor["hooks"] = json!([Hook {
                 event: "prompt_submit".into(),
                 phase: Phase::After,
-                budget_ms: 1000
+                budget_ms: 1000,
+                subject: None,
             }]);
         }
         h.plugin(Scope::Application, name, descriptor, "");

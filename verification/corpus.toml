@@ -121,6 +121,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "PluginHook"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginHook"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "HarnessToken"
 expected = "pass"
 frontend = "project"

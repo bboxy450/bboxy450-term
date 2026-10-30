@@ -48,7 +48,10 @@ mod source;
 pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
 #[path = "host.rs"]
 mod host;
-pub use host::{HOST_OWNED, MAX_CONCURRENT_CALLS, PluginHost, SeatTool, seat_role};
+pub use host::{
+    HOOK_QUEUE, HOST_OWNED, HookEvent, HookOutcome, MAX_CONCURRENT_CALLS, PluginHost, SeatTool,
+    Verdict, seat_role,
+};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]

@@ -134,6 +134,9 @@ impl Workspace {
                 config.runtime.clone(),
                 config.provider,
             )?;
+            if let Some(bus) = &config.activity {
+                host.plugin_host().attach_bus(bus.clone());
+            }
             let seen_revision = host.revision()?;
             let provenance = Engine::open(&index, repository, config.runtime.clone())?;
             let watch = FileWatch::start(index.knowledge_root())?;

@@ -60,7 +60,19 @@ impl TrustRecord {
             if hook.carries_payload()? && !self.grants.payload_events.contains(&hook.event) {
                 return Err(Refusal::new("payload_grant_required", &hook.event));
             }
+            // Bus payloads are opt-in per grant; with it the plugin exports them.
+            if hook.is_bus() && self.payload_granted(hook) && self.approved_tier < Tier::Export {
+                return Err(Refusal::new(
+                    "tier_not_approved",
+                    "a bus payload grant needs the export tier",
+                ));
+            }
         }
         Ok(())
+    }
+
+    /// Whether `hook`'s event payload may reach the plugin.
+    pub fn payload_granted(&self, hook: &crate::policy::Hook) -> bool {
+        self.grants.payload_events.contains(&hook.event)
     }
 }

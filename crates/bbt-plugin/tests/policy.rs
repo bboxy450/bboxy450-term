@@ -43,6 +43,7 @@ fn contract_authority_is_fixed_and_hooks_raise_exposure() {
         event: "UserPromptSubmit".into(),
         phase: Phase::Before,
         budget_ms: 5000,
+        subject: None,
     };
     assert!(prompt.carries_payload().unwrap());
     prompt.validate().unwrap();
@@ -60,6 +61,7 @@ fn contract_authority_is_fixed_and_hooks_raise_exposure() {
                 event: event.into(),
                 phase,
                 budget_ms: ceiling,
+                subject: None,
             };
             hook.validate().unwrap();
             assert!(
@@ -72,6 +74,62 @@ fn contract_authority_is_fixed_and_hooks_raise_exposure() {
             );
         }
     }
+}
+
+// keeps: G3 hooks — bus hooks name a public subject pattern, observe after
+// publication and never see inboxes or plugin activity.
+#[test]
+fn bus_hooks_need_a_public_after_subject_and_harness_hooks_take_none() {
+    use bbt_plugin::policy::{subject_matches, validate_subject};
+    let bus = |subject: Option<&str>, phase| Hook {
+        event: "bus".into(),
+        phase,
+        budget_ms: 1000,
+        subject: subject.map(str::to_owned),
+    };
+    let ok = bus(Some("task/*/status"), Phase::After);
+    ok.validate().unwrap();
+    assert!(ok.is_bus() && !ok.carries_payload().unwrap());
+    assert_eq!(ok.ceiling_ms().unwrap(), 5000);
+    bus(Some("swarms/>"), Phase::After).validate().unwrap();
+    for (hook, code) in [
+        (bus(None, Phase::After), "invalid_hook"),
+        (bus(Some("task/*/status"), Phase::Before), "invalid_hook"),
+        (bus(Some("inbox/>"), Phase::After), "invalid_subject"),
+        (bus(Some("plugin/>"), Phase::After), "invalid_subject"),
+        (bus(Some(">"), Phase::After), "invalid_subject"),
+        (bus(Some("*/x"), Phase::After), "invalid_subject"),
+        (bus(Some("task/>/x"), Phase::After), "invalid_subject"),
+        (bus(Some("task//x"), Phase::After), "invalid_subject"),
+        (
+            Hook {
+                event: "PreToolUse".into(),
+                phase: Phase::Before,
+                budget_ms: 1000,
+                subject: Some("task/>".into()),
+            },
+            "invalid_hook",
+        ),
+    ] {
+        assert_eq!(hook.validate().unwrap_err().code, code, "{hook:?}");
+    }
+    let pre = Hook {
+        event: "pre_tool_use".into(),
+        phase: Phase::Before,
+        budget_ms: 2000,
+        subject: None,
+    };
+    assert!(pre.matches_event("PreToolUse") && !pre.matches_event("PostToolUse"));
+    assert!(
+        !ok.matches_event("bus"),
+        "bus hooks match subjects, not events"
+    );
+    assert!(subject_matches("task/*/status", "task/7/status"));
+    assert!(!subject_matches("task/*/status", "task/7/status/x"));
+    assert!(subject_matches("swarms/>", "swarms/a/b"));
+    assert!(!subject_matches("swarms/>", "swarms"));
+    validate_subject("plugin/abc/hook/delivered", false).unwrap();
+    assert!(validate_subject("task/*", false).is_err());
 }
 
 // keeps: decision #278 — concrete contracts, additive wire and fixed host approval
