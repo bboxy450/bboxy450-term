@@ -13,7 +13,8 @@ use super::*;
 /// independent chat/task section wheel controls and produced-frame scroll receipts.
 /// Version 7 adds the headless recording account's logical notification foreground control.
 /// Version 8 adds bounded private native document paint observations.
-pub const UI_CONTROL_VERSION: u16 = 10;
+/// Version 10 adds saved Tasks/Chat folds; version 11 adds the Cmd-V logical chord.
+pub const UI_CONTROL_VERSION: u16 = 11;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -356,6 +357,7 @@ impl Default for UiScrollPosition {
 /// Named chrome chords accepted by ctl and independently checked by the window.
 pub const UI_KEYS: &[&str] = &[
     "cmd-c",
+    "cmd-v",
     "cmd-t",
     "cmd-d",
     "cmd-shift-d",

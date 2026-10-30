@@ -4346,7 +4346,7 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
         ]);
     }
     let mut f = Fixture::new();
-    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[?1000h\\033[2J\\033[Hcopy 界e\u{301}  row\\r\\nsecond   \\r\\n'\nexec /bin/cat\n").unwrap();
+    fs::write(f.root.join("bin/claude"), "#!/bin/sh\nprintf '\\033[?1000h\\033[?2004h\\033[2J\\033[Hcopy 界e\u{301}  row\\r\\nsecond   \\r\\n'\nexec /usr/bin/tee \"$HOME/terminal-pastes\"\n").unwrap();
     f.start();
     let initial = f.ctl(&["ui", "layout"]);
     let swarm = initial["swarm"].as_str().unwrap();
@@ -4377,6 +4377,16 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
     f.ctl(&["ui", "copy"]);
     let multiline = f.ctl(&["ui", "clipboard-read"]);
     assert_eq!(multiline["test_clipboard"], "copy 界e\u{301}  row\nsecond");
+    f.ctl(&["ui", "key", "cmd-v"]);
+    f.ctl(&["seat", "key", &seat, "enter"]);
+    let expected = b"unrelated\n\x1b[200~copy \xe7\x95\x8ce\xcc\x81  row\nsecond\x1b[201~\n";
+    let until = Instant::now() + Duration::from_secs(10);
+    loop {
+        let pasted = fs::read(f.root.join("home/terminal-pastes")).unwrap_or_default();
+        if pasted == expected { break; }
+        assert!(Instant::now() < until, "Cmd-V did not reach the real private PTY: {pasted:?}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
     let other = f.spawn("claude", swarm, None);
     ready(&f, &other);
     f.ctl(&["ui", "copy"]);
@@ -4388,7 +4398,7 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
     println!(
-        "actual rendered Unicode/combining/wide text and hard lines copied through ctl drag/Cmd-C/native Copy dispatch; unrelated output preserved selection; cross-pane copy fenced; private provider only"
+        "actual Unicode/multiline copy and Cmd-V paste reach the private PTY with exact bracketed bytes; native Copy dispatch, selection retention and cross-pane fences; private provider only"
     );
 }
 

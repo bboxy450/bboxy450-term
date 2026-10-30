@@ -98,6 +98,7 @@ help:
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-terminal-selection     Terminal drag selection, private clipboard and native Copy' \
+	  'make test-terminal-paste         Focused terminal Cmd-V, bracketed PTY bytes and private clipboard' \
 	  'make test-terminal-font          Global terminal font chords, native menu and retained PTY geometry' \
 	  'make test-terminal-colors        Private PTY/login-shell color defaults and explicit opt-outs' \
 	  'make test-terminal-colors-native Real private Codex shared-daemon TUI colors under NO_COLOR' \
@@ -1169,7 +1170,13 @@ test-color-emoji-swarm:
 check-color-emoji-all:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-render -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
-.PHONY: test-terminal-selection check-terminal-selection
+.PHONY: test-terminal-selection test-terminal-paste check-terminal-selection
+test-terminal-paste:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) paste_shortcut; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) terminal_font_and_selection_native_menu; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir terminal_selection_copies_actual_displayed_unicode_lines_without_operator_clipboard -- --ignored --exact --nocapture
+
 test-terminal-selection:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-desktop-core --target-dir '$(TARGET_DIR)'; \

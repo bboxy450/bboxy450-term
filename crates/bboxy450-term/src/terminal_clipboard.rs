@@ -9,6 +9,43 @@ use crate::*;
 use bboxy450_term::terminal_selection::Display;
 
 impl App {
+    /// Private accounts never read the operator's pasteboard, including menu actions.
+    pub(super) fn clipboard_content(
+        &self,
+    ) -> Result<Option<bboxy450_term_desktop::ClipboardContent>, bboxy450_term_desktop::Error> {
+        if self.test_account {
+            Ok(self.private_clipboard.clone().map(bboxy450_term_desktop::ClipboardContent::Text))
+        } else {
+            bboxy450_term_desktop::read_clipboard()
+        }
+    }
+    /// Paste into the focused live process using the same framing as ctl seat paste.
+    /// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub(super) fn terminal_paste(&mut self) {
+        let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) else {
+            return;
+        };
+        if !self.terminal_context(seat) {
+            return;
+        }
+        let Some((generation, modes)) = self.live_state.as_ref().and_then(|model| {
+            Some((model.ui.seats.get(&seat)?.process_generation, model.screens.get(&seat)?.modes))
+        }) else {
+            return;
+        };
+        match self.clipboard_content() {
+            Ok(Some(bboxy450_term_desktop::ClipboardContent::Text(text))) if !text.is_empty() => {
+                self.queue(live::UiMsg::Input {
+                    seat,
+                    generation,
+                    id: bbt_mux::Ulid::new(),
+                    bytes: bboxy450_term::ctl::bracketed(text.as_bytes(), modes),
+                });
+            }
+            Err(error) => self.logger.write(format!("terminal paste: {error}")),
+            _ => {}
+        }
+    }
     /// Build the source/geometry that this frame will actually encode, including a retained
     /// old live frame during font resize. Historical fallback without its row is unavailable.
     fn prepared_terminal_display(&self, seat: SeatId) -> Option<Display> {

@@ -67,7 +67,13 @@ impl App {
             Action::Settings => self.open_settings("Account"),
             Action::IncreaseTerminalFont => self.change_terminal_font(1),
             Action::DecreaseTerminalFont => self.change_terminal_font(-1),
-            Action::Paste => self.composer_paste(),
+            Action::Paste => {
+                if self.composer.view.focus {
+                    self.composer_paste();
+                } else {
+                    self.terminal_paste();
+                }
+            }
             Action::Copy => {
                 self.copy_terminal_selection();
             }

@@ -1,0 +1,25 @@
+{
+  "role": "Executor",
+  "scope": "Fix Cmd-V/native Paste routing into focused terminal panes; retain composer paste and private test clipboard isolation.",
+  "files": [
+    "crates/bboxy450-term/src/terminal_clipboard.rs",
+    "crates/bboxy450-term/src/desktop_menu.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bbt-proto/src/gui/ui.rs",
+    "crates/bboxy450-term/tests/swarm_workdir.rs",
+    "Makefile"
+  ],
+  "checks": [
+    {
+      "command": "make test-terminal-paste check-terminal-selection",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/terminal-paste-20261029.log",
+      "evidence": "Exact real private PTY bytes for Unicode/multiline bracketed paste; repeat/Kitty-release ownership; composer remains local; strict all-target lint."
+    }
+  ],
+  "limits": [
+    "This change pastes terminal text; existing chat image paste remains separate.",
+    "Full normal CI still lacks its required 10 GiB of free disk; no gate bypass.",
+    "Final formal/source-bound evidence and signed install follow the section-color commit."
+  ]
+}

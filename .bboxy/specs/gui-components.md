@@ -563,3 +563,9 @@ does not disable dragging. ⌘-click opens OSC 8 HTTP/HTTPS/mailto and local fil
 web URLs from the displayed terminal grid; ordinary dragging still selects them.
 Platform URL launch is asynchronous and test accounts record it without opening a
 browser. Other URI schemes remain inert in this cut.
+
+Native Edit > Paste and terminal ⌘V share the focus-aware dispatcher. A focused
+terminal receives clipboard text through its current process generation and
+bracketed-paste mode; the focused chat composer retains text/image paste.
+Held-key repeats and the shortcut's Kitty release are consumed locally. Private
+test accounts read only their own clipboard provider, never the operator's.

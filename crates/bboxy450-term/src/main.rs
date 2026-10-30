@@ -1102,6 +1102,7 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
     }
     let (logical_key, code) = match name {
         "c" => (Key::Character("c".into()), KeyCode::KeyC),
+        "v" => (Key::Character("v".into()), KeyCode::KeyV),
         "t" => (Key::Character("t".into()), KeyCode::KeyT),
         "d" => (Key::Character("d".into()), KeyCode::KeyD),
         "a" => (Key::Character("a".into()), KeyCode::KeyA),
@@ -1164,6 +1165,7 @@ enum RoutedKey {
     Launcher(LauncherCommand),
     Composer(ComposeCommand),
     ComposerPaste,
+    TerminalPaste,
     TerminalCopy,
     ComposerVertical { backwards: bool, extend: bool },
     ComposerLineEdge { end: bool, extend: bool },
@@ -1294,6 +1296,15 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
     let mods = input.modifiers.state;
     let repeat = input.repeat;
     let command = mods.super_key();
+    if query.is_none()
+        && !mods.alt_key()
+        && shortcut == Some('v')
+        && ((command && !mods.control_key() && !mods.shift_key())
+            || (cfg!(not(target_os = "macos"))
+                && mods.control_key() && mods.shift_key() && !command))
+    {
+        return if repeat { RoutedKey::Local } else { RoutedKey::TerminalPaste };
+    }
     if command && !mods.alt_key() && !mods.control_key() {
         // Follow the active layout: plus can be a shifted '=' or an unshifted
         // character (including Dvorak layouts). Physical positions own releases only.
@@ -3645,7 +3656,7 @@ impl App {
         {
             return;
         }
-        match bboxy450_term_desktop::read_clipboard() {
+        match self.clipboard_content() {
             Ok(Some(content)) => self.composer_paste_content(content),
             Ok(None) => {}
             Err(error) => self.composer_paste_failed(error.to_string()),
@@ -5940,6 +5951,9 @@ impl App {
         match routed {
             RoutedKey::TerminalCopy => {
                 self.copy_terminal_selection();
+            }
+            RoutedKey::TerminalPaste => {
+                self.desktop_action(bboxy450_term_desktop::Action::Paste);
             }
             RoutedKey::OpenLauncher => self.open_launcher(),
             RoutedKey::SplitLauncher(side) => self.split_launcher(side),
@@ -12494,6 +12508,22 @@ mod placement_tests {
 mod composer_host_tests {
     use super::*;
     #[test]
+    fn terminal_paste_shortcut_keeps_composer_routing_and_owns_repeat_and_release() {
+        let mut input = chrome_input("cmd-v").unwrap();
+        let mut keyboard = keyboard::State::default();
+        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::TerminalPaste);
+        assert_eq!(route_composer(&input, 0, ComposeField::Body), RoutedKey::ComposerPaste);
+        input.repeat = true;
+        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        input.repeat = false;
+        input.state = ElementState::Released;
+        input.modifiers.state = ModifiersState::empty();
+        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        input.state = ElementState::Pressed;
+        input.modifiers.state = ModifiersState::CONTROL;
+        assert!(!matches!(route_key(&input, 0, None), RoutedKey::TerminalPaste));
+    }
+    #[test]
     fn image_paste_shortcut_is_owned_by_composer_and_repeat_is_suppressed() {
         let v = Key::Character("v".into());
         let input = test_key(
@@ -12976,6 +13006,7 @@ mod ctl_ui_key_tests {
             ("cmd-equal", Action::IncreaseTerminalFont),
             ("cmd-minus", Action::DecreaseTerminalFont),
             ("cmd-c", Action::Copy),
+            ("cmd-v", Action::Paste),
         ] {
             let mut input = chrome_input(name).unwrap();
             let scancode = input.physical_key.to_scancode().unwrap();
