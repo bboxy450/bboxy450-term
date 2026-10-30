@@ -53,7 +53,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | M5 | `scripts/e2e/M5.sh` | partial | harness: stand-in; a real Worker and real Oracle harness ask for the unassigned inventory (the admitted seat MCP bridge is exercised by deterministic fixtures) | |
 | M6 | `scripts/e2e/M6.sh` | partial | priority delays, never deletes | |
 | M7 | `scripts/e2e/M7.sh` | full | — | |
-| F1 | `scripts/e2e/F1.sh` | partial | script not implemented: the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls | |
+| F1 | `scripts/e2e/F1.sh` | full | | |
 | F2 | `scripts/e2e/F2.sh` | partial | script not implemented: unread counts come from the operator's read marks and survive a restart; viewing a stream marks it read | |
 | F3 | `scripts/e2e/F3.sh` | partial | script not implemented: killing logic and restarting resumes the events lane at its cursors: no duplicate row, no lost event | |
 | F4 | `scripts/e2e/F4.sh` | partial | script not implemented: a filter change while attached migrates the consumer: pending rows for still-granted subjects are delivered, revoked ones dropped unprojected, one audit line on account/control | |
@@ -482,6 +482,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Baseline pointers:** proto/messaging.rs:423,431,444; messaging/tree.rs:139; ctl.rs:251.
 
 ### F1
+
+**Current proof:** `scripts/e2e/F1.sh` runs `make test-live-feed`, which requires exactly one executed test. The native `live::publish_delivery` → retained event lane → `History`/`Records` → `StreamDock` witness switches A → B → A with two channels per swarm. Each arrival publishes its model before returning the ACK and appears in the dock from that publication with exactly one `bbt_rt::Waker` callback. Replayed deliveries and unchanged lane observations add no wake or page request; the fixture needs no runtime clock or poll timer.
 
 **Promise:** the stream dock shows one swarm at a time with its channels; arrivals appear within one event-lane delivery; nothing polls.
 

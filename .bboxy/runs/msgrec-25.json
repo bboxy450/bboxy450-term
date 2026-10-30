@@ -1,0 +1,22 @@
+{
+  "issue": 25,
+  "checks": [
+    {
+      "command": "make test-live-feed",
+      "exit": 0,
+      "passed": 1
+    },
+    {
+      "command": "sh scripts/e2e/F1.sh",
+      "exit": 0,
+      "passed": 1
+    },
+    {
+      "command": "cargo clippy --locked -p bboxy450-term --all-targets -- -D warnings",
+      "exit": 0
+    }
+  ],
+  "witness": "live::tests::live_feed_one_swarm_channels_and_one_delivery_wake_without_polling",
+  "bounds": "A -> B -> A; two channels per swarm; production publish_delivery and DirtySet/Latest publication, native History/Records and StreamDock; one Waker callback per new delivery, none for replay/unchanged views, no arrival page requests or clock/runtime requirement.",
+  "decision": "Retain event-driven production delivery; add a zero-test-refusing Make target and unattended F1 script."
+}

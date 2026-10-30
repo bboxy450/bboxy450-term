@@ -113,6 +113,7 @@ help:
 	  'make check-terminal-font         Strict all-target Clippy for terminal font paths' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
+	  'make test-live-feed              Scoped dock channels and exactly one arrival wake, no poll timer' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
@@ -1421,3 +1422,10 @@ test-task-sidebar:
 
 check-task-sidebar:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-proto -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-live-feed
+test-live-feed:
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) live::tests::live_feed_one_swarm_channels_and_one_delivery_wake_without_polling -- --exact --nocapture >'$(TARGET_DIR)/live-feed.log' 2>&1 || { code=$$?; cat '$(TARGET_DIR)/live-feed.log'; exit $$code; }; \
+	cat '$(TARGET_DIR)/live-feed.log'; \
+	grep -F 'test result: ok. 1 passed; 0 failed;' '$(TARGET_DIR)/live-feed.log' >/dev/null

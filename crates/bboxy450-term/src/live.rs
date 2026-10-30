@@ -3261,6 +3261,188 @@ mod tests {
         );
     }
 
+    // keeps: F1 / issue 25 — the production delivery-to-dock path needs one wake.
+    #[test]
+    fn live_feed_one_swarm_channels_and_one_delivery_wake_without_polling() {
+        use bboxy450_term::messaging::{History, Records, Reply, Results};
+        use bbt_proto::{events::*, messaging::*};
+        use bbt_ui::modules::stream_dock::{Entry, StreamDock};
+        use std::sync::atomic::AtomicUsize;
+        struct CountWake(AtomicUsize);
+        impl bbt_rt::Waker for CountWake {
+            fn wake(&self) {
+                self.0.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+        // Adapted from this project's messaging_ui.rs projected_message fixture.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        fn arrival(scope: SwarmId, sequence: u64, channel: &str) -> GuiEventRecord {
+            let stream = format!("swarm-{scope}");
+            let row = MessageRow {
+                id: Ulid::new(),
+                bus: Some(BusPosition {
+                    stream: stream.clone(),
+                    seq: sequence,
+                }),
+                author: AuthorRef {
+                    kind: AuthorKind::Seat,
+                    id: "fixture-author".into(),
+                    name: "Fixture".into(),
+                },
+                issuer_kind: Some(IssuerKind::LocalDev),
+                signature: SignatureState::Signed,
+                signature_reason: None,
+                upgrade_of: None,
+                kind: MessageKind::Text,
+                priority_class: bbt_proto::registry::Class::Worker,
+                priority: 0,
+                text: format!("arrival in {channel}"),
+                ts: 1000,
+                receipts: ReceiptSummary::default(),
+            };
+            GuiEventRecord::Event(Box::new(GuiEventEnvelope {
+                metadata: EventMetadata {
+                    reference: EventReference {
+                        position: EventPosition {
+                            stream: stream.clone(),
+                            sequence,
+                        },
+                        hash: format!("{sequence:064x}"),
+                    },
+                    id: row.id,
+                    ts: 1000,
+                    subject: format!("{channel}/message"),
+                    source: "messaging".into(),
+                    seat: None,
+                    generation: None,
+                    proof: EventProof {
+                        scope: EventSignatureScope::OriginalRetainedEnvelope,
+                        public_key: "fixture".into(),
+                        signature: "projection fixture; mux verifies original bytes".into(),
+                        prev: String::new(),
+                    },
+                },
+                projected_at: 1000,
+                cursor: Some(GuiEventCursor {
+                    stream,
+                    admitted: sequence,
+                    acknowledged: 0,
+                    read: 0,
+                    high: sequence,
+                    unread: sequence,
+                }),
+                payload: GuiEventPayload::Message { row },
+            }))
+        }
+        fn load_channels(records: &mut Records, scope: SwarmId, channel: &str) {
+            records.select(scope);
+            assert!(
+                records.nodes().is_empty(),
+                "switch clears the old swarm's channels"
+            );
+            let mut results = Results::default();
+            for command in records.commands() {
+                if let UiMsg::Messaging {
+                    id,
+                    request: Request::Ls { path, .. },
+                    swarm_id,
+                } = command
+                {
+                    assert_eq!(swarm_id, scope);
+                    results.push(
+                        id,
+                        Reply::Messaging(Response::Tree {
+                            nodes: if path == "channels" {
+                                vec![
+                                    Node::folder(channel),
+                                    Node::folder(format!("{channel}-other")),
+                                ]
+                            } else {
+                                vec![]
+                            },
+                            next: None,
+                        }),
+                    );
+                }
+            }
+            records.replies(&results);
+        }
+        let wake = Arc::new(CountWake(AtomicUsize::new(0)));
+        let dirty = bbt_rt::DirtySet::new(1, wake.clone());
+        let updates = Latest::new(dirty.source(0));
+        let mut model = Arc::new(Model::default());
+        let mut history = History::default();
+        let mut records = Records::default();
+        let mut prior_scope = None;
+        for (index, (scope, channel)) in [
+            (SwarmId::from_u128(91), "channels/first"),
+            (SwarmId::from_u128(92), "channels/second"),
+            (SwarmId::from_u128(91), "channels/first"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            history.select(scope);
+            history.actions(); // Consume bootstrap demand; it is not an arrival poll.
+            load_channels(&mut records, scope, channel);
+            let record = arrival(scope, index as u64 + 1, channel);
+            let before = wake.0.load(Ordering::SeqCst);
+            assert!(matches!(
+                publish_delivery(&mut model, &updates, record.clone()).unwrap(),
+                Some(GuiAction::EventAck { .. })
+            ));
+            assert_eq!(wake.0.load(Ordering::SeqCst), before + 1);
+            assert_eq!(dirty.drain(), [0]);
+            let published = updates
+                .take()
+                .expect("arrival publishes before returning its ACK");
+            history.observe(&published.events);
+            let dock = StreamDock {
+                entries: history.entries(&published, &Default::default(), records.nodes()),
+                ..Default::default()
+            };
+            let channels = dock.entries.iter().find_map(|entry| match entry {
+                Entry::Tabs { channels, .. } => Some(channels.iter().map(|c| c.name.clone()).collect::<Vec<_>>()),
+                _ => None,
+            }).expect("selected swarm's channel tabs");
+            let name = channel.trim_start_matches("channels/");
+            assert_eq!(channels, [name.to_owned(), format!("{name}-other")]);
+            let messages: Vec<_> = dock
+                .entries
+                .iter()
+                .filter_map(|entry| match entry {
+                    Entry::Message { data, .. } => Some(&data.text),
+                    _ => None,
+                })
+                .collect();
+            assert!(!messages.is_empty());
+            assert!(
+                messages.iter().all(|text| text.contains(channel)),
+                "another swarm leaked into the dock: {prior_scope:?}"
+            );
+            publish_delivery(&mut model, &updates, record).unwrap();
+            assert!(updates.take().is_none());
+            assert_eq!(
+                wake.0.load(Ordering::SeqCst),
+                before + 1,
+                "replay or an unchanged view must not post another wake"
+            );
+            assert!(
+                history.actions().is_empty(),
+                "arrival must not require a page poll"
+            );
+            // No runtime, clock advance or scheduled poll exists in this fixture.
+            // An unchanged lane/view is quiescent after the single delivery wake.
+            for _ in 0..3 {
+                history.observe(&published.events);
+                assert!(history.actions().is_empty());
+                assert!(dirty.drain().is_empty());
+                assert_eq!(wake.0.load(Ordering::SeqCst), before + 1);
+            }
+            prior_scope = Some(scope);
+        }
+    }
+
     // keeps: spec c1-live-seats §2a
     #[test]
     fn event_ack_follows_shared_model_publication_and_replays_do_not_publish_twice() {
