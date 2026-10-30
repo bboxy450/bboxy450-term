@@ -455,6 +455,58 @@ async fn logic_death_keeps_pty_generation_rewatches_and_preserves_ack_backpressu
     session.shutdown().await.unwrap();
 }
 
+// keeps: a lost GUI connection never kills a live logic owner (#79)
+#[ignore = "night: real boundary, test-policy #327 B2"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gui_connection_loss_reattaches_to_the_same_logic_and_rewatches() {
+    let root = tempfile::Builder::new()
+        .prefix("c1c-gui-loss-")
+        .tempdir()
+        .unwrap();
+    let mut session = start(root.path()).await;
+    let seat = spawn(&mut session, root.path(), "zsh", None).await;
+    let supervisor_pid = session.supervisor.id();
+    let logic_pid = session.logic.id();
+    watch(&mut session, &seat).await;
+    let mut replica = Replica::default();
+    input(&mut session, id(&seat), seat.record.generation, b"printf 'before-loss\\n'\n").await;
+    until_text(&mut session, id(&seat), &mut replica, "before-loss").await;
+    let previous_view = replica.snapshot.as_ref().unwrap().view;
+    session.drop_gui_connection();
+    let seats = tokio::time::timeout(Duration::from_secs(60), async {
+        loop {
+            match session.event().await.unwrap() {
+                Event::Reply(reply) => {
+                    if let GuiReply::Seats(seats) = *reply {
+                        return seats;
+                    }
+                }
+                Event::Exited { process, status } => panic!("{process} exited after GUI loss: {status}"),
+                Event::Disconnected(reason) => {
+                    assert!(!reason.starts_with("GUI reattach failed"), "{reason}");
+                }
+            }
+        }
+    })
+    .await
+    .unwrap();
+    let restored = seats.iter().find(|s| s.record.id == seat.record.id).unwrap();
+    assert_eq!(pid(restored), pid(&seat));
+    assert_eq!(restored.record.generation, seat.record.generation);
+    assert_eq!(session.supervisor.id(), supervisor_pid);
+    assert_eq!(session.logic.id(), logic_pid, "GUI loss replaced logic");
+    let first = update(&mut session, id(&seat)).await;
+    let (view, _) = cursor(&first);
+    assert_eq!(view.generation, previous_view.generation);
+    // Frames in flight on the lost connection are gone: resync from a snapshot.
+    assert!(matches!(first, Update::Snapshot { .. }), "first update after reattach was a delta");
+    apply(&mut session, id(&seat), &mut replica, first).await;
+    input(&mut session, id(&seat), seat.record.generation, b"printf 'after-loss\\n'\n").await;
+    until_text(&mut session, id(&seat), &mut replica, "after-loss").await;
+    println!("GUI reattach: logic {logic_pid:?} retained; seat pid={} generation={}", pid(&seat), seat.record.generation);
+    session.shutdown().await.unwrap();
+}
+
 // keeps: spec c1-live-seats §4
 #[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

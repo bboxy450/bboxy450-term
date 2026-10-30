@@ -115,10 +115,10 @@ checks = ["make test-formal", "make test"]
 name = "LifecycleOwnership"
 title = "UI detach and exact process ownership"
 models = ["LifecycleOwnership", "BrokenLifecycleOwnership"]
-sources = ["crates/bboxy450-term/src/cockpit/owners.rs"]
-implementation_tests = ["crates/bboxy450-term/tests/lifecycle.rs"]
-assumptions = "One UI and retained owner, explicit stop and a PID-birth equality bit. Native process start/exit races and signal delivery require private process tests."
-property = "Ordinary detach preserves the owner; explicit stop may signal only the captured process birth."
+sources = ["crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/cockpit.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/lifecycle.rs", "crates/bboxy450-term/tests/recovery.rs"]
+assumptions = "One UI and retained owner, explicit stop, GUI connection loss/reattach and a PID-birth equality bit. Native process start/exit races, signal delivery and the reattach fallback that replaces an unreachable logic require private process tests (recovery.rs gui_connection_loss_reattaches_to_the_same_logic_and_rewatches)."
+property = "Ordinary detach and GUI connection loss preserve the owner; explicit stop may signal only the captured process birth. Broken controls kill the owner on close or connection loss, or signal by PID alone."
 checks = ["make test-formal", "make test"]
 
 [[contract]]

@@ -418,6 +418,10 @@ fn lifecycle(b: bool) -> Model {
         ],
     );
     action(&mut m, "DetachUi", eq(0, 1), &[(0, Int(0))]);
+    // Logic closes a GUI that misses its reply-write deadline (#79): only the
+    // attachment changes, and the app reattaches to the same live owner.
+    action(&mut m, "GuiConnectionLost", eq(0, 1), &[(0, Int(0))]);
+    action(&mut m, "ReattachUi", all([eq(0, 0), eq(1, 1)]), &[(0, Int(1))]);
     action(&mut m, "ExplicitStop", eq(2, 0), &[(2, Int(1))]);
     action(&mut m, "PidReused", eq(3, 1), &[(3, Int(0))]);
     action(
@@ -432,6 +436,12 @@ fn lifecycle(b: bool) -> Model {
             "CloseKillsOwner",
             all([eq(0, 1), eq(2, 0)]),
             &[(1, Int(0)), (4, Int(1))],
+        );
+        action(
+            &mut m,
+            "ConnectionLossKillsOwner",
+            all([eq(0, 1), eq(2, 0)]),
+            &[(0, Int(0)), (1, Int(0)), (4, Int(1))],
         );
         action(
             &mut m,

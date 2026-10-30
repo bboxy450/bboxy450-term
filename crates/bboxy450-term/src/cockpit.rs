@@ -857,6 +857,8 @@ pub struct Session {
     deferred: VecDeque<Event>,
     // Startup belongs to this task, never to a cancellable event() future.
     recovery: Option<tokio::task::JoinHandle<Result<Recovered>>>,
+    // The pending recovery reattaches to the retained logic rather than replacing it.
+    reattaching: bool,
     recovery_failed: bool,
     supervisor_exited: bool,
     logic_exited: bool,
@@ -875,7 +877,10 @@ struct StartedLogic {
 }
 struct Recovered {
     supervisor: Option<StartedSupervisor>,
-    logic: StartedLogic,
+    /// `None` when the GUI reattached to the retained logic owner.
+    logic: Option<(Child, Option<tokio::process::ChildStdin>)>,
+    endpoint: LogicReady,
+    io: GuiIo,
     seats: Vec<GuiSeat>,
     watches: BTreeMap<SeatId, View>,
 }
@@ -1014,6 +1019,7 @@ impl Session {
             restoring: VecDeque::new(),
             deferred: VecDeque::new(),
             recovery: None,
+            reattaching: false,
             recovery_failed: false,
             supervisor_exited: false,
             logic_exited: false,
@@ -1042,7 +1048,7 @@ impl Session {
                 _ => {}
             }
         } else if self.io.disconnected || self.io.outgoing.is_closed() {
-            self.disconnect()?;
+            self.gui_lost();
         }
         result
     }
@@ -1060,7 +1066,7 @@ impl Session {
                 }
                 Err(error) if error.is::<Busy>() => return Ok(true),
                 Err(error) => {
-                    self.disconnect()?;
+                    self.gui_lost();
                     return Err(error);
                 }
             }
@@ -1076,6 +1082,13 @@ impl Session {
             }
         }
     }
+    /// Test fixture: close only the GUI socket, as logic does when a reply
+    /// write misses its deadline. Both process owners stay running.
+    #[doc(hidden)]
+    pub fn drop_gui_connection(&mut self) {
+        self.io.reader_task.abort();
+        self.io.writer_task.abort();
+    }
     /// Cancellation leaves the stored recovery task and its handshake alive.
     pub async fn event(&mut self) -> Result<Event> {
         if let Some(event) = self.deferred.pop_front() {
@@ -1083,20 +1096,42 @@ impl Session {
         }
         self.next_event().await
     }
-    fn disconnect(&mut self) -> Result<()> {
+    fn close_io(&mut self) {
         self.disconnected = true;
         self.io.disconnected = true;
         self.io.reader_task.abort();
         self.io.writer_task.abort();
+    }
+    /// The supervisor is gone, so logic must be replaced with it.
+    fn disconnect(&mut self) -> Result<()> {
+        self.close_io();
         if !self.logic_exited {
             self.logic.start_kill()?;
         }
         Ok(())
     }
+    /// Only the GUI connection was lost. Logic owns every seat's hooks and MCP,
+    /// so reattach to it; it is replaced only when reattachment fails (#79).
+    fn gui_lost(&mut self) {
+        self.close_io();
+        if self.logic_exited || self.supervisor_exited || self.recovery.is_some() {
+            return;
+        }
+        let config = self.config.clone();
+        let endpoint = self.endpoint.clone();
+        let watches = self.watches.clone();
+        self.reattaching = true;
+        self.recovery = Some(tokio::spawn(async move {
+            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches))
+                .await
+                .map_err(|_| invalid("GUI reattach timed out"))?
+        }));
+    }
     fn restart_if_ready(&mut self) {
         if !self.logic_exited || self.recovery.is_some() || self.recovery_failed {
             return;
         }
+        self.reattaching = false;
         let config = self.config.clone();
         let launch_path = self.launch_path.clone();
         let ready = self.supervisor_ready.clone();
@@ -1126,6 +1161,7 @@ impl Session {
                 status=self.supervisor.wait(), if !self.supervisor_exited => {
                     self.supervisor_exited = true;
                     if let Some(task) = self.recovery.take() { task.abort(); }
+                    self.reattaching = false;
                     self.disconnect()?;
                     self.restart_if_ready();
                     Ok(Event::Exited {process:"supervisor",status:status?})
@@ -1141,6 +1177,7 @@ impl Session {
                 }
                 result=async { self.recovery.as_mut().unwrap().await }, if self.recovery.is_some() => {
                     self.recovery = None;
+                    let reattached = std::mem::take(&mut self.reattaching);
                     match result.map_err(|error| invalid(format!("recovery task stopped: {error}")))? {
                         Ok(recovered) => {
                             if let Some(supervisor) = recovered.supervisor {
@@ -1151,19 +1188,31 @@ impl Session {
                                 self.desktop_supervisor.store(self.supervisor_ready.pid, std::sync::atomic::Ordering::Release);
                                 desktop::refresh(self.config.clone());
                             }
-                            let logic = recovered.logic;
-                            self.logic = Process::Child(logic.child);
-                            self.logic.preserve_on_drop();
-                            self.logic_control = logic.control;
-                            self.endpoint = logic.endpoint;
-                            self.io = logic.io;
+                            if let Some((child, control)) = recovered.logic {
+                                self.logic = Process::Child(child);
+                                self.logic.preserve_on_drop();
+                                self.logic_control = control;
+                            }
+                            self.endpoint = recovered.endpoint;
+                            self.io = recovered.io;
                             self.watches = recovered.watches;
                             self.restoring = self.watches.iter().map(|(seat,view)| GuiAction::Watch {seat:*seat,view:*view}).collect();
-                            self.supervisor_exited = false;
-                            self.logic_exited = false;
+                            // A reattach keeps any exit observed while it ran;
+                            // restart then follows from the new connection's loss.
+                            if !reattached {
+                                self.supervisor_exited = false;
+                                self.logic_exited = false;
+                            }
                             self.disconnected = false;
                             self.deferred.push_back(Event::Reply(Box::new(GuiReply::Identity(self.endpoint.identity.clone()))));
                             Ok(Event::Reply(Box::new(GuiReply::Seats(recovered.seats))))
+                        }
+                        // Fall back to replacing logic; restart follows its observed exit.
+                        Err(error) if reattached => {
+                            if !self.logic_exited {
+                                self.logic.start_kill()?;
+                            }
+                            Ok(Event::Disconnected(format!("GUI reattach failed: {error}; replacing logic")))
                         }
                         Err(error) => {
                             self.recovery_failed = true;
@@ -1173,7 +1222,7 @@ impl Session {
                 }
                 ready=writer_ready, if writer_blocked && !self.disconnected => { ready?; continue; }
                 event=self.io.event(), if !self.disconnected => {
-                    if matches!(event,Event::Disconnected(_)) { self.disconnect()?; }
+                    if matches!(event,Event::Disconnected(_)) { self.gui_lost(); }
                     Ok(event)
                 }
                 else => std::future::pending().await,
@@ -1245,7 +1294,9 @@ impl Session {
                 self.supervisor.preserve_on_drop();
                 self.logic.preserve_on_drop();
             }
-            if let Some(state) = state {
+            // Owners are preserved either way; only the window frame save needs
+            // a connection. Closing must not fail on a lost backend (#82).
+            if let Some(state) = state.filter(|_| !self.disconnected) {
                 let epoch = self
                     .endpoint
                     .window
@@ -1285,13 +1336,10 @@ impl Session {
     pub async fn shutdown(mut self) -> Result<()> {
         if let Some(task) = self.recovery.take() {
             task.abort();
-            if let Ok(Ok(mut recovered)) = task.await {
-                let _ = stop_child(
-                    &mut Process::Child(recovered.logic.child),
-                    &mut recovered.logic.control,
-                    "logic",
-                )
-                .await;
+            if let Ok(Ok(recovered)) = task.await {
+                if let Some((child, mut control)) = recovered.logic {
+                    let _ = stop_child(&mut Process::Child(child), &mut control, "logic").await;
+                }
                 if let Some(mut supervisor) = recovered.supervisor {
                     let _ = stop_child(
                         &mut Process::Child(supervisor.child),
@@ -1429,12 +1477,44 @@ async fn recover(
         .as_ref()
         .map_or(&ready, |supervisor| &supervisor.ready);
     let mut logic = start_logic(&config, ready, replace_supervisor, &launch_path).await?;
-    logic.io.try_send(GuiAction::ListSeats)?;
+    let (seats, watches) = catalogue(&mut logic.io, &mut logic.endpoint, watches).await?;
+    Ok(Recovered {
+        supervisor,
+        logic: Some((logic.child, logic.control)),
+        endpoint: logic.endpoint,
+        io: logic.io,
+        seats,
+        watches,
+    })
+}
+async fn reattach(
+    config: Config,
+    mut endpoint: LogicReady,
+    watches: BTreeMap<SeatId, View>,
+) -> Result<Recovered> {
+    let mut io = attach_gui(&config, &mut endpoint, true).await?;
+    let (seats, watches) = catalogue(&mut io, &mut endpoint, watches).await?;
+    Ok(Recovered {
+        supervisor: None,
+        logic: None,
+        endpoint,
+        io,
+        seats,
+        watches,
+    })
+}
+/// Re-read the seat catalogue and fresh view generations for retained watches.
+async fn catalogue(
+    io: &mut GuiIo,
+    endpoint: &mut LogicReady,
+    watches: BTreeMap<SeatId, View>,
+) -> Result<(Vec<GuiSeat>, BTreeMap<SeatId, View>)> {
+    io.try_send(GuiAction::ListSeats)?;
     let seats = loop {
-        match logic.io.event().await {
+        match io.event().await {
             Event::Reply(reply) => match *reply {
                 GuiReply::Seats(seats) => break seats,
-                GuiReply::Identity(identity) => logic.endpoint.identity = identity,
+                GuiReply::Identity(identity) => endpoint.identity = identity,
                 GuiReply::Error { reason, .. } => return Err(invalid(reason)),
                 _ => {}
             },
@@ -1461,12 +1541,7 @@ async fn recover(
             ))
         })
         .collect();
-    Ok(Recovered {
-        supervisor,
-        logic,
-        seats,
-        watches,
-    })
+    Ok((seats, watches))
 }
 
 async fn read_replies(read: OwnedReadHalf, sender: mpsc::Sender<Result<GuiReply>>) {
