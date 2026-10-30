@@ -19,15 +19,29 @@
       "command": "make test-text-selection test-text-selection-e2e check-text-selection",
       "exit": 0,
       "log": "/Users/feral/Library/Logs/bboxy450-term/text-selection-tests-20261029.log"
+    },
+    {
+      "command": "make test-text-selection-e2e check-text-selection",
+      "exit": 0,
+      "coverage": "Actual retained Settings heading and chat message copy, native Copy/Cmd-C and mouse-mode terminal selection",
+      "log": "/Users/feral/Library/Logs/bboxy450-term/selection-links-chat-checks-20261029.log"
     }
   ],
   "pending": [
-    "exact-commit make test and formal receipt",
-    "parity",
-    "signed install and installed smoke"
+    "Fresh source-bound formal receipt after chat gesture fix",
+    "Parity and signed installation",
+    "Main push requires full green CI; disk guard is not bypassed"
   ],
   "limits": [
     "No OS pointer injection or operator clipboard access in tests.",
     "Plain local path detection and other URI schemes are outside this cut."
-  ]
+  ],
+  "full_ci": {
+    "source": "63bbf3b3a7772041be79f535af6a687a7c7c87c8",
+    "make_exit": 2,
+    "inner_exit": 101,
+    "failure": "Only bboxy450-mux::checkpoint_bounded_recovery: 5115756544 bytes free, requires 10 GiB",
+    "log": "target/ci-selection-links.log",
+    "post_checks": "after-tests also reaches the same recovery disk invariant; not a green full gate"
+  }
 }

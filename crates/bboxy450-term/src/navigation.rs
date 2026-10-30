@@ -318,6 +318,14 @@ impl App {
             .is_some_and(|layout| layout.actions.contains("conversation/rows", self.pointer))
         {
             self.conversation_reads(true);
+            if self
+                .ui_selection
+                .begin(self.pointer, self.scene.text_metrics())
+            {
+                self.terminal_selection.clear();
+                self.composer.handle(ComposeCommand::Blur);
+                self.request_redraw();
+            }
             return;
         }
         if let Some((op, _)) = self

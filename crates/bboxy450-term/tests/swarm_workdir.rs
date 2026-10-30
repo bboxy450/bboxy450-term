@@ -4615,6 +4615,32 @@ fn ui_selection_copies_read_only_settings_text_through_native_copy() {
     assert_eq!(f.ctl(&["ui", "clipboard-read"])["test_clipboard"], label);
     f.ctl(&["ui", "copy"]);
     assert_eq!(f.ctl(&["ui", "clipboard-read"])["test_clipboard"], label);
+    f.ctl(&["ui", "key", "esc"]);
+    let swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let seat = f.spawn("claude", &swarm, None);
+    let chat = "Selectable chat text";
+    f.ctl(&["ui", "compose", "--to", &seat, "--text", chat]);
+    let until = Instant::now() + Duration::from_secs(10);
+    let node = loop {
+        let frame = f.ctl(&["ui", "layout"]);
+        if let Some(node) = find(&frame["tree"], chat) {
+            break node;
+        }
+        assert!(Instant::now() < until, "chat was not displayed: {frame}");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let r = node["rect"].as_array().unwrap();
+    let x = r[0].as_f64().unwrap();
+    let y = r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.;
+    let coords = [x + 0.5, y, x + r[2].as_f64().unwrap() - 0.5, y].map(|n| n.round().to_string());
+    f.ctl(&[
+        "ui", "select", &coords[0], &coords[1], &coords[2], &coords[3],
+    ]);
+    f.ctl(&["ui", "copy"]);
+    assert_eq!(f.ctl(&["ui", "clipboard-read"])["test_clipboard"], chat);
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }
