@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W2.2 — bbt-mux: logic process, event bus, .bboxy index, state streams
 
-Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN (W2.1 done; no other dependency). Specs: [[mux-daemon]] (seat registry, logic ↔ GUI state streams), [[events]] (the bus), [[storage]] (Store/Blobs/Events traits, SQLite per object), [[work-items]] (frontmatter, wikilinks with `{rel:w}` annotation, six graphs), [[provenance]] (activity log).
+Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN (W2.1 done; no other dependency). Specs: [[mux-daemon]] (seat registry, logic ↔ GUI state streams), [[events]] (the bus), [[storage]] (Store/Blobs/Events traits, SQLite per object), [[work-items]] (frontmatter, wikilinks with `{rel:w}` annotation, six graphs), [[provenance]] (activity log).
 
 Allowed: `crates/bbt-mux/**`, `Cargo.lock`, `.bboxy/runs/w2-2-*.log`.
 

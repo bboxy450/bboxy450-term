@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task: GPU terminal emulators in Rust — research
 
-Date: 2026-10-21. Owner: Oracle. Assignee: Executor (Codex). Status: ASSIGNED.
+Date: 2026-10-21. Owner: Oracle. Assignee: Executor (Codex). Status: SUPERSEDED (8fd15659). Previous brief wording: ASSIGNED.
 
 ## Goal
 

@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task: embedded agent messaging — research
 
-Date: 2026-10-21. Owner: Oracle. Assignee: Nyx Copperwing <EXECUTOR>. Status: CLAIMED 2026-10-21.
+Date: 2026-10-21. Owner: Oracle. Assignee: Nyx Copperwing <EXECUTOR>. Status: SUPERSEDED (8fd15659). Previous brief wording: CLAIMED 2026-10-21.
 
 ## Goal
 

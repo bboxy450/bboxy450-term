@@ -55,6 +55,9 @@ help:
 	  'make test-tlc-standalone        Verify the public standalone source, native + TLC' \
 	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
+	  'make test-task-import-observer   Native migration with active observer and staging exclusion' \
+	  'make test-task-import-observer-mutant  Require causal failure when staging observation returns' \
+	  'make check-task-import-observer  Strict all-target import/mux/app Clippy' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
 	  'make test-landing-extended       Moving-main and recovery fixtures with formal receipts' \
@@ -1429,3 +1432,21 @@ test-live-feed:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) live::tests::live_feed_one_swarm_channels_and_one_delivery_wake_without_polling -- --exact --nocapture >'$(TARGET_DIR)/live-feed.log' 2>&1 || { code=$$?; cat '$(TARGET_DIR)/live-feed.log'; exit $$code; }; \
 	cat '$(TARGET_DIR)/live-feed.log'; \
 	grep -F 'test result: ok. 1 passed; 0 failed;' '$(TARGET_DIR)/live-feed.log' >/dev/null
+
+.PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer
+test-task-import-observer: test-task-migration
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib import_staging_is_excluded -- --nocapture; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provenance -- --nocapture
+
+test-task-import-observer-causal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	test -f '$(abspath $(TARGET_DIR))/task-migration/input/lossless-import-manifest.json' || python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
+	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration_250_records_authenticated_collision_restart_and_replay -- --exact --nocapture
+
+test-task-import-observer-mutant:
+	@python3 scripts/test-task-migration.py mutant '$(abspath $(TARGET_DIR))'
+
+check-task-import-observer:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

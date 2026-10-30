@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W1.1 — term-core: fork alacritty_terminal + vte into bbt-core
 
-Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor. Status: OPEN. Spec: [[terminal-core]] D1, D2. Plan: [[plan]] W1.
+Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor. Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN. Spec: [[terminal-core]] D1, D2. Plan: [[plan]] W1.
 
 Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-core/**`, root `Cargo.lock`, `.bboxy/runs/w1-1-*.log`. Nothing else.
 

@@ -3308,6 +3308,83 @@ fn verification(command: &str, exit: i32, evidence: Value) -> Value {
     json!({"command":command,"exit_code":exit,"evidence":evidence})
 }
 
+// keeps: issue 43 — archive scoped historical records without inventing live owners.
+#[test]
+fn task_migration_operator_reconciles_unowned_and_retired_records_without_wakes() {
+    use bbt_proto::{
+        GuiReply,
+        messaging::{TaskRequest, TaskResponse},
+    };
+    let f = Fixture::new();
+    f.prepare_operator();
+    for retired in [false, true] {
+        let mut metadata = f.task_metadata();
+        for field in ["assignee", "delegated_by"] {
+            metadata.as_object_mut().unwrap().remove(field);
+        }
+        if retired {
+            metadata["assignee"] = json!(format!("seat:{}", Ulid::new()));
+            metadata["delegated_by"] = json!(format!("seat:{}", Ulid::new()));
+        }
+        metadata["status"] = json!("reported");
+        let original = f.task_file(metadata);
+        let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+        let args = json!({"task_path":f.task_path(),"disposition":"implemented","reason":"Operator audited the landed implementation", "evidence":["77b190be: historical implementation"]});
+        for seat in [f.own.id, f.oracle.id] {
+            assert_eq!(
+                f.mutate(seat, Ulid::new(), "task_reconcile", args.clone())["isError"],
+                true
+            );
+        }
+        let request = TaskRequest::Reconcile {
+            task_path: f.task_path(),
+            disposition: "implemented".into(),
+            reason: "Operator audited the landed implementation".into(),
+            evidence: vec!["77b190be: historical implementation".into()],
+        };
+        let result = f.gui_task(request.clone());
+        assert!(
+            matches!(
+                result,
+                GuiReply::Task {
+                    response: TaskResponse::Applied,
+                    ..
+                }
+            ),
+            "{result:?}"
+        );
+        let changed = f.task_document();
+        assert_eq!(changed.metadata["status"], "done");
+        assert_eq!(changed.metadata["assignee"], original.metadata["assignee"]);
+        assert_eq!(
+            changed.metadata["delegated_by"],
+            original.metadata["delegated_by"]
+        );
+        assert_eq!(changed.body, original.body);
+        assert_eq!(
+            changed.metadata["reconciliation"][0]["previous_status"],
+            "reported"
+        );
+        assert_eq!(
+            changed.metadata["reconciliation"][0]["fresh_accepted"],
+            false
+        );
+        let record = data(knowledge_fetch(&f, f.oracle.id, &changed.path));
+        verify_knowledge_record(&record);
+        assert_eq!(
+            inbox["page"],
+            data(f.call(f.own.id, Ulid::new(), "message_list", json!({})))["page"]
+        );
+        let mut accepted = changed.metadata;
+        accepted["status"] = json!("accepted");
+        f.task_file(accepted);
+        assert!(
+            matches!(f.gui_task(request), GuiReply::Error {reason, ..} if reason.contains("fresh accepted verification"))
+        );
+        assert_eq!(f.task_document().metadata["status"], "accepted");
+    }
+}
+
 #[test]
 fn task_migration_reconciliation_preserves_acceptance_and_refuses_workers() {
     let f = Fixture::new();
@@ -3564,6 +3641,44 @@ fn migration_transport_controls(f: &Fixture, args: &Value) -> Vec<Value> {
     evidence
 }
 
+// Adapted from tests/provenance.rs Fixture::{documents, wait}: live observer barriers.
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn migration_observations(f: &Fixture) -> Vec<bbt_mux::index::Document> {
+    std::fs::read_dir(f.config.repository.join(".bboxy/artifacts"))
+        .into_iter()
+        .flatten()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "md"))
+        .map(|path| {
+            bbt_mux::index::Document::parse(
+                path.to_str().unwrap(),
+                &std::fs::read_to_string(&path).unwrap(),
+            )
+        })
+        .collect()
+}
+fn migration_observer_barrier(f: &Fixture, reference: &str) {
+    std::fs::write(
+        f.config.repository.join(reference),
+        b"ordinary import observer control",
+    )
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    loop {
+        if migration_observations(f)
+            .iter()
+            .any(|doc| doc.metadata["ref"] == reference && doc.metadata["observed"] == true)
+        {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "active import observer did not observe {reference}"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 #[test]
 fn task_migration_250_records_authenticated_collision_restart_and_replay() {
     let private = tempfile::tempdir().unwrap();
@@ -3583,7 +3698,7 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
             );
             private.path().join("task-migration/input")
         });
-    let mut f = Fixture::new();
+    let mut f = Fixture::real();
     let mut metadata = f.task_metadata();
     metadata["number"] = json!(171);
     f.task_file(metadata);
@@ -3619,6 +3734,50 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
     let audit = input.join("checked-audit.json");
     let sources = input.join("dependency-source");
     let digest = bbt_mux::index::migration::bundle_digest(&manifest, &audit, &sources).unwrap();
+    let observer = SeatRecord::new(Ulid::new(), f.oracle.swarm, "Import observer", "zsh");
+    let mut launch = LaunchSpec::new("/bin/zsh", &f.config.repository);
+    launch.seat = observer.id;
+    launch.args = vec![
+        "-f".into(),
+        "-c".into(),
+        "while IFS= read -r line; do :; done".into(),
+    ];
+    f.runtime
+        .block_on(f.client().spawn(observer.clone(), launch))
+        .unwrap();
+    let stage =
+        f.config
+            .repository
+            .join(format!(".bboxy-import-{}-{}", &digest[..12], Ulid::new()));
+    std::fs::create_dir_all(stage.join("imports/fixture/raw")).unwrap();
+    let internal = stage.join("imports/fixture/manifest.json");
+    std::fs::copy(&manifest, &internal).unwrap();
+    let raw = stage.join("imports/fixture/raw/one.source");
+    std::fs::write(&raw, b"inactive private staging control").unwrap();
+    for path in [&internal, &raw] {
+        let hook = bbt_mux::adapters::hook::prepare(
+            json!({"hook_event_name":"PostToolUse",
+            "tool_name":"Write","tool_input":{"file_path":path}}),
+            "fixture",
+        )
+        .unwrap();
+        f.runtime
+            .block_on(f.client().hook(observer.id, 1, hook))
+            .unwrap();
+    }
+    migration_observer_barrier(&f, "import-observer-before.txt");
+    let assert_internal = |f: &Fixture| {
+        assert!(
+            migration_observations(f)
+                .iter()
+                .all(|doc| !doc.metadata["ref"]
+                    .as_str()
+                    .is_some_and(|reference| reference
+                        .contains(&format!(".bboxy-import-{}-", &digest[..12])))),
+            "internal import staging produced artifact observations"
+        );
+    };
+    assert_internal(&f);
     let args = json!({"expected_root":context["expected_root"],"manifest_path":manifest,"audit_path":audit,"source_dir":sources,"bundle_sha256":digest,"owner_seat":f.oracle.id});
     let mut denied = args.clone();
     denied["expected_root"] = json!(private.path());
@@ -3665,7 +3824,51 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
         .iter()
         .map(|s| data(f.call(s.id, Ulid::new(), "message_list", json!({})))["page"].clone())
         .collect();
+    let mut concurrent = f.bridge(f.peer.id);
+    initialize(&mut concurrent);
+    let start = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let release = start.clone();
+    let writer = std::thread::spawn(move || {
+        release.wait();
+        for attempt in 0..8 {
+            let mut write =
+                knowledge_args("notes/import-concurrent.md", "ordinary concurrent record\n");
+            write["frontmatter"]["type"] = json!("note");
+            write["op_id"] = json!(Ulid::new());
+            let reply = rpc(
+                &mut concurrent,
+                7,
+                "tools/call",
+                json!({"name":"knowledge_write","arguments":write}),
+            );
+            assert!(
+                reply.get("error").is_none(),
+                "concurrent write transport unknown: {reply}"
+            );
+            let result = reply["result"].clone();
+            if result["structuredContent"]["error"]["code"] == "index_busy" {
+                eprintln!("concurrent record known no-effect retry {}", attempt + 1);
+                continue;
+            }
+            let written = data(result);
+            verify_knowledge_record(&written["record"]);
+            return written;
+        }
+        panic!("concurrent legitimate record did not complete in eight known no-effect attempts");
+    });
+    start.wait();
     let (op, first, no_effect_attempts) = migration_import(&f, "first_publication", &args);
+    let concurrent = writer.join().unwrap();
+    let fetched = data(knowledge_fetch(
+        &f,
+        f.oracle.id,
+        "notes/import-concurrent.md",
+    ));
+    assert_eq!(fetched["id"], concurrent["record"]["id"]);
+    assert_eq!(fetched["body"], "ordinary concurrent record\n");
+    verify_knowledge_record(&fetched);
+    migration_observer_barrier(&f, "import-observer-after.txt");
+    assert_internal(&f);
     assert_eq!(first["source_records"], 250);
     assert_eq!(first["published_records"], 251);
     let published = migration_files(&root.join("imports"));
@@ -3688,6 +3891,8 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
     assert_eq!(published, migration_files(&root.join("imports")));
     f.restart();
     let (_, _, restart_no_effect_attempts) = migration_import(&f, "restart_bundle_replay", &args);
+    migration_observer_barrier(&f, "import-observer-restart.txt");
+    assert_internal(&f);
     f.prepare_operator(); // This fixture's existing memory-only custody; no real account or prompt.
     let bbt_proto::GuiReply::Task {
         response: context_response,
@@ -3764,9 +3969,15 @@ fn task_migration_250_records_authenticated_collision_restart_and_replay() {
         let dest = output.join("published");
         std::fs::create_dir_all(dest.join("tasks")).unwrap();
         copy(&root.join("imports"), &dest.join("imports"));
+        std::fs::create_dir_all(dest.join("notes")).unwrap();
+        std::fs::copy(
+            root.join("notes/import-concurrent.md"),
+            dest.join("notes/import-concurrent.md"),
+        )
+        .unwrap();
         std::fs::copy(root.join(&task171_path), dest.join(&task171_path)).unwrap();
         let proof = json!({"task171_path":task171_path,"task171_before":bbt_mux::store::digest(&task171_before),"task171_after":bbt_mux::store::digest(&std::fs::read(root.join(&task171_path)).unwrap()),
-            "unrelated_before":bbt_mux::store::digest(&unrelated_before),"unrelated_after":bbt_mux::store::digest(&std::fs::read(unrelated).unwrap()),"historical_wakes":0,"replay_unchanged":true,"known_no_effect_attempts":no_effect_attempts+restart_no_effect_attempts,"transport_controls":transport_controls});
+            "unrelated_before":bbt_mux::store::digest(&unrelated_before),"unrelated_after":bbt_mux::store::digest(&std::fs::read(unrelated).unwrap()),"historical_wakes":0,"replay_unchanged":true,"known_no_effect_attempts":no_effect_attempts+restart_no_effect_attempts,"transport_controls":transport_controls,"observer_controls":{"before":true,"after":true,"restart":true,"internal_observations":0,"concurrent_record":concurrent["record"]["id"],"concurrent_sha256":bbt_mux::store::digest(&std::fs::read(root.join("notes/import-concurrent.md")).unwrap())}});
         std::fs::write(
             output.join("proof.json"),
             serde_json::to_vec_pretty(&proof).unwrap(),

@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W3.1 — bbt-render: headless harness, smoke test, first text
 
-Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor after W1.1 starts (does not depend on W1.1 for steps 1–2). Status: OPEN. Spec: [[renderer]] §1–§4, order §5 steps 1–2. Plan: [[plan]] W3.
+Owner: Vesper Greywind <ORACLE>. Assignee: first free Executor after W1.1 starts (does not depend on W1.1 for steps 1–2). Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN. Spec: [[renderer]] §1–§4, order §5 steps 1–2. Plan: [[plan]] W3.
 
 Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-render/**`, root `Cargo.lock`, `.github/workflows/ci.yml` (only to add the render artifact path if missing), `.bboxy/runs/w3-1-*.log`.
 

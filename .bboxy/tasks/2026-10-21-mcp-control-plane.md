@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task M: MCP control plane — the Oracle's hands
 
-Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED.
+Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: SUPERSEDED (8fd15659). Previous brief wording: ASSIGNED.
 
 ## Goal
 

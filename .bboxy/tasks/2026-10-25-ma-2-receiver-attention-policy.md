@@ -1,17 +1,45 @@
 ---
-id: "01M5TWW5JBW3JWDQ2HM0KZXVR1"
-type: "task"
-number: 338
-title: "MA-2: receiver-owned attention policy, role defaults and own-seat MCP tools"
-status: "open"
-role: "executor"
-owner: "Velvet Vulpine"
-verify: "cargo test -p bbt-proto --locked --test registry_attention --test gui_wire_golden; cargo test -p bbt-mux --locked --test attention_policy --test mcp"
+authorship:
+  device_id: 01M677XWZPW1XGTQYYGA50W74M
+  issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
+  kind: device
+  principal: operator:01M677XWZPW1XGTQYYGA50W74M
+  public_key: cHjhL+5pI9VNQE+Uhb4HJBnYoPqSIH7aCYU+b9MElWs=
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+created: 2026-10-26T01:23:22Z
+created_by: device:01M677XWZPW1XGTQYYGA50W74M
+id: 01M5TWW5JBW3JWDQ2HM0KZXVR1
+issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
 links:
-  - { to: "[[messaging-attention]]", rel: spec }
-  - { to: "[[notices-never-wake]]", rel: invariant }
-created: "2026-10-26T01:23:22Z"
-updated: "2026-10-26T01:23:22Z"
+- rel: spec
+  to: '[[messaging-attention]]'
+- rel: invariant
+  to: '[[notices-never-wake]]'
+number: 338
+owner: Velvet Vulpine
+provenance:
+  digest: sha256:1bb8ad4ed81514fae9cde621fcc0d331b1df0d6c60f02d3188c00b6ddf043100
+  frontmatter_digest: sha256:c2543223aa66e91c8a965435c40ede66e6eb3a03cf97f0695a8f7951300eef00
+  log: .bboxy/log/2026-10-30.jsonl#725
+  sig: sZQCSRLTRWUO4IHXTBDyityu2zzVuV2g4SEa6UgjLOflF11NAe4K9Uj99aljs/VMUxl037ztH68cDCDBL7d2Dw==
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+reconciliation:
+- by: operator:01M677XWZPW1XGTQYYGA50W74M
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/de98476dfaa50d0773fb6f2dda72a507a778ac94
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M677Y7ZQ3Q0AXG6WQK4AV7XD
+  previous_status: open
+  reason: Operator-authorized historical msgrec reconciliation, 2026-10-30; implementation already landed on main; no new acceptance claimed.
+role: executor
+status: done
+title: 'MA-2: receiver-owned attention policy, role defaults and own-seat MCP tools'
+type: task
+updated: 2026-10-30T20:27:38.487Z
+updated_by: device:01M677XWZPW1XGTQYYGA50W74M
+verify: cargo test -p bbt-proto --locked --test registry_attention --test gui_wire_golden; cargo test -p bbt-mux --locked --test attention_policy --test mcp
 ---
 # MA-2 receiver attention policy
 

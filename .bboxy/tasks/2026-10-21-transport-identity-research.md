@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task F: transport (iroh vs quinn) and identity (Apple/Google sign-in) — research (redundant pass)
 
-Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/transport-and-identity.md`) and one Executor (writes `research/transport-and-identity-exec.md`). Status: OPEN for Executor claim. Converged by the Oracle into `specs/messaging.md` together with Task B.
+Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/transport-and-identity.md`) and one Executor (writes `research/transport-and-identity-exec.md`). Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN for Executor claim. Converged by the Oracle into `specs/messaging.md` together with Task B.
 
 ## Questions
 

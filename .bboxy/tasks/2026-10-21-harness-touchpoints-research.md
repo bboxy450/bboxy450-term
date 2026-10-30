@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task D: harness touch points — research (redundant pass)
 
-Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/harness-touchpoints.md`) and one Executor (writes `research/harness-touchpoints-exec.md`). Status: OPEN for Executor claim. Converged by the Oracle into `specs/harness-adapters.md`.
+Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignees: one Oracle subagent (writes `research/harness-touchpoints.md`) and one Executor (writes `research/harness-touchpoints-exec.md`). Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN for Executor claim. Converged by the Oracle into `specs/harness-adapters.md`.
 
 ## Goal
 

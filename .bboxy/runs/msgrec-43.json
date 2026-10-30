@@ -1,0 +1,577 @@
+{
+  "issue": 43,
+  "source_parent": "57915c36ca31334b8eb8ab35e07493c3b2de7d73",
+  "decisions": [
+    "Adapt the verified Boxy-signed 4a3528fb observer patch; exact digest/ULID staging grammar, queued/completed-hash fences, ordinary output visibility.",
+    "Authenticated operator historical reconciliation uses the selected native root without inventing live owners; seat ownership and accepted-verification guards remain.",
+    "Native ctl reconciled fourteen records exactly once under a private certified file-custody account; retain the already accepted template record. All original bodies, ownership and acceptance/report evidence preserved.",
+    "Twenty-two legacy body status lines are explicitly superseded at main 8fd15659; no new acceptance claimed. Remove only the three quarantine rows whose GH38/39/40 findings are closed.",
+    "Copy six original artifact metadata dependencies unchanged so all retained signed record links resolve. No raw logs or fixture keys enter Git.",
+    "Use an exact harness CWD file and current catalogue-version constant after the old frontend fixture failed on soft-wrapped screen rows."
+  ],
+  "checks": [
+    {
+      "command": "cargo test --locked -p bboxy450-mux --test provenance reserved_import_staging_stays_internal_while_ordinary_outputs_are_observed -- --exact --nocapture",
+      "exit": 101,
+      "phase": "before fix; expected staging-observation failure"
+    },
+    {
+      "command": "cargo test --locked -p bboxy450-mux --test mcp task_migration_operator_reconciles_unowned_and_retired_records_without_wakes -- --exact --nocapture",
+      "exit": 101,
+      "phase": "before fix; task swarm is ambiguous"
+    },
+    {
+      "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-import-observer",
+      "exit": 2,
+      "phase": "first positive run; native checks passed, frontend CWD screen assertion soft-wrapped"
+    },
+    {
+      "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-import-observer",
+      "exit": 0
+    },
+    {
+      "command": "TASK_MIGRATION_INPUT=/tmp/nyx-task-reconciliation-qzzo4m5p make test-task-import-observer-mutant",
+      "exit": 0,
+      "control": "restoring staging observation caused the actual native import assertion to fail; original bytes restored"
+    },
+    {
+      "command": "make test-formal",
+      "exit": 2,
+      "phase": "first run; missing new corpus entries corrected"
+    },
+    {
+      "command": "make test-formal",
+      "exit": 2,
+      "phase": "all 60 graphs/verdicts match; receipt refused the concurrent swarm_workdir fixture edit; landing regenerates clean current-source evidence"
+    },
+    {
+      "command": "make check-task-import-observer",
+      "exit": 0
+    },
+    {
+      "command": "make build",
+      "exit": 0
+    },
+    {
+      "command": "make test-licenses",
+      "exit": 0
+    },
+    {
+      "command": "cargo test --locked -p bboxy450-doc --test corpus",
+      "exit": 101,
+      "phase": "missing six artifact metadata dependencies; copied original bytes"
+    },
+    {
+      "command": "cargo test --locked -p bboxy450-doc --test corpus",
+      "exit": 0,
+      "passed": 6
+    },
+    {
+      "command": "make test-boundaries",
+      "exit": 0
+    },
+    {
+      "command": "native ctl task reconcile (fourteen named existing paths)",
+      "exit": 0,
+      "successful_mutations": 14,
+      "distinct_paths": 14,
+      "source_and_signature_readback_verifier_exit": 0
+    }
+  ],
+  "private_import_audit": {
+    "operation": "independent_task_migration_audit",
+    "records": 250,
+    "dependencies": 209,
+    "seeds": 41,
+    "published": 251,
+    "live_tasks": 7,
+    "source_revision": "3ef27cf85f3f63fe49b2061a0c966b0ee212e264",
+    "bundle_sha256": "c025b21f11d2b082ca00f90c80ecfd11acbae6debff0a7959de1b319d0a254e9",
+    "dispositions": "independently checked",
+    "raw_hashes": "250/250",
+    "links": 2742,
+    "disposition_counts": {
+      "close_completed": 24,
+      "close_superseded": 8,
+      "retain_deferred": 1,
+      "retain_narrowed": 3,
+      "retain_active": 2,
+      "already_done": 1,
+      "retain_followup": 1,
+      "archive_note": 1
+    },
+    "task171_sha256": "2e9d5a0cb67c8a4043647e89833c64429d7ea2033269591f51916d78561dee45",
+    "historical_wakes": 0,
+    "duplicate_prevention": true,
+    "known_no_effect_attempts": 1,
+    "transport_controls": [
+      "completed_reply_delivered",
+      "completed_reply_lost"
+    ]
+  },
+  "native_records": [
+    {
+      "path": "tasks/2026-10-24-a0-seed-e2e.md",
+      "status_before": "open",
+      "source_sha256": "50143da7554882035a4f0a8b74316545e3df3962992c926a44d06bad734aab2d",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/e349e638bc279bd18b44686a67725679ddb3d3e2"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-24-a0-seed-e2e.md",
+      "body_sha256": "9279c3579618fcd816485e2180cd386d904a03f444239cacbe1ac67b9b9d5072",
+      "frontmatter_digest": "sha256:5e1f198924a3251cb2495679b0e9cb9ead2b73883a5b413934cf0fca7a6b6449",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677Y0MZ1VWY794SYHY659J7",
+      "written_sha256": "b4cc0b5896c718b90ce3b406cd31455645d6e06918ebc540df85c17c25401ecb"
+    },
+    {
+      "path": "tasks/2026-10-25-ctl-stdout-broken-pipe.md",
+      "status_before": "open",
+      "source_sha256": "4c482384067c0298ed54c7c0e99837a690c845513128860c39163ae813427d3b",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/77b190beaa40474f37d434bee46bc971267008d2"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-25-ctl-stdout-broken-pipe.md",
+      "body_sha256": "a64ac396b7317df5aee755a876772f65c8590f05dff5bafbd8c4479d4bdabcea",
+      "frontmatter_digest": "sha256:8225703d18c0fce7afe8d22db24c21270d2b312e8b813d9021758fb52c53f912",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677Y21F8A9J7GZK53NMTMVT",
+      "written_sha256": "8a32576353937562c89e81ece65f3aef5d8743be1deec92a24f379f7bb91f37d"
+    },
+    {
+      "path": "tasks/2026-10-25-ma-1-messaging-wire-contract.md",
+      "status_before": "open",
+      "source_sha256": "314077ca2f32f366bdbf77eb72ef39459fdb4d6e2f75f673dc0129be6e6ca8ee",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/32fe48ebbb2c77b152d71d9996a384fafbaba71e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-25-ma-1-messaging-wire-contract.md",
+      "body_sha256": "c18dbbb33b261d499b752d1e2dd22d9d2f22a19e8a0c5e9a3a31487c476215d1",
+      "frontmatter_digest": "sha256:7d022eb249256a70893f86195269ee768c998f023104263afe9977c1bb095da7",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677Y3BMBGVNEXT7SY59CBHR",
+      "written_sha256": "84ae7fc26833af9155074cc13992a522d85719a913ae459fbe274a80654c14f0"
+    },
+    {
+      "path": "tasks/2026-10-25-ma-2-receiver-attention-policy.md",
+      "status_before": "open",
+      "source_sha256": "eda91e7210ee78fb0521898370e0aeba49bc907b88d082348217140f18182e13",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/de98476dfaa50d0773fb6f2dda72a507a778ac94"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-25-ma-2-receiver-attention-policy.md",
+      "body_sha256": "1bb8ad4ed81514fae9cde621fcc0d331b1df0d6c60f02d3188c00b6ddf043100",
+      "frontmatter_digest": "sha256:c2543223aa66e91c8a965435c40ede66e6eb3a03cf97f0695a8f7951300eef00",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677Y7ZQ3Q0AXG6WQK4AV7XD",
+      "written_sha256": "caabb7554a9fd5668a125c9538e0049be97f8d4fbe85c65966e98a5cd721eaa1"
+    },
+    {
+      "path": "tasks/2026-10-25-ma-3-native-attention-policy.md",
+      "status_before": "open",
+      "source_sha256": "f8bcc5ab566506c9ef5782f1fdae6366e5b050f974f8e58f10cfc42317f96933",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/efe90bedb6cad68d60dbc6937bd78d38fe44cb9f"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-25-ma-3-native-attention-policy.md",
+      "body_sha256": "0b5455af1d7509f498159ef6e0bd676e80d3c5ac65e297616d8aace544a0b910",
+      "frontmatter_digest": "sha256:ace2bf729e68de9bf1b80b2ff3781b66fa9593c8b0bd17370c8c0eb9ebfcab5e",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677Y9673MHN2R77G9AYZ65K",
+      "written_sha256": "986b87ad2eb4054d526957922cd2b5b3c7be5a59ffea3b5c1e5ac7e5ba2ea215"
+    },
+    {
+      "path": "tasks/2026-10-26-frontend-lock-release-still-flaky.md",
+      "status_before": "open",
+      "source_sha256": "030e32b9c335447c914ac8c0a03316c01bf75a15737ea15a5495af6b0b0aad77",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/f33e9fe61a86050677c64ba2b746af1fb530b670"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-26-frontend-lock-release-still-flaky.md",
+      "body_sha256": "911a872bbdc81f54d8164debe30bbdaab8fc8f16f3598005c446a22dd91b69bb",
+      "frontmatter_digest": "sha256:baf35f68ab503e6ed1c020c795f750f751743bde1ad07e17b680b94e4d5f02bb",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677YDNR3FSDBZRCA30KT2ZJ",
+      "written_sha256": "9a688070991f10e1fbdf9d4df937c65b221ca6aba57eefc63c78f774e72c8014"
+    },
+    {
+      "path": "tasks/2026-10-26-ma-7-wake-ledger.md",
+      "status_before": "open",
+      "source_sha256": "ebc1687419048628d1638d4404b66cca302230a13032d3220eb76285279f8028",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/2d5c2dbd01cbc3d8d47d9dda1b7b3b7cffeb97ba"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-26-ma-7-wake-ledger.md",
+      "body_sha256": "689852e834f558f03208ef79f9c5f4e42c5ee43654b6df675ade2151798a1433",
+      "frontmatter_digest": "sha256:33fd69f007ca5222cb4045e1767a5a905227bee5c707842a612e7c7ab8a238cf",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677YEZTSQS1P08HXA84PBHD",
+      "written_sha256": "4fd096706e8379496ef53408d56165dc098551b0541cd2d0572852ecc69e3631"
+    },
+    {
+      "path": "tasks/2026-10-26-ma-9-attention-night.md",
+      "status_before": "reported",
+      "source_sha256": "25c758e3de3d880e1b1f2e6d5ad4a691d9f29b1d4a1fd0d09113082c1fe09089",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/1316f3ddb01e7a5cea3c3c44e4540fb703c2e1b0"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-26-ma-9-attention-night.md",
+      "body_sha256": "9fd7dcc85f3fda2da7ddef223bd82d36ddc4be063f5a07ea2b047348a954b817",
+      "frontmatter_digest": "sha256:7892659912543f2afec3f16af16704eb7b26fdc9ed31d3c9e965177d36d43bd6",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M677YGA82G438Q58TZN40QY9",
+      "written_sha256": "c3ffa29219c8fa92f7d6103d09df842fbee35c9dac1fceda181f962372d2fb65"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-73-subscription-backlog-fix.md",
+      "status_before": "reported",
+      "source_sha256": "6bfea5a9d97650f50c3391e76e6f1af986945eaba5cc89290240325330cfe06f",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a",
+        "https://github.com/bboxy450/bboxy450-term/commit/83fdacb3890f8d77c183af644c09fd435f484b8e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-73-subscription-backlog-fix.md",
+      "body_sha256": "2382d781d5ce73a1447b4bfda52a52580e04400cb9b667e6f5f1a65fe5953214",
+      "frontmatter_digest": "sha256:8a6e03de7c79c7d5ac2ab9bce517fcb221fd48aed8176f3c25cbc4aad764827b",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M6782SR37RJR4Y9H29SVBG7R",
+      "written_sha256": "de8fe8a5a968e0198bc0f31506b86d61b61a2489bc50b105c8f0d41e738fe963"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-73-existing-read-through.md",
+      "status_before": "reported",
+      "source_sha256": "c250090db7f760c746bd32555f12d5ca6a529ffb7f7b4d6235f5349955255d03",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a",
+        "https://github.com/bboxy450/bboxy450-term/commit/83fdacb3890f8d77c183af644c09fd435f484b8e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-73-existing-read-through.md",
+      "body_sha256": "65b2be1a4767a9b3955df50b91542408bb8ca7f7280b2af2e00cb2729c170467",
+      "frontmatter_digest": "sha256:f4b4177798c9c962fb9f6fd4b06367209eec991691d879a0d849aec222cb099e",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M6785XRCN46VSXQ05H4P9W70",
+      "written_sha256": "77142d445e35a5b104602a656706dd23a37482c2cba59ba0973d596eabaa7cf5"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-73-approved-icd-adoption.md",
+      "status_before": "reported",
+      "source_sha256": "c3561c0556f8d013f15e9187de13306fafad5eadc9b8fc7345148a3ff1265c7e",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a",
+        "https://github.com/bboxy450/bboxy450-term/commit/83fdacb3890f8d77c183af644c09fd435f484b8e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-73-approved-icd-adoption.md",
+      "body_sha256": "3b9dac59ce7ff86b29421a05a827e658a9440e0636df8e7162d30180dede3eb5",
+      "frontmatter_digest": "sha256:1bc09b83c30b51d420be91239ebe26d2cd99abd402b5c50ec49315b13cb24dcc",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M6785YYCNF85BHCVWJB16VBR",
+      "written_sha256": "e37583991bbfd469dd1f7fd488a7882ebc64b33cadef1f35a0b556dcb6f1c0db"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-73-native-regression-scope.md",
+      "status_before": "reported",
+      "source_sha256": "39ed49bf120b761599c7bcc92bfd5bcfb8cccb6e36836c1374b037b9e6150d3b",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a",
+        "https://github.com/bboxy450/bboxy450-term/commit/83fdacb3890f8d77c183af644c09fd435f484b8e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-73-native-regression-scope.md",
+      "body_sha256": "9248cafc750715af93bafd83f02092210ff51c4925804c37b441abde8c0e2b73",
+      "frontmatter_digest": "sha256:62f3186efaf889384079007d87b0def21ec0ee5fd9d110915c1b092fdf6b4699",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M6786032W7WE0Q338QJ3DJNT",
+      "written_sha256": "e6bac26321b71acd4babcb03f92c3d41c85170b4d3a37dfda2e0b755fad24b55"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-73-live-projection-contract.md",
+      "status_before": "reported",
+      "source_sha256": "9ae897872bab23c4e9fffb4f13008ef9338563f69515085505c0e9ad338c44f1",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a",
+        "https://github.com/bboxy450/bboxy450-term/commit/83fdacb3890f8d77c183af644c09fd435f484b8e"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-73-live-projection-contract.md",
+      "body_sha256": "b39c934c02ccec31205602e056047fec9d14d7fc1d09058e9ec90a9c3f5706e0",
+      "frontmatter_digest": "sha256:e3ca26ea126fa74bde6a16f33c1234172d4912af4e8deec3ff505aa66e104d43",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M67861BSW91PM6SFJW60CENE",
+      "written_sha256": "1cef0d77af0fb7b3023b115d6a230532daf0570984311a4c7240fdb55fc9051b"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-78-source-context-mirrors.md",
+      "status_before": "claimed",
+      "source_sha256": "56aaa52717b33e00afcce7f5340a7203082db267c4cfb1440cf5836f5de8f1ce",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/a80e7b86aa7316dfa9e3512119637fff6120bc9a"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-78-source-context-mirrors.md",
+      "body_sha256": "42ec03b303712a5ee9459521519458b6665c6a2b37bbb0a262e4cc788f9530e2",
+      "frontmatter_digest": "sha256:67b437571ae4a61f52b4e154cee6ced3c5aadf8ffb8eadef11abf4998c1ac285",
+      "signature_exit": 0,
+      "signer": "device:01M677XWZPW1XGTQYYGA50W74M",
+      "status_after": "done",
+      "op_id": "01M67862KS81HF7G3BTQFG32S8",
+      "written_sha256": "53303fae03e688339a0d025a67702b0b19d39a1111e4816eb89528424b98a3a7"
+    },
+    {
+      "path": "tasks/2026-10-29-issue-49-live-swarm-template.md",
+      "status_before": "accepted",
+      "source_sha256": "36eca24c08cfa59de16a4e7d531d052de01088fe958c6cbee8dafcac0cc0bdb2",
+      "evidence": [
+        "https://github.com/bboxy450/bboxy450-term/commit/75934c275402181912ec54f19aaf503e45a7651f",
+        "https://github.com/bboxy450/bboxy450-term/commit/d70e94d0c299edb97d2bcfbb0161c155d236ea4a"
+      ],
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/tasks/2026-10-29-issue-49-live-swarm-template.md",
+      "status_after": "accepted",
+      "decision": "Preserved stronger fresh acceptance; native historical reconciliation must refuse replacement."
+    }
+  ],
+  "legacy_body_statuses": [
+    {
+      "path": ".bboxy/tasks/2026-10-21-agent-messaging-research.md",
+      "source_sha256": "0cf657192b08930f9a68bb15cd6887542d8a46d40c2bd188eb3f1e42d8482d9b",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-cloud-and-mosh-research.md",
+      "source_sha256": "62c880cd2d19243ad250c9e4e35ed83e1f5d27a85bb3f19eac2024748fd11d44",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-gpu-terminal-research.md",
+      "source_sha256": "2e14ee9be008861d2344ed178ee20222463c6e36fbc75f95a07cec2684e70d84",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-harness-touchpoints-research.md",
+      "source_sha256": "ac71c6c65645a6f38e4f837eb13d508e494d07ccb37c3942a2a1a60cb91dafdc",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-identity-spec.md",
+      "source_sha256": "437e73a2d43a506ba0ab52ebb841542cddeaf3deda726a3d33432b4f881e2afc",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-mcp-control-plane.md",
+      "source_sha256": "cd42a0ffd1508b90e33460707f484cf45c30d8bcc9110174b78d550ba69eb5d5",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-subagent-detection-research.md",
+      "source_sha256": "76f1cd2a14e697f51d5740e1a3ee3919a83a233ddc854042c87a308ef6ec8dca",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-text-rendering-research.md",
+      "source_sha256": "f663318cc192bd6099683759bf0b5cb4fc652df8a2ebe3192cb096045392ab18",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-transport-identity-research.md",
+      "source_sha256": "086964c8ba14f41d5b0563abc6bfa21d71948793c070b64d0e8057456c703b71",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w1-1-term-core-fork.md",
+      "source_sha256": "a912fbfc246b06215b3e6aab3343cf78eb08c6fa4c262db4b1ee003f1900e77c",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w1-2-byte-ring.md",
+      "source_sha256": "df271d034194c5d89f8fefab9fa1a3096f49edb6198377ba41048528d3c9f7ab",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w2-1-mux-supervisor.md",
+      "source_sha256": "6ac0f87f9cd2f9a6bde035d282e75d4ba4548379be9a3ed9fe811c60f5c4882c",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w2-2-logic-bus-index.md",
+      "source_sha256": "67f1ca6fdc1a3d4c39eeb208d0f0ba3f89a2c5d2693bd5b590b40f481a8c4a0c",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w2-3-adapters-claude-codex-zsh.md",
+      "source_sha256": "591a597157c4f19dc25898b74c56ffb94d94ee6ad071580c74c948acfc83a39e",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-1-renderer-harness.md",
+      "source_sha256": "df262cb96092da810c032687f5f6737e6faf3304c597c67d83c782fbf716f48b",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-2a-ui-model.md",
+      "source_sha256": "e542cef7c74d1c790a01f05ff3c3b64b5853f87904fe8bc4328bf575eec348ec",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-2b-bboxybook.md",
+      "source_sha256": "8d61cafd3b7e1c817d80ec6d36caa8151ed3df775f68318d69d823484b2324bd",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-2c-fixtures-input-fx.md",
+      "source_sha256": "905c46fc9c55520c0ab720f8a509cc16258653ce50303d569f2c58c81b7af072",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-2d-7-modules.md",
+      "source_sha256": "361adbed0a5c0d9a9bb04f11c4f77495a27f129811673e73fc6c9b68d990d57f",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w3-2d-component-library.md",
+      "source_sha256": "b2735afd3d16526bb9dcb344a0d30ba04f769b2da5ffb74daca71ed0d1ba4ba3",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-21-w4-1-transport-trait.md",
+      "source_sha256": "5da78b2183f91358d6f04dfa0ee7776994793fc06b20ad73b0bf88c37cd8b911",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    },
+    {
+      "path": ".bboxy/tasks/2026-10-22-r-runtime.md",
+      "source_sha256": "e3df2bde3a1f813f342d64fa3a5ad3ff108cb6ba9f81d908e60a5ff8628c9691",
+      "disposition": "superseded historical assignment at 8fd15659664b2c4da52ac38c2e609df6e093b9fe; current findings tracked by GitHub issues"
+    }
+  ],
+  "artifact_dependencies": [
+    {
+      "path": ".bboxy/artifacts/01M64S6D5YYEHYKF3ZYX60NF0V.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64S6D5YYEHYKF3ZYX60NF0V.md",
+      "sha256": "6c96487183982bd98f747072c7fbb5fdec251177ecc8024964490dd4a94f0dc3",
+      "copied_unchanged": true
+    },
+    {
+      "path": ".bboxy/artifacts/01M64S6D5Q2F79FCVE059F5XMH.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64S6D5Q2F79FCVE059F5XMH.md",
+      "sha256": "c1e84507310f414b799e48c0301db3591e98df839b0191612401c331ac93f358",
+      "copied_unchanged": true
+    },
+    {
+      "path": ".bboxy/artifacts/01M64S6D2YC0YYEHB02ZMT6R0M.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64S6D2YC0YYEHB02ZMT6R0M.md",
+      "sha256": "effa4b963670f37fb5843ecc7a21e2fcdd9cb7e086a4528b71e2dfbaa12ef521",
+      "copied_unchanged": true
+    },
+    {
+      "path": ".bboxy/artifacts/01M64J4Q7P27MHGM2JT9SRHENN.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64J4Q7P27MHGM2JT9SRHENN.md",
+      "sha256": "6ab6860d94ae3e2f61bd4687f58538c4d9b796fcd820e367316935ea2bd2d735",
+      "copied_unchanged": true
+    },
+    {
+      "path": ".bboxy/artifacts/01M64GAQQF32S804T6HKXP81V2.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64GAQQF32S804T6HKXP81V2.md",
+      "sha256": "7f58a60442a67c04796ae1003914b32ee6ba39dc982d5f2ceb514d2b4374341b",
+      "copied_unchanged": true
+    },
+    {
+      "path": ".bboxy/artifacts/01M64GAQKFPXFMD5NH9MA6VETD.md",
+      "source": "/Users/feral/mydev/bboxy450-term/.bboxy/artifacts/01M64GAQKFPXFMD5NH9MA6VETD.md",
+      "sha256": "80e87e26f6a8463f050f7f58cad4bdf7b2833259d567e258378391e37da2b279",
+      "copied_unchanged": true
+    }
+  ],
+  "quarantines_removed": [
+    329,
+    330,
+    342
+  ],
+  "raw_logs": [
+    {
+      "path": "/tmp/msgrec-43-staging-before.log",
+      "sha256": "e60d854aed932afd0102517906ce480e4b5c77ba31d66db278b9d1a42f1cbe6e"
+    },
+    {
+      "path": "/tmp/msgrec-43-reconcile-before.log",
+      "sha256": "2f60fb94bfff41eb93541121b4526153e6dbb2f5f266076a089f17c1f6d6cc69"
+    },
+    {
+      "path": "/tmp/msgrec-43-observer-first.log",
+      "sha256": "553d730e88e06bcd05ffc8f07e992fbfb19b2afcfeecab728233c2c6a33eb8a2"
+    },
+    {
+      "path": "/tmp/msgrec-43-observer.log",
+      "sha256": "b0064af4bf25ea519eda5be96f4d1ec13593278c2822c3e0aa780e333427929f"
+    },
+    {
+      "path": "/tmp/msgrec-43-mutant.log",
+      "sha256": "76787d4b5991f662811cb33c6c8048b83f7205a72ce75469db69ed971813b93b"
+    },
+    {
+      "path": "/tmp/msgrec-43-formal.log",
+      "sha256": "41d5fe106892adcbe5178864ad65eb8ebc080cde74325abdc0775ce5e481b540"
+    },
+    {
+      "path": "/tmp/msgrec-43-clippy.log",
+      "sha256": "a3615a48cbfb7fa4a7addeac1087c0169d8f17c1bded852b67ae6f565e2efcc2"
+    },
+    {
+      "path": "/tmp/msgrec-43-build.log",
+      "sha256": "29226b77bf3951451970e7d40867235f4f3f9f1f48d49cbb2e864765964c51ec"
+    },
+    {
+      "path": "/tmp/msgrec-43-licenses.log",
+      "sha256": "0d6a8196b98cc6fae0fde3dea23340c21be3040a9561e521a61f93315aae3e6b"
+    },
+    {
+      "path": "/tmp/msgrec-43-corpus.log",
+      "sha256": "0bb192a4f7d1382c7e626458a3fe2b92adc13d0fc5f5d2a5f70e61645eb48d7e"
+    },
+    {
+      "path": "/tmp/msgrec-43-corpus-final.log",
+      "sha256": "eac33d305f0fde65e25ef673c522e564f3bc8c8d4e25eec999005226030fbd02"
+    },
+    {
+      "path": "/tmp/msgrec-43-boundaries.log",
+      "sha256": "ba60706bef38c6effc0dd6902cafff2f20ea27b80a0e03f424b2e052221dd6ea"
+    },
+    {
+      "path": "/tmp/msgrec-43-records.log",
+      "sha256": "e3a83eb94c475cccac515c79dde62e4280c6047c6ca2f0c37a7faa9c62fc1b51"
+    },
+    {
+      "path": "/tmp/msgrec-43-records-resume.log",
+      "sha256": "5aa5508aac1df10173fb7f31bfb45e6f56128a7378ba9931d17ea7d072aa00d1"
+    },
+    {
+      "path": "/tmp/msgrec-43-records-final.log",
+      "sha256": "d0b75754929d9311a1501eb06c549c4e34b76e3cbc2ae06325ccd6057105c3c6"
+    }
+  ],
+  "private_record_run": "/Users/feral/mydev/bboxy450-term-cx-msgrec/target/msgrec-record-writer-q78k_dua",
+  "native_record_commands_sha256": "e4b35205d5ed9b25a9588a52ae9fcd7eda1fa7acc5d461591f3a804ba300fad3",
+  "limitations": [
+    "The existing accepted template record is preserved as accepted. No production-account import/identity rollout, Apple distribution signing/Keychain probe, or GUI pixel assertion was performed. The canonical landing gate regenerates clean committed-source formal evidence."
+  ]
+}

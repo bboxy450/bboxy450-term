@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W2.3 — bbt-mux: harness adapters for Claude Code, Codex, zsh
 
-Owner: Vesper Greywind <ORACLE>. Assignee: free Executor, after W2.1. Status: OPEN. Spec: [[harness-adapters]] (trait §1, per-harness §2, state machine §3, shim §4, PTY fallback §5), [[subagent-detection]] (OSC 7501 wire evidence: BEL-terminated, both accepted), decisions S3–S11 in [[specs/README|README]] of specs.
+Owner: Vesper Greywind <ORACLE>. Assignee: free Executor, after W2.1. Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN. Spec: [[harness-adapters]] (trait §1, per-harness §2, state machine §3, shim §4, PTY fallback §5), [[subagent-detection]] (OSC 7501 wire evidence: BEL-terminated, both accepted), decisions S3–S11 in [[specs/README|README]] of specs.
 
 Allowed: `crates/bbt-mux/**`, `Cargo.lock`, `.bboxy/runs/w2-3-*.log`. Fixtures to use: `.bboxy/runs/osc7501-claude.bin`, `lab/web/logs/*.txt`.
 

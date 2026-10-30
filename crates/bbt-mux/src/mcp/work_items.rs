@@ -646,7 +646,16 @@ pub(crate) fn prepare(
     }
     let task = |path: &str| -> Checked<Document> {
         let doc = index.locate(path)?;
-        if oracle && call.tool == "task_delegate" && reference(&doc, "assignee")?.is_none() {
+        if call.tool == "task_reconcile"
+            && matches!(actor, Actor::Operator { .. })
+            && index.import_root().is_ok()
+        {
+            // The account operator archives history in the captured native root.
+            // Historical owners may be absent; never invent a live assignment.
+            // Seat callers retain authorize(), and transition() preserves accepted.
+            reference(&doc, "assignee")?;
+            delegator(&doc)?;
+        } else if oracle && call.tool == "task_delegate" && reference(&doc, "assignee")?.is_none() {
             let args: Delegate = tools::parse(&call.args)?;
             let target = target(registry, actor, args.seat_id)?;
             let mut scoped = doc.clone();

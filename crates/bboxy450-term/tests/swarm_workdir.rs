@@ -2527,6 +2527,27 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
         );
     }
 
+    // Adapted from bboxy450-term, local signed commit 4a3528fb, this fixture.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn expect_harness_cwd(fixture: &Fixture, seat: &str) {
+        // Exact launch output, independent of the terminal's soft-wrapped rows.
+        let path = fixture.root.join(format!("home/{seat}.cwd"));
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if let Ok(cwd) = fs::read_to_string(&path) {
+                assert_eq!(
+                    cwd,
+                    format!("{}\n", fixture.root.join("repository").display())
+                );
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "private harness did not report cwd"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
     let mut fixture = Fixture::new();
     fs::create_dir_all(fixture.root.join("repository/.bboxy/notes")).unwrap();
     fs::write(
@@ -2538,7 +2559,7 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
     )
     .unwrap();
     fs::write(fixture.root.join("bin/claude"),
-        "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
+        "#!/bin/sh\numask 077\nenv > \"$HOME/$BBOXY_SEAT_ID.admission\"\nprintf '%s\\n' \"$PWD\" > \"$HOME/$BBOXY_SEAT_ID.cwd\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n").unwrap();
     fixture.start();
     let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
         .as_str()
@@ -2552,7 +2573,7 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
         .unwrap()
         .to_owned();
     for seat in [&oracle, &worker] {
-        fixture.expect_cwd(seat, &fixture.root.join("repository"));
+        expect_harness_cwd(&fixture, seat);
     }
     let shell = fixture.spawn("zsh", &swarm, None);
     fixture.ctl(&["seat", "type", &shell, "KEEP_MIGRATION_WORK=private-state"]);
@@ -2578,7 +2599,13 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
     assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
     let owner_path = fixture.root.join("run/logic.owner.json");
     let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
-    assert_eq!(owner["ready"]["mcp_control_version"], 9);
+    // The app's version constant is private. Bind to the freshly launched
+    // binary, then prove its actual catalogue and refresh behavior below.
+    let current_version = owner["ready"]["mcp_control_version"].as_u64().unwrap();
+    assert!(
+        current_version >= 9,
+        "migration fixture requires its existing contract"
+    );
     typed_readiness_refusal(&mut oracle_bridge, &worker);
     let owners = fixture.owners();
     reattach(&mut fixture);
@@ -2589,7 +2616,7 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
     );
     retained(&fixture, &before);
 
-    for version in [Some(8), Some(6), None] {
+    for version in [Some(current_version - 1), Some(6), None] {
         let owners = fixture.owners();
         let mut ui = fixture.app.take().unwrap();
         ui.kill().unwrap();
@@ -2614,16 +2641,9 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
         assert_catalogue(&fixture, &mut oracle_bridge, &mut worker_bridge);
         typed_readiness_refusal(&mut oracle_bridge, &worker);
         let owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
-        assert_eq!(owner["ready"]["mcp_control_version"], 9);
-        shell_echo(
-            &fixture,
-            &shell,
-            match version {
-                Some(8) => "AFTER8",
-                Some(_) => "AFTER6",
-                None => "AFTERMISSING",
-            },
-        );
+        assert_eq!(owner["ready"]["mcp_control_version"], current_version);
+        let label = version.map_or_else(|| "AFTERMISSING".to_owned(), |v| format!("AFTER{v}"));
+        shell_echo(&fixture, &shell, &label);
         eprintln!(
             "task/wake-cause catalogue upgrade (same executable): advertised={version:?}; supervisor={} retained; logic {} -> {}; all 3 seat PIDs/generations/native sessions retained; same Oracle context, typed readiness refusal and worker refusal; real shell state/PTY echo held",
             upgraded[0], owners[1], upgraded[1]

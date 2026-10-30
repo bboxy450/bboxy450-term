@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # Task I: identity and account spec
 
-Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED.
+Date: 2026-10-21. Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: SUPERSEDED (8fd15659). Previous brief wording: ASSIGNED.
 
 Goal: close the identity gaps left open in [[messaging]] (root custody, device enrollment and revocation propagation, recovery) and [[transport-and-identity]] (Google binding flow). See [[vision]] Messaging: identity = key, same key same user, key + email day one, Google in v0.1, Apple deferred.
 

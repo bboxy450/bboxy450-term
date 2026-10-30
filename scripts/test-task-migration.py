@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 import sys
 
 
@@ -144,6 +145,15 @@ def verify(base):
     assert proof["task171_before"] == proof["task171_after"] == sha((root / proof["task171_path"]).read_bytes())
     assert proof["unrelated_before"] == proof["unrelated_after"]
     assert proof["historical_wakes"] == 0 and proof["replay_unchanged"] is True
+    observer = proof["observer_controls"]
+    assert all(observer[name] is True for name in ("before", "after", "restart"))
+    assert observer["internal_observations"] == 0
+    concurrent = (root / "notes/import-concurrent.md").read_bytes()
+    assert field(concurrent.decode(), "id") == observer["concurrent_record"]
+    assert sha(concurrent) == observer["concurrent_sha256"]
+    assert field(concurrent.decode(), "type") == "note"
+    assert "ordinary concurrent record" in concurrent.decode()
+    assert observer["concurrent_record"] not in all_ids
     controls = proof["transport_controls"]
     assert len(controls) == 2 and len({row["op_id"] for row in controls}) == 2
     for row in controls:
@@ -161,7 +171,7 @@ def verify(base):
         else:
             assert row["phase"] == "completed_reply_delivered"
             assert row["observed"]["result"] == row["actual"]
-    summary = dict(command="make test-task-migration",records=250,dependencies=209,seeds=41,published=251,
+    summary = dict(operation="independent_task_migration_audit",records=250,dependencies=209,seeds=41,published=251,
                    live_tasks=7,source_revision=manifest["source_revision"],bundle_sha256=batch,
                    dispositions="independently checked",raw_hashes="250/250",links=len(manifest["links"]),
                    disposition_counts=dict(Counter(d["disposition"] for d in audit["decisions"])),
@@ -172,8 +182,32 @@ def verify(base):
     print(json.dumps(summary,sort_keys=True))
 
 
+def mutant(target):
+    source = Path(__file__).resolve().parent.parent / "crates/bbt-mux/src/provenance/detector.rs"
+    original = source.read_bytes()
+    needle = b"host_import_stage(p)"
+    assert original.count(needle) == 1, "exact observer mutation seam moved"
+    log = target / "task-migration/observer-mutant.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        source.write_bytes(original.replace(needle, b"(host_import_stage(p) && false)", 1))
+        with log.open("w") as out:
+            result = subprocess.run(["make", "test-task-import-observer-causal", "TARGET_DIR=" + str(target)],
+                                    stdout=out, stderr=subprocess.STDOUT, timeout=1800)
+        text = log.read_text()
+        assert result.returncode != 0, "staging-observation mutant survived"
+        assert "internal import staging produced artifact observations" in text, text[-4000:]
+        print("observer causal mutant rejected; staging generated artifacts; source restored")
+    finally:
+        source.write_bytes(original)
+        assert source.read_bytes() == original
+
+
 if __name__ == "__main__":
     mode, target = sys.argv[1:]
     base = Path(target) / "task-migration"
     base.mkdir(parents=True,exist_ok=True)
-    (prepare if mode == "prepare" else verify)(base)
+    if mode == "mutant":
+        mutant(Path(target).resolve())
+    else:
+        (prepare if mode == "prepare" else verify)(base)

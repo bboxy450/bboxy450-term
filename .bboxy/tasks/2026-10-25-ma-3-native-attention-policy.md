@@ -1,18 +1,47 @@
 ---
-id: "01M5V2K3452HJ3HFFQPTV27FBN"
-type: "task"
-number: 339
-title: "MA-3: native delivery follows receiver attention without holding inbox traffic"
-status: "open"
-role: "executor"
-owner: "Velvet Vulpine"
-verify: "cargo test -p bbt-mux --locked --test messaging_flow"
+authorship:
+  device_id: 01M677XWZPW1XGTQYYGA50W74M
+  issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
+  kind: device
+  principal: operator:01M677XWZPW1XGTQYYGA50W74M
+  public_key: cHjhL+5pI9VNQE+Uhb4HJBnYoPqSIH7aCYU+b9MElWs=
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+created: 2026-10-26T03:03:17Z
+created_by: device:01M677XWZPW1XGTQYYGA50W74M
+id: 01M5V2K3452HJ3HFFQPTV27FBN
+issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
 links:
-  - { to: "[[messaging-attention]]", rel: spec }
-  - { to: "[[notices-never-wake]]", rel: invariant }
-  - { to: "[[messaging-never-held]]", rel: invariant }
-created: "2026-10-26T03:03:17Z"
-updated: "2026-10-26T03:03:17Z"
+- rel: spec
+  to: '[[messaging-attention]]'
+- rel: invariant
+  to: '[[notices-never-wake]]'
+- rel: invariant
+  to: '[[messaging-never-held]]'
+number: 339
+owner: Velvet Vulpine
+provenance:
+  digest: sha256:0b5455af1d7509f498159ef6e0bd676e80d3c5ac65e297616d8aace544a0b910
+  frontmatter_digest: sha256:ace2bf729e68de9bf1b80b2ff3781b66fa9593c8b0bd17370c8c0eb9ebfcab5e
+  log: .bboxy/log/2026-10-30.jsonl#734
+  sig: mgFVEOQFlcVQUySndSi3m6itL+Gx3yH70Cv8sIJZwkOOaYXI2B9hu/v9L6vrv4YZ4gzwoB6gagzaqghfvQ9bCA==
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+reconciliation:
+- by: operator:01M677XWZPW1XGTQYYGA50W74M
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/efe90bedb6cad68d60dbc6937bd78d38fe44cb9f
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M677Y9673MHN2R77G9AYZ65K
+  previous_status: open
+  reason: Operator-authorized historical msgrec reconciliation, 2026-10-30; implementation already landed on main; no new acceptance claimed.
+role: executor
+status: done
+title: 'MA-3: native delivery follows receiver attention without holding inbox traffic'
+type: task
+updated: 2026-10-30T20:27:39.712Z
+updated_by: device:01M677XWZPW1XGTQYYGA50W74M
+verify: cargo test -p bbt-mux --locked --test messaging_flow
 ---
 # MA-3 native attention
 

@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W4.1 — bbt-net: Transport trait, loopback, quinn endpoint with expected-key auth
 
-Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN. Spec: [[networking]] §1 Abstraction, §8 steps 1–2, [[messaging]] envelope and evidence states, [[identity]] device certificates. Plan [[plan]] W4.
+Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN. Spec: [[networking]] §1 Abstraction, §8 steps 1–2, [[messaging]] envelope and evidence states, [[identity]] device certificates. Plan [[plan]] W4.
 
 New crate `crates/bbt-net` (the spec says `net`; the workspace prefix is `bbt-`). Allowed: `crates/bbt-net/**`, root `Cargo.toml` (add the member), `Cargo.lock`, `.bboxy/runs/w4-1-*.log`.
 

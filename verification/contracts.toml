@@ -230,3 +230,24 @@ implementation_tests = ["crates/bbt-mux/src/mcp/diagnostics.rs", "crates/bbt-mux
 assumptions = "One asynchronous read, one own/foreign row and two workspace revision changes including A-B-A. Admission and completion checks are atomic logic actions; there is no IO fairness assumption. Per-seat capacity refuses immediately; no provider scan, shared diagnostic queue or signing dependency. Byte/file/cursor bounds and secret redaction are real API/fixture checks, not Rust refinement proofs. Journal v1 stores seat identity but no historical root/swarm, so only own-seat history is exposed and root scope is explicitly unknown; no swarm/account diagnostic grant is inferred."
 property = "Only own-seat rows publish under the captured current authority/workspace revision. Seat reads never change the operator read mark. Broken controls omit row filtering, compare root ID alone and acknowledge from a seat."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ImportStaging"
+title = "Internal staging cannot spend reserved record numbers"
+models = ["ImportStaging", "BrokenImportStaging"]
+sources = ["crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index/migration.rs"]
+implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/test-task-migration.py"]
+assumptions = "One import, one ordinary writer and one observer; stage, observe, allocate, retry and publish are atomic. At most one legitimate allocation and one broken internal observation. Retry and publication get weakly fair turns; then staged work eventually publishes. Filesystem notification timing, cryptography, crash/fsync and arbitrary ongoing allocation churn use the private native import/replay/concurrent-writer witnesses. No whole-Rust refinement claim."
+property = "Private staging never produces an artifact observation or spends a record number; ordinary writes may invalidate a range and require a truthful retry. The broken control observes staging."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "HistoricalReconcile"
+title = "Historical closure has scoped authority and preserves fresh acceptance"
+models = ["HistoricalReconcile", "BrokenHistoricalReconcile"]
+sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One captured native root, worker/Oracle/operator actors, present/retired ownership and accepted/unaccepted status. Select context and attempt disposition are atomic. A scheduled attempt completes or refuses; no scheduling fairness is required inside the atomic transition. Device custody, root/actor epoch revalidation and byte preservation/signing use the real native writer tests and existing WorkspaceFence/CustodyDelivery contracts."
+property = "Only the authenticated operator can reconcile historical records without current ownership references in the selected native root; seat callers retain ownership checks. Accepted verification is never overwritten and historical closure sends no wake. The broken control grants the operator exception to an unowned Oracle seat."
+checks = ["make test-formal", "make test"]

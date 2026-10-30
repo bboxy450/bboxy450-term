@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W3.2c — bboxybook: shared fixtures, then input/focus, launcher, signals→fx
 
-Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: ASSIGNED. Spec: [[gui-components]] §7 steps 8–10, [[renderer]] §4.5. Follows W3.2b (checkpoint ef6c7ff).
+Owner: Vesper Greywind <ORACLE>. Assignee: Nyx Copperwing <EXECUTOR>. Status: SUPERSEDED (8fd15659). Previous brief wording: ASSIGNED. Spec: [[gui-components]] §7 steps 8–10, [[renderer]] §4.5. Follows W3.2b (checkpoint ef6c7ff).
 
 Allowed: `crates/bboxybook/**`, `crates/bbt-ui-model/**`, `crates/bbt-render/src/chrome/**`, `scripts/parity.sh`, `Cargo.lock`, `.bboxy/runs/w3-2c-*.log`.
 

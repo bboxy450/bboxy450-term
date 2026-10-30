@@ -295,6 +295,47 @@ fn live_detection_claim_hook_rename_delete_and_restart_preserve_evidence() {
 
 // keeps: spec provenance
 #[test]
+fn reserved_import_staging_stays_internal_while_ordinary_outputs_are_observed() {
+    let f = Fixture::new();
+    let stage = format!(".bboxy-import-c025b21f11d2-{}", Ulid::new());
+    let internal = f
+        .config
+        .repository
+        .join(&stage)
+        .join("imports/bundle/raw/one.source");
+    std::fs::create_dir_all(internal.parent().unwrap()).unwrap();
+    std::fs::write(&internal, b"private staged source").unwrap();
+    f.hook(&internal, "private staged source");
+    for reference in [
+        "out.txt",
+        ".bboxy-import-notes/out.txt",
+        ".bboxy-import-c025b21f11d2-01M64FDAXVG0N8AN7DX3MNZT3H.md",
+    ] {
+        let path = f.config.repository.join(reference);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, b"ordinary output").unwrap();
+        f.hook(&path, "ordinary output");
+        f.wait(reference, |doc| {
+            doc.metadata["digest"] == digest(b"ordinary output")
+        });
+    }
+    assert!(
+        f.documents().iter().all(|doc| !doc.metadata["ref"]
+            .as_str()
+            .is_some_and(|reference| reference.starts_with(&stage))),
+        "internal import staging produced artifact observations"
+    );
+    assert!(
+        f.rows()
+            .iter()
+            .all(|row| !row.event.subject.starts_with("artifact/")
+                || !row.event.payload.to_string().contains(&stage)),
+        "internal import staging consumed provenance activity"
+    );
+}
+
+// keeps: spec provenance
+#[test]
 fn symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes() {
     let f = Fixture::new();
     let root = &f.config.repository;

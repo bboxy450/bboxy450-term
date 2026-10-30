@@ -299,3 +299,26 @@ frontend = "project"
 name = "BrokenDiagnosticRead"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "ImportStaging"
+expected = "pass"
+frontend = "project"
+
+
+[[model]]
+name = "BrokenImportStaging"
+expected = "safety"
+frontend = "project"
+
+
+[[model]]
+name = "HistoricalReconcile"
+expected = "pass"
+frontend = "project"
+
+
+[[model]]
+name = "BrokenHistoricalReconcile"
+expected = "safety"
+frontend = "project"

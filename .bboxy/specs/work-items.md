@@ -68,8 +68,13 @@ A record is one file and the file is the object: one decision, one comment, one 
 ### Authenticated historical reconciliation and lossless import (issue 43)
 
 `task_reconcile` is Oracle-class task control under the existing ownership/swarm
-checks. It requires `task_path`, `disposition` (`implemented`, `superseded`, or
-`cancelled`), a nonempty `reason`, and retained `evidence` references. It records
+checks for seat callers. The authenticated account operator can reconcile historical
+records in its captured native Index root even when their original assignee or
+delegator is absent. Existing ownership references are validated and preserved;
+this creates no live assignment. Provider/root and operator custody/epoch checks
+remain on the native write path. It requires `task_path`, `disposition`
+(`implemented`, `superseded`, or `cancelled`), a nonempty `reason`, and retained
+`evidence` references. It records
 the previous state, actor and operation in `reconciliation`, sets `done`, and
 sends no task wake. It refuses to replace `accepted`. Historical `done` does not
 assert fresh verification: `task_accept` still requires `reported`, the exact

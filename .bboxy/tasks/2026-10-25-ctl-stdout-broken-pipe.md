@@ -1,14 +1,40 @@
 ---
-id: "01M5T4KCZR2N43YC42JQQ5NMDB"
-type: "task"
+authorship:
+  device_id: 01M677XWZPW1XGTQYYGA50W74M
+  issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
+  kind: device
+  principal: operator:01M677XWZPW1XGTQYYGA50W74M
+  public_key: cHjhL+5pI9VNQE+Uhb4HJBnYoPqSIH7aCYU+b9MElWs=
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+created: 2026-10-25T18:19:09.688181Z
+created_by: device:01M677XWZPW1XGTQYYGA50W74M
+id: 01M5T4KCZR2N43YC42JQQ5NMDB
+issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
 number: 332
-title: "Make ctl stdout BrokenPipe exit quietly"
-status: "open"
-role: "executor"
-owner: "Sable Embertail"
-verify: "cargo test -p bboxy450-term --locked --test ctl"
-created: "2026-10-25T18:19:09.688181Z"
-updated: "2026-10-25T18:19:09.688181Z"
+owner: Sable Embertail
+provenance:
+  digest: sha256:a64ac396b7317df5aee755a876772f65c8590f05dff5bafbd8c4479d4bdabcea
+  frontmatter_digest: sha256:8225703d18c0fce7afe8d22db24c21270d2b312e8b813d9021758fb52c53f912
+  log: .bboxy/log/2026-10-30.jsonl#707
+  sig: j7RjkinUaSPfixK8zhpVc1Jn5ZqrrXM2OZA30a4A3msdkfnOgJRkDvyghqUMAMijzaRpfpm2VOkaJYtWHEX1CA==
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+reconciliation:
+- by: operator:01M677XWZPW1XGTQYYGA50W74M
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/77b190beaa40474f37d434bee46bc971267008d2
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M677Y21F8A9J7GZK53NMTMVT
+  previous_status: open
+  reason: Operator-authorized historical msgrec reconciliation, 2026-10-30; implementation already landed on main; no new acceptance claimed.
+role: executor
+status: done
+title: Make ctl stdout BrokenPipe exit quietly
+type: task
+updated: 2026-10-30T20:27:32.390Z
+updated_by: device:01M677XWZPW1XGTQYYGA50W74M
+verify: cargo test -p bboxy450-term --locked --test ctl
 ---
 # Make ctl stdout BrokenPipe exit quietly
 

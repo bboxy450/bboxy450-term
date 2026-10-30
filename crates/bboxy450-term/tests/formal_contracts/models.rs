@@ -424,7 +424,12 @@ fn lifecycle(b: bool) -> Model {
     // Logic closes a GUI that misses its reply-write deadline (#79): only the
     // attachment changes, and the app reattaches to the same live owner.
     action(&mut m, "GuiConnectionLost", eq(0, 1), &[(0, Int(0))]);
-    action(&mut m, "ReattachUi", all([eq(0, 0), eq(1, 1)]), &[(0, Int(1))]);
+    action(
+        &mut m,
+        "ReattachUi",
+        all([eq(0, 0), eq(1, 1)]),
+        &[(0, Int(1))],
+    );
     action(&mut m, "ExplicitStop", eq(2, 0), &[(2, Int(1))]);
     action(&mut m, "PidReused", eq(3, 1), &[(3, Int(0))]);
     action(
@@ -997,6 +1002,133 @@ fn sidebar_reveal(b: bool) -> Model {
     m
 }
 
+// Import owns staging/reservations; a separate observer and one ordinary writer
+// may interleave before publication. Real fsync/signature/notify behavior is
+// witnessed by the private active-observer migration, not abstracted as Rust.
+fn import_staging(b: bool) -> Model {
+    let mut m = model(
+        "ImportStaging",
+        b,
+        &[
+            ("staged", 1, 0),
+            ("private_observed", 1, 0),
+            ("epoch", 2, 0),
+            ("reserved", 2, 0),
+            ("ordinary_written", 1, 0),
+            ("published", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Stage",
+        all([eq(0, 0), eq(5, 0)]),
+        &[(0, Int(1)), (3, Var(2))],
+    );
+    action(
+        &mut m,
+        "ObservePrivate",
+        all([eq(0, 1), eq(1, 0), eq(5, 0)]),
+        &[
+            (1, Int(if b { 1 } else { 0 })),
+            (2, if b { Var(2).plus(Int(1)) } else { Var(2) }),
+        ],
+    );
+    action(
+        &mut m,
+        "OrdinaryWrite",
+        eq(4, 0),
+        &[(2, Var(2).plus(Int(1))), (4, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetryStaleAllocation",
+        all([eq(0, 1), eq(5, 0), Var(2).eq(Var(3)).negate()]),
+        &[(3, Var(2))],
+    );
+    action(
+        &mut m,
+        "Publish",
+        all([eq(0, 1), eq(5, 0), Var(2).eq(Var(3))]),
+        &[(0, Int(0)), (5, Int(1))],
+    );
+    safe(&mut m, "StagingNeverConsumesARecordNumber", eq(1, 0));
+    m.responses.push(Response {
+        name: "StagedImportEventuallyPublishes".into(),
+        request: eq(0, 1),
+        response: eq(5, 1),
+    });
+    // The importer gets weakly fair retry/publication turns. One legitimate
+    // writer is bounded; OS notification latency and arbitrary churn are not.
+    m.weak_fair.extend([vec![3], vec![4]]);
+    m
+}
+
+// The authenticated operator may archive old records in the captured native
+// root without manufacturing live seat ownership. Other callers retain the
+// normal ownership check; accepted verification cannot become historical done.
+fn historical_reconcile(b: bool) -> Model {
+    let mut m = model(
+        "HistoricalReconcile",
+        b,
+        &[
+            ("chosen", 1, 0),
+            ("actor", 2, 0),
+            ("native_root", 1, 0),
+            ("owner_current", 1, 0),
+            ("accepted", 1, 0),
+            ("attempted", 1, 0),
+            ("done", 1, 0),
+        ],
+    );
+    for actor in 0..=2 {
+        for root in 0..=1 {
+            for owner in 0..=1 {
+                for accepted in 0..=1 {
+                    action(
+                        &mut m,
+                        &format!("Choose{actor}{root}{owner}{accepted}"),
+                        eq(0, 0),
+                        &[
+                            (0, Int(1)),
+                            (1, Int(actor)),
+                            (2, Int(root)),
+                            (3, Int(owner)),
+                            (4, Int(accepted)),
+                        ],
+                    );
+                }
+            }
+        }
+    }
+    let authorized = all([
+        eq(2, 1),
+        eq(4, 0),
+        eq(1, 2).or(all([eq(1, 1), if b { Bool(true) } else { eq(3, 1) }])),
+    ]);
+    let pending = all([eq(0, 1), eq(5, 0)]);
+    action(
+        &mut m,
+        "Reconcile",
+        pending.clone().and(authorized.clone()),
+        &[(5, Int(1)), (6, Int(1))],
+    );
+    action(
+        &mut m,
+        "Refuse",
+        pending.and(authorized.negate()),
+        &[(5, Int(1))],
+    );
+    safe(
+        &mut m,
+        "OnlyScopedAuthorityArchivesHistoricalRecords",
+        implies(
+            eq(6, 1),
+            all([eq(2, 1), eq(4, 0), eq(1, 2).or(all([eq(1, 1), eq(3, 1)]))]),
+        ),
+    );
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
     let families: [fn(bool) -> Model; 23] = [
         seat_models::diagnostics,
@@ -1023,7 +1155,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         seats,
         arena,
     ];
-    families
+    let mut cases = families
         .into_iter()
         .flat_map(|family| {
             let good = family(false);
@@ -1033,5 +1165,12 @@ pub fn cases() -> Vec<(Model, &'static str)> {
                 (family(true), if temporal { "liveness" } else { "safety" }),
             ]
         })
-        .collect()
+        .collect::<Vec<_>>();
+    cases.extend([
+        (import_staging(false), "pass"),
+        (import_staging(true), "safety"),
+        (historical_reconcile(false), "pass"),
+        (historical_reconcile(true), "safety"),
+    ]);
+    cases
 }

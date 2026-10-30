@@ -1,18 +1,47 @@
 ---
-id: "01M5VZ9QAFFKTBGQ7779KC225Y"
-type: "task"
-number: 343
-title: "MA-9: unattended event, DM and fifty-message digest-cap proof"
-status: "reported"
-role: "executor"
-owner: "Kestrel Voidwing"
-verify: "bboxy450-term e2e night --group 'messaging and tasks'"
+authorship:
+  device_id: 01M677XWZPW1XGTQYYGA50W74M
+  issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
+  kind: device
+  principal: operator:01M677XWZPW1XGTQYYGA50W74M
+  public_key: cHjhL+5pI9VNQE+Uhb4HJBnYoPqSIH7aCYU+b9MElWs=
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+created: 2026-10-26T11:24:58Z
+created_by: device:01M677XWZPW1XGTQYYGA50W74M
+id: 01M5VZ9QAFFKTBGQ7779KC225Y
+issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
 links:
-  - { to: "[[messaging-attention]]", rel: spec }
-  - { to: "[[notices-never-wake]]", rel: invariant }
-  - { to: "[[e2e-acceptance]]", rel: acceptance }
-created: "2026-10-26T11:24:58Z"
-updated: "2026-10-26T12:38:11Z"
+- rel: spec
+  to: '[[messaging-attention]]'
+- rel: invariant
+  to: '[[notices-never-wake]]'
+- rel: acceptance
+  to: '[[e2e-acceptance]]'
+number: 343
+owner: Kestrel Voidwing
+provenance:
+  digest: sha256:9fd7dcc85f3fda2da7ddef223bd82d36ddc4be063f5a07ea2b047348a954b817
+  frontmatter_digest: sha256:7892659912543f2afec3f16af16704eb7b26fdc9ed31d3c9e965177d36d43bd6
+  log: .bboxy/log/2026-10-30.jsonl#761
+  sig: //nbtNKtH+nT6rmlDz80kxC4XaXoH3F9UWiGenP4pmAw3gbjxUEmNYviCnwgvfAH2ibFfsKVIOWD/4PpHlRrBQ==
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+reconciliation:
+- by: operator:01M677XWZPW1XGTQYYGA50W74M
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/1316f3ddb01e7a5cea3c3c44e4540fb703c2e1b0
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M677YGA82G438Q58TZN40QY9
+  previous_status: reported
+  reason: Operator-authorized historical msgrec reconciliation, 2026-10-30; implementation already landed on main; no new acceptance claimed.
+role: executor
+status: done
+title: 'MA-9: unattended event, DM and fifty-message digest-cap proof'
+type: task
+updated: 2026-10-30T20:27:47.028Z
+updated_by: device:01M677XWZPW1XGTQYYGA50W74M
+verify: bboxy450-term e2e night --group 'messaging and tasks'
 ---
 # MA-9 attention night
 

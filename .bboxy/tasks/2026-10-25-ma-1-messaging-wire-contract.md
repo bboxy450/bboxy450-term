@@ -1,17 +1,45 @@
 ---
-id: "01M5TQE3KZA5A5FCQDMJ3PXH97"
-type: "task"
-number: 337
-title: "MA-1: additive message classes, structured events and receipt wake wire"
-status: "open"
-role: "executor"
-owner: "Kestrel Voidwing"
-verify: "cargo test -p bbt-proto --locked --test messaging --test gui_wire_golden"
+authorship:
+  device_id: 01M677XWZPW1XGTQYYGA50W74M
+  issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
+  kind: device
+  principal: operator:01M677XWZPW1XGTQYYGA50W74M
+  public_key: cHjhL+5pI9VNQE+Uhb4HJBnYoPqSIH7aCYU+b9MElWs=
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+created: 2026-10-25T23:48:19Z
+created_by: device:01M677XWZPW1XGTQYYGA50W74M
+id: 01M5TQE3KZA5A5FCQDMJ3PXH97
+issued_by: test-account:01M677XWYWXAQQM5DEQP83TQYY
 links:
-  - { to: "[[messaging-attention]]", rel: spec }
-  - { to: "[[notices-never-wake]]", rel: invariant }
-created: "2026-10-25T23:48:19Z"
-updated: "2026-10-25T23:48:19Z"
+- rel: spec
+  to: '[[messaging-attention]]'
+- rel: invariant
+  to: '[[notices-never-wake]]'
+number: 337
+owner: Kestrel Voidwing
+provenance:
+  digest: sha256:c18dbbb33b261d499b752d1e2dd22d9d2f22a19e8a0c5e9a3a31487c476215d1
+  frontmatter_digest: sha256:7d022eb249256a70893f86195269ee768c998f023104263afe9977c1bb095da7
+  log: .bboxy/log/2026-10-30.jsonl#716
+  sig: AJE8noYrEiyKAhgSM7D1b7OvGDJdmaydRRdtWCfsObN1FpLVGPlasMZNX6Z2G6G3rsTdTttIItsRnX4v+fNxDw==
+  signer: device:01M677XWZPW1XGTQYYGA50W74M
+reconciliation:
+- by: operator:01M677XWZPW1XGTQYYGA50W74M
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/32fe48ebbb2c77b152d71d9996a384fafbaba71e
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M677Y3BMBGVNEXT7SY59CBHR
+  previous_status: open
+  reason: Operator-authorized historical msgrec reconciliation, 2026-10-30; implementation already landed on main; no new acceptance claimed.
+role: executor
+status: done
+title: 'MA-1: additive message classes, structured events and receipt wake wire'
+type: task
+updated: 2026-10-30T20:27:33.739Z
+updated_by: device:01M677XWZPW1XGTQYYGA50W74M
+verify: cargo test -p bbt-proto --locked --test messaging --test gui_wire_golden
 ---
 # MA-1 messaging wire contract
 

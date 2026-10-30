@@ -8,7 +8,7 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # W2.1 — bbt-mux: supervisor, PTYs, lease protocol
 
-Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: OPEN. Spec: [[mux-daemon]] (Ownership, Supervisor ↔ logic protocol, Restart), [[terminal-core]] D4 (portable-pty). Plan [[plan]] W2.1. v0.1 default: one process that speaks the supervisor protocol internally; the split is a later refactor.
+Owner: Vesper Greywind <ORACLE>. Assignee: free Executor. Status: SUPERSEDED (8fd15659). Previous brief wording: OPEN. Spec: [[mux-daemon]] (Ownership, Supervisor ↔ logic protocol, Restart), [[terminal-core]] D4 (portable-pty). Plan [[plan]] W2.1. v0.1 default: one process that speaks the supervisor protocol internally; the split is a later refactor.
 
 Worktree `~/mydev/bboxy450-term`. Allowed: `crates/bbt-mux/**`, `Cargo.lock`, `.bboxy/runs/w2-1-*.log`.
 

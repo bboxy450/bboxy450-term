@@ -120,6 +120,26 @@ pub(crate) struct Detector {
     handle: tokio::runtime::Handle,
     gaps: VecDeque<String>,
 }
+// Adapted from bboxy450-term, local signed commit 4a3528fb (previously unlanded).
+// Source: crates/bbt-mux/src/provenance/detector.rs; same canonical project above.
+// Host namespace used by index/migration.rs, not a general dot-prefix rule.
+// Keep this exact staging grammar attached to reuse:
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn host_import_stage(name: &str) -> bool {
+    let Some((digest, operation)) = name
+        .strip_prefix(".bboxy-import-")
+        .and_then(|suffix| suffix.split_once('-'))
+    else {
+        return false;
+    };
+    digest.len() == 12
+        && digest
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        && operation
+            .parse::<Ulid>()
+            .is_ok_and(|id| id.to_string() == operation)
+}
 fn ignored(relative: &Path) -> bool {
     if relative.file_name().is_some_and(|name| {
         name.to_str()
@@ -135,10 +155,18 @@ fn ignored(relative: &Path) -> bool {
         })
         .collect();
     parts.iter().any(|p| {
-        matches!(
-            *p,
-            ".git" | "target" | "node_modules" | ".gnupg" | ".ssh" | ".icq" | ".claude" | ".codex"
-        )
+        host_import_stage(p)
+            || matches!(
+                *p,
+                ".git"
+                    | "target"
+                    | "node_modules"
+                    | ".gnupg"
+                    | ".ssh"
+                    | ".icq"
+                    | ".claude"
+                    | ".codex"
+            )
     }) || parts
         .windows(2)
         .any(|w| w[0] == ".bboxy" && matches!(w[1], "log" | "artifacts"))
@@ -675,7 +703,23 @@ impl Detector {
                 self.git_job = None;
             }
             match job {
-                Ok((_, Finished::File(row))) => completed.push(row),
+                Ok((_, Finished::File(mut row))) => {
+                    // Also fence hashes already admitted before an exclusion check.
+                    if ignored(Path::new(&row.reference)) {
+                        continue;
+                    }
+                    if row
+                        .previous_ref
+                        .as_deref()
+                        .is_some_and(|path| ignored(Path::new(path)))
+                    {
+                        row.previous_ref = None;
+                        if row.kind == "renamed" {
+                            row.kind = "created".into();
+                        }
+                    }
+                    completed.push(row);
+                }
                 Ok((_, Finished::Git(root, result, at))) => match result {
                     Ok(Some(snapshot)) => {
                         self.git_failed.remove(&root);
@@ -802,6 +846,9 @@ impl Detector {
             let Some(signal) = inbox.queue.pop_front() else {
                 break;
             };
+            if ignored(&signal.path) {
+                continue;
+            }
             let root = self.roots[signal.root].clone();
             let reference = locate(&root, &signal.path).unwrap();
             let previous = signal
@@ -850,6 +897,78 @@ impl Detector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn import_staging_is_excluded_from_hooks_reconciliation_and_admitted_hashes() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().canonicalize().unwrap();
+        let mut detector = Detector::new(&root, tokio::runtime::Handle::current()).unwrap();
+        let stage = format!(
+            ".bboxy-import-c025b21f11d2-{}/imports/raw/source.source",
+            Ulid::new()
+        );
+        let seat = Ulid::new();
+        detector.register(seat, 1, &root, true).unwrap();
+        assert!(detector.normalize(seat, 1, &stage).is_none());
+        assert!(!detector.owns(seat, 1, &stage));
+        detector.reconcile_known([stage.clone()]);
+        let event = crate::adapters::hook::prepare(
+            serde_json::json!({
+                "hook_event_name":"PostToolUse", "tool_name":"Write",
+                "tool_input":{"file_path":root.join(&stage)}
+            }),
+            "fixture",
+        )
+        .unwrap();
+        detector.hook(seat, 1, &event);
+        assert!(detector.inbox.lock().unwrap().queue.is_empty());
+        detector.inbox.lock().unwrap().push(Signal {
+            root: 0,
+            path: stage.clone().into(),
+            previous: None,
+            kind: "created".into(),
+            source: "filesystem".into(),
+            reported: None,
+            at: now_ms(),
+        });
+        assert!(detector.poll(&[]).0.is_empty());
+        assert!(
+            detector.jobs.is_empty(),
+            "reserved queued path reached hashing"
+        );
+        let (sent, ready) = tokio::sync::oneshot::channel();
+        detector.jobs.spawn(async move {
+            sent.send(()).unwrap();
+            Finished::File(Hashed {
+                commit: None,
+                reference: stage,
+                previous_ref: None,
+                kind: "created".into(),
+                source: "filesystem".into(),
+                attribution: Attribution::inferred(vec![]),
+                digest: None,
+                bytes: None,
+                reason: None,
+                at: now_ms(),
+            })
+        });
+        ready.await.unwrap();
+        tokio::task::yield_now().await;
+        assert!(
+            detector.poll(&[]).0.is_empty(),
+            "reserved admitted hash escaped"
+        );
+        assert!(
+            detector.jobs.is_empty(),
+            "admitted hash was not consumed by the check"
+        );
+        for name in [
+            ".bboxy-import-notes",
+            ".bboxy-import-C025B21F11D2-01M64FDAXVG0N8AN7DX3MNZT3H",
+            ".bboxy-import-c025b21f11d2-01M64FDAXVG0N8AN7DX3MNZT3H.md",
+        ] {
+            assert!(!ignored(Path::new(name)), "ordinary name hidden: {name}");
+        }
+    }
     // keeps: regression unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds
     // Completed scans, rather than elapsed silence, prove unchanged snapshots are quiet.
     #[tokio::test]
