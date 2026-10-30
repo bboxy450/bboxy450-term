@@ -460,6 +460,145 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     assert!(!records.replies(&replies));
     assert!(records.tasks().is_empty());
 }
+/// A busy provider connection is transient: the Tasks panel retries within the
+/// workspace_pending bound and keeps its last good list instead of showing 0.
+#[test]
+fn provider_busy_task_reads_retry_and_keep_the_last_good_list() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    fn list(commands: &[UiMsg]) -> &UiMsg {
+        commands
+            .iter()
+            .find(|c| {
+                matches!(
+                    c,
+                    UiMsg::Task {
+                        request: TaskRequest::List {
+                            unassigned: false,
+                            ..
+                        },
+                        ..
+                    }
+                )
+            })
+            .expect("task list read")
+    }
+    let busy = "rejected: provider_busy: one read is already using this root connection";
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(77));
+    let first = records.commands();
+    let mut replies = Results::default();
+    let task = Ulid::new();
+    replies.push(
+        op_id(list(&first)),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.tasks().len(), 1);
+
+    records.task_notice(None);
+    let refresh = records.commands();
+    replies.push(op_id(list(&refresh)), Reply::Refused(busy.into()));
+    assert!(records.replies(&replies));
+    assert_eq!(
+        records.tasks().len(),
+        1,
+        "busy refusal keeps the last good list"
+    );
+    assert_eq!(
+        records.issue, None,
+        "a retried busy read is not shown as a failure"
+    );
+    let (epoch, delay) = records.take_retry().expect("busy read schedules a retry");
+    assert_eq!(delay, std::time::Duration::from_millis(100));
+    assert!(
+        records
+            .commands()
+            .iter()
+            .all(|c| !matches!(c, UiMsg::Task { .. }))
+    );
+    assert!(records.retry_ready(epoch));
+    let retry = records.commands();
+    let replacement = Ulid::new();
+    replies.push(
+        op_id(list(&retry)),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(replacement)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(
+        records.tasks().iter().map(|t| t.id).collect::<Vec<_>>(),
+        vec![replacement]
+    );
+
+    // Exhausting the bound reports the failure but still keeps the list.
+    let mut exhausted = false;
+    for _ in 0..60 {
+        records.task_notice(None);
+        let commands = records.commands();
+        let Some(read) = commands.iter().find(|c| {
+            matches!(
+                c,
+                UiMsg::Task {
+                    request: TaskRequest::List {
+                        unassigned: false,
+                        ..
+                    },
+                    ..
+                }
+            )
+        }) else {
+            if let Some((epoch, _)) = records.take_retry() {
+                records.retry_ready(epoch);
+            }
+            continue;
+        };
+        replies.push(op_id(read), Reply::Refused(busy.into()));
+        records.replies(&replies);
+        if let Some((epoch, _)) = records.take_retry() {
+            records.retry_ready(epoch);
+        }
+        if records.issue.is_some() {
+            exhausted = true;
+            break;
+        }
+    }
+    assert!(exhausted, "retries are bounded");
+    assert_eq!(records.issue.as_deref(), Some(busy));
+    assert_eq!(
+        records.tasks().len(),
+        1,
+        "a reported busy failure keeps the list"
+    );
+    records.task_notice(None);
+    let recovered = records.commands();
+    replies.push(
+        op_id(list(&recovered)),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(
+        records.issue, None,
+        "a later good read clears the read failure"
+    );
+    records.task_notice(None);
+    let again = records.commands();
+    replies.push(op_id(list(&again)), Reply::Refused(busy.into()));
+    records.replies(&replies);
+    assert_eq!(
+        records.issue, None,
+        "the retry bound restarts after a good read"
+    );
+    assert!(records.take_retry().is_some());
+}
 #[test]
 fn task_review_does_not_repeat_an_unknown_effect_with_a_fresh_id_or_changed_reason() {
     use bboxy450_term::messaging::Records;

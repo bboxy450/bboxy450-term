@@ -1169,6 +1169,8 @@ pub struct Records {
     retry_delay: Option<std::time::Duration>,
     retry_started: Option<std::time::Instant>,
     retries: u8,
+    /// `issue` came from a refused read, so the next good read clears it.
+    read_issue: bool,
     pending: BTreeMap<Ulid, RecordRequest>,
     waiting: VecDeque<Read>,
     tasks: VecDeque<wire::TaskCard>,
@@ -1227,6 +1229,7 @@ impl Records {
         self.review_issue = None;
         self.review_completed = None;
         self.issue = binding.err().map(Into::into);
+        self.read_issue = false;
         if next.is_some() {
             self.refresh();
         }
@@ -1575,9 +1578,14 @@ impl Records {
                 continue;
             }
             let p = self.pending.remove(&row.op).unwrap();
+            // A mounting workspace and a busy provider connection are transient.
+            // Neither refusal carries retry_after_ms on this string reply; both
+            // hosts declare 100 ms. The last good list stays on screen.
             if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
                 && !matches!(read, Read::Tree(..))
-                && reason.starts_with("workspace_pending")
+                && (reason.starts_with("workspace_pending")
+                    || reason.starts_with("provider_busy")
+                    || reason.starts_with("rejected: provider_busy"))
             {
                 let now = std::time::Instant::now();
                 let began = self.retry_started.get_or_insert(now);
@@ -1592,6 +1600,14 @@ impl Records {
                     }
                     changed = true;
                     continue;
+                }
+            }
+            if p.read.is_some() && !matches!(row.reply, Reply::Refused(_)) {
+                // The bound covers one transient episode, not the session.
+                self.retries = 0;
+                self.retry_started = None;
+                if std::mem::take(&mut self.read_issue) {
+                    self.issue = None;
                 }
             }
             match (&p.read, &row.reply) {
@@ -1713,6 +1729,7 @@ impl Records {
                 }
                 (_, Reply::Refused(reason)) => {
                     self.issue = Some(reason.chars().take(512).collect());
+                    self.read_issue = p.read.is_some();
                     if let Some(task) = p.task {
                         self.review_issue = Some((task, reason.chars().take(512).collect()));
                     }
