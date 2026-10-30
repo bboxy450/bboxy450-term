@@ -18,6 +18,9 @@ use std::time::{Duration, Instant};
 
 /// Maximum serialized bounded hook payload, in bytes.
 pub const MAX_RAW: usize = 64 * 1024;
+/// Raw CLI hook ingress can include verbose tool content discarded before framing.
+/// The retained frame stays at MAX_RAW and the shared hook deadline stays 50 ms.
+pub const MAX_INPUT: usize = 2 * 1024 * 1024;
 /// Maximum encoded terminal hook frame, in bytes.
 pub const MAX_OSC: usize = 4096;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +53,21 @@ pub fn prepare(mut raw: Value, agent: &str) -> Result<ShimEvent> {
         let total = items.len();
         items.truncate(32);
         raw["background_tasks_total"] = total.into();
+    }
+    // Keep original status/provenance fields, not command output or file contents.
+    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    for (field, keep) in [
+        (
+            "tool_input",
+            &["description", "questions", "question", "file_path", "path"][..],
+        ),
+        ("tool_response", &["agentId"][..]),
+    ] {
+        if let Some(object) = raw.get_mut(field).and_then(Value::as_object_mut) {
+            object.retain(|key, _| keep.contains(&key.as_str()));
+        } else if let Some(object) = raw.as_object_mut() {
+            object.remove(field);
+        }
     }
     let object = raw
         .as_object_mut()
@@ -420,10 +438,7 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
         .map(|p| p[1].as_str())
         .unwrap_or("claude");
     let raw = if let Some(arg) = args.iter().rev().find(|s| s.starts_with('{')) {
-        if arg.len() > MAX_RAW {
-            return Err(invalid("hook input bound"));
-        }
-        serde_json::from_str(arg)?
+        decode_input(arg.as_bytes())?
     } else {
         let mut bytes = Vec::new();
         let mut stdin = std::io::stdin();
@@ -450,11 +465,11 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
                 break;
             }
             bytes.extend_from_slice(&chunk[..count]);
-            if bytes.len() > MAX_RAW {
+            if bytes.len() > MAX_INPUT {
                 return Err(invalid("hook input bound"));
             }
         }
-        serde_json::from_slice(&bytes)?
+        decode_input(&bytes)?
     };
     let mut event = prepare(raw, agent)?;
     // Claude documents this export before SessionStart, unlike a PID file:
@@ -500,4 +515,54 @@ pub fn send_socket(path: &std::path::Path, bytes: &[u8], until: Instant) -> Resu
         return Err(error.into());
     }
     write_deadline(&mut stream, bytes, until)
+}
+
+fn decode_input(bytes: &[u8]) -> Result<Value> {
+    if bytes.len() > MAX_INPUT {
+        return Err(invalid("hook input bound"));
+    }
+    Ok(serde_json::from_slice(bytes)?)
+}
+#[cfg(test)]
+mod input_tests {
+    use super::*;
+    #[test]
+    fn large_hook_fields_codex_notify_discards_conversation_before_framing() {
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "type":"agent-turn-complete","thread-id":"private-thread",
+            "input-messages":["x".repeat(128*1024)],"last-assistant-message":"Done"
+        }))
+        .unwrap();
+        assert!(bytes.len() > MAX_RAW);
+        let event = prepare(decode_input(&bytes).unwrap(), "codex-notify").unwrap();
+        assert_eq!(event.event, "agent-turn-complete");
+        assert!(event.raw.get("input-messages").is_none());
+        assert!(osc(Ulid::from(1_u128), &event).unwrap().is_some());
+    }
+    #[test]
+    fn large_hook_fields_are_bounded_at_ingress_and_projected_before_wire_limits() {
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "hook_event_name":"PostToolUse","session_id":"private", "tool_name":"Write",
+            "tool_input":{"file_path":"/private/fixture.rs","content":"x".repeat(256*1024)},
+            "tool_response":{"agentId":"worker","output":"y".repeat(256*1024)}
+        }))
+        .unwrap();
+        assert!(bytes.len() > MAX_RAW);
+        let event = prepare(decode_input(&bytes).unwrap(), "claude").unwrap();
+        assert_eq!(event.raw["tool_input"]["file_path"], "/private/fixture.rs");
+        assert_eq!(event.raw["tool_response"]["agentId"], "worker");
+        assert!(event.raw["tool_input"].get("content").is_none());
+        assert!(event.raw["tool_response"].get("output").is_none());
+        assert!(serde_json::to_vec(&event).unwrap().len() < MAX_RAW);
+        assert!(osc(Ulid::from(1_u128), &event).unwrap().is_some());
+        assert!(decode_input(&vec![b' '; MAX_INPUT + 1]).is_err());
+        assert!(
+            prepare(
+                serde_json::json!({"event":"Stop","last_message":"x".repeat(MAX_RAW)}),
+                "codex"
+            )
+            .is_err(),
+            "retained hook wire bound must not be loosened"
+        );
+    }
 }

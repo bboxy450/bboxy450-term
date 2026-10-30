@@ -69,3 +69,12 @@ Retained upstream material keeps its original terms; earlier grants are not
 withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
 examples; [NOTICE](NOTICE) preserves factual upstream notices.
 Slop respectfully. Keep the credit attached.
+
+## Hook input bounds
+
+A hook has one shared 50 ms deadline. Raw CLI/stdin JSON is limited to 2 MiB,
+then projected to the original status/provenance fields: task descriptions,
+questions, artifact paths and agent identity, without tool file contents or
+command output. The retained event stays limited to 64 KiB and the terminal OSC
+to 4096 bytes; larger retained events are still refused. This allows ordinary
+verbose tool hooks without enlarging the bus or terminal-frame limits.
