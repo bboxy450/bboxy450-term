@@ -15,6 +15,7 @@
 use super::*;
 use crate::knowledge::data_source as d;
 use crate::plugins::client::Shared;
+use bbt_plugin::policy::RoleClass;
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
@@ -35,6 +36,128 @@ fn validate(schema: &Value, value: &Value, code: &str) -> d::Result<()> {
         .map_err(|reason| error("invalid_json_schema", reason.to_string()))?
         .validate(value)
         .map_err(|reason| error(code, reason.to_string()))
+}
+
+/// Request fields only the host supplies. A seat call that sets one is
+/// refused, and a contract method whose request requires one stays with the
+/// host (data_source write, the signed task_system transitions, repo_graph
+/// describe).
+pub const HOST_OWNED: &[&str] = &[
+    "root",
+    "signed_record",
+    "author",
+    "signer",
+    "device",
+    "account",
+];
+/// Contract methods that only read; every other seat tool is an effect.
+const READS: &[&str] = &[
+    "resolve",
+    "fetch",
+    "search",
+    "list",
+    "links",
+    "graph",
+    "status",
+    "describe",
+    "changes_since",
+];
+
+/// The role class a seat needs for a contract method, or `None` when the
+/// method is never a seat tool: host-only contracts (event_sink),
+/// data_source write/commit (the host owns signing) and any method whose
+/// request requires a [`HOST_OWNED`] field.
+pub fn seat_role(contract: Contract, method: &str) -> Option<RoleClass> {
+    let role = contract.role(method).ok()?;
+    if role == RoleClass::HostOnly
+        || contract == Contract::DataSource && matches!(method, "write" | "commit")
+    {
+        return None;
+    }
+    let request = contract.method_schema(method, false)?;
+    let body = request["$ref"]
+        .as_str()
+        .and_then(|reference| reference.strip_prefix("#/$defs/"))
+        .map_or(&request, |name| &request["$defs"][name]);
+    let host_field = body["required"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .any(|field| field.as_str().is_some_and(|f| HOST_OWNED.contains(&f)));
+    (!host_field).then_some(role)
+}
+
+#[derive(Debug, Clone)]
+enum Target {
+    Method(Contract, String),
+    Declared(String),
+}
+
+/// One plugin-provided seat tool (rules in `mcp/plugin_tools.rs`).
+#[derive(Debug, Clone)]
+pub struct SeatTool {
+    pub name: String,
+    pub description: String,
+    pub input_schema: Value,
+    pub output_schema: Value,
+    /// Oracle-class seats only.
+    pub oracle: bool,
+    /// A journaled read; otherwise an effect admitted once per op_id.
+    pub read: bool,
+    candidate: String,
+    target: Target,
+}
+
+fn seat_tools(entry: &Entry, record: &TrustRecord) -> Vec<SeatTool> {
+    let (Some(name), Some(shape)) = (&entry.candidate.name, &record.shape) else {
+        return Vec::new();
+    };
+    let candidate = &entry.candidate.id;
+    let mut tools = Vec::new();
+    for system in &shape.systems {
+        let Ok(contract) = Contract::named(&system.contract) else {
+            continue;
+        };
+        for command in &system.commands {
+            let (Some(role), Ok(seat)) = (
+                seat_role(contract, &command.name),
+                name.tool(contract, &command.name),
+            ) else {
+                continue;
+            };
+            tools.push(SeatTool {
+                name: seat,
+                description: format!(
+                    "{} {} from the {} plugin.",
+                    contract.name(),
+                    command.name,
+                    name.provider
+                ),
+                input_schema: command.args.clone(),
+                output_schema: command.result.clone(),
+                oracle: role == RoleClass::Oracle,
+                read: READS.contains(&command.name.as_str()),
+                candidate: candidate.clone(),
+                target: Target::Method(contract, command.name.clone()),
+            });
+        }
+    }
+    for tool in &shape.tools {
+        let Ok(seat) = tool.seat_name(name) else {
+            continue;
+        };
+        tools.push(SeatTool {
+            name: seat,
+            description: tool.description.clone(),
+            input_schema: tool.input_schema.clone(),
+            output_schema: tool.output_schema.clone(),
+            oracle: tool.role == RoleClass::Oracle,
+            read: false,
+            candidate: candidate.clone(),
+            target: Target::Declared(tool.name.clone()),
+        });
+    }
+    tools
 }
 
 /// The authority a connection was opened under.
@@ -122,6 +245,8 @@ struct Inner {
     handle: Handle,
     config: ProviderConfig,
     state: StdMutex<Held>,
+    /// Seat tools of the enabled, checked plugins, as of the last refresh.
+    tools: StdMutex<Arc<Vec<SeatTool>>>,
 }
 
 /// One per knowledge root, owned by its workspace. Cloning shares it.
@@ -151,13 +276,97 @@ impl PluginHost {
                 "host deadline must be positive",
             ));
         }
-        Ok(Self(Arc::new(Inner {
+        let host = Self(Arc::new(Inner {
             registry,
             root,
             handle,
             config,
             state: StdMutex::default(),
-        })))
+            tools: StdMutex::default(),
+        }));
+        host.refresh_tools();
+        Ok(host)
+    }
+
+    /// Recompute the seat tool snapshot from account records and pinned
+    /// copies; no plugin process runs. Blocking IO.
+    fn refresh_tools(&self) {
+        let registry = &self.0.registry;
+        let tools = registry
+            .refresh()
+            .map(|entries| {
+                entries
+                    .iter()
+                    .filter(|entry| enabled_and_checked(entry))
+                    .filter_map(|entry| {
+                        let (_, record) = registry.authority(entry).ok()?;
+                        registry.verify_copy(record).ok()?;
+                        Some(seat_tools(entry, record))
+                    })
+                    .flatten()
+                    .collect()
+            })
+            .unwrap_or_default();
+        if let Ok(mut held) = self.0.tools.lock() {
+            *held = Arc::new(tools);
+        }
+    }
+
+    /// The seat tools as of the workspace mount or the last plugin control
+    /// mutation. A call rechecks the plugin's current authority.
+    pub fn seat_tools(&self) -> Arc<Vec<SeatTool>> {
+        self.0
+            .tools
+            .lock()
+            .map(|tools| tools.clone())
+            .unwrap_or_default()
+    }
+
+    /// Call one seat tool from [`PluginHost::seat_tools`].
+    pub fn call_seat_tool(
+        &self,
+        tool: &SeatTool,
+        args: Value,
+        deadline: Instant,
+    ) -> d::Result<Value> {
+        if let Some(field) = HOST_OWNED.iter().find(|field| args.get(**field).is_some()) {
+            return Err(error(
+                "host_field_in_arguments",
+                format!("{field} belongs to the host, never to a seat"),
+            ));
+        }
+        let name = match &tool.target {
+            Target::Method(contract, method) => {
+                return self.call(&tool.candidate, *contract, method, args, deadline);
+            }
+            Target::Declared(name) => name,
+        };
+        bbt_rt::assert_not_ui_thread();
+        let connection = self.connection(&tool.candidate)?;
+        let declared = connection
+            .shape()
+            .tools
+            .iter()
+            .find(|declared| {
+                &declared.name == name && (declared.role == RoleClass::Oracle) == tool.oracle
+            })
+            .cloned()
+            .ok_or_else(|| {
+                error(
+                    "unknown_tool",
+                    "the trusted descriptor no longer declares this tool",
+                )
+            })?;
+        self.dispatch(
+            &tool.candidate,
+            &connection,
+            &declared.wire_name(),
+            args,
+            &[(&declared.input_schema, "invalid_request")],
+            &[(&declared.output_schema, "invalid_provider_result")],
+            declared.timeout_ms,
+            deadline,
+        )
     }
 
     /// Current authority of an enabled plugin whose check matches its pin.
@@ -420,8 +629,9 @@ impl PluginHost {
         }
     }
 
-    /// Close every connection whose authority is no longer current. Run after
-    /// any plugin control mutation; blocking registry IO, never the UI thread.
+    /// Close every connection whose authority is no longer current and
+    /// refresh the seat tools. Run after any plugin control mutation;
+    /// blocking registry IO, never the UI thread.
     pub fn reconcile(&self) {
         bbt_rt::assert_not_ui_thread();
         let held: Vec<_> = self
@@ -444,6 +654,7 @@ impl PluginHost {
                 self.drop_connection(&candidate, &connection);
             }
         }
+        self.refresh_tools();
     }
 
     /// Held connections as (candidate, activation generation), for tests and status.

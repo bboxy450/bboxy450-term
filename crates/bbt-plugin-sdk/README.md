@@ -42,6 +42,15 @@ What the runtime does for every plugin:
   limits; authority fields (`root`, `author`, `signer`, `device`, `account`)
   in tool arguments are refused; panics become `internal_error` results.
 
+Seats see every contract method they may call as
+`plugin_<contract>_<provider>_<method>`. For anything beyond the contracts,
+declare a seat tool with `Manifest::tool(name, description, input_schema,
+output_schema, RoleClass::Worker | RoleClass::Oracle)` and serve it in
+`Plugin::call_tool`; seats see it as `plugin_tool_<provider>_<name>` (at most
+64 bytes, else refused at trust), and the plugin serves it as MCP tool
+`tool_<name>`. The host validates arguments and results against the declared
+schemas and treats every declared tool as an effect, admitted once per op_id.
+
 [`testkit::Client`] drives a built plugin executable over stdio for
 conformance tests and probes.
 

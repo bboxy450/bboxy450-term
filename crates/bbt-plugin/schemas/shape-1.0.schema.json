@@ -183,6 +183,49 @@
     },
     "concurrent": {
       "type": "boolean"
+    },
+    "tools": {
+      "type": "array",
+      "maxItems": 32,
+      "$comment": "Optional seat tools. Seats see plugin_tool_<provider>_<name> (at most 64 bytes); the host calls the plugin's MCP tool tool_<name>.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "input_schema": {
+            "type": "object"
+          },
+          "output_schema": {
+            "type": "object"
+          },
+          "role": {
+            "enum": [
+              "worker",
+              "oracle"
+            ]
+          },
+          "timeout_ms": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "name",
+          "input_schema",
+          "output_schema",
+          "role",
+          "timeout_ms"
+        ],
+        "additionalProperties": true
+      }
     }
   },
   "required": [

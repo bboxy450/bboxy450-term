@@ -484,6 +484,12 @@ async fn exercise(
             }
         }
     }
+    for tool in &shape.tools {
+        let wire = tool.wire_name();
+        if !catalogue.contains_key(&wire) {
+            return Err(failure("missing_wire_tool", wire));
+        }
+    }
     client
         .call(&shape.health_command, json!({}), client.call_limit())
         .await?;

@@ -17,9 +17,9 @@ mod trust;
 pub use check::{CheckReport, Measurement, check, measure, run_cli};
 pub use discovery::DiscoveryRoots;
 pub use registry::{
-    ConformanceJob, ConformanceResult, DataSourceProvider, EnabledSkills, InspectionJob,
-    InspectionResult, MAX_CONCURRENT_CALLS, PluginHost, ProviderConfig, ProviderObservation,
-    Registry, RegistryConfig,
+    ConformanceJob, ConformanceResult, DataSourceProvider, EnabledSkills, HOST_OWNED,
+    InspectionJob, InspectionResult, MAX_CONCURRENT_CALLS, PluginHost, ProviderConfig,
+    ProviderObservation, Registry, RegistryConfig, SeatTool, seat_role,
 };
 
 use bbt_plugin::Refusal;

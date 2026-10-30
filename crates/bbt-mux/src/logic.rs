@@ -3810,6 +3810,80 @@ impl Worker {
         self.knowledge_jobs
             .spawn_blocking_on(move || job.run(), &self.handle);
     }
+    /// The seat's plugin tools from its swarm root's snapshot; none while
+    /// that root is still mounting. Reads no plugin record, starts no process.
+    fn plugin_catalogue(&mut self, actor: &crate::mcp::SeatActor) -> Vec<serde_json::Value> {
+        self.workspaces
+            .select(&self.registry, actor.swarm_id, None)
+            .map(|port| {
+                crate::mcp::plugin_tools::catalogue(&port.host.plugin_host().seat_tools(), actor)
+            })
+            .unwrap_or_default()
+    }
+    /// A plugin seat tool on the seat's swarm root, under the per-root read
+    /// permit, on blocking IO; completion is revalidated like a knowledge read.
+    fn start_plugin_tool(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        let prepared = (|| -> Result<_> {
+            let (actor, _) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let journal = self.control_journal(id)?;
+            let port = self.seat_workspace(&actor);
+            Ok((actor, journal, port))
+        })();
+        let (actor, journal, port) = match prepared {
+            Ok((actor, journal, Ok(port))) => (actor, journal, port),
+            Ok((_, _, Err(error))) => {
+                let code = workspace_command_error(error.as_ref()).code;
+                let _ = reply.send(Ok(crate::mcp::error(call.op_id, &code, &error.to_string())));
+                return;
+            }
+            Err(error) => {
+                let _ = reply.send(Err(error));
+                return;
+            }
+        };
+        let journal = self.root_journal(&journal, &port);
+        let revision = match port.host.revision() {
+            Ok(revision) => revision,
+            Err(error) => {
+                let _ = reply.send(Err(error));
+                return;
+            }
+        };
+        let Ok(permit) = self
+            .knowledge_permits(&port.binding.root_id)
+            .try_acquire_owned()
+        else {
+            let _ = reply.send(journal.checked(
+                &actor,
+                &call,
+                crate::mcp::error(
+                    call.op_id,
+                    "provider_busy",
+                    "Knowledge read capacity is occupied; retry the call.",
+                ),
+            ));
+            return;
+        };
+        let job = crate::mcp::plugin_tools::Job {
+            plugins: port.host.plugin_host().clone(),
+            actor,
+            binding: port.binding,
+            revision,
+            call,
+            journal,
+            reply,
+            permit,
+        };
+        self.knowledge_jobs
+            .spawn_blocking_on(move || job.run(), &self.handle);
+    }
     fn knowledge_call(
         &mut self,
         actor: &crate::mcp::SeatActor,
@@ -5151,7 +5225,15 @@ impl Worker {
                     .messaging
                     .inbox_summary(record.id, record.generation)
                     .map_err(|_| "inbox counts are unavailable; no count was substituted")?;
-                let catalogue = tools::catalogue(actor);
+                let plugins = port
+                    .map(|port| {
+                        crate::mcp::plugin_tools::catalogue(
+                            &port.host.plugin_host().seat_tools(),
+                            actor,
+                        )
+                    })
+                    .unwrap_or_default();
+                let catalogue = tools::catalogue(actor, plugins);
                 let tools = catalogue["tools"]
                     .as_array()
                     .unwrap()
@@ -9383,9 +9465,9 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::ControlCatalogue(id, generation, reply) => {
-                        let result = self
-                            .control_actor(id, generation)
-                            .map(|(actor, _)| crate::mcp::tools::catalogue(&actor));
+                        let result = self.control_actor(id, generation).map(|(actor, _)| {
+                            crate::mcp::tools::catalogue(&actor, self.plugin_catalogue(&actor))
+                        });
                         let _ = reply.send(result);
                     }
                     Command::ControlCall(id, generation, call, reply) => {
@@ -9420,6 +9502,8 @@ impl Worker {
                             self.start_control_focus(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
+                        } else if crate::mcp::plugin_tools::handles(&call.tool) {
+                            self.start_plugin_tool(id, generation, call, reply);
                         } else {
                             let result = self.control_call(id, generation, call);
                             let _ = reply.send(result);

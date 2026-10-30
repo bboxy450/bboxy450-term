@@ -273,3 +273,30 @@ async fn concurrent_descriptors_admit_parallel_requests() {
         .unwrap();
     assert_eq!(f.changes().await.unwrap_err().code, "provider_closed");
 }
+
+// keeps: G2 seat tools — which contract methods a seat may call, and at which role.
+#[test]
+fn seat_tools_exclude_host_only_and_host_owned_methods() {
+    use bbt_plugin::policy::RoleClass::{Oracle, Worker};
+    for (contract, method, role) in [
+        (Contract::DataSource, "fetch", Some(Worker)),
+        (Contract::DataSource, "changes_since", Some(Worker)),
+        (Contract::DataSource, "write", None),
+        (Contract::DataSource, "commit", None),
+        (Contract::TaskSystem, "list", Some(Worker)),
+        (Contract::TaskSystem, "delegate", None),
+        (Contract::TaskSystem, "report", None),
+        (Contract::RepoGraph, "changes_since", Some(Worker)),
+        (Contract::RepoGraph, "describe", None),
+        (Contract::DecisionModel, "choose", Some(Oracle)),
+        (Contract::Session, "describe", Some(Worker)),
+        (Contract::EventSink, "deliver", None),
+    ] {
+        assert_eq!(
+            bbt_mux::plugins::seat_role(contract, method),
+            role,
+            "{} {method}",
+            contract.name()
+        );
+    }
+}

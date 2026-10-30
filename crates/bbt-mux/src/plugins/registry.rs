@@ -48,7 +48,7 @@ mod source;
 pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
 #[path = "host.rs"]
 mod host;
-pub use host::{MAX_CONCURRENT_CALLS, PluginHost};
+pub use host::{HOST_OWNED, MAX_CONCURRENT_CALLS, PluginHost, SeatTool, seat_role};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]
@@ -72,6 +72,17 @@ pub struct EnabledSkills {
     pub candidate: String,
     pub sha256: String,
     pub skills: Result<Vec<bbt_plugin::skills::Skill>, Refusal>,
+}
+
+/// Enabled, with a passing conformance result for its activation pin.
+fn enabled_and_checked(entry: &Entry) -> bool {
+    entry.state() == State::Enabled
+        && entry.activation.as_ref().is_some_and(|activation| {
+            entry
+                .conformance
+                .as_ref()
+                .is_some_and(|result| result.ok && result.sha256 == activation.sha256)
+        })
 }
 
 #[derive(Debug, Clone)]
@@ -249,11 +260,7 @@ impl Registry {
             .into_iter()
             .filter_map(|entry| {
                 let activation = entry.activation.as_ref()?;
-                let checked = entry
-                    .conformance
-                    .as_ref()
-                    .is_some_and(|result| result.ok && result.sha256 == activation.sha256);
-                if entry.state() != State::Enabled || !checked {
+                if !enabled_and_checked(&entry) {
                     return None;
                 }
                 let skills = self.authority(&entry).and_then(|(_, record)| {
@@ -372,6 +379,14 @@ impl Registry {
                     for method in contract.methods() {
                         if let Ok(tool) = name.tool(contract, method) {
                             tools.entry(tool).or_default().insert(i);
+                        }
+                    }
+                }
+                // Declared seat tools are qualified by provider only.
+                if let Some(shape) = entry.trust.as_ref().and_then(|t| t.shape.as_ref()) {
+                    for tool in &shape.tools {
+                        if let Ok(seat) = tool.seat_name(name) {
+                            tools.entry(seat).or_default().insert(i);
                         }
                     }
                 }

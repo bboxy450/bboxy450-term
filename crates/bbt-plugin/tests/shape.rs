@@ -83,6 +83,61 @@ fn descriptor_skills_are_additive_and_use_shared_validation() {
     assert!(serde_json::from_value::<Shape>(value).is_err());
 }
 
+// keeps: G2 plugin seat tools — additive, validated, bounded names.
+#[test]
+fn declared_tools_are_additive_and_validated() {
+    let name = PluginName::parse("bboxy450-term", "bboxy450-term-data_source-my-provider").unwrap();
+    let validator =
+        jsonschema::validator_for(&serde_json::from_str(bbt_plugin::shape::SCHEMA).unwrap())
+            .unwrap();
+    let tool = json!({"name":"summarize_open","description":"Summarize open work",
+        "input_schema":{"type":"object","properties":{"limit":{"type":"integer"}}},
+        "output_schema":{"type":"object"},"role":"oracle","timeout_ms":3000,"future_minor_field":1});
+    let mut value = fixture();
+    value["tools"] = json!([tool.clone()]);
+    validator.validate(&value).unwrap();
+    let shape: Shape = serde_json::from_value(value.clone()).unwrap();
+    shape.validate(&name).unwrap();
+    assert_eq!(
+        shape.tools[0].seat_name(&name).unwrap(),
+        "plugin_tool_my-provider_summarize_open"
+    );
+    assert_eq!(shape.tools[0].wire_name(), "tool_summarize_open");
+    assert!(
+        !serde_json::to_value(serde_json::from_value::<Shape>(fixture()).unwrap())
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("tools"),
+        "descriptors without tools serialize unchanged"
+    );
+    for (field, bad, code, schema_ok) in [
+        ("name", json!("Upper"), "invalid_tool", false),
+        ("name", json!("x".repeat(41)), "tool_name_too_long", true),
+        ("role", json!("host_only"), "invalid_tool", false),
+        ("timeout_ms", json!(0), "invalid_timeout", false),
+        (
+            "input_schema",
+            json!({"type":"string"}),
+            "invalid_tool",
+            true,
+        ),
+        ("output_schema", json!({"type":7}), "invalid_tool", true),
+    ] {
+        let mut broken = tool.clone();
+        broken[field] = bad;
+        let mut value = fixture();
+        value["tools"] = json!([broken]);
+        assert_eq!(validator.validate(&value).is_ok(), schema_ok, "{field}");
+        let shape: Shape = serde_json::from_value(value).unwrap();
+        assert_eq!(shape.validate(&name).unwrap_err().code, code, "{field}");
+    }
+    let mut value = fixture();
+    value["tools"] = json!([tool.clone(), tool]);
+    let shape: Shape = serde_json::from_value(value).unwrap();
+    assert_eq!(shape.validate(&name).unwrap_err().code, "duplicate_tool");
+}
+
 // keeps: decision #278 — concrete contracts, additive wire and fixed host approval
 #[test]
 fn app_prefix_provider_hyphens_and_exact_name_boundary() {

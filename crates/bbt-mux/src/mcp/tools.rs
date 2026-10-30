@@ -18,7 +18,8 @@ use crate::index::{Document, GraphKind, Index};
 use crate::knowledge::{DataSource, data_source, views};
 use crate::registry::{Class, SeatRecord};
 
-pub(crate) fn catalogue(actor: &Actor) -> Value {
+/// `plugins` are the actor's entries from `plugin_tools::catalogue`.
+pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     let oracle = actor.role.class == Class::Oracle;
     let id = json!({"type":"string","pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"});
     let scope = if oracle {
@@ -77,6 +78,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Value {
     tools.extend(super::skills::catalogue());
     tools.push(super::recovery::catalogue());
     tools.push(super::diagnostics::catalogue());
+    tools.extend(plugins);
     for tool in &mut tools {
         tool["inputSchema"]["properties"]["op_id"] = json!({
             "type":"string",

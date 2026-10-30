@@ -542,3 +542,231 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         Some(libc::ESRCH)
     );
 }
+
+// keeps: G2 plugin seat tools — an enabled, checked plugin's contract methods
+// and declared tools reach seats by role, a seat call reaches the plugin, and
+// disable removes them and refuses a later call.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
+    let temp = tempfile::tempdir().unwrap();
+    let run = temp.path().join("run");
+    let repo = temp.path().join("repo");
+    let root = repo.join(".bboxy");
+    fs::create_dir_all(root.join("plugins")).unwrap();
+    let source = root.join("plugins/bboxy450-term-task_system-reference");
+    fs::write(
+        &source,
+        include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
+            .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"task_system\"", 1)
+            .replacen("TOOLS = False", "TOOLS = True", 1),
+    )
+    .unwrap();
+    fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+    let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
+    let logic = Logic::start_custodied_with_plugin_config(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository: repo,
+            ring: Default::default(),
+        },
+        account.key_store(),
+        HostConfig {
+            registry: RegistryConfig {
+                descriptor_timeout: Duration::from_secs(30),
+                conformance_timeout: Duration::from_secs(30),
+            },
+            provider: ProviderConfig {
+                timeout: Duration::from_secs(30),
+            },
+        },
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let swarm = Ulid::new();
+    let mut seats = Vec::new();
+    for oracle in [false, true] {
+        let mut seat = SeatRecord::new(Ulid::new(), swarm, "plugin tool seat", "zsh");
+        if oracle {
+            seat.role.class = Class::Oracle;
+            seat.role.name = "oracle".into();
+        }
+        assert_eq!(seat.role.class == Class::Oracle, oracle);
+        let mut launch = LaunchSpec::new("/bin/cat", temp.path());
+        launch.seat = seat.id;
+        launch.generation = seat.generation;
+        seats.push(seat.id);
+        logic.client.spawn(seat, launch).await.unwrap();
+    }
+    let (worker, oracle) = (seats[0], seats[1]);
+    let plugin_tools = |catalogue: &Value| -> Vec<String> {
+        let mut names: Vec<String> = catalogue["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|tool| tool["name"].as_str())
+            .filter(|name| name.starts_with("plugin_"))
+            .map(str::to_owned)
+            .collect();
+        names.sort();
+        names
+    };
+    let catalogue = |seat| {
+        let client = logic.client.clone();
+        async move { client.control_catalogue(seat, 1).await.unwrap() }
+    };
+    assert!(plugin_tools(&catalogue(oracle).await).is_empty());
+
+    let trusted = plugin(
+        &logic.client,
+        PluginRequest::Trust {
+            path: source.to_str().unwrap().into(),
+            sha256: None,
+        },
+    )
+    .await;
+    let candidate = trusted[0].candidate.id.clone();
+    let checked = plugin(
+        &logic.client,
+        PluginRequest::Check {
+            candidate: candidate.clone(),
+        },
+    )
+    .await;
+    assert!(checked[0].conformance.as_ref().unwrap().ok, "{checked:?}");
+    assert!(
+        plugin_tools(&catalogue(oracle).await).is_empty(),
+        "a checked but disabled plugin offered tools"
+    );
+    plugin(
+        &logic.client,
+        PluginRequest::Enable {
+            candidate: candidate.clone(),
+        },
+    )
+    .await;
+
+    // Signed transitions (delegate ... reject) require signed_record and stay
+    // with the host; declared tools follow their own role.
+    let worker_catalogue = catalogue(worker).await;
+    assert_eq!(
+        plugin_tools(&worker_catalogue),
+        [
+            "plugin_task_system_reference_changes_since",
+            "plugin_task_system_reference_list",
+            "plugin_task_system_reference_status",
+            "plugin_tool_reference_echo",
+        ]
+    );
+    let oracle_catalogue = catalogue(oracle).await;
+    assert_eq!(
+        plugin_tools(&oracle_catalogue),
+        [
+            "plugin_task_system_reference_changes_since",
+            "plugin_task_system_reference_list",
+            "plugin_task_system_reference_status",
+            "plugin_tool_reference_audit",
+            "plugin_tool_reference_echo",
+        ]
+    );
+    let echo = worker_catalogue["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == "plugin_tool_reference_echo")
+        .unwrap();
+    assert_eq!(echo["inputSchema"]["properties"]["text"]["type"], "string");
+    assert!(echo["inputSchema"]["properties"]["op_id"].is_object());
+    assert_eq!(echo["outputSchema"]["required"], json!(["result"]));
+    let orient = tool(&logic.client, worker, "orient", json!({})).await;
+    let mut oriented: Vec<String> = orient["structuredContent"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|tool| tool["name"].as_str().map(str::to_owned))
+        .filter(|name| name.starts_with("plugin_"))
+        .collect();
+    oriented.sort();
+    assert_eq!(oriented, plugin_tools(&worker_catalogue));
+
+    let echoed = tool(
+        &logic.client,
+        worker,
+        "plugin_tool_reference_echo",
+        json!({"text": "hi"}),
+    )
+    .await;
+    assert_eq!(echoed["isError"], false, "{echoed}");
+    assert_eq!(
+        echoed["structuredContent"]["result"],
+        json!({"tool": "tool_echo", "args": {"text": "hi"}})
+    );
+    let listed = tool(
+        &logic.client,
+        worker,
+        "plugin_task_system_reference_list",
+        json!({}),
+    )
+    .await;
+    assert_eq!(listed["isError"], false, "{listed}");
+    assert_eq!(
+        listed["structuredContent"]["result"]["items"][0]["path"],
+        "tasks/p0-fixture.md"
+    );
+    let code = |reply: &Value| reply["structuredContent"]["error"]["code"].clone();
+    let invalid = tool(
+        &logic.client,
+        worker,
+        "plugin_tool_reference_echo",
+        json!({"text": 7}),
+    )
+    .await;
+    assert_eq!(code(&invalid), "invalid_request", "{invalid}");
+    let host_field = tool(
+        &logic.client,
+        worker,
+        "plugin_task_system_reference_list",
+        json!({"root": "/elsewhere"}),
+    )
+    .await;
+    assert_eq!(code(&host_field), "host_field_in_arguments");
+    let audit = json!({"scope": "all"});
+    let refused = tool(
+        &logic.client,
+        worker,
+        "plugin_tool_reference_audit",
+        audit.clone(),
+    )
+    .await;
+    assert_eq!(
+        code(&refused),
+        "unknown_tool",
+        "an oracle tool served a worker"
+    );
+    let audited = tool(&logic.client, oracle, "plugin_tool_reference_audit", audit).await;
+    assert_eq!(audited["structuredContent"]["result"]["tool"], "tool_audit");
+
+    plugin(
+        &logic.client,
+        PluginRequest::Disable {
+            candidate: candidate.clone(),
+        },
+    )
+    .await;
+    assert!(plugin_tools(&catalogue(oracle).await).is_empty());
+    let after = tool(
+        &logic.client,
+        worker,
+        "plugin_tool_reference_echo",
+        json!({"text": "hi"}),
+    )
+    .await;
+    assert_eq!(
+        code(&after),
+        "unknown_tool",
+        "a disabled plugin served a call"
+    );
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
+}

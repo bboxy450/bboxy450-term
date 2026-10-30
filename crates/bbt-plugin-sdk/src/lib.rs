@@ -21,7 +21,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 pub use bbt_plugin::contracts::Contract;
-pub use bbt_plugin::shape::{Command, Shape, System};
+pub use bbt_plugin::policy::RoleClass;
+pub use bbt_plugin::shape::{Command, Shape, System, Tool};
 pub use bbt_plugin::skills::Skill;
 pub use runtime::{run, serve};
 use serde_json::{Map, Value, json};
@@ -175,6 +176,8 @@ pub struct Manifest {
     pub identity: Map<String, Value>,
     pub contracts: Vec<ContractSpec>,
     pub skills: Vec<Skill>,
+    /// Seat tools beyond the contracts, served as MCP tools `tool_<name>`.
+    pub tools: Vec<Tool>,
     /// Prefix of embedded skill resource URIs, e.g. `gitkb`.
     pub resource_scheme: String,
     pub signed_writer: bool,
@@ -193,6 +196,7 @@ impl Manifest {
             identity: Map::new(),
             contracts: Vec::new(),
             skills: Vec::new(),
+            tools: Vec::new(),
             resource_scheme: scheme,
             signed_writer: false,
             fixture_bootstrap: false,
@@ -229,6 +233,42 @@ impl Manifest {
     pub fn skill(mut self, skill: Skill) -> Self {
         self.skills.push(skill);
         self
+    }
+
+    /// Declare a seat tool. Seats call it as `plugin_tool_<provider>_<name>`;
+    /// the runtime routes it to [`Plugin::call_tool`]. `role` is
+    /// [`RoleClass::Worker`] (every seat) or [`RoleClass::Oracle`].
+    pub fn tool(
+        mut self,
+        name: &str,
+        description: &str,
+        input_schema: Value,
+        output_schema: Value,
+        role: RoleClass,
+    ) -> Self {
+        self.tools.push(Tool {
+            name: name.into(),
+            description: description.into(),
+            input_schema,
+            output_schema,
+            role,
+            timeout_ms: DEFAULT_TIMEOUT_MS,
+        });
+        self
+    }
+
+    /// Declare a non-default budget for one declared tool.
+    pub fn tool_timeout(mut self, name: &str, ms: u64) -> Self {
+        if let Some(tool) = self.tools.iter_mut().find(|t| t.name == name) {
+            tool.timeout_ms = ms;
+        }
+        self
+    }
+
+    /// The declared tool behind a `tool_<name>` wire name.
+    pub fn declared_tool(&self, wire: &str) -> Option<&Tool> {
+        let name = wire.strip_prefix("tool_")?;
+        self.tools.iter().find(|tool| tool.name == name)
     }
 
     pub fn identity(mut self, key: &str, value: impl Into<Value>) -> Self {
@@ -338,6 +378,9 @@ impl Manifest {
         if let Some(icon) = &self.icon {
             shape["icon"] = icon.clone().into();
         }
+        if !self.tools.is_empty() {
+            shape["tools"] = serde_json::to_value(&self.tools).unwrap_or(Value::Null);
+        }
         shape
     }
 
@@ -369,6 +412,16 @@ pub trait Plugin: Sized + 'static {
         args: Value,
         ctx: &Ctx,
     ) -> Result<Value, Refusal>;
+
+    /// Serve one declared seat tool (see [`Manifest::tool`]). `name` is the
+    /// declared name without the `tool_` prefix; `args` already passed the
+    /// host-field guard. The default refuses every name.
+    fn call_tool(&mut self, name: &str, _args: Value, _ctx: &Ctx) -> Result<Value, Refusal> {
+        Err(Refusal::new(
+            "unknown_tool",
+            format!("this plugin does not serve tool {name}"),
+        ))
+    }
 
     /// `health_command`; extend with plugin-specific facts.
     fn health(&mut self, _ctx: &Ctx) -> Result<Value, Refusal> {
@@ -439,6 +492,98 @@ mod tests {
             DEFAULT_TIMEOUT_MS
         );
         assert_eq!(m.tools().len(), 9);
+    }
+
+    #[test]
+    fn declared_tools_reach_the_shape_and_are_validated_by_the_host() {
+        let object = json!({"type": "object"});
+        let m = manifest()
+            .tool(
+                "summarize",
+                "Summarize",
+                object.clone(),
+                object.clone(),
+                RoleClass::Oracle,
+            )
+            .tool_timeout("summarize", 5_000);
+        m.validate().unwrap();
+        let shape = m.shape();
+        assert_eq!(shape["tools"][0]["name"], "summarize");
+        assert_eq!(shape["tools"][0]["role"], "oracle");
+        assert_eq!(shape["tools"][0]["timeout_ms"], 5_000);
+        assert_eq!(m.declared_tool("tool_summarize").unwrap().name, "summarize");
+        assert!(m.declared_tool("summarize").is_none());
+        assert!(
+            manifest().shape().get("tools").is_none(),
+            "absent when unused"
+        );
+        for (bad, code) in [
+            (
+                manifest().tool(
+                    "Bad-Name",
+                    "",
+                    object.clone(),
+                    object.clone(),
+                    RoleClass::Worker,
+                ),
+                "invalid_tool",
+            ),
+            (
+                manifest().tool("x", "", object.clone(), object.clone(), RoleClass::HostOnly),
+                "invalid_tool",
+            ),
+            (
+                manifest().tool(
+                    &"y".repeat(60),
+                    "",
+                    object.clone(),
+                    object.clone(),
+                    RoleClass::Worker,
+                ),
+                "tool_name_too_long",
+            ),
+            (
+                manifest().tool(
+                    "z",
+                    "",
+                    json!({"type": "string"}),
+                    object.clone(),
+                    RoleClass::Worker,
+                ),
+                "invalid_tool",
+            ),
+            (
+                manifest()
+                    .tool("w", "", object.clone(), object.clone(), RoleClass::Worker)
+                    .tool("w", "", object.clone(), object.clone(), RoleClass::Worker),
+                "duplicate_tool",
+            ),
+        ] {
+            assert_eq!(bad.validate().unwrap_err().code, code);
+        }
+    }
+
+    #[test]
+    fn call_tool_refuses_by_default() {
+        struct Bare;
+        impl Plugin for Bare {
+            fn manifest() -> Manifest {
+                manifest()
+            }
+            fn initialize(_: Init, _: &Ctx) -> Result<Self, Refusal> {
+                Ok(Bare)
+            }
+            fn call(&mut self, _: Contract, _: &str, _: Value, _: &Ctx) -> Result<Value, Refusal> {
+                Ok(Value::Null)
+            }
+        }
+        let ctx = Ctx::detached(Duration::from_secs(1));
+        assert_eq!(
+            Bare.call_tool("anything", json!({}), &ctx)
+                .unwrap_err()
+                .code,
+            "unknown_tool"
+        );
     }
 
     #[test]

@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 use crate::{
     Refusal,
     contracts::Contract,
-    policy::{Hook, Tier},
+    policy::{Hook, RoleClass, Tier},
     skills::{self, Skill},
 };
 
@@ -151,6 +151,84 @@ pub struct System {
     pub contract_version: String,
     pub commands: Vec<Command>,
 }
+/// Most declared seat tools in one descriptor.
+pub const MAX_TOOLS: usize = 32;
+
+/// A plugin-declared seat tool beyond its contracts. Seats see it as
+/// `plugin_tool_<provider>_<name>`; the host calls the plugin's MCP tool
+/// `tool_<name>`. Role is worker or oracle; host-only tools do not exist.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Tool {
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    pub input_schema: Value,
+    pub output_schema: Value,
+    pub role: RoleClass,
+    pub timeout_ms: u64,
+}
+impl Tool {
+    /// The plugin-side MCP tool name.
+    pub fn wire_name(&self) -> String {
+        format!("tool_{}", self.name)
+    }
+    /// The seat-facing name; refused rather than shortened when too long.
+    pub fn seat_name(&self, plugin: &PluginName) -> Result<String, Refusal> {
+        let name = format!("plugin_tool_{}_{}", plugin.provider, self.name);
+        if name.len() > MAX_TOOL_NAME_BYTES {
+            return Err(Refusal::new(
+                "tool_name_too_long",
+                format!("{name} exceeds {MAX_TOOL_NAME_BYTES} bytes"),
+            ));
+        }
+        Ok(name)
+    }
+    fn validate(&self, plugin: &PluginName) -> Result<(), Refusal> {
+        let invalid = |message: String| Refusal::new("invalid_tool", message);
+        if self.name.is_empty()
+            || !self
+                .name
+                .bytes()
+                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+        {
+            return Err(invalid(format!("{:?} must match [a-z0-9_]+", self.name)));
+        }
+        self.seat_name(plugin)?;
+        if self.description.len() > 4096 {
+            return Err(invalid(format!(
+                "{} description exceeds 4096 bytes",
+                self.name
+            )));
+        }
+        if self.timeout_ms == 0 {
+            return Err(Refusal::new("invalid_timeout", &self.name));
+        }
+        if self.role == RoleClass::HostOnly {
+            return Err(invalid(format!(
+                "{} role must be worker or oracle",
+                self.name
+            )));
+        }
+        if self.input_schema["type"] != "object" {
+            return Err(invalid(format!(
+                "{} input_schema must describe an object",
+                self.name
+            )));
+        }
+        for schema in [&self.input_schema, &self.output_schema] {
+            if !schema.is_object() || schema.to_string().len() > 64 * 1024 {
+                return Err(invalid(format!(
+                    "{} schemas must be objects within 64 KiB",
+                    self.name
+                )));
+            }
+            jsonschema::validator_for(schema)
+                .map_err(|e| invalid(format!("{} schema does not compile: {e}", self.name)))?;
+        }
+        Ok(())
+    }
+}
+
 /// Setup remains the later registry/login cut; a checker never calls login.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Auth {
@@ -191,6 +269,9 @@ pub struct Shape {
     pub concurrent: bool,
     #[serde(default)]
     pub trace: bool,
+    /// Optional seat tools beyond the contract methods.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tools: Vec<Tool>,
 }
 
 impl Shape {
@@ -254,6 +335,19 @@ impl Shape {
                 "filename_contract_mismatch",
                 "the named system is absent from the descriptor",
             ));
+        }
+        if self.tools.len() > MAX_TOOLS {
+            return Err(Refusal::new(
+                "invalid_tool",
+                format!("at most {MAX_TOOLS} declared tools"),
+            ));
+        }
+        let mut tools = BTreeSet::new();
+        for tool in &self.tools {
+            tool.validate(name)?;
+            if !tools.insert(tool.name.as_str()) {
+                return Err(Refusal::new("duplicate_tool", &tool.name));
+            }
         }
         for hook in &self.hooks {
             hook.validate()?;

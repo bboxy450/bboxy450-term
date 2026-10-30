@@ -281,7 +281,7 @@ impl<P: Plugin> Worker<P> {
     }
 
     fn tools(&self) -> Value {
-        let tools: Vec<Value> = self
+        let mut tools: Vec<Value> = self
             .manifest
             .tools()
             .into_iter()
@@ -294,6 +294,14 @@ impl<P: Plugin> Worker<P> {
                 })
             })
             .collect();
+        tools.extend(self.manifest.tools.iter().map(|tool| {
+            json!({
+                "name": tool.wire_name(),
+                "description": tool.description,
+                "inputSchema": tool.input_schema,
+                "outputSchema": tool.output_schema,
+            })
+        }));
         json!({ "tools": tools })
     }
 
@@ -319,6 +327,10 @@ impl<P: Plugin> Worker<P> {
         let plugin = self.plugin.as_mut().expect("bound");
         let result = if name == "health" {
             plugin.health(&Ctx::new(cancelled, budget(crate::DEFAULT_TIMEOUT_MS)))?
+        } else if let Some(tool) = self.manifest.declared_tool(name) {
+            let ctx = Ctx::new(cancelled, budget(tool.timeout_ms));
+            let declared = tool.name.clone();
+            plugin.call_tool(&declared, args, &ctx)?
         } else {
             let (contract, method) = self
                 .manifest
@@ -396,6 +408,19 @@ mod tests {
                     description: "Echo skill".into(),
                     content: "# Echo\n".into(),
                 })
+                .tool(
+                    "echo",
+                    "Echo the arguments",
+                    json!({"type":"object","properties":{"text":{"type":"string"}}}),
+                    json!({"type":"object"}),
+                    crate::RoleClass::Worker,
+                )
+        }
+        fn call_tool(&mut self, name: &str, args: Value, ctx: &Ctx) -> Result<Value, Refusal> {
+            assert_eq!(name, "echo");
+            Ok(
+                json!({"echo": args, "root": self.root, "remaining": ctx.remaining() > Duration::ZERO}),
+            )
         }
         fn initialize(init: Init, _ctx: &Ctx) -> Result<Self, Refusal> {
             let root = init
@@ -464,6 +489,12 @@ mod tests {
             call(6, "repo_graph_describe", json!({"root": "/elsewhere"})),
             call(7, "repo_graph_describe", json!({"panic": true})),
         ]);
+        let declared = session(&[
+            json!({"jsonrpc":"2.0","id":2,"method":"initialize","params":{"root":"/r"}}),
+            call(13, "tool_echo", json!({"text": "hi"})),
+            call(14, "tool_unknown", json!({})),
+            call(15, "tool_echo", json!({"root": "/elsewhere"})),
+        ]);
         // At most MAX_PENDING requests are admitted at once; a second session
         // keeps every request below that bound.
         let more = session(&[
@@ -477,6 +508,7 @@ mod tests {
         let replies: Vec<Value> = replies
             .into_iter()
             .chain(more.into_iter().filter(|r| r["id"] != 2))
+            .chain(declared.into_iter().filter(|r| r["id"] != 2))
             .collect();
         let by_id = |id: u64| replies.iter().find(|r| r["id"] == id).unwrap().clone();
         assert_eq!(
@@ -487,7 +519,25 @@ mod tests {
             by_id(2)["result"]["capabilities"]["experimental"]["bboxy450"]["contracts"]["repo_graph"],
             "1.0"
         );
-        assert_eq!(by_id(3)["result"]["tools"].as_array().unwrap().len(), 2);
+        let listed = by_id(3)["result"]["tools"].as_array().unwrap().clone();
+        assert_eq!(listed.len(), 3);
+        assert_eq!(listed[2]["name"], "tool_echo");
+        assert_eq!(
+            listed[2]["inputSchema"]["properties"]["text"]["type"],
+            "string"
+        );
+        let echoed = by_id(13)["result"]["structuredContent"].clone();
+        assert_eq!(echoed["echo"], json!({"text": "hi"}));
+        assert_eq!(echoed["root"], "/r");
+        assert_eq!(echoed["remaining"], true);
+        assert_eq!(
+            by_id(14)["result"]["structuredContent"]["code"],
+            "unknown_method"
+        );
+        assert_eq!(
+            by_id(15)["result"]["structuredContent"]["code"],
+            "host_field_in_arguments"
+        );
         let ok = by_id(4)["result"].clone();
         assert_eq!(ok["isError"], false);
         assert_eq!(ok["structuredContent"]["root"], "/r");

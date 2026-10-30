@@ -12,6 +12,7 @@ pub(crate) mod diagnostics;
 pub(crate) mod journal;
 pub(crate) mod knowledge;
 pub(crate) mod messaging;
+pub(crate) mod plugin_tools;
 pub(crate) mod recovery;
 pub(crate) mod seats;
 pub(crate) mod skills;
