@@ -240,9 +240,9 @@ pub fn sidebar_cards(hosts: &[GuiHost]) -> Vec<SwarmCard> {
             key: format!("providers/{name}"),
             name: name.into(),
             color: bbt_ui_model::draw::Color::hex(if cloud {
-                TOKENS.color.dark.accent
+                TOKENS.color.section.cloud
             } else {
-                "#374151"
+                TOKENS.color.section.hosts
             })
             .0,
             seats,

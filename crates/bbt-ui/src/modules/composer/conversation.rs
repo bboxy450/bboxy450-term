@@ -168,7 +168,7 @@ impl Conversation {
         let tasks = Accordion {
             key: "conversation/task-section",
             title: "Tasks",
-            color: ctx.swarm,
+            color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.tasks).0,
             count: task_count,
             open: open[0],
         }
@@ -176,7 +176,7 @@ impl Conversation {
         let chat = Accordion {
             key: "conversation/chat-section",
             title: "Chat",
-            color: ctx.swarm,
+            color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.chat).0,
             count: chat_count,
             open: open[1],
         }

@@ -157,6 +157,7 @@ help:
 	  'make release                    Signed app ZIP, SHA256 and detached GPG signature' \
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
 	  'make sync-release-inputs         Refresh packaged copies of canonical build inputs' \
+	  'make sync-tokens                 Regenerate canonical web design tokens and release inputs' \
 	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies' \
 	  'make sync-source-notices         Attach scoped source comments; preserve upstream files' \
 	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
@@ -548,6 +549,11 @@ release: bundle
 .PHONY: sync-release-inputs
 sync-release-inputs:
 	@python3 -I scripts/release-inputs.py --sync
+
+.PHONY: sync-tokens
+sync-tokens:
+	@python3 -I lab/web/gen-tokens.py
+	@$(MAKE) sync-release-inputs
 
 .PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures test-license-integration check-license-packages
 sync-licenses:
@@ -1338,12 +1344,13 @@ test-text-selection-e2e:
 .PHONY: test-sidebar-panels check-sidebar-panels
 test-sidebar-panels:
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test sidebar_tasks --test swarms; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache
 
 check-sidebar-panels:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-sidebar-panels-e2e
 test-sidebar-panels-e2e:

@@ -73,6 +73,12 @@ dm = "#FF4FA3"
 channel = "#F2D16B"
 cloud = "#58D7FF"
 
+[color.section]               # stable utility identities, independent of swarm/seat hues
+hosts = "#187D78"             # teal: machines and infrastructure
+cloud = "#236CB8"             # azure: remote/cloud destinations
+tasks = "#8254BD"             # violet: planned work (the task subject family)
+chat = "#C23E74"              # rose: conversations (the DM subject family)
+
 [seat_color]
 # hash(seat key) -> hue index, then lightness band. 36 hues x 2 bands = 72 distinct seat colours per theme.
 saturation = 72

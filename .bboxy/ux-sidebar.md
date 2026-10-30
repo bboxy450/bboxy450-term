@@ -4,7 +4,7 @@ type: "note"
 number: 65
 title: "UX: the left sidebar — operator constraints"
 created: "2026-10-21T18:53:32Z"
-updated: "2026-10-30T03:07:34Z"
+updated: "2026-10-30T04:18:32Z"
 ---
 # UX: the left sidebar — operator constraints
 
@@ -41,3 +41,5 @@ Owner: Vesper Greywind <ORACLE>. Source: operator critique of iTerm2 on 2026-10-
 ## Utility accordions (operator, 2026-10-29)
 
 Order: swarms, + new swarm, SSH Hosts, Cloud, Tasks, Chat last. Tasks and Chat share the swarm card chrome and independent saved folding. Closing them leaves the focused stage, running harnesses and in-memory draft intact. Existing per-section scrolling/resizing remains available when expanded.
+
+Utility identities use fixed jewel tones from `color.section`: Hosts teal (machines), Cloud azure (remote destinations), Tasks violet (work), Chat rose (conversation). Native and web cards share the same token values in light and dark themes. Utility colors do not inherit the selected swarm's identity or encode its activity; status marks retain their own meaning.

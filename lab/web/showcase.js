@@ -519,7 +519,7 @@
       if (!hosts.length) continue;
       const key = 'providers/' + title;
       const body = el('div', {}, ...hosts.map(host => el('div', { class: 'tab-row' }, C.harnessIcon(kind), el('span', { class: 'tname' }, host))));
-      destinations.append(C.utilityAccordion(title, { key, color: kind === 'ssh' ? '#374151' : 'var(--accent)', count: hosts.length, open: !utilityClosed.has(key), body,
+      destinations.append(C.utilityAccordion(title, { key, color: T.color.section[kind === 'ssh' ? 'hosts' : 'cloud'], count: hosts.length, open: !utilityClosed.has(key), body,
         onToggle: () => { utilityClosed.has(key) ? utilityClosed.delete(key) : utilityClosed.add(key); render(); } }));
     }
     sb.append(el('div', { class: 'utility-dock', id: 'stream' }));
@@ -684,7 +684,7 @@
     for (const m of items) chatBody.append(C.messageRow(m));
     for (const [title, body, count] of [['Tasks', taskBody, (sp.epics || []).reduce((n, ep) => n + ep.items.length, 0)], ['Chat', chatBody, stream.length]]) {
       const key = 'panels/' + title;
-      dock.append(C.utilityAccordion(title, { key, color: C.seatColor(sp), count, open: !utilityClosed.has(key), body,
+      dock.append(C.utilityAccordion(title, { key, color: T.color.section[title.toLowerCase()], count, open: !utilityClosed.has(key), body,
         onToggle: () => { utilityClosed.has(key) ? utilityClosed.delete(key) : utilityClosed.add(key); drawStream(); } }));
     }
   }

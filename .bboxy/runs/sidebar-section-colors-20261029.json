@@ -1,0 +1,47 @@
+{
+  "role": "Executor",
+  "request": "Differentiate Hosts, Cloud, Tasks and Chat with meaningful stable colors.",
+  "palette": {
+    "Hosts": {
+      "color": "#187D78",
+      "meaning": "teal / machines"
+    },
+    "Cloud": {
+      "color": "#236CB8",
+      "meaning": "azure / remote destinations"
+    },
+    "Tasks": {
+      "color": "#8254BD",
+      "meaning": "violet / work"
+    },
+    "Chat": {
+      "color": "#C23E74",
+      "meaning": "rose / conversation"
+    }
+  },
+  "mechanism": "Canonical color.section tokens are generated for native and web; bodies, header chrome and state markers retain existing behavior.",
+  "checks": [
+    {
+      "command": "make sync-tokens",
+      "exit": 0
+    },
+    {
+      "command": "node --check lab/web/showcase.js",
+      "exit": 0
+    },
+    {
+      "command": "make test-sidebar-panels check-sidebar-panels test-sidebar-panels-e2e",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/sidebar-colors-20261029.log"
+    }
+  ],
+  "visual_evidence": [
+    "target/sidebar-panels/accordions-open-tasks-chat-last.png",
+    "target/sidebar-panels/dark-tasks-expanded.png"
+  ],
+  "pending": [
+    "Final source-bound formal/parity checks and signed installation.",
+    "Broader UI/protocol/document/book/app/ctl regression run.",
+    "Normal main CI requires 10 GiB free disk; no gate bypass."
+  ]
+}

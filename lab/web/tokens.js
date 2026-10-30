@@ -41,6 +41,12 @@ window.TOKENS = {
       "oracle": "#FFC53D",
       "unsigned": "#6B7190"
     },
+    "section": {
+      "chat": "#C23E74",
+      "cloud": "#236CB8",
+      "hosts": "#187D78",
+      "tasks": "#8254BD"
+    },
     "state": {
       "errored": "#FF4D5E",
       "idle": "#6B7190",
