@@ -31,6 +31,7 @@
 //!
 //! Modelled by `PluginHook` in verification/contracts.toml.
 use super::*;
+use crate::adapters::hook::{Gate, GateEntry, GatePolicy};
 use crate::bus::{Ack, BusHandle, Consumer, Delivery, Start};
 use crate::store::events::Draft;
 use bbt_plugin::policy::{FailurePolicy, Hook, Phase, subject_matches};
@@ -165,6 +166,8 @@ pub(super) struct Hooks {
     bus: StdMutex<Option<BusHandle>>,
     /// Advanced on every resubscription; an older bus task then exits.
     bus_epoch: AtomicU64,
+    /// Seat gate files this root keeps current, and the gate last written.
+    gates: StdMutex<(BTreeSet<std::path::PathBuf>, Gate)>,
 }
 
 impl Hooks {
@@ -178,6 +181,7 @@ impl Hooks {
                 dropped: AtomicU64::new(0),
                 bus: StdMutex::default(),
                 bus_epoch: AtomicU64::new(0),
+                gates: StdMutex::default(),
             },
             receiver,
         )
@@ -209,10 +213,42 @@ impl PluginHost {
     }
 
     pub(super) fn set_subscriptions(&self, subscriptions: Vec<Subscription>) {
+        let gate = gate(&subscriptions);
         if let Ok(mut held) = self.0.hooks.subscriptions.lock() {
             *held = Arc::new(subscriptions);
         }
         self.resubscribe_bus();
+        if let Ok(mut gates) = self.0.hooks.gates.lock()
+            && gates.1 != gate
+        {
+            for path in &gates.0 {
+                write_gate(path, &gate);
+            }
+            gates.1 = gate;
+        }
+    }
+
+    /// Keep `path` (a seat's `hook-gate.json`) listing the harness events a
+    /// blocking `before` subscription of this root decides, so that seat's
+    /// hook shim waits for [`PluginHost::decide`] only for those events.
+    /// Idempotent; writes only on first registration and on change.
+    pub fn gate_seat(&self, path: std::path::PathBuf) {
+        if let Ok(mut gates) = self.0.hooks.gates.lock()
+            && !gates.0.contains(&path)
+        {
+            write_gate(&path, &gates.1);
+            gates.0.insert(path);
+        }
+    }
+
+    /// The events this root's blocking subscriptions decide.
+    pub fn gate(&self) -> Gate {
+        self.0
+            .hooks
+            .gates
+            .lock()
+            .map(|gates| gates.1.clone())
+            .unwrap_or_default()
     }
 
     fn matching(&self, event: &HookEvent) -> Vec<Subscription> {
@@ -491,5 +527,76 @@ impl PluginHost {
             bus.take();
         }
         self.0.hooks.bus_epoch.fetch_add(1, Ordering::SeqCst);
+        // A closed root decides nothing: its seats return to the fast path.
+        if let Ok(mut gates) = self.0.hooks.gates.lock() {
+            let (paths, _) = std::mem::take(&mut *gates);
+            for path in paths {
+                write_gate(&path, &Gate::default());
+            }
+        }
+    }
+}
+
+/// Every harness spelling of each event a blocking `before` subscription
+/// decides, with the strictest failure policy and the smallest ceiling.
+fn gate(subscriptions: &[Subscription]) -> Gate {
+    let mut gate = Gate::default();
+    for subscription in subscriptions {
+        let (Some(policy), Ok(ceiling_ms)) =
+            (subscription.blocks(), subscription.hook.ceiling_ms())
+        else {
+            continue;
+        };
+        let policy = match policy {
+            FailurePolicy::FailOpen => GatePolicy::FailOpen,
+            FailurePolicy::FailClosed => GatePolicy::FailClosed,
+        };
+        for name in crate::adapters::hook::EVENTS {
+            if subscription.hook.matches_event(name) {
+                let entry = gate
+                    .events
+                    .entry(name.into())
+                    .or_insert(GateEntry { policy, ceiling_ms });
+                if policy == GatePolicy::FailClosed {
+                    entry.policy = policy;
+                }
+                entry.ceiling_ms = entry.ceiling_ms.min(ceiling_ms);
+            }
+        }
+    }
+    gate
+}
+
+/// Replace `path` atomically with `gate`, or remove it when nothing blocks.
+/// A missing seat directory is skipped: that seat has no shim to gate.
+fn write_gate(path: &std::path::Path, gate: &Gate) {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    if gate.events.is_empty() {
+        if let Err(error) = std::fs::remove_file(path)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            failure("hook_gate_unwritable", error);
+        }
+        return;
+    }
+    if !path.parent().is_some_and(std::path::Path::is_dir) {
+        return;
+    }
+    let temporary = path.with_extension("json.tmp");
+    let written = serde_json::to_vec(gate)
+        .map_err(std::io::Error::other)
+        .and_then(|bytes| {
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(&temporary)?;
+            file.write_all(&bytes)?;
+            std::fs::rename(&temporary, path)
+        });
+    if let Err(error) = written {
+        failure("hook_gate_unwritable", error);
     }
 }

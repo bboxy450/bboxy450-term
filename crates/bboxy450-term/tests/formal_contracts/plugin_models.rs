@@ -10,7 +10,7 @@
 use super::*;
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 3] = [plugin_connection, plugin_hook, plugin_host_api];
+    let families: [fn(bool) -> Model; 4] = [plugin_connection, plugin_hook, plugin_host_api, plugin_hook_gate];
     families
         .into_iter()
         .flat_map(|family| {
@@ -381,6 +381,164 @@ fn plugin_host_api(b: bool) -> Model {
     // re-trust are not.
     for fair in [vec![1], vec![2], vec![3, 4], vec![5], vec![6]] {
         m.weak_fair.push(fair);
+    }
+    m
+}
+
+// The hook shim's wait for a plugin decision (adapters/hook.rs, seat_socket
+// HookDecide). The host's gate file lags the real blocking subscriptions; the
+// shim waits only when the gate lists the event, at most three ticks (the
+// ceiling minus a margin), while the host decides by tick two. The host may
+// be lost at any point. One tick advances the shim's and the host's clocks.
+fn plugin_hook_gate(b: bool) -> Model {
+    let mut m = model(
+        "PluginHookGate",
+        b,
+        &[
+            ("blocking", 1, 0),
+            ("gate", 1, 0),
+            ("shim", 3, 0),
+            ("clock", 3, 0),
+            ("host", 3, 0),
+            ("reply", 2, 0),
+            ("plugin", 2, 0),
+            ("fail_closed", 1, 0),
+            ("exit", 2, 0),
+        ],
+    );
+    // Enable/disable or re-trust changes the blocking subscriptions; the
+    // host rewrites the gate file afterwards.
+    action(&mut m, "GrantBlock", eq(0, 0), &[(0, Int(1))]);
+    action(&mut m, "RevokeBlock", eq(0, 1), &[(0, Int(0))]);
+    action(
+        &mut m,
+        "WriteGate",
+        Var(1).eq(Var(0)).negate(),
+        &[(1, Var(0))],
+    );
+    action(
+        &mut m,
+        "ChooseFailClosed",
+        all([eq(2, 0), eq(7, 0)]),
+        &[(7, Int(1))],
+    );
+    // Not listed: the unchanged fire-and-forget path, never a veto.
+    action(
+        &mut m,
+        "ShimFastPath",
+        all([eq(2, 0), eq(1, 0)]),
+        &[(2, Int(3)), (8, Int(1))],
+    );
+    action(
+        &mut m,
+        "ShimAsks",
+        all([eq(2, 0), eq(1, 1)]),
+        &[(2, Int(2)), (4, Int(1))],
+    );
+    action(
+        &mut m,
+        "HostNoBlocker",
+        all([eq(4, 1), eq(0, 0)]),
+        &[(4, Int(2)), (5, Int(1))],
+    );
+    action(
+        &mut m,
+        "PluginAllows",
+        all([eq(4, 1), eq(0, 1), eq(6, 0)]),
+        &[(6, Int(1))],
+    );
+    action(
+        &mut m,
+        "PluginDenies",
+        all([eq(4, 1), eq(0, 1), eq(6, 0)]),
+        &[(6, Int(2))],
+    );
+    action(
+        &mut m,
+        "HostAccepts",
+        all([eq(4, 1), ne(6, 0), Var(3).lt(Int(2))]),
+        &[(4, Int(2)), (5, Var(6))],
+    );
+    let host_late = all([eq(4, 1), Var(3).lt(Int(2)).negate()]);
+    action(
+        &mut m,
+        "HostTimeoutFailsOpen",
+        all([host_late.clone(), eq(7, 0)]),
+        &[(4, Int(2)), (5, Int(1))],
+    );
+    action(
+        &mut m,
+        "HostTimeoutFailsClosed",
+        all([host_late, eq(7, 1)]),
+        &[(4, Int(2)), (5, Int(2))],
+    );
+    action(
+        &mut m,
+        "HostLost",
+        all([eq(2, 2), eq(4, 1).or(eq(4, 2))]),
+        &[(4, Int(3))],
+    );
+    action(
+        &mut m,
+        "Tick",
+        all([eq(2, 2), Var(3).lt(Int(3))]),
+        &[(3, Var(3).plus(Int(1)))],
+    );
+    action(
+        &mut m,
+        "ShimReceives",
+        all([eq(2, 2), eq(4, 2)]),
+        &[(2, Int(3)), (8, Var(5))],
+    );
+    // The broken control waits for the reply without a bound.
+    if !b {
+        let expired = all([eq(2, 2), eq(3, 3), ne(4, 2)]);
+        action(
+            &mut m,
+            "ShimTimeoutFailsOpen",
+            all([expired.clone(), eq(7, 0)]),
+            &[(2, Int(3)), (8, Int(1))],
+        );
+        action(
+            &mut m,
+            "ShimTimeoutFailsClosed",
+            all([expired, eq(7, 1)]),
+            &[(2, Int(3)), (8, Int(2))],
+        );
+    }
+    safe(
+        &mut m,
+        "DenyOnlyByPluginOrPolicy",
+        implies(eq(8, 2), eq(6, 2).or(eq(7, 1))),
+    );
+    safe(&mut m, "FastPathNeverVetoes", implies(eq(4, 0), ne(8, 2)));
+    safe(&mut m, "FastPathNeverWaits", implies(eq(4, 0), eq(3, 0)));
+    m.responses.push(Response {
+        name: "ShimAlwaysAnswers".into(),
+        request: eq(2, 2),
+        response: eq(2, 3),
+    });
+    // Time, the host and the shim progress; grants, loss and plugin replies do not.
+    let mut fair = vec![];
+    for (index, action) in m.actions.iter().enumerate() {
+        if [
+            "WriteGate",
+            "HostNoBlocker",
+            "HostAccepts",
+            "HostTimeoutFailsOpen",
+            "HostTimeoutFailsClosed",
+            "Tick",
+            "ShimReceives",
+            "ShimTimeoutFailsOpen",
+            "ShimTimeoutFailsClosed",
+        ]
+        .contains(&action.name.as_str())
+        {
+            fair.push(index);
+        }
+    }
+    for index in fair {
+        m.weak_fair.push(vec![index]);
     }
     m
 }

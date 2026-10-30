@@ -9806,7 +9806,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map_err(|error| error as Box<dyn std::error::Error>);
     }
     if hook_args.first().is_some_and(|arg| arg == "hook") {
-        bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
+        let code = bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
+        if code != 0 {
+            std::process::exit(code);
+        }
         return Ok(());
     }
     if hook_args.first().is_some_and(|arg| arg == "mcp") {

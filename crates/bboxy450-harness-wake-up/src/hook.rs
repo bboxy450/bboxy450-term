@@ -117,38 +117,118 @@ pub fn osc(seat: Ulid, event: &ShimEvent) -> Result<Option<Vec<u8>>> {
     .into_bytes();
     Ok((bytes.len() <= MAX_OSC).then_some(bytes))
 }
+/// Every hook event name the shim recognizes, as the harnesses spell them.
+pub const EVENTS: [&str; 27] = [
+    "SessionStart",
+    "SessionEnd",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PermissionRequest",
+    "Notification",
+    "Stop",
+    "StopFailure",
+    "SubagentStart",
+    "SubagentStop",
+    "PreCompact",
+    "PostCompact",
+    "session_start",
+    "session_end",
+    "user_prompt_submit",
+    "pre_tool_use",
+    "post_tool_use",
+    "stop",
+    "subagent_start",
+    "subagent_stop",
+    "pre_compact",
+    "post_compact",
+    "agent-turn-complete",
+    "approval-requested",
+    "async-question",
+    "plan-mode-prompt",
+];
 /// Return whether this event name belongs to a supported hook vocabulary.
 pub fn known(event: &str) -> bool {
-    matches!(
-        event,
-        "SessionStart"
-            | "SessionEnd"
-            | "UserPromptSubmit"
-            | "PreToolUse"
-            | "PostToolUse"
-            | "PermissionRequest"
-            | "Notification"
-            | "Stop"
-            | "StopFailure"
-            | "SubagentStart"
-            | "SubagentStop"
-            | "PreCompact"
-            | "PostCompact"
-            | "session_start"
-            | "session_end"
-            | "user_prompt_submit"
-            | "pre_tool_use"
-            | "post_tool_use"
-            | "stop"
-            | "subagent_start"
-            | "subagent_stop"
-            | "pre_compact"
-            | "post_compact"
-            | "agent-turn-complete"
-            | "approval-requested"
-            | "async-question"
-            | "plan-mode-prompt"
-    )
+    EVENTS.contains(&event)
+}
+
+/// The per-seat file in which the host lists the events a blocking plugin
+/// decides: `<BBOXY_RUN_DIR>/seat-<seat>/hook-gate.json`. Absent means no
+/// event waits, and the shim keeps its 50 ms fire-and-forget path.
+pub const GATE_FILE: &str = "hook-gate.json";
+/// The shim stops waiting this long before the event's hook ceiling.
+pub const GATE_MARGIN: Duration = Duration::from_millis(250);
+/// The host decides this long before the shim stops waiting, so its reply
+/// (and the grant's failure policy) arrives in time.
+pub const REPLY_MARGIN: Duration = Duration::from_millis(100);
+/// No gate entry may make the shim wait longer than the largest hook ceiling.
+pub const MAX_GATE_WAIT: Duration = Duration::from_millis(5_000);
+const MAX_GATE_BYTES: u64 = 64 * 1024;
+
+/// What happens when the host's decision does not arrive in time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GatePolicy {
+    /// Allow the event.
+    FailOpen,
+    /// Deny the event.
+    FailClosed,
+}
+/// One gated event: the strictest failure policy among its blocking plugins
+/// and the smallest hook ceiling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GateEntry {
+    /// Applied when no decision arrives before the wait bound.
+    pub policy: GatePolicy,
+    /// The event's hook ceiling; the shim waits this minus [`GATE_MARGIN`].
+    pub ceiling_ms: u64,
+}
+/// The host-written gate: event name (every harness spelling) to entry.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Gate {
+    /// Gated events by name.
+    pub events: std::collections::BTreeMap<String, GateEntry>,
+}
+/// The gate file of `seat` under the host's run directory.
+pub fn gate_path(run_dir: &std::path::Path, seat: Ulid) -> std::path::PathBuf {
+    run_dir.join(format!("seat-{seat}")).join(GATE_FILE)
+}
+/// Whether `agent` documents a veto for `event` that this shim encodes as
+/// exit code 2 with the reason on stderr: Claude Code for `PreToolUse`,
+/// `UserPromptSubmit` and `PermissionRequest`
+/// (<https://code.claude.com/docs/en/hooks#exit-code-2-behavior-per-event>),
+/// Codex for `PreToolUse` and `UserPromptSubmit`
+/// (<https://developers.openai.com/codex/hooks>). Codex's notify program and
+/// every other event have no deny mechanism, so they never wait.
+pub fn vetoable(agent: &str, event: &str) -> bool {
+    match agent {
+        "claude" => matches!(
+            event,
+            "PreToolUse" | "UserPromptSubmit" | "PermissionRequest"
+        ),
+        "codex" => matches!(event, "PreToolUse" | "UserPromptSubmit"),
+        _ => false,
+    }
+}
+/// The host's answer to a gated event.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Decision {
+    /// Exit 0.
+    Allow,
+    /// Exit 2 with this reason on stderr.
+    Deny(String),
+}
+/// The gate entry for this event, when the host lists it and the harness can veto.
+fn gated(agent: &str, event: &str, seat: Ulid) -> Option<GateEntry> {
+    if !vetoable(agent, event) {
+        return None;
+    }
+    let run = std::env::var_os("BBOXY_RUN_DIR")?;
+    let file = std::fs::File::open(gate_path(std::path::Path::new(&run), seat)).ok()?;
+    let mut bytes = Vec::new();
+    file.take(MAX_GATE_BYTES).read_to_end(&mut bytes).ok()?;
+    let gate: Gate = serde_json::from_slice(&bytes).ok()?;
+    gate.events.get(event).copied()
 }
 pub(crate) fn parse(
     session: &mut Session,
@@ -394,7 +474,10 @@ fn write_deadline(stream: &mut (impl Write + AsRawFd), bytes: &[u8], until: Inst
 }
 /// Returns quietly even for malformed/unavailable hooks. It is called before
 /// UI/runtime setup by the single binary's private `hook` dispatch.
-pub fn run_cli(args: &[String], sink: &impl HookSink) {
+///
+/// Returns the process exit code: 0, or 2 after writing a plugin's veto
+/// reason to stderr (the documented deny of [`vetoable`] events).
+pub fn run_cli(args: &[String], sink: &impl HookSink) -> i32 {
     // `hook --list codex`: the hooks a Codex seat's launch overlay installs, one JSON line
     // each, for the hook-review recipe (#270). A harness never passes --list.
     if args.first().is_some_and(|a| a == "--list") {
@@ -412,11 +495,21 @@ pub fn run_cli(args: &[String], sink: &impl HookSink) {
                 );
             }
         }
-        return;
+        return 0;
     }
     let started = Instant::now();
-    if let Err(error) = run(args, sink) {
-        sink.failed(args, &error.to_string(), started.elapsed());
+    match run(args, sink) {
+        Ok(Decision::Allow) => 0,
+        Ok(Decision::Deny(reason)) => {
+            // Claude Code and Codex show stderr as the reason for exit code 2.
+            let mut stderr = std::io::stderr();
+            let _ = writeln!(stderr, "{reason}");
+            2
+        }
+        Err(error) => {
+            sink.failed(args, &error.to_string(), started.elapsed());
+            0
+        }
     }
 }
 /// The caller authenticates and encodes its own fallback wire. The shared 50 ms
@@ -429,8 +522,24 @@ pub trait HookSink {
     /// # Errors
     /// Returns the caller transport's deadline, admission or delivery failure.
     fn send(&self, seat: Ulid, event: ShimEvent, until: Instant) -> Result<()>;
+    /// Deliver a gated hook and wait for the host's decision until `until`;
+    /// the host must decide by `decide_by`. Only called for an event the
+    /// host's gate file lists.
+    ///
+    /// # Errors
+    /// Returns transport, deadline or refusal failures; the shim then applies
+    /// the gate's failure policy.
+    fn decide(
+        &self,
+        _seat: Ulid,
+        _event: ShimEvent,
+        _decide_by: Duration,
+        _until: Instant,
+    ) -> Result<Decision> {
+        Err(invalid("hook decisions are not supported by this sink"))
+    }
 }
-fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
+fn run(args: &[String], sink: &impl HookSink) -> Result<Decision> {
     let until = Instant::now() + Duration::from_millis(50);
     let agent = args
         .windows(2)
@@ -492,6 +601,27 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
         }
     }
     let seat = std::env::var("BBOXY_SEAT_ID")?.parse::<Ulid>()?;
+    // A blocking plugin decides this event: wait for the host's answer over
+    // the socket, never longer than the hook ceiling minus a margin.
+    if let Some(entry) = gated(agent, &event.event, seat) {
+        let wait = Duration::from_millis(entry.ceiling_ms)
+            .min(MAX_GATE_WAIT)
+            .saturating_sub(GATE_MARGIN);
+        let until = Instant::now() + wait;
+        let decide_by = wait.saturating_sub(REPLY_MARGIN);
+        return Ok(match sink.decide(seat, event, decide_by, until) {
+            Ok(decision) => decision,
+            Err(error) => {
+                sink.failed(args, &error.to_string(), wait);
+                match entry.policy {
+                    GatePolicy::FailOpen => Decision::Allow,
+                    GatePolicy::FailClosed => {
+                        Decision::Deny(format!("plugin hook failed closed: {error}"))
+                    }
+                }
+            }
+        });
+    }
     let socket_only = std::env::var_os("BBOXY_HOOK_SOCKET_ONLY").is_some_and(|value| value == "1");
     if !socket_only && native_socket.is_none() && let Some(frame)=osc(seat,&event)?
         && let Ok(mut tty)=std::fs::OpenOptions::new().write(true).custom_flags(libc::O_NONBLOCK).open("/dev/tty")
@@ -499,9 +629,9 @@ fn run(args: &[String], sink: &impl HookSink) -> Result<()> {
         && unsafe{libc::isatty(tty.as_raw_fd())}==1
         && write_deadline(&mut tty,&frame,until).is_ok()
     {
-        return Ok(());
+        return Ok(Decision::Allow);
     }
-    sink.send(seat, event, until)
+    sink.send(seat, event, until).map(|()| Decision::Allow)
 }
 /// Write an already encoded caller frame to its Unix socket within the shim's
 /// deadline. No app protocol, capability or registration policy is interpreted.
@@ -515,6 +645,53 @@ pub fn send_socket(path: &std::path::Path, bytes: &[u8], until: Instant) -> Resu
         return Err(error.into());
     }
     write_deadline(&mut stream, bytes, until)
+}
+/// Write a caller frame like [`send_socket`], then read one reply line
+/// (at most [`MAX_RAW`] bytes) before `until`.
+///
+/// # Errors
+/// Refuses expired deadlines, oversized or missing replies and socket IO failures.
+pub fn exchange_socket(path: &std::path::Path, bytes: &[u8], until: Instant) -> Result<Vec<u8>> {
+    let mut stream = mio::net::UnixStream::connect(path)?;
+    writable(stream.as_raw_fd(), until)?;
+    if let Some(error) = stream.take_error()? {
+        return Err(error.into());
+    }
+    write_deadline(&mut stream, bytes, until)?;
+    let mut line = Vec::new();
+    loop {
+        let mut chunk = [0; 4096];
+        match stream.read(&mut chunk) {
+            Ok(0) => return Err(invalid("hook reply closed")),
+            Ok(count) => {
+                line.extend_from_slice(&chunk[..count]);
+                if let Some(end) = line.iter().position(|b| *b == b'\n') {
+                    line.truncate(end);
+                    return Ok(line);
+                }
+                if line.len() > MAX_RAW {
+                    return Err(invalid("hook reply bound"));
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                let mut p = libc::pollfd {
+                    fd: stream.as_raw_fd(),
+                    events: libc::POLLIN,
+                    revents: 0,
+                };
+                let left = until.saturating_duration_since(Instant::now());
+                if left.is_zero() {
+                    return Err(invalid("hook reply deadline"));
+                }
+                // SAFETY: the pollfd is initialized, owns no pointers and fd stays alive.
+                if unsafe { libc::poll(&mut p, 1, left.as_millis().max(1) as i32) } < 0 {
+                    return Err(std::io::Error::last_os_error().into());
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => (),
+            Err(e) => return Err(e.into()),
+        }
+    }
 }
 
 fn decode_input(bytes: &[u8]) -> Result<Value> {

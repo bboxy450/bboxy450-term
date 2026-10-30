@@ -150,6 +150,10 @@ struct UiAdmission {
     call: crate::mcp::Call,
 }
 
+/// An observed hook's adapter status and, for a gated hook, the seat root's
+/// `PluginHost` that decides it.
+pub type HookObserved = (crate::adapters::Status, Option<crate::plugins::PluginHost>);
+
 enum Command {
     CtlUi(
         Ulid,
@@ -368,11 +372,14 @@ enum Command {
         crate::adapters::launch::LaunchOptions,
         oneshot::Sender<Result<SeatInfo>>,
     ),
+    /// `gated`: the shim waits for a plugin decision, so plugin hooks are not
+    /// queued here and the seat root's `PluginHost` is returned instead.
     Hook(
         Ulid,
         u64,
         crate::adapters::hook::ShimEvent,
-        oneshot::Sender<Result<crate::adapters::Status>>,
+        bool,
+        oneshot::Sender<Result<HookObserved>>,
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
     CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
@@ -1596,9 +1603,28 @@ impl LogicClient {
         generation: u64,
         event: crate::adapters::hook::ShimEvent,
     ) -> Result<crate::adapters::Status> {
+        Ok(self.hook_inner(seat, generation, event, false).await?.0)
+    }
+    /// Observe a gated hook without queueing plugin hooks; returns the
+    /// seat root's `PluginHost`, which then decides the event.
+    pub async fn hook_gated(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        event: crate::adapters::hook::ShimEvent,
+    ) -> Result<HookObserved> {
+        self.hook_inner(seat, generation, event, true).await
+    }
+    async fn hook_inner(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        event: crate::adapters::hook::ShimEvent,
+        gated: bool,
+    ) -> Result<HookObserved> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::Hook(seat, generation, event, tx))
+            .send(Command::Hook(seat, generation, event, gated, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -10105,7 +10131,7 @@ impl Worker {
                             .ok_or_else(|| invalid("stale adapter generation"));
                         let _ = reply.send(result);
                     }
-                    Command::Hook(id, generation, event, reply) => {
+                    Command::Hook(id, generation, event, gated, reply) => {
                         let before = self.views.get(&id).map(|v| v.adapter.status.clone());
                         let mut live_wait = false;
                         let result = self
@@ -10159,28 +10185,39 @@ impl Worker {
                         {
                             self.publish_adapter(id, status.clone())?;
                         }
+                        let mut decider = None;
                         if result.is_ok() {
                             if let Some(root) = self.provenance_binding(id, generation)
                                 && let Ok(workspace) = self.workspaces.cache.get_mut(&root)
                             {
                                 workspace.provenance.hook(id, generation, &event);
                             }
-                            // Plugin hooks of the seat's root: queued, never awaited here.
+                            // Plugin hooks of the seat's root: queued, never awaited
+                            // here. A gated event is decided by the caller off this
+                            // thread instead. Either way the seat's gate file
+                            // follows this root's blocking subscriptions.
                             if let Ok(record) = self.registry.get(id)
                                 && let Ok(port) =
                                     self.workspaces.select(&self.registry, record.swarm, None)
                             {
-                                port.host.plugin_host().notify(
-                                    &crate::plugins::HookEvent::harness(
+                                let host = port.host.plugin_host();
+                                host.gate_seat(crate::adapters::hook::gate_path(
+                                    &self.config.run_dir,
+                                    id,
+                                ));
+                                if gated {
+                                    decider = Some(host.clone());
+                                } else {
+                                    host.notify(&crate::plugins::HookEvent::harness(
                                         &event.event,
                                         Some(id),
                                         event.raw.clone(),
-                                    ),
-                                );
+                                    ));
+                                }
                             }
                             self.persist_native_session(id)?;
                         }
-                        let _ = reply.send(result);
+                        let _ = reply.send(result.map(|status| (status, decider)));
                     }
                     Command::CodexDiscovery(discovery, reply) => {
                         let id = discovery.binding.seat;

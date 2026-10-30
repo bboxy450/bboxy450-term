@@ -42,7 +42,7 @@ The complete `record.rs` program is in `examples/`. Build it with
 | zsh | OSC 133 and working-directory reports | None | Canonical prompt readiness |
 | Custom kind | Caller-supplied observations | No built-in transport | Operator handoff unless implemented |
 
-Implement `hook::HookSink` to carry fallback hook events over your own admitted transport. Supply skill text through the launch context rather than changing global harness configuration.
+Implement `hook::HookSink` to carry fallback hook events over your own admitted transport. When the host writes `<BBOXY_RUN_DIR>/seat-<seat>/hook-gate.json` listing an event the harness can veto, the shim calls `HookSink::decide` instead and waits at most the listed ceiling minus 250 ms; `hook::run_cli` returns exit code 2 (reason on stderr) for a deny, and applies the gate's fail-open or fail-closed policy when no decision arrives. Supply skill text through the launch context rather than changing global harness configuration.
 
 Claude receives NAME, ROLE, host/cwd and "call orient first" through its appended system prompt. Codex receives those instructions and its isolated MCP/hook wiring through a per-thread app-server start/resume; the TUI attaches to that named thread. The host dispatches the plan's `harness-exec` entry to `launch::exec_when_ready`. Shared-daemon startup is idempotent through Codex's CLI; the host never restarts, stops or cleans up that borrowed daemon. Native wake-up validates the exact thread and daemon peer, and never creates or loads an unknown target.
 

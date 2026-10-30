@@ -100,3 +100,146 @@ fn hook_cli_uses_the_caller_sink_for_registration_and_tty_fallback() {
         }
     }
 }
+
+/// A sink whose decision is scripted by `HK0_DECIDE`: `allow`, `deny` or
+/// `fail` (a transport failure); `send` records the fast path.
+struct Deciding;
+impl HookSink for Deciding {
+    fn send(&self, _seat: Ulid, _event: ShimEvent, until: Instant) -> Result<()> {
+        std::fs::write(
+            std::env::var("HK0_HOOK_REPORT")?,
+            serde_json::to_vec(&serde_json::json!({
+                "path":"send", "remaining_ms":until.saturating_duration_since(Instant::now()).as_millis()
+            }))?,
+        )?;
+        Ok(())
+    }
+    fn decide(
+        &self,
+        _seat: Ulid,
+        _event: ShimEvent,
+        decide_by: std::time::Duration,
+        until: Instant,
+    ) -> Result<hook::Decision> {
+        std::fs::write(
+            std::env::var("HK0_HOOK_REPORT")?,
+            serde_json::to_vec(&serde_json::json!({
+                "path":"decide", "decide_by_ms":decide_by.as_millis(),
+                "wait_ms":until.saturating_duration_since(Instant::now()).as_millis()
+            }))?,
+        )?;
+        match std::env::var("HK0_DECIDE")?.as_str() {
+            "allow" => Ok(hook::Decision::Allow),
+            "deny" => Ok(hook::Decision::Deny("fixture veto".into())),
+            _ => Err(std::io::Error::other("fixture transport down").into()),
+        }
+    }
+}
+
+#[test]
+#[ignore = "private subprocess helper, exercised by gated_events_wait_only_when_listed"]
+fn hook_decide_child() {
+    let raw = std::env::var("HK0_HOOK_RAW").unwrap();
+    let agent = std::env::var("HK0_AGENT").unwrap();
+    std::process::exit(hook::run_cli(&["--agent".into(), agent, raw], &Deciding));
+}
+
+// keeps: plugins §3b production veto — the shim waits only for an event the
+// host's gate lists and the harness can veto; a deny is exit 2 with the
+// reason on stderr; a failed decision follows the gate's policy.
+#[test]
+fn gated_events_wait_only_when_listed_and_fail_by_policy() {
+    let temp = tempfile::tempdir().unwrap();
+    let id = Ulid::new();
+    let gate = hook::gate_path(temp.path(), id);
+    std::fs::create_dir_all(gate.parent().unwrap()).unwrap();
+    let entry = |policy| hook::GateEntry {
+        policy,
+        ceiling_ms: 2_000,
+    };
+    let listed = hook::Gate {
+        events: [
+            ("PreToolUse".to_owned(), entry(hook::GatePolicy::FailClosed)),
+            (
+                "PostToolUse".to_owned(),
+                entry(hook::GatePolicy::FailClosed),
+            ),
+            (
+                "UserPromptSubmit".to_owned(),
+                entry(hook::GatePolicy::FailOpen),
+            ),
+        ]
+        .into_iter()
+        .collect(),
+    };
+    std::fs::write(&gate, serde_json::to_vec(&listed).unwrap()).unwrap();
+    // (agent, event, scripted decision, expected path, exit code, stderr)
+    for (agent, event, decide, path, code, stderr) in [
+        ("claude", "PreToolUse", "deny", "decide", 2, "fixture veto"),
+        ("claude", "PreToolUse", "allow", "decide", 0, ""),
+        ("codex", "PreToolUse", "deny", "decide", 2, "fixture veto"),
+        (
+            "claude",
+            "PreToolUse",
+            "fail",
+            "decide",
+            2,
+            "plugin hook failed closed",
+        ),
+        ("claude", "UserPromptSubmit", "fail", "decide", 0, ""),
+        // Listed, but no harness documents a veto after the tool ran.
+        ("claude", "PostToolUse", "deny", "send", 0, ""),
+        // Codex's notify program cannot veto.
+        ("codex-notify", "PreToolUse", "deny", "send", 0, ""),
+        // Not listed: the unchanged fast path.
+        ("claude", "PermissionRequest", "deny", "send", 0, ""),
+    ] {
+        let report = temp.path().join("report.json");
+        let _ = std::fs::remove_file(&report);
+        let raw = serde_json::json!({"hook_event_name":event,"session_id":"s","tool_use_id":"t"})
+            .to_string();
+        let mut child = Command::new(std::env::current_exe().unwrap());
+        child
+            .args(["--ignored", "--exact", "hook_decide_child", "--nocapture"])
+            .env("BBOXY_SEAT_ID", id.to_string())
+            .env("BBOXY_RUN_DIR", temp.path())
+            .env("BBOXY_HOOK_SOCKET_ONLY", "1")
+            .env("HK0_HOOK_REPORT", &report)
+            .env("HK0_HOOK_RAW", raw)
+            .env("HK0_AGENT", agent)
+            .env("HK0_DECIDE", decide)
+            .env_remove("CLAUDE_CODE_MESSAGING_SOCKET")
+            .stdin(Stdio::null());
+        // SAFETY: setsid is async-signal-safe and called in this owned child's
+        // pre-exec path, before the Rust runtime starts. No tty is opened here.
+        unsafe {
+            child.pre_exec(|| {
+                if libc::setsid() == -1 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+        let result = child.output().unwrap();
+        let label = format!("{agent} {event} {decide}");
+        assert_eq!(result.status.code(), Some(code), "{label}");
+        let err = String::from_utf8_lossy(&result.stderr);
+        // The test harness prints its own lines; the shim adds only the reason.
+        assert_eq!(
+            err.contains("fixture veto") || err.contains("failed closed"),
+            !stderr.is_empty(),
+            "{label}: {err}"
+        );
+        assert!(err.contains(stderr), "{label}: {err}");
+        let value: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&report).unwrap()).unwrap();
+        assert_eq!(value["path"], path, "{label}");
+        if path == "decide" {
+            // The 2 s ceiling minus the 250 ms margin; the host decides 100 ms earlier.
+            assert_eq!(value["decide_by_ms"], 1_650, "{label}");
+            assert!(value["wait_ms"].as_u64().unwrap() <= 1_750, "{label}");
+        } else {
+            assert!(value["remaining_ms"].as_u64().unwrap() <= 50, "{label}");
+        }
+    }
+}

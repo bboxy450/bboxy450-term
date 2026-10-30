@@ -48,6 +48,12 @@ pub enum Action {
     Hook {
         event: crate::adapters::hook::ShimEvent,
     },
+    /// A gated hook (the seat's `hook-gate.json` lists it): observed like
+    /// `Hook`, then decided by the root's blocking plugins within `wait_ms`.
+    HookDecide {
+        event: crate::adapters::hook::ShimEvent,
+        wait_ms: u64,
+    },
     Attach,
     Snapshot,
     Subscribe,
@@ -1750,6 +1756,35 @@ async fn read_bounded_line(
         }
     }
 }
+/// Observe a gated hook, then let the seat's root decide it on a blocking
+/// thread, never past `wait_ms` (clamped to the largest hook ceiling).
+async fn hook_decide(
+    client: &LogicClient,
+    seat: Ulid,
+    generation: u64,
+    event: crate::adapters::hook::ShimEvent,
+    wait_ms: u64,
+) -> Result<serde_json::Value> {
+    let deadline = std::time::Instant::now()
+        + Duration::from_millis(wait_ms).min(crate::adapters::hook::MAX_GATE_WAIT);
+    let hook = crate::plugins::HookEvent::harness(&event.event, Some(seat), event.raw.clone());
+    let (status, host) = client.hook_gated(seat, generation, event).await?;
+    let verdict = match host {
+        Some(host) => tokio::task::spawn_blocking(move || host.decide(&hook, deadline))
+            .await
+            .map_err(|_| invalid("hook decision task failed"))?,
+        None => crate::plugins::Verdict::Allow,
+    };
+    Ok(match verdict {
+        crate::plugins::Verdict::Allow => {
+            serde_json::json!({"kind":"HookDecided","status":status,"decision":"allow"})
+        }
+        crate::plugins::Verdict::Deny { candidate, reason } => serde_json::json!({
+            "kind":"HookDecided","status":status,"decision":"deny",
+            "reason":format!("{candidate}: {reason}")
+        }),
+    })
+}
 async fn send(writer: &mut (impl AsyncWrite + Unpin), value: &impl Serialize) -> Result<()> {
     send_bounded(writer, value, bbt_proto::gui::MAX_REPLY_BYTES).await
 }
@@ -1815,6 +1850,7 @@ async fn session_inner(
                     Action::Call{call}=>client.control_call(seat,generation,call).await,
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
+                    Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,
                     Action::Attach|Action::Snapshot=>Ok(serde_json::json!({"kind":"Snapshot","snapshot":snapshot})),
                     Action::Subscribe=>{subscribed=true;view.reset();view.offer(snapshot)?;Ok(serde_json::json!({"kind":"Subscribed"}))}
                     Action::Applied{view:identity,sequence}=>view.applied(identity,sequence).map(|()|serde_json::json!({"kind":"Applied"})),

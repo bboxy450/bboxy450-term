@@ -139,8 +139,8 @@ Agreement in [[plugins]] §3b. Both sides: the host (`bbt-mux` `plugins/hooks.rs
 | Timing | Each call is bounded by `min(budget_ms, ceiling_ms)`; non-blocking delivery is queued (64 per root), dropped and counted when full, and never runs on the logic thread. |
 | Lifetime | A queued item carries its activation generation; a disabled, re-enabled or re-trusted plugin receives nothing from older offers. |
 | Outcomes | `plugin/<candidate>/hook/<outcome>` on the account stream: `allowed`, `denied`, `ignored`, `failed_open`, `failed_closed`, `failed`, `stale`, `dropped`. |
-| Open | The harness shim does not yet wait for `decide`, so no harness tool use is vetoed in production; that needs the shim to read a reply within the 2 s ceiling and encode a veto per harness. |
-| Verification | `PluginHook`/`BrokenPluginHook` (native and Java TLC); `tests/plugin_host.rs` hook tests; `bbt-plugin` policy and shape tests; SDK runtime hook test. |
+| Production veto | Gate file `<run>/seat-<seat>/hook-gate.json` = `{"events": {<name>: {"policy": "fail-open" \| "fail-closed", "ceiling_ms"}}}`, written by the seat root's `PluginHost` (absent when nothing blocks). Seat socket `HookDecide {event, wait_ms}` → `{"kind":"HookDecided","status","decision":"allow"\|"deny","reason"?}`. The shim waits at most `ceiling_ms − 250`; the host decides within `wait_ms = ceiling_ms − 350`. Deny = exit 2 with the reason on stderr (Claude Code `PreToolUse`/`UserPromptSubmit`/`PermissionRequest`, Codex `PreToolUse`/`UserPromptSubmit`); no reply = the gate's policy. |
+| Verification | `PluginHook`/`BrokenPluginHook` and `PluginHookGate`/`BrokenPluginHookGate` (native and Java TLC); `tests/plugin_host.rs` hook tests; `tests/hook_gate.rs` (real shim process, seat socket, logic and plugin); `bboxy450-harness-wake-up` `tests/hook_sink.rs`; `bbt-plugin` policy and shape tests; SDK runtime hook test. |
 
 ## Host API — G7, 2026-10-30
 

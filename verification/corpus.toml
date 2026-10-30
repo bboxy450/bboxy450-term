@@ -131,6 +131,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "PluginHookGate"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginHookGate"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "PluginHostApi"
 expected = "pass"
 frontend = "project"

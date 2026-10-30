@@ -75,7 +75,7 @@ sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-
 [[crate]]
 name = "bboxy450-plugin"
 status = "contract-model"
-models = ["PluginActivation", "PluginHook", "PluginConnection", "PluginHostApi"]
+models = ["PluginActivation", "PluginHook", "PluginConnection", "PluginHostApi", "PluginHookGate"]
 scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); plugin-originated host requests made during a host call are admitted and answered per PluginHostApi; JSON-RPC demultiplexing uses private host fixtures."
 sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host_api.rs", "crates/bbt-plugin/src/trust.rs"]
 
@@ -117,9 +117,9 @@ sources = ["crates/bbt-core/src/lib.rs"]
 [[crate]]
 name = "bboxy450-harness-wake-up"
 status = "contract-model"
-models = ["HarnessToken"]
-scope = "Readiness, input ownership epoch and ambiguous outcome fence for one delivery; expiry, terminal modes and OS state use real guard fixtures."
-sources = ["crates/bboxy450-harness-wake-up/src/guard.rs"]
+models = ["HarnessToken", "PluginHookGate"]
+scope = "Readiness, input ownership epoch and ambiguous outcome fence for one delivery, and the hook shim's bounded wait for a gated plugin decision (PluginHookGate); expiry, terminal modes, OS state and the per-harness exit-code veto use real guard and hook subprocess fixtures."
+sources = ["crates/bboxy450-harness-wake-up/src/guard.rs", "crates/bboxy450-harness-wake-up/src/hook.rs"]
 
 [[crate]]
 name = "bboxy450-mermaid"
