@@ -80,6 +80,13 @@ scope = "Host activation generation/source-digest contract; guest execution, ABI
 sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs"]
 
 [[crate]]
+name = "bboxy450-term-plugin-sdk"
+status = "implementation-tests"
+models = []
+scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits and refusal encoding are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Host activation stays modelled by PluginActivation."
+sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
+
+[[crate]]
 name = "bboxy450-yarn-macros"
 status = "contract-model"
 models = ["YarnReactor"]

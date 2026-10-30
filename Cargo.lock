@@ -488,6 +488,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-term-plugin-sdk"
+version = "0.1.1"
+dependencies = [
+ "bboxy450-plugin",
+ "libc",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "bboxy450-term-proto"
 version = "0.1.1"
 dependencies = [

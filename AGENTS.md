@@ -93,6 +93,6 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 
 ## Coordination
 
-Use repository-local task records and GitHub handoffs. **GitKB, ATC and ICQ are retired; never invoke them, including through historical scripts.** `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
+**Track work in the built-in bboxy task system** (`.bboxy/tasks/`, through the bboxy MCP `knowledge_*`/`task_*` tools or `ctl task`), never in GitKB tasks, even when a seat's swarm selects a GitKB knowledge provider. Use GitHub for handoffs. **GitKB, ATC and ICQ are retired as workflow tools; never invoke `git-kb` for this repository's tasks or notes.** Only the GitKB plugin and its tests call it. `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
 The Oracle verifies landed code and logs; the Architect owns interface/spec consistency; Creativity owns the reference lab. Design gaps are written into the relevant spec/interface, not answered only in a message. Operator instructions outrank defaults.

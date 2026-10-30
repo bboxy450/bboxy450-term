@@ -1,0 +1,19 @@
+[package]
+readme = "README.md"
+name = "bboxy450-term-plugin-sdk"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Build bboxy450-term plugins in Rust: stdio MCP runtime, shape, skills and a test client"
+
+[dependencies]
+bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lib]
+name = "bbt_plugin_sdk"
