@@ -9526,10 +9526,30 @@ impl Worker {
                                     || self.operator_journal.clone(),
                                     |port| self.root_journal(&self.operator_journal, port),
                                 );
+                                // Account activation is shared by every root: a
+                                // mutation closes stale connections everywhere
+                                // before its reply, so no caller sees them.
+                                let hosts: Vec<_> = if request.mutation() {
+                                    self.workspaces
+                                        .cache
+                                        .roots()
+                                        .map(|root| root.host.plugin_host().clone())
+                                        .collect()
+                                } else {
+                                    Vec::new()
+                                };
                                 self.plugin_jobs.spawn_on(
                                     async move {
                                         let result =
                                             plugins.request(actor, journal, call, request).await;
+                                        if !hosts.is_empty() {
+                                            let _ = tokio::task::spawn_blocking(move || {
+                                                for host in hosts {
+                                                    host.reconcile();
+                                                }
+                                            })
+                                            .await;
+                                        }
                                         let _ = reply.send(result);
                                     },
                                     &self.handle,

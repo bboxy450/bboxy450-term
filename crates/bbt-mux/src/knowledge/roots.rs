@@ -9,7 +9,7 @@ use super::{BboxySource, DataSource, data_source as d};
 use crate::{
     index::Index,
     mcp::{self, Actor, Call, journal::Journal},
-    plugins::{DataSourceProvider, ProviderConfig, Registry},
+    plugins::{DataSourceProvider, PluginHost, ProviderConfig, Registry},
     store::{Result, invalid},
 };
 use bbt_plugin::{
@@ -57,6 +57,8 @@ struct Inner {
     selected: Mutex<Selected>,
     retired: Mutex<Vec<tokio::task::JoinHandle<()>>>,
     controls: Arc<Semaphore>,
+    /// Every enabled plugin's live connection for this root, selected or not.
+    plugin_host: PluginHost,
 }
 #[derive(Clone)]
 pub(crate) struct Host(Arc<Inner>);
@@ -282,6 +284,8 @@ impl Host {
                 )
             }
         };
+        let plugin_host = PluginHost::new(plugins.clone(), &root, handle.clone(), config)
+            .map_err(|e| invalid(e.to_string()))?;
         Ok(Self(Arc::new(Inner {
             root,
             id,
@@ -291,7 +295,11 @@ impl Host {
             selected: Mutex::new(Selected { binding, external }),
             retired: Mutex::new(Vec::new()),
             controls: Arc::new(Semaphore::new(8)),
+            plugin_host,
         })))
+    }
+    pub(crate) fn plugin_host(&self) -> &PluginHost {
+        &self.0.plugin_host
     }
     fn instance(
         plugins: &Registry,
@@ -335,6 +343,7 @@ impl Host {
         &self.0.id
     }
     pub(crate) fn close(&self) {
+        self.0.plugin_host.close();
         let external = self
             .0
             .selected
@@ -716,6 +725,8 @@ impl Host {
             },
         );
         drop(selected);
+        // A root reset or provider swap starts every plugin connection afresh.
+        self.0.plugin_host.retire_all();
         if let Ok(Some(old)) = old.external {
             let cleanup = self.0.handle.spawn(async move {
                 old.close().await;

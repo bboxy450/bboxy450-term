@@ -82,6 +82,16 @@ property = "Disabled, changed-source or changed-generation inspections cannot be
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "PluginConnection"
+title = "Live plugin connections and activation generation"
+models = ["PluginConnection", "BrokenPluginConnection"]
+sources = ["crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/knowledge/roots.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs", "crates/bbt-mux/src/plugins/client.rs"]
+assumptions = "One plugin, one connection and one in-flight call per connection projection; activation generations 1..4 with disable and enable each advancing the generation (A -> B -> A). Authority reads, the post-mutation reconcile and connection replacement are atomic actions that may interleave with a call. Parallel calls on a concurrent descriptor each capture the same connection generation, so one call is representative. Process spawn, JSON-RPC demultiplexing, schema validation, deadlines and OS reaping use implementation tests."
+property = "A result is delivered only when the connection's generation equals the current enabled activation generation; a superseded result is refused and closes its connection. After a disable has been reconciled, before its control reply, no connection remains. The broken control delivers without the completion generation check and must fail safety. tests/plugin_host.rs a_result_from_a_superseded_generation_is_refused and enabled_plugins_serve_calls_and_disable_closes_their_connection are API witnesses."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "HarnessToken"
 title = "Guarded single-use readiness"
 models = ["HarnessToken", "BrokenHarnessToken"]

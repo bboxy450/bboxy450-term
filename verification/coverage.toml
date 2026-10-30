@@ -75,9 +75,9 @@ sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-
 [[crate]]
 name = "bboxy450-plugin"
 status = "contract-model"
-models = ["PluginActivation"]
-scope = "Host activation generation/source-digest contract; guest execution, ABI and cryptographic implementation use fixtures."
-sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs"]
+models = ["PluginActivation", "PluginConnection"]
+scope = "Host activation generation/source-digest contract; guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); JSON-RPC demultiplexing uses private host fixtures."
+sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-sdk"

@@ -15,6 +15,9 @@ mod notification_models;
 #[path = "seat_models.rs"]
 mod seat_models;
 
+#[path = "plugin_models.rs"]
+mod plugin_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1588,5 +1591,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         (historical_reconcile(false), "pass"),
         (historical_reconcile(true), "safety"),
     ]);
+    // Plugin-system families live beside their own contract module.
+    cases.extend(plugin_models::cases());
     cases
 }

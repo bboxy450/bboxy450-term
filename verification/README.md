@@ -77,6 +77,7 @@ is added to the terminal runtime.
 | Seat error diagnostics | Current authority/workspace and own-row filters fence pages; seat reads never acknowledge the operator |
 | Workspace reads | Root, revision and authority still match at publication, including A → B → A |
 | Plugin inspection | Source digest, approval and activation generation still match |
+| Plugin connections | A call result is delivered only from the current activation generation; disable closes the connection |
 | Harness readiness | Input ownership and single-use proof remain current; unknown outcomes fence retries |
 | Local messaging custody | Delivery progresses without assuming signing custody recovers |
 | Message suppression | Events, muted recipients and resolved/superseded receipts never wake |

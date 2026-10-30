@@ -6,13 +6,16 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! One bounded MCP stdio connection; deadlines never follow progress messages.
 
+use std::collections::HashMap;
 use std::process::Stdio;
+use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Duration;
 
 use bbt_plugin::{Refusal, policy::allowed_env_name, shape::SHAPE_VERSION};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout, Command};
+use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::{Instant, timeout, timeout_at};
 
@@ -31,7 +34,8 @@ pub(super) struct Stderr {
 pub(super) struct Client {
     child: Child,
     input: Option<ChildStdin>,
-    output: BufReader<ChildStdout>,
+    /// Taken by [`Client::into_shared`]; the demultiplexer then owns stdout.
+    output: Option<BufReader<ChildStdout>>,
     stderr: Option<JoinHandle<Stderr>>,
     next: u64,
     pub pid: u32,
@@ -114,7 +118,7 @@ impl Client {
         Ok(Self {
             child,
             input,
-            output,
+            output: Some(output),
             stderr: Some(capture),
             next: 0,
             pid,
@@ -132,9 +136,12 @@ impl Client {
         let read = async {
             let mut bytes = Vec::new();
             let mut part = [0; 4096];
+            let output = self
+                .output
+                .as_mut()
+                .ok_or_else(|| failure("shape_io", "stdout belongs to the demultiplexer"))?;
             loop {
-                let count = self
-                    .output
+                let count = output
                     .read(&mut part)
                     .await
                     .map_err(|e| failure("shape_io", e))?;
@@ -185,39 +192,11 @@ impl Client {
     }
 
     async fn frame(&mut self) -> Result<Value, Refusal> {
-        let mut bytes = Vec::new();
-        loop {
-            let part = self
-                .output
-                .fill_buf()
-                .await
-                .map_err(|e| failure("plugin_io", e))?;
-            if part.is_empty() {
-                return Err(failure(
-                    "plugin_eof",
-                    "stdout ended before a complete response",
-                ));
-            }
-            let newline = part.iter().position(|b| *b == b'\n');
-            let take = newline.unwrap_or(part.len());
-            if bytes.len() + take > MAX_FRAME {
-                return Err(failure(
-                    "frame_too_large",
-                    "plugin stdout exceeds the MCP frame bound",
-                ));
-            }
-            bytes.extend_from_slice(&part[..take]);
-            self.output.consume(take + usize::from(newline.is_some()));
-            if newline.is_some() {
-                break;
-            }
-        }
-        serde_json::from_slice(&bytes).map_err(|_| {
-            failure(
-                "non_protocol_stdout",
-                "stdout must contain newline JSON-RPC only",
-            )
-        })
+        let output = self
+            .output
+            .as_mut()
+            .ok_or_else(|| failure("plugin_io", "stdout belongs to the demultiplexer"))?;
+        read_frame(output).await
     }
 
     pub async fn request(
@@ -293,7 +272,7 @@ impl Client {
             )
         })?;
         let root = fixture.knowledge_root()?;
-        self.initialize_parameters(shape, root.as_deref(), "bboxy450-plugin-check", true)
+        self.initialize_parameters(shape, root.as_deref(), "bboxy450-plugin-check", true, false)
             .await
     }
 
@@ -304,7 +283,20 @@ impl Client {
         root: Option<&std::path::Path>,
         client_name: &str,
     ) -> Result<(), Refusal> {
-        self.initialize_parameters(shape, root, client_name, false)
+        self.initialize_parameters(shape, root, client_name, false, false)
+            .await
+    }
+    /// Like [`Client::initialize_root`], for a connection that
+    /// [`Client::into_shared`] will demultiplex. `concurrent` tells the plugin
+    /// that the host may keep several requests in flight.
+    pub(super) async fn initialize_shared(
+        &mut self,
+        shape: &bbt_plugin::shape::Shape,
+        root: &std::path::Path,
+        client_name: &str,
+        concurrent: bool,
+    ) -> Result<(), Refusal> {
+        self.initialize_parameters(shape, Some(root), client_name, false, concurrent)
             .await
     }
     async fn initialize_parameters(
@@ -313,13 +305,14 @@ impl Client {
         root: Option<&std::path::Path>,
         client_name: &str,
         fixture: bool,
+        concurrent: bool,
     ) -> Result<(), Refusal> {
         let contracts: serde_json::Map<String, Value> = shape
             .systems
             .iter()
             .map(|s| (s.contract.clone(), json!(s.contract_version)))
             .collect();
-        let mut params = json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":false,"trace":false}}},"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")}});
+        let mut params = json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":concurrent,"trace":false}}},"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")}});
         if let Some(root) = root {
             params["root"] = json!(
                 root.to_str()
@@ -446,6 +439,294 @@ impl Client {
     }
 }
 
+type Waiter = oneshot::Sender<Result<Value, Refusal>>;
+
+/// Outstanding request IDs. `issued` separates a late reply to a cancelled
+/// call (ignored) from an ID the host never sent (a protocol failure).
+#[derive(Default)]
+struct Routes {
+    waiting: HashMap<u64, Waiter>,
+    issued: u64,
+    failed: Option<Refusal>,
+}
+
+type Writer = Arc<tokio::sync::Mutex<Option<ChildStdin>>>;
+
+/// A demultiplexed connection: one reader task routes each response to its
+/// waiting caller by ID, so several requests can be in flight. The owner
+/// bounds how many; this type never queues behind a busy plugin.
+pub(super) struct Shared {
+    client: tokio::sync::Mutex<Option<Client>>,
+    writer: Writer,
+    routes: Arc<StdMutex<Routes>>,
+    reader: JoinHandle<()>,
+}
+
+/// Plugin-originated requests arrive here. No host API exists yet, so every
+/// request is answered with a JSON-RPC error rather than left unanswered.
+fn host_request(_method: &str, _params: &Value) -> Result<Value, (i64, &'static str)> {
+    Err((-32601, "host API not available"))
+}
+
+async fn write_frame(writer: &Writer, value: &Value) -> Result<(), Refusal> {
+    let mut bytes = serde_json::to_vec(value).map_err(|e| failure("protocol_error", e))?;
+    if bytes.len() > MAX_FRAME {
+        return Err(failure(
+            "frame_too_large",
+            "outbound MCP frame exceeds the bound",
+        ));
+    }
+    bytes.push(b'\n');
+    let mut input = writer.lock().await;
+    let input = input
+        .as_mut()
+        .ok_or_else(|| failure("stdin_closed", "plugin stdin is closed"))?;
+    input
+        .write_all(&bytes)
+        .await
+        .map_err(|e| failure("plugin_io", e))?;
+    input.flush().await.map_err(|e| failure("plugin_io", e))
+}
+
+fn response(value: &Value) -> Result<Value, Refusal> {
+    if value.get("error").is_some() {
+        if value.get("result").is_some() {
+            return Err(failure(
+                "protocol_error",
+                "response has both error and result",
+            ));
+        }
+        return Err(failure("jsonrpc_error", "server returned a JSON-RPC error"));
+    }
+    value
+        .get("result")
+        .cloned()
+        .ok_or_else(|| failure("protocol_error", "response has no result"))
+}
+
+async fn demultiplex(
+    mut output: BufReader<ChildStdout>,
+    writer: Writer,
+    routes: Arc<StdMutex<Routes>>,
+) {
+    let failed = loop {
+        let value = match read_frame(&mut output).await {
+            Ok(value) => value,
+            Err(reason) => break reason,
+        };
+        if value["jsonrpc"] != "2.0" {
+            break failure("protocol_error", "missing JSON-RPC 2.0 marker");
+        }
+        if let Some(method) = value.get("method").and_then(Value::as_str) {
+            // Notifications (progress, logs) never extend a deadline.
+            if let Some(id) = value.get("id") {
+                let reply = match host_request(method, &value["params"]) {
+                    Ok(result) => json!({"jsonrpc":"2.0","id":id,"result":result}),
+                    Err((code, message)) => {
+                        json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
+                    }
+                };
+                if let Err(reason) = write_frame(&writer, &reply).await {
+                    break reason;
+                }
+            }
+            continue;
+        }
+        let Some(id) = value.get("id").and_then(Value::as_u64) else {
+            break failure("request_id_mismatch", "response has no host request ID");
+        };
+        let waiter = {
+            let mut routes = routes.lock().unwrap_or_else(|e| e.into_inner());
+            if id == 0 || id > routes.issued {
+                None
+            } else {
+                Some(routes.waiting.remove(&id))
+            }
+        };
+        match waiter {
+            None => {
+                break failure(
+                    "request_id_mismatch",
+                    "response does not match an issued request",
+                );
+            }
+            Some(Some(waiter)) => {
+                let _ = waiter.send(response(&value));
+            }
+            // A late reply to a call that already timed out and was cancelled.
+            Some(None) => {}
+        }
+    };
+    let waiting = {
+        let mut routes = routes.lock().unwrap_or_else(|e| e.into_inner());
+        routes.failed.get_or_insert(failed.clone());
+        std::mem::take(&mut routes.waiting)
+    };
+    for (_, waiter) in waiting {
+        let _ = waiter.send(Err(failed.clone()));
+    }
+}
+
+impl Client {
+    /// Hand stdout to a reader task. Call after `initialize`; the request IDs
+    /// continue from the handshake's.
+    pub(super) fn into_shared(mut self) -> Shared {
+        let output = self.output.take().expect("stdout not yet demultiplexed");
+        let writer: Writer = Arc::new(tokio::sync::Mutex::new(self.input.take()));
+        let routes = Arc::new(StdMutex::new(Routes {
+            issued: self.next,
+            ..Default::default()
+        }));
+        let reader = tokio::spawn(demultiplex(output, writer.clone(), routes.clone()));
+        Shared {
+            client: tokio::sync::Mutex::new(Some(self)),
+            writer,
+            routes,
+            reader,
+        }
+    }
+}
+
+impl Shared {
+    /// One JSON-RPC request within `budget`. A timed-out call is cancelled and
+    /// never replayed; its late reply is dropped by the reader.
+    pub async fn request(
+        &self,
+        method: &str,
+        params: Value,
+        budget: Duration,
+    ) -> Result<Value, Refusal> {
+        let deadline = Instant::now() + budget;
+        let (sender, receiver) = oneshot::channel();
+        let id = {
+            let mut routes = self.routes.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(failed) = &routes.failed {
+                return Err(failed.clone());
+            }
+            routes.issued += 1;
+            let id = routes.issued;
+            routes.waiting.insert(id, sender);
+            id
+        };
+        let forget = || {
+            self.routes
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .waiting
+                .remove(&id);
+        };
+        let frame = json!({"jsonrpc":"2.0","id":id,"method":method,"params":params});
+        match timeout_at(deadline, write_frame(&self.writer, &frame)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(reason)) => {
+                forget();
+                return Err(reason);
+            }
+            Err(_) => {
+                forget();
+                return Err(failure(
+                    "deadline_exceeded",
+                    format!("{method} exceeded its fixed deadline"),
+                ));
+            }
+        }
+        match timeout_at(deadline, receiver).await {
+            Ok(Ok(result)) => result,
+            Ok(Err(_)) => Err(self.failed()),
+            Err(_) => {
+                forget();
+                let cancel = json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":id,"reason":"fixed deadline exceeded"}});
+                let _ = timeout(
+                    Duration::from_millis(100),
+                    write_frame(&self.writer, &cancel),
+                )
+                .await;
+                Err(failure(
+                    "deadline_exceeded",
+                    format!("{method} exceeded its fixed deadline"),
+                ))
+            }
+        }
+    }
+
+    fn failed(&self) -> Refusal {
+        self.routes
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .failed
+            .clone()
+            .unwrap_or_else(|| failure("plugin_eof", "connection closed"))
+    }
+
+    /// False once the reader stopped; the owner then opens a new connection.
+    pub fn alive(&self) -> bool {
+        !self.reader.is_finished()
+            && self
+                .routes
+                .lock()
+                .is_ok_and(|routes| routes.failed.is_none())
+    }
+
+    /// Close stdin, fail every waiting call and reap the process. Idempotent.
+    pub async fn shutdown(&self) {
+        {
+            let mut routes = self.routes.lock().unwrap_or_else(|e| e.into_inner());
+            let closed = failure("provider_closed", "this plugin connection is closed");
+            routes.failed.get_or_insert(closed.clone());
+            for (_, waiter) in std::mem::take(&mut routes.waiting) {
+                let _ = waiter.send(Err(closed.clone()));
+            }
+        }
+        self.writer.lock().await.take();
+        if let Some(client) = self.client.lock().await.take() {
+            client.shutdown().await;
+        }
+        self.reader.abort();
+    }
+}
+
+impl Drop for Shared {
+    fn drop(&mut self) {
+        // Client::kill_on_drop reaps an un-shut-down process.
+        self.reader.abort();
+    }
+}
+
+async fn read_frame(output: &mut BufReader<ChildStdout>) -> Result<Value, Refusal> {
+    let mut bytes = Vec::new();
+    loop {
+        let part = output
+            .fill_buf()
+            .await
+            .map_err(|e| failure("plugin_io", e))?;
+        if part.is_empty() {
+            return Err(failure(
+                "plugin_eof",
+                "stdout ended before a complete response",
+            ));
+        }
+        let newline = part.iter().position(|b| *b == b'\n');
+        let take = newline.unwrap_or(part.len());
+        if bytes.len() + take > MAX_FRAME {
+            return Err(failure(
+                "frame_too_large",
+                "plugin stdout exceeds the MCP frame bound",
+            ));
+        }
+        bytes.extend_from_slice(&part[..take]);
+        output.consume(take + usize::from(newline.is_some()));
+        if newline.is_some() {
+            break;
+        }
+    }
+    serde_json::from_slice(&bytes).map_err(|_| {
+        failure(
+            "non_protocol_stdout",
+            "stdout must contain newline JSON-RPC only",
+        )
+    })
+}
+
 impl Drop for Client {
     fn drop(&mut self) {
         if let Some(capture) = self.stderr.take() {
@@ -528,6 +809,68 @@ mod tests {
     }
 
     const CALL_BUDGET: Duration = Duration::from_secs(2);
+
+    /// Answers id 2 before id 1, asks the host one question in between and
+    /// emits notifications; then replies with an ID it was never sent.
+    const DEMUX_SERVER: &str = r#"#!/usr/bin/env python3
+import json, sys
+def emit(value): print(json.dumps(value), flush=True)
+held = None
+for line in sys.stdin:
+    req = json.loads(line)
+    if "id" not in req: continue
+    if req["id"] == "plugin-1":
+        sys.stderr.write("host answered " + json.dumps(req["error"]) + "\n"); sys.stderr.flush()
+        emit({"jsonrpc":"2.0","method":"notifications/message","params":{"level":"info","data":"x"}})
+        emit({"jsonrpc":"2.0","id":2,"result":{"order":"second request first"}})
+        emit({"jsonrpc":"2.0","id":held,"result":{"order":"first request last"}})
+        continue
+    if req["params"].get("name") == "stray":
+        emit({"jsonrpc":"2.0","id":req["id"]+40,"result":{}}); continue
+    if held is None:
+        held = req["id"]
+        emit({"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"t","progress":1}})
+        continue
+    emit({"jsonrpc":"2.0","id":"plugin-1","method":"host/records.search","params":{}})
+"#;
+
+    #[tokio::test]
+    async fn demultiplexed_replies_reach_their_callers_and_plugin_requests_are_answered() {
+        let files = tempfile::tempdir().unwrap();
+        let source = files.path().join("demux-server");
+        fs::write(&source, DEMUX_SERVER).unwrap();
+        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        let client =
+            Client::spawn_with_home(source, files.path(), false, CALL_BUDGET, None).unwrap();
+        let shared = client.into_shared();
+        let call = |name: &'static str| {
+            shared.request(
+                "tools/call",
+                json!({"name":name,"arguments":{}}),
+                CALL_BUDGET,
+            )
+        };
+        let (first, second) = tokio::join!(call("one"), async {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            call("two").await
+        });
+        assert_eq!(first.unwrap()["order"], "first request last");
+        assert_eq!(second.unwrap()["order"], "second request first");
+        assert!(shared.alive());
+        let stray = call("stray").await.unwrap_err();
+        assert_eq!(stray.code, "request_id_mismatch");
+        assert!(!shared.alive());
+        assert_eq!(call("after").await.unwrap_err().code, "request_id_mismatch");
+        let mut client = shared.client.lock().await;
+        let captured = client.take().unwrap().shutdown().await;
+        assert!(
+            captured
+                .text
+                .contains(r#"host answered {"code": -32601, "message": "host API not available"}"#),
+            "{}",
+            captured.text
+        );
+    }
 
     #[tokio::test]
     async fn progress_cannot_extend_a_deadline_and_cancellation_does_not_replay() {

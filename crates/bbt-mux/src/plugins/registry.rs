@@ -46,6 +46,9 @@ pub use conformance::{ConformanceJob, ConformanceResult};
 #[path = "source.rs"]
 mod source;
 pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
+#[path = "host.rs"]
+mod host;
+pub use host::{MAX_CONCURRENT_CALLS, PluginHost};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]

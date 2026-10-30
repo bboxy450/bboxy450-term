@@ -18,7 +18,8 @@ pub use check::{CheckReport, Measurement, check, measure, run_cli};
 pub use discovery::DiscoveryRoots;
 pub use registry::{
     ConformanceJob, ConformanceResult, DataSourceProvider, EnabledSkills, InspectionJob,
-    InspectionResult, ProviderConfig, ProviderObservation, Registry, RegistryConfig,
+    InspectionResult, MAX_CONCURRENT_CALLS, PluginHost, ProviderConfig, ProviderObservation,
+    Registry, RegistryConfig,
 };
 
 use bbt_plugin::Refusal;
