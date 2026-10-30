@@ -319,7 +319,16 @@ fn scrolls(n: &c::Layout, out: &mut Vec<(Rect, [f32; 2], [f32; 2])>) {
 // keeps: spec gui-components §1.3
 #[test]
 fn real_thousand_open_sidebar_matches_full_visible_geometry_and_extent_to_the_bit() {
-    let sidebar = sidebar(1000);
+    let mut sidebar = sidebar(1000);
+    // Production cards always carry this launch-default row. An undeclared
+    // height here used to disable windowing for every seat in the card.
+    sidebar.cards[0]
+        .extra
+        .push(ui::modules::swarm_card::workdir_row(
+            "stable-swarm",
+            None,
+            ctx(),
+        ));
     let fast = sidebar.element(ctx());
     let mut full = fast.clone();
     without_windowing(&mut full);

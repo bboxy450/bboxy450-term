@@ -94,6 +94,8 @@ help:
 	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make build-perf-p1                Optimized P1 companion with private-custody guards' \
+	  'make test-perf-p1                 Private 1000-row/50-history P1 and hitch negative control' \
 	  'make test-history-admission       Core heap admission and private S4 night assertions' \
 	  'make test-input-backend          Admission wake, watched echo latency and replay safety' \
 	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
@@ -1493,3 +1495,16 @@ test-history-admission:
 	cargo build --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
 	BBT='$(abspath $(TARGET_DIR))/debug/$(APP)' sh scripts/e2e-night.sh scrollback >'$(TARGET_DIR)/history-night.jsonl'; \
 	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; s4=[r for r in rows if r.get("function")=="S4" and r.get("kind")=="e2e"]; assert len(s4)==1 and s4[0]["verdict"]=="pass" and s4[0]["coverage"]=="full",s4; print(s4[0])' '$(TARGET_DIR)/history-night.jsonl'
+
+.PHONY: build-perf-p1 test-perf-p1
+build-perf-p1:
+	@set -eu; . scripts/cache-env.sh; \
+	CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true cargo build --release --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
+	mkdir -p '$(TARGET_DIR)/debug'; \
+	cp '$(TARGET_DIR)/release/$(APP)' '$(TARGET_DIR)/debug/bboxy450-perf-p1'; \
+	cp '$(TARGET_DIR)/release/$(APP)' '$(TARGET_DIR)/release/bboxy450-perf-p1'
+
+test-perf-p1: build-perf-p1
+	@set -eu; \
+	'$(abspath $(TARGET_DIR))/release/$(APP)' e2e night --group performance --only P1 --scripts scripts/e2e > '$(TARGET_DIR)/p1-night.jsonl'; \
+	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; r=[r for r in rows if r.get("function")=="P1" and r.get("kind")=="e2e"]; assert len(r)==1 and r[0]["verdict"]=="pass" and r[0]["coverage"]=="full",r; print(r[0])' '$(TARGET_DIR)/p1-night.jsonl'

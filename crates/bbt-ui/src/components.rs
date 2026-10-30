@@ -803,6 +803,7 @@ type Intrinsic = ([f32; 2], f32);
 struct LayoutPass<'a> {
     ctx: Context,
     measure: &'a dyn Measure,
+    windowed: bool,
     intrinsic: std::collections::HashMap<(*const Element, u32), Intrinsic>,
 }
 impl<'a> LayoutPass<'a> {
@@ -810,6 +811,7 @@ impl<'a> LayoutPass<'a> {
         Self {
             ctx,
             measure,
+            windowed: true,
             intrinsic: std::collections::HashMap::new(),
         }
     }
@@ -1105,6 +1107,19 @@ impl Element {
         let (size, _) = self.natural_in(bounds.w, &mut pass)?;
         self.layout_in(Rect::new(bounds.x, bounds.y, bounds.w, size[1]), &mut pass)
     }
+    /// Explicit geometry probes may need a currently offscreen control. Normal
+    /// frames keep windowing; this opt-in retains the full solved contents.
+    pub fn layout_unwindowed(
+        &self,
+        bounds: Rect,
+        ctx: Context,
+        m: &dyn Measure,
+    ) -> crate::style::Result<Layout> {
+        let mut pass = LayoutPass::new(ctx, m);
+        pass.windowed = false;
+        let (size, _) = self.natural_in(bounds.w, &mut pass)?;
+        self.layout_in(Rect::new(bounds.x, bounds.y, bounds.w, size[1]), &mut pass)
+    }
     fn layout_in(&self, rect: Rect, pass: &mut LayoutPass<'_>) -> crate::style::Result<Layout> {
         let (ctx, m) = (pass.ctx, pass.measure);
         let (_, base) = self.natural_in(rect.w, pass)?;
@@ -1363,7 +1378,7 @@ impl Element {
                     content[0],
                     content[1],
                 );
-                let child = if declared.is_some() {
+                let child = if declared.is_some() && pass.windowed {
                     let outset = match s.content.as_ref() {
                         Self::FixedHeight { paint_outset, .. } => *paint_outset,
                         _ => 0.,

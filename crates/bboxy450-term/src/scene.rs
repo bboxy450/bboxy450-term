@@ -962,15 +962,36 @@ impl Scene {
         }
         out
     }
-    /// Reveal an empty swarm's controls using their solved, unscrolled geometry.
+    /// Reveal an empty swarm's controls using solved geometry. An explicit
+    /// offscreen reveal may probe the full sidebar; ordinary frames stay windowed.
     pub fn swarm_folder_scroll(
         &self,
         layouts: &[c::Layout],
         swarm: bbt_proto::SwarmId,
     ) -> Option<f32> {
-        let sidebar = layouts.get(1)?;
+        let visible_sidebar = layouts.get(1)?;
         let (viewport, max) = self.sidebar_extent(layouts)?;
-        let button = named_suffix(sidebar, &format!("swarm-folder/{swarm}/choose"))?.rect;
+        let name = format!("swarm-folder/{swarm}/choose");
+        let full;
+        let sidebar = if named_suffix(visible_sidebar, &name).is_some() {
+            visible_sidebar
+        } else {
+            // Recreate exactly this sidebar height, excluding any dock. This is
+            // an on-demand geometry query, never paint or an interactive hit tree.
+            let footer = if self.identity.is_some() { 24. } else { 0. };
+            full = self
+                .layout_contents(
+                    [layouts.first()?.rect.w, visible_sidebar.rect.bottom() + footer],
+                    false,
+                    0.,
+                    Instant::now(),
+                    false,
+                    true,
+                )
+                .ok()?;
+            full.get(1)?
+        };
+        let button = named_suffix(sidebar, &name)?.rect;
         let index = self.swarms.iter().position(|s| s.id == swarm)?;
         let head = named(sidebar, &format!("swarm{index}/head"))?.rect;
         let top = if button.bottom() - head.y <= viewport.h {
@@ -1161,7 +1182,7 @@ impl Scene {
         dock_height: f32,
         now: Instant,
     ) -> Result<Vec<c::Layout>, String> {
-        self.layout_contents(size, false, dock_height, now, false)
+        self.layout_contents(size, false, dock_height, now, false, false)
     }
     pub fn layout_docked_at(
         &self,
@@ -1170,7 +1191,7 @@ impl Scene {
         dock_height: f32,
         now: Instant,
     ) -> Result<Vec<c::Layout>, String> {
-        self.layout_contents(size, effects, dock_height, now, true)
+        self.layout_contents(size, effects, dock_height, now, true, false)
     }
     fn layout_contents(
         &self,
@@ -1179,6 +1200,7 @@ impl Scene {
         dock_height: f32,
         now: Instant,
         panes: bool,
+        full_sidebar: bool,
     ) -> Result<Vec<c::Layout>, String> {
         let ctx = self.ui_context();
         // Rows, tabs and panes carry each seat's swell and attention (rim-glow §7-8).
@@ -1386,8 +1408,8 @@ impl Scene {
             .element(ctx)
             .layout(Rect::new(0., 0., size[0], title), ctx, &self.metrics)
             .map_err(|e| e.to_string())?,
-            sidebar
-                .element_with_reveals(
+            {
+                let element = sidebar.element_with_reveals(
                     ctx,
                     None,
                     &self
@@ -1402,13 +1424,15 @@ impl Scene {
                         })
                         .collect(),
                     &self.metrics,
-                )
-                .layout(
-                    Rect::new(0., title, sidebar_width, sidebar_height),
-                    ctx,
-                    &self.metrics,
-                )
-                .map_err(|e| e.to_string())?,
+                );
+                let rect = Rect::new(0., title, sidebar_width, sidebar_height);
+                if full_sidebar {
+                    element.layout_unwindowed(rect, ctx, &self.metrics)
+                } else {
+                    element.layout(rect, ctx, &self.metrics)
+                }
+                .map_err(|e| e.to_string())?
+            },
         ];
         // The gutter between panes is the rim size and the stage inset half of it (rim-glow
         // §2): neighbouring rims' outer halves meet; depth never reaches the layout.

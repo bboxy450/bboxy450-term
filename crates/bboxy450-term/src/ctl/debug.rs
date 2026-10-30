@@ -113,6 +113,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("debug", "journal", "Debug"),
     ("debug", "metrics", "Debug"),
     ("debug", "history-admission", "-"),
+    ("debug", "performance", "-"),
     ("debug", "fault", "Debug"),
     ("debug", "snapshot", "Debug"),
     ("debug", "ps", "Debug"),
@@ -124,6 +125,7 @@ macro_rules! debug_commands {
     ($cb:ident, $rest:tt [$($acc:tt)*] $($head:tt)*) => {
         $cb!(@next $rest [$($acc)* "debug": [
             DebugReport,
+            DebugPerformance { broken: bool },
             DebugHistoryAdmission { cols: usize, rows: usize },
             DebugNotifications,
             DebugNativeNotifications,
@@ -149,6 +151,8 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     let flag = |name: &str| flags.get(name).cloned();
     Ok(Some(match *words {
         ["debug", "report"] => Command::DebugReport,
+        ["debug", "performance"] => Command::DebugPerformance { broken: false },
+        ["debug", "performance", "broken"] => Command::DebugPerformance { broken: true },
         ["debug", "history-admission", size] => {
             let (cols, rows) = size.split_once('x')
                 .and_then(|(c, r)| Some((c.parse::<usize>().ok()?, r.parse::<usize>().ok()?)))
@@ -312,6 +316,18 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
     } = cx;
     let data = match command {
         Command::DebugReport => report(),
+        Command::DebugPerformance { broken } => {
+            client.seats()?;
+            if !client
+                .identity
+                .as_ref()
+                .and_then(|i| i.reason.as_deref())
+                .is_some_and(|r| r.starts_with("test-account:"))
+            {
+                return Err("performance_fixture_requires_test_account".into());
+            }
+            performance(broken)?
+        }
         Command::DebugHistoryAdmission { cols, rows } => {
             client.seats()?;
             if !client
@@ -349,6 +365,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
 #[cfg(test)]
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "debug report",
+    "debug performance",
     "debug history-admission 2048x128",
     "debug notifications",
     "debug logs app",
@@ -543,4 +560,50 @@ mod admission_tests {
         assert!(large["core_retained_heap_bytes"].as_u64().unwrap() > 0);
         assert_eq!(large["retained_heap_bytes"], 0);
     }
+}
+
+/// The admitted test operator owns exactly this bounded, windowless child.
+fn performance(broken: bool) -> Result<Value, String> {
+    let root = tempfile::Builder::new()
+        .prefix("p1-private-")
+        .tempdir()
+        .map_err(|e| e.to_string())?;
+    std::fs::create_dir(root.path().join("home")).map_err(|e| e.to_string())?;
+    let log = root.path().join("result.json");
+    let errors = root.path().join("stderr.log");
+    let mut child = std::process::Command::new(std::env::current_exe().map_err(|e| e.to_string())?)
+        .arg("--p1-headless")
+        .env_clear()
+        .env("BBOXY_TEST_CUSTODY", "memory")
+        .env("BBOXY_P1_BROKEN", if broken { "1" } else { "0" })
+        .env("HOME", root.path().join("home"))
+        .env("TMPDIR", root.path())
+        .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::fs::File::create(&log).map_err(|e| e.to_string())?)
+        .stderr(std::fs::File::create(&errors).map_err(|e| e.to_string())?)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    std::fs::write(root.path().join("owned-pid"), child.id().to_string())
+        .map_err(|e| e.to_string())?;
+    let started = std::time::Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+            break status;
+        }
+        if started.elapsed() > Duration::from_secs(30) {
+            child.kill().map_err(|e| e.to_string())?;
+            child.wait().map_err(|e| e.to_string())?;
+            return Err(format!("p1_fixture_timeout: owned child {}", child.id()));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    if !status.success() {
+        return Err(format!(
+            "p1_fixture_failed: {status}: {}",
+            std::fs::read_to_string(errors).unwrap_or_default()
+        ));
+    }
+    serde_json::from_slice(&std::fs::read(log).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())
 }

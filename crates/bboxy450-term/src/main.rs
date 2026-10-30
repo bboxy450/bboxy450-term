@@ -23,6 +23,7 @@ mod live;
 mod log;
 mod navigation;
 mod pointer_cursor;
+mod perf_fixture;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -9615,6 +9616,11 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args == ["--p1-headless"] {
+        let report = perf_fixture::run()?;
+        println!("{}", report);
+        return Ok(());
+    }
     if hook_args == ["--version"] || hook_args == ["-V"] {
         println!("bboxy450-term {}", env!("CARGO_PKG_VERSION"));
         return Ok(());

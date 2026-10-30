@@ -28,7 +28,7 @@ use std::{
 const SCRIPT_TIMEOUT: Duration = Duration::from_secs(180);
 
 pub const USAGE: &str =
-    "usage: bboxy450-term e2e night [--group GROUP] [--scripts DIR] [--records REPO]
+    "usage: bboxy450-term e2e night [--group GROUP] [--scripts DIR] [--records REPO] [--only ID]
 Starts a windowless app in a throwaway run directory with ctl on and, for every promise of
 the group in e2e-acceptance §1 (default terminal), runs scripts/e2e/<ID>.sh against it (BBT,
 BBOXY_RUN_DIR, E2E_WORK and E2E_APP, the app's pid, set). Then one more app on REPO (default a throwaway
@@ -53,10 +53,12 @@ pub fn main(args: &[String]) -> Result<bool, String> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("scripts/e2e"));
     // The canonical list (§1, parsed) names the promises; a script per promise is the test.
+    let only = flag("--only");
     let ids: Vec<String> = crate::knowledge::promises()?
         .into_iter()
         .filter(|p| p.group == group)
         .map(|p| p.id)
+        .filter(|id| only.as_ref().is_none_or(|only| only == id))
         .collect();
     if ids.is_empty() {
         return Err(format!("e2e night: no promises in group {group}"));

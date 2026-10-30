@@ -680,7 +680,9 @@ pub fn workdir_row(key: &str, path: Option<&str>, ctx: ui::Context) -> c::Elemen
             Axis::Row,0.,c::Alignment::Center,vec![text(label,STYLE.r#type.small as f32,400,false,ui::Color::Foreground).into()]));
     let mut children=vec![c::Item {element:button("choose",label),extent:c::Extent::Flex(1.)}];
     if path.is_some() {children.push(button("default","Default".into()).into());}
-    flow(plain(None,[0.;4],ui::Color::Transparent,0.),Axis::Row,0.,c::Alignment::Center,children)
+    // Match the fixed-height buttons so this row preserves sidebar windowing.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    flow(plain(Some(ctx.density.tokens().tab_h as f32),[0.;4],ui::Color::Transparent,0.),Axis::Row,0.,c::Alignment::Center,children)
 }
 pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     let d = ctx.density.tokens();
