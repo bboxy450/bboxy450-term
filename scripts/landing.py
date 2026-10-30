@@ -444,7 +444,7 @@ def ledger_stage(argv):
         return "unit"
     if names & {"test-landing.py", "test-resource-ledger.py"}:
         return "integration"
-    if names & {"bboxybook", "capture-inputs.js"}:
+    if names & {"bboxy450-book", "capture-inputs.js"}:
         return "parity"
     return "smoke"
 
@@ -736,14 +736,14 @@ def scoped_parity(root, data, output):
     if stored is not None and not stored.is_relative_to(parity_directory().resolve()):
         raise Refusal("parity_pointer_outside_cache")
     if data["tier"] == "lab" and stored is not None:
-        binary = stored / "bboxybook"
+        binary = stored / "bboxy450-book"
         if not binary.is_file() or not (stored / "cases.json").is_file():
             raise Refusal("parity_store_incomplete")
         cases = json.loads((stored / "cases.json").read_text())
     else:
         checked(["cargo", "build", "-p", "bboxy450-book", "--locked"], root)
         target = Path(os.environ.get("BBOXY_CARGO_TARGET_DIR") or os.environ.get("CARGO_TARGET_DIR") or root / "target")
-        binary = target.resolve() / "debug/bboxybook"
+        binary = target.resolve() / "debug/bboxy450-book"
         cases = json.loads(command([str(binary), "manifest"], cwd=root).stdout)
     cases = parity_cases(cases, data)
     if "parity_pages" in data and data["parity_pages"]:
@@ -836,11 +836,11 @@ def presubmit_worker(base, result_path, recheck=None):
             checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
-        if dispatch and packages and (recheck is None or "bboxy450-proto" in data["affected"]):
+        if dispatch and packages and (recheck is None or "bboxy450-term-proto" in data["affected"]):
             # The wire golden is a target in the protocol crate; its test names
             # deliberately contain no "golden" name filter.
             output = io.StringIO()
-            code = measured_command(["cargo", "test", "--locked", "-p", "bboxy450-proto",
+            code = measured_command(["cargo", "test", "--locked", "-p", "bboxy450-term-proto",
                                      "--test", "gui_wire_golden"],
                                     root, _timing_path, stream=output)
             print(output.getvalue(), end="", flush=True)

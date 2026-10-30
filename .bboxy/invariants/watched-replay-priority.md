@@ -4,7 +4,7 @@ type: invariant
 number: 276
 title: "watched seats get at least half of the replay pages when both lanes are runnable"
 status: active
-check: cargo test -p bboxy450-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: the panes the operator is looking at starve behind hundreds nobody is watching; the frame gate cannot settle and the cockpit looks frozen while logic is busy elsewhere
 links:
   - { to: "[[d253-checkpoint-policy]]", rel: decision }
@@ -24,7 +24,7 @@ when one lane is empty the other receives every page; a watch that ends
 ([[d253-checkpoint-policy]], R5h). The 7.44 % that motivated this is evidence;
 the gate is the page count, because a count does not depend on the machine.
 
-**Check.** `cargo test -p bboxy450-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-term-mux --locked --test logic watched_lane_gets_at_least_half_of_replay_pages -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. R5h supplies this four-PTY check with a fixed replay-page
 budget, explicit GUI watch admission and exact serial-replay Screens.
 

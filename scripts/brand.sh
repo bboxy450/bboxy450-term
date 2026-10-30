@@ -5,6 +5,9 @@
 # crate or says internal. A new crate adds its row in the same commit. An internal
 # crate must also set publish = false: anything that reaches crates.io is bboxy450-*
 # (bboxy-firehose 0.1.0 shipped under the internal exemption).
+# Decision 362 classifications live in licensing.md; never guess app coupling.
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 set -eu
 cd "$(dirname "$0")/.."
 cargo metadata --no-deps --format-version 1 | python3 -I -c '
@@ -19,6 +22,11 @@ for line in open(".bboxy/specs/licensing.md"):
 bad = 0
 for p in json.load(sys.stdin)["packages"]:
     n = p["name"]
+    if n in {"bboxy450-mux", "bboxy450-proto"}:
+        print(n + ": app-specific package needs bboxy450-term-* (decision 362)"); bad += 1
+    for target in p["targets"]:
+        if "bin" in target["kind"] and target["name"] != n:
+            print(n + ": installed binary " + target["name"] + " must match package (decision 362)"); bad += 1
     if n.startswith("bboxy450-"): continue
     pub = rows.get(n)
     if pub is None:

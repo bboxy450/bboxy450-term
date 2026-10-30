@@ -16,7 +16,7 @@ updated: 2026-10-24T00:04:50Z
 ---
 # The mux depends on no remote transport until the cloud phase opens
 
-**Property.** `cargo tree -p bboxy450-mux` carries no QUIC, ssh or cloud SDK crate
+**Property.** `cargo tree -p bboxy450-term-mux` carries no QUIC, ssh or cloud SDK crate
 (`quinn`, `russh`, `ssh2`, `aws-sdk*`, `reqwest`, `tonic`, `hyper-util`,
 `rustls`) while ssh and cloud are dummies in the UI ([[vision]] Cockpit first;
 decisions #7 and #25; [[d1-providers]] §3 acceptance 5, promoted here). Local

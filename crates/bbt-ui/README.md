@@ -207,7 +207,7 @@ The retained effect layer precedes the frame, matching the web emitter behind
 the pane. Per-node state/grade/seed and the existing halo/count controls reach
 L2. The fixture host supplies a frozen 0ms pose; it owns animation time, input,
 path resolution, process lifecycle and event handling. Current previews are
-`bboxybook panes` (136 current + 80 historical cases). The older DrawList-only
+`bboxy450-book panes` (136 current + 80 historical cases). The older DrawList-only
 gallery adapter composes chrome; full materials use the retained host executor.
 
 ## L7 TitleBar

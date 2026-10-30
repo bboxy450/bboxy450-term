@@ -4,7 +4,7 @@ type: invariant
 number: 261
 title: "no gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door"
 status: active
-check: cargo test -p bboxy450-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: an endpoint file that exists when nobody asked is operator authority lying on disk for every same-user process; a seat admitted at the operator's door is a seat holding the operator's hand
 links:
   - { to: "[[d260-ctl-authority]]", rel: decision }
@@ -22,7 +22,7 @@ process ancestry contains this app's supervisor is refused with the reason
 named, and the refusal is journaled; an admitted `ctl` operation is journaled
 with kind `ctl` ([[d260-ctl-authority]]; [[e2e-acceptance]] §3).
 
-**Check.** `cargo test -p bboxy450-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-term-mux --locked --test gui_endpoint ctl_endpoint_opt_in_and_ancestry_refusal -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The test does not exist yet; A-1 creates it (a run without the
 flag writes no file; a run with it writes and removes one; a child spawned under
 the supervisor is refused by name; an outside peer is admitted and audited as

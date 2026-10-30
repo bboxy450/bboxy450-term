@@ -1113,7 +1113,7 @@ fn ring_capture_twenty_mib_profile_running_and_stopped() {
 /// W1.2c's original 128 MiB gate, retained for comparison.
 // keeps: spec mux-daemon
 #[test]
-#[ignore = "cargo test -p bboxy450-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1"]
+#[ignore = "cargo test -p bboxy450-term-mux --release --locked --test logic ring_capture_throughput -- --ignored --nocapture --test-threads=1"]
 fn ring_capture_throughput_with_logic_running_and_stopped() {
     for running in [false, true] {
         let temp = tempfile::tempdir().unwrap();

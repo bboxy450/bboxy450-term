@@ -42,7 +42,7 @@ rust-version = "1.99"
 bboxy450-harness-wake-up = { package = "bboxy450-harness-wake-up", version = "0.1.1", path = "crates/bboxy450-harness-wake-up" }
 bbt-core = { package = "bboxy450-term-core", version = "0.1.1", path = "crates/bbt-core" }
 bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.1", path = "crates/bbt-supervisor" }
-bbt-mux = { package = "bboxy450-mux", version = "0.1.1", path = "crates/bbt-mux" }
-bbt-proto = { package = "bboxy450-proto", version = "0.1.1", path = "crates/bbt-proto" }
+bbt-mux = { package = "bboxy450-term-mux", version = "0.1.1", path = "crates/bbt-mux" }
+bbt-proto = { package = "bboxy450-term-proto", version = "0.1.1", path = "crates/bbt-proto" }
 bbt-render = { package = "bboxy450-render", version = "0.1.1", path = "crates/bbt-render" }
 bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.1", path = "crates/bbt-ui-model" }

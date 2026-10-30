@@ -6,7 +6,7 @@ title: "notices never wake: under default policy an event-class message is store
 status: pending
 slow: true
 gate: pending-messaging-attention
-check: cargo test -p bboxy450-mux --locked --test messaging_flow events_are_stored_and_never_wake_by_default -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-mux --locked --test messaging_flow events_are_stored_and_never_wake_by_default -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: every status notice becomes a model turn and a full context re-read for every seat in the room; on 2026-10-24 and 25 that was about a hundred empty turns in one pane alone
 links:
   - { to: "[[messaging-attention]]", rel: spec }

@@ -206,11 +206,11 @@ test-task-migration:
 	python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
 	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
 	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib migration -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_contract_properties_derive_from_the_current_native_tool_catalogue; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test messaging; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib migration -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib task_contract_properties_derive_from_the_current_native_tool_catalogue; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test messaging; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib task_migration_verbs; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir task_migration_catalogue_upgrade -- --ignored --nocapture --test-threads=1; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
@@ -232,8 +232,8 @@ test-task-import-transport:
 	python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
 	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
 	export BBOXY_TASK_MIGRATION_OUTPUT='$(abspath $(TARGET_DIR))/task-migration'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib $(TASK_IMPORT_FILTER) -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp $(TASK_IMPORT_FILTER) -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib $(TASK_IMPORT_FILTER) -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp $(TASK_IMPORT_FILTER) -- --nocapture; \
 	python3 scripts/test-task-migration.py verify '$(abspath $(TARGET_DIR))'
 
 .PHONY: test-clipboard-isolation check-clipboard-isolation
@@ -264,7 +264,7 @@ parity-role-identity:
 	if [ -n '$(ROLE_IDENTITY_CASES_FILE)' ]; then \
 	  identity_cases=$$(cat '$(ROLE_IDENTITY_CASES_FILE)'); identity_out="$$identity_out-recheck"; \
 	else \
-	  identity_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("seat-row","title-strip","sidebar","message-row","stream")]; assert selected; print(json.dumps(selected))'); \
+	  identity_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("seat-row","title-strip","sidebar","message-row","stream")]; assert selected; print(json.dumps(selected))'); \
 	fi; \
 	PARITY_OUT="$$identity_out" sh scripts/parity.sh --cases "$$identity_cases"
 
@@ -277,9 +277,9 @@ test-cursors:
 .PHONY: test-chat-recent test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
 test-chat-recent:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib recent; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state -- --exact; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib recent; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test gui_events retained_message_and_receipt_pages_hydrate_rows_without_replaying_seat_state -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui
 
@@ -294,14 +294,14 @@ test-chat-notices:
 test-chat-sections:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden --test ui_sidebar_sections; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden --test ui_sidebar_sections; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
 	$(MAKE) test-chat-sections-e2e
 
 check-chat-sections:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-doc -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-doc -p bboxy450-term-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-chat-ux:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -319,7 +319,7 @@ parity-chat:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
-	chat_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("compose","stream","message-row")]; assert selected; print(json.dumps(selected))'); \
+	chat_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("compose","stream","message-row")]; assert selected; print(json.dumps(selected))'); \
 	PARITY_OUT='$(TARGET_DIR)/parity-chat' sh scripts/parity.sh --cases "$$chat_cases"
 
 .PHONY: test-settings-window
@@ -333,14 +333,14 @@ parity-settings:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
-	settings_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("settings","harness-icon","launcher")]; assert selected; print(json.dumps(selected))'); \
+	settings_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; xs=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in xs if row["component"] in ("settings","harness-icon","launcher")]; assert selected; print(json.dumps(selected))'); \
 	sh scripts/parity.sh --cases "$$settings_cases"
 
 parity-swarm:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
-	swarm_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="swarms"]; assert selected; print(json.dumps(selected))'); \
+	swarm_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="swarms"]; assert selected; print(json.dumps(selected))'); \
 	sh scripts/parity.sh --cases "$$swarm_cases"
 
 test-swarm:
@@ -360,34 +360,34 @@ test-make-isolation:
 .PHONY: test-signed-mentions
 test-signed-mentions:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --tests --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --lib mentions --target-dir '$(TARGET_DIR)' -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --lib first_held_operator_delivers_an_authorless_intent_but_cannot_mute --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test identity --test identity_local --test identity_io --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test messaging --test mcp mention --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test attention_policy --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-proto --tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib mentions --target-dir '$(TARGET_DIR)' -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --lib first_held_operator_delivers_an_authorless_intent_but_cannot_mute --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test identity --test identity_local --test identity_io --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test messaging --test mcp mention --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test attention_policy --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test messaging_flow --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test swarm_workdir signed_mentions_refresh_retains_sessions_and_shell_state --target-dir '$(TARGET_DIR)' -- --ignored --nocapture; \
-	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-gui-events
 .PHONY: test-document-protocol
 test-document-protocol:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'
+	cargo test --locked -p bboxy450-term-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'
 
 .PHONY: test-documents-night
 .PHONY: test-documents-activation
 test-documents-activation:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --lib private_document_identity_tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib private_document_identity_tests --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test swarm_workdir document_observations_refresh_independent_markers_and_retain_native_sessions --target-dir '$(TARGET_DIR)' -- --ignored --exact --nocapture
 
 test-documents-night:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_PROFILE_DEV_OPT_LEVEL=1 CARGO_PROFILE_TEST_OPT_LEVEL=1 CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=true CARGO_PROFILE_TEST_DEBUG_ASSERTIONS=true; \
 	cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-proto --test ui_document_geometry --test gui_wire_golden --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-doc --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-ui --test documents --test document_host --test flow --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test documents --test documents_observation --target-dir '$(TARGET_DIR)'; \
@@ -406,7 +406,7 @@ test-document-provenance:
 
 check-documents:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: parity-documents
 parity-documents:
@@ -444,23 +444,23 @@ test-chat-backlog-frame:
 
 test-chat-backlog:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib messaging::service::reference_tests -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test messaging_flow wake_receipts -- --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib quiet_history_tests -- --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui -- --nocapture
 
 test-gui-events:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
-	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib bus::gui_tests -- --nocapture; \
+	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test gui_events -- --nocapture; \
 	BBOXY_GUI_EVENTS_EVIDENCE=/tmp cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test gui_events -- --ignored --exact retained_membership_over_64_keeps_events_chat_and_tasks_live --nocapture --test-threads=1
 	$(MAKE) test-chat-backlog test-chat-backlog-component test-chat-backlog-frame
 
 test-boundaries:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test seat_wiring; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test seat_wiring; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl --test native_signing; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::shell_path::tests -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib refresh_replaces_a_confirmed_failed_process -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
@@ -624,15 +624,15 @@ test-spawn-unit:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib spawn_params
 
 check-spawn:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mermaid -p bboxy450-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mermaid -p bboxy450-term-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-adapter-startup test-harness-startup check-harness-startup fmt-harness-startup
 ADAPTER_STARTUP_TEST ?= adapters_real_zsh_overlay_reports_prompt_133_b_and_command_boundary
 test-adapter-startup:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib process_start_ -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters adapters_zsh_startup_ -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters '$(ADAPTER_STARTUP_TEST)' -- --exact --nocapture
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters adapters_zsh_startup_ -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters '$(ADAPTER_STARTUP_TEST)' -- --exact --nocapture
 
 fmt-harness-startup:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/native.rs crates/bboxy450-harness-wake-up/tests/adapters.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bboxy450-harness-wake-up/tests/codex_proxy.rs crates/bbt-mux/src/adapters/launch.rs crates/bbt-mux/src/adapters/mapping.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ring_batch_tests.rs
@@ -640,38 +640,38 @@ fmt-harness-startup:
 test-harness-startup:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
 
 .PHONY: test-plugin-skills check-plugin-skills
 test-plugin-skills:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_skills_ -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_four_methods_ -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results -- --exact --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test knowledge_provider -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_skills_ -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_four_methods_ -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_results -- --exact --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test knowledge_provider -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters
 
 check-plugin-skills:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-terminal-colors test-terminal-colors-native
 test-terminal-colors:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters terminal_colors_ -- --nocapture
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters terminal_colors_ -- --nocapture
 
 test-terminal-colors-native: build
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --color-check
 
 check-harness-startup:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-cli-error-isolation
 test-cli-error-isolation:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib diagnostic; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_seat_diagnostics; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib diagnostic; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_seat_diagnostics; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics --test ctl --test ctl_report; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless notification_recording_requires_a_test_account_before_startup -- --exact
 
@@ -696,18 +696,18 @@ test-harness-proxy:
 
 .PHONY: test-wake-causes test-wake-journal-failure
 test-wake-journal-failure:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters wake_causes_failed_result_journal_fences_same_id_native_and_pty -- --exact
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters wake_causes_failed_result_journal_fences_same_id_native_and_pty -- --exact
 
 test-wake-causes:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib --test adapters; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib adapters::; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib wake_causes_; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test adapters; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging wake_causes_; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments -- --exact; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib adapters::; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib wake_causes_; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test messaging wake_causes_; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir task_migration_catalogue_upgrade_retains_all_seats_and_shell_state -- --ignored --exact --nocapture --test-threads=1; \
-	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 .PHONY: test-codex-rendering
 test-codex-rendering: build test-harness-proxy
@@ -721,13 +721,13 @@ test-checkpoint-resize:
 
 .PHONY: test-input-latency test-input-backend test-input-ui test-input-layout profile-input-ui check-input test-terminal-replay check-terminal-replay
 test-input-latency:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test input_latency -- --nocapture
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test input_latency -- --nocapture
 
 test-input-backend:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib logic::idle_command_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::input_check_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events -- --exact
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib logic::idle_command_tests; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::input_check_tests; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events -- --exact
 	$(MAKE) test-input-latency test-terminal-replay
 
 test-input-ui:
@@ -741,7 +741,7 @@ test-input-layout:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache::tests -- --nocapture
 
 check-input:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 profile-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
@@ -756,15 +756,15 @@ fmt-power:
 
 test-power:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib power_tests -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib identity::; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging --test messaging_flow
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib power_tests -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib identity::; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test messaging --test messaging_flow
 
 check-power:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 profile-power:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib cpu_profile -- --ignored --nocapture --test-threads=1
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib cpu_profile -- --ignored --nocapture --test-threads=1
 
 .PHONY: test-render-input check-render-input
 test-render-input:
@@ -779,16 +779,16 @@ fmt-render-input:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-render/src/chrome/text_cache.rs crates/bbt-render/src/chrome/mod.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/tests/formal_contracts/models.rs
 
 check-render-input:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-render -p bboxy450-ui -p bboxy450-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-render -p bboxy450-ui -p bboxy450-term-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-terminal-replay:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test checkpoint_scheduling -- --nocapture; \
-	R5G_SEATS=4 cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test recovery checkpoint_bounded_recovery -- --exact --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test checkpoint_scheduling -- --nocapture; \
+	R5G_SEATS=4 cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test recovery checkpoint_bounded_recovery -- --exact --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl ctl_screen_input_and_wait_drive_a_seat -- --exact --nocapture
 
 check-terminal-replay:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-landing-phases
 test-landing-phases:
@@ -800,14 +800,14 @@ preview-launcher:
 
 test-spawn: test-spawn-unit
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' legacy_spawn_without_arguments_and_environment_round_trips; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' legacy_spawn_without_arguments_and_environment_round_trips; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir spawn_parameters_ctl_flow -- --ignored --nocapture
 
 parity-launcher:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
-	launcher_cases=$$('$(TARGET_DIR)/debug/bboxybook' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="launchers"]; assert selected; print(json.dumps(selected))'); \
+	launcher_cases=$$('$(TARGET_DIR)/debug/bboxy450-book' manifest | python3 -c 'import json,sys; cases=json.load(sys.stdin); selected=["{component}/{slug}-{density}-{theme}.png".format(**row) for row in cases if (row.get("fixture") or {}).get("layer")=="launchers"]; assert selected; print(json.dumps(selected))'); \
 	sh scripts/parity.sh --cases "$$launcher_cases"
 
 .PHONY: fmt-spawn test-spawn-dependents
@@ -815,7 +815,7 @@ fmt-spawn:
 	@set -eu; . ./scripts/cache-env.sh; { git diff HEAD --name-only --diff-filter=AM -- '*.rs'; git ls-files --others --exclude-standard -- '*.rs'; } | sort -u | while IFS= read -r source; do rustfmt --edition 2024 --config skip_children=true "$$source"; done
 
 test-spawn-dependents:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mermaid -p bboxy450-ui-core -p bboxy450-proto -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)'
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mermaid -p bboxy450-ui-core -p bboxy450-term-proto -p bboxy450-ui -p bboxy450-term-mux -p bboxy450-term -p bboxy450-book --target-dir '$(TARGET_DIR)'
 
 .PHONY: test-spawn-e2e
 test-spawn-e2e:
@@ -825,15 +825,15 @@ test-spawn-e2e:
 .PHONY: test-swarm-metadata check-swarm-metadata format-swarm-metadata
 test-swarm-metadata:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata --test storage_bus_index; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata --test storage_bus_index; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses -- --ignored --exact --nocapture
 
 check-swarm-metadata:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 format-swarm-metadata:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/registry.rs crates/bbt-proto/src/gui/swarm.rs crates/bbt-proto/src/gui/mod.rs crates/bbt-mux/src/registry.rs crates/bbt-mux/src/window_journal.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bbt-mux/tests/swarm_metadata.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/tests/swarm_workdir.rs
@@ -854,18 +854,18 @@ notification-status:
 .PHONY: notification-status test-attention-notifications check-attention-notifications
 test-attention-observer:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test notification_episode; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib attention_observer; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::attention_tests
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test notification_episode; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib attention_observer; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::attention_tests
 
 .PHONY: test-attention-observer
 test-attention-notifications:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-desktop-notifications -p bboxy450-desktop-notifications-macos --lib --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-harness-wake-up --test adapters --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test adapters --test attention_policy --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --lib attention_observer --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test adapters --test attention_policy --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib attention_observer --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --lib notifications::tests --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --lib attention::tests --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --lib ctl::debug::tests --target-dir '$(TARGET_DIR)'; \
@@ -875,7 +875,7 @@ test-attention-notifications:
 
 check-attention-notifications:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-desktop-notifications -p bboxy450-desktop-notifications-macos -p bboxy450-harness-wake-up -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-desktop-notifications -p bboxy450-desktop-notifications-macos -p bboxy450-harness-wake-up -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-notification-copy:
 	@$(MAKE) compile PROFILE=debug
@@ -886,7 +886,7 @@ test-notification-copy:
 test-settings-night:
 	@$(MAKE) compile PROFILE=debug
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_notification_foreground; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test ui_notification_foreground; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::tests::every_verb_maps_to_exactly_one_window_action -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) notification_foreground_tests; \
 	python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-acceptance/verdicts'
@@ -908,33 +908,33 @@ check-settings-role-picker:
 .PHONY: test-settings-role-runtime
 test-settings-role-runtime:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge_provider
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge_provider
 
 test-settings-roles:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib role_catalog; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test settings --test settings_roles --test settings_destinations --test provider_settings --test cursor; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test settings
 
 check-settings-roles:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-ui -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-ui -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-settings-roles-e2e:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui gui_spawn_roles_follow_the_catalog_and_default_shells_to_worker -- --ignored --exact --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provider_gui gui_spawn_roles_follow_the_catalog_and_default_shells_to_worker -- --ignored --exact --nocapture; \
 	BBOXY_SETTINGS_EVIDENCE='$(abspath $(TARGET_DIR))/settings-roles' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir settings_roles_and_harness_policies_persist_and_reach_native_launches -- --ignored --exact --nocapture
 
 test-sidebar-accordions:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	BBOXY_ACCORDION_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-accordions' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir sidebar_accordions_toggle_without_focus_changes_and_survive_ui_restart -- --ignored --exact --nocapture
 
 check-sidebar-accordions:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-swarm-switch:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -954,7 +954,7 @@ test-sidebar-resize:
 	BBOXY_SIDEBAR_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-resize' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir sidebar_drag_reflows_and_persists_without_restarting_harnesses -- --ignored --exact
 
 check-sidebar-resize:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-cross-focus format-cross-focus check-cross-focus
 format-cross-focus: fmt-spawn
@@ -982,15 +982,15 @@ test-seat-mute:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test seat_rows; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test messaging mute; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test messaging mute; \
 	BBOXY_SWARM_EVIDENCE='$(abspath $(TARGET_DIR))/seat-mute' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart -- --ignored --exact --nocapture
 
 .PHONY: test-close-shortcut
 .PHONY: test-workspace-roots
 test-workspace-roots:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider; \
-	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider; \
+	cargo clippy --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 test-close-shortcut:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1005,13 +1005,13 @@ test-navigation:
 
 check-navigation:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-oracle-control test-oracle-ui check-oracle-control format-oracle-control
 test-oracle-control:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto -p bboxy450-mux --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_oracle -- --include-ignored --nocapture; \
+	cargo test --locked -p bboxy450-term-proto -p bboxy450-term-mux --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_oracle -- --include-ignored --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	$(MAKE) test-oracle-ui
 
@@ -1019,7 +1019,7 @@ test-oracle-ui:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp -- --ignored --nocapture
 
 check-oracle-control:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 format-oracle-control:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 --config skip_children=true crates/bbt-mux/src/logic.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/src/mcp/bridge.rs crates/bbt-mux/src/window_journal.rs crates/bbt-proto/src/registry.rs crates/bboxy450-term/src/model.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/live.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/tests/swarm_workdir.rs
@@ -1027,7 +1027,7 @@ format-oracle-control:
 .PHONY: test-large-gui-frame format-large-gui-frame
 test-large-gui-frame:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib gui_reply_budget_accepts_large_frames -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib gui_reply_budget_accepts_large_frames -- --nocapture; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir large_terminal_snapshot -- --ignored --nocapture
 
 format-large-gui-frame:
@@ -1063,22 +1063,22 @@ test-ui-overlays:
 .PHONY: test-app-overlays
 test-app-overlays:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_layout_text; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test ui_layout_text; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture; \
-	cargo clippy --locked -p bboxy450-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-term-proto -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-seat-actions test-seat-actions-backend test-seat-actions-reconnect check-seat-actions check-seat-actions-backend test-task-contract
 test-task-contract:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue -- --exact
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib plugins::check::tests::task_contract_properties_derive_from_the_current_native_tool_catalogue -- --exact
 
 test-seat-actions-backend: test-task-contract
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)' --test data_source; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_role_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provider_gui seat_controls_fence_generations_scope_and_kill_only_the_target_child -- --ignored --exact --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::gui_tests::seat_control_role_snapshot_precedes_receipt_without_events -- --ignored --exact --nocapture
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib task_role_tests; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provider_gui seat_controls_fence_generations_scope_and_kill_only_the_target_child -- --ignored --exact --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib seat_socket::gui_tests::seat_control_role_snapshot_precedes_receipt_without_events -- --ignored --exact --nocapture
 
 test-seat-actions-reconnect:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1091,26 +1091,26 @@ test-seat-actions: test-seat-actions-backend test-seat-actions-reconnect
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir seat_context_actions_ -- --ignored --nocapture
 
 check-seat-actions:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-proto -p bboxy450-mux -p $(APP) -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 check-seat-actions-backend:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-proto -p bboxy450-mux --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-term-proto -p bboxy450-term-mux --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-workspace-boundary check-workspace-boundary format-workspace-boundary
 test-workspace-boundary:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib mcp::journal; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::seat_reads; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::responsiveness_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge --test knowledge_provider; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib mcp::journal; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib knowledge::seat_reads; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib knowledge::responsiveness_tests; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge --test knowledge_provider; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test knowledge_e2e --test documents --test ctl_records --test messaging_flow; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses -- --ignored --exact --nocapture
 
 check-workspace-boundary:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 format-workspace-boundary:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-proto/src/gui/swarm.rs crates/bbt-proto/src/gui/mod.rs crates/bbt-proto/src/gui/record.rs crates/bbt-proto/src/gui/task.rs crates/bbt-proto/tests/gui_wire_golden.rs crates/bbt-mux/src/mcp/journal.rs crates/bbt-mux/src/knowledge/seat_reads.rs crates/bbt-mux/src/knowledge/responsiveness_tests.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/seat_socket.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/documents.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/src/live.rs crates/bboxy450-term/tests/knowledge_e2e.rs crates/bboxy450-term/tests/messaging_flow.rs crates/bboxy450-term/tests/swarm_workdir.rs
@@ -1119,10 +1119,10 @@ format-workspace-boundary:
 # Private cwd roots, stale completions/replays, provider responsiveness and scoped wakes.
 test-workspace-routing:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib workspace_; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery --test logic --test provenance; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge_responsiveness_tests; \
-	cargo clippy --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib workspace_; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test workspace_roots --test knowledge --test knowledge_provider --test mcp --test messaging_suppression --test recovery --test logic --test provenance; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib knowledge_responsiveness_tests; \
+	cargo clippy --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
 .PHONY: test-scoped-workspace-frontend
 # Pure frontend checks do not require a running app or provider.
@@ -1166,18 +1166,18 @@ test-terminal-font:
 	if [ "$$(uname -s)" = Darwin ]; then cargo run --locked -p bboxy450-term-desktop-macos --example native_probe --target-dir '$(TARGET_DIR)'; fi
 
 check-terminal-font:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-ui -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-ui -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-image-paste test-image-paste-wire test-image-paste-desktop test-image-paste-ui test-image-paste-app test-image-paste-e2e check-image-paste check-image-paste-wire
 test-image-paste: test-image-paste-wire test-image-paste-desktop test-image-paste-ui test-image-paste-app test-image-paste-e2e
 
 test-image-paste-wire:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-proto --target-dir '$(TARGET_DIR)' --test ui_image_paste --test gui_wire_golden
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test ui_image_paste --test gui_wire_golden
 
 check-image-paste-wire:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-proto --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-term-proto --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-image-paste-desktop:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1201,7 +1201,7 @@ test-image-paste-e2e:
 
 check-image-paste:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-proto -p bboxy450-mux -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p bboxy450-ui -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-color-emoji check-color-emoji
 test-color-emoji:
@@ -1215,12 +1215,12 @@ check-color-emoji:
 .PHONY: test-color-emoji-swarm check-color-emoji-all
 test-color-emoji-swarm:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test swarm_metadata; \
 	BBOXY_UI_OVERLAY_EVIDENCE='$(abspath $(TARGET_DIR))/emoji-evidence/app' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir context_menu_rename_is_trapped_validated_and_persistent -- --ignored --exact --nocapture
 
 check-color-emoji-all:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-render -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-mux -p bboxy450-term -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-render -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-mux -p bboxy450-term -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 .PHONY: test-terminal-selection test-terminal-paste check-terminal-selection
 test-terminal-paste:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1239,7 +1239,7 @@ test-terminal-selection:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir terminal_selection_ -- --ignored --nocapture
 
 check-terminal-selection:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-proto -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-proto -p bboxy450-term-desktop-core -p bboxy450-term-desktop-macos -p bboxy450-term-desktop -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-harness-vocabulary
 test-harness-vocabulary:
@@ -1266,13 +1266,13 @@ install-gitkb-plugin-local: check-gitkb-plugin
 test-harmony-host:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-plugin --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --lib --target-dir '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test plugin_registry --test knowledge_provider --test harmony_host --target-dir '$(TARGET_DIR)'
+	cargo test --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test plugin_registry --test knowledge_provider --test harmony_host --target-dir '$(TARGET_DIR)'
 
 .PHONY: test-harmony-host-integration test-harmony-host-gitkb
 test-harmony-host-integration:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --test harmony_host --test plugin_registry --test knowledge_provider --test knowledge_views --target-dir '$(TARGET_DIR)'
+	cargo test --locked -p bboxy450-term-mux --test harmony_host --test plugin_registry --test knowledge_provider --test knowledge_views --target-dir '$(TARGET_DIR)'
 
 .PHONY: test-harmony-host-ui
 test-harmony-host-ui:
@@ -1286,14 +1286,14 @@ test-harmony-host-gitkb: build-gitkb-plugin
 	harmony_target=$$(rustc -vV | sed -n 's/^host: //p' | tr '[:lower:]-' '[:upper:]_'); \
 	env "CARGO_TARGET_$${harmony_target}_RUNNER=$(CURDIR)/scripts/run-private-gitkb-host.sh" \
 	BBOXY_GITKB_ADAPTER='$(abspath $(GITKB_PLUGIN))' BBOXY_GITKB_BIN='$(GITKB_BIN)' \
-	cargo test --locked -p bboxy450-mux --test harmony_host --target-dir '$(TARGET_DIR)' real_gitkb_host_lifecycle -- --ignored --exact --nocapture
+	cargo test --locked -p bboxy450-term-mux --test harmony_host --target-dir '$(TARGET_DIR)' real_gitkb_host_lifecycle -- --ignored --exact --nocapture
 
 .PHONY: build-recovery-test test-recovery-built
 build-recovery-test:
 	@set -eu; . ./scripts/cache-env.sh; \
 	test -z "$$(git status --porcelain)"; recovery_source=$$(git rev-parse HEAD); \
 	mkdir -p '$(TARGET_DIR)'; \
-	cargo test --locked -p bboxy450-mux --test recovery --no-run --message-format=json --target-dir '$(TARGET_DIR)' >'$(TARGET_DIR)/recovery-build.jsonl'; \
+	cargo test --locked -p bboxy450-term-mux --test recovery --no-run --message-format=json --target-dir '$(TARGET_DIR)' >'$(TARGET_DIR)/recovery-build.jsonl'; \
 	recovery_binary=$$(python3 -c 'import json,sys; print(next(r["executable"] for line in sys.stdin if (r := json.loads(line)).get("reason") == "compiler-artifact" and r["target"]["name"] == "recovery" and r.get("executable")))' <'$(TARGET_DIR)/recovery-build.jsonl'); \
 	cp "$$recovery_binary" '$(TARGET_DIR)/recovery-test'; \
 	test "$$recovery_source" = "$$(git rev-parse HEAD)"; test -z "$$(git status --porcelain)"; \
@@ -1391,11 +1391,11 @@ test-sidebar-panels:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui-core --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test sidebar_tasks --test swarms; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache
 
 check-sidebar-panels:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-sidebar-panels-e2e
 test-sidebar-panels-e2e:
@@ -1404,7 +1404,7 @@ test-sidebar-panels-e2e:
 .PHONY: test-sidebar-panels-regressions
 test-sidebar-panels-regressions:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-doc -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-doc -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test ctl
 
 .PHONY: test-cache-env
@@ -1417,14 +1417,14 @@ fmt-task-sidebar:
 
 test-task-sidebar:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib task_inventory; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib task_inventory; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --lib accordion_reveal; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test sidebar_tasks; \
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)' --lib large_hook_fields
 
 check-task-sidebar:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-proto -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-term-proto -p bboxy450-harness-wake-up -p bboxy450-ui -p bboxy450-term-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-live-feed
 test-live-feed:
@@ -1436,17 +1436,17 @@ test-live-feed:
 .PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer
 test-task-import-observer: test-task-migration
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib import_staging_is_excluded -- --nocapture; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test provenance -- --nocapture
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib import_staging_is_excluded -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provenance -- --nocapture
 
 test-task-import-observer-causal:
 	@set -eu; . ./scripts/cache-env.sh; \
 	test -f '$(abspath $(TARGET_DIR))/task-migration/input/lossless-import-manifest.json' || python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
 	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration_250_records_authenticated_collision_restart_and_replay -- --exact --nocapture
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp task_migration_250_records_authenticated_collision_restart_and_replay -- --exact --nocapture
 
 test-task-import-observer-mutant:
 	@python3 scripts/test-task-migration.py mutant '$(abspath $(TARGET_DIR))'
 
 check-task-import-observer:
-	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

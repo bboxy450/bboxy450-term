@@ -18,7 +18,7 @@ fn value(args: &[String], key: &str) -> Option<String> {
 }
 fn main() {
     if let Err(error) = run() {
-        eprintln!("bboxybook: {error}");
+        eprintln!("bboxy450-book: {error}");
         std::process::exit(1);
     }
 }
@@ -261,7 +261,7 @@ fn run() -> Result<()> {
             else { parity::compare_paths_with_gate(&out,&cases,&web,&native,strict)?; }
         },
         "sidebar"|"showcase"=>{let component=if command=="showcase"{format!("showcase-{}",value(&args,"--scene").unwrap_or_else(||"3".into()))}else{"sidebar".into()};cases.retain(|c|c.component==component);parity::render(&PathBuf::from("target/bboxybook"),&cases)?;},
-        _=>return Err("usage: bboxybook [gallery | paths | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
+        _=>return Err("usage: bboxy450-book [gallery | paths | streams | launchers | title-bars | panes | swarms | tabs | seat-rows | components | widgets | overlays | atoms | materials | styles | manifest | replay-images --manifest JSON --out DIR | render --all [--out DIR] [--manifest JSON] [--component ID] | compare --out DIR]".into()),
     }
     Ok(())
 }

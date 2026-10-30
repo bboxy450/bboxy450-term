@@ -1,6 +1,6 @@
 [package]
 readme = "README.md"
-name = "bboxy450-mux"
+name = "bboxy450-term-mux"
 version.workspace = true
 edition.workspace = true
 license-file = "LICENSE"
@@ -14,7 +14,7 @@ bboxy450-keychain = { package = "bboxy450-keychain", version = "0.1.1", path = "
 bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
 bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }
 bbt-doc = { package = "bboxy450-doc", version = "0.1.1", path = "../bbt-doc" }
-bbt-proto = { package = "bboxy450-proto", version = "0.1.1", path = "../bbt-proto" }
+bbt-proto = { package = "bboxy450-term-proto", version = "0.1.1", path = "../bbt-proto" }
 bbt-core = { package = "bboxy450-term-core", version = "0.1.1", path = "../bbt-core" }
 bbt-rt = { package = "bboxy450-rt", version = "0.1.1", path = "../bbt-rt" }
 bbt-supervisor = { package = "bboxy450-harness-host", version = "0.1.1", path = "../bbt-supervisor" }

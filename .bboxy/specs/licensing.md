@@ -16,7 +16,7 @@ links:
   - { to: "[[yarn]]", rel: spec }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
 created: 2026-10-23T16:26:37Z
-updated: "2026-10-28T22:15:55Z"
+updated: "2026-10-30T19:35:00Z"
 ---
 # Licensing
 
@@ -60,8 +60,8 @@ the scope within that package.
 | `bbt-supervisor` | `bboxy450-harness-host` ([[harness-kits]] §3) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-harness-wake-up` | itself (`crates/bboxy450-harness-wake-up`, [[harness-kits]] §2; extracted from `bbt-mux/src/adapters`) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-plugin` | `bboxy450-plugin` ([[plugins]] §1, the shape and contract schemas, tiers, ceilings, the trust-record type) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
-| `bbt-proto` | internal until decision [[d8-open-source\|#8]]'s plateau | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
-| `bbt-mux` | internal until decision [[d8-open-source\|#8]]'s plateau | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
+| `bbt-proto` | `bboxy450-term-proto` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
+| `bbt-mux` | `bboxy450-term-mux` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy-firehose` | `bboxy450-term-firehose` (was `bboxy-firehose` 0.1.0, to be yanked) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | xterm.js MIT reference assets in reference/vendor, excluded from Cargo package |
 | `bboxy450-keychain`, `bboxy450-keychain-macos`, `bboxy450-keychain-linux`, `bboxy450-keychain-windows`, `bboxy450-keychain-file` | themselves ([[id1-seat-chain]] §5, decision #281) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-term-desktop-core` | itself ([[d362-crate-names-app-then-package]], [[d46-cross-os-facades]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned platform-free desktop actions, menus and stop ports use LICENSE; retained upstream material keeps its own terms | none |
@@ -69,6 +69,25 @@ the scope within that package.
 | `bboxy450-term-desktop` | itself ([[d362-crate-names-app-then-package]], [[d46-cross-os-facades]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned OS-agnostic facade over desktop-core and per-OS adapters uses LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | themselves ([[desktop-notifications]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-term` (the app) | the distributed binary | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; linked code retains its own terms | Linked upstream notices ship in the bundle; identity and logos retain their respective rights |
+
+## Decision 362 package inventory — 2026-10-30
+
+All 28 current workspace packages were checked against [[d362-crate-names-app-then-package]].
+The app segment is an explicit classification, not inferred by a script.
+
+| Scope | Current Cargo package names | Reason |
+|---|---|---|
+| Terminal app | `bboxy450-term`, `bboxy450-term-core`, `bboxy450-term-mux`, `bboxy450-term-proto`, `bboxy450-term-firehose`, `bboxy450-term-desktop-core`, `bboxy450-term-desktop-macos`, `bboxy450-term-desktop` | App, terminal engine, seat orchestration/wire, terminal load generator, and terminal desktop integration. |
+| Generic | `bboxy450-rt`, `bboxy450-tlc`, `bboxy450-yarn`, `bboxy450-yarn-macros`, `bboxy450-mermaid`, `bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-plugin` | Reusable runtime, verification, UI, document and plugin tools. Book independently consumes the renderer. |
+| Generic harness kits | `bboxy450-harness-host`, `bboxy450-harness-wake-up` | Caller-configured harness execution and wake adapters, without terminal app policy. |
+| Generic platform kits | `bboxy450-keychain`, `bboxy450-keychain-windows`, `bboxy450-keychain-file`, `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | Reusable custody and notification facades/backends. |
+| Separate app | `bboxy450-book` | Standalone component gallery and parity consumer; binary is also `bboxy450-book`. |
+
+`bboxy450-keychain-macos` and `bboxy450-keychain-linux` are proposed generic
+backends, absent from this workspace. `bboxy450-frontmatter` remains a proposed
+umbrella, not an extra workspace package. Rust library names and source
+directories remain stable. This inventory changes source/package metadata only;
+publication, version bumps and yanking retired names belong to release issue #69.
 
 ## Files, extracts and distributions
 

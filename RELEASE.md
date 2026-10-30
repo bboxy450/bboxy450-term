@@ -18,7 +18,7 @@ All 24 workspace crates are released from the same signed monorepo commit. Crate
 12. `bboxy450-desktop-notifications` — `crates/bboxy450-desktop-notifications`
 13. `bboxy450-harness-wake-up` — `crates/bboxy450-harness-wake-up`
 14. `bboxy450-keychain-file` — `crates/bboxy450-keychain-file`
-15. `bboxy450-proto` — `crates/bbt-proto`
+15. `bboxy450-term-proto` — `crates/bbt-proto`
 16. `bboxy450-harness-host` — `crates/bbt-supervisor`
 17. `bboxy450-ui` — `crates/bbt-ui`
 18. `bboxy450-yarn` — `crates/bbt-yarn`
@@ -26,7 +26,7 @@ All 24 workspace crates are released from the same signed monorepo commit. Crate
 20. `bboxy450-doc` — `crates/bbt-doc`
 21. `bboxy450-render` — `crates/bbt-render`
 22. `bboxy450-book` — `crates/bboxybook`
-23. `bboxy450-mux` — `crates/bbt-mux`
+23. `bboxy450-term-mux` — `crates/bbt-mux`
 24. `bboxy450-term` — `crates/bboxy450-term`
 
 Core retains Apache-2.0 and its vendored notices; the other packages use MIT OR Apache-2.0. Each crate includes its README and licence texts.

@@ -636,7 +636,7 @@ raise SystemExit(101 if code==1 else code)
             path.write_text("#!/usr/bin/env python3\n" + program)
             path.chmod(0o700)
         if kind == "parity":
-            book = self.repo.state / "bboxybook"
+            book = self.repo.state / "bboxy450-book"
             book.write_text("#!/usr/bin/env python3\nimport json,shutil\n" + runner + '''
 args=sys.argv[1:]
 cases=[{'component':'fixture','slug':slug,'density':'compact','theme':'dark'} for slug in ('one','two')]
@@ -661,7 +661,7 @@ raise SystemExit(code)
 import os,pathlib,shutil,sys
 assert sys.argv[1:]==['build','-p','bboxy450-book','--locked'], sys.argv
 out=pathlib.Path(os.environ['CARGO_TARGET_DIR'])/'debug';out.mkdir(parents=True,exist_ok=True)
-shutil.copy2(BOOK,out/'bboxybook')
+shutil.copy2(BOOK,out/'bboxy450-book')
 '''.replace("BOOK", repr(str(book))))
             cargo.chmod(0o700)
             node = self.repo.bin / "node"

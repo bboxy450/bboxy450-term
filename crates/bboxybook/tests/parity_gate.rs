@@ -86,7 +86,7 @@ impl Fixture {
     }
 
     fn compare(&self, strict: bool, exit: i32, status: &str, summary: &str) -> Result {
-        let mut command = Command::new(env!("CARGO_BIN_EXE_bboxybook"));
+        let mut command = Command::new(env!("CARGO_BIN_EXE_bboxy450-book"));
         command
             .arg("compare")
             .arg("--out")

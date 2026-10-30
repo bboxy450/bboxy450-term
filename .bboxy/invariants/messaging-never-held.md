@@ -4,7 +4,7 @@ type: invariant
 number: 286
 title: "a custody hold never holds local delivery: envelopes travel with an honest pending grade and are signed when custody returns, never dropped or forged"
 status: active
-check: cargo test -p bboxy450-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: communication gated on a key is a swarm that stops when a Keychain locks; the operator ran into it on the first real morning
 links:
   - { to: "[[d285-no-gated-communications]]", rel: decision }
@@ -32,7 +32,7 @@ digest, with the delivered bytes unchanged and no second delivery; the
 (one logical operator reference, the device bound to it on enrolment), so no
 recipient identity moves and no second consumer appears.
 
-**Check.** `cargo test -p bboxy450-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
+**Check.** `cargo test -p bboxy450-term-mux --locked --test messaging_flow custody_hold_never_holds_local_delivery -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
 — exit 0 held. The test covers first-ever held startup through the real admitted
 GUI socket and local seat APIs, pending operator and seat delivery, the durable
 events lane, recovery on the same operator reference and consumer, immutable
@@ -43,7 +43,7 @@ delivery. Its remote fixture proves unsigned work remains local until signed.
 when a Keychain locks; the operator ran into it on the first real morning.
 
 **Evidence.** NG1 source `d0b2a7b21bf212846389ba6458f414290314c0c1`:
-`cargo test -p bboxy450-mux --locked --test messaging_flow -- --nocapture` — exit 0,
+`cargo test -p bboxy450-term-mux --locked --test messaging_flow -- --nocapture` — exit 0,
 3 passed; the real GUI custody recovery fixture completed in 30.30 s.
 Raw log SHA256 `ac609df6cd2b65a123024cc6bb47d286340bceadc489386d5ffe0079098b6b6c`;
 The exact named check on `56883989ed09055e932c037f58d0f211a76e3fb3` also passed

@@ -45,7 +45,7 @@ def history_rows(rows):
 def retain_parity(tree, target, sha, api):
     native = target / "parity/native"
     cases = target / "parity/cases.json"
-    binary = target / "debug/bboxybook"
+    binary = target / "debug/bboxy450-book"
     if not native.is_dir() or not cases.is_file() or not binary.is_file():
         raise api.Refusal("postsubmit_green_without_native_parity_store")
     destination = api.parity_directory() / sha
@@ -55,7 +55,7 @@ def retain_parity(tree, target, sha, api):
         try:
             shutil.copytree(native, temporary / "native")
             shutil.copy2(cases, temporary / "cases.json")
-            shutil.copy2(binary, temporary / "bboxybook")
+            shutil.copy2(binary, temporary / "bboxy450-book")
             api.atomic_write(temporary / "source.json", json.dumps({"sha": sha, "stored": api.now()}) + "\n")
             temporary.rename(destination)
         finally:

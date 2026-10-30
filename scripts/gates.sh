@@ -41,5 +41,5 @@ case "${1:-}" in
   memory|bus|poller) ;;
   *) echo "usage: sh scripts/gates.sh memory|bus|poller|frame" >&2; exit 2 ;;
 esac
-cargo build --release --locked -q -p bboxy-firehose
-cargo test --release --locked -q -p bboxy450-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1
+cargo build --release --locked -q -p bboxy450-term-firehose
+cargo test --release --locked -q -p bboxy450-term-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1

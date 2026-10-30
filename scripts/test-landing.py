@@ -285,7 +285,7 @@ class AffectedTests(unittest.TestCase):
 
     def test_contract_names_do_not_override_the_measured_affected_set(self):
         manifest = self.repo.root / "crates/c/Cargo.toml"
-        for name in ("bboxy450-proto", "bboxy450-term-core"):
+        for name in ("bboxy450-term-proto", "bboxy450-term-core"):
             with self.subTest(name=name):
                 manifest.write_text('[package]\nname="' + name + '"\nversion="0.1.0"\nedition="2024"\n[dependencies]\nb={path="../b"}\n')
                 run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
@@ -592,7 +592,7 @@ except Exception as error:
             if "--target-dir" in call:
                 index = call.index("--target-dir")
                 del call[index:index + 2]
-        self.assertIn(["test", "--locked", "-p", "bboxy450-proto", "--test", "gui_wire_golden"], calls)
+        self.assertIn(["test", "--locked", "-p", "bboxy450-term-proto", "--test", "gui_wire_golden"], calls)
         self.assertFalse(any("golden" in call for call in calls))
 
     def test_dispatch_cut_still_refuses_a_zero_test_gui_wire_target(self):
@@ -740,7 +740,7 @@ except Exception as error:
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
     def test_no_cargo_classifier_handles_environment_prefix_and_ui_lint(self):
-        self.assertTrue(landing.cargo_backed("R5G_SEATS=4 cargo test -p bboxy450-mux"))
+        self.assertTrue(landing.cargo_backed("R5G_SEATS=4 cargo test -p bboxy450-term-mux"))
         self.assertTrue(landing.cargo_backed("sh scripts/ui-lint.sh"))
         self.assertFalse(landing.cargo_backed("sh scripts/brand.sh"))
 
@@ -1484,7 +1484,7 @@ if not cfg.get('missing_store'):
  (target/'parity/native/fixture.png').write_bytes(b'fixture native pixels'+(b' after tests' if after else b''))
  (target/'parity/cases.json').write_text('[]')
  (target/'debug').mkdir(exist_ok=True)
- (target/'debug/bboxybook').write_bytes(b'fixture binary')
+ (target/'debug/bboxy450-book').write_bytes(b'fixture binary')
 print('ci-local: all gates passed')
 PY
 ''')
@@ -1758,7 +1758,7 @@ PY
         self.publish("crates/c/src/lib.rs")
         target = self.repo.root / "scratchpad/landing-watch/target"
         shutil.rmtree(target / "parity")
-        (target / "debug/bboxybook").unlink()
+        (target / "debug/bboxy450-book").unlink()
         (self.repo.state / "watch.json").write_text('{"missing_store":true,"unresolved":true}')
         result = self.watch()
         self.assertEqual(result.returncode, 1, result.stderr)
@@ -1804,7 +1804,7 @@ class ParityTests(unittest.TestCase):
         store = self.cache / "fixture-green"
         (store / "native").mkdir(parents=True)
         (store / "native/fixture.png").write_bytes(b"last green native")
-        (store / "bboxybook").write_bytes(b"last green binary")
+        (store / "bboxy450-book").write_bytes(b"last green binary")
         (store / "cases.json").write_text(json.dumps(self.cases))
         (self.state / "parity-last-green").write_text(str(store))
         return store
@@ -1820,7 +1820,7 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(json.loads((output / "requested.json").read_text()), self.cases[:2])
         self.assertFalse(any(c[0] == "cargo" for c in self.calls))
         self.assertEqual((output / "native/fixture.png").read_bytes(), b"last green native")
-        self.assertTrue(any(c[:2] == [str(store.resolve() / "bboxybook"), "compare"] for c in self.calls))
+        self.assertTrue(any(c[:2] == [str(store.resolve() / "bboxy450-book"), "compare"] for c in self.calls))
 
     def test_shared_lab_input_selects_one_fixed_case_per_page(self):
         self.stored()

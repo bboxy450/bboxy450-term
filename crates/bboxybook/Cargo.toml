@@ -29,5 +29,5 @@ resvg = { version = "=0.48.1", default-features = false }
 name = "bboxybook"
 
 [[bin]]
-name = "bboxybook"
+name = "bboxy450-book"
 path = "src/main.rs"

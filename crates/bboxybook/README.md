@@ -538,14 +538,14 @@ and known gaps: `.bboxy/runs/w3-2d-7-7-summary.log`.
 Renderer image regression only:
 
 ```sh
-target/release/bboxybook replay-images --manifest cases.json --out target/image-replay
+target/release/bboxy450-book replay-images --manifest cases.json --out target/image-replay
 ```
 
 This renders every supplied case and writes `image-replay.json`, explicitly
 marking geometry as not replayed. Use it for exact before/after PNG checks;
 `render` and `compare` retain the full geometry and parity requirements.
 
-Vector paths: `bboxybook paths --out target/bboxybook/paths` pairs the 48
+Vector paths: `bboxy450-book paths --out target/bboxybook/paths` pairs the 48
 `paths.html` cases (cubic/dashed/weights, 1x/2x, density and theme). Public
 `UI.Path` constructor records drive L6 Path; SVG internals are never imported.
 The renderer retains lyon geometry and composites each stroke once, with analytic
@@ -554,7 +554,7 @@ bounds and segment endpoints; other case policies are unchanged.
 
 ## L7 GraphTab (W3.2d.7.8)
 
-`bboxybook graphs` renders the 64 current `graph.html` cases: full view, six
+`bboxy450-book graphs` renders the 64 current `graph.html` cases: full view, six
 cards and empty swarm, across four densities and both themes.
 
 ```sh
@@ -585,7 +585,7 @@ and two themes. Captures export `C.settingsPage` options plus the public `SET`,
 viewport; DOM child rectangles, computed CSS and baseline probes are diagnostics
 only. The enclosing fixture clip/backdrop remain shared caller context.
 
-`bboxybook settings --geometry-only --manifest cases.json --out DIR` measures
+`bboxy450-book settings --geometry-only --manifest cases.json --out DIR` measures
 native geometry without rendering. The fixture memoizes native font measurements
 within a layout. The legacy placeholder hand painter has been removed. The v2
 inventory remains a historical diagnostic, separate from the current gate.
@@ -605,7 +605,7 @@ Capture exports `docView`/`docModal` constructor records and the public
 native font measurements. DOM rectangles, font probes and SVG diagnostics are
 comparison evidence only. The existing modal backdrop remains common context.
 
-`bboxybook documents --geometry-only --manifest cases.json --out DIR` writes
+`bboxy450-book documents --geometry-only --manifest cases.json --out DIR` writes
 independent named rectangles and baselines. The frozen v2 registry has no
 DocumentModal entry; no historical reference is invented. Library tests cover
 host-record changes, retained scrolling, signed/unsigned/broken presentation,

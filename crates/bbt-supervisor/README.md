@@ -23,7 +23,7 @@ There is no Tokio dependency or runtime. `bbt-rt` is used with
 guards. The full app enables its default `runtime` feature through mux.
 
 Verify the dependency boundary with `cargo tree -p bboxy450-harness-host -e normal`.
-Run `cargo test -p bboxy450-harness-host -p bboxy450-mux --locked` for the existing supervisor,
+Run `cargo test -p bboxy450-harness-host -p bboxy450-term-mux --locked` for the existing supervisor,
 capture and logic coverage. Retained limits and mechanisms are described in
 `../bbt-mux/README.md`.
 
