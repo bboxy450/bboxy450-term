@@ -79,6 +79,7 @@ async fn spawn(session: &mut Session, root: &Path) -> GuiSeat {
         .send(GuiAction::Spawn {
             id: operation,
             spec: SpawnSpec {
+                via: None,
                 args: Vec::new(),
                 env: Vec::new(),
                 command: None,

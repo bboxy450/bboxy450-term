@@ -20,6 +20,6 @@ pub use hosts::{GuiHost, HostState};
 pub use registry::SeatRecord;
 pub use seat_state::{
     Activity, Grade, GuiSeat, Lifecycle, NotificationEpisode, ProcessStatus, Role, RoleClass,
-    SeatState, SpawnSpec, SubagentRow, WaitKind, Where,
+    SeatState, SpawnSpec, SubagentRow, TransportSpec, WaitKind, Where,
 };
 pub use streams::{Delta, Screen, Snapshot, Update, View};

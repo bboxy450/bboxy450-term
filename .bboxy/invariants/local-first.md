@@ -18,7 +18,9 @@ updated: 2026-10-24T00:04:50Z
 
 **Property.** `cargo tree -p bboxy450-term-mux` carries no QUIC, ssh or cloud SDK crate
 (`quinn`, `russh`, `ssh2`, `aws-sdk*`, `reqwest`, `tonic`, `hyper-util`,
-`rustls`) while ssh and cloud are dummies in the UI ([[vision]] Cockpit first;
+`rustls`). Operator-authorized launch cut 2 (#71, 2026-10-30) wraps configured
+commands in local ssh/mosh/et PTY clients; it adds no network SDK or remote
+supervisor provider. Cloud provider connections remain separate ([[vision]] Cockpit first;
 decisions #7 and #25; [[d1-providers]] §3 acceptance 5, promoted here). Local
 first means the local path is the real one; the cloud phase lifts this
 invariant by decision, never by a dependency slipping in.

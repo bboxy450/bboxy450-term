@@ -22,6 +22,7 @@ pub struct LaunchContext<'a> {
     pub resume: bool,
 }
 pub struct LaunchOptions {
+    pub via: Option<bbt_proto::TransportSpec>,
     pub env: Vec<(String, String)>,
     pub cwd: PathBuf,
     pub role_prompt: String,
@@ -204,6 +205,32 @@ pub(super) fn plan_neutral(
     let plan = super::mapping::launch_plan(plan, context.seat.id, context.seat.generation);
     plan.spec.validate()?;
     Ok(plan)
+}
+
+/// The local supervisor owns the transport client. Remote cwd/environment live
+/// only in its configured command, never in the local process launch context.
+pub fn transport_spec(
+    seat: &SeatRecord,
+    harness: &HarnessRecord,
+    options: &LaunchOptions,
+) -> Result<LaunchSpec> {
+    let via = options
+        .via
+        .as_ref()
+        .ok_or_else(|| crate::store::invalid("missing transport"))?;
+    let argv = via
+        .argv(
+            &options.cwd.to_string_lossy(),
+            &harness.command,
+            &options.env,
+        )
+        .map_err(crate::store::invalid)?;
+    let mut spec = LaunchSpec::new(&argv[0], &options.user_home);
+    spec.seat = seat.id;
+    spec.generation = seat.generation;
+    spec.args = argv[1..].to_vec();
+    spec.validate()?;
+    Ok(spec)
 }
 
 #[cfg(test)]

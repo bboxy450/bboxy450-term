@@ -124,14 +124,14 @@ sources = ["crates/bbt-supervisor/src/supervisor.rs"]
 [[crate]]
 name = "bboxy450-term-mux"
 status = "contract-model"
-models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness", "AttentionLifecycle", "SidebarAccordions", "OperationRecovery", "DiagnosticRead", "ImportStaging", "HistoricalReconcile"]
+models = ["TransportCapture", "CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness", "AttentionLifecycle", "SidebarAccordions", "OperationRecovery", "DiagnosticRead", "ImportStaging", "HistoricalReconcile"]
 scope = "Diagnostic pages are own-seat only with current completion authority and no operator acknowledgement; redaction, file and cursor bounds use fixtures. Original document-operation recovery is read-only and actor/root scoped. Number collision classification/allocation uses knowledge API fixtures. Checkpoint/input fences, captured workspace/provider revisions and plugin stale-completion guards, local delivery/suppression, fair seat ingestion and current live notification episodes without replay-created keys. Native GitKB effects, signing, commit atomicity and unknown outcomes use real private host fixtures. Literal Unicode/BINARY namespace ranges use store/sqlite/power_tests.rs for Rust starts_with equivalence and history-independent SQL work. The pending-only publication index preserves the existing delivery state machine; SQL migration, FIFO/recovery and history-independent idle query work use messaging/ledger/power_tests.rs, including an unindexed broken performance control. Reserved import staging and historical operator reconciliation have bounded safety/progress models plus actual observer/import and signed-writer controls. Finite contract projections; no SQL planner, whole-mux or observer transport refinement proof."
 sources = ["crates/bbt-mux/src/mcp/diagnostics.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/mcp/recovery.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bbt-mux/src/messaging/tree.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/messaging/ledger/power_tests.rs", "crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/src/store/sqlite/power_tests.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/seat_socket.rs", "crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index/migration.rs", "crates/bbt-mux/src/mcp/work_items.rs"]
 
 [[crate]]
 name = "bboxy450-term-proto"
 status = "contract-model"
-models = ["InputReceipt", "AttentionLifecycle", "SidebarAccordions"]
+models = ["TransportCapture", "InputReceipt", "AttentionLifecycle", "SidebarAccordions"]
 scope = "Input identity/lease and shared current-notification episode identity contracts; serialization, transport bytes and cryptography use implementation tests."
 sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-proto/src/gui/events.rs"]
 
@@ -152,14 +152,14 @@ sources = ["crates/bbt-render/src/chrome/arena.rs", "crates/bbt-render/src/chrom
 [[crate]]
 name = "bboxy450-ui-core"
 status = "contract-model"
-models = ["FocusFrame"]
+models = ["TransportCapture", "FocusFrame"]
 scope = "Host focus-generation and completed-frame contract; pure layout/reducers still use property and parity tests."
 sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 
 [[crate]]
 name = "bboxy450-ui"
 status = "contract-model"
-models = ["FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions", "SidebarReveal"]
+models = ["TransportCapture", "FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions", "SidebarReveal"]
 scope = "Host focus acknowledgement and durable UI-reply boundaries; control geometry, layout and all UI transitions are not formally proven."
 sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
@@ -180,7 +180,7 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "AsyncRenderPreparation"]
+models = ["TransportCapture", "LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "AsyncRenderPreparation"]
 scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement. Scrollback viewport-based heap admission/accounting and refusal paint are implementation-tested in tests/scrollback.rs and live/scene unit tests; these arithmetic and presentation checks do not change the history IO protocol."
 sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/gpu.rs"]
 

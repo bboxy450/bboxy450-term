@@ -599,3 +599,65 @@ pub(super) fn picker(
         }],
     }
 }
+
+// Adapted from this project's existing Settings field and machine-card composition.
+// https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+pub(super) fn machines(view: &Settings, b: &Build, state: &Presentation) -> Vec<c::Item> {
+    let mut cards = vec![view.machines(b, false).into()];
+    if !view.values.machine_controls { return cards; }
+    cards.push(
+        b.card(
+            "machine/new/card",
+            "Add a machine",
+            vec![
+                text_input(
+                    b,
+                    "machine/new",
+                    Field::MachineNew,
+                    "",
+                    "host or user@host",
+                    state,
+                    false,
+                )
+                .into(),
+            ],
+            [4., 14., 10., 14.],
+        )
+        .into(),
+    );
+    for (id, machine) in &view.values.machine_defaults {
+        let fields = super::machines::FIELDS
+            .into_iter()
+            .map(|(key, label)| {
+                let region = super::machines::region(id, key);
+                b.field(
+                    &format!("{region}/field"),
+                    label,
+                    None,
+                    text_input(
+                        b,
+                        &region,
+                        Field::Machine(id.clone(), key.into()),
+                        &machine.value(key),
+                        label,
+                        state,
+                        key == "routes",
+                    ),
+                    false,
+                    false,
+                )
+                .into()
+            })
+            .collect();
+        cards.push(
+            b.card(
+                &format!("machine/{id}/defaults"),
+                id,
+                fields,
+                [4., 14., 10., 14.],
+            )
+            .into(),
+        );
+    }
+    cards
+}

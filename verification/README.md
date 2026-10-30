@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 25 contract families and 25 broken controls to the
-14 checker/Yarn conformance cases: **64 models** in total. The declarations live
+The project corpus adds 26 contract families and 26 broken controls to the
+14 checker/Yarn conformance cases: **66 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.

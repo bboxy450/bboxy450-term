@@ -73,3 +73,29 @@ A transport turns `(fields, inner command)` into argv. `ssh`, `mosh` and `et` ar
 | Prefill sources and homes | resolver unit test over a table of (harness, local or remote, swarm, machine) cases |
 | Old spawns still decode | `SpawnSpec` without the new fields round-trips (serde default) |
 | Preview | `lab/web` picker: → on a launch row (components.js `launchFields`, `composeLaunch`); scripted flow ⌘D → claude → → → Role › Architect → Directory typed → ↵ |
+
+## Remote cut 2 implementation — 2026-10-30
+
+`SpawnSpec.via` carries the resolved ssh/mosh/et transport (absent for old/local
+spawns). These are local PTY clients owned by the existing local supervisor;
+`cwd` remains the remote directory and the client's local cwd is its private
+launch home. Settings `[machines."ssh:<host>"]` owns Via, Connect, SSH bootstrap
+Port, Key, remote Directory, routes and recent remote directories. Native
+Settings and the launcher edit the same records; a successful spawn remembers
+the captured values. A remote launch never replaces the swarm's local folder.
+Remote `~` is expanded by the remote shell. Key paths expand on the local host.
+
+The pure composer is shared by Runs and logic. SSH uses `-t`; mosh passes port
+and key through `--ssh`; et uses `--ssh-option` and `--command` long flags.
+Remote harnesses receive the configured command/arguments/environment, without
+local-only MCP sockets, app-server companions or generated local hook paths.
+Transport plugins (cut 3), remote MCP installation and real-server validation
+remain outside this cut. `make test-remote-launch` uses private fake executables
+and the real Settings store without networking or operator input. The
+TransportCapture model and broken control cover capture/remember/restart safety;
+exact CLI bytes remain implementation-tested.
+
+Saved machine records also supply the native Machines and launcher catalogues
+when no remote provider snapshot exists. Add a machine accepts a host or
+user@host route; availability still filters its launcher row. No connected
+provider state is fabricated or required before attempting the local client.

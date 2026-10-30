@@ -535,6 +535,7 @@ mod tests {
             .request_spawn(
                 Ulid(100),
                 bbt_proto::SpawnSpec {
+                    via: None,
                     args: Vec::new(),
                     env: Vec::new(),
                     command: None,

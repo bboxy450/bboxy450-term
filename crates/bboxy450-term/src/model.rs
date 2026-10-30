@@ -1795,6 +1795,7 @@ mod tests {
     }
     fn spawn_spec(placement: Option<bbt_proto::seat_state::Placement>) -> bbt_proto::SpawnSpec {
         bbt_proto::SpawnSpec {
+            via: None,
             args: Vec::new(),
             env: Vec::new(),
             command: None,

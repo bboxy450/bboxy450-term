@@ -73,6 +73,7 @@ fn spawn_spec(message: &UiMsg, swarm: Ulid, cwd: &Path) -> Option<SpawnSpec> {
         _ => return None,
     };
     Some(SpawnSpec {
+        via: None,
         args: Vec::new(),
         env: Vec::new(),
         command: None,

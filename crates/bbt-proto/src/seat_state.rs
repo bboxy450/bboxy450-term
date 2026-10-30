@@ -63,6 +63,43 @@ pub enum ProcessStatus {
     ClosedGrace { until_ms: u64 },
     Retained,
 }
+/// Fully resolved at the pick; no Settings reads occur in logic.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransportSpec {
+    pub kind: String,
+    pub route: String,
+    #[serde(default)]
+    pub port: Option<u16>,
+    #[serde(default)]
+    pub key: Option<String>,
+}
+impl TransportSpec {
+    pub fn validate(&self) -> Result<(), String> {
+        bbt_ui_model::transport::Transport {
+            kind: &self.kind,
+            route: &self.route,
+            port: self.port,
+            key: self.key.as_deref(),
+        }
+        .validate()
+    }
+    pub fn argv(
+        &self,
+        cwd: &str,
+        argv: &[String],
+        env: &[(String, String)],
+    ) -> Result<Vec<String>, String> {
+        let inner = bbt_ui_model::transport::remote_command(cwd, argv, env)?;
+        bbt_ui_model::transport::Transport {
+            kind: &self.kind,
+            route: &self.route,
+            port: self.port,
+            key: self.key.as_deref(),
+        }
+        .wrap(&inner)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpawnSpec {
     #[serde(with = "text_id")]
@@ -71,6 +108,8 @@ pub struct SpawnSpec {
     pub name: Option<String>,
     pub role: Option<String>,
     pub cwd: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub via: Option<TransportSpec>,
     #[serde(with = "location")]
     pub location: Where,
     pub resume: Option<String>,
@@ -116,6 +155,7 @@ mod placement_tests {
 
     fn spec() -> SpawnSpec {
         SpawnSpec {
+            via: None,
             args: vec![],
             env: vec![],
             command: None,
@@ -173,10 +213,12 @@ mod placement_tests {
     #[test]
     fn legacy_spawn_without_arguments_and_environment_round_trips() {
         let mut old = serde_json::to_value(spec()).unwrap();
+        old.as_object_mut().unwrap().remove("via");
         old.as_object_mut().unwrap().remove("args");
         old.as_object_mut().unwrap().remove("env");
         old.as_object_mut().unwrap().remove("command");
         let decoded: SpawnSpec = serde_json::from_value(old).unwrap();
+        assert!(decoded.via.is_none());
         assert!(decoded.args.is_empty());
         assert!(decoded.env.is_empty());
         assert!(decoded.command.is_none());

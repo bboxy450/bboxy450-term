@@ -141,6 +141,7 @@ async fn spawn(session: &mut Session, root: &Path, harness: &str, resume: Option
         .send(GuiAction::Spawn {
             id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
+                via: None,
                 args: Vec::new(),
                 env: Vec::new(),
                 command: None,

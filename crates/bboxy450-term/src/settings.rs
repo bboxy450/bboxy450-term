@@ -277,6 +277,7 @@ pub struct Preferences {
     pub appearance: Appearance,
     pub notifications: Notifications,
     pub harnesses: crate::spawn_params::Harnesses,
+    pub machines: BTreeMap<String, bbt_ui::modules::settings::Machine>,
     pub roles: BTreeMap<String, bbt_proto::gui::RoleDefinition>,
     pub disabled_destinations: BTreeSet<String>,
 }
@@ -297,6 +298,7 @@ impl Default for Preferences {
             },
             notifications: Notifications::default(),
             harnesses: Default::default(),
+            machines: Default::default(),
             roles: roles::builtin(),
             disabled_destinations: BTreeSet::new(),
         }
@@ -326,6 +328,9 @@ impl Preferences {
         }
         self.apply_role_patch(patch)?;
         self.apply_destination_patch(patch)?;
+        if let Patch::MachineLaunch { id, machine } = patch {
+            self.machines.insert(id.clone(), machine.clone());
+        }
         if let Patch::HarnessLaunch {
             harness,
             command,
@@ -438,6 +443,30 @@ pub fn records(
 ) -> bbt_ui::modules::settings::Records {
     use bbt_ui::modules::settings::Harness;
     let mut out = model.map_or_else(Default::default, |m| crate::hosts::settings(&m.hosts));
+    out.machine_controls = true;
+    for (id, machine) in &preferences.machines {
+        if !out.destination_ids.values().any(|observed| observed == id) {
+            out.destination_ids.insert(format!("machine/{}", out.machines.len()), id.clone());
+            out.machines.push((id.trim_start_matches("ssh:").into(), machine.connect.clone(), String::new(), machine.key.clone(), bbt_ui::modules::link::MachineState::Legacy(false)));
+        }
+    }
+    for (row, id) in &out.destination_ids {
+        if let Some(index) = row
+            .strip_prefix("machine/")
+            .and_then(|i| i.parse::<usize>().ok())
+        {
+            let route = out.machines[index].1.clone();
+            out.machine_defaults.insert(
+                id.clone(),
+                preferences.machines.get(id).cloned().unwrap_or_else(|| {
+                    bbt_ui::modules::settings::Machine {
+                        connect: route,
+                        ..Default::default()
+                    }
+                }),
+            );
+        }
+    }
     out.appearance = preferences.appearance.clone();
     out.notifications = preferences.notifications.clone();
     out.disabled_destinations = preferences.disabled_destinations.clone();
@@ -648,6 +677,7 @@ fn key(patch: &Patch) -> (&str, &str) {
     match patch {
         Patch::SidebarLayout { .. } => ("sidebar", "layout"),
         Patch::HarnessLaunch { harness, .. } => ("harness-launch", harness),
+        Patch::MachineLaunch { id, .. } => ("machines", id),
         Patch::HarnessRole { harness, .. } => ("harness-role", harness),
         Patch::HarnessAvailableRoles { harness, .. } => ("harness-roles", harness),
         Patch::RoleUpsert { name, .. } | Patch::RoleDelete(name) => ("roles", name),
@@ -667,6 +697,7 @@ fn value(patch: &Patch) -> Value {
     match patch {
         Patch::SidebarLayout { .. }
         | Patch::HarnessLaunch { .. }
+        | Patch::MachineLaunch { .. }
         | Patch::HarnessRole { .. }
         | Patch::HarnessAvailableRoles { .. }
         | Patch::RoleUpsert { .. }
@@ -844,6 +875,51 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
             preferences.harnesses.insert(kind.into(), defaults);
         }
     }
+    if let Some(machines) = doc.get("machines") {
+        let machines = machines
+            .as_table_like()
+            .ok_or("Settings [machines] must be a table")?;
+        for (id, table) in machines.iter() {
+            let mut machine = bbt_ui::modules::settings::Machine::default();
+            for (key, _) in bbt_ui::modules::settings::machines::FIELDS {
+                if let Some(value) = table.get(key) {
+                    if key == "routes" {
+                        machine.routes = value
+                            .as_array()
+                            .ok_or("Machine routes must be an array")?
+                            .iter()
+                            .map(|v| {
+                                v.as_str()
+                                    .map(str::to_owned)
+                                    .ok_or("Machine route must be text")
+                            })
+                            .collect::<Result<_, _>>()?;
+                    } else {
+                        machine.set(
+                            key,
+                            value.as_str().ok_or("Machine field must be text")?.into(),
+                        );
+                    }
+                }
+            }
+            if let Some(recent) = table.get("recent_directories") {
+                machine.recent_directories = recent
+                    .as_array()
+                    .ok_or("Machine directories must be an array")?
+                    .iter()
+                    .map(|v| {
+                        v.as_str()
+                            .map(str::to_owned)
+                            .ok_or("Machine directory must be text")
+                    })
+                    .collect::<Result<_, _>>()?;
+            }
+            preferences.apply(&Patch::MachineLaunch {
+                id: id.into(),
+                machine,
+            })?;
+        }
+    }
     destinations::read(doc, &mut preferences)?;
     preferences.role_catalog().validate()?;
     Ok(preferences)
@@ -940,6 +1016,27 @@ impl Store {
                 {
                     table.remove("tasks_height");
                 }
+                continue;
+            }
+            if let Patch::MachineLaunch { id, machine } = patch {
+                for (key, _) in bbt_ui::modules::settings::machines::FIELDS {
+                    let value = if key == "routes" {
+                        Value::Array(machine.routes.iter().map(String::as_str).collect())
+                    } else {
+                        Value::from(machine.value(key))
+                    };
+                    roles::replace(&mut doc["machines"][id][key], value);
+                }
+                roles::replace(
+                    &mut doc["machines"][id]["recent_directories"],
+                    Value::Array(
+                        machine
+                            .recent_directories
+                            .iter()
+                            .map(String::as_str)
+                            .collect(),
+                    ),
+                );
                 continue;
             }
             if roles::write(&mut doc, patch)? || destinations::write(&mut doc, patch)? {

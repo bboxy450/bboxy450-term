@@ -18,6 +18,7 @@ pub(super) fn filter(items: &mut Vec<Item>, disabled: &BTreeSet<String>, hosts: 
                 .is_some_and(|id| disabled.contains(&id))
         })
         .map(|host| bboxy450_term::hosts::key(&host.location))
+        .chain(disabled.iter().filter(|id| id.starts_with("ssh:")).cloned())
         .collect();
     fn prune(items: &mut Vec<Item>, blocked: &BTreeSet<String>) {
         items.retain(|item| !blocked.contains(&item.id));

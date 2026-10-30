@@ -8,6 +8,10 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldKey {
     Role,
+    Via,
+    Connect,
+    Port,
+    Key,
     Directory,
     Command,
     Arguments,
@@ -17,6 +21,10 @@ impl FieldKey {
     pub fn label(self) -> &'static str {
         match self {
             Self::Role => "Role",
+            Self::Via => "Via",
+            Self::Connect => "Connect",
+            Self::Port => "Port",
+            Self::Key => "Key",
             Self::Directory => "Directory",
             Self::Command => "Command",
             Self::Arguments => "Arguments",

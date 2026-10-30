@@ -103,6 +103,7 @@ help:
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
 	  'make test-swarm                  Swarm folder, persistence and quit regressions' \
 	  'make test-swarm-switch           Empty swarm reads, inactive UI and real PTY dimming' \
+	  'make test-remote-launch          Private ssh/mosh/et argv, machine defaults and strict lint' \
 	  'make test-navigation             Native clicks, Go to, split chords and launcher parameters' \
 	  'make test-terminal-selection     Terminal drag selection, private clipboard and native Copy' \
 	  'make test-terminal-paste         Focused terminal Cmd-V, bracketed PTY bytes and private clipboard' \
@@ -1450,3 +1451,14 @@ test-task-import-observer-mutant:
 
 check-task-import-observer:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+# #71 cut 2: no network, private transport argv and Settings witnesses.
+.PHONY: test-remote-launch
+test-remote-launch:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui-core --target-dir '$(TARGET_DIR)' --lib transport::; \
+	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --lib seat_state::placement_tests; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test remote_launch; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib spawn_params::; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
+	cargo clippy --locked -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term-proto -p bboxy450-term-mux -p bboxy450-render -p bboxy450-doc -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

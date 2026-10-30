@@ -418,6 +418,10 @@ impl Controller {
             self.launcher.selected = Some(0);
             self.launcher.placeholder = if field.key == FieldKey::Directory {
                 "Directory · recent folders or type a path"
+            } else if field.key == FieldKey::Connect {
+                "Connect · choose a route or type a new one"
+            } else if field.key == FieldKey::Via {
+                "Via · choose a transport"
             } else {
                 "Role · choose one"
             }
@@ -452,8 +456,10 @@ impl Controller {
                 .map(|c| c.value.clone());
             match value {
                 Some(value) => (index, value),
-                None if params.fields[index].key == FieldKey::Directory
-                    && !self.launcher.query.trim().is_empty() =>
+                None if matches!(
+                    params.fields[index].key,
+                    FieldKey::Directory | FieldKey::Connect
+                ) && !self.launcher.query.trim().is_empty() =>
                 {
                     (index, self.launcher.query.trim().into())
                 }

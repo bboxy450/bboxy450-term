@@ -183,6 +183,7 @@ mod tests {
     }
     fn accept(model: &mut Model, op: Ulid) {
         let spec = bbt_proto::SpawnSpec {
+            via: None,
             args: Vec::new(),
             env: Vec::new(),
             command: None,

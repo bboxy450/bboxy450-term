@@ -1966,6 +1966,7 @@ mod gui_tests {
                 SeatRecord::new(seat, swarm, "role fixture", "cat"),
                 harness,
                 crate::adapters::launch::LaunchOptions {
+                    via: None,
                     env: vec![("PATH".into(), "/usr/bin:/bin".into())],
                     cwd: repository,
                     role_prompt: prompt,

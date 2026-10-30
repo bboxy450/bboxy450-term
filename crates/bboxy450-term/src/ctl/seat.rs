@@ -354,6 +354,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 None => std::env::current_dir().map_err(|e| e.to_string())?,
             };
             let seat = client.spawn(SpawnSpec {
+                via: None,
                 args: Vec::new(),
                 env: Vec::new(),
                 command: None,

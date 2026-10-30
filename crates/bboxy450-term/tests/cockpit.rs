@@ -74,6 +74,7 @@ async fn spawn_kind(session: &mut Session, root: &Path, swarm: Ulid, kind: &str)
         .send(GuiAction::Spawn {
             id: bbt_mux::Ulid::new(),
             spec: SpawnSpec {
+                via: None,
                 args: Vec::new(),
                 env: Vec::new(),
                 command: None,

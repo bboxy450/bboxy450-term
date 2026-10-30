@@ -2085,6 +2085,10 @@ struct LegacySaved {
 // captured. A new overlay supplies fresh endpoint capabilities on every launch.
 #[derive(Serialize, Deserialize)]
 struct RecoveryLaunch {
+    #[serde(default)]
+    via: Option<bbt_proto::TransportSpec>,
+    #[serde(default)]
+    environment: Vec<(String, String)>,
     cwd: PathBuf,
     role_prompt: String,
     user_home: PathBuf,
@@ -4681,6 +4685,7 @@ impl Worker {
                         record,
                         harness,
                         crate::adapters::launch::LaunchOptions {
+                            via: None,
                             env: vec![],
                             cwd: args.cwd.canonicalize()?,
                             role_prompt,
@@ -5934,29 +5939,43 @@ impl Worker {
         role_catalog::validate_assignment(self.configured_roles()?, &harness.kind, &record.role)?;
         let endpoint = self.ensure_endpoint(record.id, record.generation)?;
         let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
-        let mut plan = crate::adapters::launch::plan(
-            &harness,
-            &crate::adapters::LaunchContext {
-                seat: &record,
-                cwd: &options.cwd,
-                role_prompt: &options.role_prompt,
-                executable: &options.executable,
-                overlay_parent: &root.join("overlays"),
-                user_home: &options.user_home,
-                user_zdotdir: options.user_zdotdir.as_deref(),
-                socket: &endpoint.path,
-                capability: endpoint.capability,
-                resume: options.resume,
-            },
-        )?;
-        crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
+        let mut plan = if options.via.is_some() {
+            let spec = crate::adapters::launch::transport_spec(&record, &harness, &options)?;
+            let overlay = object_dir(&root.join("overlays"), &format!("launch-{}", Ulid::new()))?;
+            crate::adapters::launch::LaunchPlan {
+                spec,
+                overlay,
+                harness_session_id: None,
+                notes: vec![],
+                shared_runtime: None,
+            }
+        } else {
+            crate::adapters::launch::plan(
+                &harness,
+                &crate::adapters::LaunchContext {
+                    seat: &record,
+                    cwd: &options.cwd,
+                    role_prompt: &options.role_prompt,
+                    executable: &options.executable,
+                    overlay_parent: &root.join("overlays"),
+                    user_home: &options.user_home,
+                    user_zdotdir: options.user_zdotdir.as_deref(),
+                    socket: &endpoint.path,
+                    capability: endpoint.capability,
+                    resume: options.resume,
+                },
+            )?
+        };
         record.harness_session_id = plan.harness_session_id;
-        crate::adapters::launch::in_login_shell(
-            &mut plan.spec,
-            &harness.kind,
-            &options.user_home,
-            options.user_zdotdir.as_deref(),
-        );
+        if options.via.is_none() {
+            crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
+            crate::adapters::launch::in_login_shell(
+                &mut plan.spec,
+                &harness.kind,
+                &options.user_home,
+                options.user_zdotdir.as_deref(),
+            );
+        }
         // Explicit PATH also works with a supervisor retained from a Finder launch.
         if let Ok(path) = std::env::var("PATH") {
             plan.spec
@@ -5992,6 +6011,8 @@ impl Worker {
         store.put(
             "recovery_launch",
             &serde_json::to_vec(&RecoveryLaunch {
+                via: options.via.clone(),
+                environment: if options.via.is_some() { options.env } else { vec![] },
                 cwd: options.cwd,
                 role_prompt: options.role_prompt,
                 user_home: options.user_home,
@@ -6109,7 +6130,7 @@ impl Worker {
             record.close = None;
             let resume = record.harness_session_id.is_some()
                 && matches!(record.harness_kind.as_str(), "claude" | "codex");
-            let harness = if resume {
+            let harness = if resume || context.via.is_some() {
                 serde_json::from_slice(
                     &store
                         .get("adapter_record")?
@@ -6137,17 +6158,22 @@ impl Worker {
                 *saved = record.clone();
                 Ok(())
             })?;
-            let cwd = state
-                .cwd
-                .as_ref()
-                .map(PathBuf::from)
-                .filter(|path| path.is_absolute() && path.is_dir())
-                .unwrap_or(context.cwd);
+            let cwd = if context.via.is_some() {
+                context.cwd
+            } else {
+                state
+                    .cwd
+                    .as_ref()
+                    .map(PathBuf::from)
+                    .filter(|path| path.is_absolute() && path.is_dir())
+                    .unwrap_or(context.cwd)
+            };
             self.launch(
                 record,
                 harness,
                 crate::adapters::launch::LaunchOptions {
-                    env: vec![],
+                    via: context.via,
+                    env: context.environment,
                     cwd,
                     role_prompt: context.role_prompt,
                     executable: std::env::current_exe()?,
@@ -8993,6 +9019,12 @@ impl Worker {
                 }
             }
         }
+        if let Some(via) = &spec.via {
+            via.validate().map_err(invalid)?;
+            if spec.location != bbt_proto::Where::Local {
+                return Err(invalid("transport_requires_local_supervisor"));
+            }
+        }
         let id = HostId::from(&spec.location);
         let host = self
             .connections
@@ -9027,6 +9059,10 @@ impl Worker {
         }) {
             return Err(invalid("reserved_spawn_environment"));
         }
+        if let Some(via) = &spec.via {
+            via.argv(&spec.cwd, &harness.command, &spec.env)
+                .map_err(invalid)?;
+        }
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
             Some(name) => name,
@@ -9049,6 +9085,7 @@ impl Worker {
             record,
             harness,
             crate::adapters::launch::LaunchOptions {
+                via: spec.via,
                 env: spec.env,
                 cwd: spec.cwd.into(),
                 role_prompt,

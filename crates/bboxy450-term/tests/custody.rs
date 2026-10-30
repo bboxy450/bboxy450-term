@@ -188,6 +188,7 @@ async fn custody_hold_keeps_gui_echo_live_and_releases_held_sends_on_retry() {
 
     let spawn_id = Ulid::new();
     let spawn_spec = bbt_proto::SpawnSpec {
+        via: None,
         args: Vec::new(),
         env: Vec::new(),
         command: None,

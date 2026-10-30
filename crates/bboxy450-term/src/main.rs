@@ -1824,13 +1824,38 @@ fn preedit_command(text: String, cursor: Option<(usize, usize)>) -> LauncherComm
     LauncherCommand::Preedit { text, caret }
 }
 
-/// Public item records, with the provider projection kept authoritative. Picks
+/// Public item records. Cloud links retain provider admission; SSH picks
+/// configure a locally owned transport client. Picks
 /// are identified by id; a display label never becomes a command.
 #[cfg(test)]
 fn launcher_items(
     model: Option<&bboxy450_term::model::Model>,
 ) -> Vec<bbt_ui::modules::launcher::Item> {
     launcher_items_for(model, None)
+}
+
+// bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Retain source credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn configure_machine_items(items: &mut Vec<bbt_ui::modules::launcher::Item>, machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>) {
+    use bbt_ui::modules::launcher::Item;
+    if machines.is_empty() { return; }
+    let local: Vec<_> = items.iter().filter(|item| LAUNCHABLES.iter().any(|(id, ..)| *id == item.id)).cloned().collect();
+    if !items.iter().any(|item| item.id == "ssh") {
+        items.push(Item { id: "ssh".into(), label: "SSH".into(), harness: "ssh".into(), kind: "Remote".into(), section: Some("Remote".into()), sub: "pick a machine, then a harness".into(), children: Some(vec![]), ..Default::default() });
+    }
+    let root = items.iter_mut().find(|item| item.id == "ssh").unwrap();
+    let hosts = root.children.get_or_insert_with(Vec::new);
+    fn prefix(item: &mut Item, machine: &str) {
+        item.id = format!("{machine}:{}", item.id);
+        item.parameters = true;
+        if let Some(children) = &mut item.children { for child in children { prefix(child, machine); } }
+    }
+    for (id, machine) in machines {
+        if let Some(host) = hosts.iter_mut().find(|host| host.id == *id) { host.sub = machine.connect.clone(); continue; }
+        let mut choices = local.clone();
+        for choice in &mut choices { prefix(choice, id); }
+        hosts.push(Item { id: id.clone(), label: id.trim_start_matches("ssh:").into(), sub: machine.connect.clone(), harness: "ssh".into(), kind: "Machine".into(), children: Some(choices), ..Default::default() });
+    }
 }
 
 fn swarm_oracle<'a>(
@@ -1907,7 +1932,7 @@ fn launcher_items_for(
     let note =
         swarm_oracle(model, stage).map(|name| format!("this swarm already has an Oracle: {name}"));
     for item in &mut items {
-        item.parameters = true; // Cut 1 belongs to local launch rows.
+        item.parameters = true;
         if item.id == "claude"
             && let Some(note) = &note
         {
@@ -1922,16 +1947,27 @@ fn launcher_items_for(
     let mut providers = model.map_or_else(Vec::new, |m| m.provider_launcher_items());
     for root in &mut providers {
         for host in root.children.iter_mut().flatten() {
+            let transport = host.id.starts_with("ssh:");
+            if transport {
+                host.down = false;
+                host.link = None;
+                host.children.get_or_insert_with(Vec::new);
+            }
             if host.children.is_some() {
                 host.children = Some(
                     launchables()
                         .into_iter()
                         .map(|mut item| {
                             item.id = format!("{}:{}", host.id, item.id);
-                            item.children = Some(placements(
+                            item.parameters = transport;
+                            let mut places = placements(
                                 &item,
                                 item.role.as_deref().expect("launch default role"),
-                            ));
+                            );
+                            for place in &mut places {
+                                place.parameters = transport;
+                            }
+                            item.children = Some(places);
                             item
                         })
                         .collect(),
@@ -3146,6 +3182,7 @@ impl App {
         if self.launcher.is_some() {
             let mut items =
                 launcher_items_for(self.live_state.as_deref(), self.launcher_stage.as_ref());
+            configure_machine_items(&mut items, &self.preferences.preferences.machines);
             settings_roles::configure_items(
                 &mut items,
                 &self.preferences.preferences.role_catalog(),
@@ -4085,6 +4122,7 @@ impl App {
             self.focus.stage.as_ref(),
         ));
         if let Some(launcher) = &mut self.launcher {
+            configure_machine_items(&mut launcher.launcher.items, &self.preferences.preferences.machines);
             settings_roles::configure_items(
                 &mut launcher.launcher.items,
                 &self.preferences.preferences.role_catalog(),
@@ -4193,6 +4231,28 @@ impl App {
         }
         match outcome {
             LauncherOutcome::Directory { value } => {
+                let remote = self
+                    .launcher
+                    .as_ref()
+                    .and_then(|l| l.launcher.params.as_ref())
+                    .is_some_and(|p| {
+                        p.fields
+                            .iter()
+                            .any(|f| f.key == bbt_ui_model::FieldKey::Via)
+                    });
+                if remote {
+                    match bbt_ui_model::transport::remote_directory(&value) {
+                        Ok(_) => {
+                            self.launch_directory_error = None;
+                            self.launcher.as_mut().unwrap().accept_directory(value);
+                        }
+                        Err(reason) => self.launch_directory_error = Some(reason),
+                    }
+                    self.update_launcher_runs();
+                    self.launcher_layout = None;
+                    self.request_redraw();
+                    return;
+                }
                 let token = bbt_mux::Ulid::new();
                 self.launch_directory_pending = Some(token);
                 if let Some(effects) = &mut self.ui_collect {
@@ -4218,25 +4278,10 @@ impl App {
                 });
             }
             LauncherOutcome::Parameters { id } => {
-                let Some((harness, swarm)) = self.local_launcher_target(&id) else {
+                let Some((harness, swarm)) = self.configured_launcher_target(&id) else {
                     return;
                 };
-                let model = self.live_state.as_deref();
-                let row = model.and_then(|m| {
-                    m.ui.window
-                        .sidebar
-                        .swarms
-                        .iter()
-                        .find(|s| Some(s.id) == swarm)
-                });
-                let fallback = model.map_or("/", |m| m.launch_directory.as_str());
-                let fields = bboxy450_term::spawn_params::resolve_with_catalog(
-                    &harness,
-                    &self.preferences.preferences.harnesses,
-                    &self.preferences.preferences.role_catalog(),
-                    row,
-                    fallback,
-                );
+                let fields = self.launcher_fields(&id, &harness, swarm);
                 if let Some(launcher) = &mut self.launcher {
                     launcher.open_parameters(&id, fields);
                 }
@@ -4251,7 +4296,7 @@ impl App {
                     .and_then(|l| l.launcher.params.as_ref())
                     .map(|p| p.fields.clone())
                     .unwrap_or_default();
-                self.launch_local(&id, modifiers, Some(fields));
+                self.launch_configured(&id, modifiers, Some(fields));
             }
             LauncherOutcome::Close => self.close_launcher(),
             LauncherOutcome::Changed => {
@@ -4277,8 +4322,8 @@ impl App {
                     self.open_settings(id.strip_prefix("settings:").unwrap_or("Account"));
                     return;
                 }
-                if self.local_launcher_target(&id).is_some() {
-                    self.launch_local(&id, modifiers, None);
+                if self.configured_launcher_target(&id).is_some() {
+                    self.launch_configured(&id, modifiers, None);
                     return;
                 }
                 if let Some(mut message) = spawn_pick(
@@ -4336,7 +4381,76 @@ impl App {
             });
         }
     }
-    fn local_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
+    fn launcher_machine(&self, id: &str) -> Option<(String, String)> {
+        if let Some((_, machine)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
+            return Some((machine.clone(), self.preferences.preferences.machines[&machine].connect.clone()));
+        }
+        let model = self.live_state.as_deref()?;
+        let live::UiMsg::Spawn {
+            location: location @ bbt_proto::Where::Ssh { .. },
+            ..
+        } = spawn_pick(
+            id,
+            Default::default(),
+            Some(model),
+            self.launcher_stage.as_ref(),
+        )?
+        else {
+            return None;
+        };
+        let bbt_proto::Where::Ssh { host: name } = &location else {
+            unreachable!()
+        };
+        let route = model
+            .hosts
+            .iter()
+            .find(|host| host.location == location)
+            .and_then(|host| host.address.clone())
+            .unwrap_or_else(|| name.clone());
+        Some((bboxy450_term::hosts::key(&location), route))
+    }
+    fn launcher_fields(
+        &self,
+        id: &str,
+        harness: &str,
+        swarm: Option<bbt_proto::SwarmId>,
+    ) -> Vec<bbt_ui_model::SpawnField> {
+        let model = self.live_state.as_deref();
+        let row = model.and_then(|m| {
+            m.ui.window
+                .sidebar
+                .swarms
+                .iter()
+                .find(|s| Some(s.id) == swarm)
+        });
+        let fields = bboxy450_term::spawn_params::resolve_with_catalog(
+            harness,
+            &self.preferences.preferences.harnesses,
+            &self.preferences.preferences.role_catalog(),
+            row,
+            model.map_or("/", |m| m.launch_directory.as_str()),
+        );
+        if let Some((machine, route)) = self.launcher_machine(id) {
+            let defaults = self
+                .preferences
+                .preferences
+                .machines
+                .get(&machine)
+                .cloned()
+                .unwrap_or_else(|| bbt_ui::modules::settings::Machine {
+                    connect: route,
+                    ..Default::default()
+                });
+            bboxy450_term::spawn_params::with_machine(fields, &defaults)
+        } else {
+            fields
+        }
+    }
+    fn configured_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
+        if let Some((harness, _)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
+            let (_, swarm, _) = bboxy450_term::launcher::captured_placement(id, Default::default(), self.live_state.as_deref(), self.launcher_stage.as_ref());
+            return Some((harness, swarm));
+        }
         match spawn_pick(
             id,
             Default::default(),
@@ -4346,13 +4460,13 @@ impl App {
             live::UiMsg::Spawn {
                 harness_kind,
                 swarm,
-                location: bbt_proto::Where::Local,
+                location: bbt_proto::Where::Local | bbt_proto::Where::Ssh { .. },
                 ..
             } => Some((harness_kind, swarm)),
             _ => None,
         }
     }
-    fn launch_local(
+    fn launch_configured(
         &mut self,
         id: &str,
         mut modifiers: Modifiers,
@@ -4375,27 +4489,12 @@ impl App {
             self.request_redraw();
             return;
         }
-        let Some((harness, swarm)) = self.local_launcher_target(id) else {
+        let Some((harness, swarm)) = self.configured_launcher_target(id) else {
             return;
         };
         let model = self.live_state.as_deref();
-        let fields = fields.unwrap_or_else(|| {
-            let row = model.and_then(|m| {
-                m.ui.window
-                    .sidebar
-                    .swarms
-                    .iter()
-                    .find(|s| Some(s.id) == swarm)
-            });
-            bboxy450_term::spawn_params::resolve_with_catalog(
-                &harness,
-                &self.preferences.preferences.harnesses,
-                &self.preferences.preferences.role_catalog(),
-                row,
-                model.map_or("/", |m| m.launch_directory.as_str()),
-            )
-        });
-        let resolved = match bboxy450_term::spawn_params::Resolved::from_fields(
+        let fields = fields.unwrap_or_else(|| self.launcher_fields(id, &harness, swarm));
+        let mut resolved = match bboxy450_term::spawn_params::Resolved::from_fields(
             &fields,
             &std::env::var("HOME").unwrap_or_default(),
         ) {
@@ -4405,21 +4504,17 @@ impl App {
                 return;
             }
         };
+        resolved.machine = self.launcher_machine(id).map(|(machine, _)| machine);
         if let Some(side) = self.launcher_preset {
             modifiers.command = !modifiers.alt;
             modifiers.shift = side == bbt_proto::seat_state::Side::Bottom;
         }
-        let Some(live::UiMsg::Spawn {
-            id: op,
-            swarm,
-            placement,
-            ..
-        }) = spawn_pick(id, modifiers, model, self.launcher_stage.as_ref())
-        else {
-            return;
-        };
+        let (_, swarm, placement) = bboxy450_term::launcher::captured_placement(id, modifiers, model, self.launcher_stage.as_ref());
+        let op = bbt_mux::Ulid::new();
+        let placement = Some(placement);
         let swarm = swarm.unwrap_or_else(|| bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0));
         let spec = bbt_proto::SpawnSpec {
+            via: resolved.via.clone(),
             swarm,
             harness_kind: harness.clone(),
             name: None,
@@ -4464,22 +4559,52 @@ impl App {
             }
             let patch = settings_controller::Patch::HarnessLaunch {
                 harness,
-                command: values.command,
-                arguments: values.args,
+                command: values.command.clone(),
+                arguments: values.args.clone(),
             };
-            match self.preferences.edit(patch) {
-                Ok(request) => {
-                    if let Some(io) = &self.preferences_io
-                        && let Err(reason) = io.submit(request)
-                    {
-                        self.preferences.refused(reason);
+            let machine_patch =
+                values
+                    .machine
+                    .as_ref()
+                    .map(|id| settings_controller::Patch::MachineLaunch {
+                        id: id.clone(),
+                        machine: values.remember_machine(
+                            self.preferences
+                                .preferences
+                                .machines
+                                .get(id)
+                                .cloned()
+                                .unwrap_or_default(),
+                        ),
+                    });
+            for patch in std::iter::once(patch).chain(machine_patch) {
+                match self.preferences.edit(patch) {
+                    Ok(request) => {
+                        if let Some(io) = &self.preferences_io
+                            && let Err(reason) = io.submit(request)
+                        {
+                            self.preferences.refused(reason);
+                        }
                     }
+                    Err(reason) => self.preferences.refused(reason),
                 }
-                Err(reason) => self.preferences.refused(reason),
             }
+            let directory = if values.via.is_some() {
+                state
+                    .ui
+                    .window
+                    .sidebar
+                    .swarms
+                    .iter()
+                    .find(|row| row.id == swarm)
+                    .and_then(|row| row.workdir.clone())
+                    .unwrap_or_else(|| state.launch_directory.clone())
+            } else {
+                values.cwd
+            };
             self.queue(live::UiMsg::SwarmLaunchDefaults {
                 swarm,
-                directory: values.cwd,
+                directory,
                 environment: values.env,
             });
         }
@@ -5621,6 +5746,7 @@ impl App {
             });
             if refresh && let Some(launcher) = &mut self.launcher {
                 let mut items = launcher_items_for(Some(&state), self.focus.stage.as_ref());
+                configure_machine_items(&mut items, &self.preferences.preferences.machines);
                 settings_roles::configure_items(
                     &mut items,
                     &self.preferences.preferences.role_catalog(),
@@ -12222,6 +12348,7 @@ mod spawn_admission_tests {
         live::UiMsg::SpawnSpec {
             id: bbt_mux::Ulid::new(),
             spec: Box::new(bbt_proto::SpawnSpec {
+                via: None,
                 args: Vec::new(),
                 env: Vec::new(),
                 command: None,
@@ -12315,6 +12442,21 @@ mod default_spawn_tests {
     }
 
     #[test]
+    fn configured_machine_rows_launch_and_disable_without_a_provider_snapshot() {
+        let mut items = launcher_items(None);
+        let machines = std::collections::BTreeMap::from([("ssh:fixture".into(), bbt_ui::modules::settings::Machine { connect: "user@fixture.invalid".into(), ..Default::default() })]);
+        configure_machine_items(&mut items, &machines);
+        let hosts = items.iter().find(|item| item.id == "ssh").unwrap().children.as_ref().unwrap();
+        assert_eq!(hosts.len(), 1);
+        let codex = hosts[0].children.as_ref().unwrap().iter().find(|row| row.harness == "codex").unwrap();
+        assert_eq!(codex.id, "ssh:fixture:codex");
+        assert!(codex.parameters);
+        assert_eq!(bboxy450_term::spawn_params::machine_target(&codex.id, &machines), Some(("codex".into(), "ssh:fixture".into())));
+        settings_destinations::filter(&mut items, &std::collections::BTreeSet::from(["ssh:fixture".into()]), &[]);
+        assert!(!items.iter().any(|item| item.id == "ssh"));
+    }
+
+    #[test]
     fn host_picks_preserve_structured_location_without_parsing_labels() {
         let mut model = bboxy450_term::model::Model::default();
         for location in [
@@ -12364,15 +12506,25 @@ mod default_spawn_tests {
                 .find(|row| row.id == id)
                 .unwrap();
             assert!(codex.enter_picks);
-            assert!(!codex.parameters);
+            assert_eq!(
+                codex.parameters,
+                matches!(location, bbt_proto::Where::Ssh { .. })
+            );
             let mut controller = new_launcher(Some(&model), 0);
             controller.launcher.path = vec![root.into(), host.clone()];
             controller.handle(LauncherCommand::Query("codex".into()));
-            assert_eq!(
-                controller.handle(LauncherCommand::Right),
-                LauncherOutcome::Changed
-            );
-            assert_eq!(controller.launcher.path.last(), Some(&id));
+            if matches!(location, bbt_proto::Where::Ssh { .. }) {
+                assert_eq!(
+                    controller.handle(LauncherCommand::Right),
+                    LauncherOutcome::Parameters { id: id.clone() }
+                );
+            } else {
+                assert_eq!(
+                    controller.handle(LauncherCommand::Right),
+                    LauncherOutcome::Changed
+                );
+                assert_eq!(controller.launcher.path.last(), Some(&id));
+            }
             assert!(controller.launcher.params.is_none());
             assert!(
                 codex

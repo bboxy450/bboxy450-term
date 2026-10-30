@@ -121,6 +121,7 @@ fn first_logic_launch_wires_both_fixture_clients_without_user_config_writes() {
                 record,
                 harness,
                 LaunchOptions {
+                    via: None,
                     env: vec![],
                     cwd: temp.path().into(),
                     role_prompt: PROMPT.into(),

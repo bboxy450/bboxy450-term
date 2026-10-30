@@ -126,7 +126,11 @@ fn class_send(class: &str) -> &'static str {
 fn is_text(field: &Field) -> bool {
     matches!(
         field,
-        Field::RoleDraftName | Field::RoleDraftPrompt | Field::RolePrompt(_)
+        Field::RoleDraftName
+            | Field::RoleDraftPrompt
+            | Field::RolePrompt(_)
+            | Field::Machine(_, _)
+            | Field::MachineNew
     )
 }
 
@@ -140,6 +144,15 @@ impl Controller {
     }
     pub(super) fn role_editable(&self, field: &Field, values: &Records) -> bool {
         match field {
+            Field::MachineNew => self.section == "Machines" && values.machine_controls,
+            Field::Machine(id, key) => {
+                self.section == "Machines"
+                    && values.machine_controls
+                    && values.machine_defaults.contains_key(id)
+                    && super::super::machines::FIELDS
+                        .iter()
+                        .any(|(name, _)| *name == key)
+            }
             Field::RoleNew => self.section == "Roles" || !self.query.trim().is_empty(),
             Field::RoleAdd
             | Field::RoleCancel
@@ -169,6 +182,16 @@ impl Controller {
         }
     }
     pub(super) fn role_fields(&self, values: &Records) -> Vec<Field> {
+        if self.section == "Machines" {
+            if !values.machine_controls { return vec![]; }
+            return std::iter::once(Field::MachineNew)
+                .chain(values.machine_defaults.keys().flat_map(|id| {
+                    super::super::machines::FIELDS
+                        .iter()
+                        .map(move |(key, _)| Field::Machine(id.clone(), (*key).into()))
+                }))
+                .collect();
+        }
         if self.section == "Roles" {
             let mut out = vec![];
             for (name, role) in &values.roles {
@@ -220,6 +243,11 @@ impl Controller {
             return;
         }
         let value = match &field {
+            Field::MachineNew => Some(String::new()),
+            Field::Machine(id, key) => values
+                .machine_defaults
+                .get(id)
+                .map(|machine| machine.value(key)),
             Field::RoleDraftName => self.roles.draft.as_ref().map(|d| d.name.clone()),
             Field::RoleDraftPrompt => self.roles.draft.as_ref().map(|d| d.role.prompt.clone()),
             Field::RolePrompt(name) => values
@@ -253,6 +281,31 @@ impl Controller {
         text.editor
             .handle(&mut text.value, EditCommand::CancelPreedit);
         self.draft_text(&text.field, &text.value);
+        if text.field == Field::MachineNew {
+            let route = text.value.trim().to_owned();
+            let machine = super::super::Machine {
+                connect: route.clone(),
+                ..Default::default()
+            };
+            return self.role_patch(
+                Patch::MachineLaunch {
+                    id: format!("ssh:{route}"),
+                    machine,
+                },
+                values,
+            );
+        }
+        if let Field::Machine(id, key) = &text.field {
+            let mut machine = values.machine_defaults.get(id)?.clone();
+            machine.set(key, text.value);
+            return self.role_patch(
+                Patch::MachineLaunch {
+                    id: id.clone(),
+                    machine,
+                },
+                values,
+            );
+        }
         if let Field::RolePrompt(name) = text.field {
             let (_, old) = values.roles.iter().find(|(id, _)| *id == name)?;
             if old.prompt == text.value {
@@ -307,6 +360,9 @@ impl Controller {
             return None;
         }
         match &patch {
+            Patch::MachineLaunch { id, machine } => {
+                values.machine_defaults.insert(id.clone(), machine.clone());
+            }
             Patch::RoleUpsert { name, role } => {
                 if let Some((_, current)) = values.roles.iter_mut().find(|(id, _)| id == name) {
                     if !current.custom && role.custom {
@@ -565,9 +621,11 @@ impl Controller {
                     Field::RoleDelete(name) => {
                         return Some(self.role_patch(Patch::RoleDelete(name.clone()), values));
                     }
-                    Field::RoleDraftName | Field::RoleDraftPrompt | Field::RolePrompt(_) => {
-                        self.begin_role_text(field.clone(), values)
-                    }
+                    Field::RoleDraftName
+                    | Field::RoleDraftPrompt
+                    | Field::RolePrompt(_)
+                    | Field::Machine(_, _)
+                    | Field::MachineNew => self.begin_role_text(field.clone(), values),
                     Field::Choice(index) => return Some(self.choose(*index, values)),
                     Field::HarnessAvailableRole { harness, role } => {
                         let h = &values.harness.iter().find(|(id, _)| id == harness)?.1;
@@ -634,7 +692,8 @@ impl Controller {
                 return Some(None);
             }
             Action::Set(
-                patch @ (Patch::RoleUpsert { .. }
+                patch @ (Patch::MachineLaunch { .. }
+                | Patch::RoleUpsert { .. }
                 | Patch::RoleDelete(_)
                 | Patch::HarnessRole { .. }
                 | Patch::HarnessAvailableRoles { .. }),
@@ -657,6 +716,17 @@ impl Regions {
                 self.hits.push((node.rect, Hit::Toggle(field), true));
             }
         };
+        if section == "Machines" {
+            add("machine/new".into(), Field::MachineNew);
+            for id in view.values.machine_defaults.keys() {
+                for (key, _) in super::super::machines::FIELDS {
+                    add(
+                        super::super::machines::region(id, key),
+                        Field::Machine(id.clone(), key.into()),
+                    );
+                }
+            }
+        }
         if section == "Roles" {
             for (name, role) in &view.values.roles {
                 add(role_region(name, "prompt"), Field::RolePrompt(name.clone()));

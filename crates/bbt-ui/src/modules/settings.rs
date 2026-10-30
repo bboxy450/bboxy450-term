@@ -7,6 +7,8 @@
 //! Read-mostly Settings composition. Host-owned records and section selection;
 //! this view never reads config files, unlocks keys, or issues grants.
 pub mod controller;
+pub mod machines;
+pub use machines::Machine;
 mod hosted;
 pub mod knowledge;
 pub mod messaging;
@@ -146,6 +148,10 @@ pub struct Records {
     /// Host-supplied stable IDs for observed machine/{index} and cloud/{index} rows.
     pub destination_ids: std::collections::BTreeMap<String, String>,
     pub disabled_destinations: std::collections::BTreeSet<String>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub machine_defaults: std::collections::BTreeMap<String, Machine>,
+    #[serde(skip)]
+    pub machine_controls: bool,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub plugins: Vec<plugins::Plugin>,
@@ -1426,7 +1432,7 @@ impl Settings {
                 "Roles" => return hosted::roles(self, b, width, state),
                 "Harnesses" => return hosted::harnesses(self, b, width),
                 "Cloud" => return vec![self.cloud(b, width, false).into()],
-                "Machines" => return vec![self.machines(b, false).into()],
+                "Machines" => return hosted::machines(self, b, state),
                 _ => {}
             }
         }
@@ -1870,7 +1876,7 @@ impl Settings {
         rows.push(
             b.note(
                 "",
-                if allow_create { "Read from ~/.ssh/config. Machines appear under SSH in the launcher." } else { "Existing destinations from the runtime provider snapshot. Connection configuration is read-only here." },
+                if allow_create { "Read from ~/.ssh/config. Machines appear under SSH in the launcher." } else if self.values.machine_controls { "Edit transport defaults below; connection status is observed separately." } else { "Existing destinations from the runtime provider snapshot. Connection configuration is read-only here." },
                 true,
             )
             .into(),

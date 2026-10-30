@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Local launch resolution. All values are captured before the IO owner sees a spawn.
+//! Local and remote launch resolution. All values are captured before the IO owner sees a spawn.
 use bbt_ui::modules::launcher::{FieldKey, Source, SpawnField, ValueChoice};
 use std::collections::BTreeMap;
 
@@ -201,8 +201,40 @@ pub fn resolve_with_catalog(
     out
 }
 
+// bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Retain source credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+/// Resolve only catalogued machine/harness IDs; labels never become argv.
+pub fn machine_target(
+    id: &str,
+    machines: &BTreeMap<String, bbt_ui::modules::settings::Machine>,
+) -> Option<(String, String)> {
+    let root = match id.rsplit_once(':') {
+        Some((root, "tab" | "right" | "bottom")) => root,
+        _ => id,
+    };
+    for machine in machines.keys() {
+        for harness in ["claude", "codex", "pi", "omp", "zsh"] {
+            if root == format!("{machine}:{harness}") {
+                return Some((harness.into(), machine.clone()));
+            }
+        }
+    }
+    None
+}
+
+pub fn with_machine(
+    mut fields: Vec<SpawnField>,
+    machine: &bbt_ui::modules::settings::Machine,
+) -> Vec<SpawnField> {
+    fields.retain(|field| field.key != FieldKey::Directory);
+    fields.splice(1..1, machine.fields());
+    fields
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolved {
+    pub via: Option<bbt_proto::TransportSpec>,
+    pub machine: Option<String>,
     pub role: Option<String>,
     pub cwd: String,
     pub command: String,
@@ -227,12 +259,23 @@ impl Resolved {
                 value.into()
             }
         };
-        let command = expand(get(FieldKey::Command).trim());
+        let remote = fields.iter().any(|field| field.key == FieldKey::Via);
+        let command = if remote {
+            get(FieldKey::Command).trim().into()
+        } else {
+            expand(get(FieldKey::Command).trim())
+        };
         if command.is_empty() || command.contains('\0') {
             return Err("Command must name an executable".into());
         }
-        let cwd = expand(get(FieldKey::Directory).trim());
-        if !bbt_proto::gui::valid_workdir(&cwd) {
+        let cwd = if remote {
+            get(FieldKey::Directory).trim().into()
+        } else {
+            expand(get(FieldKey::Directory).trim())
+        };
+        if remote {
+            bbt_ui_model::transport::remote_directory(&cwd)?;
+        } else if !bbt_proto::gui::valid_workdir(&cwd) {
             return Err("Directory must be an absolute path".into());
         }
         let args = shell_words::split(get(FieldKey::Arguments))
@@ -256,7 +299,30 @@ impl Resolved {
         if args.iter().any(|v| v.contains('\0')) {
             return Err("Arguments contain a NUL".into());
         }
+        let via = if remote {
+            let port = get(FieldKey::Port).trim();
+            let key = get(FieldKey::Key).trim();
+            let via = bbt_proto::TransportSpec {
+                kind: get(FieldKey::Via).trim().into(),
+                route: get(FieldKey::Connect).trim().into(),
+                port: if port.is_empty() {
+                    None
+                } else {
+                    Some(
+                        port.parse::<u16>()
+                            .map_err(|_| "Port must be between 1 and 65535")?,
+                    )
+                },
+                key: (!key.is_empty()).then(|| expand(key)),
+            };
+            via.validate()?;
+            Some(via)
+        } else {
+            None
+        };
         Ok(Self {
+            via,
+            machine: None,
             role: fields
                 .iter()
                 .find(|f| f.key == FieldKey::Role)
@@ -268,11 +334,21 @@ impl Resolved {
         })
     }
     pub fn argv(&self) -> Vec<String> {
-        std::iter::once(self.command.clone())
+        let inner = std::iter::once(self.command.clone())
             .chain(self.args.clone())
-            .collect()
+            .collect::<Vec<_>>();
+        self.via.as_ref().map_or_else(
+            || inner.clone(),
+            |via| {
+                via.argv(&self.cwd, &inner, &self.env)
+                    .expect("validated configured transport")
+            },
+        )
     }
     pub fn runs(&self) -> String {
+        if self.via.is_some() {
+            return join(&self.argv());
+        }
         let env = if self.env.is_empty() {
             String::new()
         } else {
@@ -289,17 +365,45 @@ impl Resolved {
         };
         format!("cd {} && {env}{}", quote(&self.cwd), join(&self.argv()))
     }
+    pub fn remember_machine(
+        &self,
+        mut machine: bbt_ui::modules::settings::Machine,
+    ) -> bbt_ui::modules::settings::Machine {
+        if let Some(via) = &self.via {
+            let previous_route = machine.connect.clone();
+            machine.via = via.kind.clone();
+            machine.connect = via.route.clone();
+            machine.port = via.port.map_or(String::new(), |port| port.to_string());
+            machine.key = via.key.clone().unwrap_or_default();
+            machine.directory = self.cwd.clone();
+            if !previous_route.is_empty() && previous_route != via.route {
+                machine.routes.retain(|route| route != &previous_route);
+                machine.routes.insert(0, previous_route);
+            }
+            machine.routes.retain(|route| route != &via.route);
+            machine.routes.insert(0, via.route.clone());
+            machine.routes.truncate(64);
+            machine.recent_directories.retain(|cwd| cwd != &self.cwd);
+            machine.recent_directories.insert(0, self.cwd.clone());
+            machine.recent_directories.truncate(6);
+        }
+        machine
+    }
     pub fn remember(
         &self,
         harness: &str,
         swarm: &mut bbt_ui_model::Swarm,
         settings: &mut Harnesses,
     ) {
-        swarm.workdir = Some(self.cwd.clone());
+        if self.via.is_none() {
+            swarm.workdir = Some(self.cwd.clone());
+        }
         swarm.launch_environment = Some(self.env.clone());
-        swarm.recent_directories.retain(|p| p != &self.cwd);
-        swarm.recent_directories.insert(0, self.cwd.clone());
-        swarm.recent_directories.truncate(6);
+        if self.via.is_none() {
+            swarm.recent_directories.retain(|p| p != &self.cwd);
+            swarm.recent_directories.insert(0, self.cwd.clone());
+            swarm.recent_directories.truncate(6);
+        }
         let defaults = settings.entry(harness.into()).or_default();
         defaults.command = Some(self.command.clone());
         defaults.arguments = Some(self.args.clone());

@@ -1129,9 +1129,65 @@ fn historical_reconcile(b: bool) -> Model {
     m
 }
 
+// A captured transport launch survives later A -> B -> A Settings changes.
+// No network fairness or remote availability is assumed; composition is pure.
+fn transport_capture(b: bool) -> Model {
+    let mut m = model(
+        "TransportCapture",
+        b,
+        &[
+            ("settings", 2, 1),
+            ("captured", 2, 0),
+            ("spawned", 2, 0),
+            ("phase", 5, 0),
+            ("remembered", 2, 0),
+        ],
+    );
+    for value in 1..=2 {
+        action(
+            &mut m,
+            &format!("Edit_{value}"),
+            Bool(true),
+            &[(0, Int(value))],
+        );
+    }
+    action(&mut m, "Capture", eq(3, 0), &[(1, Var(0)), (3, Int(1))]);
+    action(
+        &mut m,
+        "Spawn",
+        eq(3, 1),
+        &[(2, if b { Var(0) } else { Var(1) }), (3, Int(2))],
+    );
+    action(
+        &mut m,
+        "RememberSuccess",
+        eq(3, 3),
+        &[(4, Var(1)), (3, Int(5))],
+    );
+    action(&mut m, "CompleteSuccess", eq(3, 2), &[(3, Int(3))]);
+    action(&mut m, "CompleteFailure", eq(3, 2), &[(3, Int(4))]);
+    action(&mut m, "RejectedOrCancelled", eq(3, 1), &[(3, Int(4))]);
+    action(&mut m, "RememberFailure", if b { eq(3, 4) } else { Bool(false) }, &[(4, Var(1))]);
+    safe(&mut m, "FailureNeverRemembers", implies(eq(3, 4), eq(4, 0)));
+    action(
+        &mut m,
+        "RestartKnownExited",
+        all([eq(3, 3).or(eq(3, 4)).or(eq(3, 5)), ne(2, 0)]),
+        &[(2, if b { Var(0) } else { Var(1) })],
+    );
+    safe(&mut m, "CapturedArgv", implies(ne(2, 0), Var(2).eq(Var(1))));
+    safe(
+        &mut m,
+        "RememberOnlyCapturedSuccess",
+        implies(ne(4, 0), Var(4).eq(Var(1))),
+    );
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 23] = [
+    let families: [fn(bool) -> Model; 24] = [
         seat_models::diagnostics,
+        transport_capture,
         seat_models::recovery,
         sidebar_reveal,
         async_render_preparation,

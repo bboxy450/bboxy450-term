@@ -378,6 +378,8 @@ exec /bin/cat
     // to the harness adapter; runtime MCP/hook arguments follow that prefix.
     let command = Path::new(&argv[0]).file_name().unwrap().to_str().unwrap();
     let actual = bboxy450_term::spawn_params::Resolved {
+        via: None,
+        machine: None,
         role: Some("architect".into()),
         cwd: folder.to_string_lossy().into(),
         command: command.into(),
@@ -439,6 +441,8 @@ exec /bin/cat
         ]
     );
     let actual = bboxy450_term::spawn_params::Resolved {
+        via: None,
+        machine: None,
         role: None,
         cwd: context[0].clone(),
         command: "custom-claude".into(),

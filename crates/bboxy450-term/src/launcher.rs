@@ -99,6 +99,7 @@ pub fn operator_placement(
     };
     Ok(CapturedSpawn {
         spec: bbt_proto::SpawnSpec {
+            via: None,
             args: Vec::new(),
             env: Vec::new(),
             command: None,

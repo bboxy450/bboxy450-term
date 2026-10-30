@@ -522,6 +522,7 @@ fn native_hold_unlock_is_audited_before_access_and_does_not_block_panes() {
             .contains("Busy")
     );
     let spawn = bbt_proto::SpawnSpec {
+        via: None,
         args: Vec::new(),
         env: Vec::new(),
         command: None,

@@ -25,6 +25,10 @@ pub enum Patch {
         #[serde(default)]
         tasks_height: Option<f32>,
     },
+    MachineLaunch {
+        id: String,
+        machine: super::Machine,
+    },
     DestinationAvailable {
         id: String,
         available: bool,
@@ -70,6 +74,11 @@ impl Patch {
                 tasks_height: *tasks_height,
             }
             .valid(),
+            Self::MachineLaunch { id, machine } => {
+                id.starts_with("ssh:")
+                    && super::valid_destination_id(id)
+                    && machine.validate().is_ok()
+            }
             Self::DestinationAvailable { id, .. } => super::valid_destination_id(id),
             Self::RoleUpsert { name, role } => roles::valid_role(name, role),
             Self::RoleDelete(name) => roles::valid_name(name) && !roles::builtin(name),
@@ -125,6 +134,7 @@ impl Patch {
         match self {
             Self::SidebarLayout { .. }
             | Self::HarnessLaunch { .. }
+            | Self::MachineLaunch { .. }
             | Self::DestinationAvailable { .. }
             | Self::RoleUpsert { .. }
             | Self::RoleDelete(_)
@@ -144,6 +154,8 @@ impl Patch {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Field {
+    MachineNew,
+    Machine(String, String),
     DestinationAvailable(String),
     RoleNew,
     RoleAdd,
@@ -442,6 +454,11 @@ impl Controller {
                     let field = Field::DestinationAvailable(id.clone());
                     (values.destination_id(key).is_some() && self.editable(&field, values))
                         .then_some(field)
+                })
+                .chain(if self.section == "Machines" {
+                    self.role_fields(values)
+                } else {
+                    vec![]
                 })
                 .collect(),
             "Roles" | "Harnesses" => self.role_fields(values),
@@ -805,6 +822,7 @@ impl Controller {
             Patch::SidebarLayout { .. }
             | Patch::TerminalFontSize(_)
             | Patch::HarnessLaunch { .. }
+            | Patch::MachineLaunch { .. }
             | Patch::RoleUpsert { .. }
             | Patch::RoleDelete(_)
             | Patch::HarnessRole { .. }
@@ -1258,9 +1276,13 @@ impl Regions {
         }
         match hit {
             Hit::Search
-            | Hit::Toggle(Field::RolePrompt(_) | Field::RoleDraftName | Field::RoleDraftPrompt) => {
-                Cursor::Text
-            }
+            | Hit::Toggle(
+                Field::RolePrompt(_)
+                | Field::RoleDraftName
+                | Field::RoleDraftPrompt
+                | Field::Machine(_, _)
+                | Field::MachineNew,
+            ) => Cursor::Text,
             Hit::Rim => Cursor::EwResize,
             _ => Cursor::Pointer,
         }
