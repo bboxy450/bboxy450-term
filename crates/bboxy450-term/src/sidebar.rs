@@ -15,6 +15,12 @@ impl App {
         let open = !current;
         self.sidebar_accordion_overrides.insert(key.into(), open);
         self.scene.set_sidebar_open(key, open);
+        if key == "panels/Chat" && !open {
+            self.blur_reject();
+            self.composer.handle(ComposeCommand::Blur);
+            self.composer_dragging = false;
+            self.sync_text_ime();
+        }
         if let Some(effects) = &mut self.ui_collect {
             effects.push(UiEffect::SidebarSection {
                 key: key.into(),
@@ -22,6 +28,33 @@ impl App {
             });
         }
         self.request_redraw();
+    }
+    pub(super) fn panel_header(&self, at: [f32; 2]) -> Option<&'static str> {
+        fn find<'a>(
+            n: &'a bbt_ui::components::Layout,
+            key: &str,
+        ) -> Option<&'a bbt_ui::components::Layout> {
+            if matches!(&n.kind,bbt_ui::components::LayoutKind::Named(name) if name==key) {
+                Some(n)
+            } else {
+                n.children.iter().find_map(|n| find(n, key))
+            }
+        }
+        let layout = &self.conversation_layout.as_ref()?.layout;
+        [
+            ("panels/Tasks", "conversation/task-section/head"),
+            ("panels/Chat", "conversation/chat-section/head"),
+        ]
+        .into_iter()
+        .find(|(_, name)| {
+            find(layout, name).is_some_and(|n| {
+                at[0] >= n.rect.x
+                    && at[0] < n.rect.right()
+                    && at[1] >= n.rect.y
+                    && at[1] < n.rect.bottom()
+            })
+        })
+        .map(|(key, _)| key)
     }
     pub(super) fn begin_sidebar_resize(&mut self, at: [f32; 2]) -> bool {
         if self.document.open || self.launcher.is_some() {

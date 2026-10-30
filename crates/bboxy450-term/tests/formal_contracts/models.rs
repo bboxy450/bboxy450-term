@@ -820,8 +820,54 @@ fn selection_gesture(b: bool) -> Model {
     m
 }
 
+// Four independent fold bits; save/restore is an atomic durable snapshot here.
+// WindowDurability separately checks asynchronous write/reply interleavings.
+fn sidebar_accordions(b: bool) -> Model {
+    let mut m = model(
+        "SidebarAccordions",
+        b,
+        &[
+            ("actual", 15, 0),
+            ("expected", 15, 0),
+            ("saved", 15, 0),
+            ("focus", 1, 0),
+            ("expected_focus", 1, 0),
+        ],
+    );
+    for mask in 0..16 {
+        for bit in 0..4 {
+            let expected = mask ^ (1 << bit);
+            let actual = if b && bit == 2 {
+                expected ^ 8
+            } else {
+                expected
+            };
+            action(
+                &mut m,
+                &format!("Toggle_{bit}_{mask}"),
+                all([eq(0, mask), eq(1, mask)]),
+                &[(0, Int(actual)), (1, Int(expected))],
+            );
+        }
+    }
+    action(&mut m, "Save", Bool(true), &[(2, Var(0))]);
+    action(&mut m, "Restore", Bool(true), &[(0, Var(2)), (1, Var(2))]);
+    for focus in 0..2 {
+        action(
+            &mut m,
+            &format!("Focus_{focus}"),
+            Bool(true),
+            &[(3, Int(focus)), (4, Int(focus))],
+        );
+    }
+    safe(&mut m, "IndependentFolds", Var(0).eq(Var(1)));
+    safe(&mut m, "FoldDoesNotFocus", Var(3).eq(Var(4)));
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 17] = [
+    let families: [fn(bool) -> Model; 18] = [
+        sidebar_accordions,
         selection_gesture,
         landing_verification,
         dirty_wake,

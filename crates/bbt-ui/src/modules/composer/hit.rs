@@ -22,6 +22,7 @@ pub enum Hit {
     AttachQuery,
     AttachChoice(usize),
 }
+#[derive(Default)]
 pub struct Regions {
     pub panel: Rect,
     pub body: Rect,

@@ -156,9 +156,9 @@ pub(crate) fn validate(state: &WindowState) -> Result<()> {
         return Err(invalid("window_state_invalid"));
     }
     let mut sections = BTreeSet::new();
-    if state.sidebar_sections_closed.len() > 2
+    if state.sidebar_sections_closed.len() > bbt_proto::gui::SIDEBAR_SECTIONS.len()
         || state.sidebar_sections_closed.iter().any(|section| {
-            !matches!(section.as_str(), "providers/Hosts" | "providers/Cloud")
+            !bbt_proto::gui::SIDEBAR_SECTIONS.contains(&section.as_str())
                 || !sections.insert(section)
         })
     {
@@ -397,6 +397,15 @@ mod tests {
             vec!["providers/Cloud", "providers/Hosts"],
         ] {
             state.sidebar_sections_closed = sections.into_iter().map(String::from).collect();
+            validate(&state).unwrap();
+        }
+        for mask in 0..16 {
+            state.sidebar_sections_closed = bbt_proto::gui::SIDEBAR_SECTIONS
+                .iter()
+                .enumerate()
+                .filter(|(bit, _)| mask & (1 << bit) != 0)
+                .map(|(_, key)| (*key).to_owned())
+                .collect();
             validate(&state).unwrap();
         }
         for sections in [

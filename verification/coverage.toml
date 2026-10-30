@@ -124,14 +124,14 @@ sources = ["crates/bbt-supervisor/src/supervisor.rs"]
 [[crate]]
 name = "bboxy450-mux"
 status = "contract-model"
-models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness", "AttentionLifecycle"]
+models = ["CheckpointFence", "InputReceipt", "WorkspaceFence", "PluginActivation", "CustodyDelivery", "MessageSuppression", "SeatFairness", "AttentionLifecycle", "SidebarAccordions"]
 scope = "Checkpoint/input fences, captured workspace/provider revisions and plugin stale-completion guards, local delivery/suppression, fair seat ingestion and current live notification episodes without replay-created keys. Native GitKB effects, signing, commit atomicity and unknown outcomes use real private host fixtures. Finite contract projections; no whole-mux or observer transport refinement proof."
 sources = ["crates/bbt-mux/src/checkpoint.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/seat_socket.rs"]
 
 [[crate]]
 name = "bboxy450-proto"
 status = "contract-model"
-models = ["InputReceipt", "AttentionLifecycle"]
+models = ["InputReceipt", "AttentionLifecycle", "SidebarAccordions"]
 scope = "Input identity/lease and shared current-notification episode identity contracts; serialization, transport bytes and cryptography use implementation tests."
 sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-proto/src/gui/events.rs"]
 
@@ -159,7 +159,7 @@ sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack
 [[crate]]
 name = "bboxy450-ui"
 status = "contract-model"
-models = ["FocusFrame", "WindowDurability", "SelectionGesture"]
+models = ["FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions"]
 scope = "Host focus acknowledgement and durable UI-reply boundaries; control geometry, layout and all UI transitions are not formally proven."
 sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
@@ -180,7 +180,7 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture"]
+models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions"]
 scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
 sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
 

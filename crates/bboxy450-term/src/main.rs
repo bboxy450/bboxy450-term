@@ -3880,6 +3880,9 @@ impl App {
         if self.document.open || self.launcher.is_some() {
             return Err("composer_not_visible: close the document or launcher first".into());
         }
+        if self.scene.sidebar_sections_closed.contains("panels/Chat") {
+            self.toggle_sidebar_section("panels/Chat");
+        }
         let (model, stage) = self
             .live_state
             .as_deref()

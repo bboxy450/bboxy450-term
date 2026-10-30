@@ -325,7 +325,10 @@ fn incoming_chat_follows_tail_manual_scroll_and_tasks_resize_are_independent() {
     let chat = rect(&loaded, "named:conversation/chat-section");
     let tasks_rect = rect(&loaded, "named:conversation/task-section");
     assert!(chat[3] > 0. && tasks_rect[3] > 0.);
-    assert!(near(chat[1] + chat[3], tasks_rect[1]));
+    assert!(near(
+        tasks_rect[1] + tasks_rect[3] + bbt_ui_model::TOKENS.layout.cohort_gap,
+        chat[1]
+    ));
     let tasks = section(&loaded, "tasks");
     for number in 0..18 {
         f.incoming(&swarm, &format!("INCOMING-{number:02}"));
@@ -376,7 +379,7 @@ fn incoming_chat_follows_tail_manual_scroll_and_tasks_resize_are_independent() {
     let body = rect(&followed, "named:composer/body-viewport");
     let task_height = rect(&followed, "named:conversation/task-section")[3];
     let chat_height = rect(&followed, "named:conversation/chat-section")[3];
-    let resized = f.drag("sidebar-tasks-resize", -52.);
+    let resized = f.drag("sidebar-tasks-resize", 52.);
     let larger_tasks = rect(&resized, "named:conversation/task-section")[3];
     assert!(larger_tasks > task_height + 40.);
     assert!(rect(&resized, "named:conversation/chat-section")[3] < chat_height - 40.);
@@ -414,6 +417,84 @@ fn incoming_chat_follows_tail_manual_scroll_and_tasks_resize_are_independent() {
     assert_eq!(f.owners(), owners);
     assert_eq!(f.process(&seat), process);
     f.capture("light-restored", &restored);
+    f.ctl(&["app", "stop"]);
+    assert!(f.app.as_mut().unwrap().wait().unwrap().success());
+}
+
+#[test]
+#[ignore = "private ctl accordion persistence and live seat boundary; make test-sidebar-panels-e2e"]
+fn tasks_and_chat_are_last_independent_accordions_and_restore_after_ui_restart() {
+    fn click(f: &Fixture, key: &str) -> Value {
+        let frame = f.ctl(&["ui", "layout"]);
+        let r = frame["regions"][key].as_array().unwrap();
+        let x = (r[0].as_f64().unwrap() + r[2].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        let y = (r[1].as_f64().unwrap() + r[3].as_f64().unwrap() / 2.)
+            .round()
+            .to_string();
+        f.ctl(&["ui", "click", &x, &y])
+    }
+    let mut f = Fixture::new();
+    f.start("dark");
+    let initial = f.ctl(&["ui", "layout"]);
+    let swarm = initial["swarm"].as_str().unwrap();
+    let spawned = f.ctl(&["seat", "spawn", "zsh", "--place", "tab", "--swarm", swarm]);
+    let seat = spawned["seat"].as_str().unwrap().to_owned();
+    let stage = f.ctl(&["ui", "layout"]);
+    let focus = stage["focused"].clone();
+    let chat = rect(&stage, "named:conversation/chat-section");
+    let tasks = rect(&stage, "named:conversation/task-section");
+    assert!(tasks[1] + tasks[3] < chat[1]);
+    let draft_box = rect(&stage, "named:composer/body-viewport");
+    f.ctl(&[
+        "ui",
+        "click",
+        &(draft_box[0] + draft_box[2] / 2.).round().to_string(),
+        &(draft_box[1] + draft_box[3] / 2.).round().to_string(),
+    ]);
+    f.ctl(&["ui", "key", "d", "r", "a", "f", "t"]);
+    let process = f.process(&seat);
+    let owners = f.owners();
+    let hidden = click(&f, "toggle-section:panels/Chat");
+    assert_eq!(hidden["sidebar_open"]["panels/Chat"], false);
+    assert_eq!(hidden["sidebar_open"]["panels/Tasks"], true);
+    assert_eq!(hidden["focused"], focus);
+    assert!(!hidden.to_string().contains("named:composer/body-viewport"));
+    f.incoming(swarm, "FOLDED-MESSAGE");
+    assert_eq!(
+        f.ctl(&["ui", "layout"])["sidebar_open"]["panels/Chat"],
+        false
+    );
+    click(&f, "toggle-section:panels/Chat");
+    f.wait_frame(
+        "draft survives folding and incoming message remains live",
+        |v| {
+            v.to_string().contains("\"text\":\"draft\"") && v.to_string().contains("FOLDED-MESSAGE")
+        },
+    );
+    click(&f, "toggle-section:panels/Chat");
+    let both = click(&f, "toggle-section:panels/Tasks");
+    assert_eq!(both["sidebar_open"]["panels/Tasks"], false);
+    assert!(rect(&both, "named:conversation")[3] < rect(&stage, "named:conversation")[3]);
+    f.capture("accordions-both-closed", &both);
+    // A UI process restart preserves only saved expansion data; PTYs/logic remain live.
+    let mut old = f.app.take().unwrap();
+    old.kill().unwrap();
+    old.wait().unwrap();
+    f.start("light");
+    let restored = f.wait_frame("both folded sections restore", |v| {
+        v["sidebar_open"]["panels/Tasks"] == false && v["sidebar_open"]["panels/Chat"] == false
+    });
+    assert_eq!(restored["focused"], focus);
+    assert_eq!(f.owners(), owners);
+    assert_eq!(f.process(&seat), process);
+    let open = click(&f, "toggle-section:panels/Chat");
+    assert_eq!(open["sidebar_open"]["panels/Tasks"], false);
+    assert!(open.to_string().contains("named:composer/body-viewport"));
+    let reopened = click(&f, "toggle-section:panels/Tasks");
+    assert_eq!(reopened["focused"], focus);
+    f.capture("accordions-open-tasks-chat-last", &reopened);
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }

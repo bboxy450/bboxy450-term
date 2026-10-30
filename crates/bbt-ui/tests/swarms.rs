@@ -409,3 +409,60 @@ fn caption_line_limit_preserves_two_lines_and_marks_truncated_content() {
             .is_err()
     );
 }
+
+#[test]
+fn new_swarm_creator_is_between_swarm_cards_and_destinations() {
+    let mut swarms = vec![card(2), card(3)];
+    swarms[0].key = "first".into();
+    swarms[1].key = "second".into();
+    let mut hosts = card(1);
+    hosts.key = "providers/Hosts".into();
+    let mut cloud = card(1);
+    cloud.key = "providers/Cloud".into();
+    swarms.extend([hosts, cloud]);
+    let view = Sidebar {
+        cards: swarms,
+        size: [300., 1000.],
+        scroll: 0.,
+        phone: false,
+        new_swarm: true,
+    };
+    let tree = view
+        .element(ctx())
+        .layout(Rect::new(0., 0., 300., 1000.), ctx(), &Metrics)
+        .unwrap();
+    let ys = [
+        "swarm0/head",
+        "swarm1/head",
+        "new-swarm",
+        "swarm2/head",
+        "swarm3/head",
+    ]
+    .map(|key| find(&tree, key).unwrap().rect.y);
+    assert!(ys.windows(2).all(|y| y[0] < y[1]), "{ys:?}");
+}
+#[test]
+fn utility_accordion_uses_the_swarm_card_closed_chrome() {
+    use ui::modules::accordion::Accordion;
+    let card = card(0);
+    let size = [300., Accordion::chrome_height(ctx(), false)];
+    let utility = Accordion {
+        key: "utility",
+        title: &card.name,
+        color: card.color,
+        count: 0,
+        open: false,
+    }
+    .element(ctx(), size, None)
+    .layout(Rect::new(0., 0., size[0], size[1]), ctx(), &Metrics)
+    .unwrap();
+    let swarm = card
+        .element(ctx())
+        .layout(Rect::new(0., 0., size[0], 0.), ctx(), &Metrics)
+        .unwrap();
+    assert_eq!(utility.rect, swarm.rect);
+    assert_eq!(
+        format!("{:?}", c::paint(&utility, ctx())),
+        format!("{:?}", c::paint(&swarm, ctx()))
+    );
+}

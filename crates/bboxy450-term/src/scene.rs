@@ -803,6 +803,10 @@ impl Scene {
                     .into_iter()
                     .map(|card| (card.key, card.expanded)),
             )
+            .chain(
+                ["panels/Tasks", "panels/Chat"]
+                    .map(|key| (key.to_owned(), !self.sidebar_sections_closed.contains(key))),
+            )
             .collect()
     }
     pub fn set_sidebar_open(&mut self, key: &str, open: bool) -> bool {
@@ -818,7 +822,7 @@ impl Scene {
             } else {
                 self.open_swarms.remove(&id);
             }
-        } else if matches!(key, "providers/Hosts" | "providers/Cloud") {
+        } else if bbt_proto::gui::SIDEBAR_SECTIONS.contains(&key) {
             if open {
                 self.sidebar_sections_closed.remove(key);
             } else {
@@ -1662,7 +1666,14 @@ impl Scene {
             footer: self.identity.is_some(),
             sidebar,
             context: self.ui_context(),
+            open: self.panel_open(),
         }
+    }
+    fn panel_open(&self) -> [bool; 2] {
+        [
+            !self.sidebar_sections_closed.contains("panels/Tasks"),
+            !self.sidebar_sections_closed.contains("panels/Chat"),
+        ]
     }
     pub fn conversation_layout(
         &self,
@@ -1673,19 +1684,31 @@ impl Scene {
         let width = self.sidebar_width_for(size);
         let footer = if self.identity.is_some() { 24. } else { 0. };
         let available = (size[1] - STYLE.spacing.title_bar as f32 - footer).max(1.);
+        let open = self.panel_open();
         let minimum = view
-            .minimum_height(ctx, width, &self.metrics)?
+            .minimum_sidebar_height(ctx, width, &self.metrics, open)?
             .min(available);
         let maximum = (available - 96.).max(minimum);
-        let height =
-            (available * self.sidebar_layout.conversation_fraction).clamp(minimum, maximum);
+        let wanted = if open[1] {
+            available * self.sidebar_layout.conversation_fraction
+        } else if open[0] {
+            self.sidebar_layout.tasks_height.unwrap_or(96.)
+                + bbt_ui::modules::accordion::Accordion::chrome_height(ctx, false)
+                + bbt_ui_model::TOKENS.layout.cohort_gap as f32
+        } else {
+            minimum
+        };
+        let height = wanted.clamp(minimum, maximum);
         let element = view
-            .element_sidebar(
+            .element_sidebar_open(
                 ctx,
                 [width, height],
                 &self.metrics,
-                self.sidebar_layout.composer_body_height,
-                self.sidebar_layout.tasks_height,
+                [
+                    self.sidebar_layout.composer_body_height,
+                    self.sidebar_layout.tasks_height,
+                ],
+                open,
             )
             .map_err(|e| e.to_string())?;
         let layout = element
@@ -1695,11 +1718,13 @@ impl Scene {
                 &self.metrics,
             )
             .map_err(|e| e.to_string())?;
-        let regions = ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?;
-        let body_top = named(&layout, "composer-margin")
-            .ok_or("composer boundary missing")?
-            .rect
-            .y;
+        let regions = if open[1] {
+            ui::modules::composer::Regions::new(&layout).map_err(|e| e.to_string())?
+        } else {
+            Default::default()
+        };
+        let body_top =
+            named(&layout, "composer-margin").map_or(layout.rect.bottom(), |node| node.rect.y);
         let handle = |y: f32| {
             Rect::new(
                 0.,
@@ -1712,8 +1737,16 @@ impl Scene {
         let tasks_height = tasks.map_or(0., |part| part.rect.h);
         let splitters = [
             handle(layout.rect.y),
-            handle(body_top),
-            tasks.map_or(Rect::new(0., 0., 0., 0.), |part| handle(part.rect.y)),
+            if open[1] {
+                handle(body_top)
+            } else {
+                Rect::default()
+            },
+            if open[0] {
+                tasks.map_or(Rect::default(), |part| handle(part.rect.bottom()))
+            } else {
+                Rect::default()
+            },
         ];
         let mut actions = ui::modules::stream_dock::Regions::dock(&layout, &view.stream);
         if let Some(tasks) = &view.tasks {

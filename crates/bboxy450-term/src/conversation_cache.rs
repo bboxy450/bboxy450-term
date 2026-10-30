@@ -15,6 +15,7 @@ pub(super) struct Geometry {
     pub footer: bool,
     pub sidebar: composer::SidebarLayout,
     pub context: bbt_ui::Context,
+    pub open: [bool; 2],
 }
 struct Inputs<'a> {
     geometry: Geometry,

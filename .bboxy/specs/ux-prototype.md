@@ -4,7 +4,7 @@ type: "spec"
 number: 92
 title: "UX prototype spec — bboxy450-term sidebar and panes"
 created: "2026-10-21T20:07:02Z"
-updated: "2026-10-29T12:25:00Z"
+updated: "2026-10-30T03:07:34Z"
 ---
 # UX prototype spec — bboxy450-term sidebar and panes
 
@@ -40,7 +40,7 @@ A swarm is a rounded body (radius 11, surface colour) in the finish language of 
 - The SSH Hosts and Cloud destination lists use the same independent accordion behavior. Swarm and provider section choices persist across UI restart; header clicks never switch the stage, and focusing a seat never unfolds its section.
 - **Unfocused**: the swarm holding the focused seat is full contrast; every other swarm's band and rows desaturate and fade with the pane `[dim]` tokens, the body washes toward grey, the bumper keeps its colour.
 - The selected swarm stays full contrast even when empty. Within it, every seat except the active seat dims once; an inactive swarm dims its contents once as a whole. Pane strips and actual PTY output use the same dim tokens. Identity borders and alive rims keep their colours and attention pulses.
-- **Below the blocks**: a big body-coloured button `+ new swarm` (44 px). A swarm is a world: its own seats, tabs, shadows and stream. A new swarm starts with one zsh seat.
+- **Immediately below the swarm list, before Hosts and Cloud**: a big body-coloured button `+ new swarm` (44 px). A swarm is a world: its own seats, tabs, shadows and stream. A new swarm starts with one zsh seat.
 
 ### 3.2 Inside an open block
 Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with macOS proportions), flush on the body, no separators. Selection is an inset rounded highlight. Section labels (Shadows, new seat) are sentence case, 11 px semibold grey.
@@ -51,11 +51,14 @@ Rows at cozy density (24 px, 12.5 px text, 14 px icons: compact's footprint with
 - **Closed strip**: a seat in grace after close (see 5.3): struck name, grey icon, countdown, `undo ⌘Z`.
 - **SHADOWS**: a group of other people's harnesses in this swarm's channels (published remote participants). Grey name, desaturated icon, state glyph as published, grey breathing glow when active. No pane, no logs. Clicking one filters the stream to that participant; it never focuses or ripples.
 
-### 3.3 Stream dock
+### 3.3 Tasks and Chat accordions
+
+Operator, 2026-10-29: the sidebar order is **swarms → + new swarm → Hosts → Cloud → Tasks → Chat**, with Chat the last accordion. Tasks and Chat use the same rounded card, colored band, count and bumper as swarm/destination cards. Each band independently opens/closes its body, with a hand cursor; folding never changes focused swarm/seat or discards an in-memory draft. Both choices persist with the existing sidebar section choices across UI restart. Folded bodies have no clickable or scrolling regions. Incoming data stays live while folded; an explicit compose action reveals Chat. Expanded sections retain independent scrolling and resize handles, with the Tasks/Chat divider growing Tasks when dragged downward. Legacy windows without these choices start expanded.
+
 Above the footer, hidden until the first message. Shows the last four messages of the current swarm: role rail (gold oracle, blue executor, dashed violet creativity, grey unsigned), explicit uppercase ROLE before the author's first name, text, time, unread dot. Role remains visible when the author name truncates. A foreign Oracle gets no priority chip. Filter chip `from <name> × all` when a shadow is selected.
 
 ### 3.4 Footer
-None. The big `+ new swarm` button is the only creator; the stream dock is the bottom-most element.
+The `+ new swarm` button stays immediately after the swarm list. Tasks follows Hosts and Cloud; Chat is the last accordion.
 
 ### 3.5 Sidebar glow budget
 Rows carry the state glow at a quieter budget than panes so halos on 20 px rows never mix: radius 4, 30% of pane alpha, 4 particles on active rows only, idle rows do not glow (`glow.row_*`).

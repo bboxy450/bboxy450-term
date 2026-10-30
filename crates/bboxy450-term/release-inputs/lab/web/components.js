@@ -1070,6 +1070,22 @@
     return pill;
   }
 
+  // New utility accordion: Copyright 2026 Boxy; LicenseRef-Respectful-Slop-1.0-Draft.
+  // Same band/card/bumper as a swarm; state and content remain caller-owned.
+  // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+  function utilityAccordion(title, opts) {
+    const sp = { name: title, key: opts.key || title, color: opts.color, tabs: [] };
+    const card = el('section', { class: 'space utility-accordion ' + (opts.open ? 'open' : 'closed'), style: '--space:' + opts.color });
+    const head = spaceHeader(sp, { expanded: opts.open, onToggle: opts.onToggle, onColor: opts.onToggle });
+    head.setAttribute('role', 'button'); head.setAttribute('tabindex', '0'); head.setAttribute('aria-expanded', String(opts.open));
+    head.querySelector('.count').textContent = opts.count || 0;
+    head.querySelector('.swatch').title = 'toggle ' + title;
+    head.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); opts.onToggle(); } });
+    card.append(head);
+    if (opts.open) card.append(el('div', { class: 'space-body utility-body' }, opts.body));
+    return card;
+  }
+
   function sidebar(model, opts) {
     opts = opts || {};
     const seats = model.spaces.flatMap(s => s.tabs.flatMap(t => t.seats || leaves(t.tree)));
@@ -1082,7 +1098,7 @@
     st.onToggleSpace = opts.onToggleSpace;
     const sb = el('div', { class: 'sidebar' });
     const scroll = el('div', { class: 'sb-scroll' });
-    st.rerender = () => { scroll.innerHTML = ''; for (const s of shown) scroll.append(spacePill(s, st)); if (opts.onNewSpace) scroll.append(el('div', { class: 'new-cohort', onclick: () => opts.onNewSpace() }, el('span', { class: 'plus' }, '+'), 'new swarm')); };
+    st.rerender = () => { scroll.innerHTML = ''; const destinations = shown.filter(s => String(s.key).startsWith('providers/')); for (const s of shown.filter(s => !destinations.includes(s))) scroll.append(spacePill(s, st)); if (opts.onNewSpace) scroll.append(el('div', { class: 'new-cohort', onclick: () => opts.onNewSpace() }, el('span', { class: 'plus' }, '+'), 'new swarm')); for (const s of destinations) scroll.append(spacePill(s, st)); };
     st.rerender();
     // no footer: the big '+ new swarm' button under the blocks is the one way to create a swarm
     sb.append(
@@ -1967,5 +1983,5 @@
     return root;
   }
 
-  window.C = { firstName, seatRoleLabel, launchFields, composeLaunch, TRANSPORTS, poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
+  window.C = { utilityAccordion, firstName, seatRoleLabel, launchFields, composeLaunch, TRANSPORTS, poolName, RECORDS, recordLookup, e2eSummary, e2eChecklist, notification, NOTIFY_BODY, circleMark, taskMark, SEAT_MARK, prioChip, atHM, hhmm, editRuns, editField, linkOf, linkDown, linkSay, linkDot, bodyAfterTitle, diagramFigure, selectBox, composer, reportCard, addrChip, attachCard, perfHud, PERF_PHASES, streamTabs, channelGraphCard, splitView, firstRun, invChip, AUTH_SAY, docModal, diagram, parseMermaid, titleBar, launcherItems, eventRow, consumerCard, subjectChip, EV_ROOT, evTier, docView, DOC_HUE, mdLite, purgeModal, rowMenu, SEND_SCOPES, pendingRow, gapMarker, subagentRows, EVIDENCE, tickLadder, subscriptionsCard, externalLane, renderLinks, provenanceCard, artifactRow, ART_GLYPH, graphPage, epicGroup, taskRow, TASK_STATES, TASK_GLYPH, GRADE_TITLE, KIND_MARK, settingsPage, SET, SET_DEF, LAUNCH, hslToRgb, logo, syncPulse, hash32, rng, seatColor, rollName, HARNESSES, DEFAULT_ROLE, STATES, GLYPH, ROLE_MARK, ICON_SVG, glyph, harnessIcon, roleMark, kbd, makeSeat, makeTree, leaves, makeModel, rollup, seatRow, miniGrid, tabRow, spaceHeader, sidebar, titleStrip, pane, picker, messageRow };
 })();

@@ -116,25 +116,7 @@ impl Sidebar {
                 ],
             ),
         );
-        let mut content = vec![];
-        for (i, card) in self.cards.iter().enumerate() {
-            let mut e = card.element(ctx);
-            c::namespace(&mut e, &format!("swarm{i}/"));
-            content.push(e.into());
-            content.push(
-                c::Element::Box(c::Box::new(
-                    plain(
-                        Some(bbt_ui_model::TOKENS.layout.cohort_gap as f32),
-                        [0.; 4],
-                        ui::Color::Transparent,
-                        0.,
-                    ),
-                    vec![],
-                ))
-                .into(),
-            );
-        }
-        if self.new_swarm {
+        let creator = || {
             let plus = named(
                 "new-swarm/plus",
                 text("+", 18., 500, false, ui::Color::Muted),
@@ -162,7 +144,47 @@ impl Sidebar {
                     c::Element::Spacer.into(),
                 ],
             );
-            content.push(named("new-swarm", body).into());
+            named("new-swarm", body)
+        };
+        let mut content = vec![];
+        let before = self
+            .cards
+            .iter()
+            .position(|card| card.key.starts_with("providers/"));
+        for (i, card) in self.cards.iter().enumerate() {
+            if self.new_swarm && before == Some(i) {
+                content.push(creator().into());
+                content.push(
+                    c::Element::Box(c::Box::new(
+                        plain(
+                            Some(bbt_ui_model::TOKENS.layout.cohort_gap as f32),
+                            [0.; 4],
+                            ui::Color::Transparent,
+                            0.,
+                        ),
+                        vec![],
+                    ))
+                    .into(),
+                );
+            }
+            let mut e = card.element(ctx);
+            c::namespace(&mut e, &format!("swarm{i}/"));
+            content.push(e.into());
+            content.push(
+                c::Element::Box(c::Box::new(
+                    plain(
+                        Some(bbt_ui_model::TOKENS.layout.cohort_gap as f32),
+                        [0.; 4],
+                        ui::Color::Transparent,
+                        0.,
+                    ),
+                    vec![],
+                ))
+                .into(),
+            );
+        }
+        if self.new_swarm && before.is_none() {
+            content.push(creator().into());
         }
         let content = declare_fixed(
             flow(

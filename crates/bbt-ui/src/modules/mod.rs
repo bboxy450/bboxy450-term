@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! L7 modules compose retained components; they never emit draw primitives.
+pub mod accordion;
 pub mod closed_strip;
 pub mod composer;
 pub mod e2e_checklist;

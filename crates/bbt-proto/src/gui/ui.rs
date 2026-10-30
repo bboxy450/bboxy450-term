@@ -13,7 +13,7 @@ use super::*;
 /// independent chat/task section wheel controls and produced-frame scroll receipts.
 /// Version 7 adds the headless recording account's logical notification foreground control.
 /// Version 8 adds bounded private native document paint observations.
-pub const UI_CONTROL_VERSION: u16 = 9;
+pub const UI_CONTROL_VERSION: u16 = 10;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -431,7 +431,7 @@ pub struct UiLayout {
     pub test_clipboard: Option<String>,
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub swarm_workdirs: std::collections::BTreeMap<Ulid, String>,
-    /// Produced-frame expansion choices: swarm:<ULID>, providers/Hosts and providers/Cloud.
+    /// Produced-frame expansion choices: swarm:<ULID>, providers/Hosts, providers/Cloud, panels/Tasks and panels/Chat.
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub sidebar_open: std::collections::BTreeMap<String, bool>,
     /// The window composition this solved layout describes (not a bus cursor).

@@ -239,3 +239,13 @@ frontend = "project"
 name = "BrokenSelectionGesture"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "SidebarAccordions"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenSidebarAccordions"
+expected = "safety"
+frontend = "project"

@@ -4,7 +4,7 @@ type: "note"
 number: 65
 title: "UX: the left sidebar — operator constraints"
 created: "2026-10-21T18:53:32Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-30T03:07:34Z"
 ---
 # UX: the left sidebar — operator constraints
 
@@ -37,3 +37,7 @@ Owner: Vesper Greywind <ORACLE>. Source: operator critique of iTerm2 on 2026-10-
 
 - **Gap:** color assignment per seat: hash of name, per-space palette, or operator-picked.
 - **Gap:** what the seat's in-pane title strip looks like so the mapping to the sidebar row is instant.
+
+## Utility accordions (operator, 2026-10-29)
+
+Order: swarms, + new swarm, SSH Hosts, Cloud, Tasks, Chat last. Tasks and Chat share the swarm card chrome and independent saved folding. Closing them leaves the focused stage, running harnesses and in-memory draft intact. Existing per-section scrolling/resizing remains available when expanded.

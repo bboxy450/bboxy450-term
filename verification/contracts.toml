@@ -170,3 +170,13 @@ implementation_tests = ["crates/bbt-ui/src/text_selection.rs", "crates/bboxy450-
 assumptions = "One host-owned pointer gesture, one nonempty range, two source replacements A to B to A. Publish/press/drag/copy are atomic UI turns. Pixel hit geometry, Unicode, native mouse delivery and clipboard/browser effects require implementation/process tests; no temporal scheduling claim."
 property = "Replacing displayed source retires its captured range; later return to the same text cannot resurrect a stale copy. Broken control retains that range across source changes."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SidebarAccordions"
+title = "Independent persistent sidebar accordion choices"
+models = ["SidebarAccordions", "BrokenSidebarAccordions"]
+sources = ["crates/bbt-ui/src/modules/accordion.rs", "crates/bboxy450-term/src/sidebar.rs", "crates/bboxy450-term/src/scene.rs", "crates/bbt-mux/src/window_journal.rs"]
+implementation_tests = ["crates/bbt-ui/tests/sidebar_tasks.rs", "crates/bbt-mux/src/window_journal.rs", "crates/bboxy450-term/tests/chat_sections.rs"]
+assumptions = "Four fold bits, two focus identities, one saved mask. Toggle, explicit focus, save and restore are atomic host actions. Save abstracts a completed durable write; WindowDurability separately covers asynchronous persistence. Geometry, resizing, clipping, draft retention and actual process restart use implementation tests. No arbitrary Rust refinement or scheduling/liveness claim."
+property = "Toggling one of Hosts/Cloud/Tasks/Chat changes only that fold bit, preserves focus, and save/restore returns the saved choices. The broken control makes Tasks also flip Chat."
+checks = ["make test-formal", "make test"]

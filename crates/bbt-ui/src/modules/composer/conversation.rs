@@ -7,11 +7,7 @@
 use super::Composer;
 use crate::{
     self as ui, components as c,
-    modules::{
-        seat_row::named,
-        stream_dock::StreamDock,
-        strip::{plain, text},
-    },
+    modules::{seat_row::named, stream_dock::StreamDock, strip::plain},
 };
 use bbt_ui_model::{
     STYLE,
@@ -88,130 +84,154 @@ impl Conversation {
         requested_body: Option<f32>,
         requested_tasks_height: Option<f32>,
     ) -> ui::style::Result<c::Element> {
+        self.element_sidebar_open(
+            ctx,
+            size,
+            m,
+            [requested_body, requested_tasks_height],
+            [true, true],
+        )
+    }
+    /// Open states are caller-owned, in Tasks/Chat order. Folding never edits the draft.
+    pub fn element_sidebar_open(
+        &self,
+        ctx: ui::Context,
+        size: [f32; 2],
+        m: &dyn c::Measure,
+        requested: [Option<f32>; 2],
+        open: [bool; 2],
+    ) -> ui::style::Result<c::Element> {
+        use crate::modules::accordion::Accordion;
         let Some(tasks) = &self.tasks else {
-            return self.element_bounded(ctx, size, m, requested_body);
+            return self.element_bounded(ctx, size, m, requested[0]);
         };
         let sp = &STYLE.spacing;
+        let gap = (bbt_ui_model::TOKENS.layout.cohort_gap as f32).min(size[1].max(0.));
+        let edge = bbt_ui_model::TOKENS.sidebar.edge as f32;
+        let left = edge + sp.s3 as f32;
+        let right = sp.s3 as f32 + STYLE.material.hairline_px as f32;
+        let width = (size[0] - left - right).max(1.);
+        let task_chrome = Accordion::chrome_height(ctx, open[0]);
+        let chat_chrome = Accordion::chrome_height(ctx, open[1]);
         let height = size[1].max(0.);
-        let header = 2. * sp.s8 as f32;
-        let chat_minimum = self.minimum_height(ctx, size[0], m)? - header;
-        let tasks_maximum = (height - chat_minimum).max(0.);
-        let tasks_height = requested_tasks_height
-            .filter(|v| v.is_finite())
-            .unwrap_or(3. * header)
-            .clamp(header.min(tasks_maximum), tasks_maximum);
-        let chat_height = (height - tasks_height).max(0.);
-        let chat_header = header.min(chat_height);
-        let chat_body = (chat_height - chat_header).max(0.);
-        let heading = |key: &str, title: &str, h: f32, divider: bool| {
-            let mut style = plain(Some(h), [0., sp.s3 as f32, 0., sp.s2 as f32], 0.);
-            if divider {
-                style.overrides.border = Some(ui::Border {
-                    width: ui::Length::Hairline,
-                    paint: ui::Paint {
-                        color: ui::Color::Line,
-                        alpha: ui::Alpha::Hairline,
-                    },
-                    outside: false,
-                });
-                style.overrides.border_sides = Some([true, false, false, false]);
-            }
-            let mut block = c::Box::new(
-                style,
-                vec![
-                    text(
-                        title,
-                        STYLE.r#type.body as f32,
-                        STYLE.r#type.weight_name as u16,
-                        false,
-                        ui::Color::Foreground,
-                        1.,
-                        1.3,
-                    )
-                    .into(),
-                ],
-            );
-            block.direction = Axis::Row;
-            block.align = c::Alignment::Center;
-            block.clip = true;
-            named(key, c::Element::Box(block))
+        let chat_min_body = if open[1] {
+            self.chat_minimum(ctx, width, m)?
+        } else {
+            0.
         };
-        let panel = |key: &str, h: f32, children: Vec<c::Item>| {
-            let mut style = plain(Some(h), [0.; 4], 0.);
-            style.overrides.width = Some(ui::Length::Px(size[0]));
-            let mut block = c::Box::new(style, children);
-            block.direction = Axis::Column;
-            block.gap = ui::Length::Px(0.);
-            block.align = c::Alignment::Stretch;
-            block.clip = true;
-            named(key, c::Element::Box(block))
+        let max_tasks = (height - chat_chrome - chat_min_body - gap).max(task_chrome);
+        let tasks_height = if !open[0] {
+            task_chrome.min(height)
+        } else if !open[1] {
+            max_tasks
+        } else {
+            requested[1]
+                .unwrap_or(3. * task_chrome)
+                .clamp(task_chrome.min(max_tasks), max_tasks)
         };
-        let fixed = |element, h| c::Item {
-            element,
-            extent: c::Extent::Fixed(h),
+        let chat_height = (height - tasks_height - gap).max(0.);
+        let task_size = Accordion::body_size(ctx, [width, tasks_height], open[0]);
+        let chat_size = Accordion::body_size(ctx, [width, chat_height], open[1]);
+        let tasks_body = open[0].then(|| {
+            named(
+                "conversation/tasks",
+                c::Element::ScrollView(c::ScrollView {
+                    viewport: task_size,
+                    offset: [0., self.task_scroll],
+                    content_width: Some(task_size[0]),
+                    content: Box::new(tasks.content_from(ctx, self.stream.entries.len(), m)),
+                }),
+            )
+        });
+        let chat_body = if open[1] {
+            Some(self.element_inner(
+                ctx,
+                chat_size,
+                m,
+                Some(requested[0]),
+                "conversation/chat-content",
+            )?)
+        } else {
+            None
         };
-        let chat = panel(
-            "conversation/chat-section",
-            chat_height,
-            vec![
-                fixed(
-                    heading("conversation/chat-header", "Chat", chat_header, false),
-                    chat_header,
-                ),
-                fixed(
-                    self.element_inner(
-                        ctx,
-                        [size[0], chat_body],
-                        m,
-                        Some(requested_body),
-                        "conversation/chat-content",
-                    )?,
-                    chat_body,
-                ),
-            ],
-        );
-        let tasks_header = header.min(tasks_height);
-        let tasks_rows = (tasks_height - tasks_header).max(0.);
-        let inner = (size[0] - sp.s2 as f32 - sp.s3 as f32).max(1.);
-        let rows = named(
-            "conversation/tasks",
-            c::Element::ScrollView(c::ScrollView {
-                viewport: [inner, tasks_rows],
-                offset: [0., self.task_scroll],
-                content_width: Some(inner),
-                content: Box::new(tasks.content_from(ctx, self.stream.entries.len(), m)),
-            }),
-        );
-        let mut inset = c::Box::new(
-            plain(Some(tasks_rows), [0., sp.s3 as f32, 0., sp.s2 as f32], 0.),
-            vec![fixed(rows, tasks_rows)],
-        );
-        inset.direction = Axis::Column;
-        inset.align = c::Alignment::Stretch;
-        let tasks = panel(
-            "conversation/task-section",
-            tasks_height,
-            vec![
-                fixed(
-                    heading("conversation/tasks-header", "Tasks", tasks_header, true),
-                    tasks_header,
-                ),
-                fixed(c::Element::Box(inset), tasks_rows),
-            ],
-        );
-        let mut outer = panel(
-            "conversation",
-            height,
-            vec![fixed(chat, chat_height), fixed(tasks, tasks_height)],
-        );
-        if let c::Element::Named { content, .. } = &mut outer
-            && let c::Element::Box(block) = content.as_mut()
-        {
-            block.style.overrides.fill = Some(ui::Paint::solid(ui::Color::Rgba(
-                bbt_ui_model::draw::Color::hex(ctx.theme.palette().sidebar).0,
-            )));
+        let task_count = tasks
+            .entries
+            .iter()
+            .filter(|entry| matches!(entry, crate::modules::stream_dock::Entry::Task { .. }))
+            .count();
+        let chat_count = self
+            .stream
+            .entries
+            .iter()
+            .filter(|entry| matches!(entry, crate::modules::stream_dock::Entry::Message { .. }))
+            .count();
+        let tasks = Accordion {
+            key: "conversation/task-section",
+            title: "Tasks",
+            color: ctx.swarm,
+            count: task_count,
+            open: open[0],
         }
-        Ok(outer)
+        .element(ctx, [width, tasks_height], tasks_body);
+        let chat = Accordion {
+            key: "conversation/chat-section",
+            title: "Chat",
+            color: ctx.swarm,
+            count: chat_count,
+            open: open[1],
+        }
+        .element(ctx, [width, chat_height], chat_body);
+        let mut style = plain(Some(height), [0., right, 0., left], 0.);
+        style.overrides.width = Some(ui::Length::Px(size[0]));
+        style.overrides.fill = Some(ui::Paint::solid(ui::Color::Rgba(
+            bbt_ui_model::draw::Color::hex(ctx.theme.palette().sidebar).0,
+        )));
+        let mut frame = c::Box::new(
+            style,
+            vec![
+                c::Item {
+                    element: tasks,
+                    extent: c::Extent::Fixed(tasks_height),
+                },
+                c::Item {
+                    element: chat,
+                    extent: c::Extent::Fixed(chat_height),
+                },
+            ],
+        );
+        frame.direction = Axis::Column;
+        frame.gap = ui::Length::Px(gap);
+        frame.align = c::Alignment::Stretch;
+        frame.clip = true;
+        Ok(named("conversation", c::Element::Box(frame)))
+    }
+    fn chat_minimum(
+        &self,
+        ctx: ui::Context,
+        width: f32,
+        m: &dyn c::Measure,
+    ) -> ui::style::Result<f32> {
+        Ok((self.minimum_height(ctx, width, m)? - 4. * STYLE.spacing.s8 as f32).max(0.))
+    }
+    pub fn minimum_sidebar_height(
+        &self,
+        ctx: ui::Context,
+        width: f32,
+        m: &dyn c::Measure,
+        open: [bool; 2],
+    ) -> ui::style::Result<f32> {
+        use crate::modules::accordion::Accordion;
+        if self.tasks.is_none() {
+            return self.minimum_height(ctx, width, m);
+        }
+        Ok(Accordion::chrome_height(ctx, open[0])
+            + Accordion::chrome_height(ctx, open[1])
+            + bbt_ui_model::TOKENS.layout.cohort_gap as f32
+            + if open[1] {
+                self.chat_minimum(ctx, width, m)?
+            } else {
+                0.
+            })
     }
     pub fn minimum_height(
         &self,
@@ -304,6 +324,10 @@ impl Conversation {
             outside: false,
         });
         style.overrides.border_sides = Some([true, false, false, false]);
+        if key == "conversation/chat-content" {
+            style.overrides.fill = Some(ui::Paint::solid(ui::Color::Surface));
+            style.overrides.border = None;
+        }
         let mut b = c::Box::new(
             style,
             vec![named("conversation/rows", rows).into(), composer.into()],

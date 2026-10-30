@@ -90,6 +90,7 @@
   model.spaces[0].participants = phantoms;
   const everyone = [...seats, ...phantoms];
   let streamFilter = null;
+  const utilityClosed = new Set();
   // A space is a cohort: its own seats, participants and stream. One shows at a time; the footer dots switch.
   const open = new Set([model.spaces[0].key]);   // which cohort blocks are open: band click toggles, focus never touches it
   for (const sp of model.spaces) { sp.participants = sp.participants || []; sp.stream = []; sp.epics = []; sp.history = []; }
@@ -512,7 +513,16 @@
       n.addEventListener('click', () => { const s = seats.find(x => x.key === n.dataset.key); s.unread = 0; setFocus(n.dataset.key, { locate: n.classList.contains('pane') ? 'row' : 'pane' }); });
       if (n.classList.contains('pane')) { n.addEventListener('pointerenter', () => armHover(n.dataset.key)); n.addEventListener('pointerleave', disarmHover); }   // panes: dwell focus, brightness only; rows: never
     });
-    sb.append(el('div', { class: 'stream-dock', id: 'stream' }));
+    const destinations = sb.querySelector('.sb-scroll');
+    for (const [kind, title] of [['ssh', 'Hosts'], ['cloud', 'Cloud']]) {
+      const hosts = [...new Set(seats.filter(s => s.where === kind).map(s => s.host))];
+      if (!hosts.length) continue;
+      const key = 'providers/' + title;
+      const body = el('div', {}, ...hosts.map(host => el('div', { class: 'tab-row' }, C.harnessIcon(kind), el('span', { class: 'tname' }, host))));
+      destinations.append(C.utilityAccordion(title, { key, color: kind === 'ssh' ? '#374151' : 'var(--accent)', count: hosts.length, open: !utilityClosed.has(key), body,
+        onToggle: () => { utilityClosed.has(key) ? utilityClosed.delete(key) : utilityClosed.add(key); render(); } }));
+    }
+    sb.append(el('div', { class: 'utility-dock', id: 'stream' }));
     // drag a seat row or a pane strip onto a pane: the hovered half tints, dropping splits there (left/right/top/bottom)
     const sources = [...main.querySelectorAll('.seat-row[data-key]:not(.phantom)'), ...main.querySelectorAll('.pane[data-key] .strip')];
     for (const src of sources) src.addEventListener('pointerdown', e => {
@@ -664,16 +674,19 @@
   function drawStream() {
     const dock = document.getElementById('stream'); if (!dock) return;
     dock.innerHTML = '';
-    const stream = space().stream;
-    for (const ep of (space().epics || [])) if (ep.items.length) dock.append(C.epicGroup(ep, { onToggle: drawStream }));
-    if ((space().external || []).length) dock.append(C.externalLane(space().external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
-    // subchannels as tabs (messaging.md): the bare stream shows unscoped lines and chunks/decisions; a tab shows its subchannel
-    const sp = space(); if (!sp.subchannels && sp === model.spaces[0]) sp.subchannels = FIX.subchannels.map(c => ({ ...c }));
-    if (sp.subchannels) dock.append(C.streamTabs(sp.subchannels, { sel: streamCh, onSel: x => { streamCh = x; const c = sp.subchannels.find(y => y.name === x); if (c) c.unread = 0; drawStream(); }, onMute: x => { const c = sp.subchannels.find(y => y.name === x); c.muted = !c.muted; drawStream(); } }));
+    const sp = space(), stream = sp.stream, taskBody = el('div'), chatBody = el('div', { class: 'stream-dock' });
+    for (const ep of (sp.epics || [])) if (ep.items.length) taskBody.append(C.epicGroup(ep, { onToggle: drawStream }));
+    if ((sp.external || []).length) chatBody.append(C.externalLane(sp.external, { open: extOpen, onToggle: () => { extOpen = !extOpen; drawStream(); } }));
+    if (!sp.subchannels && sp === model.spaces[0]) sp.subchannels = FIX.subchannels.map(c => ({ ...c }));
+    if (sp.subchannels) chatBody.append(C.streamTabs(sp.subchannels, { sel: streamCh, onSel: x => { streamCh = x; const c = sp.subchannels.find(y => y.name === x); if (c) c.unread = 0; drawStream(); }, onMute: x => { const c = sp.subchannels.find(y => y.name === x); c.muted = !c.muted; drawStream(); } }));
     const items = stream.filter(m => !streamFilter || (m.author && m.author.id) === streamFilter).filter(m => streamCh === 'all' ? !m.ch || (m.kind && m.kind !== 'text') : m.ch === streamCh).slice(-4);
-    if (streamFilter) { const ph = space().participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } dock.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
-    for (const m of items) dock.append(C.messageRow(m));
-    dock.style.display = (stream.length || (space().epics || []).some(e => e.items.length) || (space().external || []).length) ? '' : 'none';
+    if (streamFilter) { const ph = sp.participants.find(p => p.key === streamFilter); if (!ph) { streamFilter = null; return drawStream(); } chatBody.append(el('div', { class: 'filter' }, 'from ', el('b', {}, ph.name), el('button', { onclick: () => { streamFilter = null; drawStream(); } }, '× all'))); }
+    for (const m of items) chatBody.append(C.messageRow(m));
+    for (const [title, body, count] of [['Tasks', taskBody, (sp.epics || []).reduce((n, ep) => n + ep.items.length, 0)], ['Chat', chatBody, stream.length]]) {
+      const key = 'panels/' + title;
+      dock.append(C.utilityAccordion(title, { key, color: C.seatColor(sp), count, open: !utilityClosed.has(key), body,
+        onToggle: () => { utilityClosed.has(key) ? utilityClosed.delete(key) : utilityClosed.add(key); drawStream(); } }));
+    }
   }
   const PHRASES = ['relay bench green on eu-2, 41 ms p50', 'claiming the glyphon atlas question', 'B spec amended, envelope has presence now', 'who owns the ssh bootstrap doc?', 'pushed fixtures, four files'];
   let phN = 0;

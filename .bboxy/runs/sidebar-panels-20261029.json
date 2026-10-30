@@ -1,0 +1,43 @@
+{
+  "role": "Executor",
+  "request": "Sidebar order: swarms, new swarm, Hosts, Cloud, Tasks, Chat last; Tasks/Chat match existing accordion card style.",
+  "worktree": "/Users/feral/mydev/bboxy450-term-spawn-params",
+  "scope": [
+    "Shared accordion chrome and creator placement",
+    "Independent persisted Tasks/Chat folds and bounded hit regions",
+    "Retain expanded resize/scroll behavior, focus, draft and running sessions",
+    "Canonical web reference and corresponding formal contract"
+  ],
+  "checks_completed": [
+    {
+      "command": "make test-sidebar-panels check-sidebar-panels",
+      "exit": 0,
+      "note": "UI geometry, canonical card paint equivalence, all 16 section combinations and cache behavior; strict all-target lint."
+    },
+    {
+      "command": "make test-sidebar-panels-e2e",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/sidebar-panels-e2e-20261029.log"
+    },
+    {
+      "command": "make check-sidebar-panels test-boundaries test-licenses",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/sidebar-panels-boundaries-20261029.log"
+    },
+    {
+      "command": "make test-sidebar-panels-regressions",
+      "exit": 0,
+      "coverage": "All UI, protocol, document and book tests; app library/binary and real ctl regressions",
+      "log": "/Users/feral/Library/Logs/bboxy450-term/sidebar-panels-regressions-20261029.log"
+    },
+    {
+      "command": "node --check lab/web/components.js && node --check lab/web/showcase.js",
+      "exit": 0
+    }
+  ],
+  "pending": [
+    "Exact-source formal evidence and parity",
+    "Signed install and installed smoke",
+    "Full main gate remains subject to the unchanged 10 GiB recovery-fixture disk guard; available disk about 4 GiB."
+  ]
+}

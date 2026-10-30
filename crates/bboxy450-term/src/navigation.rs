@@ -160,6 +160,10 @@ impl App {
         if self.titlebar_pressed(at, false) {
             return;
         }
+        if let Some(key) = self.panel_header(at) {
+            self.toggle_sidebar_section(key);
+            return;
+        }
         if self.begin_sidebar_resize(at) {
             return;
         }
@@ -527,6 +531,29 @@ impl App {
             {
                 if r.w > 0. && r.h > 0. {
                     regions.insert(name.into(), [r.x, r.y, r.w, r.h]);
+                }
+            }
+        }
+        if let Some(layout) = &self.conversation_layout {
+            fn find<'a>(
+                n: &'a bbt_ui::components::Layout,
+                key: &str,
+            ) -> Option<&'a bbt_ui::components::Layout> {
+                if matches!(&n.kind,bbt_ui::components::LayoutKind::Named(name) if name==key) {
+                    Some(n)
+                } else {
+                    n.children.iter().find_map(|n| find(n, key))
+                }
+            }
+            for (key, name) in [
+                ("panels/Tasks", "conversation/task-section/head"),
+                ("panels/Chat", "conversation/chat-section/head"),
+            ] {
+                if let Some(n) = find(&layout.layout, name) {
+                    regions.insert(
+                        format!("toggle-section:{key}"),
+                        [n.rect.x, n.rect.y, n.rect.w, n.rect.h],
+                    );
                 }
             }
         }

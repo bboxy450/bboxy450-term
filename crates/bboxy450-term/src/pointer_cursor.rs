@@ -91,6 +91,9 @@ impl App {
         {
             return Cursor::EwResize;
         }
+        if self.panel_header(at).is_some() {
+            return Cursor::Pointer;
+        }
         if self.sidebar_vertical_handle(at).is_some() {
             return Cursor::NsResize;
         }

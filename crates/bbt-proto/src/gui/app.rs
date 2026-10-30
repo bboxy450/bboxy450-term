@@ -12,6 +12,13 @@ pub(super) fn is_false(value: &bool) -> bool {
 }
 
 /// Lifecycle operations relayed to the attached GUI owner, including headless.
+/// Stable destination and utility accordion identities, independent of focus.
+pub const SIDEBAR_SECTIONS: [&str; 4] = [
+    "providers/Hosts",
+    "providers/Cloud",
+    "panels/Tasks",
+    "panels/Chat",
+];
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AppRequest {

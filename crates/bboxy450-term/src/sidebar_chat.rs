@@ -134,13 +134,15 @@ impl App {
 
     pub(super) fn sidebar_section_positions(&self) -> Option<bbt_proto::gui::UiSidebarSections> {
         let layout = self.conversation_layout.as_ref()?;
-        let (offset, max) = scroll_position(&layout.layout, "conversation/rows")?;
+        let (offset, max) =
+            scroll_position(&layout.layout, "conversation/rows").unwrap_or((0., 0.));
         let chat = bbt_proto::gui::UiSectionScroll {
             offset,
             max,
             following: self.chat_scroll.following(),
         };
-        let (offset, max) = scroll_position(&layout.layout, "conversation/tasks")?;
+        let (offset, max) =
+            scroll_position(&layout.layout, "conversation/tasks").unwrap_or((0., 0.));
         Some(bbt_proto::gui::UiSidebarSections {
             chat,
             tasks: bbt_proto::gui::UiSectionScroll {

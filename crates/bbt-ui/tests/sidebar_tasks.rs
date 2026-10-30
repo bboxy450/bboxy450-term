@@ -125,8 +125,11 @@ fn bounded_chat_and_tasks_keep_composer_controls_and_expose_fitted_sections() {
                 let chat = named(&tree, "conversation/chat-section").rect;
                 let tasks = named(&tree, "conversation/task-section").rect;
                 assert!((tree.rect.h - height).abs() < 0.01);
-                assert!((chat.bottom() - tasks.y).abs() < 0.01);
-                assert!((tasks.bottom() - height).abs() < 0.01);
+                assert!(
+                    (tasks.bottom() + bbt_ui_model::TOKENS.layout.cohort_gap as f32 - chat.y).abs()
+                        < 0.01
+                );
+                assert!((chat.bottom() - height).abs() < 0.01);
                 assert!(tasks.h >= 32. && tasks.h <= height);
                 for key in [
                     "composer/address",
@@ -211,9 +214,14 @@ fn task_and_report_actions_use_disjoint_ids_and_their_own_scroll_clip() {
         regions(&chat_scrolled, &view).hit(center(accept)),
         Some(Action::Accept("long-report".into()))
     );
-    for i in 0..start {
-        assert!(named(&chat_scrolled, &format!("e{i}")).rect.y < tasks_at.y);
-    }
+    let hidden_attachment = named(&chat_scrolled, "e0/body/attach/a0").rect;
+    assert!(
+        !matches!(
+            regions(&chat_scrolled, &view).hit(center(hidden_attachment)),
+            Some(Action::OpenRecord(_))
+        ),
+        "scrolled-out Chat links cannot steal clicks from Tasks above it"
+    );
 }
 #[test]
 fn legacy_sidebar_tree_stays_identical_until_tasks_are_requested() {
@@ -231,4 +239,29 @@ fn legacy_sidebar_tree_stays_identical_until_tasks_are_requested() {
         .layout(rect, ctx, &Metrics)
         .unwrap();
     assert_eq!(format!("{legacy:?}"), format!("{sidebar:?}"));
+}
+
+#[test]
+fn tasks_and_chat_fold_independently_without_discarding_draft_or_actions() {
+    let view = view();
+    let draft = view.composer.text.clone();
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    fn contains(n: &c::Layout, key: &str) -> bool {
+        matches!(&n.kind,c::LayoutKind::Named(s) if s==key)
+            || n.children.iter().any(|c| contains(c, key))
+    }
+    for open in [[false, false], [false, true], [true, false], [true, true]] {
+        let element = view
+            .element_sidebar_open(ctx, [300., 500.], &Metrics, [Some(80.), Some(160.)], open)
+            .unwrap();
+        let tree = element
+            .layout(Rect::new(0., 0., 300., 500.), ctx, &Metrics)
+            .unwrap();
+        assert!(contains(&tree, "conversation/task-section/head"));
+        assert!(contains(&tree, "conversation/chat-section/head"));
+        assert_eq!(contains(&tree, "conversation/tasks"), open[0]);
+        assert_eq!(contains(&tree, "conversation/rows"), open[1]);
+        assert_eq!(contains(&tree, "composer"), open[1]);
+        assert_eq!(view.composer.text, draft);
+    }
 }

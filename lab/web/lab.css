@@ -1762,3 +1762,9 @@ details[open] > summary::before { transform: rotate(90deg); }
 .picker .cmdrow { display: flex; gap: var(--s5); align-items: baseline; padding: var(--s4) var(--s6); border-top: var(--hair-w) solid var(--line); }
 .picker .cmdrow .k { color: var(--fg-dim); font-size: var(--t-caption); }
 .picker .cmdrow .cmdline { font-family: var(--font-mono); font-size: var(--t-caption); color: var(--accent); overflow-wrap: anywhere; }
+
+/* Utility sections share the swarm chrome; Chat is the last sidebar accordion. */
+.utility-dock { flex: none; padding: 0 var(--s3); max-height: 38%; overflow: auto; }
+.utility-dock .space:last-child { margin-bottom: 0; }
+.utility-body { max-height: 38vh; overflow: auto; }
+.utility-body .stream-dock { max-height: none; border: 0; }

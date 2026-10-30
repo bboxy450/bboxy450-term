@@ -130,6 +130,8 @@ help:
 	  'make test-cross-focus             Directional focus glow and frozen-clock GPU regression' \
 	  'make test-sidebar-resize          Sidebar drag, width bounds and retained session/restart' \
 	  'make test-sidebar-accordions      Swarm/SSH/cloud collapse, focus independence and restart' \
+	  'make test-sidebar-panels          Tasks/Chat card geometry and saved fold state' \
+	  'make test-sidebar-panels-e2e      Private collapse, draft, scroll and restart regressions' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
 	  'make test-settings-night          Private full R2/G1/G2 Settings proofs and negative controls' \
@@ -1325,3 +1327,23 @@ check-text-selection:
 .PHONY: test-text-selection-e2e
 test-text-selection-e2e:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir selection_ -- --ignored --nocapture
+
+.PHONY: test-sidebar-panels check-sidebar-panels
+test-sidebar-panels:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test sidebar_tasks --test swarms; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib window_journal; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache
+
+check-sidebar-panels:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-mux -p bboxy450-book -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-sidebar-panels-e2e
+test-sidebar-panels-e2e:
+	@set -eu; . ./scripts/cache-env.sh; BBOXY_CHAT_SECTIONS_EVIDENCE='$(abspath $(TARGET_DIR))/sidebar-panels' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test chat_sections -- --ignored --nocapture --test-threads=1
+
+.PHONY: test-sidebar-panels-regressions
+test-sidebar-panels-regressions:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-doc -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test ctl

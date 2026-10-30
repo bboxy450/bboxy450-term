@@ -24,6 +24,9 @@ impl App {
         if self.document.open || self.launcher.is_some() {
             return None;
         }
+        if self.panel_header(point).is_some() {
+            return None;
+        }
         self.conversation_layout
             .as_ref()?
             .splitters
@@ -75,7 +78,8 @@ impl App {
         if !point.into_iter().all(f32::is_finite) {
             return true;
         }
-        let value = drag.value - (point[1] - drag.from_y);
+        let delta = point[1] - drag.from_y;
+        let value = drag.value + if drag.index == 2 { delta } else { -delta };
         let value = if drag.index == 0 {
             (value / drag.available.max(1.)).clamp(0.05, 0.95)
         } else {
