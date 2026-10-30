@@ -49,6 +49,21 @@ candidate and root IDs from the scoped list/status replies. Each command capture
 the swarm's current workspace revision; a stale scope cannot select another root.
 Other workspaces, including bboxy450-term itself, retain their native local KB.
 
+Seats can call read-only `knowledge_status` to see the selected root/provider
+digest, available choices, activation/check states and failures. An installed
+or enabled provider is not selected automatically. Compare its selected digest
+with the builder/installer output, then fetch a known native slug through the
+seat to verify activation. `make test-harmony-host-gitkb` proves this complete
+sequence against the current host in a private account, including restart.
+The host keeps `.bboxy/plugins` and `.bboxy/plugin-notices` out of ordinary
+knowledge inventory while preserving every license and notice on disk.
+
+`make probe-gitkb-harmony` checks three fresh read-only sessions without retries,
+including exact native raw/body/identity/generation parity, first/continuation
+pages, links, changes and repeated resolution. Its JSON evidence records failed
+operations too. Pages contain at most one source-aware record to leave room for
+native inventory, search and edge reads within the unchanged two-second cap.
+
 `--shape`, a terminal run, or a run with closed stdin prints the descriptor. An
 open stdin pipe serves newline-delimited MCP JSON-RPC, including the host's
 no-argument launch; `--serve` explicitly selects that mode. Stdout contains only

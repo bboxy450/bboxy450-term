@@ -273,6 +273,19 @@ def main():
     assert any(e["from"] == linked["id"] for e in client.call("links", {"ref": client.call("resolve", {"locator": task["slug"]})})["incoming"])
     graph = client.call("graph", {"scope": {"kind": "all", "graph": "markdown"}, "limit": 1})
     assert len(graph["nodes"]) == 1 and graph["next"] and not graph["edges_truncated"]
+    nodes = []
+    request = {"scope": {"kind": "all", "graph": "markdown"}, "limit": 32}
+    for _ in range(100):
+        page = client.call("graph", request)
+        assert len(page["nodes"]) <= 1, "graph must reserve budget for native edges"
+        nodes.extend(node["id"] for node in page["nodes"])
+        if not page["next"]:
+            break
+        request["cursor"] = page["next"]
+    else:
+        raise AssertionError("graph continuation did not finish")
+    expected = {ref["id"] for ref in client.collect("list", {"limit": 32})}
+    assert len(nodes) == len(set(nodes)) and set(nodes) == expected
     client.call("graph", {"scope": {"kind": "all", "graph": "execution"}}, "unsupported_graph")
     client.call("resolve", {"locator": "../outside"}, "path_outside_root")
     client.call("list", {"limit": 0}, "invalid_limit")

@@ -36,16 +36,29 @@ impl Completion {
 
 fn retained_context(value: &Value, binding: &RootBinding, provider_revision: u64) -> bool {
     let context = &value["structuredContent"];
-    context["knowledge_root_id"] == json!(binding.root_id)
+    value["content"][0]["text"]
+        .as_str()
+        .and_then(|text| serde_json::from_str::<Value>(text).ok())
+        .as_ref()
+        == Some(context)
+        && context["knowledge_root_id"] == json!(binding.root_id)
         && context["swarm_workspace_id"] == json!(binding.swarm)
         && context["swarm_workspace_revision"] == json!(binding.revision)
         && context["knowledge_root_revision"] == json!(provider_revision)
+}
+fn scoped_success(op: crate::Ulid, mut data: Value, binding: &RootBinding, revision: u64) -> Value {
+    data["knowledge_root_revision"] = json!(revision);
+    data["knowledge_root_id"] = json!(binding.root_id);
+    data["swarm_workspace_id"] = json!(binding.swarm);
+    data["swarm_workspace_revision"] = json!(binding.revision);
+    mcp::success(op, data)
 }
 pub(crate) fn handles(call: &Call) -> bool {
     mcp::skills::handles(&call.tool)
         || matches!(
             call.tool.as_str(),
             "knowledge_fetch"
+                | "knowledge_status"
                 | "knowledge_search"
                 | "orient"
                 | "task_status"
@@ -118,24 +131,27 @@ impl Job {
             Err(invalid(
                 "swarm_root_changed: knowledge read root does not match admission",
             ))
-        } else if mcp::skills::handles(&call.tool) {
-            let mut value = match mcp::skills::read(&host, &actor, &call) {
-                Ok(value) => mcp::success(call.op_id, value),
+        } else if call.tool == "knowledge_status" || mcp::skills::handles(&call.tool) {
+            // Status must remain readable when the selected provider is broken.
+            let result = if call.tool == "knowledge_status" {
+                tools::parse::<tools::Empty>(&call.args)
+                    .map_err(|reason| d::CommandError::new("invalid_arguments", reason))
+                    .and_then(|_| host.seat_status(&index))
+            } else {
+                mcp::skills::read(&host, &actor, &call)
+            };
+            let value = match result {
+                Ok(value) => scoped_success(call.op_id, value, &binding, revision),
                 Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
             };
-            if value["isError"] != true {
-                value["structuredContent"]["knowledge_root_revision"] = json!(revision);
-                value["structuredContent"]["knowledge_root_id"] = json!(binding.root_id);
-                value["structuredContent"]["swarm_workspace_id"] = json!(binding.swarm);
-                value["structuredContent"]["swarm_workspace_revision"] = json!(binding.revision);
-            }
             journal.checked_authorized(
                 &actor,
                 &call,
                 mcp::knowledge::bounded(call.op_id, value, false),
                 |old| {
                     retained_context(old, &binding, revision)
-                        && mcp::skills::retained(&host, &actor, &call, old)
+                        && (call.tool == "knowledge_status"
+                            || mcp::skills::retained(&host, &actor, &call, old))
                 },
             )
         } else {
@@ -202,20 +218,11 @@ impl Job {
                     )?),
                     _ => unreachable!("only document reads are scheduled"),
                 })();
-                let mut value = match result {
-                    Ok(value) => {
-                        mcp::knowledge::bounded(call.op_id, mcp::success(call.op_id, value), false)
-                    }
+                let value = match result {
+                    Ok(value) => scoped_success(call.op_id, value, &binding, revision),
                     Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
                 };
-                if value["isError"] != true {
-                    value["structuredContent"]["knowledge_root_revision"] = json!(revision);
-                    value["structuredContent"]["knowledge_root_id"] = json!(binding.root_id);
-                    value["structuredContent"]["swarm_workspace_id"] = json!(binding.swarm);
-                    value["structuredContent"]["swarm_workspace_revision"] =
-                        json!(binding.revision);
-                }
-                value = mcp::knowledge::bounded(call.op_id, value, false);
+                let value = mcp::knowledge::bounded(call.op_id, value, false);
                 journal
                     .checked_authorized(&actor, &call, value, |old| {
                         retained_context(old, &binding, revision)
@@ -320,12 +327,16 @@ mod tests {
     #[test]
     fn retained_read_context_covers_root_swarm_binding_and_provider_revision() {
         let captured = binding();
-        let mut value = json!({"structuredContent": {
-            "knowledge_root_id":captured.root_id,
-            "swarm_workspace_id":captured.swarm,
-            "swarm_workspace_revision":captured.revision,
-            "knowledge_root_revision":0,
-        }});
+        let mut value = scoped_success(
+            Ulid::new(),
+            json!({"body":"exact native content"}),
+            &captured,
+            0,
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>(value["content"][0]["text"].as_str().unwrap()).unwrap(),
+            value["structuredContent"]
+        );
         assert!(retained_context(&value, &captured, 0));
         let other = RootBinding {
             root_id: "root-B".into(),
@@ -338,6 +349,11 @@ mod tests {
         };
         assert!(!retained_context(&value, &stale, 0));
         assert!(!retained_context(&value, &captured, 1));
+        // A journal produced by the old host can have correct structured
+        // context but omit it from text. Refuse that retained representation.
+        value["content"][0]["text"] = json!("{\"body\":\"exact native content\"}");
+        assert!(!retained_context(&value, &captured, 0));
+        value = scoped_success(Ulid::new(), json!({}), &captured, 0);
         value["structuredContent"]
             .as_object_mut()
             .unwrap()

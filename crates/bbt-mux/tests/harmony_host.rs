@@ -51,6 +51,11 @@ async fn invoke(client: &LogicClient, seat: Ulid, request: Call) -> Value {
 #[track_caller]
 fn success(value: Value) -> Value {
     assert_eq!(value["isError"], false, "{value:#}");
+    let text: Value = serde_json::from_str(value["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        text, value["structuredContent"],
+        "MCP text and structured results must agree"
+    );
     value["structuredContent"].clone()
 }
 async fn status(client: &LogicClient, scope: SwarmScope) -> KnowledgeStatus {
@@ -554,6 +559,11 @@ async fn selected_source_owns_signed_documents_and_slug_task_lifecycle_without_b
     spawn(&logic.client, temp.path(), oracle, swarm_a, true).await;
     spawn(&logic.client, temp.path(), worker, swarm_a, false).await;
     spawn(&logic.client, temp.path(), other, swarm_b, true).await;
+    let seat_a = success(call(&logic.client, worker, "knowledge_status", json!({})).await);
+    let seat_b = success(call(&logic.client, other, "knowledge_status", json!({})).await);
+    assert_ne!(seat_a["knowledge_root_id"], seat_b["knowledge_root_id"]);
+    assert_eq!(seat_a["swarm_workspace_id"], json!(swarm_a));
+    assert_eq!(seat_b["swarm_workspace_id"], json!(swarm_b));
     let before = status(&logic.client, scope_a).await;
     let b_before = status(&logic.client, scope_b).await;
     assert_eq!(before.roots.len(), 1);
@@ -1332,6 +1342,18 @@ async fn real_gitkb_host_lifecycle() {
     let scope = SwarmScope { swarm, revision: 0 };
     spawn(&logic.client, temp.path(), oracle, swarm, true).await;
     spawn(&logic.client, temp.path(), worker, swarm, false).await;
+    let status_request = Call {
+        op_id: Ulid::new(),
+        tool: "knowledge_status".into(),
+        args: json!({}),
+    };
+    let initial = success(invoke(&logic.client, worker, status_request.clone()).await);
+    assert_eq!(
+        initial["status"]["roots"][0]["provider"]["id"],
+        "bboxy450-term-data_source-bboxy"
+    );
+    assert_eq!(initial["plugins"][0]["state"], "untrusted");
+    assert_eq!(initial["plugins"][0]["checked"], false);
     let entries = logic
         .client
         .gui_plugin_scoped(
@@ -1373,6 +1395,18 @@ async fn real_gitkb_host_lifecycle() {
         .unwrap();
     let before = status(&logic.client, scope).await;
     let choice = before.offered.iter().find(|p| p.id == candidate).unwrap();
+    assert_eq!(
+        success(invoke(&logic.client, worker, status_request).await),
+        initial,
+        "an explicit operation replay keeps its original snapshot"
+    );
+    let enabled = success(call(&logic.client, worker, "knowledge_status", json!({})).await);
+    assert_eq!(
+        enabled["status"]["roots"][0]["provider"]["id"],
+        "bboxy450-term-data_source-bboxy"
+    );
+    assert_eq!(enabled["plugins"][0]["state"], "enabled");
+    assert_eq!(enabled["plugins"][0]["checked"], true);
     let unselected = success(call(&logic.client, worker, "skill_list", json!({})).await);
     assert!(
         unselected["skills"]
@@ -1398,6 +1432,14 @@ async fn real_gitkb_host_lifecycle() {
         .await
         .unwrap();
     let created=success(call(&logic.client,oracle,"knowledge_write",json!({"path":"notes/private-custom.md","frontmatter":{"type":"project-brief","title":"Private custom type"},"body":"Native custom document"})).await)["record"].clone();
+    let active = success(call(&logic.client, worker, "knowledge_status", json!({})).await);
+    assert_eq!(active["status"]["roots"][0]["provider"]["id"], candidate);
+    assert_eq!(
+        active["status"]["roots"][0]["provider"]["sha256"],
+        artifact_sha256
+    );
+    assert_eq!(active["knowledge_root_id"], before.roots[0].id);
+    assert_eq!(active["swarm_workspace_id"], json!(swarm));
     let skills = success(call(&logic.client, worker, "skill_list", json!({})).await);
     let gitkb_skills = skills["skills"]
         .as_array()
@@ -1577,6 +1619,13 @@ async fn real_gitkb_host_lifecycle() {
         .await,
     );
     assert_eq!(instruction["skill"]["content"], expected_skill["content"]);
+    let mut changed = fs::read(&source).unwrap();
+    changed.extend_from_slice(b"\n# private changed-source diagnostic\n");
+    fs::write(&source, changed).unwrap();
+    let degraded = success(call(&restarted.client, worker, "knowledge_status", json!({})).await);
+    assert_eq!(degraded["status"]["roots"][0]["provider"]["id"], candidate);
+    assert!(degraded["status"]["roots"][0]["refusal"].is_string());
+    assert_eq!(degraded["plugins"][0]["state"], "needs_retrust");
     restarted.shutdown().unwrap();
     supervisor.shutdown().unwrap();
     eprintln!(

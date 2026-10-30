@@ -780,6 +780,12 @@ impl Index {
     }
     fn destination(&self, path: &str) -> Result<PathBuf> {
         let path = Path::new(path);
+        if matches!(path.components().next(), Some(Component::Normal(name)) if name == "plugins" || name == "plugin-notices")
+        {
+            return Err(invalid(
+                "reserved_knowledge_path: plugin packaging is not a knowledge record",
+            ));
+        }
         if path.is_absolute()
             || path
                 .components()
@@ -1001,6 +1007,14 @@ fn oversized(path: &Path, bytes: u64) {
 }
 
 fn collect(directory: &Path, paths: &mut Vec<(PathBuf, std::fs::Metadata)>) -> Result<()> {
+    collect_in(directory, directory, paths)
+}
+
+fn collect_in(
+    root: &Path,
+    directory: &Path,
+    paths: &mut Vec<(PathBuf, std::fs::Metadata)>,
+) -> Result<()> {
     for entry in std::fs::read_dir(directory)? {
         let entry = entry?;
         let kind = entry.file_type()?;
@@ -1008,7 +1022,17 @@ fn collect(directory: &Path, paths: &mut Vec<(PathBuf, std::fs::Metadata)>) -> R
             continue;
         }
         if kind.is_dir() {
-            collect(&entry.path(), paths)?;
+            // Installed executables and their retained notices are packaging,
+            // not knowledge records. Only these root-owned directories are reserved.
+            if directory == root
+                && matches!(
+                    entry.file_name().to_str(),
+                    Some("plugins" | "plugin-notices")
+                )
+            {
+                continue;
+            }
+            collect_in(root, &entry.path(), paths)?;
         } else if entry.path().extension().is_some_and(|e| e == "md") {
             let metadata = entry.metadata()?;
             if metadata.len() > MAX_DOCUMENT {
@@ -1216,6 +1240,51 @@ mod tests {
             .unwrap()
             .set_modified(UNIX_EPOCH + Duration::from_secs(seconds))
             .unwrap();
+    }
+
+    #[test]
+    fn plugin_packaging_is_preserved_but_not_indexed_as_knowledge() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let state = temp.path().join("state");
+        let mut index = Index::open(&root, SqliteStore::open(&state).unwrap()).unwrap();
+        for path in [
+            "plugin-notices/gitkb/ATTRIBUTION.md",
+            "plugins/gitkb/SKILL.md",
+            "notes/plugin-notices/reference.md",
+        ] {
+            let path = root.join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, "retained attribution\n").unwrap();
+        }
+        scan_and_ack(&mut index);
+        assert_eq!(index.documents.len(), 1);
+        assert!(
+            index
+                .current("notes/plugin-notices/reference.md")
+                .unwrap()
+                .is_some()
+        );
+        assert!(
+            !index
+                .documents
+                .contains_key("plugin-notices/gitkb/ATTRIBUTION.md")
+        );
+        assert!(
+            index
+                .current("plugin-notices/gitkb/ATTRIBUTION.md")
+                .unwrap_err()
+                .to_string()
+                .contains("reserved_knowledge_path")
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("plugin-notices/gitkb/ATTRIBUTION.md")).unwrap(),
+            "retained attribution\n"
+        );
+        drop(index);
+        let mut reopened = Index::open(&root, SqliteStore::open(&state).unwrap()).unwrap();
+        scan_and_ack(&mut reopened);
+        assert_eq!(reopened.documents.len(), 1);
     }
 
     #[test]

@@ -9069,6 +9069,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
   --repository PATH    repository directory (default: cwd, or a writable app workspace)
   --headless           run the app and renderer without opening a window
   --ctl                enable the operator's ctl endpoint
+  --version / -V       print the version without activating the app
 
 Debug and verification only, never for normal use:
   --launcher           open the launcher at startup (same controller as Cmd+T)
@@ -9432,6 +9433,10 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    if hook_args == ["--version"] || hook_args == ["-V"] {
+        println!("bboxy450-term {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     if hook_args.iter().any(|a| a == "--desktop-fixture")
         && (!cfg!(debug_assertions)
             || bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)

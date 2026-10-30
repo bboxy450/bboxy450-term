@@ -484,12 +484,14 @@ class Adapter:
         if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= MAX_PAGE:
             raise Refusal("invalid_limit", "limit must be from 1 through 128")
         cursor = args.get("cursor")
+        # One exact record can need two native source reads. Reserve budget
+        # for inventory, FTS and edges too; Harmony exceeded 1.9 s with two.
         if not cursor:
-            return 0, min(limit, 2)
+            return 0, min(limit, 1)
         old = self.cursors.get(cursor)
         if not old or old.get("key") != key or old.get("snapshot") != snapshot:
             raise Refusal("stale_cursor", "cursor is expired, belongs to another query/root, or the source changed")
-        return old["offset"], min(limit, 2)
+        return old["offset"], min(limit, 1)
 
     def page_records(self, slugs, args, key, snapshot):
         offset, limit = self.position(args, key, snapshot)
@@ -540,7 +542,7 @@ class Adapter:
         offset, limit = self.position(args, key, snapshot)
         items = []
         examined = 0
-        while offset < len(slugs) and len(items) < limit and examined < 2:
+        while offset < len(slugs) and len(items) < limit and examined < 1:
             record = self.read(slugs[offset])
             offset += 1
             examined += 1

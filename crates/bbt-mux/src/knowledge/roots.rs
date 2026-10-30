@@ -426,6 +426,43 @@ impl Host {
         self.current(revision)?;
         result
     }
+    pub(crate) fn seat_status(&self, index: &Index) -> d::Result<serde_json::Value> {
+        let revision = self.revision().map_err(portable)?;
+        let status = self.status(index).map_err(portable)?;
+        // Compact observations only: never publish descriptor bodies or stderr.
+        let plugins: Vec<_> =
+            self.0
+                .plugins
+                .refresh()
+                .map_err(portable)?
+                .into_iter()
+                .map(|entry| {
+                    let checked = entry.conformance.as_ref().is_some_and(|c| {
+                        c.ok && Some(&c.sha256) == entry.candidate.sha256.as_ref()
+                    });
+                    let refusal = entry
+                        .candidate
+                        .refusal
+                        .as_ref()
+                        .or_else(|| {
+                            entry
+                                .activation
+                                .as_ref()?
+                                .inspection
+                                .as_ref()?
+                                .refusal
+                                .as_ref()
+                        })
+                        .or_else(|| entry.conformance.as_ref()?.refusal.as_ref());
+                    serde_json::json!({
+                        "id":entry.candidate.id,"sha256":entry.candidate.sha256,
+                        "state":entry.state(),"refusal":refusal,"checked":checked,
+                    })
+                })
+                .collect();
+        self.current(revision)?;
+        Ok(serde_json::json!({"status":status,"plugins":plugins}))
+    }
     pub(crate) fn status(&self, index: &Index) -> Result<KnowledgeStatus> {
         let mut offered = vec![bundled()];
         for entry in self.0.plugins.refresh().map_err(portable)? {

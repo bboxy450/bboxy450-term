@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T22:09:42Z"
+updated: "2026-10-30T00:00:00Z"
 ---
 # ICD: plugin ↔ host
 
@@ -99,3 +99,30 @@ This additive agreement joins the binary, MCP surface and workflow content descr
 | Next interface revision | Native Beta `server/discover` plus `skills/list`/`skills/get`, complete file manifests and supporting files require an explicit revision. Preserve origin and canonical bytes across that mapping; do not advertise this support before it exists. |
 
 The KB plugin in PR #76 is the first concrete producer. Its builder derives embedded instructions and resource content from the same source. Generic tool forwarding and standalone bundled stdio export are separate work.
+
+## Live integration diagnostics — issue #78
+
+`knowledge_status` is a read-only seat tool. It returns the captured swarm/root
+and provider revisions, selected provider and digest, eligible choices, compact
+plugin trust/enable/check states and provider refusals. It remains available
+when the selected provider cannot answer. It uses the existing seat authority
+and completion fences; it grants no trust, selection or execution authority.
+The operator's scoped `ctl` controls still own activation. Fresh operation IDs
+read current plugin state; an explicit retry retains its original snapshot.
+
+Successful seat document, graph, task, skill and status reads attach source
+context before producing both MCP text and structured responses. Retained
+responses with disagreeing representations are refused; a new operation ID
+reads the current source.
+
+The bundled index reserves only root-level `plugins/` and `plugin-notices/`
+for packaging. Their files and attribution remain intact, outside document
+search and graph inventory. Identically named nested document folders remain
+ordinary knowledge.
+
+GitKB list/search/graph pages contain at most one source-aware record, including
+continuation pages, to reserve time for native inventory/search/edge queries
+within the unchanged two-second contract. The read-only Harmony probe runs
+fresh sessions without retries,
+checks first/continuation pages and exact native source parity, and retains
+every operation's timing or failure before asserting its deadline.

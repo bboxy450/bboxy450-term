@@ -13,6 +13,27 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 
+#[test]
+fn version_does_not_activate_or_create_an_account() {
+    let root = tempfile::tempdir().unwrap();
+    let run = root.path().join("run");
+    for flag in ["--version", "-V"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+            .arg(flag)
+            .env("BBOXY_RUN_DIR", &run)
+            .env("HOME", root.path())
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            format!("bboxy450-term {}\n", env!("CARGO_PKG_VERSION"))
+        );
+        assert!(!run.exists());
+        assert_eq!(fs::read_dir(root.path()).unwrap().count(), 0);
+    }
+}
+
 // keeps: spec plugins §5
 #[test]
 #[ignore = "night: real app/plugin process boundary, test-policy #327 B2"]
