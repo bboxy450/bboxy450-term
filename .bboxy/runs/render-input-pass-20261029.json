@@ -42,5 +42,13 @@
     "Exact committed-source full normal CI including current formal receipt",
     "Visual parity",
     "Push verified main, signed install and installed smoke"
-  ]
+  ],
+  "full_ci_initial": {
+    "source": "0b860e56ea3d81d3b9b81c284c5ed47dc41b968a",
+    "exit": 2,
+    "passed": "Workspace build, all-target strict Clippy, full workspace Rust tests (273 groups), including checkpoint recovery.",
+    "failure": "Formal manifest rejected two check lists: standard checks must be exactly make test-formal and make test.",
+    "log": "target/ci-render-input-pass.log",
+    "correction": "Use the standard mandatory check list on both new contracts; no assertions or thresholds changed."
+  }
 }
