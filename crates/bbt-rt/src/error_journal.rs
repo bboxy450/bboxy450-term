@@ -318,6 +318,104 @@ fn normalized(row: Value) -> Option<Value> {
         "message":scrub(row["message"].as_str()?,1024),"stderr":scrub(row["stderr"].as_str().unwrap_or(""),MAX_STDERR),
         "seat":optional("seat")?,"harness":optional("harness")?,"exit_code":exit,"duration_ms":duration}),
     )
+    .map(|mut out| {
+        if let Some(n) = row["repeats"].as_u64().filter(|n| *n > 0) {
+            out["repeats"] = n.into();
+        }
+        out
+    })
+}
+
+/// Identical failures closer than this collapse into one later `repeats` row.
+const REPEAT_GAP_MS: u64 = 60_000;
+/// A continuing burst still records its count at least this often.
+const REPEAT_SPAN_MS: u64 = 600_000;
+const REPEAT_KEYS: usize = 256;
+/// One hook process per failure means an outage would otherwise write a row
+/// per call and bury distinct failures (#81). The first row is written at
+/// once; later identical rows are held and the last is written with `repeats`,
+/// the number of occurrences since the previous row, itself included.
+#[derive(Default)]
+struct Coalescer {
+    pending: std::collections::HashMap<String, Burst>,
+}
+struct Burst {
+    first_ms: u64,
+    last_ms: u64,
+    repeats: u64,
+    last: Option<Value>,
+}
+impl Coalescer {
+    fn key(row: &Value) -> String {
+        ["source", "operation", "harness", "seat", "message"]
+            .map(|k| row[k].to_string())
+            .join("\u{1f}")
+    }
+    /// Rows to append for one admitted row, oldest first.
+    fn admit(&mut self, row: Value, now_ms: u64) -> Vec<Value> {
+        // Only per-process hook reports burst. Other sources stay one row per
+        // failure: scrubbed messages can make distinct failures look identical.
+        if row["source"] != "hook" {
+            return vec![row];
+        }
+        let key = Self::key(&row);
+        if let Some(burst) = self.pending.get_mut(&key)
+            && now_ms.saturating_sub(burst.last_ms) < REPEAT_GAP_MS
+            && now_ms.saturating_sub(burst.first_ms) < REPEAT_SPAN_MS
+        {
+            burst.last_ms = now_ms;
+            burst.repeats += 1;
+            burst.last = Some(row);
+            return Vec::new();
+        }
+        let mut out: Vec<Value> = self
+            .pending
+            .remove(&key)
+            .and_then(Burst::close)
+            .into_iter()
+            .collect();
+        if self.pending.len() >= REPEAT_KEYS {
+            out.extend(self.pending.drain().filter_map(|(_, b)| b.close()));
+        }
+        self.pending.insert(
+            key,
+            Burst {
+                first_ms: now_ms,
+                last_ms: now_ms,
+                repeats: 0,
+                last: None,
+            },
+        );
+        out.push(row);
+        out
+    }
+    /// Close bursts that went quiet or ran past their span; `None` closes all.
+    fn expire(&mut self, now_ms: Option<u64>) -> Vec<Value> {
+        let done: Vec<_> = self
+            .pending
+            .iter()
+            .filter(|(_, b)| {
+                now_ms.is_none_or(|now| {
+                    now.saturating_sub(b.last_ms) >= REPEAT_GAP_MS
+                        || now.saturating_sub(b.first_ms) >= REPEAT_SPAN_MS
+                })
+            })
+            .map(|(k, _)| k.clone())
+            .collect();
+        let mut out: Vec<_> = done
+            .into_iter()
+            .filter_map(|k| self.pending.remove(&k)?.close())
+            .collect();
+        out.sort_by_key(|row| row["at_ms"].as_u64());
+        out
+    }
+}
+impl Burst {
+    fn close(self) -> Option<Value> {
+        let mut row = self.last?;
+        row["repeats"] = self.repeats.into();
+        Some(row)
+    }
 }
 
 /// Bounded local file view, also usable when a backend has already stopped.
@@ -536,15 +634,22 @@ fn serve(
     let mut prior = Some(0);
     let mut next_count = std::time::Instant::now();
     let mut bytes = [0u8; MAX_RECORD + 1];
+    let mut coalescer = Coalescer::default();
+    let write = |rows: Vec<Value>| {
+        for row in rows {
+            if let Ok(data) = serde_json::to_vec(&row) {
+                let _ = append(root, &data, MAX_FILE);
+            }
+        }
+    };
     while !stop.load(Ordering::Relaxed) {
         match receiver.recv(&mut bytes) {
             Ok(n) if n > 0 && n <= MAX_RECORD => {
                 if let Some(row) = serde_json::from_slice::<Value>(&bytes[..n])
                     .ok()
                     .and_then(normalized)
-                    && let Ok(data) = serde_json::to_vec(&row)
                 {
-                    let _ = append(root, &data, MAX_FILE);
+                    write(coalescer.admit(row, now_ms()));
                 }
             }
             Ok(_) => {}
@@ -555,8 +660,12 @@ fn serve(
                     io::ErrorKind::Interrupted,
                 ]
                 .contains(&e.kind()) => {}
-            Err(e) => return Err(e),
+            Err(e) => {
+                write(coalescer.expire(None));
+                return Err(e);
+            }
         }
+        write(coalescer.expire(Some(now_ms())));
         // Accepted rows still append individually. Bound rescans and UI count
         // updates during an error burst; idle polls cause no UI callback.
         if std::time::Instant::now() < next_count {
@@ -571,6 +680,7 @@ fn serve(
             }
         }
     }
+    write(coalescer.expire(None));
     let _ = std::fs::remove_file(socket);
     Ok(())
 }
@@ -748,6 +858,72 @@ mod tests {
         assert_eq!(rows[0]["stderr"], "hook stderr");
         while rx.recv_timeout(Duration::from_secs(60)).unwrap() != 0 {}
         drop(server);
+    }
+
+    // keeps: an outage of identical hook failures costs one row plus one count (#81)
+    #[test]
+    fn diagnostic_identical_failures_coalesce_into_a_repeat_count() {
+        let row = |message: &str, seat: &str| {
+            normalized(
+                Failure::new("hook", "bboxy_shim", message)
+                    .seat(seat)
+                    .harness("claude")
+                    .value(),
+            )
+            .unwrap()
+        };
+        let mut c = Coalescer::default();
+        let start = 1_000_000;
+        // 104 refusals over ~11 minutes, as observed on 2026-10-30.
+        let mut written = Vec::new();
+        for i in 0..104 {
+            written.extend(c.admit(
+                row("Connection refused (os error 61)", "a"),
+                start + i * 6_000,
+            ));
+        }
+        // Another seat and another message are never merged into that burst.
+        written.extend(c.admit(row("Connection refused (os error 61)", "b"), start));
+        written.extend(c.admit(row("hook input bound", "a"), start));
+        written.extend(c.expire(Some(start + 103 * 6_000 + REPEAT_GAP_MS)));
+        let counts: Vec<_> = written
+            .iter()
+            .map(|r| {
+                (
+                    r["seat"].as_str().unwrap().to_owned(),
+                    r["message"].as_str().unwrap().to_owned(),
+                    r["repeats"].as_u64(),
+                )
+            })
+            .collect();
+        let a = "Connection refused (os error 61)".to_owned();
+        // A closing row is the burst's last occurrence; `repeats` counts every
+        // occurrence since the previous row, itself included.
+        let burst: Vec<_> = counts.iter().filter(|c| c.0 == "a" && c.1 == a).collect();
+        assert_eq!(
+            burst.len(),
+            4,
+            "the 10-minute span splits the burst once: {counts:?}"
+        );
+        let plain = burst.iter().filter(|c| c.2.is_none()).count() as u64;
+        let repeats: u64 = burst.iter().filter_map(|c| c.2).sum();
+        assert_eq!(
+            plain + repeats,
+            104,
+            "every refusal is written or counted: {counts:?}"
+        );
+        assert!(counts.contains(&("b".into(), a, None)));
+        assert!(counts.contains(&("a".into(), "hook input bound".into(), None)));
+        // Distinct operator failures can scrub to the same text; never merge them.
+        let ctl = || normalized(Failure::new("ctl", "parse", "[redacted]").value()).unwrap();
+        assert_eq!(c.admit(ctl(), start).len() + c.admit(ctl(), start).len(), 2);
+        // Rows survive the reader's validation with their count.
+        assert!(
+            written
+                .iter()
+                .all(|r| normalized(r.clone()).as_ref() == Some(r))
+        );
+        assert!(c.expire(None).is_empty());
     }
 
     // keeps: the journal cannot follow a run-file symlink into credentials
