@@ -64,6 +64,17 @@ only when the operator granted the event's payload, and a deny only vetoes a
 `before` hook holding the operator's block grant; every other reply is
 recorded and ignored.
 
+Host API: request methods with `Manifest::host_api("records.search")`
+(also `records.fetch`, `events.publish`); the operator grants them at trust.
+While serving any call, use `ctx.host()`:
+`records_search(json!({"query": "…"}))` and `records_fetch(json!({"ref": …}))`
+read your own knowledge root (data_source `search`/`fetch` shapes), and
+`events_publish("build/done", json!({…}))` publishes
+`plugin/<candidate>/build/done`. Each request waits at most until the
+calling request's deadline. The runtime's reader thread routes the host's
+answer back while your call is still running. An ungranted method refuses
+`host_api_not_granted`; outside a served call, `host_unavailable`.
+
 [`testkit::Client`] drives a built plugin executable over stdio for
 conformance tests and probes.
 

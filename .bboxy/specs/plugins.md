@@ -147,6 +147,17 @@ A plugin whose trusted shape declares `hooks` receives matching events from its 
 
 Modelled by `PluginHook`/`BrokenPluginHook` (verification/contracts.toml); `tests/plugin_host.rs` holds the API witnesses.
 
+## 3c. Host API for plugins (G7, 2026-10-30)
+
+A plugin may send JSON-RPC requests `host/<method>` on its own stdio, including while it is serving a host call; the wire is in [[plugin-host]] § Host API.
+
+- **Methods.** `records.search` and `records.fetch` read the plugin's own knowledge root through that root's selected source, with the data_source 1.0 `search`/`fetch` request and result (export tier). `events.publish {subject, payload?}` publishes on the account stream as `plugin/<candidate>/<subject>`, source `plugin:<candidate>`, payload an object up to 64 KiB (write tier). The subject is always a suffix under the plugin's prefix.
+- **Grants.** A method must appear in the shape's additive `host_api` list (unknown names are refused at trust, and each raises the tier as above) **and** in the operator's `Grants.host_api` at trust. Otherwise the request is refused with `data.code` `host_api_not_granted`.
+- **Fencing and bounds.** Each request rechecks the connection's authority: enabled, checked and the same activation and trust record it opened under, else `provider_changed`. The host serves at most 4 requests per connection at once (more get `host_api_busy`), each within 2 s, with frame and page caps. The reader hands each request to its own task and keeps reading, so a request made during a host call cannot deadlock the connection.
+- **Open: `messages.send`.** It is not served: requesting it is refused as `unknown_host_api`. A plugin as a message sender, signed or attributed as itself and never as a seat or the operator, needs a sender identity the messaging ledger does not have. `bbt-proto` `Recipient` and the tree `Actor` are seat or operator only, and messages are signed with seat or operator custody keys. That is an interface decision for this spec and the messaging ICD; until it is made, plugins publish events instead.
+
+Modelled by `PluginHostApi`/`BrokenPluginHostApi`.
+
 ## 4. Out of scope now
 
 The historical P-0–P-4 order above remains its original planning record. The operator has now briefed the limited integration-skills cut in §3a. Generic forwarding of arbitrary plugin tools, a standalone bundled stdio export of the built-in integration, supporting-file delivery and native Beta protocol support remain outside this cut. The research is [[plugins-sota]].

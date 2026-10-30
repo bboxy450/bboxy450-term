@@ -18,10 +18,13 @@
 use super::*;
 #[path = "hooks.rs"]
 mod hooks;
+#[path = "host_api.rs"]
+mod host_api;
 use crate::knowledge::data_source as d;
 use crate::plugins::client::Shared;
 use bbt_plugin::policy::RoleClass;
 pub use hooks::{HOOK_QUEUE, HookEvent, HookOutcome, Verdict};
+pub use host_api::RecordReader;
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
@@ -183,6 +186,7 @@ enum Lane {
 }
 
 struct Connection {
+    candidate: String,
     lane: Lane,
     authority: Authority,
     copy: PathBuf,
@@ -200,7 +204,7 @@ impl Connection {
             .expect("an enabled plugin has a cached shape")
     }
     /// Spawn and initialize on first use; later callers reuse the live process.
-    async fn open(&self, host: &Inner, deadline: Instant) -> d::Result<Arc<Shared>> {
+    async fn open(&self, host: &Arc<Inner>, deadline: Instant) -> d::Result<Arc<Shared>> {
         let mut slot = tokio::time::timeout_at(deadline.into(), self.shared.lock())
             .await
             .map_err(|_| error("deadline_exceeded", "plugin connection is still starting"))?;
@@ -238,7 +242,12 @@ impl Connection {
             return Err(refused(reason));
         }
         client.configure_deadlines(host.config.timeout);
-        let shared = Arc::new(client.into_shared());
+        let handler = host_api::handler(
+            Arc::downgrade(host),
+            self.candidate.clone(),
+            self.authority.clone(),
+        );
+        let shared = Arc::new(client.into_shared(Some(handler)));
         *slot = Some(shared.clone());
         Ok(shared)
     }
@@ -265,6 +274,8 @@ struct Inner {
     tools: StdMutex<Arc<Vec<SeatTool>>>,
     /// Hook subscriptions, delivery queue and outcomes.
     hooks: hooks::Hooks,
+    /// The root's records, read for the host API.
+    records: StdMutex<Option<RecordReader>>,
 }
 
 /// One per knowledge root, owned by its workspace. Cloning shares it.
@@ -303,6 +314,7 @@ impl PluginHost {
             state: StdMutex::default(),
             tools: StdMutex::default(),
             hooks,
+            records: StdMutex::default(),
         }));
         host.start_hook_worker(queue);
         host.refresh_tools();
@@ -464,6 +476,7 @@ impl PluginHost {
             1
         };
         let connection = Arc::new(Connection {
+            candidate: candidate.to_owned(),
             lane,
             authority,
             copy,
@@ -740,6 +753,9 @@ impl PluginHost {
     /// never call it from an async task or the UI thread.
     pub fn close(&self) {
         self.stop_hooks();
+        if let Ok(mut records) = self.0.records.lock() {
+            records.take();
+        }
         let connections = self
             .0
             .state

@@ -462,10 +462,76 @@ pub(super) struct Shared {
     reader: JoinHandle<()>,
 }
 
-/// Plugin-originated requests arrive here. No host API exists yet, so every
-/// request is answered with a JSON-RPC error rather than left unanswered.
-fn host_request(_method: &str, _params: &Value) -> Result<Value, (i64, &'static str)> {
-    Err((-32601, "host API not available"))
+/// Serves one plugin-originated request `(method, params, deadline)` on a
+/// blocking thread. A refusal's code reaches the plugin as `error.data.code`.
+pub(super) type HostHandler =
+    Arc<dyn Fn(&str, Value, std::time::Instant) -> Result<Value, Refusal> + Send + Sync>;
+/// Plugin-originated requests served at once per connection; more are
+/// refused as `host_api_busy`, never queued.
+pub(super) const MAX_HOST_CALLS: usize = 4;
+/// Budget of one plugin-originated request.
+pub(super) const HOST_CALL_BUDGET: Duration = Duration::from_secs(2);
+
+/// Answer one plugin-originated request on its own task, so the reader keeps
+/// reading: the plugin may be waiting for this answer before it answers a
+/// host call that is in flight on the same connection.
+fn host_request(
+    id: Value,
+    method: String,
+    params: Value,
+    writer: Writer,
+    handler: Option<HostHandler>,
+    calls: Arc<tokio::sync::Semaphore>,
+) {
+    let permit = calls.try_acquire_owned();
+    tokio::spawn(async move {
+        let outcome = match (handler, permit) {
+            (None, _) => {
+                let reply = json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"host API not available"}});
+                let _ = write_frame(&writer, &reply).await;
+                return;
+            }
+            (Some(_), Err(_)) => Err(Refusal::new(
+                "host_api_busy",
+                format!("at most {MAX_HOST_CALLS} host requests at once"),
+            )),
+            (Some(handler), Ok(permit)) => {
+                let deadline = std::time::Instant::now() + HOST_CALL_BUDGET;
+                // The permit lives as long as the work, even past a timeout.
+                let work = tokio::task::spawn_blocking(move || {
+                    let _permit = permit;
+                    handler(&method, params, deadline)
+                });
+                match timeout(HOST_CALL_BUDGET, work).await {
+                    Ok(Ok(outcome)) => outcome,
+                    Ok(Err(_)) => Err(Refusal::new("internal_error", "host request failed")),
+                    Err(_) => Err(Refusal::new(
+                        "deadline_exceeded",
+                        "host request exceeded its budget",
+                    )),
+                }
+            }
+        };
+        let error = |reason: &Refusal| {
+            let code = if reason.code == "unknown_host_api" {
+                -32601
+            } else {
+                -32000
+            };
+            json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":reason.message,
+                "data":{"code":reason.code,"message":reason.message}}})
+        };
+        let reply = match &outcome {
+            Ok(result) => json!({"jsonrpc":"2.0","id":id,"result":result}),
+            Err(reason) => error(reason),
+        };
+        if let Err(reason) = write_frame(&writer, &reply).await
+            && reason.code == "frame_too_large"
+        {
+            let too_large = Refusal::new("response_too_large", "host result exceeds the frame");
+            let _ = write_frame(&writer, &error(&too_large)).await;
+        }
+    });
 }
 
 async fn write_frame(writer: &Writer, value: &Value) -> Result<(), Refusal> {
@@ -508,7 +574,9 @@ async fn demultiplex(
     mut output: BufReader<ChildStdout>,
     writer: Writer,
     routes: Arc<StdMutex<Routes>>,
+    handler: Option<HostHandler>,
 ) {
+    let calls = Arc::new(tokio::sync::Semaphore::new(MAX_HOST_CALLS));
     let failed = loop {
         let value = match read_frame(&mut output).await {
             Ok(value) => value,
@@ -520,15 +588,14 @@ async fn demultiplex(
         if let Some(method) = value.get("method").and_then(Value::as_str) {
             // Notifications (progress, logs) never extend a deadline.
             if let Some(id) = value.get("id") {
-                let reply = match host_request(method, &value["params"]) {
-                    Ok(result) => json!({"jsonrpc":"2.0","id":id,"result":result}),
-                    Err((code, message)) => {
-                        json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
-                    }
-                };
-                if let Err(reason) = write_frame(&writer, &reply).await {
-                    break reason;
-                }
+                host_request(
+                    id.clone(),
+                    method.to_owned(),
+                    value.get("params").cloned().unwrap_or(Value::Null),
+                    writer.clone(),
+                    handler.clone(),
+                    calls.clone(),
+                );
             }
             continue;
         }
@@ -569,15 +636,16 @@ async fn demultiplex(
 
 impl Client {
     /// Hand stdout to a reader task. Call after `initialize`; the request IDs
-    /// continue from the handshake's.
-    pub(super) fn into_shared(mut self) -> Shared {
+    /// continue from the handshake's. Plugin-originated requests go to
+    /// `handler`, or are refused with -32601 without one.
+    pub(super) fn into_shared(mut self, handler: Option<HostHandler>) -> Shared {
         let output = self.output.take().expect("stdout not yet demultiplexed");
         let writer: Writer = Arc::new(tokio::sync::Mutex::new(self.input.take()));
         let routes = Arc::new(StdMutex::new(Routes {
             issued: self.next,
             ..Default::default()
         }));
-        let reader = tokio::spawn(demultiplex(output, writer.clone(), routes.clone()));
+        let reader = tokio::spawn(demultiplex(output, writer.clone(), routes.clone(), handler));
         Shared {
             client: tokio::sync::Mutex::new(Some(self)),
             writer,
@@ -842,7 +910,7 @@ for line in sys.stdin:
         fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
         let client =
             Client::spawn_with_home(source, files.path(), false, CALL_BUDGET, None).unwrap();
-        let shared = client.into_shared();
+        let shared = client.into_shared(None);
         let call = |name: &'static str| {
             shared.request(
                 "tools/call",
@@ -870,6 +938,56 @@ for line in sys.stdin:
             "{}",
             captured.text
         );
+    }
+
+    /// While serving a call, asks the host `host/<name>` and answers the call
+    /// only with the host's answer.
+    const CALLBACK_SERVER: &str = r#"#!/usr/bin/env python3
+import json, sys
+def emit(value): print(json.dumps(value), flush=True)
+for line in sys.stdin:
+    req = json.loads(line)
+    if "method" not in req or "id" not in req: continue
+    emit({"jsonrpc":"2.0","id":"cb-"+str(req["id"]),"method":"host/"+req["params"]["name"],"params":{"n":req["id"]}})
+    while True:
+        answer = json.loads(sys.stdin.readline())
+        if answer.get("id") == "cb-"+str(req["id"]): break
+    emit({"jsonrpc":"2.0","id":req["id"],"result":answer})
+"#;
+
+    // keeps: PluginHostApi — a host request issued while the host waits on
+    // that plugin's call is served; the reader never blocks on it.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_host_request_during_a_call_is_answered_and_the_call_completes() {
+        let files = tempfile::tempdir().unwrap();
+        let source = files.path().join("callback-server");
+        fs::write(&source, CALLBACK_SERVER).unwrap();
+        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        let client =
+            Client::spawn_with_home(source, files.path(), false, CALL_BUDGET, None).unwrap();
+        let handler: HostHandler = Arc::new(|method, params, _deadline| match method {
+            "host/records.search" => {
+                std::thread::sleep(Duration::from_millis(100));
+                Ok(json!({"served": params["n"]}))
+            }
+            _ => Err(Refusal::new("host_api_not_granted", method)),
+        });
+        let shared = client.into_shared(Some(handler));
+        let call = |name: &'static str| {
+            shared.request(
+                "tools/call",
+                json!({"name":name,"arguments":{}}),
+                CALL_BUDGET,
+            )
+        };
+        let served = call("records.search").await.unwrap();
+        let id = served["result"]["served"].as_u64().unwrap();
+        assert_eq!(served["id"], format!("cb-{id}"));
+        let refused = call("events.publish").await.unwrap();
+        assert_eq!(refused["error"]["code"], -32000);
+        assert_eq!(refused["error"]["data"]["code"], "host_api_not_granted");
+        assert!(shared.alive());
+        shared.shutdown().await;
     }
 
     #[tokio::test]

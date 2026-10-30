@@ -131,6 +131,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "PluginHostApi"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginHostApi"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "HarnessToken"
 expected = "pass"
 frontend = "project"

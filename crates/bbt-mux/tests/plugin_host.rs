@@ -87,6 +87,7 @@ fn approval(payload: &[&str], block: Option<FailurePolicy>) -> Approval {
         grants: Grants {
             payload_events: payload.iter().map(|event| (*event).to_owned()).collect(),
             block,
+            host_api: Default::default(),
         },
     }
 }
@@ -594,5 +595,116 @@ async fn blocking_hooks_veto_only_with_a_grant_and_time_out_by_policy() {
             assert!(started.elapsed() < Duration::from_millis(200));
             assert!(f.host.hook_dropped() >= 7, "{}", f.host.hook_dropped());
         }
+    }
+}
+
+impl Fixture {
+    /// Ask the host `host/<method>` from inside a seat call to the plugin's
+    /// declared `host` tool; returns the host's whole JSON-RPC reply.
+    async fn ask_host(&self, method: &str, params: Value) -> Value {
+        let host = self.host.clone();
+        let args = json!({"method": method, "params": params});
+        tokio::task::spawn_blocking(move || {
+            let tool = host
+                .seat_tools()
+                .iter()
+                .find(|tool| tool.name.ends_with("_host"))
+                .cloned()
+                .expect("the fixture declares a host tool");
+            host.call_seat_tool(&tool, args, Instant::now() + Duration::from_secs(10))
+        })
+        .await
+        .unwrap()
+        .unwrap()["answer"]
+            .clone()
+    }
+}
+
+fn host_api_variant(granted: &[&str]) -> Variant {
+    let mut approval = approval(&[], None);
+    approval.grants.host_api = granted.iter().map(|m| (*m).to_owned()).collect();
+    Variant {
+        knobs: vec![(
+            "HOST_API = []",
+            r#"HOST_API = ["records.search", "records.fetch", "events.publish"]"#.into(),
+        )],
+        approval: Some(approval),
+        ..Variant::default()
+    }
+}
+
+// keeps: G7 host API / PluginHostApi — a plugin calls the host while its own
+// call is in flight; only methods requested and granted are served; events
+// stay under the plugin's prefix and are attributed to it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn host_api_requests_are_granted_confined_and_served_during_a_call() {
+    let f = Fixture::with(host_api_variant(&["records.search", "events.publish"])).await;
+    let bus = f.bus();
+    let published = bus.subscribe(pull("plugin/>")).await.unwrap();
+    f.host.attach_records(std::sync::Arc::new(|method, params| {
+        assert_eq!(method, "records.search");
+        std::thread::sleep(Duration::from_millis(100));
+        Ok(json!({"items": [], "next": params["query"]}))
+    }));
+
+    let search = f
+        .ask_host("records.search", json!({"query": "plugins"}))
+        .await;
+    assert_eq!(search["result"], json!({"items": [], "next": "plugins"}));
+    let invalid = f.ask_host("records.search", json!({"limit": 0})).await;
+    assert_eq!(invalid["error"]["data"]["code"], "invalid_request");
+    let fetch = f
+        .ask_host("records.fetch", json!({"ref": {"id": "x"}}))
+        .await;
+    assert_eq!(fetch["error"]["data"]["code"], "host_api_not_granted");
+
+    let event = f
+        .ask_host(
+            "events.publish",
+            json!({"subject": "task/1/status", "payload": {"done": true}}),
+        )
+        .await;
+    let subject = format!("plugin/{}/task/1/status", f.candidate);
+    assert_eq!(event["result"]["subject"], subject);
+    let mut seen = None;
+    let until = Instant::now() + Duration::from_secs(10);
+    while seen.is_none() && Instant::now() < until {
+        for delivery in bus.poll(&published, 16).await.unwrap() {
+            if let Delivery::Event { envelope, .. } = delivery {
+                seen = Some(envelope.event.clone());
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let seen = seen.expect("the event was published");
+    assert_eq!(seen.subject, subject, "confined to the plugin's prefix");
+    assert_eq!(seen.source, format!("plugin:{}", f.candidate));
+    assert_eq!(seen.payload, json!({"done": true}));
+    for bad in ["task/*", "a//b", ""] {
+        let refused = f.ask_host("events.publish", json!({"subject": bad})).await;
+        assert_eq!(refused["error"]["data"]["code"], "invalid_subject", "{bad}");
+    }
+    let unknown = f.ask_host("messages.send", json!({})).await;
+    assert_eq!(unknown["error"]["code"], -32601);
+    assert_eq!(unknown["error"]["data"]["code"], "unknown_host_api");
+}
+
+// keeps: G7 host API — requested but not granted at trust: every method refused.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn host_api_requests_without_grants_are_refused() {
+    let f = Fixture::with(host_api_variant(&[])).await;
+    f.bus();
+    f.host
+        .attach_records(std::sync::Arc::new(|_, _| panic!("never read")));
+    for (method, params) in [
+        ("records.search", json!({"query": "x"})),
+        ("records.fetch", json!({"ref": {"id": "x"}})),
+        ("events.publish", json!({"subject": "x"})),
+    ] {
+        let refused = f.ask_host(method, params).await;
+        assert_eq!(
+            refused["error"]["data"]["code"], "host_api_not_granted",
+            "{method}"
+        );
     }
 }

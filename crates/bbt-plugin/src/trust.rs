@@ -21,6 +21,9 @@ pub struct Grants {
     pub payload_events: BTreeSet<String>,
     #[serde(default)]
     pub block: Option<FailurePolicy>,
+    /// Host API methods the operator approved (see `shape::HOST_API`).
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub host_api: BTreeSet<String>,
 }
 
 /// The account record pins one executable, its approved policy and cached shape.
@@ -69,6 +72,16 @@ impl TrustRecord {
             }
         }
         Ok(())
+    }
+
+    /// Whether the plugin may call host API `method`: the trusted shape
+    /// requests it and the operator granted it.
+    pub fn host_api_granted(&self, method: &str) -> bool {
+        self.grants.host_api.contains(method)
+            && self
+                .shape
+                .as_ref()
+                .is_some_and(|shape| shape.host_api.iter().any(|m| m == method))
     }
 
     /// Whether `hook`'s event payload may reach the plugin.

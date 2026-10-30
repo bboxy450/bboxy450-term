@@ -154,6 +154,15 @@ pub struct System {
 /// Most declared seat tools in one descriptor.
 pub const MAX_TOOLS: usize = 32;
 
+/// Host API methods a plugin may request (`host/<name>` over its stdio),
+/// each with the tier it raises the plugin to: reading the root's records
+/// lets them leave the machine (export); publishing writes app events.
+pub const HOST_API: &[(&str, Tier)] = &[
+    ("records.search", Tier::Export),
+    ("records.fetch", Tier::Export),
+    ("events.publish", Tier::Write),
+];
+
 /// A plugin-declared seat tool beyond its contracts. Seats see it as
 /// `plugin_tool_<provider>_<name>`; the host calls the plugin's MCP tool
 /// `tool_<name>`. Role is worker or oracle; host-only tools do not exist.
@@ -272,6 +281,10 @@ pub struct Shape {
     /// Optional seat tools beyond the contract methods.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tools: Vec<Tool>,
+    /// Host API methods this plugin asks to call ([`HOST_API`]); each still
+    /// needs the operator's grant at trust.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub host_api: Vec<String>,
 }
 
 impl Shape {
@@ -354,6 +367,17 @@ impl Shape {
             if hook.carries_payload()? {
                 tier = tier.max(Tier::Export);
             }
+        }
+        let mut requested = BTreeSet::new();
+        for method in &self.host_api {
+            let (_, raised) = HOST_API
+                .iter()
+                .find(|(name, _)| name == method)
+                .ok_or_else(|| Refusal::new("unknown_host_api", method))?;
+            if !requested.insert(method.as_str()) {
+                return Err(Refusal::new("duplicate_host_api", method));
+            }
+            tier = tier.max(*raised);
         }
         Ok(tier)
     }

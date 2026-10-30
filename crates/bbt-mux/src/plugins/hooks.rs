@@ -400,6 +400,11 @@ impl PluginHost {
         self.0.hooks.dropped.load(Ordering::Relaxed)
     }
 
+    /// The attached bus, if any.
+    pub(super) fn hooks_bus(&self) -> Option<BusHandle> {
+        self.0.hooks.bus.lock().ok().and_then(|bus| bus.clone())
+    }
+
     /// Record outcomes on `bus` and deliver its events to bus hooks.
     pub fn attach_bus(&self, bus: BusHandle) {
         if let Ok(mut held) = self.0.hooks.bus.lock() {

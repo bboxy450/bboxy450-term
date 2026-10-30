@@ -141,3 +141,17 @@ Agreement in [[plugins]] §3b. Both sides: the host (`bbt-mux` `plugins/hooks.rs
 | Outcomes | `plugin/<candidate>/hook/<outcome>` on the account stream: `allowed`, `denied`, `ignored`, `failed_open`, `failed_closed`, `failed`, `stale`, `dropped`. |
 | Open | The harness shim does not yet wait for `decide`, so no harness tool use is vetoed in production; that needs the shim to read a reply within the 2 s ceiling and encode a veto per harness. |
 | Verification | `PluginHook`/`BrokenPluginHook` (native and Java TLC); `tests/plugin_host.rs` hook tests; `bbt-plugin` policy and shape tests; SDK runtime hook test. |
+
+## Host API — G7, 2026-10-30
+
+Agreement in [[plugins]] §3c. Both sides: the host (`bbt-mux` `plugins/client.rs` reader, `plugins/host_api.rs`) and plugins (`bboxy450-term-plugin-sdk` `Ctx::host()`).
+
+| Boundary | Agreement |
+|---|---|
+| Declaration | Additive `Shape.host_api: ["records.search" \| "records.fetch" \| "events.publish"]`; unknown or duplicate names are refused. The operator grants a subset at trust in `Grants.host_api`. `records.*` raise the effective tier to export and `events.publish` to write. |
+| Wire | The plugin writes `{"jsonrpc":"2.0","id":<its own id>,"method":"host/<name>","params":…}` on stdout. The host answers on stdin with `result`, or with `error {code, message, data: {code, message}}`: `-32601`/`unknown_host_api` for an unknown method, otherwise `-32000` with `data.code` (`host_api_not_granted`, `provider_changed`, `host_api_busy`, `deadline_exceeded`, `invalid_request`, `invalid_subject`, `payload_too_large`, `host_api_unavailable`, `response_too_large`). |
+| Methods | `records.search`/`records.fetch`: data_source 1.0 `search`/`fetch` request and result for the plugin's own root, validated against the contract schemas. `events.publish {subject, payload?}`: published as `plugin/<candidate>/<subject>`, source `plugin:<candidate>`, payload an object of at most 64 KiB; returns `{id, subject}`. |
+| Timing | At most 4 requests at once per connection, each within 2 s. A request is served on its own task while the reader keeps reading, so it may be sent during a host call to the same plugin. The SDK waits within the calling request's deadline and drops a late answer. |
+| Lifetime | Each request rechecks that the connection's activation generation and trust record are still current. Requests are served only on `PluginHost` connections, not on the selected data_source provider's own connection. |
+| Open | `messages.send` needs a plugin sender identity in the messaging ledger and wire (`Recipient`, tree `Actor`, signing custody); not served. |
+| Verification | `PluginHostApi`/`BrokenPluginHostApi` (native and Java TLC); `tests/plugin_host.rs` host API tests; `client.rs` callback test; SDK runtime host test; `bbt-plugin` shape test. |

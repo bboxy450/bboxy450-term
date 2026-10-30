@@ -281,6 +281,73 @@ fn descriptor_claims_cannot_reduce_tier_and_payload_hooks_need_a_separate_grant(
     assert!(record.payload_granted(&bus.hooks[0]));
 }
 
+// keeps: G7 host API — requested by the shape, granted by the operator,
+// raising the tier; unknown and duplicate names are refused.
+#[test]
+fn host_api_requests_are_named_raise_the_tier_and_need_a_grant() {
+    use bbt_plugin::{policy::Tier, trust::TrustRecord};
+    let name = PluginName::parse("bboxy450-term", "bboxy450-term-repo_graph-reference").unwrap();
+    let repo = |host_api: Value| {
+        let value = json!({"name":"repo","version":"1.0","shape_version":"1.0","health_command":"health",
+            "systems":[{"contract":"repo_graph","contract_version":"1.0","commands":Contract::RepoGraph.methods().iter().map(|name|json!({
+                "name":name,"args":{},"result":{},"timeout_ms":1000})).collect::<Vec<_>>()}],
+            "host_api": host_api});
+        let validator =
+            jsonschema::validator_for(&serde_json::from_str(bbt_plugin::shape::SCHEMA).unwrap())
+                .unwrap();
+        (
+            validator.validate(&value).is_ok(),
+            serde_json::from_value::<Shape>(value).unwrap(),
+        )
+    };
+    let (schema_ok, shape) = repo(json!(["events.publish"]));
+    assert!(schema_ok);
+    assert_eq!(shape.validate(&name).unwrap(), Tier::Write);
+    let (_, shape) = repo(json!(["records.search", "events.publish"]));
+    assert_eq!(shape.validate(&name).unwrap(), Tier::Export);
+    for (requested, code) in [
+        (json!(["messages.send"]), "unknown_host_api"),
+        (
+            json!(["records.fetch", "records.fetch"]),
+            "duplicate_host_api",
+        ),
+    ] {
+        let (schema_ok, shape) = repo(requested);
+        assert!(!schema_ok);
+        assert_eq!(shape.validate(&name).unwrap_err().code, code);
+    }
+    let (_, shape) = repo(json!(["records.search"]));
+    let mut record = TrustRecord {
+        sha256: "a".repeat(64),
+        source: "fixture".into(),
+        copy: "pinned".into(),
+        data_dir: "data".into(),
+        name,
+        scope: "fixture".into(),
+        approved_tier: Tier::Read,
+        grants: Default::default(),
+        shape: Some(shape.clone()),
+    };
+    assert_eq!(
+        record.validate_shape(&shape).unwrap_err().code,
+        "tier_not_approved"
+    );
+    record.approved_tier = Tier::Export;
+    record.validate_shape(&shape).unwrap();
+    assert!(!record.host_api_granted("records.search"), "requested only");
+    record.grants.host_api.insert("records.search".into());
+    record.grants.host_api.insert("events.publish".into());
+    assert!(record.host_api_granted("records.search"));
+    assert!(!record.host_api_granted("events.publish"), "granted only");
+    assert!(
+        !serde_json::to_value(&record.grants)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .is_empty()
+    );
+}
+
 // keeps: plugins — human identity survives descriptor caching without granting authority.
 #[test]
 fn presentation_metadata_round_trips_and_legacy_shapes_still_validate() {

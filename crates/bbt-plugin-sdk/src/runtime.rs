@@ -23,6 +23,71 @@ use crate::{
 };
 
 type Pending = Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>;
+type Output = Arc<Mutex<Box<dyn Write + Send>>>;
+
+/// The plugin's side of plugin-to-host requests: the shared stdout writer
+/// and the requests waiting for the host's answer, which the reader thread
+/// routes back by ID while the worker blocks in a call.
+pub(crate) struct Link {
+    output: Output,
+    waiting: Mutex<HashMap<String, mpsc::Sender<Value>>>,
+    next: std::sync::atomic::AtomicU64,
+}
+
+impl std::fmt::Debug for Link {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Link")
+    }
+}
+
+impl Link {
+    /// Send `host/<method>` and wait for its answer until `deadline`.
+    pub(crate) fn request(
+        &self,
+        method: &str,
+        params: Value,
+        deadline: std::time::Instant,
+    ) -> Result<Value, Refusal> {
+        let id = format!("host-{}", self.next.fetch_add(1, Ordering::Relaxed));
+        let (sender, receiver) = mpsc::channel();
+        self.waiting
+            .lock()
+            .unwrap()
+            .insert(key(&id.clone().into()), sender);
+        send(
+            &self.output,
+            json!({"jsonrpc":"2.0","id":id,"method":format!("host/{method}"),"params":params}),
+        );
+        let answer =
+            receiver.recv_timeout(deadline.saturating_duration_since(std::time::Instant::now()));
+        self.waiting.lock().unwrap().remove(&key(&id.into()));
+        let answer = answer.map_err(|_| {
+            Refusal::new(
+                "deadline_exceeded",
+                format!("host/{method} did not answer in time"),
+            )
+        })?;
+        if let Some(error) = answer.get("error") {
+            let code = error["data"]["code"]
+                .as_str()
+                .unwrap_or(if error["code"] == -32601 {
+                    "unknown_host_api"
+                } else {
+                    "host_error"
+                });
+            return Err(Refusal::new(code, error["message"].as_str().unwrap_or("")));
+        }
+        Ok(answer.get("result").cloned().unwrap_or(Value::Null))
+    }
+
+    /// Route the host's answer to its waiting request. An answer nobody
+    /// waits for (a request that timed out) is dropped.
+    fn answer(&self, response: Value) {
+        if let Some(waiter) = self.waiting.lock().unwrap().remove(&key(&response["id"])) {
+            let _ = waiter.send(response);
+        }
+    }
+}
 
 /// Entry point for a plugin binary: `--shape`, or serve stdio. The host runs
 /// inspection with no arguments and a closed stdin, and serving with no
@@ -85,16 +150,23 @@ fn stdin_is_terminal_or_closed() -> bool {
 
 /// Serve requests from `input` until EOF; replies go to `output`.
 pub fn serve<P: Plugin>(input: impl Read, output: impl Write + Send + 'static) {
-    let output = Arc::new(Mutex::new(output));
+    let output: Output = Arc::new(Mutex::new(Box::new(output)));
+    let link = Arc::new(Link {
+        output: output.clone(),
+        waiting: Mutex::default(),
+        next: Default::default(),
+    });
     let pending: Pending = Arc::default();
     let (tx, rx) = mpsc::channel::<(Value, Arc<AtomicBool>)>();
     let worker = {
         let output = output.clone();
         let pending = pending.clone();
+        let link = link.clone();
         std::thread::spawn(move || {
             let mut state = Worker::<P> {
                 plugin: None,
                 manifest: P::manifest(),
+                link,
             };
             for (request, cancelled) in rx {
                 let id = request.get("id").cloned().unwrap_or(Value::Null);
@@ -142,6 +214,12 @@ pub fn serve<P: Plugin>(input: impl Read, output: impl Write + Send + 'static) {
                 continue;
             }
         };
+        // An answer to a plugin-to-host request: route it to the waiting
+        // worker; this thread never waits for one.
+        if request.get("method").is_none() && request.get("id").is_some() {
+            link.answer(request);
+            continue;
+        }
         if request["method"] == "notifications/cancelled" {
             if let Some(flag) = pending
                 .lock()
@@ -180,7 +258,7 @@ fn key(id: &Value) -> String {
     encoded(id)
 }
 
-fn send(output: &Mutex<impl Write>, value: Value) {
+fn send(output: &Mutex<Box<dyn Write + Send>>, value: Value) {
     let mut output = output.lock().unwrap();
     let _ = writeln!(output, "{}", encoded(&value));
     let _ = output.flush();
@@ -212,6 +290,7 @@ fn failure(request: &Value, refusal: Refusal) -> Reply {
 struct Worker<P> {
     plugin: Option<P>,
     manifest: crate::Manifest,
+    link: Arc<Link>,
 }
 
 impl<P: Plugin> Worker<P> {
@@ -260,7 +339,7 @@ impl<P: Plugin> Worker<P> {
             fixture: params["fixture"] == json!({"version": 1, "kind": "data_source_conformance"}),
             params,
         };
-        let ctx = Ctx::new(cancelled, P::initialize_budget(&init));
+        let ctx = Ctx::new(cancelled, P::initialize_budget(&init)).with_link(self.link.clone());
         self.plugin = Some(P::initialize(init, &ctx)?);
         let contracts: serde_json::Map<String, Value> = self
             .manifest
@@ -324,16 +403,19 @@ impl<P: Plugin> Worker<P> {
                 "root and authority belong to initialize and the host",
             ));
         }
+        let link = self.link.clone();
+        let ctx = |limit| Ctx::new(cancelled, limit).with_link(link);
         let plugin = self.plugin.as_mut().expect("bound");
         let result = if name == "health" {
-            plugin.health(&Ctx::new(cancelled, budget(crate::DEFAULT_TIMEOUT_MS)))?
+            plugin.health(&ctx(budget(crate::DEFAULT_TIMEOUT_MS)))?
         } else if name == crate::HOOK_TOOL && !self.manifest.hooks.is_empty() {
             let event: crate::HookEvent = crate::args(args)?;
             // The host's ceiling is at most 5 s; never trust a larger budget.
-            let ctx = Ctx::new(cancelled, budget(event.budget_ms.min(5_000)));
-            plugin.on_hook(&event, &ctx)?.value()
+            plugin
+                .on_hook(&event, &ctx(budget(event.budget_ms.min(5_000))))?
+                .value()
         } else if let Some(tool) = self.manifest.declared_tool(name) {
-            let ctx = Ctx::new(cancelled, budget(tool.timeout_ms));
+            let ctx = ctx(budget(tool.timeout_ms));
             let declared = tool.name.clone();
             plugin.call_tool(&declared, args, &ctx)?
         } else {
@@ -341,10 +423,7 @@ impl<P: Plugin> Worker<P> {
                 .manifest
                 .route(name)
                 .ok_or_else(|| Refusal::new("unknown_method", "unknown tool"))?;
-            let ctx = Ctx::new(
-                cancelled,
-                budget(self.manifest.timeout_ms(contract, method)),
-            );
+            let ctx = ctx(budget(self.manifest.timeout_ms(contract, method)));
             let method = method.to_owned();
             plugin.call(contract, &method, args, &ctx)?
         };
@@ -651,6 +730,117 @@ mod tests {
         assert_eq!(
             last["result"]["structuredContent"]["code"],
             "unknown_method"
+        );
+    }
+
+    struct Asker;
+    impl Plugin for Asker {
+        fn manifest() -> Manifest {
+            let object = json!({"type":"object"});
+            Manifest::new("bboxy450-term-repo_graph-asker", "Asker", "Asks the host")
+                .contract(Contract::RepoGraph)
+                .host_api("records.search")
+                .tool(
+                    "ask",
+                    "Ask",
+                    object.clone(),
+                    object.clone(),
+                    crate::RoleClass::Worker,
+                )
+                .tool(
+                    "slow",
+                    "Slow",
+                    object.clone(),
+                    object,
+                    crate::RoleClass::Worker,
+                )
+                .tool_timeout("slow", 200)
+        }
+        fn initialize(_: Init, _: &Ctx) -> Result<Self, Refusal> {
+            Ok(Asker)
+        }
+        fn call(&mut self, _: Contract, _: &str, _: Value, _: &Ctx) -> Result<Value, Refusal> {
+            Ok(json!({}))
+        }
+        fn call_tool(&mut self, name: &str, args: Value, ctx: &Ctx) -> Result<Value, Refusal> {
+            let found = ctx.host().records_search(args)?;
+            if name == "slow" {
+                return Ok(found);
+            }
+            let refused = ctx.host().events_publish("done", json!({})).unwrap_err();
+            Ok(json!({"found": found, "refused": refused.code}))
+        }
+    }
+
+    /// Collects each output line as JSON on a channel.
+    struct Lines(mpsc::Sender<Value>, Vec<u8>);
+    impl Write for Lines {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            self.1.extend_from_slice(b);
+            while let Some(end) = self.1.iter().position(|b| *b == b'\n') {
+                let line: Vec<u8> = self.1.drain(..=end).collect();
+                let _ = self.0.send(serde_json::from_slice(&line).unwrap());
+            }
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    // keeps: G7 host API / PluginHostApi — the worker asks the host while
+    // serving a call; the reader thread routes the answers back, a late
+    // answer is dropped, and outside a served call there is no host.
+    #[test]
+    fn host_requests_made_while_serving_a_call_are_answered_through_the_reader() {
+        let (input, mut host) = std::io::pipe().unwrap();
+        let (sender, lines) = mpsc::channel();
+        let server = std::thread::spawn(move || serve::<Asker>(input, Lines(sender, Vec::new())));
+        let mut write = |value: Value| writeln!(host, "{}", encoded(&value)).unwrap();
+        let next = || lines.recv_timeout(Duration::from_secs(5)).unwrap();
+        write(json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"root":"/r"}}));
+        assert_eq!(next()["id"], 1);
+        write(call(2, "tool_ask", json!({"query":"x"})));
+        let search = next();
+        assert_eq!(search["method"], "host/records.search");
+        assert_eq!(search["params"], json!({"query":"x"}));
+        write(json!({"jsonrpc":"2.0","id":search["id"],"result":{"items":[],"next":null}}));
+        let publish = next();
+        assert_eq!(publish["method"], "host/events.publish");
+        assert_eq!(publish["params"], json!({"subject":"done","payload":{}}));
+        write(
+            json!({"jsonrpc":"2.0","id":publish["id"],"error":{"code":-32000,"message":"no",
+            "data":{"code":"host_api_not_granted","message":"no"}}}),
+        );
+        let answered = next();
+        assert_eq!(answered["id"], 2);
+        assert_eq!(
+            answered["result"]["structuredContent"],
+            json!({"found":{"items":[],"next":null},"refused":"host_api_not_granted"})
+        );
+        // Unanswered: the call refuses within its budget; the late answer is dropped.
+        write(call(3, "tool_slow", json!({})));
+        let unanswered = next();
+        assert_eq!(unanswered["method"], "host/records.search");
+        let refused = next();
+        assert_eq!(refused["id"], 3);
+        assert_eq!(
+            refused["result"]["structuredContent"]["code"],
+            "deadline_exceeded"
+        );
+        write(json!({"jsonrpc":"2.0","id":unanswered["id"],"result":{}}));
+        write(json!({"jsonrpc":"2.0","id":4,"method":"ping"}));
+        assert_eq!(next(), json!({"jsonrpc":"2.0","id":4,"result":{}}));
+        drop(write);
+        drop(host);
+        server.join().unwrap();
+        assert_eq!(
+            Ctx::detached(Duration::from_secs(1))
+                .host()
+                .records_fetch(json!({}))
+                .unwrap_err()
+                .code,
+            "host_unavailable"
         );
     }
 

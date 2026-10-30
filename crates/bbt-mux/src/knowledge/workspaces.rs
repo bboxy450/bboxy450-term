@@ -128,6 +128,7 @@ impl Workspace {
             }
             // Keep the same durable scan outbox; the caller publishes/acks it.
             let _ = index.scan()?;
+            let index = Arc::new(index);
             let host = roots::Host::with_config(
                 index.knowledge_root(),
                 config.plugins.for_repository(repository),
@@ -137,11 +138,19 @@ impl Workspace {
             if let Some(bus) = &config.activity {
                 host.plugin_host().attach_bus(bus.clone());
             }
+            // Host API reads hold the root weakly: the plugin host lives in it.
+            let (records_root, records_index) = (host.downgrade(), index.clone());
+            host.plugin_host()
+                .attach_records(Arc::new(move |method, params| {
+                    roots::Host::upgrade(&records_root)
+                        .ok_or_else(|| d::CommandError::new("provider_closed", "root closed"))?
+                        .plugin_records(&records_index, method, params)
+                }));
             let seen_revision = host.revision()?;
             let provenance = Engine::open(&index, repository, config.runtime.clone())?;
             let watch = FileWatch::start(index.knowledge_root())?;
             Ok(Self {
-                index: Arc::new(index),
+                index,
                 host,
                 watch,
                 provenance,

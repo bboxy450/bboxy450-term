@@ -102,6 +102,7 @@ impl From<serde_json::Error> for Refusal {
 pub struct Ctx {
     cancelled: Arc<AtomicBool>,
     deadline: Instant,
+    link: Option<Arc<runtime::Link>>,
 }
 
 impl Ctx {
@@ -109,7 +110,19 @@ impl Ctx {
         Self {
             cancelled,
             deadline: Instant::now() + budget,
+            link: None,
         }
+    }
+
+    pub(crate) fn with_link(mut self, link: Arc<runtime::Link>) -> Self {
+        self.link = Some(link);
+        self
+    }
+
+    /// The host API, bound to this request's deadline. Outside a served
+    /// request (a detached context) every call refuses `host_unavailable`.
+    pub fn host(&self) -> Host<'_> {
+        Host { ctx: self }
     }
 
     /// A context that is never cancelled, for background work and tests.
@@ -141,6 +154,45 @@ impl Ctx {
         } else {
             Ok(())
         }
+    }
+}
+
+/// Requests to the host over the plugin's own stdio (`host/<method>`), each
+/// answered while the plugin is still serving its current call. A method
+/// must be requested in [`Manifest::host_api`] and granted by the operator at
+/// trust; otherwise it refuses `host_api_not_granted`.
+#[derive(Debug, Clone, Copy)]
+pub struct Host<'a> {
+    ctx: &'a Ctx,
+}
+
+impl Host<'_> {
+    /// One host request within the context's deadline.
+    pub fn request(&self, method: &str, params: Value) -> Result<Value, Refusal> {
+        self.ctx.check()?;
+        let link = self.ctx.link.as_ref().ok_or_else(|| {
+            Refusal::new("host_unavailable", "no host connection in this context")
+        })?;
+        link.request(method, params, self.ctx.deadline)
+    }
+
+    /// data_source `search` over this plugin's knowledge root.
+    pub fn records_search(&self, request: Value) -> Result<Value, Refusal> {
+        self.request("records.search", request)
+    }
+
+    /// data_source `fetch` over this plugin's knowledge root.
+    pub fn records_fetch(&self, request: Value) -> Result<Value, Refusal> {
+        self.request("records.fetch", request)
+    }
+
+    /// Publish `payload` (an object, at most 64 KiB) as bus event
+    /// `plugin/<candidate>/<subject>`; returns `{id, subject}`.
+    pub fn events_publish(&self, subject: &str, payload: Value) -> Result<Value, Refusal> {
+        self.request(
+            "events.publish",
+            json!({"subject": subject, "payload": payload}),
+        )
     }
 }
 
@@ -180,6 +232,8 @@ pub struct Manifest {
     pub tools: Vec<Tool>,
     /// Harness and bus events delivered to [`Plugin::on_hook`].
     pub hooks: Vec<Hook>,
+    /// Host API methods requested for [`Ctx::host`].
+    pub host_api: Vec<String>,
     /// Prefix of embedded skill resource URIs, e.g. `gitkb`.
     pub resource_scheme: String,
     pub signed_writer: bool,
@@ -200,6 +254,7 @@ impl Manifest {
             skills: Vec::new(),
             tools: Vec::new(),
             hooks: Vec::new(),
+            host_api: Vec::new(),
             resource_scheme: scheme,
             signed_writer: false,
             fixture_bootstrap: false,
@@ -296,6 +351,13 @@ impl Manifest {
             budget_ms,
             subject: Some(subject.into()),
         });
+        self
+    }
+
+    /// Request a host API method (`records.search`, `records.fetch`,
+    /// `events.publish`) for [`Ctx::host`]. The operator still grants it.
+    pub fn host_api(mut self, method: &str) -> Self {
+        self.host_api.push(method.into());
         self
     }
 
@@ -414,6 +476,9 @@ impl Manifest {
         }
         if !self.tools.is_empty() {
             shape["tools"] = serde_json::to_value(&self.tools).unwrap_or(Value::Null);
+        }
+        if !self.host_api.is_empty() {
+            shape["host_api"] = self.host_api.clone().into();
         }
         shape
     }
@@ -674,6 +739,28 @@ mod tests {
             }
             .value(),
             json!({"decision":"deny","reason":"no"})
+        );
+    }
+
+    // keeps: G7 host API — requested methods reach the shape; unknown ones are refused.
+    #[test]
+    fn requested_host_api_reaches_the_shape_and_is_validated_by_the_host() {
+        let m = manifest()
+            .host_api("records.search")
+            .host_api("events.publish");
+        m.validate().unwrap();
+        assert_eq!(
+            m.shape()["host_api"],
+            json!(["records.search", "events.publish"])
+        );
+        assert!(manifest().shape().get("host_api").is_none());
+        assert_eq!(
+            manifest()
+                .host_api("messages.send")
+                .validate()
+                .unwrap_err()
+                .code,
+            "unknown_host_api"
         );
     }
 

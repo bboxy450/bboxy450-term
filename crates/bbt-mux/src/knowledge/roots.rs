@@ -48,7 +48,7 @@ struct Selected {
     binding: Binding,
     external: std::result::Result<Option<Arc<DataSourceProvider>>, Refusal>,
 }
-struct Inner {
+pub(crate) struct Inner {
     root: PathBuf,
     id: String,
     plugins: Registry,
@@ -79,7 +79,7 @@ impl BoundSource<'_> {
         self.host.current(revision)?;
         let result = self
             .host
-            .with_source_at(self.index, self.registry, Some(revision), f);
+            .with_source_at(self.index, Some(self.registry), Some(revision), f);
         self.host.current(revision)?;
         result
     }
@@ -402,12 +402,43 @@ impl Host {
         registry: &crate::registry::Registry,
         f: impl FnOnce(&dyn DataSource) -> d::Result<T>,
     ) -> d::Result<T> {
-        self.with_source_at(index, registry, None, f)
+        self.with_source_at(index, Some(registry), None, f)
+    }
+    /// A plugin's host API read (`records.search`/`records.fetch`) of this
+    /// root's selected source. No seat registry: bundled records keep their
+    /// stored assignees without seat-name resolution.
+    pub(crate) fn plugin_records(
+        &self,
+        index: &Index,
+        method: &str,
+        params: serde_json::Value,
+    ) -> d::Result<serde_json::Value> {
+        let invalid = |e: serde_json::Error| d::CommandError::new("invalid_request", e.to_string());
+        let encode =
+            |e: serde_json::Error| d::CommandError::new("invalid_provider_result", e.to_string());
+        self.with_source_at(index, None, None, |source| match method {
+            "records.search" => serde_json::to_value(
+                source.search(serde_json::from_value(params).map_err(invalid)?)?,
+            )
+            .map_err(encode),
+            "records.fetch" => serde_json::to_value(
+                source.fetch(serde_json::from_value(params).map_err(invalid)?)?,
+            )
+            .map_err(encode),
+            _ => Err(d::CommandError::new("unknown_host_api", method)),
+        })
+    }
+    /// A handle that does not keep this root alive.
+    pub(crate) fn downgrade(&self) -> std::sync::Weak<Inner> {
+        Arc::downgrade(&self.0)
+    }
+    pub(crate) fn upgrade(weak: &std::sync::Weak<Inner>) -> Option<Self> {
+        weak.upgrade().map(Self)
     }
     fn with_source_at<T>(
         &self,
         index: &Index,
-        registry: &crate::registry::Registry,
+        registry: Option<&crate::registry::Registry>,
         expected: Option<u64>,
         f: impl FnOnce(&dyn DataSource) -> d::Result<T>,
     ) -> d::Result<T> {
@@ -425,7 +456,10 @@ impl Host {
         let external = external.map_err(|r| d::CommandError::new(r.code, r.message))?;
         let result = match external {
             Some(source) => f(source.as_ref()),
-            None => f(&BboxySource::new(index).with_registry(registry)),
+            None => match registry {
+                Some(registry) => f(&BboxySource::new(index).with_registry(registry)),
+                None => f(&BboxySource::new(index)),
+            },
         };
         self.current(revision)?;
         result

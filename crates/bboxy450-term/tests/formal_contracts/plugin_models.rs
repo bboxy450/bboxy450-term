@@ -10,7 +10,7 @@
 use super::*;
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 2] = [plugin_connection, plugin_hook];
+    let families: [fn(bool) -> Model; 3] = [plugin_connection, plugin_hook, plugin_host_api];
     families
         .into_iter()
         .flat_map(|family| {
@@ -299,5 +299,88 @@ fn plugin_hook(b: bool) -> Model {
         "UndecidedOnlyWhileWaiting",
         implies(eq(11, 0), eq(7, 0).or(eq(7, 1))),
     );
+    m
+}
+
+// A plugin-originated host request while the host waits on that plugin's
+// call (plugins/client.rs demultiplex). The reader admits the request to a
+// handler task and keeps reading; the handler checks the grant and the
+// connection's generation; the plugin answers its call only after the host
+// answered it. Fair scheduling of the reader, handler and plugin is assumed.
+fn plugin_host_api(b: bool) -> Model {
+    let mut m = model(
+        "PluginHostApi",
+        b,
+        &[
+            ("call", 2, 0),
+            ("callback", 4, 0),
+            ("generation", 2, 1),
+            ("connection_generation", 2, 1),
+            ("grant", 1, 1),
+            ("effect", 1, 0),
+            ("refused", 1, 0),
+        ],
+    );
+    action(&mut m, "StartCall", eq(0, 0), &[(0, Int(1))]);
+    action(
+        &mut m,
+        "PluginRequestsHost",
+        all([eq(0, 1), eq(1, 0)]),
+        &[(1, Int(1))],
+    );
+    // The broken reader serves plugin requests only between calls.
+    let admit = if b {
+        all([eq(1, 1), ne(0, 1)])
+    } else {
+        eq(1, 1)
+    };
+    action(&mut m, "ReaderAdmitsRequest", admit, &[(1, Int(2))]);
+    let granted = all([eq(4, 1), Var(3).eq(Var(2))]);
+    action(
+        &mut m,
+        "HandleGranted",
+        all([eq(1, 2), granted.clone()]),
+        &[(5, Int(1)), (1, Int(3))],
+    );
+    action(
+        &mut m,
+        "RefuseUngrantedOrStale",
+        all([eq(1, 2), granted.negate()]),
+        &[(6, Int(1)), (1, Int(3))],
+    );
+    action(&mut m, "PluginReadsAnswer", eq(1, 3), &[(1, Int(4))]);
+    action(
+        &mut m,
+        "PluginAnswersCall",
+        all([eq(0, 1), eq(1, 4)]),
+        &[(0, Int(2))],
+    );
+    action(
+        &mut m,
+        "Supersede",
+        Var(2).lt(Int(2)),
+        &[(2, Var(2).plus(Int(1)))],
+    );
+    action(
+        &mut m,
+        "RetrustWithoutGrant",
+        all([eq(4, 1), Var(2).lt(Int(2))]),
+        &[(4, Int(0)), (2, Var(2).plus(Int(1)))],
+    );
+    safe(
+        &mut m,
+        "AnsweredCallbackHasOneOutcome",
+        implies(Var(1).lt(Int(3)).negate(), Var(5).plus(Var(6)).eq(Int(1))),
+    );
+    m.responses.push(Response {
+        name: "CallAnsweredDespiteCallback".into(),
+        request: eq(0, 1),
+        response: eq(0, 2),
+    });
+    // The reader, handler and plugin are scheduled fairly; supersession and
+    // re-trust are not.
+    for fair in [vec![1], vec![2], vec![3, 4], vec![5], vec![6]] {
+        m.weak_fair.push(fair);
+    }
     m
 }
