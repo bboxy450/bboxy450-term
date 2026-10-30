@@ -37,11 +37,19 @@ struct CaptureSnapshot {
 
 #[derive(Default, Serialize)]
 struct CaptureStages {
+    capture_at_probe_admitted: Option<CaptureSnapshot>,
+    capture_at_probe_read: Option<CaptureSnapshot>,
     capture_at_measure: Option<CaptureSnapshot>,
     capture_at_stop: Option<CaptureSnapshot>,
     capture_at_settled: Option<CaptureSnapshot>,
 }
 impl CaptureStages {
+    fn observe_probe_read(&mut self, read: bool, capture: impl FnOnce() -> CaptureSnapshot) {
+        if read && self.capture_at_probe_admitted.is_some() && self.capture_at_probe_read.is_none() {
+            self.capture_at_probe_read = Some(capture());
+        }
+    }
+
     fn observe_settled(&mut self, phase: u8, capture: impl FnOnce() -> CaptureSnapshot) {
         if phase == IDLE && self.capture_at_settled.is_none() {
             self.capture_at_settled = Some(capture());
@@ -50,15 +58,18 @@ impl CaptureStages {
 
     fn export(&self) -> serde_json::Value {
         serde_json::json!({
+            "capture_at_probe_admitted": self.capture_at_probe_admitted,
+            "capture_at_probe_read": self.capture_at_probe_read,
             "capture_at_measure": self.capture_at_measure,
             "capture_at_stop": self.capture_at_stop,
             "capture_at_settled": self.capture_at_settled,
             "gating_interval": "producer_stop_to_first_observed_settled",
             "informational_interval": "measure_start_to_producer_stop",
             "notes": [
+                "probe cuts freeze once at ControlReceived before queuing input, and at the first IO poll after LogicOutputRead; snapshot overhead is fixture work and cuts are not the endpoint timestamps",
                 "settled is the first IO observation of phase IDLE; it is never refreshed during the idle witness",
                 "null means the boundary was not observed; Finish cannot substitute a later snapshot",
-                "owners are sampled sequentially, not as an atomic cut; compare clocks only within one process_id",
+                "owners are sampled sequentially, not as an atomic cut; compare capture clocks only within one process_id; R5i probe stamps have an independent origin",
                 "totals are completion-accounted inclusive spans, not clipped intervals; inspect in_flight, missed and overwritten_spans",
             ],
         })
@@ -1270,6 +1281,10 @@ async fn exercise(
             .await);
         }
         capture_stages.observe_settled(progress.phase(), || core.capture_diagnostics());
+        capture_stages.observe_probe_read(
+            !bbt_rt::diagnostics::probe_pending(bbt_rt::diagnostics::ProbeStage::LogicOutputRead),
+            || core.capture_diagnostics(),
+        );
         if config.real && last_disk.elapsed() >= Duration::from_secs(1) {
             disk_guard(&config.run_dir, true).await?;
             last_disk = Instant::now();
@@ -1327,6 +1342,7 @@ async fn exercise(
             command=commands.recv()=>match command {
                 Some(Control::Probe(id))=>{
                     bbt_rt::diagnostics::probe_mark(bbt_rt::diagnostics::ProbeStage::ControlReceived);
+                    capture_stages.capture_at_probe_admitted=Some(core.capture_diagnostics());
                     pending_probe=Some(id);progress.probe.store(id,Ordering::Release);
                     if let Some(gui)=&gui {
                         gui.actions.send(GuiAction::Input {seat:panes[0].0,generation:1,id:Ulid::new(),bytes:format!("R5P{id:08X}\n").into_bytes()}).await.map_err(|_|"r5-gui-actions-closed")?;
@@ -1652,6 +1668,27 @@ mod tests {
     use super::*;
 
     // keeps: spec seats-967-frame §3
+    #[test]
+    fn probe_capture_waits_for_the_read_endpoint_and_freezes_once() {
+        use bbt_mux::supervisor::capture_diagnostics::Recorder;
+        let logic = Recorder::default();
+        let supervisor = Recorder::default();
+        logic.enable(); supervisor.enable();
+        let capture = || CaptureSnapshot {logic: logic.snapshot(), supervisor: supervisor.snapshot()};
+        let mut stages = CaptureStages::default();
+        stages.observe_probe_read(true, || panic!("unarmed probe"));
+        stages.capture_at_probe_admitted = Some(capture());
+        stages.observe_probe_read(false, || panic!("read endpoint is pending"));
+        let seat = Ulid::from(1);
+        logic.seat(seat, 1, |row, _| row.pages = 1);
+        stages.observe_probe_read(true, capture);
+        logic.seat(seat, 1, |row, _| row.pages = 2);
+        stages.observe_probe_read(true, || panic!("a later poll cannot refresh the frozen cut"));
+        let data = stages.export();
+        assert_eq!(data["capture_at_probe_read"]["logic"]["seats"][0]["pages"], 1);
+        assert!(data["capture_at_probe_admitted"]["logic"]["seats"].as_array().unwrap().is_empty());
+    }
+
     #[test]
     fn capture_export_keeps_the_first_settled_cut_and_serializes_frozen_boundaries() {
         use bbt_mux::supervisor::capture_diagnostics::Recorder;

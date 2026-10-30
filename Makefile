@@ -94,6 +94,8 @@ help:
 	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make profile-ingestion           Bounded real-PTY headless probe and endpoint/cursor report' \
+	  'make test-ingestion-report        Native probe-cut and evidence refusal controls' \
 	  'make build-perf-acceptance        Prebuild the P2 gate executable; no compilation in the night' \
 	  'make test-perf-p2                 1000-recipient bus and 400-PTY peak-memory assertions' \
 	  'make build-perf-p1                Optimized P1 companion with private-custody guards' \
@@ -1523,3 +1525,19 @@ test-perf-p2: build-perf-acceptance
 	cargo build --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
 	'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group performance --only P2 --scripts scripts/e2e > '$(TARGET_DIR)/p2-night.jsonl'; \
 	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; r=[r for r in rows if r.get("function")=="P2" and r.get("kind")=="e2e"]; assert len(r)==1 and r[0]["verdict"]=="pass" and r[0]["coverage"]=="full",r; print(r[0])' '$(TARGET_DIR)/p2-night.jsonl'
+
+.PHONY: test-ingestion-report profile-ingestion
+test-ingestion-report:
+	@python3 -I -B scripts/test-ingestion-report.py
+	@set -eu; . scripts/cache-env.sh; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --bin $(APP) probe_capture_waits_for_the_read_endpoint_and_freezes_once
+
+profile-ingestion: build-perf-p1
+	@set -eu; \
+	run=$$(mktemp -d '$(abspath $(TARGET_DIR))/ingestion.XXXXXX'); \
+	echo "ingestion artifacts: $$run"; result=0; \
+	git rev-parse HEAD > "$$run/source.head"; git diff --binary > "$$run/source.patch"; \
+	shasum -a 256 '$(abspath $(TARGET_DIR))/release/$(APP)' > "$$run/binary.sha256"; \
+	BBOXY_TEST_CUSTODY=memory '$(abspath $(TARGET_DIR))/release/$(APP)' --stall-test --stall-headless --stall-real --stall-seats "$${INGEST_SEATS:-967}" --stall-watched 50 --stall-seconds 10 --stall-idle 10 --stall-run-dir "$$run/run" --stall-report "$$run/report.json" > "$$run/stdout.log" 2> "$$run/stderr.log" || result=$$?; \
+	python3 -I -B scripts/analyze-ingestion.py "$$run/report.json" --seats "$${INGEST_SEATS:-967}" > "$$run/ingestion.json" || result=$$?; \
+	cat "$$run/ingestion.json"; exit "$$result"
