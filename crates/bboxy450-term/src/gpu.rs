@@ -194,6 +194,22 @@ fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
         view_formats: &[FORMAT.add_srgb_suffix()],
     })
 }
+
+/// Expensive asset rasterization and pipeline construction must not occupy an
+/// async IO worker. Only the completed value crosses back to its existing owner.
+/// Inspired by Zed GPUI's foreground/background context separation; implemented
+/// independently: https://github.com/zed-industries/zed/blob/main/crates/gpui/docs/contexts.md
+/// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+async fn prepare_cpu<T: Send + 'static>(
+    job: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tokio::task::spawn_blocking(move || {
+        bbt_rt::assert_not_ui_thread();
+        job()
+    })
+    .await
+    .map_err(|error| format!("renderer preparation worker stopped: {error}"))?
+}
 fn clear(view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
     clear_color(view, wgpu::Color::TRANSPARENT, encoder);
 }
@@ -268,31 +284,34 @@ impl Gpu {
             view_formats: vec![format.remove_srgb_suffix()],
             color_space: wgpu::SurfaceColorSpace::Srgb,
         };
-        let target = texture(&device, [config.width, config.height]);
-        let backdrop = texture(&device, [config.width, config.height]);
-        let materials = m::Pass::new(&device, FORMAT);
-        let renderer = ChromeRenderer::with_context(
-            DeviceContext {
-                device,
-                queue,
-                adapter_info,
-            },
-            crate::assets::images()?,
-        )
-        .map_err(|e| e.to_string())?;
-        let (gpu_sender, gpu_samples) = mpsc::sync_channel(crate::budget::SAMPLES);
-        Ok(Self {
-            surface,
-            config,
-            renderer,
-            materials,
-            passes: Default::default(),
-            target,
-            backdrop,
-            cells: CellTextures::default(),
-            gpu_sender,
-            gpu_samples,
+        prepare_cpu(move || {
+            let target = texture(&device, [config.width, config.height]);
+            let backdrop = texture(&device, [config.width, config.height]);
+            let materials = m::Pass::new(&device, FORMAT);
+            let renderer = ChromeRenderer::with_context(
+                DeviceContext {
+                    device,
+                    queue,
+                    adapter_info,
+                },
+                crate::assets::images()?,
+            )
+            .map_err(|e| e.to_string())?;
+            let (gpu_sender, gpu_samples) = mpsc::sync_channel(crate::budget::SAMPLES);
+            Ok(Self {
+                surface,
+                config,
+                renderer,
+                materials,
+                passes: Default::default(),
+                target,
+                backdrop,
+                cells: CellTextures::default(),
+                gpu_sender,
+                gpu_samples,
+            })
         })
+        .await
     }
     pub fn configure(&self) {
         self.surface
@@ -783,17 +802,22 @@ pub(crate) struct VerificationFrame {
 impl VerificationFrame {
     pub async fn new() -> Result<Self, String> {
         bbt_rt::assert_not_ui_thread();
-        let renderer = ChromeRenderer::new(crate::assets::images()?).map_err(|e| e.to_string())?;
-        let materials = m::Pass::new(&renderer.context.device, FORMAT);
-        let target = texture(&renderer.context.device, [1600, 900]);
-        let backdrop = texture(&renderer.context.device, [1600, 900]);
-        Ok(Self {
-            renderer,
-            materials,
-            target,
-            backdrop,
-            cells: CellTextures::default(),
+        let context = DeviceContext::new().await.map_err(|e| e.to_string())?;
+        prepare_cpu(move || {
+            let renderer = ChromeRenderer::with_context(context, crate::assets::images()?)
+                .map_err(|e| e.to_string())?;
+            let materials = m::Pass::new(&renderer.context.device, FORMAT);
+            let target = texture(&renderer.context.device, [1600, 900]);
+            let backdrop = texture(&renderer.context.device, [1600, 900]);
+            Ok(Self {
+                renderer,
+                materials,
+                target,
+                backdrop,
+                cells: CellTextures::default(),
+            })
         })
+        .await
     }
     pub fn context(&self) -> std::sync::Arc<DeviceContext> {
         std::sync::Arc::new(DeviceContext {
@@ -1159,6 +1183,69 @@ fn encode_ops(
         clear(&view, encoder);
     }
     Ok(())
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private current-thread runtime and bounded worker handshakes; never a UI callback"
+)]
+mod preparation_tests {
+    use super::*;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn gpu_cpu_preparation_leaves_the_io_executor_available() {
+        let owner = std::thread::current().id();
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, wait) = std::sync::mpsc::sync_channel(1);
+        let task = tokio::spawn(prepare_cpu(move || {
+            entered.send(std::thread::current().id()).unwrap();
+            wait.recv_timeout(Duration::from_secs(3))
+                .map_err(|e| e.to_string())?;
+            Ok(17)
+        }));
+        let worker = tokio::time::timeout(Duration::from_secs(5), started)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(
+            worker, owner,
+            "CPU preparation must not execute on the async IO thread"
+        );
+        release.send(()).unwrap();
+        assert_eq!(task.await.unwrap().unwrap(), 17);
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn abandoned_gpu_cpu_preparation_retires_its_late_result() {
+        #[derive(Debug)]
+        struct Prepared(Option<tokio::sync::oneshot::Sender<()>>);
+        impl Drop for Prepared {
+            fn drop(&mut self) {
+                let _ = self.0.take().unwrap().send(());
+            }
+        }
+        let (entered, started) = tokio::sync::oneshot::channel();
+        let (release, wait) = std::sync::mpsc::sync_channel(1);
+        let (retired, dropped) = tokio::sync::oneshot::channel();
+        let task = tokio::spawn(prepare_cpu(move || {
+            entered.send(()).unwrap();
+            wait.recv_timeout(Duration::from_secs(3))
+                .map_err(|e| e.to_string())?;
+            Ok(Prepared(Some(retired)))
+        }));
+        tokio::time::timeout(Duration::from_secs(5), started)
+            .await
+            .unwrap()
+            .unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        release.send(()).unwrap();
+        tokio::time::timeout(Duration::from_secs(5), dropped)
+            .await
+            .unwrap()
+            .unwrap();
+    }
 }
 
 #[cfg(test)]

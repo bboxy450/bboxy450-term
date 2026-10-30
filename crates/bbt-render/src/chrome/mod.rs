@@ -526,7 +526,7 @@ impl ChromeRenderer {
                         },
                         |y| ((y + shadow.offset[1]) * scale).round() - line.baseline,
                     );
-                    for part in line.parts {
+                    for part in &line.parts {
                         // A text shadow is ink overflow, not a larger line box.
                         // Only the inherited clip bounds its padded coverage.
                         let x = left + part.offset[0] as f32;
@@ -576,7 +576,7 @@ impl ChromeRenderer {
                         },
                         |y| (y * scale).round() - line.baseline,
                     );
-                    for part in line.parts {
+                    for part in &line.parts {
                         // Preserve the old line canvas' clipping of overhangs.
                         let x0 = part.offset[0].max(0);
                         let y0 = part.offset[1].max(0);

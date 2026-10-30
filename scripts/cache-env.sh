@@ -1,5 +1,8 @@
 #!/bin/sh
 # Source after entering the worktree. Cache availability never gates compilation.
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; retain accurate source credit on reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 bboxy_cache_env() {
     export RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER=''
     # Keep per-run paths and display settings out of the Rust cache key.
@@ -15,6 +18,15 @@ bboxy_cache_env() {
     fi
     unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
     export CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0
+    # A full capacity-gated CI run cannot grow the optional shared cache. Do not
+    # reconfigure or stop a live daemon: nested checks inherit this disposition.
+    case "${BBOXY_CACHE_MODE:-auto}" in
+        off)
+            printf 'cache: off (full-gate disk headroom; no shared cache mutation)\n' >&2
+            return 0 ;;
+        auto) ;;
+        *) printf 'cache: configuration refused (unknown BBOXY_CACHE_MODE)\n' >&2; return 2 ;;
+    esac
     if ! command -v sccache >/dev/null 2>&1; then
         printf 'cache: off (sccache missing)\n' >&2
         return 0
@@ -72,12 +84,12 @@ PY
     ); then
         export RUSTC_WRAPPER=sccache
         (python3 -I "$bboxy_cache_root/scripts/resource-ledger.py" bind-cache "$bboxy_cache_root" "$SCCACHE_SERVER_PORT" </dev/null >/dev/null 2>&1 || :) &
-        printf 'cache: on (port %s; shared local cache %s; 50G)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" >&2
+        printf 'cache: on (port %s; shared local cache %s; 20G)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" >&2
     else
         printf 'cache: off (%s)\n' "${bboxy_cache_reason:-server check failed}" >&2
     fi
     return 0
 }
-bboxy_cache_env
+bboxy_cache_env || return $?
 unset -f bboxy_cache_env
 unset bboxy_cache_root bboxy_cache_reason

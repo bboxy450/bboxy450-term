@@ -865,8 +865,90 @@ fn sidebar_accordions(b: bool) -> Model {
     m
 }
 
+// One cached plan and two monotonically advancing font/mask incarnations.
+// A repack changes coordinates, not mask identity; plans contain no coordinates.
+fn render_line_plan(b: bool) -> Model {
+    let mut m = model(
+        "RenderLinePlan",
+        b,
+        &[
+            ("font", 2, 0),
+            ("mask", 2, 0),
+            ("plan_font", 2, 0),
+            ("plan_mask", 2, 0),
+            ("cached", 1, 0),
+            ("bad", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "BuildPlan",
+        Bool(true),
+        &[(2, Var(0)), (3, Var(1)), (4, Int(1))],
+    );
+    action(
+        &mut m,
+        "EvictInk",
+        Var(1).lt(Int(2)),
+        &[(1, Var(1).plus(Int(1)))],
+    );
+    action(
+        &mut m,
+        "ChangeFonts",
+        Var(0).lt(Int(2)),
+        &[(0, Var(0).plus(Int(1))), (4, Int(0))],
+    );
+    action(&mut m, "RepackAtlas", Bool(true), &[]);
+    action(&mut m, "TrimPlans", Bool(true), &[(4, Int(0))]);
+    action(
+        &mut m,
+        "ReuseCurrentPlan",
+        all([eq(4, 1), Var(2).eq(Var(0)), Var(3).eq(Var(1))]),
+        &[],
+    );
+    if b {
+        // Removing the mask-identity guard admits reuse of an evicted incarnation.
+        action(
+            &mut m,
+            "ReuseEvictedInk",
+            all([eq(4, 1), Var(2).eq(Var(0)), Var(3).eq(Var(1)).negate()]),
+            &[(5, Int(1))],
+        );
+    }
+    no_bad(&mut m, 5);
+    m
+}
+
+// An awaited worker owns only its prepared value. Dropping the waiter cannot
+// install a later result into a dead UI owner; completion retires it instead.
+fn async_render_preparation(b: bool) -> Model {
+    let mut m = model(
+        "AsyncRenderPreparation",
+        b,
+        &[("owner", 1, 1), ("worker", 2, 0), ("installed", 1, 0)],
+    );
+    action(&mut m, "Start", all([eq(0, 1), eq(1, 0)]), &[(1, Int(1))]);
+    action(&mut m, "DropWaiter", eq(0, 1), &[(0, Int(0)), (2, Int(0))]);
+    action(
+        &mut m,
+        "Deliver",
+        all([eq(0, 1), eq(1, 1)]),
+        &[(1, Int(2)), (2, Int(1))],
+    );
+    action(
+        &mut m,
+        "CompleteAfterDrop",
+        all([eq(0, 0), eq(1, 1)]),
+        &[(1, Int(2)), (2, Int(i64::from(b)))],
+    );
+    safe(&mut m, "NoLateInstallation", implies(eq(0, 0), eq(2, 0)));
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 18] = [
+    let families: [fn(bool) -> Model; 20] = [
+        async_render_preparation,
+        render_line_plan,
         sidebar_accordions,
         selection_gesture,
         landing_verification,

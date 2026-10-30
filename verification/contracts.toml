@@ -12,6 +12,26 @@ property = "The recheck after clearing pending must preserve an outstanding wake
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "RenderLinePlan"
+title = "Cached chrome geometry never reuses evicted ink"
+models = ["RenderLinePlan", "BrokenRenderLinePlan"]
+sources = ["crates/bbt-render/src/chrome/text_cache.rs", "crates/bbt-render/src/chrome/mod.rs"]
+implementation_tests = ["crates/bbt-render/src/chrome/text_cache.rs"]
+assumptions = "One cached plan, three font and mask incarnations. Build/reuse, eviction, font replacement and plan trimming are atomic renderer-owner calls. Repacking preserves mask IDs; the plan contains no atlas coordinates. No scheduling/liveness or arbitrary Rust refinement claim. Real byte budgets, shape-key inputs, exact pixels, emoji and font/scale A-B-A use cache/image tests."
+property = "A reused plan has current font and mask identities. The broken control omits the mask identity guard and consumes an evicted incarnation."
+checks = ["make test-formal", "make test-render-input"]
+
+[[contract]]
+name = "AsyncRenderPreparation"
+title = "Background renderer preparation never mutates a retired owner"
+models = ["AsyncRenderPreparation", "BrokenAsyncRenderPreparation"]
+sources = ["crates/bboxy450-term/src/gpu.rs"]
+implementation_tests = ["crates/bboxy450-term/src/gpu.rs"]
+assumptions = "One UI waiter, one pending worker and one completion; cancellation/delivery are atomic owner transitions. A blocking worker may outlive its waiter but owns no mutable UI context. Worker completion/fairness, native driver latency and GPU pixels are not proved. Bounded real-thread tests witness IO responsiveness and late result retirement."
+property = "No value installs after its UI waiter is dropped. The broken control installs a late result into the absent owner."
+checks = ["make test-formal", "make test-render-input"]
+
+[[contract]]
 name = "NotificationReplace"
 title = "Bounded notification replacement"
 models = ["NotificationReplace", "BrokenNotificationReplace"]

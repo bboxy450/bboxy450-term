@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 16 contract families and 16 broken controls to the
-14 checker/Yarn conformance cases: **46 models** in total. The declarations live
+The project corpus adds 20 contract families and 20 broken controls to the
+14 checker/Yarn conformance cases: **54 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
@@ -83,6 +83,10 @@ is added to the terminal runtime.
 | Terminal checkpoint | Restore excludes queued output effects |
 | Seat ingestion | The watched quota permits background progress and pauses stay local |
 | Render arena | Live slices are disjoint, uploads precede submit, rewind follows its boundary |
+| Read-only selection | Replacing displayed source retires its captured range |
+| Sidebar accordions | Independent fold choices preserve focus and survive save/restore |
+| Render line plans | Font and mask identities remain current; repacked coordinates are resolved later |
+| Async renderer setup | Dropping the UI waiter retires a late worker result |
 
 `contracts.toml` records source and implementation-test paths, assumptions and
 properties for each family. The gate refuses missing pairs, unmapped contracts

@@ -4,7 +4,7 @@ type: "spec"
 number: 98
 title: "Renderer — architecture and automated render testing"
 created: "2026-10-21T21:11:08Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-10-30T05:19:00Z"
 ---
 # Renderer — architecture and automated render testing
 
@@ -39,6 +39,25 @@ The ghostty pipeline on Rust crates, per [[text-rendering]] Recommendation: Core
 `crates/bbt-render`: `device.rs` (adapter/device/surface), `atlas.rs`, `text/` (font discovery, shaping, raster per platform), `cells/` (buffers, instancing, WGSL), `chrome/` (primitives, tokens include), `fx/` (WGSL for glow, ripple, dim), `frame.rs` (pass sequence, damage), `headless.rs` (render to texture, readback to RGBA8). No windowing in this crate; `bbt-app` owns winit. `bboxybook` and the tests use `headless.rs`.
 
 ## 4. Automated render testing (the point)
+
+**Preparation ownership (operator's performance pass, 2026-10-29).** The window
+still projects memory and encodes a complete immediate-mode frame. Adapter/device
+requests remain awaited; expensive asset rasterization and pipeline construction
+run on blocking workers, including the headless renderer. Their futures return
+owned prepared values, never mutable UI contexts. A dropped waiter retires a late
+result. Native platform calls retain their required thread; this does not make
+every synchronous arithmetic operation an asynchronous task.
+
+**Retained chrome line plans.** The existing complete shape key also retains
+immutable glyph-part geometry. Every hit validates the distinct mask IDs and
+refreshes their LRU use. Plans contain no atlas coordinates, so repacking resolves
+current UVs; eviction and font/scale changes rebuild rather than revive stale ink.
+No whole-line bitmap is introduced. Plans are capped at 2 MiB and share the
+existing mask byte budget; pressure drops plans before refusing a valid mask
+working set. One lookup-string scratch buffer retains at most 4 KiB. Native
+pixel, emoji, shadow, byte-accounting and lifetime regressions supplement the
+finite `RenderLinePlan` and `AsyncRenderPreparation` models. CPU preparation
+profiles exclude GPU execution, presentation and physical input latency.
 
 Every renderer change is proven by pictures, not prose. Three layers, all run by `cargo test -p bbt-render` and in CI on macOS.
 

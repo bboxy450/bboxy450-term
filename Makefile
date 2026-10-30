@@ -91,6 +91,8 @@ help:
 	  'make test-input-backend          Admission wake, watched echo latency and replay safety' \
 	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
 	  'make profile-input-ui            Repeatable CPU host-layout profile (no GPU latency claim)' \
+	  'make profile-render-input        Layout and cached chrome text CPU profiles' \
+	  'make test-render-input           Native glyph-plan, memory, worker and cancellation checks' \
 	  'make check-terminal-replay       Strict all-target Clippy for mux and app' \
 	  'make test-landing-phases         CI smoke fixtures use private account flags' \
 	  'make check-harness-startup       Strict all-target Clippy for the changed harness path' \
@@ -164,7 +166,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... GITKB_SCHEMA=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 build:
@@ -735,6 +737,25 @@ check-input:
 
 profile-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
+
+.PHONY: profile-render-input
+profile-render-input: profile-input-ui
+	@set -eu; . ./scripts/cache-env.sh; BBOXY_RENDER_PROFILE=1 cargo test --locked -p bboxy450-render --target-dir '$(TARGET_DIR)' --lib repeated_text_frame_cpu_profile -- --nocapture
+
+.PHONY: test-render-input check-render-input
+test-render-input:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-render --target-dir '$(TARGET_DIR)' --lib; \
+	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --lib text_selection; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) conversation_cache; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) gpu_cpu_preparation
+
+.PHONY: fmt-render-input
+fmt-render-input:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-render/src/chrome/text_cache.rs crates/bbt-render/src/chrome/mod.rs crates/bboxy450-term/src/gpu.rs crates/bboxy450-term/tests/formal_contracts/models.rs
+
+check-render-input:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked --all-targets -p bboxy450-render -p bboxy450-ui -p bboxy450-mux -p $(APP) -p bboxy450-book --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-terminal-replay:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1361,3 +1382,7 @@ test-sidebar-panels-regressions:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui -p bboxy450-proto -p bboxy450-doc -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test ctl
+
+.PHONY: test-cache-env
+test-cache-env:
+	@python3 -I scripts/test-resource-ledger.py CacheEnvTests

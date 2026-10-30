@@ -249,3 +249,23 @@ frontend = "project"
 name = "BrokenSidebarAccordions"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "RenderLinePlan"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRenderLinePlan"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "AsyncRenderPreparation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenAsyncRenderPreparation"
+expected = "safety"
+frontend = "project"

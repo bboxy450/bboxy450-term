@@ -1,0 +1,46 @@
+{
+  "role": "Executor",
+  "request": "Optimize rendering and input interactions; push main and install the signed version.",
+  "worktree": "/Users/feral/mydev/bboxy450-term-spawn-params",
+  "changes": [
+    "Retain bounded immutable chrome glyph plans guarded by complete shaping keys and live mask IDs; share the existing byte budget, re-resolve atlas coordinates.",
+    "Await GPU device setup; move CPU setup to blocking workers; retire results after waiter cancellation.",
+    "Add paired finite cache/cancellation models and real worker/mask-eviction witnesses.",
+    "Adopt existing signed d713f9f8 cache-off disposition to avoid optional cache growth during full CI; private configuration tests."
+  ],
+  "verified": [
+    {
+      "command": "make fmt-render-input test-render-input check-render-input test-formal-contracts",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/render-input-focused-20261029.log",
+      "sha256": "1127f0a199711f44f3463999cefb3ad3f0fb767e80ed10f19567e6924017f1ad"
+    },
+    {
+      "command": "make fmt-render-input test-input-ui test-scene-template-phase",
+      "exit": 0,
+      "log": "/Users/feral/Library/Logs/bboxy450-term/render-input-interactions-20261029.log",
+      "sha256": "0ce3d9254314eb393037325724fad783938bc4e97f87db2c6058d48398ef379b"
+    },
+    {
+      "command": "BBOXY_CACHE_MODE=off make test-cache-env",
+      "exit": 0,
+      "cases": 3
+    }
+  ],
+  "measurement": {
+    "workload": "100 warm CPU-only chrome text preparations, 128 lines, same fixture; not total GPU frame or input latency",
+    "baseline_p50_us": 3086,
+    "candidate_p50_us": 483,
+    "baseline_p99_us": 3219,
+    "candidate_p99_us": 544
+  },
+  "limits": [
+    "Native platform clipboard/window access remains on required thread.",
+    "Private 64-seat/50-watched functional test is not a full-scale performance proof."
+  ],
+  "pending": [
+    "Exact committed-source full normal CI including current formal receipt",
+    "Visual parity",
+    "Push verified main, signed install and installed smoke"
+  ]
+}

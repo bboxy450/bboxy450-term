@@ -42,11 +42,15 @@ pub struct Stats {
     pub shape_entries: usize,
     pub shape_hits: u64,
     pub shape_misses: u64,
+    pub line_plan_hits: u64,
+    pub line_plan_misses: u64,
+    pub line_plan_bytes: usize,
     pub shadow_requests: u64,
     pub shadow_blurs: u64,
     pub shadow_quads: u64,
     pub shadow_mask_bytes: usize,
 }
+#[derive(Clone)]
 pub(super) struct Part {
     pub id: u64,
     /// Device-pixel offset from the original line bitmap's top-left.
@@ -54,6 +58,7 @@ pub(super) struct Part {
     pub size: [u32; 2],
     pub format: Format,
 }
+#[derive(Clone)]
 pub(super) struct Line {
     pub width: u32,
     pub height: u32,
@@ -78,6 +83,28 @@ struct ShapeKey {
     epoch: u64,
 }
 const SHAPE_BUDGET: usize = 512;
+const LINE_PLAN_BUDGET: usize = 2 * 1024 * 1024;
+struct ShapeEntry {
+    shape: Arc<Shape>,
+    last_use: u64,
+    line: Option<LinePlan>,
+}
+struct LinePlan {
+    line: Arc<Line>,
+    ids: Box<[u64]>,
+}
+impl LinePlan {
+    fn bytes(&self) -> usize {
+        self.line.bytes()
+            + self.ids.len() * std::mem::size_of::<u64>()
+            + std::mem::size_of::<Self>()
+    }
+}
+impl Line {
+    fn bytes(&self) -> usize {
+        std::mem::size_of::<Self>() + self.parts.capacity() * std::mem::size_of::<Part>()
+    }
+}
 #[derive(Clone, PartialEq, Eq, Hash)]
 enum MaskKey {
     Glyph(Key),
@@ -129,7 +156,9 @@ pub(super) struct Cache {
     clock: u64,
     next_id: u64,
     totals: Stats,
-    shapes: HashMap<ShapeKey, (Arc<Shape>, u64)>,
+    shapes: HashMap<ShapeKey, ShapeEntry>,
+    line_plan_bytes: usize,
+    lookup_text: String,
     shape_scale: u32,
     epoch: u64,
 }
@@ -162,6 +191,8 @@ impl Cache {
             next_id: 0,
             totals: Stats::default(),
             shapes: HashMap::new(),
+            line_plan_bytes: 0,
+            lookup_text: String::new(),
             shape_scale: 0,
             epoch: 0,
         })
@@ -210,8 +241,25 @@ impl Cache {
         max_width: Option<f32>,
         scale: f32,
         phase: f32,
-    ) -> Result<Line> {
-        let shape = self.shape(value, style, max_width, scale, phase)?;
+    ) -> Result<Arc<Line>> {
+        let (key, shape) = self.shape(value, style, max_width, scale, phase)?;
+        // Plans contain stable mask IDs, never atlas coordinates. A mask eviction
+        // invalidates the plan; a repack alone does not. Keep the live ink hot in LRU.
+        // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        if let Some(plan) = self.shapes.get(&key).and_then(|entry| entry.line.as_ref())
+            && plan.ids.iter().all(|id| self.ids.contains_key(id))
+        {
+            for id in &plan.ids {
+                self.clock += 1;
+                self.entries.get_mut(&self.ids[id]).unwrap().last_use = self.clock;
+            }
+            self.totals.hits += plan.ids.len() as u64;
+            self.totals.line_plan_hits += 1;
+            let line = plan.line.clone();
+            self.recycle_key(key);
+            return Ok(line);
+        }
+        self.totals.line_plan_misses += 1;
         let mut atoms = Vec::with_capacity(shape.glyphs.len());
         let mut bounds = Vec::with_capacity(shape.glyphs.len());
         for placed in &shape.glyphs {
@@ -251,12 +299,12 @@ impl Cache {
         for group in groups {
             self.totals.component_requests += 1;
             self.totals.max_component_glyphs = self.totals.max_component_glyphs.max(group.len());
-            let (key, origin) = glyphs::component(&shape, &group);
-            let (id, mask) = if group.len() == 1 {
-                atoms[group[0]].clone()
+            let ((id, mask), origin) = if group.len() == 1 {
+                (atoms[group[0]].clone(), shape.glyphs[group[0]].origin)
             } else {
                 self.totals.overlap_requests += 1;
-                self.get(key)?
+                let (key, origin) = glyphs::component(&shape, &group);
+                (self.get(key)?, origin)
             };
             if mask.empty() {
                 continue;
@@ -271,13 +319,51 @@ impl Cache {
                 format: mask.format,
             });
         }
-        Ok(Line {
+        let line = Arc::new(Line {
             width: shape.width,
             height: shape.height,
             baseline: shape.baseline,
             advance: shape.advance,
             parts,
-        })
+        });
+        self.remember_line(&key, line.clone());
+        self.recycle_key(key);
+        Ok(line)
+    }
+
+    fn recycle_key(&mut self, key: ShapeKey) {
+        if key.value.capacity() <= 4096 {
+            self.lookup_text = key.value;
+        }
+    }
+
+    fn clear_line_plans(&mut self) {
+        for entry in self.shapes.values_mut() {
+            entry.line = None;
+        }
+        self.line_plan_bytes = 0;
+    }
+    fn remember_line(&mut self, key: &ShapeKey, line: Arc<Line>) {
+        if let Some(previous) = self.shapes.get_mut(key).unwrap().line.take() {
+            self.line_plan_bytes -= previous.bytes();
+        }
+        let mut ids: Vec<_> = line.parts.iter().map(|part| part.id).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        let plan = LinePlan {
+            line,
+            ids: ids.into_boxed_slice(),
+        };
+        let bytes = plan.bytes();
+        let limit = LINE_PLAN_BUDGET.min(self.byte_budget.saturating_sub(self.bytes));
+        if bytes > limit {
+            return;
+        }
+        if self.line_plan_bytes + bytes > limit {
+            self.clear_line_plans();
+        }
+        self.line_plan_bytes += bytes;
+        self.shapes.get_mut(key).unwrap().line = Some(plan);
     }
 
     pub fn shadow_line(
@@ -293,7 +379,7 @@ impl Cache {
             return Err("invalid chrome text shadow blur".into());
         }
         self.totals.shadow_requests += 1;
-        let mut line = self.line(value, style, max_width, scale, phase)?;
+        let mut line = (*self.line(value, style, max_width, scale, phase)?).clone();
         for part in &mut line.parts {
             let mut key = self.ids[&part.id].clone();
             let original = self.entries[&key].mask.bounds;
@@ -332,6 +418,7 @@ impl Cache {
     pub fn invalidate_fonts(&mut self) {
         self.epoch += 1;
         self.shapes.clear();
+        self.line_plan_bytes = 0;
     }
     fn shape(
         &mut self,
@@ -340,13 +427,16 @@ impl Cache {
         max_width: Option<f32>,
         scale: f32,
         phase: f32,
-    ) -> Result<Arc<Shape>> {
+    ) -> Result<(ShapeKey, Arc<Shape>)> {
         if scale.to_bits() != self.shape_scale {
             self.shape_scale = scale.to_bits();
             self.invalidate_fonts();
         }
+        let mut text = std::mem::take(&mut self.lookup_text);
+        text.clear();
+        text.push_str(value);
         let key = ShapeKey {
-            value: value.to_owned(),
+            value: text,
             pixels: style.pixels().to_bits(),
             weight: style.weight,
             mono: style.mono,
@@ -359,10 +449,10 @@ impl Cache {
             epoch: self.epoch,
         };
         self.clock += 1;
-        if let Some((shape, last_use)) = self.shapes.get_mut(&key) {
+        if let Some(entry) = self.shapes.get_mut(&key) {
             self.totals.shape_hits += 1;
-            *last_use = self.clock;
-            return Ok(shape.clone());
+            entry.last_use = self.clock;
+            return Ok((key, entry.shape.clone()));
         }
         self.totals.shape_misses += 1;
         let shape = Arc::new(glyphs::shape(value, style, max_width, scale, phase)?);
@@ -370,13 +460,21 @@ impl Cache {
             && let Some(oldest) = self
                 .shapes
                 .iter()
-                .min_by_key(|(_, (_, last_use))| *last_use)
+                .min_by_key(|(_, entry)| entry.last_use)
                 .map(|(key, _)| key.clone())
+            && let Some(line) = self.shapes.remove(&oldest).and_then(|entry| entry.line)
         {
-            self.shapes.remove(&oldest);
+            self.line_plan_bytes -= line.bytes();
         }
-        self.shapes.insert(key, (shape.clone(), self.clock));
-        Ok(shape)
+        self.shapes.insert(
+            key.clone(),
+            ShapeEntry {
+                shape: shape.clone(),
+                last_use: self.clock,
+                line: None,
+            },
+        );
+        Ok((key, shape))
     }
 
     fn oldest(&self, pinned: &HashSet<u64>, placed_only: bool) -> Option<u64> {
@@ -396,6 +494,11 @@ impl Cache {
     /// Resolve all text resources before any instances are bound to atlas coordinates.
     /// A repack requires fresh GPU storage, preserving earlier encoded passes.
     pub fn finish(&mut self, ids: &[u64]) -> Result<bool> {
+        // Memoized geometry shares the existing CPU cache byte budget. Discard it
+        // before evicting ink or refusing an otherwise valid glyph working set.
+        if self.bytes + self.line_plan_bytes > self.byte_budget {
+            self.clear_line_plans();
+        }
         let pinned: HashSet<_> = ids.iter().copied().collect();
         let mut repack = false;
         while self.bytes > self.byte_budget || self.entries.len() > self.entry_budget {
@@ -502,6 +605,7 @@ impl Cache {
     pub fn stats(&self) -> Stats {
         let mut stats = self.totals;
         stats.shape_entries = self.shapes.len();
+        stats.line_plan_bytes = self.line_plan_bytes;
         stats.atlas_size = self.atlas.size();
         stats.color_atlas_size = self.color_atlas.size();
         stats.cached_mask_bytes = self.bytes;
@@ -531,6 +635,141 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    #[test]
+    fn line_plans_reuse_geometry_but_rebuild_after_mask_eviction() {
+        let mut cache = Cache::new().unwrap();
+        let style = TextStyle::default();
+        let text = "Executor 🦊 界e\u{301}";
+        let first = cache.line(text, style, None, 2., 0.25).unwrap();
+        let again = cache.line(text, style, None, 2., 0.25).unwrap();
+        assert!(Arc::ptr_eq(&first, &again));
+        assert_eq!(cache.stats().line_plan_hits, 1);
+        let ink: Vec<_> = first
+            .parts
+            .iter()
+            .map(|p| {
+                (
+                    p.offset,
+                    p.size,
+                    p.format,
+                    cache.entries[&cache.ids[&p.id]].mask.pixels.clone(),
+                )
+            })
+            .collect();
+        // This is the same retirement used by budget eviction, not a font/shape miss.
+        let removed = first.parts[0].id;
+        cache.remove(removed);
+        let fresh = cache.line(text, style, None, 2., 0.25).unwrap();
+        assert!(!Arc::ptr_eq(&first, &fresh));
+        assert!(fresh.parts.iter().all(|p| p.id != removed));
+        let rebuilt: Vec<_> = fresh
+            .parts
+            .iter()
+            .map(|p| {
+                (
+                    p.offset,
+                    p.size,
+                    p.format,
+                    cache.entries[&cache.ids[&p.id]].mask.pixels.clone(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            ink, rebuilt,
+            "retired IDs must rebuild the identical native ink"
+        );
+        let pins: Vec<_> = fresh.parts.iter().map(|p| p.id).collect();
+        cache.finish(&pins).unwrap();
+        assert!(pins.iter().all(|id| cache.rect(*id).is_ok()));
+        assert!(Arc::ptr_eq(
+            &fresh,
+            &cache.line(text, style, None, 2., 0.25).unwrap()
+        ));
+        cache.invalidate_fonts();
+        let restored = cache.line(text, style, None, 2., 0.25).unwrap();
+        assert!(
+            !Arc::ptr_eq(&fresh, &restored),
+            "font epoch A/B/A must retire old plans"
+        );
+    }
+
+    #[test]
+    fn line_plans_share_the_mask_budget_and_shadows_cannot_mutate_base_geometry() {
+        let mut cache = Cache::with_limits(512, 8192, 128 * 1024, 4096).unwrap();
+        let style = TextStyle::default();
+        let base = cache.line("🦊 retained ink", style, None, 1., 0.).unwrap();
+        let before: Vec<_> = base
+            .parts
+            .iter()
+            .map(|p| (p.id, p.offset, p.size, p.format))
+            .collect();
+        cache
+            .shadow_line("🦊 retained ink", style, None, 1., 0., 2.)
+            .unwrap();
+        assert_eq!(
+            before,
+            base.parts
+                .iter()
+                .map(|p| (p.id, p.offset, p.size, p.format))
+                .collect::<Vec<_>>()
+        );
+        for i in 0..100 {
+            let line = cache
+                .line(&format!("work {i} ").repeat(20), style, None, 1., 0.)
+                .unwrap();
+            let pins: Vec<_> = line.parts.iter().map(|p| p.id).collect();
+            cache.finish(&pins).unwrap();
+            let stats = cache.stats();
+            assert!(stats.line_plan_bytes <= LINE_PLAN_BUDGET);
+            assert!(stats.line_plan_bytes + stats.cached_mask_bytes <= cache.byte_budget);
+            assert_eq!(
+                cache.line_plan_bytes,
+                cache
+                    .shapes
+                    .values()
+                    .filter_map(|entry| entry.line.as_ref())
+                    .map(LinePlan::bytes)
+                    .sum::<usize>()
+            );
+        }
+        cache.invalidate_fonts();
+        assert_eq!(cache.stats().line_plan_bytes, 0);
+    }
+    #[test]
+    fn repeated_text_frame_cpu_profile() {
+        let measured = std::env::var_os("BBOXY_RENDER_PROFILE").is_some();
+        let iterations = if measured { 100 } else { 2 };
+        let mut cache = Cache::new().unwrap();
+        let style = TextStyle::default();
+        for count in [16, 128] {
+            let lines: Vec<_> = (0..count).map(|i| format!(
+                "Executor Vesper {i}: render the same readable conversation, including 界e\u{301} and 🦊, without rebuilding unchanged glyph geometry."
+            )).collect();
+            for line in &lines {
+                cache.line(line, style, None, 2., 0.).unwrap();
+            }
+            let mut samples = Vec::with_capacity(iterations);
+            for _ in 0..iterations {
+                let start = std::time::Instant::now();
+                for line in &lines {
+                    std::hint::black_box(cache.line(line, style, None, 2., 0.).unwrap());
+                }
+                samples.push(start.elapsed().as_micros());
+            }
+            samples.sort_unstable();
+            if measured {
+                println!(
+                    "RENDER_TEXT_CPU {}",
+                    serde_json::json!({
+                        "lines": count, "samples": iterations,
+                        "p50_us": samples[iterations / 2],
+                        "p99_us": samples[(iterations * 99 / 100).min(iterations - 1)],
+                        "boundary": "CPU cached chrome text preparation; no GPU/present/native input claim"
+                    })
+                );
+            }
+        }
+    }
     // keeps: shared native color cache — independent atlas coordinates survive LRU repacks.
     #[test]
     fn color_and_mask_working_sets_repack_together_without_losing_native_pixels() {

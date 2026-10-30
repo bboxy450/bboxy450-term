@@ -21,6 +21,47 @@ inference = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(inference)
 
 
+class CacheEnvTests(unittest.TestCase):
+    def source(self, mode, nested=False):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / 'cache-contacted'
+            fake = root / 'sccache'
+            fake.write_text('#!/bin/sh\n: > "$CACHE_TEST_MARKER"\nexit 9\n')
+            fake.chmod(0o755)
+            source = SOURCE.with_name('cache-env.sh').resolve()
+            shell = '. "$1" || exit $?; '
+            if nested:
+                shell += '. "$1" || exit $?; '
+            shell += 'printf "%s|%s|%s|%s|%s" "$RUSTC_WRAPPER" "$RUSTC_WORKSPACE_WRAPPER" "$CARGO_BUILD_JOBS" "$BBOXY_CARGO_TARGET_DIR" "$BBOXY_CACHE_MODE"'
+            result = subprocess.run(['/bin/sh', '-c', shell, 'cache-test', str(source)],
+                cwd=root, capture_output=True, text=True,
+                env=dict(os.environ, PATH=str(root)+':'+os.environ['PATH'],
+                    CACHE_TEST_MARKER=str(marker), BBOXY_CACHE_MODE=mode,
+                    CARGO_TARGET_DIR='private-target', RUSTC_WRAPPER='stale-wrapper',
+                    RUSTC_WORKSPACE_WRAPPER='stale-workspace-wrapper'))
+            return result, marker.exists(), str(root.resolve() / 'private-target')
+
+    def test_off_clears_wrappers_and_never_contacts_shared_cache(self):
+        result, contacted, target = self.source('off')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '||2|'+target+'|off')
+        self.assertFalse(contacted)
+
+    def test_nested_builds_keep_cache_off(self):
+        result, contacted, target = self.source('off', nested=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '||2|'+target+'|off')
+        self.assertFalse(contacted)
+
+    def test_unknown_mode_is_refused_before_cache_contact(self):
+        result, contacted, _ = self.source('unexpected')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertEqual(result.stdout, '')
+        self.assertIn('configuration refused', result.stderr)
+        self.assertFalse(contacted)
+
+
 class LedgerContracts(unittest.TestCase):
     def test_unavailable_store_runs_command_once_and_preserves_exit_and_output(self):
         with tempfile.TemporaryDirectory() as directory:

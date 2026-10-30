@@ -145,9 +145,9 @@ sources = ["crates/bbt-rt/src/wake.rs"]
 [[crate]]
 name = "bboxy450-render"
 status = "contract-model"
-models = ["RenderSubmission"]
-scope = "GPU arena flush, disjoint-slice and submission-boundary discipline. Pixels, alignment, growth/fallback and GPU execution require geometry/image/GPU tests."
-sources = ["crates/bbt-render/src/chrome/arena.rs"]
+models = ["RenderSubmission", "RenderLinePlan"]
+scope = "GPU arena submission and cached line-plan mask/font incarnation discipline. Pixels, byte accounting, repacking and native shaping require image/cache/GPU tests."
+sources = ["crates/bbt-render/src/chrome/arena.rs", "crates/bbt-render/src/chrome/text_cache.rs"]
 
 [[crate]]
 name = "bboxy450-ui-core"
@@ -180,9 +180,9 @@ sources = ["crates/bboxybook/src/lib.rs"]
 [[crate]]
 name = "bboxy450-term"
 status = "contract-model"
-models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions"]
+models = ["LandingVerification", "InputReceipt", "LifecycleOwnership", "NotificationReplace", "NotificationRecovery", "AttentionLifecycle", "WindowDurability", "FocusFrame", "CustodyDelivery", "SelectionGesture", "SidebarAccordions", "AsyncRenderPreparation"]
 scope = "Stable input, retained process ownership, notification replacement/retry/cancel, detached desktop/current-episode fencing, durable replies and focus frame contracts; actual API witnesses supplement models, not full Rust refinement."
-sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs"]
+sources = ["crates/bboxy450-term/src/terminal_selection.rs", "scripts/landing.py", "scripts/formal.py", "Makefile", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/notifications.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_writes.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/gpu.rs"]
 
 [[crate]]
 name = "bboxy450-term-firehose"
