@@ -1395,7 +1395,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 26);
+    assert_eq!(tools.len(), 27);
     assert!(tools.iter().any(|tool| tool["name"] == "knowledge_status"));
     assert!(
         tools
@@ -1403,7 +1403,12 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
             .filter(|tool| matches!(
                 tool["name"].as_str(),
                 Some(
-                    "orient" | "self_status" | "seat_list" | "seat_get" | "graph_read" | "knowledge_status"
+                    "orient"
+                        | "self_status"
+                        | "seat_list"
+                        | "seat_get"
+                        | "graph_read"
+                        | "knowledge_status"
                 )
             ))
             .all(|tool| tool["annotations"]["readOnlyHint"] == true)
@@ -2457,8 +2462,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 26);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 46);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 27);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 47);
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
@@ -5146,20 +5151,21 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
         json!({"task_path":"#1"}),
     );
     assert_eq!(result["isError"], true);
-    assert!(result.to_string().contains("ambiguous"));
+    assert!(result.to_string().contains("number_conflict"));
     assert!(!result.to_string().contains("Private duplicate content"));
+    // A scoped conflict must not disable unrelated artifact allocation.
     let op = Ulid::new();
     assert_eq!(
         f.mutate(
             f.own.id,
             op,
             "artifact_claim",
-            json!({"kind":"file","ref":"must not write"})
+            json!({"kind":"file","ref":"unrelated reported file"})
         )["isError"],
-        true
+        false
     );
     assert!(
-        !f.config
+        f.config
             .repository
             .join(format!(".bboxy/artifacts/{op}.md"))
             .exists()
@@ -5683,6 +5689,72 @@ fn knowledge_create(f: &Fixture, actor: Ulid, kind: &str, path: &str, body: &str
         knowledge_record_args(path, kind, body),
     ))["record"]
         .clone()
+}
+
+// #74: the response can be lost without repeating a write, including after restart.
+#[test]
+fn mcp_original_operation_recovers_one_write_after_lost_response_and_restart() {
+    let mut f = Fixture::new();
+    let op = Ulid::new();
+    let original = f.mutate(
+        f.own.id,
+        op,
+        "knowledge_write",
+        knowledge_record_args("notes/lost-response.md", "note", "one durable artifact"),
+    );
+    assert_eq!(original["isError"], false, "{original}");
+    let lookup = Ulid::new();
+    let args = json!({"original_op_id":op});
+    let recovered = data(f.call(f.own.id, lookup, "operation_status", args.clone()));
+    assert_eq!(recovered["status"], "applied");
+    assert_eq!(recovered["result"], original["structuredContent"]);
+    assert_eq!(recovered["retry_allowed"], false);
+    f.restart();
+    // Lookup is fresh even when its own operation ID is reused.
+    assert_eq!(
+        data(f.call(f.own.id, lookup, "operation_status", args.clone())),
+        recovered
+    );
+    let foreign = data(f.call(f.peer.id, Ulid::new(), "operation_status", args));
+    assert_eq!(foreign["status"], "unknown");
+    assert!(foreign.get("result").is_none());
+    let records = data(knowledge_search(
+        &f,
+        f.own.id,
+        json!({"query":"one durable artifact"}),
+    ));
+    assert_eq!(records["items"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        data(knowledge_fetch(&f, f.own.id, "notes/lost-response.md"))["id"],
+        json!(op)
+    );
+    refused(
+        f.call(
+            f.own.id,
+            Ulid::new(),
+            "operation_status",
+            json!({"original_op_id":op,"seat_id":f.peer.id}),
+        ),
+        "invalid_arguments",
+    );
+}
+
+#[test]
+fn mcp_number_collision_reports_its_class_and_keeps_unrelated_fetches_available() {
+    let f = Fixture::new();
+    let path = f.config.repository.join(".bboxy/notes/collision.md");
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(
+        &path,
+        format!(
+            "---\nid: {}\nnumber: 2\ntype: note\n---\ncollision",
+            Ulid::new()
+        ),
+    )
+    .unwrap();
+    let healthy = data(knowledge_fetch(&f, f.own.id, "#1"));
+    assert_eq!(healthy["id"], json!(f.task));
+    knowledge_denied(knowledge_fetch(&f, f.own.id, "#2"), "number_conflict");
 }
 fn knowledge_denied(value: Value, code: &str) {
     assert_eq!(value["isError"], true, "{value}");

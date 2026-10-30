@@ -226,18 +226,31 @@ pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
     }
 }
 
-pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> Result<d::Record, String> {
+pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
     // Do not reflect outside-root candidates or parse failures into a scoped
     // tool response. The lower provider still retains its full command error.
     let reference = source
         .resolve(d::ResolveRequest { locator })
-        .map_err(|error| format!("knowledge lookup refused: {}", error.code))?;
+        .map_err(|error| {
+            d::CommandError::new(
+                &error.code,
+                format!("knowledge lookup refused: {}", error.code),
+            )
+        })?;
     if !permitted(&reference.path) {
-        return Err("knowledge reads require a relative Markdown path inside the root".into());
+        return Err(d::CommandError::new(
+            "invalid_path",
+            "knowledge reads require a relative Markdown path inside the root",
+        ));
     }
     let record = source
         .fetch(d::FetchRequest { reference })
-        .map_err(|error| format!("knowledge fetch refused: {}", error.code))?;
+        .map_err(|error| {
+            d::CommandError::new(
+                &error.code,
+                format!("knowledge fetch refused: {}", error.code),
+            )
+        })?;
     Ok(record)
 }
 

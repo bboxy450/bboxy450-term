@@ -714,6 +714,13 @@ fn error(code: &str, message: impl Into<String>) -> d::CommandError {
 fn command_io(value: impl std::fmt::Display) -> d::CommandError {
     error("index_error", value.to_string())
 }
+fn number_error(value: crate::store::Error) -> d::CommandError {
+    if let Some(conflict) = value.downcast_ref::<crate::index::NumberConflict>() {
+        error("number_conflict", conflict.to_string())
+    } else {
+        command_io(value)
+    }
+}
 fn page_limit(value: Option<usize>) -> d::Result<usize> {
     let value = value.unwrap_or(d::DEFAULT_PAGE);
     if !(1..=d::MAX_PAGE).contains(&value) {
@@ -831,7 +838,17 @@ impl DataSource for BboxySource<'_> {
                     .map(|(doc, _)| reference(doc))
                     .collect();
                 return Err(d::CommandError {
-                    code: "ambiguous_reference".into(),
+                    code: if candidates.first().is_some_and(|first| {
+                        first.number.is_some()
+                            && candidates
+                                .iter()
+                                .all(|candidate| candidate.number == first.number)
+                    }) {
+                        "number_conflict"
+                    } else {
+                        "ambiguous_reference"
+                    }
+                    .into(),
                     message: format!(
                         "record resolves to multiple paths: {}",
                         candidates
@@ -853,7 +870,7 @@ impl DataSource for BboxySource<'_> {
         // NUM2 remains the fresh source of number uniqueness. There is no
         // second #N parser, matching algorithm or allocation state here.
         let current = if let Some(number) = resolved.record.markdown.frontmatter.number() {
-            self.index.by_number(number).map_err(command_io)?
+            self.index.by_number(number).map_err(number_error)?
         } else {
             self.index.current(&cached.path).map_err(command_io)?
         }
@@ -1049,6 +1066,9 @@ impl DataSource for BboxySource<'_> {
                 &context.author,
             )
             .map_err(|e| {
+                if e.downcast_ref::<crate::index::NumberConflict>().is_some() {
+                    return number_error(e);
+                }
                 if e.downcast_ref::<crate::index::DecisionFilenameRequired>()
                     .is_some()
                 {

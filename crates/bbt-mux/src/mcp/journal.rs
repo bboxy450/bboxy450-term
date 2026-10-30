@@ -89,6 +89,61 @@ impl Journal {
     pub(crate) fn root_id(&self) -> Option<&str> {
         self.root.as_ref().map(|root| root.id.as_str())
     }
+    /// Inspect an original document effect without admission, replay or an audit write.
+    /// A current launch may recover its seat's earlier launch, but never another
+    /// seat/swarm/issuer/root's result. Missing rows cannot prove no effect.
+    pub(crate) fn operation_status(&self, actor: &super::SeatActor, op: Ulid) -> Result<Value> {
+        let bytes: Option<Vec<u8>> = self
+            .store
+            .connection()?
+            .query_row(
+                "SELECT value FROM kv WHERE key=?1",
+                [format!("control/op/{op}")],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(bytes) = bytes else {
+            return Ok(
+                json!({"original_op_id":op,"status":"unknown","ledger":"missing",
+                "terminal":false,"retry_allowed":false}),
+            );
+        };
+        let old: Entry = serde_json::from_slice(&bytes)?;
+        let allowed = matches!(&old.actor, Principal::Seat(owner)
+            if owner.seat_id == actor.seat_id && owner.swarm_id == actor.swarm_id
+                && owner.issuer_kind == actor.issuer_kind)
+            && self.accepts_root(old.root_id.as_deref())
+            && (matches!(old.tool.as_str(), "knowledge_write" | "knowledge_commit")
+                || super::work_items::mutation(&old.tool));
+        if !allowed {
+            return Ok(
+                json!({"original_op_id":op,"status":"forbidden","terminal":false,
+                "retry_allowed":false}),
+            );
+        }
+        let result = &old.result["structuredContent"];
+        if !result.is_object()
+            || result["op_id"] != json!(op)
+            || old.result["isError"].as_bool().is_none()
+        {
+            return Err(crate::store::invalid(
+                "incomplete original-operation result",
+            ));
+        }
+        let unknown = result["status"] == "unknown";
+        let status = if unknown {
+            "unknown"
+        } else if old.result["isError"] == true {
+            "rejected"
+        } else {
+            "applied"
+        };
+        Ok(
+            json!({"original_op_id":op,"tool":old.tool,"args_digest":old.args_digest,
+            "knowledge_root_id":self.root_id(),"ledger":"retained","status":status,
+            "terminal":!unknown,"retry_allowed":false,"result":result}),
+        )
+    }
     fn accepts_root(&self, stored: Option<&str>) -> bool {
         match (&self.root, stored) {
             (None, None) => true,
@@ -797,6 +852,66 @@ mod tests {
             args: json!({"folder":"channels/fixture","name":"own"}),
         };
         (temp, store, actor, call)
+    }
+
+    #[test]
+    fn original_operation_lookup_is_fresh_read_only_root_scoped_and_restart_safe() {
+        let (_temp, store, actor, mut call) = effect_fixture();
+        call.tool = "knowledge_write".into();
+        call.args = json!({"path":"notes/one.md","body":"private arguments"});
+        let journal = Journal::new(store.clone()).with_root("root-A", "startup");
+        assert_eq!(
+            journal.operation_status(&actor, call.op_id).unwrap()["ledger"],
+            "missing"
+        );
+        assert!(journal.admit(&actor, &call).unwrap().1);
+        let before = store.list("control/").unwrap();
+        let unknown = journal.operation_status(&actor, call.op_id).unwrap();
+        assert_eq!(unknown["status"], "unknown");
+        assert_eq!(unknown["terminal"], false);
+        assert_eq!(before, store.list("control/").unwrap());
+        let result = super::super::success(
+            call.op_id,
+            json!({"record":{"id":call.op_id,"path":"notes/one.md"}}),
+        );
+        journal.complete(&actor, &call, result.clone()).unwrap();
+        let restarted = Journal::new(store.clone()).with_root("root-A", "startup");
+        let mut relaunched = actor.clone();
+        relaunched.process_generation += 1;
+        let before = store.list("control/").unwrap();
+        let applied = restarted.operation_status(&relaunched, call.op_id).unwrap();
+        assert_eq!(applied["status"], "applied");
+        assert_eq!(applied["result"], result["structuredContent"]);
+        assert!(!applied.to_string().contains("private arguments"));
+        assert_eq!(before, store.list("control/").unwrap());
+        let mut other = actor.clone();
+        other.seat_id = Ulid::new();
+        assert_eq!(
+            restarted.operation_status(&other, call.op_id).unwrap()["status"],
+            "forbidden"
+        );
+        other = actor.clone();
+        other.swarm_id = Ulid::new();
+        assert_eq!(
+            restarted.operation_status(&other, call.op_id).unwrap()["status"],
+            "forbidden"
+        );
+        assert_eq!(
+            Journal::new(store.clone())
+                .with_root("root-B", "startup")
+                .operation_status(&actor, call.op_id)
+                .unwrap()["status"],
+            "forbidden"
+        );
+        // A -> B -> A regains read access, without changing effect replay authority.
+        assert_eq!(
+            restarted.operation_status(&actor, call.op_id).unwrap(),
+            applied
+        );
+        store
+            .put(&format!("control/op/{}", call.op_id), b"incomplete")
+            .unwrap();
+        assert!(restarted.operation_status(&actor, call.op_id).is_err());
     }
 
     #[test]

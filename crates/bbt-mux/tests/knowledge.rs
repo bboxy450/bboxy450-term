@@ -72,6 +72,54 @@ impl Fixture {
 
 // keeps: spec knowledge-base §6
 #[test]
+fn duplicate_numbers_are_scoped_conflicts_and_do_not_poison_healthy_reads() {
+    let mut f = Fixture::new();
+    for (id, number, path) in [
+        (365, 365, "artifacts/collision.md"),
+        (366, 365, "decisions/d365-collision.md"),
+        (396, 396, "notes/healthy.md"),
+    ] {
+        let file = f.root.join(path);
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        std::fs::write(
+            file,
+            format!(
+                "---\nid: {}\nnumber: {number}\ntype: note\n---\nfixture\n",
+                Ulid(id)
+            ),
+        )
+        .unwrap();
+    }
+    f.sync();
+    assert_eq!(f.resolve("#396").path, "notes/healthy.md");
+    assert_eq!(f.resolve("notes/healthy.md").number, Some(396));
+    let source = BboxySource::new(&f.index);
+    for locator in [
+        "#365",
+        "artifacts/collision.md",
+        "decisions/d365-collision.md",
+    ] {
+        let error = source
+            .resolve(d::ResolveRequest {
+                locator: locator.into(),
+            })
+            .unwrap_err();
+        assert_eq!(error.code, "number_conflict", "{error}");
+        assert!(!error.message.contains(f.root.to_str().unwrap()));
+    }
+    f.seed(397, "notes/next.md", json!({}), "next");
+    assert_eq!(f.resolve("notes/next.md").number, Some(397));
+    assert_eq!(
+        std::fs::read_to_string(f.root.join("artifacts/collision.md"))
+            .unwrap()
+            .matches("number: 365")
+            .count(),
+        1
+    );
+}
+
+// keeps: spec knowledge-base §6
+#[test]
 fn resolution_fetch_and_images_use_one_root_and_the_existing_record_handles() {
     let mut f = Fixture::new();
     std::fs::create_dir_all(f.root.join("images")).unwrap();

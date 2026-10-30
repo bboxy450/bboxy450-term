@@ -279,3 +279,13 @@ frontend = "project"
 name = "BrokenSidebarReveal"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "OperationRecovery"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenOperationRecovery"
+expected = "safety"
+frontend = "project"

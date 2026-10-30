@@ -3366,6 +3366,21 @@ impl Worker {
         let authority = crate::mcp::Actor::from(&actor);
         call.validate()?;
         let journal = self.control_journal(id)?;
+        if call.tool == "operation_status" {
+            // Recovery must work even when provider reads/number scans fail.
+            let port = match self.seat_workspace(&actor) {
+                Ok(port) => port,
+                Err(error) => {
+                    return Ok(crate::mcp::error(
+                        call.op_id,
+                        &workspace_command_error(error.as_ref()).code,
+                        "current workspace unavailable; original outcome remains unknown",
+                    ));
+                }
+            };
+            let journal = self.root_journal(&journal, &port);
+            return Ok(crate::mcp::recovery::read(&actor, &call, &journal));
+        }
         if crate::mcp::attention::handles(&call.tool) {
             return self.attention_call(&actor, &call, &journal);
         }
@@ -3751,7 +3766,7 @@ impl Worker {
                         mcp::success(call.op_id, serde_json::to_value(record)?),
                         false,
                     ),
-                    Err(reason) => mcp::error(call.op_id, "rejected", &reason),
+                    Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
                 };
                 journal.checked(actor, call, value)
             }

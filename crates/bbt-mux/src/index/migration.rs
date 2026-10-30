@@ -565,7 +565,7 @@ impl Index {
             .keys()
             .map(|name| name.trim_end_matches(".md"))
             .collect();
-        for path in current_numbers.values() {
+        for path in current_numbers.values().flatten() {
             let current = self
                 .current(path)?
                 .ok_or_else(|| invalid("record disappeared before import publication"))?;

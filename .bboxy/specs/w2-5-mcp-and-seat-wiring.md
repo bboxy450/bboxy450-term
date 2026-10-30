@@ -155,3 +155,37 @@ Everything in the deferred list of §2; the GUI's own use of these tools (the ap
 ## 7. Order for briefs (the Oracle's call, one concern each)
 
 W2.5a the bridge, `Catalogue` and `Call`, and the read-only tools (`orient`, `self_status`, `seat_list`, `seat_get`, `graph_read`), with acceptance 1. W2.5b the wiring kit: overlay flags, `SKILL.md`, acceptance 2 and 3. W2.5c messaging and channel tools over the W2.4 API, with acceptance 4. W2.5d task and artifact tools: the frontmatter writer, acceptance 2 again end to end, 5. W2.5e guarded input, spawn, and the operator-side controls `seat_mute` and `seat_unmute`.
+
+
+### Original-operation recovery (#74, operator-authorized 2026-10-30)
+
+Owners: mux logic/journal and the authenticated seat MCP bridge. `operation_status`
+accepts only `original_op_id` (a non-nil ULID); `op_id` remains lookup transport
+metadata. Each lookup is fresh, read-only and independent of the provider's
+number scan. It never admits, replays or completes an effect, and never returns
+raw arguments. It reads the existing durable `control/op` entry, returning the
+original tool, argument digest and structured result. A missing entry is
+`status: unknown, ledger: missing, terminal: false`; corrupt/incomplete or
+unavailable storage is `journal_unavailable`, never proof of no effect. A
+retained unknown stays unknown. No lookup authorizes automatic redispatch.
+
+Current capability/process/grant admission is required. Recovery is limited to
+the same seat, swarm, issuer and current knowledge root's knowledge/work-item
+writes; a new authenticated launch of that seat may inspect an older launch.
+Another actor/root is refused without returning its result. Legacy rootless
+entries are visible only in the startup root. Results retain the MCP byte bound;
+no keys, capabilities, backing-file access or raw transcripts are exposed.
+
+Number scans retain every claimant of an occupied number. Only the conflicting
+number's reads/updates return `number_conflict`; healthy fetches and allocation
+above the observed maximum continue. No record identity, number, signature or
+history is rewritten. Incomplete scans still refuse allocation. Import admission
+checks every claimant's identity. MCP fetch errors preserve the classified code
+while withholding raw provider/path diagnostics.
+
+Verification: `tests/knowledge.rs::duplicate_numbers_are_scoped_conflicts_and_do_not_poison_healthy_reads`,
+`tests/mcp.rs::mcp_original_operation_recovers_one_write_after_lost_response_and_restart`,
+`tests/mcp.rs::mcp_number_collision_reports_its_class_and_keeps_unrelated_fetches_available`,
+and `mcp/journal.rs::original_operation_lookup_is_fresh_read_only_root_scoped_and_restart_safe`.
+`OperationRecovery` plus its broken controls cover no redispatch, no cross-context
+result and no false terminal result; SQL/path/signature details remain API tests.

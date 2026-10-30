@@ -564,7 +564,7 @@ fn invalid_legacy_numbers_remain_visible_and_block_new_writes() {
 
 // keeps: spec storage
 #[test]
-fn duplicate_numbers_in_different_types_refuse_allocation() {
+fn duplicate_numbers_in_different_types_preserve_conflicts_and_allocate_above_them() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join(".bboxy");
     let index = Index::open(
@@ -582,17 +582,36 @@ fn duplicate_numbers_in_different_types_refuse_allocation() {
         )
         .unwrap();
     }
-    let error = index
+    let original = std::fs::read_to_string(root.join("spec.md")).unwrap();
+    index
         .write(
             "new.md",
             json!({"id":Ulid::new(),"type":"note"}),
-            "No write",
+            "Unrelated new record",
+            Ulid::new(),
+            &SigningKey::from_bytes(&[73; 32]),
+        )
+        .unwrap();
+    let created = bbt_mux::index::Document::parse(
+        "new.md",
+        &std::fs::read_to_string(root.join("new.md")).unwrap(),
+    );
+    assert_eq!(created.metadata["number"], 8);
+    let current = bbt_mux::index::Document::parse("spec.md", &original);
+    let error = index
+        .write(
+            "spec.md",
+            current.metadata,
+            "Do not replace a conflicting record",
             Ulid::new(),
             &SigningKey::from_bytes(&[73; 32]),
         )
         .unwrap_err();
     assert!(error.to_string().contains("duplicate record number 7"));
-    assert!(!root.join("new.md").exists());
+    assert_eq!(
+        std::fs::read_to_string(root.join("spec.md")).unwrap(),
+        original
+    );
 }
 
 // keeps: spec storage

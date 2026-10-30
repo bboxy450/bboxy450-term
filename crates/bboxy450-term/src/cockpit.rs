@@ -501,7 +501,8 @@ fn fixture_hosts_default() -> bool {
 // Typed wake causes run in retained logic; a new GUI must activate that producer.
 // Current private test-run identity is typed; refresh retained owners before observing documents.
 // Provider status and matching source context must also reach retained owners (#78).
-const MCP_CONTROL_VERSION: u16 = 11;
+// Original-operation recovery must reach a healthy retained logic owner (#74).
+const MCP_CONTROL_VERSION: u16 = 12;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {

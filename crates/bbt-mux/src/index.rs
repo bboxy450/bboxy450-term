@@ -37,6 +37,29 @@ impl std::fmt::Display for IndexBusy {
 }
 impl std::error::Error for IndexBusy {}
 
+/// Confined to one number; never a reason to disable the whole knowledge root.
+#[derive(Debug)]
+pub(crate) struct NumberConflict {
+    number: u64,
+    paths: Vec<String>,
+}
+impl std::fmt::Display for NumberConflict {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "duplicate record number {}: {}; reconciliation required",
+            self.number,
+            self.paths
+                .iter()
+                .take(8)
+                .map(String::as_str)
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+impl std::error::Error for NumberConflict {}
+
 /// A decision name refused before any intent, file or number is committed.
 #[derive(Debug)]
 pub(crate) struct DecisionFilenameRequired {
@@ -671,12 +694,13 @@ impl Index {
         Ok(Some(Document::parse(path, &String::from_utf8(bytes)?)))
     }
     /// Numbers come from the current files, not the watcher's cached mirror.
-    /// Refuse an incomplete/ambiguous store instead of guessing a free handle.
-    fn record_numbers(&self) -> Result<BTreeMap<u64, String>> {
+    /// Keep every claimant. A collision occupies its number without poisoning
+    /// unrelated lookups or guessing an available allocation below the maximum.
+    fn record_numbers(&self) -> Result<BTreeMap<u64, Vec<String>>> {
         let mut paths = Vec::new();
         collect(&self.root, &mut paths)?;
         paths.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut numbers = BTreeMap::new();
+        let mut numbers: BTreeMap<u64, Vec<String>> = BTreeMap::new();
         for (path, _) in paths {
             let relative = path
                 .strip_prefix(&self.root)
@@ -688,21 +712,23 @@ impl Index {
                 .ok_or_else(|| invalid("record disappeared during number scan"))?;
             let number = record_number(&doc.metadata)
                 .ok_or_else(|| invalid(format!("{relative}: invalid or missing record number")))?;
-            if let Some(previous) = numbers.insert(number, relative.to_owned()) {
-                return Err(invalid(format!(
-                    "duplicate record number {number}: {previous} and {relative}"
-                )));
-            }
+            numbers.entry(number).or_default().push(relative.to_owned());
         }
         Ok(numbers)
     }
     pub(crate) fn by_number(&self, number: u64) -> Result<Option<Document>> {
         let numbers = self.record_numbers()?;
-        let Some(path) = numbers.get(&number) else {
+        let Some(paths) = numbers.get(&number) else {
             return Ok(None);
         };
+        if paths.len() != 1 {
+            return Err(Box::new(NumberConflict {
+                number,
+                paths: paths.clone(),
+            }));
+        }
         let doc = self
-            .current(path)?
+            .current(&paths[0])?
             .ok_or_else(|| invalid("numbered record disappeared"))?;
         if record_number(&doc.metadata) != Some(number) {
             return Err(invalid("record number changed during lookup"));
@@ -716,8 +742,15 @@ impl Index {
             .ok_or_else(|| invalid("frontmatter must be a mapping"))?;
         let numbers = self.record_numbers()?;
         let number = if let Some(current) = current {
-            record_number(&current.metadata)
-                .ok_or_else(|| invalid("existing record has no valid number; repair the record"))?
+            let number = record_number(&current.metadata)
+                .ok_or_else(|| invalid("existing record has no valid number; repair the record"))?;
+            if let Some(paths) = numbers.get(&number).filter(|paths| paths.len() != 1) {
+                return Err(Box::new(NumberConflict {
+                    number,
+                    paths: paths.clone(),
+                }));
+            }
+            number
         } else {
             numbers
                 .last_key_value()

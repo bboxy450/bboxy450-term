@@ -56,3 +56,16 @@ by canonical message ID/context and its real position without duplicate rows or
 loss of confirmed signature/ACK evidence; require an actual canonical-None →
 actual-Event production witness and a negative control restoring the old None
 rejection before implementation acceptance.
+
+
+### Seat document recovery, #74 (2026-10-30 direct operator batch)
+
+Mux journal ↔ seat MCP adds `operation_status` as specified in
+[[w2-5-mcp-and-seat-wiring]] “Original-operation recovery”. Current admission
+and root selection precede lookup; provider scans do not. The durable original
+entry owns the outcome across logic restart; lookup has no write/redispatch
+transition. Missing/unavailable evidence stays unknown. The same seat in a new
+launch can recover its original document effect, within the same swarm, issuer
+and root. Cross-context entries are refused. Byte bounds are the existing MCP
+bounds. `make test-workspace-boundary` includes the collision and journal/API
+witnesses; `make test-formal` checks `OperationRecovery` and its broken controls.

@@ -210,3 +210,13 @@ implementation_tests = ["crates/bbt-ui/src/modules/accordion.rs", "crates/bbt-ui
 assumptions = "One disclosure target and three displayed fractions. Retarget and tick are atomic owner calls. Safety assumes no fairness; after the final toggle, advancing the caller clock through 120ms reaches the endpoint (real clock/unit and ctl witnesses). Native pacing, continuous floating-point geometry and platform frame delivery are not modeled. No timer or fair OS delivery is claimed."
 property = "Settled display never retains frame demand. The broken control keeps requesting frames after settlement. Clock-driven tests also check reversal continuity, clipped layout, unrelated focus and retained drafts."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "OperationRecovery"
+title = "Original document effects have a read-only scoped recovery path"
+models = ["OperationRecovery", "BrokenOperationRecovery"]
+sources = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/mcp/recovery.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/knowledge.rs"]
+assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof."
+property = "A lookup neither dispatches effects nor exposes another actor/root's result nor converts missing evidence to a terminal verdict. Broken controls redispatch an unknown write, leak another context and treat missing as terminal."
+checks = ["make test-formal", "make test"]

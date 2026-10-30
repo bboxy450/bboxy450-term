@@ -1097,7 +1097,7 @@ test-workspace-boundary:
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib mcp::journal; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::seat_reads; \
 	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --lib knowledge::responsiveness_tests; \
-	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge_provider; \
+	cargo test --locked -p bboxy450-mux --target-dir '$(TARGET_DIR)' --test mcp --test knowledge --test knowledge_provider; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP); \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test knowledge_e2e --test documents --test ctl_records --test messaging_flow; \

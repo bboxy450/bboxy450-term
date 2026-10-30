@@ -12,6 +12,9 @@ use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 #[path = "notification_models.rs"]
 mod notification_models;
 
+#[path = "seat_models.rs"]
+mod seat_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -995,7 +998,8 @@ fn sidebar_reveal(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 21] = [
+    let families: [fn(bool) -> Model; 22] = [
+        seat_models::recovery,
         sidebar_reveal,
         async_render_preparation,
         render_line_plan,
