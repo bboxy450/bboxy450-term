@@ -24,7 +24,7 @@ use crate::knowledge::data_source as d;
 use crate::plugins::client::Shared;
 use bbt_plugin::policy::RoleClass;
 pub use hooks::{HOOK_QUEUE, HookEvent, HookOutcome, Verdict};
-pub use host_api::RecordReader;
+pub use host_api::{MessageSender, RecordReader};
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Instant;
@@ -276,6 +276,8 @@ struct Inner {
     hooks: hooks::Hooks,
     /// The root's records, read for the host API.
     records: StdMutex<Option<RecordReader>>,
+    /// Posts host-signed plugin messages, for the host API.
+    messages: StdMutex<Option<MessageSender>>,
 }
 
 /// One per knowledge root, owned by its workspace. Cloning shares it.
@@ -315,6 +317,7 @@ impl PluginHost {
             tools: StdMutex::default(),
             hooks,
             records: StdMutex::default(),
+            messages: StdMutex::default(),
         }));
         host.start_hook_worker(queue);
         host.refresh_tools();

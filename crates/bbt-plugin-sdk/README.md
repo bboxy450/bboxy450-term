@@ -70,7 +70,10 @@ While serving any call, use `ctx.host()`:
 `records_search(json!({"query": "…"}))` and `records_fetch(json!({"ref": …}))`
 read your own knowledge root (data_source `search`/`fetch` shapes), and
 `events_publish("build/done", json!({…}))` publishes
-`plugin/<candidate>/build/done`. Each request waits at most until the
+`plugin/<candidate>/build/done`, and `messages_send("seats/<seat>/inbox",
+"text")` (`messages.send`) posts plain text to a destination the operator
+listed in `messages_to`; the host signs it as `plugin:<candidate>`, never
+as a seat or the operator. Each request waits at most until the
 calling request's deadline. The runtime's reader thread routes the host's
 answer back while your call is still running. An ungranted method refuses
 `host_api_not_granted`; outside a served call, `host_unavailable`.

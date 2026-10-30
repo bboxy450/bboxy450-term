@@ -87,7 +87,12 @@ impl Work {
                 text.push_str(&format!(
                     "message_id: {} | from: {} | signature: {}\n",
                     view.id,
-                    if view.seat == Ulid::nil() {
+                    if let Some(plugin) = message
+                        .envelope()
+                        .filter(|e| e.issuer_kind == super::wire::IssuerKind::Host)
+                    {
+                        plugin.issued_by.clone().unwrap_or_default()
+                    } else if view.seat == Ulid::nil() {
                         "operator principal".into()
                     } else {
                         view.seat.to_string()
@@ -115,6 +120,12 @@ impl Work {
 }
 /// Who a seat is told a signed message is from.
 fn sender(envelope: &Envelope) -> String {
+    if envelope.issuer_kind == super::wire::IssuerKind::Host {
+        return format!(
+            "{} (a plugin, signed by the host; not a seat or the operator)",
+            envelope.issued_by.as_deref().unwrap_or("plugin")
+        );
+    }
     if envelope.seat != Ulid::nil() {
         let mut from = format!("{} <{}>", envelope.seat, envelope.role.name);
         if let Some(label) = &envelope.issued_by {
@@ -440,6 +451,7 @@ impl Ledger {
                     Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                         "operator/inbox/receipt".into()
                     }
+                    Recipient::Plugin(id) => format!("messages/plugin/{id}/sender_stored"),
                 },
                 "messaging",
                 serde_json::json!({"message":envelope.id,"sequence":sequence,"held":held}),
@@ -512,6 +524,7 @@ impl Ledger {
                     Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                         "operator/inbox/receipt".into()
                     }
+                    Recipient::Plugin(id) => format!("messages/plugin/{id}/sender_stored"),
                 },
                 "messaging",
                 serde_json::json!({"message":intent.id,"sequence":sequence,"held":held,"signature":"pending","reason":intent.hold_reason}),
@@ -1772,6 +1785,8 @@ fn receipt_event(tx: &rusqlite::Transaction<'_>, receipt: &Receipt, now: u64) ->
                 Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                     "operator/inbox/receipt".into()
                 }
+                // A plugin is never routed a delivery; kept for exhaustiveness.
+                Recipient::Plugin(id) => format!("messages/plugin/{id}/receipt"),
             },
             "messaging",
             serde_json::to_value(receipt)?,

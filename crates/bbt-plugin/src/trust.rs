@@ -24,6 +24,10 @@ pub struct Grants {
     /// Host API methods the operator approved (see `shape::HOST_API`).
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     pub host_api: BTreeSet<String>,
+    /// Message destinations (`seats/<seat>` or a `swarms/<swarm>/…` channel)
+    /// a plugin granted `messages.send` may post to, matched exactly.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub messages_to: BTreeSet<String>,
 }
 
 /// The account record pins one executable, its approved policy and cached shape.

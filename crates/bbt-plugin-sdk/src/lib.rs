@@ -194,6 +194,18 @@ impl Host<'_> {
             json!({"subject": subject, "payload": payload}),
         )
     }
+
+    /// Send plain `text` to `destination` (`seats/<seat>` or a
+    /// `swarms/<swarm>/…` channel the operator granted in `messages_to`).
+    /// The host signs it as `plugin:<candidate>`, never as a seat or the
+    /// operator; returns `{id, destination}`. An ungranted destination
+    /// refuses `destination_not_granted`.
+    pub fn messages_send(&self, destination: &str, text: &str) -> Result<Value, Refusal> {
+        self.request(
+            "messages.send",
+            json!({"destination": destination, "text": text}),
+        )
+    }
 }
 
 /// `initialize` parameters. The root is host-chosen; the plugin validates it.
@@ -355,7 +367,8 @@ impl Manifest {
     }
 
     /// Request a host API method (`records.search`, `records.fetch`,
-    /// `events.publish`) for [`Ctx::host`]. The operator still grants it.
+    /// `events.publish`, `messages.send`) for [`Ctx::host`]. The operator
+    /// still grants it (and, for `messages.send`, each destination).
     pub fn host_api(mut self, method: &str) -> Self {
         self.host_api.push(method.into());
         self
@@ -754,9 +767,10 @@ mod tests {
             json!(["records.search", "events.publish"])
         );
         assert!(manifest().shape().get("host_api").is_none());
+        manifest().host_api("messages.send").validate().unwrap();
         assert_eq!(
             manifest()
-                .host_api("messages.send")
+                .host_api("messages.delete")
                 .validate()
                 .unwrap_err()
                 .code,

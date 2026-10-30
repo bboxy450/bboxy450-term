@@ -195,7 +195,7 @@
       "$comment": "Host API methods the plugin asks to call as JSON-RPC host/<name> over its stdio; each needs the operator's grant at trust.",
       "uniqueItems": true,
       "items": {
-        "enum": ["records.search", "records.fetch", "events.publish"]
+        "enum": ["records.search", "records.fetch", "events.publish", "messages.send"]
       }
     },
     "tools": {

@@ -150,6 +150,40 @@ struct UiAdmission {
     call: crate::mcp::Call,
 }
 
+/// The host API's `messages.send`: a blocking call (on a host API task, never
+/// the logic thread) into the logic's messaging, bounded by the request deadline.
+fn plugin_messages(
+    client: LogicClient,
+    handle: tokio::runtime::Handle,
+) -> crate::plugins::MessageSender {
+    use crate::knowledge::data_source::CommandError;
+    Arc::new(move |sender, request, deadline| {
+        let sent = handle.block_on(tokio::time::timeout_at(
+            deadline.into(),
+            client.plugin_message(sender, request),
+        ));
+        let error = match sent {
+            Ok(Ok(value)) => return Ok(value),
+            Ok(Err(error)) => error.to_string(),
+            Err(_) => {
+                return Err(CommandError::new(
+                    "deadline_exceeded",
+                    "message outcome unknown",
+                ));
+            }
+        };
+        let code = [
+            "destination_not_granted",
+            "invalid_request",
+            "host_api_unavailable",
+        ]
+        .into_iter()
+        .find(|code| error.contains(code))
+        .unwrap_or("message_refused");
+        Err(CommandError::new(code, error))
+    })
+}
+
 /// An observed hook's adapter status and, for a gated hook, the seat root's
 /// `PluginHost` that decides it.
 pub type HookObserved = (crate::adapters::Status, Option<crate::plugins::PluginHost>);
@@ -380,6 +414,12 @@ enum Command {
         crate::adapters::hook::ShimEvent,
         bool,
         oneshot::Sender<Result<HookObserved>>,
+    ),
+    /// A plugin's `host/messages.send`, admitted by its connection's authority.
+    PluginMessage(
+        Box<crate::messaging::service::PluginSender>,
+        Box<crate::messaging::wire::SendRequest>,
+        oneshot::Sender<Result<serde_json::Value>>,
     ),
     Status(Ulid, u64, oneshot::Sender<Result<crate::adapters::Status>>),
     CodexDiscovery(Box<CodexDiscovery>, oneshot::Sender<Result<bool>>),
@@ -1615,6 +1655,23 @@ impl LogicClient {
     ) -> Result<HookObserved> {
         self.hook_inner(seat, generation, event, true).await
     }
+    /// Post a host-signed plugin message; `{id, destination}`.
+    pub async fn plugin_message(
+        &self,
+        sender: crate::messaging::service::PluginSender,
+        request: crate::messaging::wire::SendRequest,
+    ) -> Result<serde_json::Value> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::PluginMessage(
+                Box::new(sender),
+                Box::new(request),
+                tx,
+            ))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
     async fn hook_inner(
         &self,
         seat: Ulid,
@@ -1975,6 +2032,7 @@ impl Logic {
             None
         };
         let key = ready.unwrap_or(key);
+        let plugin_signing = key.clone();
         let mut broker = Broker::open(&config.run_dir, key.clone())?;
         broker.set_issued_by(identity.issued_by().map(str::to_owned));
         if let Some(run) = bus_window {
@@ -2027,6 +2085,7 @@ impl Logic {
                         return Err(error);
                     }
                 };
+                worker.plugin_signing = Some(plugin_signing);
                 let _ = ready_tx.send(Ok(()));
                 let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let result = worker.run(&mut rx, stopping);
@@ -2679,6 +2738,9 @@ struct Worker {
     gui_info: EndpointInfo,
     gui_endpoint: Option<crate::seat_socket::SeatEndpoint>,
     messaging: crate::messaging::Messaging,
+    /// The host key (the bus broker's) that signs plugin messages on a
+    /// plugin's behalf; never a seat or operator key.
+    plugin_signing: Option<SigningKey>,
     identity: crate::identity::IdentityRuntime,
     bus_window: Option<Ulid>,
     last_identity: Option<Vec<u8>>,
@@ -2852,6 +2914,7 @@ impl Worker {
                 provider: plugin_config.provider,
                 activity: Some(bus.clone()),
                 issued_by: identity.issued_by().map(str::to_owned),
+                messages: Some(plugin_messages(client.clone(), handle.clone())),
             })?,
             handle.clone(),
         );
@@ -2920,6 +2983,7 @@ impl Worker {
             gui_info,
             gui_endpoint: Some(gui_endpoint),
             messaging,
+            plugin_signing: None,
             identity,
             bus_window,
             last_identity: None,
@@ -4272,6 +4336,13 @@ impl Worker {
                         );
                     }
                 },
+                bbt_proto::messaging::Recipient::Plugin(_) => {
+                    return crate::mcp::error(
+                        call.op_id,
+                        "rejected",
+                        "a plugin is never a task recipient",
+                    );
+                }
             };
             wake_swarms.push(swarm);
         }
@@ -4371,6 +4442,8 @@ impl Worker {
                     bbt_proto::messaging::Recipient::Seat(seat) => format!("seats/{seat}/inbox"),
                     bbt_proto::messaging::Recipient::Operator(_)
                     | bbt_proto::messaging::Recipient::OperatorLocal(_) => "operator/inbox".into(),
+                    // Refused above, before any effect.
+                    bbt_proto::messaging::Recipient::Plugin(_) => continue,
                 },
                 summary.clone(),
             );
@@ -10129,6 +10202,27 @@ impl Worker {
                             .filter(|v| v.generation == generation)
                             .map(|v| v.adapter.status.clone())
                             .ok_or_else(|| invalid("stale adapter generation"));
+                        let _ = reply.send(result);
+                    }
+                    Command::PluginMessage(sender, request, reply) => {
+                        let result = match &self.plugin_signing {
+                            Some(key) => self
+                                .messaging
+                                .send_plugin(key, &sender, *request, now_ms())
+                                .and_then(|response| match response {
+                                    crate::messaging::api::Response::Stored { message } => {
+                                        Ok(serde_json::json!({
+                                            "id": message.view().id,
+                                            "destination": message.view().context,
+                                        }))
+                                    }
+                                    other => Err(invalid(format!(
+                                        "message_refused: {}",
+                                        serde_json::to_string(&other)?
+                                    ))),
+                                }),
+                            None => Err(invalid("host_api_unavailable: no host signing key")),
+                        };
                         let _ = reply.send(result);
                     }
                     Command::Hook(id, generation, event, gated, reply) => {

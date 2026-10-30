@@ -90,7 +90,7 @@ async fn plugin(
         grants: Grants {
             payload_events: ["PreToolUse".to_owned()].into_iter().collect(),
             block,
-            host_api: Default::default(),
+            ..Default::default()
         },
     };
     registry

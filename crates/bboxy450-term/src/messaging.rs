@@ -186,6 +186,7 @@ pub fn message_view(
                 wire::AuthorKind::Seat => "seat",
                 wire::AuthorKind::Operator | wire::AuthorKind::OperatorLocal => "operator",
                 wire::AuthorKind::Observer => "observer",
+                wire::AuthorKind::Plugin => "plugin",
             }
             .into(),
             id: row.author.id.clone(),
@@ -195,6 +196,7 @@ pub fn message_view(
             match kind {
                 wire::IssuerKind::LocalDev => "local-dev",
                 wire::IssuerKind::GpgRoot => "gpg-root",
+                wire::IssuerKind::Host => "host",
             }
             .into()
         }),

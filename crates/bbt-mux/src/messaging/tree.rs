@@ -21,7 +21,14 @@ const MAX_STEPS: usize = 65_536;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Actor {
     Operator,
-    Seat { seat: Ulid, class: Class },
+    Seat {
+        seat: Ulid,
+        class: Class,
+    },
+    /// A host-signed plugin sender. It holds no tree grants: its trust
+    /// record's exact `messages_to` grant is checked before resolution, so it
+    /// may post but never read, list or administer.
+    Plugin,
 }
 pub(crate) struct Destination {
     pub path: String,
@@ -31,7 +38,7 @@ pub(crate) struct Destination {
 impl Actor {
     pub fn seat(self) -> Option<Ulid> {
         match self {
-            Self::Operator => None,
+            Self::Operator | Self::Plugin => None,
             Self::Seat { seat, .. } => Some(seat),
         }
     }
@@ -231,6 +238,16 @@ impl Tree {
         }
         if actor.controls() {
             return Ok(());
+        }
+        if actor == Actor::Plugin {
+            return if right == Right::Write {
+                Ok(())
+            } else {
+                Err(invalid(format!(
+                    "a plugin sender has no {} right",
+                    right.name()
+                )))
+            };
         }
         let Some(seat) = actor.seat() else {
             return Err(invalid("missing actor"));

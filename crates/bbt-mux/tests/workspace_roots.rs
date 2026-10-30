@@ -58,6 +58,7 @@ impl Fixture {
             provider: ProviderConfig::default(),
             activity: None,
             issued_by: None,
+            messages: None,
         };
         Self {
             _directory: directory,

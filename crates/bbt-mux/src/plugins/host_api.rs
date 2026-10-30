@@ -13,6 +13,10 @@
 //! - `host/events.publish` `{subject, payload?}`: published on the account
 //!   stream as `plugin/<candidate>/<subject>`, source `plugin:<candidate>`.
 //!   The subject is always a suffix under the plugin's own prefix.
+//! - `host/messages.send` `{destination, text, id?, priority?}`: one plain
+//!   text message to a destination in the record's `messages_to` grant,
+//!   signed by the host as `plugin:<candidate>` (never a seat or operator
+//!   key); returns `{id, destination}`.
 //!
 //! Every request rechecks the connection's authority (enabled, checked,
 //! same activation generation and trust record) and requires the method in
@@ -32,6 +36,18 @@ use std::sync::Weak;
 /// `records.search` or `records.fetch`, data_source request and result JSON.
 /// Installed by the workspace mount; blocking IO.
 pub type RecordReader = Arc<dyn Fn(&str, Value) -> d::Result<Value> + Send + Sync>;
+
+/// Posts one host-signed plugin message (`messaging::Service::send_plugin`)
+/// and returns `{id, destination}`. Installed by the logic; blocking IO.
+pub type MessageSender = Arc<
+    dyn Fn(
+            crate::messaging::service::PluginSender,
+            crate::messaging::wire::SendRequest,
+            Instant,
+        ) -> d::Result<Value>
+        + Send
+        + Sync,
+>;
 
 /// Largest published payload.
 const MAX_PAYLOAD_BYTES: usize = 64 * 1024;
@@ -54,6 +70,63 @@ impl PluginHost {
         if let Ok(mut held) = self.0.records.lock() {
             *held = Some(reader);
         }
+    }
+
+    /// Serve `messages.send` through `sender`.
+    pub fn attach_messages(&self, sender: MessageSender) {
+        if let Ok(mut held) = self.0.messages.lock() {
+            *held = Some(sender);
+        }
+    }
+
+    /// `messages.send {destination, text, id?, priority?}`: one plain text
+    /// message to a destination in the record's `messages_to` grant, signed
+    /// by the host as `plugin:<candidate>`.
+    fn send_message(
+        &self,
+        candidate: &str,
+        current: &Authority,
+        params: Value,
+        deadline: Instant,
+    ) -> d::Result<Value> {
+        let field = |name: &str| {
+            params[name]
+                .as_str()
+                .ok_or_else(|| error("invalid_request", format!("{name} must be a string")))
+        };
+        let mut request =
+            crate::messaging::wire::SendRequest::text(field("destination")?, field("text")?);
+        if let Some(id) = params.get("id").filter(|id| !id.is_null()) {
+            request.id = id
+                .as_str()
+                .and_then(|id| id.parse().ok())
+                .ok_or_else(|| error("invalid_request", "id must be a ULID"))?;
+        }
+        if let Some(priority) = params.get("priority").filter(|p| !p.is_null()) {
+            request.priority = priority
+                .as_u64()
+                .and_then(|p| u8::try_from(p).ok())
+                .ok_or_else(|| error("invalid_request", "priority must be 0..=255"))?;
+        }
+        let sender = crate::messaging::service::PluginSender {
+            candidate: candidate.to_owned(),
+            name: current
+                .record
+                .shape
+                .as_ref()
+                .map_or_else(|| candidate.to_owned(), |shape| shape.name.clone()),
+            generation: current.activation.generation,
+            sha256: current.record.sha256.clone(),
+            granted: current.record.grants.messages_to.clone(),
+        };
+        let send = self
+            .0
+            .messages
+            .lock()
+            .ok()
+            .and_then(|sender| sender.clone())
+            .ok_or_else(|| error("host_api_unavailable", "this root sends no messages"))?;
+        send(sender, request, deadline)
     }
 
     fn serve_host_api(
@@ -91,6 +164,7 @@ impl PluginHost {
         }
         match name {
             "events.publish" => self.publish(candidate, params, deadline),
+            "messages.send" => self.send_message(candidate, &current, params, deadline),
             _ => self.read_records(name, params),
         }
     }

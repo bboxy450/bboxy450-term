@@ -45,6 +45,9 @@ pub const MAX_ENVELOPE: usize = 64 * 1024;
 pub enum IssuerKind {
     LocalDev,
     GpgRoot,
+    /// Signed by the host on a plugin's behalf (`issued_by` = `plugin:<candidate>`),
+    /// never with a seat or operator key. See [`Recipient::Plugin`].
+    Host,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -323,7 +326,7 @@ impl OperatorReference {
     }
     pub fn from_recipient(recipient: Recipient) -> Option<Self> {
         match recipient {
-            Recipient::Seat(_) => None,
+            Recipient::Seat(_) | Recipient::Plugin(_) => None,
             Recipient::Operator(id) => Some(Self {
                 id,
                 kind: OperatorReferenceKind::DeviceDerived,
@@ -656,6 +659,8 @@ pub enum AuthorKind {
     #[serde(rename = "operator-local")]
     OperatorLocal,
     Observer,
+    /// A plugin sending through the host API; `id` is `plugin:<candidate>`.
+    Plugin,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -789,13 +794,20 @@ pub enum Recipient {
     Seat(Ulid),
     Operator(Ulid),
     OperatorLocal(Ulid),
+    /// A plugin sender (`plugin:<id>`), never a delivery target. The ID is
+    /// derived from the plugin's candidate ID; the envelope's `issued_by`
+    /// names the candidate itself.
+    Plugin(Ulid),
 }
 impl Recipient {
     pub fn seat(self) -> Option<Ulid> {
         match self {
             Self::Seat(id) => Some(id),
-            Self::Operator(_) | Self::OperatorLocal(_) => None,
+            Self::Operator(_) | Self::OperatorLocal(_) | Self::Plugin(_) => None,
         }
+    }
+    pub fn is_plugin(self) -> bool {
+        matches!(self, Self::Plugin(_))
     }
     pub fn is_operator(self) -> bool {
         matches!(self, Self::Operator(_) | Self::OperatorLocal(_))
@@ -812,6 +824,7 @@ impl From<Recipient> for String {
             Recipient::Seat(id) => id.to_string(),
             Recipient::Operator(id) => format!("operator:{id}"),
             Recipient::OperatorLocal(id) => format!("operator-local:{id}"),
+            Recipient::Plugin(id) => format!("plugin:{id}"),
         }
     }
 }
@@ -827,6 +840,8 @@ impl TryFrom<String> for Recipient {
             (2, id)
         } else if let Some(id) = value.strip_prefix("operator:") {
             (1, id)
+        } else if let Some(id) = value.strip_prefix("plugin:") {
+            (3, id)
         } else {
             (0, value.as_str())
         };
@@ -836,6 +851,7 @@ impl TryFrom<String> for Recipient {
             .filter(|id| *id != Ulid::nil())
             .ok_or("invalid message recipient reference")?;
         Ok(match kind {
+            3 => Self::Plugin(id),
             2 => Self::OperatorLocal(id),
             1 => Self::Operator(id),
             _ => Self::Seat(id),

@@ -1404,6 +1404,10 @@ fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
             hash.update(b"operator-local:");
             hash.update(reference.to_bytes());
         }
+        Recipient::Plugin(plugin) => {
+            hash.update(b"plugin:");
+            hash.update(plugin.to_bytes());
+        }
     }
     hash.update(event.as_bytes());
     Ulid::from_bytes(hash.finalize()[..16].try_into().unwrap())

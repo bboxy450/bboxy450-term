@@ -30,6 +30,9 @@ use crate::{
 #[cfg(test)]
 #[path = "mentions_tests.rs"]
 mod mentions_tests;
+#[cfg(test)]
+#[path = "plugin_sender_tests.rs"]
+mod plugin_sender_tests;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct Grant {
@@ -1100,6 +1103,17 @@ impl Messaging {
                 id: reference.to_string(),
                 name: "operator".into(),
             },
+            Recipient::Plugin(_) => {
+                let label = message
+                    .envelope()
+                    .and_then(|envelope| envelope.issued_by.clone())
+                    .unwrap_or_default();
+                AuthorRef {
+                    kind: AuthorKind::Plugin,
+                    name: self.plugin_name(&label),
+                    id: label,
+                }
+            }
         };
         let raw = self.swarm(swarm)?.ledger.receipts(id)?;
         let receipts = ReceiptSummary {
@@ -1421,6 +1435,157 @@ impl Messaging {
         Ok(super::api::Response::Stored {
             message: Box::new(message),
         })
+    }
+    /// A plugin's `host/messages.send` (G7). The host signs the envelope with
+    /// its own key on the plugin's behalf (`IssuerKind::Host`,
+    /// `issued_by` = `plugin:<candidate>`, seat = [`plugin_id`] at process
+    /// generation 0), never with a seat or operator key. The plugin posts
+    /// only to a destination in its trust grant, as a worker-class sender,
+    /// and starts no thread replies, supersessions or mentions.
+    pub fn send_plugin(
+        &mut self,
+        host_key: &ed25519_dalek::SigningKey,
+        sender: &PluginSender,
+        mut request: SendRequest,
+        now: u64,
+    ) -> Result<super::api::Response> {
+        request.validate()?;
+        if request.kind != MessageKind::Text
+            || request.reply_to.is_some()
+            || request.supersedes.is_some()
+            || request.thread_id.is_some()
+            || !request.mentions.is_empty()
+            || !request.attachments.is_empty()
+        {
+            return Err(invalid(
+                "invalid_request: a plugin sends plain text without threads, mentions or attachments",
+            ));
+        }
+        request.destination = super::tree::normalize(&request.destination, true)?;
+        let granted = sender
+            .granted
+            .iter()
+            .filter_map(|path| super::tree::normalize(path, true).ok())
+            .any(|path| path == request.destination);
+        if !granted {
+            return Err(invalid(format!(
+                "destination_not_granted: {} is not in the plugin's messages_to grant",
+                request.destination
+            )));
+        }
+        let mut parts = request.destination.split('/');
+        let swarm = match (parts.next(), parts.next().map(str::parse::<Ulid>)) {
+            (Some("seats"), Some(Ok(seat))) => self.registry.get(seat)?.swarm,
+            (Some("swarms"), Some(Ok(swarm))) => swarm,
+            _ => {
+                return Err(invalid(
+                    "destination_not_granted: a plugin posts to a seat or a swarm channel",
+                ));
+            }
+        };
+        let author = Recipient::Plugin(plugin_id(&sender.candidate));
+        let body = request_body(&request);
+        if let Some(old) = self.swarm(swarm)?.ledger.existing(&request, author)? {
+            if old.view().body != &body {
+                return Err(invalid("message ID body conflict"));
+            }
+            return Ok(super::api::Response::Stored {
+                message: Box::new(old),
+            });
+        }
+        let routes = self.swarm(swarm)?.tree.resolve(
+            Actor::Plugin,
+            &request.destination,
+            request.kind,
+            Class::Worker,
+            request.priority,
+        )?;
+        self.check_recipients(swarm, &routes)?;
+        let host = public(&host_key.verifying_key().to_bytes());
+        self.account
+            .put(&format!("{PLUGIN_HOST_KEY}{host}"), b"1")?;
+        self.account.put(
+            &format!("{PLUGIN_NAME}plugin:{}", sender.candidate),
+            sender.name.as_bytes(),
+        )?;
+        let mut db = self.account.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        let envelope = mint_plugin(&tx, host_key, sender, swarm, &request, body, now)?;
+        self.validate(&envelope)?;
+        tx.commit()?;
+        let wake = self.attention_modes(Attention::signed(&envelope), &routes)?;
+        let message = self
+            .swarm(swarm)?
+            .ledger
+            .accept_from(
+                &request,
+                &envelope,
+                Delivery {
+                    routes: &routes,
+                    wake: Some(&wake),
+                },
+                None,
+                now,
+                super::ledger::SenderAttribution {
+                    recipient: author,
+                    device: None,
+                },
+            )
+            .map_err(|error| {
+                invalid(format!(
+                    "unknown: message {} store outcome unavailable: {error}",
+                    request.id
+                ))
+            })?;
+        self.reconcile(now).map_err(|error| {
+            invalid(format!(
+                "unknown: message {} stored; delivery reconciliation failed: {error}",
+                request.id
+            ))
+        })?;
+        Ok(super::api::Response::Stored {
+            message: Box::new(message),
+        })
+    }
+    /// The display name a plugin last sent under, else its `plugin:<candidate>` label.
+    pub(crate) fn plugin_name(&self, label: &str) -> String {
+        self.account
+            .get(&format!("{PLUGIN_NAME}{label}"))
+            .ok()
+            .flatten()
+            .and_then(|bytes| String::from_utf8(bytes).ok())
+            .unwrap_or_else(|| label.to_owned())
+    }
+    /// A host-signed plugin envelope: the issuer is a host key this account
+    /// recorded when it signed, every key field is that key, the attribution
+    /// names the plugin whose derived ID is the envelope's seat, and the
+    /// envelope carries no door, generation or operator authority.
+    fn validate_plugin(&self, message: &Envelope) -> Result<()> {
+        let candidate = message
+            .issued_by
+            .as_deref()
+            .and_then(|label| label.strip_prefix("plugin:"))
+            .filter(|candidate| !candidate.is_empty())
+            .ok_or_else(|| invalid("host-signed envelope without a plugin attribution"))?;
+        if message.seat != plugin_id(candidate)
+            || message.process_generation != 0
+            || message.door.is_some()
+            || message.role.name != "plugin"
+            || message.priority_class != Class::Worker
+            || [&message.account, &message.device, &message.author]
+                .iter()
+                .any(|key| **key != message.issuer)
+        {
+            return Err(invalid("malformed plugin sender envelope"));
+        }
+        if self
+            .account
+            .get(&format!("{PLUGIN_HOST_KEY}{}", message.issuer))?
+            .is_none()
+        {
+            return Err(invalid("plugin envelope signed by an unknown host key"));
+        }
+        message.verify_signature()
     }
     fn send_operator_pending(
         &mut self,
@@ -1895,6 +2060,7 @@ impl Messaging {
             recipient @ (Recipient::Operator(_) | Recipient::OperatorLocal(_)) => {
                 self.operator_reference.map(OperatorReference::recipient) == Some(recipient)
             }
+            Recipient::Plugin(_) => false,
         })
     }
     fn store_pending(&mut self, held: &HeldSend, now: u64) -> Result<super::api::Response> {
@@ -2265,6 +2431,12 @@ impl Messaging {
         ))
     }
     fn validate(&self, message: &Envelope) -> Result<(Option<SeatRecord>, Class, bool)> {
+        // Host-signed plugin envelopes never reach the seat/operator key
+        // check: they carry neither key and no operator authority.
+        if message.issuer_kind == super::wire::IssuerKind::Host {
+            self.validate_plugin(message)?;
+            return Ok((None, Class::Worker, false));
+        }
         self.keys.verify(message)?;
         if message.seat == Ulid::nil() {
             if message.issuer_kind == super::wire::IssuerKind::LocalDev {
@@ -2593,7 +2765,7 @@ impl Messaging {
                             } else {
                                 sender
                                     .as_ref()
-                                    .map_or(Actor::Operator, |sender| Actor::Seat {
+                                    .map_or(unseated(message), |sender| Actor::Seat {
                                         seat: sender.id,
                                         class: sender.role.class,
                                     })
@@ -2775,7 +2947,7 @@ impl Messaging {
                 } else {
                     sender
                         .as_ref()
-                        .map_or(Actor::Operator, |sender| Actor::Seat {
+                        .map_or(unseated(&message), |sender| Actor::Seat {
                             seat: sender.id,
                             class: sender.role.class,
                         })
@@ -2833,6 +3005,7 @@ impl Messaging {
             Recipient::Operator(_) | Recipient::OperatorLocal(_) => {
                 Err("operator device is not the active account device".into())
             }
+            Recipient::Plugin(_) => Err("a plugin is never a message recipient".into()),
         };
         let same = self
             .swarm(swarm_id)
@@ -3057,6 +3230,110 @@ fn mint_operator(
         signature: String::new(),
     };
     envelope.sign(&authority.key)?;
+    tx.execute("INSERT INTO msg_counters VALUES(?1,0,?2) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",
+        params![counter, sqlint(sequence)?])?;
+    Ok(envelope)
+}
+
+/// Account keys: host keys that signed plugin envelopes, and plugin display names.
+const PLUGIN_HOST_KEY: &str = "messaging/plugin-host-key/";
+const PLUGIN_NAME: &str = "messaging/plugin-name/";
+
+/// A plugin sending through `host/messages.send`, as admitted by its trust record.
+#[derive(Debug, Clone)]
+pub struct PluginSender {
+    pub candidate: String,
+    /// The trusted shape's human name.
+    pub name: String,
+    /// Activation generation (the envelope's role epoch).
+    pub generation: u64,
+    /// The trusted binary digest (the envelope's role grant reference).
+    pub sha256: String,
+    /// The operator's `messages_to` grant.
+    pub granted: BTreeSet<String>,
+}
+
+/// The stable sender ID of a plugin candidate; never a seat or nil.
+pub fn plugin_id(candidate: &str) -> Ulid {
+    use sha2::Digest;
+    let mut hash = sha2::Sha256::new();
+    hash.update(b"bboxy450/plugin-sender/v1\0");
+    hash.update(candidate.as_bytes());
+    let mut bytes: [u8; 16] = hash.finalize()[..16].try_into().expect("16 bytes");
+    bytes[0] |= 1;
+    Ulid::from_bytes(bytes)
+}
+
+/// The routing principal of a message without a seat record: a host-signed
+/// plugin envelope routes as a plugin, anything else as the operator.
+fn unseated(message: &StoredMessage) -> Actor {
+    if message
+        .envelope()
+        .is_some_and(|envelope| envelope.issuer_kind == super::wire::IssuerKind::Host)
+    {
+        Actor::Plugin
+    } else {
+        Actor::Operator
+    }
+}
+
+fn mint_plugin(
+    tx: &rusqlite::Transaction<'_>,
+    host_key: &ed25519_dalek::SigningKey,
+    sender: &PluginSender,
+    swarm: Ulid,
+    request: &SendRequest,
+    body: Body,
+    now: u64,
+) -> Result<Envelope> {
+    let id = plugin_id(&sender.candidate);
+    let counter = Recipient::Plugin(id).to_string();
+    let last: Option<u64> = tx
+        .query_row(
+            "SELECT sequence FROM msg_counters WHERE seat=?1 AND generation=0",
+            [&counter],
+            |row| u64_at(row, 0),
+        )
+        .optional()?;
+    let sequence = last
+        .unwrap_or(0)
+        .checked_add(1)
+        .ok_or_else(|| invalid("sender sequence exhausted"))?;
+    let host = public(&host_key.verifying_key().to_bytes());
+    let mut envelope = Envelope {
+        version: 1,
+        id: request.id,
+        issuer_kind: super::wire::IssuerKind::Host,
+        issuer: host.clone(),
+        account: host.clone(),
+        device: host.clone(),
+        seat: id,
+        author: host,
+        swarm_id: swarm,
+        process_generation: 0,
+        context: request.destination.clone(),
+        role: crate::registry::Role {
+            name: "plugin".into(),
+            class: Class::Worker,
+        },
+        role_grant_id: sender.sha256.clone(),
+        role_epoch: sender.generation,
+        priority_class: Class::Worker,
+        sender_sequence: sequence,
+        thread_id: request.id,
+        reply_to: None,
+        supersedes: None,
+        mentions: Vec::new(),
+        timestamp: now / 1000,
+        priority: request.priority,
+        kind: request.kind,
+        body,
+        attachments: Vec::new(),
+        door: None,
+        issued_by: Some(format!("plugin:{}", sender.candidate)),
+        signature: String::new(),
+    };
+    envelope.sign(host_key)?;
     tx.execute("INSERT INTO msg_counters VALUES(?1,0,?2) ON CONFLICT(seat,generation) DO UPDATE SET sequence=excluded.sequence",
         params![counter, sqlint(sequence)?])?;
     Ok(envelope)

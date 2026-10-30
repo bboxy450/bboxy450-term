@@ -37,6 +37,8 @@ pub struct Config {
     pub provider: ProviderConfig,
     pub activity: Option<BusHandle>,
     pub issued_by: Option<String>,
+    /// Posts plugins' `host/messages.send` through the logic's messaging.
+    pub messages: Option<crate::plugins::MessageSender>,
 }
 
 /// Captured at admission. Reusing a root ID alone does not survive a cwd change.
@@ -137,6 +139,9 @@ impl Workspace {
             )?;
             if let Some(bus) = &config.activity {
                 host.plugin_host().attach_bus(bus.clone());
+            }
+            if let Some(messages) = &config.messages {
+                host.plugin_host().attach_messages(messages.clone());
             }
             // Host API reads hold the root weakly: the plugin host lives in it.
             let (records_root, records_index) = (host.downgrade(), index.clone());

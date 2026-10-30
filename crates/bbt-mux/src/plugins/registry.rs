@@ -48,11 +48,11 @@ mod source;
 pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
 #[path = "host.rs"]
 mod host;
-pub use host::RecordReader;
 pub use host::{
     HOOK_QUEUE, HOST_OWNED, HookEvent, HookOutcome, MAX_CONCURRENT_CALLS, PluginHost, SeatTool,
     Verdict, seat_role,
 };
+pub use host::{MessageSender, RecordReader};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]

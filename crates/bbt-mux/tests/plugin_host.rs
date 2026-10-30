@@ -87,7 +87,7 @@ fn approval(payload: &[&str], block: Option<FailurePolicy>) -> Approval {
         grants: Grants {
             payload_events: payload.iter().map(|event| (*event).to_owned()).collect(),
             block,
-            host_api: Default::default(),
+            ..Default::default()
         },
     }
 }
@@ -626,7 +626,8 @@ fn host_api_variant(granted: &[&str]) -> Variant {
     Variant {
         knobs: vec![(
             "HOST_API = []",
-            r#"HOST_API = ["records.search", "records.fetch", "events.publish"]"#.into(),
+            r#"HOST_API = ["records.search", "records.fetch", "events.publish", "messages.send"]"#
+                .into(),
         )],
         approval: Some(approval),
         ..Variant::default()
@@ -684,9 +685,46 @@ async fn host_api_requests_are_granted_confined_and_served_during_a_call() {
         let refused = f.ask_host("events.publish", json!({"subject": bad})).await;
         assert_eq!(refused["error"]["data"]["code"], "invalid_subject", "{bad}");
     }
-    let unknown = f.ask_host("messages.send", json!({})).await;
+    let unknown = f.ask_host("messages.delete", json!({})).await;
     assert_eq!(unknown["error"]["code"], -32601);
     assert_eq!(unknown["error"]["data"]["code"], "unknown_host_api");
+}
+
+// keeps: G7 host API messages.send — the request reaches the host's message
+// sender with the plugin's identity and exact destination grant, never a
+// seat or operator principal; without a sender the host refuses by name.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn host_api_messages_send_carries_the_plugin_sender_and_its_grant() {
+    let mut variant = host_api_variant(&["messages.send"]);
+    let granted = format!("seats/{}/inbox", Ulid::from(5_u128));
+    variant.approval.as_mut().unwrap().grants.messages_to = [granted.clone()].into();
+    let f = Fixture::with(variant).await;
+    let params = json!({"destination": granted, "text": "build finished"});
+    let unavailable = f.ask_host("messages.send", params.clone()).await;
+    assert_eq!(unavailable["error"]["data"]["code"], "host_api_unavailable");
+    let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let log = seen.clone();
+    f.host
+        .attach_messages(std::sync::Arc::new(move |sender, request, _deadline| {
+            let reply = json!({"id": request.id, "destination": request.destination});
+            log.lock().unwrap().push((sender, request));
+            Ok(reply)
+        }));
+    let sent = f.ask_host("messages.send", params).await;
+    assert_eq!(sent["result"]["destination"], granted);
+    let bad = f
+        .ask_host("messages.send", json!({"destination": granted}))
+        .await;
+    assert_eq!(bad["error"]["data"]["code"], "invalid_request");
+    let seen = seen.lock().unwrap();
+    assert_eq!(seen.len(), 1);
+    let (sender, request) = &seen[0];
+    assert_eq!(sender.candidate, f.candidate);
+    assert_eq!(sender.granted, [granted.clone()].into());
+    assert_eq!(Some(sender.generation), f.generation());
+    assert_eq!(sender.sha256.len(), 64);
+    assert_eq!(request.text, "build finished");
+    assert_eq!(sent["result"]["id"], request.id.to_string());
 }
 
 // keeps: G7 host API — requested but not granted at trust: every method refused.
@@ -700,6 +738,10 @@ async fn host_api_requests_without_grants_are_refused() {
         ("records.search", json!({"query": "x"})),
         ("records.fetch", json!({"ref": {"id": "x"}})),
         ("events.publish", json!({"subject": "x"})),
+        (
+            "messages.send",
+            json!({"destination": "seats/x", "text": "x"}),
+        ),
     ] {
         let refused = f.ask_host(method, params).await;
         assert_eq!(

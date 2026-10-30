@@ -305,8 +305,11 @@ fn host_api_requests_are_named_raise_the_tier_and_need_a_grant() {
     assert_eq!(shape.validate(&name).unwrap(), Tier::Write);
     let (_, shape) = repo(json!(["records.search", "events.publish"]));
     assert_eq!(shape.validate(&name).unwrap(), Tier::Export);
+    let (schema_ok, shape) = repo(json!(["messages.send"]));
+    assert!(schema_ok);
+    assert_eq!(shape.validate(&name).unwrap(), Tier::Write);
     for (requested, code) in [
-        (json!(["messages.send"]), "unknown_host_api"),
+        (json!(["messages.delete"]), "unknown_host_api"),
         (
             json!(["records.fetch", "records.fetch"]),
             "duplicate_host_api",

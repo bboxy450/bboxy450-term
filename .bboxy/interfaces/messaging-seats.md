@@ -23,6 +23,7 @@ updated: "2026-10-29T19:48:09Z"
 | Failure | nothing is held but by the operator's mute; superseded and done messages never wake; an unknown thread is refused with the open threads named |
 | Versioning | additive kinds and fields; signatures unchanged when new fields are absent |
 | Verified by | `make test-signed-mentions` (sender grammar, signed IDs, replay, pending upgrades, composer and retained-logic activation); invariants messaging-never-held, notices-never-wake, seats-1000-bus; promises M1 to M6 |
+| Plugin senders | 2026-10-30, [[plugins]] §3c: a seat may receive a message whose envelope is `issuer_kind: host` with `issued_by: plugin:<candidate>`; it is from a plugin, signed by the host, never a seat or the operator, and seat-facing text says so. Verified by `messaging/plugin_sender_tests.rs` and `tests/plugin_messages.rs`. |
 | Open | MA-5 to MA-9, in work |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.

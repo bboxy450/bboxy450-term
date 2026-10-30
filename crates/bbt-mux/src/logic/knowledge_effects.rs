@@ -494,6 +494,9 @@ impl Worker {
                     bbt_proto::messaging::Recipient::OperatorLocal(_) => {
                         task_swarm.ok_or_else(|| invalid("task swarm requires an assignee"))?
                     }
+                    bbt_proto::messaging::Recipient::Plugin(_) => {
+                        return Err(invalid("a plugin is never a task recipient"));
+                    }
                 };
                 wake_swarms.push(swarm);
             }

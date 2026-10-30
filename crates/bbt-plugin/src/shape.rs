@@ -161,6 +161,7 @@ pub const HOST_API: &[(&str, Tier)] = &[
     ("records.search", Tier::Export),
     ("records.fetch", Tier::Export),
     ("events.publish", Tier::Write),
+    ("messages.send", Tier::Write),
 ];
 
 /// A plugin-declared seat tool beyond its contracts. Seats see it as

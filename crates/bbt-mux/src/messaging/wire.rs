@@ -154,7 +154,10 @@ impl EnvelopeExt for Envelope {
         self.verify_signature_in_account(None)
     }
     fn verify_signature_in_account(&self, test_label: Option<&str>) -> Result<()> {
-        if let Some(expected) = test_label
+        // A host-signed plugin envelope carries the plugin attribution instead
+        // of the run label; it verifies only against a host key this account
+        // recorded, so it cannot cross accounts either.
+        if let Some(expected) = test_label.filter(|_| self.issuer_kind != IssuerKind::Host)
             && (!expected.starts_with("test-account:")
                 || self.issued_by.as_deref() != Some(expected))
         {
@@ -175,15 +178,27 @@ impl EnvelopeExt for Envelope {
             attachments: self.attachments.clone(),
         }
         .validate()?;
-        let operator = self.seat == Ulid::nil();
+        // A host-signed plugin envelope is neither a seat nor the operator:
+        // generation 0, a `plugin:` attribution, no door, role `plugin`.
+        let plugin = self.issuer_kind == IssuerKind::Host;
+        let operator = self.seat == Ulid::nil() && !plugin;
         if self.version != 1
             || (operator
                 && (self.process_generation != 0
                     || self.role.name != "operator"
                     || self.role.class != bbt_proto::registry::Class::Oracle
                     || self.author != self.device))
+            || (plugin
+                && (self.seat == Ulid::nil()
+                    || self.process_generation != 0
+                    || self.role.name != "plugin"
+                    || self.door.is_some()
+                    || !self
+                        .issued_by
+                        .as_deref()
+                        .is_some_and(|label| label.starts_with("plugin:"))))
             || self.swarm_id == Ulid::nil()
-            || (!operator && self.process_generation == 0)
+            || (!operator && !plugin && self.process_generation == 0)
             || self.sender_sequence == 0
             || self.role_epoch == 0
             || self.role.name.is_empty()
@@ -191,7 +206,7 @@ impl EnvelopeExt for Envelope {
             || self.role.name.chars().any(char::is_control)
             || self.priority_class != self.role.class
             || (!operator && self.door.is_some())
-            || (!operator && test_label.is_none() && self.issued_by.is_some())
+            || (!operator && !plugin && test_label.is_none() && self.issued_by.is_some())
             || self.issued_by.as_ref().is_some_and(|label| {
                 label.trim().is_empty()
                     || label.len() > bbt_proto::messaging::MAX_ISSUER
