@@ -223,6 +223,10 @@ impl App {
 
 impl App {
     pub(super) fn open_terminal_link(&mut self, seat: SeatId, at: [f32; 2]) -> bool {
+        if let Some(target) = self.terminal_display(seat).and_then(|d| d.document_at(at)) {
+            self.open_document(target);
+            return true;
+        }
         let Some(uri) = self.terminal_display(seat).and_then(|d| d.link_at(at)) else {
             return false;
         };

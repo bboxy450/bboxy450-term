@@ -102,8 +102,43 @@ def k3(app):
             "dismissing Graph did not restore the terminal focus")
     app.line(seat, "printf 'K3_TERMINAL_OK\\n'")
     app.wait(seat, "(?m)^K3_TERMINAL_OK$")
-    print("K3: Cmd-G selects Graph after a produced frame; Esc restores the live pane; "
-          "Cmd-click path/wikilink activation remains unproven")
+    import time
+    from documents import Documents
+    from ui import pane
+    docs = Documents("K3")
+    record = docs.fixture("cmd-click", "K3_DOCUMENT_MODAL_BODY\n")
+    tokens = [record["path"], f"[[{record['slug']}|document alias]]"]
+    receiver = app.work/"k3-links.py"
+    receiver.write_text("import os,time\nos.write(1," + repr(("\x1b[2J\x1b[H"+"\r\n".join(tokens)+"\r\nK3_LINKS_READY\r\n").encode()) + ")\ntime.sleep(120)\n")
+    app.line(seat,"exec "+shlex.quote(sys.executable)+" -I -B "+shlex.quote(str(receiver)))
+    app.wait(seat,"(?m)^K3_LINKS_READY$")
+    for i,token in enumerate(tokens):
+        state = app.ctl("ui","layout")
+        displayed = pane(state,seat)
+        lines = displayed["rendered"]["lines"]
+        row = next(n for n,line in enumerate(lines) if token in line)
+        column = lines[row].index(token)+3
+        x,y,w,h = displayed["rect"]
+        click = dict(kind="click",x=round(x+(column+0.5)*w/displayed["cols"]),
+                     y=round(y+(row+0.5)*h/displayed["rows"]))
+        plain = app.ctl("ui","input",json.dumps(click))
+        require(plain["document"] is None,"plain click opened a document")
+        click["modifiers"] = dict(command=True)
+        app.ctl("ui","input",json.dumps(click),label=f"k3-cmd-click-{i}")
+        deadline = time.monotonic()+25
+        while True:
+            opened = app.ctl("ui","layout")
+            observed = opened.get("document_observation")
+            if observed and observed["source"]["record_id"] == record["id"]:
+                break
+            require(time.monotonic()<deadline,f"Cmd-click {token} did not load the document modal")
+            time.sleep(0.05)
+        require(opened["document"] is not None,"modal has no document locator")
+        docs.observation(opened,record)
+        app.capture("window",f"k3-document-{i}",frame(opened))
+        closed=app.ctl("ui","key","esc")
+        require(closed["document"] is None and closed["focused"]==seat,"closing document lost terminal focus")
+    print("K3: Cmd-G selects Graph; Cmd-click on a Markdown path and aliased wikilink loads the exact admitted document; captures and Esc/focus verified")
 
 
 if __name__ == "__main__":

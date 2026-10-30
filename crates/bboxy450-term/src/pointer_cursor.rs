@@ -175,7 +175,7 @@ impl App {
         if self.modifiers.super_key()
             && self.pane_bounds.iter().any(|(seat, _)| {
                 self.terminal_display(*seat)
-                    .and_then(|d| d.link_at(at))
+                    .and_then(|d| d.document_at(at).or_else(|| d.link_at(at)))
                     .is_some()
             })
         {

@@ -31,6 +31,63 @@ pub struct Display {
     pub historical_row: Option<u64>,
 }
 impl Display {
+    /// Resolve Markdown/wiki tokens from the exact displayed logical line,
+    /// including soft wraps. The host resolves the locator in its captured workspace.
+    pub fn document_at(&self, at: [f32; 2]) -> Option<String> {
+        if !self.contains(at) {
+            return None;
+        }
+        let row = ((at[1] - self.rect.y) / self.cell[1]).floor() as usize;
+        let col = ((at[0] - self.rect.x) / self.cell[0]).floor() as usize;
+        if let Some(link) = self.screen.cells.get(row)?.get(col)?.hyperlink() {
+            return markdown_target(link.uri());
+        }
+        let wraps = |r: usize| {
+            self.screen
+                .cells
+                .get(r)
+                .and_then(|r| r.last())
+                .is_some_and(|c| c.flags.contains(Flags::WRAPLINE))
+        };
+        let mut first = row;
+        while first > 0 && wraps(first - 1) {
+            first -= 1;
+        }
+        let mut last = row;
+        while last + 1 < self.screen.rows && wraps(last) {
+            last += 1;
+        }
+        let mut line = String::new();
+        let mut hit = 0;
+        for r in first..=last {
+            for (c, cell) in self.screen.cells.get(r)?.iter().enumerate() {
+                if r == row && c == col {
+                    hit = line.len();
+                }
+                if !cell.flags.contains(Flags::WIDE_CHAR_SPACER) {
+                    line.push(cell.c);
+                }
+            }
+        }
+        let mut from = 0;
+        while let Some(open) = line[from..].find("[[") {
+            let start = from + open;
+            let Some(close) = line[start + 2..].find("]]") else {
+                break;
+            };
+            let end = start + 2 + close;
+            if (start..end + 2).contains(&hit) {
+                let target = line[start + 2..end].split('|').next()?.trim();
+                return (!target.is_empty() && !target.chars().any(char::is_control))
+                    .then(|| target.into());
+            }
+            from = end + 2;
+        }
+        let boundary = |c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '`' | '<' | '>');
+        let start = line[..hit].char_indices().rfind(|(_,c)| boundary(*c)).map_or(0, |(i,c)| i+c.len_utf8());
+        let end = line[hit..].find(boundary).map_or(line.len(), |i| hit + i);
+        markdown_target(&line[start..end])
+    }
     pub fn contains(&self, at: [f32; 2]) -> bool {
         at[0] >= self.rect.x
             && at[0] < self.rect.right()
@@ -104,6 +161,32 @@ impl Display {
             .trim_end_matches(['.', ',', ';', ':', '!', '?', ')', ']', '}']);
         web_link(target).then(|| target.to_owned())
     }
+}
+
+fn markdown_target(token: &str) -> Option<String> {
+    let token = token
+        .trim_start_matches(['(', '[', '{'])
+        .trim_end_matches(['.', ',', ';', '!', '?', ')', ']', '}']);
+    if token.starts_with("file://") && !token.starts_with("file:///") && !token.starts_with("file://localhost/") { return None; }
+    let token = token
+        .strip_prefix("file://localhost")
+        .or_else(|| token.strip_prefix("file://"))
+        .unwrap_or(token);
+    if token.contains("://") || token.chars().any(char::is_control) {
+        return None;
+    }
+    let end = token.rfind(".md")? + 3;
+    if token[..end].contains(':') { return None; }
+    let suffix = &token[end..];
+    if !suffix.is_empty()
+        && (!suffix.starts_with(':')
+            || !suffix[1..]
+                .split(':')
+                .all(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())))
+    {
+        return None;
+    }
+    Some(token[..end].into())
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Point {
@@ -322,6 +405,27 @@ mod tests {
         assert!(s.extend(d, b));
         s.release();
         s
+    }
+    #[test]
+    fn markdown_paths_wikilinks_aliases_and_wrapped_locators_use_displayed_cells() {
+        let d = display(b"see (e2e/target.md:12:3), [[target|an alias]]", 60, 2);
+        assert_eq!(d.document_at([100., 1.]).as_deref(), Some("e2e/target.md"));
+        assert_eq!(d.document_at([370., 1.]).as_deref(), Some("target"));
+        assert_eq!(d.document_at([10., 1.]), None);
+        let d = display(b"[[target|a long alias]]", 12, 3);
+        assert_eq!(d.document_at([20., 21.]).as_deref(), Some("target"));
+        for token in [
+            "https://example.com/a.md",
+            "a.md.bak",
+            "a.md:no",
+            "[[unfinished",
+        ] {
+            assert_eq!(
+                display(token.as_bytes(), 50, 2).document_at([10., 1.]),
+                None,
+                "{token}"
+            );
+        }
     }
     #[test]
     fn terminal_links_osc8_plain_wrapped_urls_and_inert_schemes() {

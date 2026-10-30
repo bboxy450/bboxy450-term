@@ -392,6 +392,7 @@ test-document-protocol:
 test-keyboard-input: build
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib keyboard; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib terminal_selection; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) key; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) scroll_input_tests; \
 	'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group keyboard --scripts '$(CURDIR)/scripts/e2e' > '$(TARGET_DIR)/keyboard-night.jsonl'; \

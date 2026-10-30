@@ -39,7 +39,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | S4 | `scripts/e2e/S4.sh` | full | — | #14: supported live Replica, allocated core admission/refusal, exported retained heap and unchanged live input |
 | K1 | `scripts/e2e/K1.sh` | full | — | Private native input; 1,346 exact Kitty/Unicode/IME cases plus reserved navigation |
 | K2 | `scripts/e2e/K2.sh` | partial | amber mark pixel colour; operator DM native delivery; non-operator delayed delivery and exactly-once release; mute journal signer | |
-| K3 | `scripts/e2e/K3.sh` | partial | Cmd-click on a .md path or a wikilink opens the document modal | |
+| K3 | `scripts/e2e/K3.sh` | full | — | Native Cmd-click Markdown/wiki opens, provider-bound modal observations and fresh captures |
 | R1 | `scripts/e2e/R1.sh` | full | | |
 | R2 | `scripts/e2e/R2.sh` | full | — | #226 |
 | R3 | `scripts/e2e/R3.sh` | full | | |
