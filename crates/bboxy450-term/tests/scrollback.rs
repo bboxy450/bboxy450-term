@@ -114,16 +114,53 @@ fn drive(
     panic!("history did not converge to {count} displays");
 }
 
+// Regression for #83: a full-screen large-display pane must replay, not just admit.
+#[test]
+fn scrollback_400_by_120_replays_numbered_history() {
+    let seat = SeatId::from_u128(83);
+    let token = view(seat, 1);
+    let bytes: Vec<_> = (1..=600)
+        .flat_map(|n| format!("line {n:05}\r\n").into_bytes())
+        .collect();
+    let mut reference = Term::new_with_spare_rows(400, 120, 1000, 0);
+    reference.advance(&bytes);
+    let screen = Arc::new(Screen::from_term(&reference, String::new(), None, None));
+    let records = vec![HistoryRecord::Bytes { sequence: 1, bytes }];
+    let mut history = History::default();
+    history
+        .request(seat, token, 1, screen.clone(), Request::top())
+        .unwrap();
+    let (top, _) = drive(&mut history, &records, 1);
+    assert_eq!(
+        top[&seat].screen.cells,
+        reference.history_window(0, 120).unwrap()
+    );
+    assert_eq!(text(&top[&seat].screen.cells[0]), "line 00001");
+    history
+        .request(seat, token, 1, screen, Request::lines(-200))
+        .unwrap();
+    let (middle, _) = drive(&mut history, &records, 1);
+    assert_eq!(
+        middle[&seat].screen.cells,
+        reference.history_window(200, 120).unwrap()
+    );
+    let metrics = history.metrics(&middle);
+    let pane = &metrics["panes"][0];
+    assert!(
+        pane["retained_history_bytes"].as_u64().unwrap() <= pane["budget_bytes"].as_u64().unwrap()
+    );
+}
+
 // keeps: spec c1-live-seats §4
 #[test]
 fn scrollback_dimension_admission_uses_the_heap_budget() {
     let token = view(SeatId::from_u128(1), 1);
-    for (cols, rows) in [(768, 4), (8, 300)] {
+    for (cols, rows) in [(768, 4), (8, 300), (512, 256)] {
         let term = Term::new_with_spare_rows(cols, rows, 0, 0);
         let screen = Arc::new(Screen::from_term(&term, String::new(), None, None));
         let playback = Playback::new(token, 0, screen)
             .unwrap_or_else(|reason| panic!("fitting {cols}x{rows} viewport refused: {reason}"));
-        assert!(playback.retained_heap_bytes().unwrap() < HEAP_BUDGET);
+        assert!(playback.retained_heap_bytes().unwrap() < playback.heap_budget());
     }
 
     let term = Term::new_with_spare_rows(2, 1, 0, 0);
@@ -143,7 +180,8 @@ fn scrollback_dimension_admission_uses_the_heap_budget() {
     // The last case reaches the saturating preflight multiplication; none
     // may attempt to allocate a terminal for the deliberately huge viewport.
     for (cols, rows) in [
-        (512, 256),
+        (4096, 4096),
+        (2, 3334),
         (usize::MAX, usize::MAX),
         (usize::MAX / (mem::size_of::<bbt_core::Cell>() * 2), 1),
     ] {
@@ -422,8 +460,8 @@ fn scrollback_pages_reach_twenty_thousand_lines_join_live_preserve_gaps_and_stay
     history.forget(seat);
 
     let large = Arc::new(Screen {
-        cols: 512,
-        rows: 256,
+        cols: 4096,
+        rows: 4096,
         cells: vec![],
         ..screen.as_ref().clone()
     });

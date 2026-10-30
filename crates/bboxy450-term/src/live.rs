@@ -447,8 +447,25 @@ fn scroll_refused(
     true
 }
 
+fn history_refused(model: &mut Arc<Model>, seat: SeatId, reason: &str) {
+    let message = match reason {
+        "history_viewport_exceeds_budget" => "viewport exceeds the bounded replay memory allowance",
+        "history_heap_budget_exceeded" => "replay exceeded its memory allowance",
+        "history_dimensions_unsupported" => "viewport dimensions are unsupported",
+        other => other,
+    };
+    Arc::make_mut(model).history_errors.insert(
+        seat,
+        format!(
+            "Scrollback unavailable: {}",
+            message.chars().take(256).collect::<String>()
+        ),
+    );
+}
+
 fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> bool {
     history.forget(seat);
+    let cleared = Arc::make_mut(model).history_errors.remove(&seat).is_some();
     if model.scroll.observed(seat, None) {
         Arc::make_mut(&mut Arc::make_mut(model).scroll).forget(seat);
     }
@@ -456,7 +473,7 @@ fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> b
         Arc::make_mut(model).history.remove(&seat);
         true
     } else {
-        false
+        cleared
     }
 }
 
@@ -1448,12 +1465,15 @@ async fn run_with_control(
                     UiMsg::Scroll {seat,generation,request}=> {
                         if let (Some((view,sequence)),Some(screen)) = (grids.baseline(*seat),grids.screen(*seat))
                             && view.generation == *generation {
-                                if let Err(reason) = history.request(*seat,view,sequence,screen,*request) {
+                                let notice_changed = Arc::make_mut(&mut model).history_errors.remove(seat).is_some();
+                                let refused = if let Err(reason) = history.request(*seat,view,sequence,screen,*request) {
                                     logger.write(format!("history {seat}: {reason}"));
                                     history.failed(*seat,reason);
-                                }
-                                let changed = !history.contains(*seat) && model.history.contains_key(seat);
-                                if changed { Arc::make_mut(&mut model).history.remove(seat); }
+                                    history_refused(&mut model,*seat,reason);
+                                    true
+                                } else { false };
+                                let changed = notice_changed || refused || !history.contains(*seat) && model.history.contains_key(seat);
+                                if !history.contains(*seat) { Arc::make_mut(&mut model).history.remove(seat); }
                                 let completed = scroll_readback(&mut history,&mut model,&grids);
                                 if changed { publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?; }
                                 else if completed { updates.publish(model.clone()); }
@@ -1495,6 +1515,7 @@ async fn run_with_control(
                             Ok(None)=> {Arc::make_mut(&mut model).history.remove(&seat);},
                             Err(reason)=> {
                                 Arc::make_mut(&mut model).history.remove(&seat);
+                                history_refused(&mut model,seat,reason);
                                 logger.write(format!("history {seat}: {reason}"));
                             }
                         }
@@ -1709,7 +1730,9 @@ async fn run_with_control(
                             publish_page_refusal(&mut model,&updates,terminal_reply.as_ref(),&reason)?;
                             if matches!(&terminal_reply,Some(ActionReply::History(_)))
                                 && let Some(seat) = history.rejected(reason.starts_with("Busy:"),Instant::now(),&reason)
-                                && return_live(&mut history,&mut model,seat) {
+                            {
+                                return_live(&mut history,&mut model,seat);
+                                history_refused(&mut model,seat,&reason);
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
                             if event_model(&mut model).attach_result(op,Some(&reason)) {updates.publish(model.clone());}
@@ -1741,9 +1764,10 @@ async fn run_with_control(
                             if terminal_reply == Some(ActionReply::History(seat))
                                 && let Err(reason) = history.accept(seat,records,next) {
                                 history.failed(seat,reason);
-                                let changed = return_live(&mut history,&mut model,seat);
+                                return_live(&mut history,&mut model,seat);
+                                history_refused(&mut model,seat,reason);
                                 logger.write(format!("history {seat}: {reason}"));
-                                if changed {publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;}
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
                         },
                         GuiReply::UiAsk {op,request}=>capture(OperatorAsk::Ui {id:op,request,prior_spawns:model.spawns.keys().copied().collect()}),
@@ -1866,6 +1890,21 @@ outgoing.retain(|action| !matches!(action,GuiAction::GetHistory {..}));
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn history_refusal_is_visible_without_a_correlated_operation_and_clears_on_live() {
+        let seat = SeatId::from_u128(83);
+        let mut model = Arc::new(Model::default());
+        history_refused(&mut model, seat, "history_viewport_exceeds_budget");
+        assert_eq!(
+            model.history_errors[&seat],
+            "Scrollback unavailable: viewport exceeds the bounded replay memory allowance"
+        );
+        let mut history = History::default();
+        assert!(return_live(&mut history, &mut model, seat));
+        assert!(model.history_errors.is_empty());
+        assert!(!return_live(&mut history, &mut model, seat));
+    }
+
     #[test]
     fn swarm_mutations_await_same_swarm_ack_without_blocking_other_swarms_and_replay_once() {
         let mut writes = SwarmMutations::default();

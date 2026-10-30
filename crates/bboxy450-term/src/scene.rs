@@ -723,7 +723,11 @@ impl Scene {
             .map(|(id, seat)| {
                 let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
                 row.role = seat.role.as_ref().map(|role| role.name.clone());
-                row.title = seat.title.clone();
+                row.title = model
+                    .history_errors
+                    .get(id)
+                    .cloned()
+                    .unwrap_or_else(|| seat.title.clone());
                 row.subtitle = self
                     .subtitle
                     .then(|| model.subtitles.get(id).cloned())
@@ -2317,6 +2321,24 @@ fn history_row_rect(
 #[cfg(test)]
 mod depth_tests {
     use super::*;
+
+    #[test]
+    fn scrollback_refusal_reaches_the_visible_pane_strip() {
+        let id = SeatId::from_u128(83);
+        let swarm = bbt_ui_model::SwarmId::from_u128(1);
+        let mut model = bboxy450_term::model::Model::default();
+        model.ui.seats.insert(
+            id,
+            bbt_ui_model::Seat::new(id, swarm, [0; 32], "fixture", "zsh"),
+        );
+        model.history_errors.insert(
+            id,
+            "Scrollback unavailable: viewport exceeds the bounded replay memory allowance".into(),
+        );
+        let mut scene = Scene::new();
+        scene.set_model(&model, &model.ui.window.stage);
+        assert_eq!(scene.seats[0].title, model.history_errors[&id]);
+    }
 
     // Adapted from this project's tests/r5_stall.rs owned child driver.
     // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md

@@ -519,6 +519,8 @@ pub struct Model {
     /// Historical display only. Live modes, replicas and acknowledgements keep
     /// using screens; the UI never owns a history parser or a fetched page.
     pub history: BTreeMap<SeatId, Arc<crate::scrollback::Historical>>,
+    /// Last replay refusal, painted in the pane strip until the next scroll/input.
+    pub history_errors: BTreeMap<SeatId, String>,
     pub scroll: Arc<crate::scrollback::Readback>,
     pub frames: BTreeMap<SeatId, Arc<PreparedGrid>>,
     /// Current worker font metrics, available before an oversized old viewport is resized.
@@ -650,6 +652,7 @@ impl Default for Model {
             screen_baselines: BTreeMap::new(),
             subtitles: BTreeMap::new(),
             history: BTreeMap::new(),
+            history_errors: BTreeMap::new(),
             scroll: Arc::default(),
             frames: BTreeMap::new(),
             terminal_cell_pixels: None,
@@ -1385,6 +1388,26 @@ fn build_with_clock(
             text.map(|text| (*id, text))
         })
         .collect();
+    let history_errors = previous
+        .history_errors
+        .iter()
+        .filter(|(id, _)| {
+            screens
+                .get(id)
+                .zip(previous.screens.get(id))
+                .is_some_and(|(next, old)| {
+                    (next.cols, next.rows) == (old.cols, old.rows)
+                        && model
+                            .seats
+                            .get(id)
+                            .zip(previous.ui.seats.get(id))
+                            .is_some_and(|(next, old)| {
+                                next.process_generation == old.process_generation
+                            })
+                })
+        })
+        .map(|(id, error)| (*id, error.clone()))
+        .collect();
     let mut next = Model {
         launch_directory: previous.launch_directory.clone(),
         gui_seats: previous.gui_seats.clone(),
@@ -1401,6 +1424,7 @@ fn build_with_clock(
         screens,
         subtitles,
         history,
+        history_errors,
         scroll: previous.scroll.clone(),
         frames,
         terminal_cell_pixels: previous.terminal_cell_pixels,

@@ -17,7 +17,10 @@ use bbt_core::{Cell, Term};
 use bbt_mux::Ulid;
 use bbt_proto::{GuiAction, Screen, SeatId, View, gui::HistoryRecord};
 
+/// Floor for small panes; larger panes reserve a fixed number of viewport buffers.
 pub const HEAP_BUDGET: usize = 4_000_000;
+pub const MAX_HEAP_BUDGET: usize = 64_000_000;
+const VIEWPORT_BUFFERS: usize = 12;
 const MAX_LINES: usize = 10_000;
 // The GUI body is at most 1 MiB. Reserve space for decoded records/byte vectors,
 // not just their wire bytes. Actual retained capacities are checked below too.
@@ -240,6 +243,7 @@ pub struct Playback {
     goal: Goal,
     displayed: Option<u64>,
     history_lines: usize,
+    heap_budget: usize,
     gaps: Vec<Gap>,
     display_heap: usize,
     checked_heap: Option<usize>,
@@ -311,7 +315,16 @@ impl Playback {
         let view_bytes = row_bytes
             .checked_mul(screen.rows)
             .ok_or("history_viewport_exceeds_budget")?;
-        if view_bytes.saturating_mul(4).saturating_add(PAGE_RESERVE) >= HEAP_BUDGET {
+        // bboxy450-term #83: bound replay by a fixed number of screens, not
+        // a fixed display size. Reject overflow/oversize before allocating Term.
+        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        let heap_budget = view_bytes
+            .checked_mul(VIEWPORT_BUFFERS)
+            .and_then(|bytes| bytes.checked_add(PAGE_RESERVE))
+            .ok_or("history_viewport_exceeds_budget")?
+            .max(HEAP_BUDGET);
+        let minimum = screen.rows.saturating_mul(3);
+        if heap_budget > MAX_HEAP_BUDGET || minimum > MAX_LINES {
             return Err("history_viewport_exceeds_budget");
         }
         let base = Term::new_with_spare_rows(screen.cols, screen.rows, 0, 0);
@@ -322,10 +335,10 @@ impl Playback {
             .retained_heap_bytes()
             .ok_or("history_heap_accounting_incomplete")?
             + screen_heap(&screen)
-            + 2 * display_heap;
+            + 2 * display_heap
+            + mem::size_of::<Self>();
         drop(base);
-        let lines = HEAP_BUDGET.saturating_sub(mandatory + PAGE_RESERVE) / row_bytes;
-        let minimum = screen.rows.saturating_mul(3);
+        let lines = heap_budget.saturating_sub(mandatory + PAGE_RESERVE) / row_bytes;
         if lines < minimum {
             return Err("history_viewport_exceeds_budget");
         }
@@ -344,12 +357,17 @@ impl Playback {
             goal: Goal::BehindLive(1),
             displayed: None,
             history_lines,
+            heap_budget,
             gaps: Vec::new(),
             display_heap,
             checked_heap: None,
             pages_fetched: 0,
             pages_evicted: 0,
         })
+    }
+
+    pub fn heap_budget(&self) -> usize {
+        self.heap_budget
     }
 
     /// Includes the held baseline and room for the published historical view.
@@ -475,7 +493,10 @@ impl Playback {
             next,
         });
         self.pages_fetched = self.pages_fetched.saturating_add(1);
-        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
+        if self
+            .check_heap()
+            .is_none_or(|bytes| bytes > self.heap_budget)
+        {
             self.evict_page();
             return Err("history_heap_budget_exceeded");
         }
@@ -608,7 +629,10 @@ impl Playback {
             self.gaps.retain(|gap| gap.row >= first);
             self.gaps.shrink_to_fit();
         }
-        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
+        if self
+            .check_heap()
+            .is_none_or(|bytes| bytes > self.heap_budget)
+        {
             return Err("history_heap_budget_exceeded");
         }
         if self.complete
@@ -619,7 +643,10 @@ impl Playback {
             return Ok(Step::Live);
         }
         let display = self.display();
-        if self.check_heap().is_none_or(|bytes| bytes > HEAP_BUDGET) {
+        if self
+            .check_heap()
+            .is_none_or(|bytes| bytes > self.heap_budget)
+        {
             return Err("history_heap_budget_exceeded");
         }
         Ok(display.map_or(Step::Pending, Step::Display))
@@ -666,7 +693,7 @@ impl History {
                     .map(|gap| serde_json::json!({"row":gap.row,"from":gap.from,"to":gap.to}))
                     .collect();
                 serde_json::json!({"seat":Ulid(seat.0.0),"generation":playback.view.generation,
-                "retained_history_bytes":playback.checked_heap,"budget_bytes":HEAP_BUDGET,
+                "retained_history_bytes":playback.checked_heap,"budget_bytes":playback.heap_budget,
                 "pages_resident":usize::from(playback.page.is_some()),
                 "pages_fetched":playback.pages_fetched,"pages_evicted":playback.pages_evicted,
                 "top_row":display.map(|d|d.top_row),"gap_markers":gaps,
@@ -685,7 +712,7 @@ impl History {
             .flatten();
         serde_json::json!({"available":true,"basis":"GUI IO owner; conservative retained bytes from latest existing budget check, null before first check; page eviction means payload released after consumption/reset; counters live with Playback",
             "complete":complete,"omitted_panes":self.seats.len().saturating_sub(LIMIT),
-            "retained_history_bytes":total,"per_pane_budget_bytes":HEAP_BUDGET,"panes":panes})
+            "retained_history_bytes":total,"per_pane_budget_bytes":MAX_HEAP_BUDGET,"minimum_pane_budget_bytes":HEAP_BUDGET,"panes":panes})
     }
 
     pub fn request(

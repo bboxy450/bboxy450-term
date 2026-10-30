@@ -1,0 +1,16 @@
+Issue #83; ROLE: EXECUTOR; worktree cx/term; operator batch 2026-10-30.
+Scope: scrollback.rs budget/admission/accounting/metrics; Model and live IO refusal presentation; Scene pane title; tests/scrollback.rs; C1 memory amendment; formal coverage inventory.
+Decision: max(4 MB, 12 viewport buffers + 2 MB page reserve), capped at 64 MB, preserving the 3-screen minimum and 10k history-line maximum. No history ownership/retry/arbitration change. Existing source attribution policy/notices retained.
+Pre-fix: cargo test --locked -p bboxy450-term --target-dir target --test scrollback scrollback_400_by_120_replays_numbered_history -- --exact: exit 101, history_viewport_exceeds_budget.
+Post-fix: cargo test --locked -p bboxy450-term --target-dir target --test scrollback: exit 0; 6 passed, including 400x120 numbered replay/seek, oversized/overflow refusal, 20k-line/gap/fairness/50-pane accounting.
+Post-fix: cargo test --locked -p bboxy450-term --target-dir target --bin bboxy450-term history_refusal_is_visible_without_a_correlated_operation_and_clears_on_live: exit 0, 1 passed.
+Post-fix: cargo test --locked -p bboxy450-term --target-dir target --bin bboxy450-term scrollback_refusal_reaches_the_visible_pane_strip: exit 0, 1 passed.
+cargo clippy --locked -p bboxy450-term --target-dir target --all-targets -- -D warnings: exit 0. All Cargo commands source scripts/cache-env.sh; two jobs.
+make test-licenses: exit 0, including 9 negative/fixture tests.
+Formal/current-source presubmit: delegated to mandatory sh scripts/land.sh, not claimed by this pre-landing record. No separate full make test.
+Raw logs retained locally (not committed):
+target/cx-evidence/83-red.log: exit=101 sha256=e092f3960dd183de42ff7fe06bae0396cbf695a72fafb8804816d353c5d435bd
+target/cx-evidence/83-green.log: exit=0 sha256=4b8ddfec83e45c9845d62d6b4fb34fd7f048c96f43d52d09a05ea4f727f0e78b
+target/cx-evidence/83-ui.log: exit=0 sha256=3f0f2301919a366043d5538d5f383899be9ae701710162bcbede49a31b2457c2
+target/cx-evidence/83-licenses.log: exit=0 sha256=ec7564ed816989eee49f17a10f1baa74c028157388f944a7bb343f1ddd16dca4
+target/cx-evidence/83-clippy.log: exit=0 sha256=e41b163f7131dd4beffda5bec0a9a78720c03187fedfcb2417a84adb994880c4
