@@ -94,6 +94,8 @@ help:
 	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
+	  'make build-perf-acceptance        Prebuild the P2 gate executable; no compilation in the night' \
+	  'make test-perf-p2                 1000-recipient bus and 400-PTY peak-memory assertions' \
 	  'make build-perf-p1                Optimized P1 companion with private-custody guards' \
 	  'make test-perf-p1                 Private 1000-row/50-history P1 and hitch negative control' \
 	  'make test-history-admission       Core heap admission and private S4 night assertions' \
@@ -1508,3 +1510,16 @@ test-perf-p1: build-perf-p1
 	@set -eu; \
 	'$(abspath $(TARGET_DIR))/release/$(APP)' e2e night --group performance --only P1 --scripts scripts/e2e > '$(TARGET_DIR)/p1-night.jsonl'; \
 	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; r=[r for r in rows if r.get("function")=="P1" and r.get("kind")=="e2e"]; assert len(r)==1 and r[0]["verdict"]=="pass" and r[0]["coverage"]=="full",r; print(r[0])' '$(TARGET_DIR)/p1-night.jsonl'
+
+.PHONY: build-perf-acceptance test-perf-p2
+build-perf-acceptance: build-perf-p1
+	@set -eu; . scripts/cache-env.sh; \
+	CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS=true cargo test --release --locked --target-dir '$(TARGET_DIR)' -p bboxy450-term-mux --test gates_seats --no-run --message-format=json > '$(TARGET_DIR)/perf-gates-build.jsonl'; \
+	python3 -I -c 'import json,sys,shutil; from pathlib import Path; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; paths=[r["executable"] for r in rows if r.get("reason")=="compiler-artifact" and r.get("target",{}).get("name")=="gates_seats" and r.get("executable")]; assert len(paths)==1,paths; p=Path(sys.argv[2]); shutil.copy2(paths[0],p); p.chmod(0o700)' '$(TARGET_DIR)/perf-gates-build.jsonl' '$(TARGET_DIR)/debug/bboxy450-perf-gates'; \
+	cp '$(TARGET_DIR)/debug/bboxy450-perf-gates' '$(TARGET_DIR)/release/bboxy450-perf-gates'
+
+test-perf-p2: build-perf-acceptance
+	@set -eu; . scripts/cache-env.sh; \
+	cargo build --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
+	'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group performance --only P2 --scripts scripts/e2e > '$(TARGET_DIR)/p2-night.jsonl'; \
+	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; r=[r for r in rows if r.get("function")=="P2" and r.get("kind")=="e2e"]; assert len(r)==1 and r[0]["verdict"]=="pass" and r[0]["coverage"]=="full",r; print(r[0])' '$(TARGET_DIR)/p2-night.jsonl'

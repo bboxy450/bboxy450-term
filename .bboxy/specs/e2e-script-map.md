@@ -75,7 +75,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | I3 | `scripts/e2e/I3.sh` | partial | script not implemented: the local-dev issuer path works offline and is marked as such everywhere it shows; pinned receivers refuse local-dev envelopes | |
 | I4 | `scripts/e2e/I4.sh` | partial | script not implemented: every record write from the app is signed by the device key with signer device:<id>; git log shows only good signatures on main | |
 | P1 | `scripts/e2e/P1.sh` | full | — | #9: bounded optimized private ctl fixture; 1000 synthetic sidebar records, 50 real History owners, native HUD/offscreen GPU, paging and idle hitch/heap assertions plus delayed-layout control. Coverage is separate from the measured verdict; paging currently fails. |
-| P2 | `scripts/e2e/P2.sh` | partial | script not implemented: an Oracle broadcast reaches 1000 seats under the bus budget; 400 idle seats stay under the memory budget | |
+| P2 | `scripts/e2e/P2.sh` | full | — | #10: 1000 distinct bus recipients, all 30000 deliveries exactly once, p99 bound and 400 real idle PTYs below peak-RSS bound |
 
 ## Deterministic plans: original 54 promises
 

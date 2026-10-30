@@ -312,7 +312,11 @@ impl Rig {
 
     /// Spawns `n` firehose seats; on failure stops logic and reports its exit.
     fn firehose_seats(self, n: usize, rate: &str) -> (Self, Vec<Ulid>) {
-        let bin = firehose();
+        let bin = if rate == "idle" {
+            PathBuf::from("/bin/sleep")
+        } else {
+            firehose()
+        };
         let free = free_disk_bytes(self.run.path());
         eprintln!("GATE initial_free_disk_bytes={free} min_free_bytes={MIN_FREE_DISK}");
         if free < MIN_FREE_DISK {
@@ -431,6 +435,12 @@ impl Rig {
             "GATE cleanup owned_seats={} exited_before_cleanup={exited}",
             seats.len()
         );
+        for seat in seats.iter().filter(|seat| seat.exited.is_some()).take(8) {
+            eprintln!(
+                "GATE early_exit seat={} generation={} pid={} status={:?}",
+                seat.seat, seat.generation, seat.pid, seat.exited
+            );
+        }
         let mut already_closed = 0;
         let mut unexpected = Vec::new();
         for seat in seats.into_iter().filter(|seat| seat.exited.is_none()) {
@@ -521,10 +531,15 @@ fn gate_memory() {
         cap.durable_pauses - before_capture.durable_pauses,
         cap.peak_undurable_bytes,
     );
+    eprintln!(
+        "GATE memory_sample seats={n} peak_mib={:.3} samples={}",
+        peak as f64 / 1024.0,
+        samples.len()
+    );
     let disk = rig.stop();
     budget(
         "memory",
-        last as f64 / 1024.0,
+        peak as f64 / 1024.0,
         "MiB",
         format!(
             "seats={n} rate={rate} load_s={secs} baseline_mib={:.1} peak_mib={:.1} per_seat_kib={:.1} spawn_s={:.1} sample_seat_records={} sync_s={:.1} marker_s={:.1} sample_seat_full={} disk_peak_mib={:.1} observed_s={observed:.3} writer_busy_s={:.3} writer_s_per_wall_s={:.3} commit_rounds={} commit_p99_upper_ms={:.3} commit_max_ms={:.3} logic_alive=true",
@@ -626,11 +641,25 @@ fn gate_bus() {
     for i in 1..n {
         let r = SeatRecord::new(Ulid::new(), swarm, format!("seat-{i}"), "claude");
         registry.insert(&r).unwrap();
-        messaging.sync_seat(&r).unwrap();
+        // This fixture measures native wake completion. Group conversations are
+        // inbox-only by default; opt these disposable receivers in explicitly.
+        registry
+            .set_attention(
+                r.id,
+                r.generation,
+                bbt_proto::registry::AttentionRule {
+                    destination: format!("swarms/{swarm}"),
+                    class: bbt_proto::messaging::MessageClass::Conversation,
+                    mode: bbt_proto::messaging::WakeMode::Wake,
+                },
+            )
+            .unwrap();
+        messaging.sync_seat(&registry.get(r.id).unwrap()).unwrap();
     }
     let setup = t.elapsed();
     let recipients = n - 1;
     let expected = 30 * recipients;
+    let mut delivered = std::collections::BTreeSet::new();
     let mut sent: BTreeMap<u64, u64> = BTreeMap::new();
     let mut lat: Vec<f64> = Vec::with_capacity(expected);
     let mut pumps = Vec::new();
@@ -665,6 +694,16 @@ fn gate_bus() {
                 };
                 messaging.finish(sw, &work, &outcome, done, false).unwrap();
                 if work.recipient != oracle.id {
+                    for message in work
+                        .messages
+                        .iter()
+                        .filter(|m| sent.contains_key(&m.sequence))
+                    {
+                        assert!(
+                            delivered.insert((work.recipient, message.sequence)),
+                            "duplicate recipient/sequence delivery"
+                        );
+                    }
                     lat.extend(
                         work.messages
                             .iter()
@@ -730,6 +769,14 @@ fn gate_bus() {
         eprintln!("delivery_row_bytes={row_bytes:.0}");
     }
     assert!(!lat.is_empty(), "no deliveries");
+    assert_eq!(
+        delivered.len(),
+        expected,
+        "not every distinct recipient/sequence was delivered"
+    );
+    let recipients_seen: std::collections::BTreeSet<_> =
+        delivered.iter().map(|(seat, _)| *seat).collect();
+    assert_eq!(recipients_seen.len(), recipients, "a recipient was omitted");
     budget(
         "bus",
         percentile(&lat, 99.0),
