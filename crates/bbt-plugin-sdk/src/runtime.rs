@@ -412,6 +412,12 @@ mod tests {
         ) -> Result<Value, Refusal> {
             match method {
                 "describe" if args["panic"] == true => panic!("boom"),
+                "describe" if args["sleep_ms"].is_u64() => {
+                    std::thread::sleep(Duration::from_millis(
+                        args["sleep_ms"].as_u64().unwrap_or(0),
+                    ));
+                    Ok(json!({}))
+                }
                 "describe" => Ok(
                     json!({"root": self.root, "args": args, "remaining": ctx.remaining() > Duration::ZERO}),
                 ),
@@ -512,11 +518,15 @@ mod tests {
     fn rejects_parse_errors_and_requests_beyond_the_pending_bound() {
         let replies = session(&[json!({"jsonrpc":"1.0","id":1}), json!("not an object")]);
         assert!(replies.iter().all(|r| r["error"]["code"] == -32700));
-        let flood: Vec<Value> = (1..=20)
-            .map(|id| json!({"jsonrpc":"2.0","id":id,"method":"ping"}))
-            .collect();
+        // A slow call holds the worker, so the flood behind it must exceed
+        // MAX_PENDING while the reader admits it.
+        let mut flood = vec![
+            json!({"jsonrpc":"2.0","id":100,"method":"initialize","params":{"root":"/r"}}),
+            call(101, "repo_graph_describe", json!({"sleep_ms": 300})),
+        ];
+        flood.extend((1..=20).map(|id| json!({"jsonrpc":"2.0","id":id,"method":"ping"})));
         let replies = session(&flood);
-        assert_eq!(replies.len(), 20);
+        assert_eq!(replies.len(), 22);
         assert!(
             replies
                 .iter()
