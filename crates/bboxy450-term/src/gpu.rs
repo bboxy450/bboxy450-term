@@ -161,6 +161,87 @@ struct DimmedCellTexture {
 }
 #[derive(Default)]
 struct CellTextures(BTreeMap<SeatId, CellTexture>);
+#[derive(Default)]
+struct ChromeCache {
+    entry: Option<CachedChrome>,
+}
+struct CachedChrome {
+    size: wgpu::Extent3d,
+    scale: u32,
+    ops: Vec<Paint>,
+    texture: wgpu::Texture,
+}
+impl ChromeCache {
+    /// Retain only self-contained, time-independent chrome. Live cells and
+    /// foreground overlays are encoded after the copy, so paging never forces
+    /// hundreds of unchanged chrome passes back through Metal.
+    #[allow(clippy::too_many_arguments)]
+    fn draw(
+        &mut self,
+        renderer: &mut ChromeRenderer,
+        materials: &m::Pass,
+        destination: &wgpu::Texture,
+        backdrop: &wgpu::Texture,
+        ops: Vec<Paint>,
+        timing: FrameTime,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), String> {
+        if ops.iter().any(timed_paint) {
+            self.entry = None;
+            return encode_ops(
+                renderer,
+                materials,
+                destination,
+                backdrop,
+                ops,
+                timing,
+                encoder,
+            )
+            .map_err(|e| e.to_string());
+        }
+        let size = destination.size();
+        // Exact value equality, including clips, masks, colors, text and target
+        // geometry. No hash collision can substitute different chrome pixels.
+        let hit = self.entry.as_ref().is_some_and(|old| {
+            old.size == size && old.scale == timing.scale.to_bits() && old.ops == ops
+        });
+        if !hit {
+            let cached_ops = ops.clone();
+            let layer = texture(&renderer.context.device, [size.width, size.height]);
+            encode_ops(
+                renderer,
+                materials,
+                &layer,
+                backdrop,
+                ops,
+                FrameTime {
+                    clear: true,
+                    ..timing
+                },
+                encoder,
+            )
+            .map_err(|e| e.to_string())?;
+            self.entry = Some(CachedChrome {
+                size,
+                scale: timing.scale.to_bits(),
+                ops: cached_ops,
+                texture: layer,
+            });
+        }
+        let layer = &self.entry.as_ref().expect("prepared chrome layer").texture;
+        bbt_render::passes::count(bbt_render::passes::Kind::Copy);
+        encoder.copy_texture_to_texture(layer.as_image_copy(), destination.as_image_copy(), size);
+        Ok(())
+    }
+}
+
+fn timed_paint(op: &Paint) -> bool {
+    match op {
+        Paint::Material { kind, .. } => matches!(kind, ui::Material::Glow | ui::Material::Rim),
+        Paint::Group { ops, .. } => ops.iter().any(timed_paint),
+        Paint::Draw(_) | Paint::Underlay(_) => false,
+    }
+}
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
     pub config: wgpu::SurfaceConfiguration,
@@ -171,6 +252,7 @@ pub struct Gpu {
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: CellTextures,
+    chrome: ChromeCache,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
 }
@@ -312,6 +394,7 @@ impl Gpu {
                 target,
                 backdrop,
                 cells: CellTextures::default(),
+                chrome: ChromeCache::default(),
                 gpu_sender,
                 gpu_samples,
             })
@@ -380,21 +463,22 @@ impl Gpu {
             .context
             .device
             .create_command_encoder(&Default::default());
-        encode_ops(
-            &mut self.renderer,
-            &self.materials,
-            &self.target,
-            &self.backdrop,
-            ops,
-            FrameTime {
-                scale,
-                time_ms: 450.,
-                external_before: false,
-                clear: true,
-            },
-            &mut encoder,
-        )
-        .map_err(|e| e.to_string())?;
+        self.chrome
+            .draw(
+                &mut self.renderer,
+                &self.materials,
+                &self.target,
+                &self.backdrop,
+                ops,
+                FrameTime {
+                    scale,
+                    time_ms: 450.,
+                    external_before: false,
+                    clear: true,
+                },
+                &mut encoder,
+            )
+            .map_err(|e| e.to_string())?;
         self.materials.flush(&self.renderer.context);
         self.renderer.flush();
         self.renderer.context.queue.submit([encoder.finish()]);
@@ -485,22 +569,23 @@ impl Gpu {
             .device
             .create_command_encoder(&Default::default());
         let view = self.target.create_view(&Default::default());
-        encode_ops(
-            &mut self.renderer,
-            &self.materials,
-            &self.target,
-            &self.backdrop,
-            ops,
-            FrameTime {
-                scale,
-                time_ms,
-                // Nothing has touched the target yet this frame; its first pass clears it.
-                external_before: false,
-                clear: true,
-            },
-            &mut encoder,
-        )
-        .map_err(|e| e.to_string())?;
+        self.chrome
+            .draw(
+                &mut self.renderer,
+                &self.materials,
+                &self.target,
+                &self.backdrop,
+                ops,
+                FrameTime {
+                    scale,
+                    time_ms,
+                    // Nothing has touched the target yet this frame; its first pass clears it.
+                    external_before: false,
+                    clear: true,
+                },
+                &mut encoder,
+            )
+            .map_err(|e| e.to_string())?;
         if let Some(panes) = panes {
             self.cells.draw(
                 &mut self.renderer,
@@ -611,6 +696,20 @@ impl CellTextures {
             let (Some(screen), Some(frame)) = (model.screens.get(id), model.frames.get(id)) else {
                 continue;
             };
+            if let Some(raster) = model
+                .prepared_screens
+                .get(id)
+                .and_then(|source| source.raster.as_ref())
+                && raster.theme == theme
+            {
+                let source = if *focused == Some(*id) {
+                    &raster.normal
+                } else {
+                    &raster.dimmed
+                };
+                copy_cells(source, destination, *rect, frame, scale, encoder);
+                continue;
+            }
             let changed = self.0.get(id).is_none_or(|old| {
                 !Arc::ptr_eq(&old.screen, screen) || !Arc::ptr_eq(&old.frame, frame)
             });
@@ -706,31 +805,42 @@ impl CellTextures {
                     .expect("inactive terminal cache")
                     .texture
             };
-            let x = (rect.x * scale).round().max(0.) as u32;
-            let y = (rect.y * scale).round().max(0.) as u32;
-            let width = ((rect.w * scale).floor().max(0.) as u32)
-                .min(frame.width)
-                .min(destination.width().saturating_sub(x));
-            let height = ((rect.h * scale).floor().max(0.) as u32)
-                .min(frame.height)
-                .min(destination.height().saturating_sub(y));
-            if width > 0 && height > 0 {
-                bbt_render::passes::count(bbt_render::passes::Kind::Copy);
-                encoder.copy_texture_to_texture(
-                    source.as_image_copy(),
-                    wgpu::TexelCopyTextureInfo {
-                        origin: wgpu::Origin3d { x, y, z: 0 },
-                        ..destination.as_image_copy()
-                    },
-                    wgpu::Extent3d {
-                        width,
-                        height,
-                        depth_or_array_layers: 1,
-                    },
-                );
-            }
+            copy_cells(source, destination, *rect, frame, scale, encoder);
         }
         Ok(())
+    }
+}
+
+fn copy_cells(
+    source: &wgpu::Texture,
+    destination: &wgpu::Texture,
+    rect: Rect,
+    frame: &PreparedGrid,
+    scale: f32,
+    encoder: &mut wgpu::CommandEncoder,
+) {
+    let x = (rect.x * scale).round().max(0.) as u32;
+    let y = (rect.y * scale).round().max(0.) as u32;
+    let width = ((rect.w * scale).floor().max(0.) as u32)
+        .min(frame.width)
+        .min(destination.width().saturating_sub(x));
+    let height = ((rect.h * scale).floor().max(0.) as u32)
+        .min(frame.height)
+        .min(destination.height().saturating_sub(y));
+    if width > 0 && height > 0 {
+        bbt_render::passes::count(bbt_render::passes::Kind::Copy);
+        encoder.copy_texture_to_texture(
+            source.as_image_copy(),
+            wgpu::TexelCopyTextureInfo {
+                origin: wgpu::Origin3d { x, y, z: 0 },
+                ..destination.as_image_copy()
+            },
+            wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 }
 
@@ -803,6 +913,7 @@ pub(crate) struct VerificationFrame {
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: CellTextures,
+    chrome: ChromeCache,
 }
 impl VerificationFrame {
     pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
@@ -825,6 +936,7 @@ impl VerificationFrame {
                 target,
                 backdrop,
                 cells: CellTextures::default(),
+                chrome: ChromeCache::default(),
             })
         })
         .await
@@ -900,22 +1012,23 @@ impl VerificationFrame {
             .device
             .create_command_encoder(&Default::default());
         clear(&self.target.create_view(&Default::default()), &mut encoder);
-        encode_ops(
-            &mut self.renderer,
-            &self.materials,
-            &self.target,
-            &self.backdrop,
-            ops,
-            FrameTime {
-                scale: 1.,
-                time_ms,
-                external_before: false,
-                // R5 keeps its explicit clear above.
-                clear: false,
-            },
-            &mut encoder,
-        )
-        .map_err(|e| e.to_string())?;
+        self.chrome
+            .draw(
+                &mut self.renderer,
+                &self.materials,
+                &self.target,
+                &self.backdrop,
+                ops,
+                FrameTime {
+                    scale: 1.,
+                    time_ms,
+                    external_before: false,
+                    // R5 keeps its explicit clear above.
+                    clear: false,
+                },
+                &mut encoder,
+            )
+            .map_err(|e| e.to_string())?;
         self.cells
             .draw(&mut self.renderer, &self.target, &panes, 1., &mut encoder)?;
         if !panes.overlay.is_empty() {
@@ -972,6 +1085,36 @@ impl VerificationFrame {
     }
 }
 
+fn rim_material(color: Color, rim: Option<ui::Rim>) -> m::Material {
+    let s = rim.unwrap_or_default();
+    m::Material::Rim(m::Rim {
+        color: s
+            .tint
+            .map(Color)
+            .unwrap_or(color)
+            .alpha(s.inferred_multiplier),
+        waiting: Color::hex(TOKENS.color.state.waiting),
+        errored: Color::hex(TOKENS.color.state.errored),
+        activity: match s.activity {
+            ui::GlowActivity::Idle => m::Activity::Idle,
+            ui::GlowActivity::Active => m::Activity::Active,
+            ui::GlowActivity::Waiting => m::Activity::Waiting,
+            ui::GlowActivity::Errored => m::Activity::Errored,
+        },
+        focus: if s.focused { 1. } else { 0. },
+        depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
+        size: s.size.unwrap_or(TOKENS.glow.rim as f32),
+        phase_ms: (s.seed % 10_000) as f32,
+        outer: s
+            .outer
+            .unwrap_or(f32::MAX)
+            .clamp(0., s.size.unwrap_or(TOKENS.glow.rim as f32) / 2.),
+        alpha: s.rim_alpha.unwrap_or(1.),
+        swell: s.swell.clamp(0., 1.),
+        attention: s.attention,
+    })
+}
+
 fn encode_ops(
     renderer: &mut ChromeRenderer,
     pass: &m::Pass,
@@ -999,7 +1142,8 @@ fn encode_ops(
     let mut underlay = DrawList::default();
     let mut pending = DrawList::default();
     let keys = backdrop_keys(&ops, timing, destination.size());
-    for (index, op) in ops.into_iter().enumerate() {
+    let mut ops = ops.into_iter().enumerate().peekable();
+    while let Some((index, op)) = ops.next() {
         match op {
             Paint::Underlay(list) => underlay.primitives.extend(list.primitives),
             Paint::Draw(mut list) => {
@@ -1036,36 +1180,7 @@ fn encode_ops(
                         saturation: blur
                             .map_or(STYLE.material.panel_saturate as f32, |b| b.saturation),
                     }),
-                    ui::Material::Rim => {
-                        // The pane's alive rim (rim-glow), in the seat colour, to the depth.
-                        let s = glow.unwrap_or_default();
-                        m::Material::Rim(m::Rim {
-                            color: s
-                                .tint
-                                .map(Color)
-                                .unwrap_or(color)
-                                .alpha(s.inferred_multiplier),
-                            waiting: Color::hex(TOKENS.color.state.waiting),
-                            errored: Color::hex(TOKENS.color.state.errored),
-                            activity: match s.activity {
-                                ui::GlowActivity::Idle => m::Activity::Idle,
-                                ui::GlowActivity::Active => m::Activity::Active,
-                                ui::GlowActivity::Waiting => m::Activity::Waiting,
-                                ui::GlowActivity::Errored => m::Activity::Errored,
-                            },
-                            focus: if s.focused { 1. } else { 0. },
-                            depth: s.depth.unwrap_or(TOKENS.glow.depth as f32),
-                            size: s.size.unwrap_or(TOKENS.glow.rim as f32),
-                            phase_ms: (s.seed % 10_000) as f32,
-                            outer: s
-                                .outer
-                                .unwrap_or(f32::MAX)
-                                .clamp(0., s.size.unwrap_or(TOKENS.glow.rim as f32) / 2.),
-                            alpha: s.rim_alpha.unwrap_or(1.),
-                            swell: s.swell.clamp(0., 1.),
-                            attention: s.attention,
-                        })
-                    }
+                    ui::Material::Rim => rim_material(color, glow),
                     ui::Material::Glow => {
                         let g = TOKENS.glow;
                         let state = glow.map_or(m::Activity::Idle, |s| match s.activity {
@@ -1096,7 +1211,7 @@ fn encode_ops(
                         })
                     }
                 };
-                let items = [m::Surface {
+                let mut items = vec![m::Surface {
                     rect,
                     radii,
                     material,
@@ -1108,6 +1223,48 @@ fn encode_ops(
                         })
                         .collect(),
                 }];
+                // The material renderer already preserves surface order inside
+                // one pass. Consecutive rims never sample their backdrop, so
+                // all visible pane rims can share one encoder/pass.
+                if kind == ui::Material::Rim {
+                    while matches!(
+                        ops.peek(),
+                        Some((
+                            _,
+                            Paint::Material {
+                                kind: ui::Material::Rim,
+                                ..
+                            }
+                        ))
+                    ) {
+                        let Some((
+                            _,
+                            Paint::Material {
+                                rect,
+                                radii,
+                                color,
+                                rim,
+                                clips,
+                                ..
+                            },
+                        )) = ops.next()
+                        else {
+                            unreachable!()
+                        };
+                        items.push(m::Surface {
+                            rect,
+                            radii,
+                            material: rim_material(color, rim),
+                            clips: clips
+                                .into_iter()
+                                .map(|c| m::Clip {
+                                    rect: c.rect,
+                                    radii: c.radii,
+                                })
+                                .collect(),
+                        });
+                    }
+                }
                 let size = destination.size();
                 if let Some([x, y, width, height]) =
                     items[0].backdrop_region(scale, size.width, size.height)?
@@ -1263,7 +1420,7 @@ mod backdrop_key_tests {
     use super::*;
     use bbt_ui_model::layout::Rect;
 
-    fn material(kind: ui::Material) -> Paint {
+    pub(super) fn material(kind: ui::Material) -> Paint {
         Paint::Material {
             rect: Rect::new(0., 0., 400., 38.),
             radii: [0.; 4],
@@ -1274,7 +1431,7 @@ mod backdrop_key_tests {
             clips: vec![],
         }
     }
-    fn draw(hex: &str) -> Paint {
+    pub(super) fn draw(hex: &str) -> Paint {
         let mut list = DrawList::default();
         list.rect(Rect::new(0., 0., 400., 300.), 0., Color::hex(hex));
         Paint::Draw(list)
@@ -1412,6 +1569,160 @@ mod clear_fold_tests {
     }
 
     // keeps: spec ux-prototype §3-4, local focus controls actual PTY pixels
+    #[test]
+    fn batched_rims_match_separate_passes_byte_for_byte() {
+        use super::backdrop_key_tests::material;
+        let rims: Vec<_> = (0..50)
+            .map(|i| {
+                let mut op = material(ui::Material::Rim);
+                if let Paint::Material { rim, .. } = &mut op {
+                    *rim = Some(ui::Rim {
+                        seed: i * 13,
+                        tint: Some([i as f32 / 50., 0.2, 0.8, 0.7]),
+                        ..Default::default()
+                    });
+                }
+                op
+            })
+            .collect();
+        let separate = rims
+            .iter()
+            .cloned()
+            .flat_map(|rim| [rim, Paint::Draw(DrawList::default())])
+            .collect();
+        let (expected, before) = render(separate, true);
+        let (actual, after) = render(rims, true);
+        assert_eq!(actual, expected);
+        assert_eq!(before.material, 50);
+        assert_eq!(after.material, 1);
+    }
+
+    #[test]
+    fn retained_chrome_matches_fresh_pixels_and_invalidates_changed_paint() {
+        use super::backdrop_key_tests::{draw, material};
+        for ops in [
+            vec![draw("#123456")],
+            vec![draw("#123456"), material(ui::Material::Frosted)],
+            vec![Paint::Group {
+                ops: vec![draw("#abcdef")],
+                opacity: 0.7,
+                saturation: 0.3,
+                mask: None,
+            }],
+        ] {
+            let expected = render(ops.clone(), true).0;
+            let (actual, _) = render_with(vec![], true, |renderer, target, encoder| {
+                let pass = m::Pass::new(&renderer.context.device, FORMAT);
+                let backdrop = texture(&renderer.context.device, [target.width(), target.height()]);
+                let mut cache = ChromeCache::default();
+                let timing = FrameTime {
+                    scale: 1.,
+                    time_ms: 450.,
+                    external_before: false,
+                    clear: true,
+                };
+                // An unrelated prior layer must not survive a paint replacement.
+                cache
+                    .draw(
+                        renderer,
+                        &pass,
+                        target,
+                        &backdrop,
+                        vec![draw("#ff0000")],
+                        timing,
+                        encoder,
+                    )
+                    .unwrap();
+                cache
+                    .draw(
+                        renderer,
+                        &pass,
+                        target,
+                        &backdrop,
+                        ops.clone(),
+                        timing,
+                        encoder,
+                    )
+                    .unwrap();
+                let retained = cache.entry.as_ref().unwrap().texture.clone();
+                bbt_render::passes::take();
+                cache
+                    .draw(
+                        renderer,
+                        &pass,
+                        target,
+                        &backdrop,
+                        ops.clone(),
+                        timing,
+                        encoder,
+                    )
+                    .unwrap();
+                assert_eq!(retained, cache.entry.as_ref().unwrap().texture);
+                let counts = bbt_render::passes::take();
+                assert_eq!(counts.passes(), 0, "a hit only copies pixels");
+                assert_eq!(counts.copy, 1);
+                pass.flush(&renderer.context);
+            });
+            assert_eq!(actual, expected);
+        }
+        assert!(timed_paint(&material(ui::Material::Rim)));
+        assert!(timed_paint(&Paint::Group {
+            ops: vec![material(ui::Material::Glow)],
+            opacity: 1.,
+            saturation: 1.,
+            mask: None,
+        }));
+    }
+
+    #[test]
+    fn worker_rasters_keep_old_publications_immutable_across_a_b_a() {
+        let (pixels, _) = render_with(vec![], true, |renderer, target, encoder| {
+            let context = Arc::new(DeviceContext {
+                device: renderer.context.device.clone(),
+                queue: renderer.context.queue.clone(),
+                adapter_info: renderer.context.adapter_info.clone(),
+            });
+            let mut preparer = model::PanePreparer::new(context).unwrap();
+            let mut model = Model::default();
+            let seat = SeatId::from_u128(1);
+            let mut rasters = vec![];
+            for color in ["255;0;0", "0;0;255", "255;0;0"] {
+                let mut term = bbt_core::Term::new(8, 2, 0);
+                term.advance(format!("\x1b[48;2;{color}m\x1b[2J\x1b[?25l").as_bytes());
+                model.screens.insert(
+                    seat,
+                    Arc::new(Screen::from_term(&term, String::new(), None, None)),
+                );
+                preparer.prepare(&mut model).unwrap();
+                rasters.push(
+                    model.prepared_screens[&seat]
+                        .raster
+                        .as_ref()
+                        .unwrap()
+                        .clone(),
+                );
+            }
+            assert_ne!(
+                rasters[0].normal, rasters[2].normal,
+                "ABA needs new immutable storage"
+            );
+            for (i, raster) in rasters.iter().enumerate() {
+                copy_cells(
+                    &raster.normal,
+                    target,
+                    Rect::new(i as f32 * 128., 0., 32., 24.),
+                    &model.frames[&seat],
+                    1.,
+                    encoder,
+                );
+            }
+        });
+        let pixel = |x: usize| &pixels[x * 4..x * 4 + 3];
+        assert_eq!(pixel(0), &[255, 0, 0]);
+        assert_eq!(pixel(128), &[0, 0, 255]);
+        assert_eq!(pixel(256), &[255, 0, 0]);
+    }
+
     #[test]
     fn cached_terminal_ungrays_with_window_focus_before_backend_focus_catches_up() {
         let (pixels, _) = render_with(vec![], true, |renderer, target, encoder| {

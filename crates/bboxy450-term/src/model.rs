@@ -1488,6 +1488,14 @@ pub struct PreparedScreen {
     pub screen: Arc<Screen>,
     /// Historical screens have no live capture cursor.
     pub baseline: Option<(View, u64)>,
+    /// Immutable pixels submitted by the preparation worker before publication.
+    pub raster: Option<Arc<PaneRaster>>,
+}
+
+pub struct PaneRaster {
+    pub normal: wgpu::Texture,
+    pub dimmed: wgpu::Texture,
+    pub theme: Theme,
 }
 
 struct CachedPane {
@@ -1495,14 +1503,19 @@ struct CachedPane {
     focused: bool,
     theme: Theme,
     frame: Arc<PreparedGrid>,
+    raster: Arc<PaneRaster>,
 }
 /// Retained worker-side glyph cache, sharing the app's one GPU device. The IO
 /// loop calls prepare after build and before publishing the complete Model.
 pub struct PanePreparer {
     context: Arc<DeviceContext>,
     renderer: TerminalRenderer,
+    compositor: bbt_render::chrome::ChromeRenderer,
     options: terminal::Options,
     cached: BTreeMap<SeatId, CachedPane>,
+    /// Keep the final GPU-resource release on the preparation worker. A GUI
+    /// dropping an old publication only releases its extra Arc references.
+    retired: Vec<CachedPane>,
 }
 impl PanePreparer {
     pub fn new(context: Arc<DeviceContext>) -> bbt_render::Result<Self> {
@@ -1515,11 +1528,21 @@ impl PanePreparer {
     ) -> bbt_render::Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let renderer = TerminalRenderer::new(&context, options.clone())?;
+        let compositor = bbt_render::chrome::ChromeRenderer::with_context(
+            DeviceContext {
+                device: context.device.clone(),
+                queue: context.queue.clone(),
+                adapter_info: context.adapter_info.clone(),
+            },
+            bbt_render::chrome::icons::Assets::default(),
+        )?;
         Ok(Self {
             context,
             renderer,
+            compositor,
             options,
             cached: BTreeMap::new(),
+            retired: Vec::new(),
         })
     }
     pub fn prepare(&mut self, model: &mut Model) -> bbt_render::Result<()> {
@@ -1535,18 +1558,34 @@ impl PanePreparer {
                 let renderer = TerminalRenderer::new(&self.context, options.clone())?;
                 self.renderer = renderer;
                 self.options = options;
-                self.cached.clear();
+                self.retired
+                    .extend(std::mem::take(&mut self.cached).into_values());
             }
         }
         let metrics = self.renderer.metrics();
         model.terminal_cell_pixels = Some([metrics.cell_width, metrics.cell_height]);
         let limit = self.context.device.limits().max_texture_dimension_2d;
         let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::PanePrepare);
-        self.cached
-            .retain(|seat, _| model.screens.contains_key(seat));
+        let removed: Vec<_> = self
+            .cached
+            .keys()
+            .filter(|seat| !model.screens.contains_key(seat))
+            .copied()
+            .collect();
+        for seat in removed {
+            self.retired.push(self.cached.remove(&seat).unwrap());
+        }
+        self.retired.retain(|pane| {
+            Arc::strong_count(&pane.frame) > 1 || Arc::strong_count(&pane.raster) > 1
+        });
         let theme = model.ui.window.theme;
         let mut frames = BTreeMap::new();
         let mut prepared_screens = BTreeMap::new();
+        self.compositor.begin_frame();
+        let mut encoder = self
+            .context
+            .device
+            .create_command_encoder(&Default::default());
         for (&seat, screen) in &model.screens {
             let screen = model
                 .history
@@ -1576,15 +1615,19 @@ impl PanePreparer {
             if !reuse {
                 let grid = screen_grid(screen, theme, focused)?;
                 let frame = Arc::new(self.renderer.prepare(&self.context, &grid)?);
-                self.cached.insert(
+                let raster = Arc::new(self.raster(&frame, theme, &mut encoder)?);
+                if let Some(old) = self.cached.insert(
                     seat,
                     CachedPane {
                         screen: screen.clone(),
                         focused,
                         theme,
                         frame,
+                        raster,
                     },
-                );
+                ) {
+                    self.retired.push(old);
+                }
             }
             frames.insert(seat, self.cached[&seat].frame.clone());
             prepared_screens.insert(
@@ -1594,13 +1637,107 @@ impl PanePreparer {
                     baseline: (!model.history.contains_key(&seat))
                         .then(|| model.screen_baselines.get(&seat).copied())
                         .flatten(),
+                    raster: Some(self.cached[&seat].raster.clone()),
                 },
             );
         }
+        // The shared GPU queue orders these immutable rasters before any UI
+        // command that can observe this publication. Never repaint a texture
+        // retained by an older model; a slow GUI may still be displaying it.
+        self.compositor.flush();
+        self.context.queue.submit([encoder.finish()]);
         model.frames = frames;
         model.prepared_screens = prepared_screens;
         measurement.finish(model.screens.len() as u64, 0);
         Ok(())
+    }
+
+    // Adapted from bboxy450-term src/gpu.rs::CellTextures::draw: same raster and dim composition, owned by the worker.
+    // Source/policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn raster(
+        &mut self,
+        frame: &PreparedGrid,
+        theme: Theme,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> bbt_render::Result<PaneRaster> {
+        use bbt_render::chrome::{ChromeTarget, group};
+        use bbt_ui_model::{TOKENS, draw::Color};
+        let texture = || {
+            self.context
+                .device
+                .create_texture(&wgpu::TextureDescriptor {
+                    label: Some("worker-prepared terminal raster"),
+                    size: wgpu::Extent3d {
+                        width: frame.width,
+                        height: frame.height,
+                        depth_or_array_layers: 1,
+                    },
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8Unorm,
+                    usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                        | wgpu::TextureUsages::COPY_SRC
+                        | wgpu::TextureUsages::TEXTURE_BINDING,
+                    view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+                })
+        };
+        let normal = texture();
+        let dimmed = texture();
+        let view = normal.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(wgpu::TextureFormat::Rgba8UnormSrgb),
+            ..Default::default()
+        });
+        fn clear(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, color: wgpu::Color) {
+            let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(color),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                ..Default::default()
+            });
+        }
+        clear(encoder, &view, wgpu::Color::TRANSPARENT);
+        frame.encode(encoder, &view, [0, 0], [0, 0, frame.width, frame.height]);
+        let wash = Color::hex(theme.palette().bg)
+            .mix(Color::hex(theme.palette().fg_dim), TOKENS.dim.wash as f32)
+            .0;
+        let view = dimmed.create_view(&Default::default());
+        clear(
+            encoder,
+            &view,
+            wgpu::Color {
+                r: f64::from(wash[0]),
+                g: f64::from(wash[1]),
+                b: f64::from(wash[2]),
+                a: 1.,
+            },
+        );
+        self.compositor.composite_group(
+            &normal.create_view(&Default::default()),
+            group::Filter {
+                opacity: TOKENS.dim.opacity as f32,
+                saturation: TOKENS.dim.saturate as f32,
+            },
+            ChromeTarget {
+                width: frame.width,
+                height: frame.height,
+                scale: 1.,
+                view: &view,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+            },
+            encoder,
+        )?;
+        Ok(PaneRaster {
+            normal,
+            dimmed,
+            theme,
+        })
     }
 }
 

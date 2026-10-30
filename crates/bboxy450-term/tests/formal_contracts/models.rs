@@ -1363,8 +1363,65 @@ fn graph_query_cursors(b: bool) -> Model {
     m
 }
 
+fn pane_raster_publication(b: bool) -> Model {
+    let mut m = model(
+        "PaneRasterPublication",
+        b,
+        &[
+            ("source", 2, 1),
+            ("stage", 2, 0),
+            ("built_source", 2, 0),
+            ("published_source", 2, 0),
+            ("published_pixels", 2, 0),
+            ("published", 1, 0),
+        ],
+    );
+    for source in [1, 2] {
+        action(
+            &mut m,
+            if source == 1 { "SourceA" } else { "SourceB" },
+            ne(0, source),
+            &[(0, Int(source))],
+        );
+    }
+    action(
+        &mut m,
+        "PrepareNewTexture",
+        eq(1, 0),
+        &[(1, Int(1)), (2, Var(0))],
+    );
+    action(&mut m, "SubmitRaster", eq(1, 1), &[(1, Int(2))]);
+    action(
+        &mut m,
+        "PublishSubmittedRaster",
+        all([eq(1, 2), Var(0).eq(Var(2))]),
+        &[(1, Int(0)), (3, Var(2)), (4, Var(2)), (5, Int(1))],
+    );
+    action(
+        &mut m,
+        "DiscardStalePreparation",
+        all([ne(1, 0), Var(0).eq(Var(2)).negate()]),
+        &[(1, Int(0))],
+    );
+    if b {
+        action(
+            &mut m,
+            "RepaintPublishedTextureInPlace",
+            all([eq(5, 1), Var(0).eq(Var(3)).negate()]),
+            &[(4, Var(0))],
+        );
+    }
+    safe(
+        &mut m,
+        "PublishedPixelsStayWithTheirSource",
+        implies(eq(5, 1), Var(3).eq(Var(4))),
+    );
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 29] = [
+    let families: [fn(bool) -> Model; 30] = [
+        pane_raster_publication,
         terminal_reply_progress,
         terminal_replay_quiet,
         seat_models::diagnostics,

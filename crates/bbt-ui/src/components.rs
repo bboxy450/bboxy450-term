@@ -2172,12 +2172,12 @@ fn allocate_children(
     Ok(layout::solve_box(&model, r, pass.measure))
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Clip {
     pub rect: Rect,
     pub radii: [f32; 4],
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Paint {
     /// Paint children to transparent storage before applying this filter once.
     Group {

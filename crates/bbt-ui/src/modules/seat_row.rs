@@ -200,7 +200,7 @@ pub fn role_color(role: &str) -> ui::Color {
     })
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Held {
     pub id: String,
     pub blocked: Option<String>,
@@ -212,7 +212,7 @@ pub struct Deferred {
     pub at: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SeatRow {
     pub key: String,
     pub name: String,
@@ -898,7 +898,7 @@ impl SeatRow {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TaskRow {
     pub title: String,
     pub state: String,

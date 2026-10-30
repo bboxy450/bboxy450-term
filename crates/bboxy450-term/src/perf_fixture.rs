@@ -282,16 +282,31 @@ pub fn run() -> Result<serde_json::Value, String> {
         }
         let layout = start.elapsed();
         let start = Instant::now();
-        let mut ops = scene.paint(&layouts, [1600., 900.], None, None);
+        // Match the native composition: chrome first, terminal cells, then
+        // live rims/HUD. All three remain inside the measured frame phases.
+        let (ops, mut overlay) =
+            bbt_ui::components::split_rims(scene.paint(&layouts, [1600., 900.], None, None));
         let hud = crate::perf_hud(meter.perf_record(Instant::now(), 0.));
-        let overlay = scene.overlay([1600., 900.], Some(&hud));
-        if overlay.is_empty() {
+        let hud_ops = scene.overlay([1600., 900.], Some(&hud));
+        if hud_ops.is_empty() {
             return Err("p1_hud_unpainted".into());
         }
-        ops.extend(overlay);
+        overlay.extend(hud_ops);
         let draw = start.elapsed();
         frame += 1;
-        let encode = gpu.draw(ops, &sample.model, &bounds, frame, complete.clone())?;
+        let encode = gpu.draw_layers_notifying(
+            ops,
+            crate::gpu::Panes {
+                model: &sample.model,
+                bounds: &bounds,
+                focused: sample.model.ui.window.stage.focused,
+                overlay,
+            },
+            frame,
+            450.,
+            complete.clone(),
+            || {},
+        )?;
         let phases = Phases {
             layout,
             draw,

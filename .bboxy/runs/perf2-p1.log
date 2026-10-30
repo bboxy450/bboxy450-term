@@ -1,0 +1,9 @@
+2026-10-30 perf2 / issue #9 / ROLE: EXECUTOR
+Scope: Scene layout memoization, chrome retention/material submission, PanePreparer raster publication and paired formal ownership model. No budgets/assertions changed.
+Baseline make test-perf-p1 — exit 2; 8/8 paging hitches; CPU p99=399.095916 ms; layout 12..32 ms and encode 73..385 ms; all 10 GPU completions and no validation errors.
+Own-PID sample — exit 0; Metal render-pass setup/texture destruction and repeated chrome work on frame path. Raw profiles remain in this worktree's ignored target/p1-profile-*.
+Decision: retain solved chrome geometry and static chrome pixels using exact value equality; publish immutable worker-submitted normal/dim terminal rasters; release superseded resources on their worker; batch consecutive rim materials preserving painter order. Keep dynamic overlays in measured phases and align P1 ordering with the native driver (chrome, cells, rims/HUD).
+make test-perf-p1 — exit 0; full P1 verdict, 1000 rows / 50 actual History owners, zero idle/paging hitches, CPU p99=5.861501 ms, 19097330 retained history bytes <200000000, GPU completions=10/10, validation errors=0. Delayed-layout broken control rejected with one hitch.
+target/p1-night.jsonl SHA256 2cd19146824a1d006322f91c5b12d72dd8df3433722b7d8d5997fcfea9316bf7
+cache-env cargo test --locked --target-dir target -p bboxy450-term --bin bboxy450-term gpu::clear_fold_tests:: — exit 0; 6 passed. Batched 50-to-1 rim passes and cache hits match fresh pixels byte-for-byte; worker raster A/B/A and local focus checks passed.
+Formal: PaneRasterPublication plus BrokenPaneRasterPublication added with model/source mapping, finite A/B/A source replacement, submit-before-publication and immutable published-pixel contract. Required current-source TLC/Yarn, dependent tests, strict Clippy and parity remain the batch landing gate.

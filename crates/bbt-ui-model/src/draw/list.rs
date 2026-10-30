@@ -8,7 +8,7 @@ use super::{Color, Prim, TextStyle};
 use crate::layout::Rect;
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DrawList {
     pub primitives: Vec<Prim>,
     pub revision: u64,

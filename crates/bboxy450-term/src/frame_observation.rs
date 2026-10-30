@@ -166,6 +166,7 @@ mod tests {
             seat,
             PreparedScreen {
                 baseline: Some((view, sequence)),
+                raster: None,
                 screen: Arc::new(Screen {
                     cols: 3,
                     rows: 1,

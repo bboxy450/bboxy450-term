@@ -274,6 +274,59 @@ pub struct Scene {
     attention_origins: HashMap<SeatId, Instant>,
     restart_generations: HashMap<SeatId, (u64, Option<Instant>, bbt_ui_model::SwarmId)>,
     restart_lines: Vec<(bbt_ui_model::SwarmId, String)>,
+    /// Terminal-only publications do not change chrome geometry. Keep the solved
+    /// visible tree rather than rebuilding all 1000 sidebar component trees.
+    layout_cache: RefCell<Option<(LayoutKey, Vec<c::Layout>)>>,
+}
+#[derive(PartialEq)]
+struct LayoutShape {
+    numbers: [f32; 6],
+    flags: [bool; 5],
+    context: ui::Context,
+    sidebar: ui::modules::composer::SidebarLayout,
+}
+struct LayoutKey {
+    shape: LayoutShape,
+    swarms: Vec<bbt_ui_model::Swarm>,
+    open: BTreeSet<bbt_ui_model::SwarmId>,
+    sections: BTreeSet<String>,
+    hosts: Vec<bbt_proto::GuiHost>,
+    closed: Vec<(SeatId, Instant, String, String)>,
+    seats: Vec<SeatRow>,
+    tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
+    tree: Option<SplitNode>,
+    focused: Option<SeatId>,
+    selected: Option<bbt_ui_model::SwarmId>,
+}
+impl LayoutKey {
+    fn matches(&self, scene: &Scene, shape: &LayoutShape) -> bool {
+        self.shape == *shape
+            && self.swarms == scene.swarms
+            && self.open == scene.open_swarms
+            && self.sections == scene.sidebar_sections_closed
+            && self.hosts == scene.hosts
+            && self.closed == scene.closed
+            && self.seats == scene.seats
+            && self.tasks == scene.tasks
+            && self.tree == scene.tree
+            && self.focused == scene.focused
+            && self.selected == scene.selected_swarm
+    }
+    fn new(scene: &Scene, shape: LayoutShape) -> Self {
+        Self {
+            shape,
+            swarms: scene.swarms.clone(),
+            open: scene.open_swarms.clone(),
+            sections: scene.sidebar_sections_closed.clone(),
+            hosts: scene.hosts.clone(),
+            closed: scene.closed.clone(),
+            seats: scene.seats.clone(),
+            tasks: scene.tasks.clone(),
+            tree: scene.tree.clone(),
+            focused: scene.focused,
+            selected: scene.selected_swarm,
+        }
+    }
 }
 type FontKey = (u32, u16, bool, bool, u32);
 #[derive(Default)]
@@ -446,6 +499,7 @@ impl Scene {
             swells: HashMap::new(),
             restart_generations: HashMap::new(),
             restart_lines: vec![],
+            layout_cache: RefCell::new(None),
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -575,6 +629,7 @@ impl Scene {
             swells: HashMap::new(),
             restart_generations: HashMap::new(),
             restart_lines: vec![],
+            layout_cache: RefCell::new(None),
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -981,7 +1036,10 @@ impl Scene {
             let footer = if self.identity.is_some() { 24. } else { 0. };
             full = self
                 .layout_contents(
-                    [layouts.first()?.rect.w, visible_sidebar.rect.bottom() + footer],
+                    [
+                        layouts.first()?.rect.w,
+                        visible_sidebar.rect.bottom() + footer,
+                    ],
                     false,
                     0.,
                     Instant::now(),
@@ -1194,6 +1252,56 @@ impl Scene {
         self.layout_contents(size, effects, dock_height, now, true, false)
     }
     fn layout_contents(
+        &self,
+        size: [f32; 2],
+        effects: bool,
+        dock_height: f32,
+        now: Instant,
+        panes: bool,
+        full_sidebar: bool,
+    ) -> Result<Vec<c::Layout>, String> {
+        let timed = self.animating(now)
+            || self.attention.values().any(|(_, muted)| !muted)
+            || self.swells.values().any(|pulse| {
+                now.saturating_duration_since(pulse.at).as_secs_f32() * 1000.
+                    < TOKENS.glow.swell_ms as f32
+            });
+        let cacheable = !timed && self.starting.is_none();
+        let shape = LayoutShape {
+            numbers: [
+                size[0],
+                size[1],
+                dock_height,
+                self.sidebar_scroll,
+                self.sidebar_width,
+                self.rim,
+            ],
+            flags: [
+                effects,
+                panes,
+                full_sidebar,
+                self.live,
+                self.identity.is_some(),
+            ],
+            context: self.context,
+            sidebar: self.sidebar_layout,
+        };
+        if cacheable
+            && let Some((old, layouts)) = self.layout_cache.borrow().as_ref()
+            && old.matches(self, &shape)
+        {
+            return Ok(layouts.clone());
+        }
+        // A timed or failed solve cannot leave a pre-animation entry reusable.
+        self.layout_cache.borrow_mut().take();
+        let layouts =
+            self.solve_layout_contents(size, effects, dock_height, now, panes, full_sidebar)?;
+        if cacheable {
+            *self.layout_cache.borrow_mut() = Some((LayoutKey::new(self, shape), layouts.clone()));
+        }
+        Ok(layouts)
+    }
+    fn solve_layout_contents(
         &self,
         size: [f32; 2],
         effects: bool,
