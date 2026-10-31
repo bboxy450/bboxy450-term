@@ -321,3 +321,13 @@ implementation_tests = ["crates/bboxy450-term/src/gpu.rs"]
 assumptions = "Two source identities, A/B/A replacement, preparation and queue submission interleaved with publication. Published rasters are immutable and one shared GPU queue orders worker submission before UI copies. GPU driver correctness, allocation failure and elapsed frame deadlines use implementation/performance tests. No fairness assumption is needed for the safety check."
 property = "Only a submitted current-source raster is published; later preparation never changes pixels retained by an older publication."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "VolatileBusSubscription"
+title = "Live-only bus subscriptions do not read unrelated seat databases"
+models = ["VolatileBusSubscription", "BrokenVolatileBusSubscription"]
+sources = ["crates/bbt-mux/src/bus.rs"]
+implementation_tests = ["crates/bbt-mux/src/bus.rs"]
+assumptions = "One router owner with atomic subscribe/unsubscribe calls; four anonymous/named and new/replay policies. IO means the existing required persistence/replay path, not successful disk completion. Queue overflow, SQL transactions, signatures, transport fairness and wall-clock latency remain implementation-tested."
+property = "Only anonymous Start::New Ack::None subscription bypasses retained IO; unsubscribe retires memory and named subscriptions retain their durable cleanup. The broken control also bypasses anonymous replay. The native unavailable-database witness proves the live-only path is independent of retained storage and rejects the replay/durable controls."
+checks = ["make test-formal", "make test"]

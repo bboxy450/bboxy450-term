@@ -1175,7 +1175,12 @@ fn transport_capture(b: bool) -> Model {
     action(&mut m, "CompleteSuccess", eq(3, 2), &[(3, Int(3))]);
     action(&mut m, "CompleteFailure", eq(3, 2), &[(3, Int(4))]);
     action(&mut m, "RejectedOrCancelled", eq(3, 1), &[(3, Int(4))]);
-    action(&mut m, "RememberFailure", if b { eq(3, 4) } else { Bool(false) }, &[(4, Var(1))]);
+    action(
+        &mut m,
+        "RememberFailure",
+        if b { eq(3, 4) } else { Bool(false) },
+        &[(4, Var(1))],
+    );
     safe(&mut m, "FailureNeverRemembers", implies(eq(3, 4), eq(4, 0)));
     action(
         &mut m,
@@ -1419,8 +1424,56 @@ fn pane_raster_publication(b: bool) -> Model {
     m
 }
 
+fn volatile_bus_subscription(b: bool) -> Model {
+    let mut m = model(
+        "VolatileBusSubscription",
+        b,
+        &[
+            ("policy", 3, 0),
+            ("stage", 3, 0),
+            ("active", 1, 0),
+            ("io", 1, 0),
+        ],
+    );
+    // Anonymous/new, anonymous/replay, named/new, named/replay. The router
+    // owns these atomic calls; no IO completion or timing guarantee is modeled.
+    for policy in 0..4 {
+        action(
+            &mut m,
+            &format!("ChoosePolicy{policy}"),
+            eq(1, 0),
+            &[(0, Int(policy)), (1, Int(1))],
+        );
+        let subscribe_io = i64::from(policy != 0 && !(b && policy == 1));
+        action(
+            &mut m,
+            &format!("Subscribe{policy}"),
+            all([eq(1, 1), eq(0, policy)]),
+            &[(1, Int(2)), (2, Int(1)), (3, Int(subscribe_io))],
+        );
+        action(
+            &mut m,
+            &format!("Unsubscribe{policy}"),
+            all([eq(1, 2), eq(0, policy)]),
+            &[(1, Int(3)), (2, Int(0)), (3, Int(i64::from(policy >= 2)))],
+        );
+    }
+    safe(
+        &mut m,
+        "OnlyLiveAnonymousSubscriptionBypassesIO",
+        implies(eq(1, 2), all([eq(2, 1), eq(0, 0).eq(eq(3, 0))])),
+    );
+    safe(
+        &mut m,
+        "UnsubscribeRetiresMemoryAndPreservesDurableIO",
+        implies(eq(1, 3), all([eq(2, 0), Var(0).lt(Int(2)).eq(eq(3, 0))])),
+    );
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 30] = [
+    let families: [fn(bool) -> Model; 31] = [
+        volatile_bus_subscription,
         pane_raster_publication,
         terminal_reply_progress,
         terminal_replay_quiet,

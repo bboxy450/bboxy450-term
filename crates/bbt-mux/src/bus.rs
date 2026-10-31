@@ -296,6 +296,22 @@ impl Stream {
         }
     }
     fn subscribe(&mut self, id: &str, config: &Consumer) -> Result<()> {
+        if config.name.is_none() && config.ack == Ack::None && config.start == Start::New {
+            // Live-only subscriptions have neither a retained replay nor a
+            // durable cursor. Do not open every seat database on the serial
+            // router merely to install an empty in-memory delivery queue.
+            self.consumers.insert(
+                id.into(),
+                Subscriber {
+                    config: config.clone(),
+                    queue: VecDeque::new(),
+                    gap: None,
+                    cursor: 0,
+                    gui: None,
+                },
+            );
+            return Ok(());
+        }
         let db = sqlite::open(&self.log.path)?;
         let old: Option<(i64, String)> = db
             .query_row(
@@ -1556,6 +1572,18 @@ impl Broker {
             .ack(consumer, sequence)
     }
     pub fn unsubscribe(&mut self, id: &str) -> Result<()> {
+        if self
+            .consumers
+            .get(id)
+            .is_some_and(|config| config.name.is_none())
+        {
+            // Anonymous subscriptions never persist consumers or pending ACKs.
+            for stream in self.streams.values_mut() {
+                stream.consumers.remove(id);
+            }
+            self.consumers.remove(id);
+            return Ok(());
+        }
         for stream in self.streams.values_mut() {
             let mut db = sqlite::open(&stream.log.path)?;
             let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -2172,6 +2200,36 @@ mod gui_tests {
     }
     fn event(subject: &str) -> Draft {
         Draft::new(subject, "fixture", serde_json::json!({"id":"fixture"}))
+    }
+
+    // Live-only routing must not wait for unrelated retained seat databases.
+    #[test]
+    fn live_only_subscription_does_not_open_retained_streams() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        broker.ensure_stream("seat").unwrap();
+        // A directory cannot be opened as a SQLite database. This is a
+        // deterministic IO refusal, not a timing assertion or operator lock.
+        broker.streams.get_mut("seat").unwrap().log.path = fixture.0.clone();
+        let id = broker.subscribe(Consumer::gui("seat/live/output")).unwrap();
+        let envelope =
+            Envelope::signed(event("seat/live/output"), 0, String::new(), &broker.key).unwrap();
+        broker
+            .streams
+            .get_mut("seat")
+            .unwrap()
+            .publish(envelope)
+            .unwrap();
+        assert_eq!(broker.poll(&id, 8, 1).unwrap().len(), 1);
+        broker.unsubscribe(&id).unwrap();
+        // Retained/durable subscribers still require the database; bypassing
+        // their IO would silently lose replay or persistence.
+        let mut retained = Consumer::gui("seat/live/output");
+        retained.start = Start::All;
+        assert!(broker.subscribe(retained).is_err());
+        let mut durable = Consumer::gui("seat/live/output");
+        durable.name = Some("durable".into());
+        assert!(broker.subscribe(durable).is_err());
     }
     fn sequences(deliveries: &[Delivery]) -> Vec<(String, u64)> {
         deliveries

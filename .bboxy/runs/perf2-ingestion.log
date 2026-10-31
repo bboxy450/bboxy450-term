@@ -1,0 +1,44 @@
+# perf2 #47: partial product fix; full ingestion budget remains unmet
+date=2026-10-30
+base=3f601c6a5361a7164076a68521655c05b6657dbc
+scope=anonymous live-only bus subscribe/unsubscribe; no plugin host or Settings changes
+decision=avoid SQLite admission/cleanup for anonymous subscriptions with no durable cursor; Start::New/Ack::None skips retained reads; replay/durable controls keep existing IO
+proof=crates/bbt-mux/src/bus.rs live_only_subscription_does_not_open_retained_streams; unavailable retained database refuses old implementation and replay/durable controls, while live subscribe/delivery/unsubscribe succeeds
+red_command=cargo test --locked --target-dir target -p bboxy450-term-mux --lib live_only_subscription_does_not_open_retained_streams
+red_exit=101 (CannotOpen; expected old-path failure)
+green_command=same native regression
+green_exit=0 (1 passed)
+focused_command=cargo test --locked --target-dir target -p bboxy450-term-mux --lib bus::
+focused_result=17 passed; 0 failed
+integration_command=cargo test --locked --target-dir target -p bboxy450-term-mux --test storage_bus_index
+integration_exit=0 (14 passed; 1 ignored helper invoked by process-parent test)
+formal_manifest_command=python3 -I scripts/test-formal.py
+formal_manifest_exit=0 (8 passed)
+formal=VolatileBusSubscription/BrokenVolatileBusSubscription; four finite anonymous/named and new/replay policies; native Rust and pinned Java verification enforced by landing
+acceptance=#47 remains open: no qualifying large reduction in Written->LogicOutputRead; no budget/assertion changes
+rejected=128-notification per-host intake alone regressed; combined scheduling cut improved fresh-baseline ingestion by 16.73%, insufficient; removed all intake/model/ICD experiments before commit
+retained_span_finding=baseline max post-parse event span 751.29 ms (separate prior run 976.58 ms); live-only bus cut max retained event span 8.34 ms at probe admission, 2.89 ms at read; this is a removed stall, not whole-run acceptance or exclusive CPU attribution
+remaining=bounded history pages still need multiple fair parser turns; actual read sequence557 reached after 1321.86 ms with bus-only fix; broader per-seat ingestion/RPC isolation is unproved
+logs=raw fixtures and identities stay in ignored worktree target/; command outputs /tmp/bboxy-perf2-*.log
+probe_command=make profile-ingestion (each diagnostic below exits 2; underlying analyzer exits 1; timing_gated=false, all 967 distinct owned real PTYs, zero fixture failures)
+gate_command=sh scripts/land.sh (run after this signed commit; gate owns exact-source dependent tests, strict clippy, formal and invariant receipts)
+probe=fresh baseline path=target/ingestion.7qFKqM ingestion_ms=1249.705541 input_gpu_ms=1536.869042 load_before=[7.2294921875, 4.69384765625, 5.69140625]
+sha256 target/ingestion.7qFKqM/report.json=49c22492d034dbff36e3a356658e94c4fe7ab09ee6fb189b3af22dce5869f26b
+sha256 target/ingestion.7qFKqM/report.capture.json=782742c7e60faf952ad5e8aee09915a9d2ab86424ac6106346eeef74c91145f5
+sha256 target/ingestion.7qFKqM/source.patch=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+sha256 target/ingestion.7qFKqM/binary.sha256=1a933d17dfb29e91f99aa6637352035783502270cb3d0a9b63a83dc7ec07838d
+probe=discarded intake-only path=target/ingestion.uOLPjp ingestion_ms=1510.994166 input_gpu_ms=1852.121417 load_before=[7.5732421875, 4.96337890625, 5.34716796875]
+sha256 target/ingestion.uOLPjp/report.json=e7eb76cc1463a1ce015d916549f26ffdbbce609667c3c0ed0160a6cfe67176b7
+sha256 target/ingestion.uOLPjp/report.capture.json=d4bb4f86499a13b07a4923dd78fd4530cff40e0609d5ea322d4ffc4ca2b92b53
+sha256 target/ingestion.uOLPjp/source.patch=27548c98143ea6c6c8597fdd9e9bb28e346d7ceb9e72656c5dc43ea8020c6836
+sha256 target/ingestion.uOLPjp/binary.sha256=6b2fc454a6ae9fc8500cea77e723af27b654423cb78fba18d17c580e7a708f89
+probe=retained bus-only product path=target/ingestion.nOjjIv ingestion_ms=1321.86 input_gpu_ms=1456.043584 load_before=[7.666015625, 4.88232421875, 5.02294921875]
+sha256 target/ingestion.nOjjIv/report.json=d08ab9ef1a9a6f45b87449979e1e8483cfb5a8340b21124ff65eeb9b07f1c351
+sha256 target/ingestion.nOjjIv/report.capture.json=8beef9769ce4f3f9a62e0a12cca07a18aeb680f456d0746580fc09bce8d1bfcf
+sha256 target/ingestion.nOjjIv/source.patch=b2a164ff1c5bef1529ad7c15c4bc74abc7a374dd3ea0d3ed7530466c39dd348d
+sha256 target/ingestion.nOjjIv/binary.sha256=687f791e6d611332311b1f63e981bd3ee4b06e853c1d444cb2880200e08dcb1d
+probe=discarded combined path=target/ingestion.gElmAN ingestion_ms=1040.654583 input_gpu_ms=1324.473625 load_before=[6.4951171875, 5.34423828125, 5.158203125]
+sha256 target/ingestion.gElmAN/report.json=26eb1e476e74ed3859cc6b98a5c2079cf37c6fbedc37243cff8bbaab18f8fc62
+sha256 target/ingestion.gElmAN/report.capture.json=212e81e3773c981a0dd3430eaa09978940007ae7ba5fe65a127185eed5dac2fb
+sha256 target/ingestion.gElmAN/source.patch=6b2254ff346819735a153391da742df082a4889918999f7a4d5ec5b6f3acf51b
+sha256 target/ingestion.gElmAN/binary.sha256=36d5fa0fcbaf0127a9fd0272bd0a32cab9554a7a4f66f9f799157c747fbd486d
