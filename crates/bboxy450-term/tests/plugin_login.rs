@@ -168,7 +168,7 @@ impl App {
     }
 
     /// The open plugin login row, once it appears.
-    fn login_seat(&self, setup: &mut Child) -> String {
+    fn login_seat(&self, setup: &mut Child) -> Value {
         self.until("the plugin login row", || {
             if let Ok(Some(status)) = setup.try_wait() {
                 let mut text = String::new();
@@ -197,12 +197,13 @@ impl App {
                     row["record"]["harness_kind"] == "plugin-login"
                         && row["record"]["lifecycle"] == "open"
                 })
-                .map(|row| row["record"]["id"].as_str().unwrap().to_owned())
+                .cloned()
         })
     }
 
     /// Run setup, typing `code` into the login row; the setup reply's entry.
-    fn setup_typing(&self, candidate: &str, swarm: Option<&str>, code: &str) -> (Value, String) {
+    /// Returns the setup reply's entry and the login row as it was while open.
+    fn setup_typing(&self, candidate: &str, swarm: Option<&str>, code: &str) -> (Value, Value) {
         let mut args = vec!["plugin", "setup", candidate];
         if let Some(swarm) = swarm {
             args.extend(["--swarm", swarm]);
@@ -213,7 +214,8 @@ impl App {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        let seat = self.login_seat(&mut setup);
+        let row = self.login_seat(&mut setup);
+        let seat = row["record"]["id"].as_str().unwrap().to_owned();
         // The login's prompt is on the row's screen (ctl fails if it never is).
         self.ctl(&[
             "seat",
@@ -236,17 +238,33 @@ impl App {
             )
         });
         assert_eq!(reply["ok"], true, "{reply}");
-        (reply["data"]["entries"][0].clone(), seat)
+        (reply["data"]["entries"][0].clone(), row)
     }
 
-    fn row(&self, seat: &str) -> Value {
-        self.ctl(&["seat", "ls"])
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|row| row["record"]["id"] == seat)
-            .cloned()
-            .unwrap_or(Value::Null)
+    /// Wait (bounded) until the window no longer lists `seat` as open: the
+    /// row closes when the login exits, and the window learns it a moment
+    /// after the setup reply.
+    fn closed(&self, seat: &str) {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let row = self
+                .ctl(&["seat", "ls"])
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|row| row["record"]["id"] == seat)
+                .cloned()
+                .unwrap_or(Value::Null);
+            if row["record"]["lifecycle"] != "open" {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "the login row stayed open: {row}\n{}",
+                self.log()
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
     }
 }
 
@@ -301,7 +319,8 @@ fn a_typed_login_in_the_plugin_login_row_logs_in_or_is_refused() {
         .as_str()
         .unwrap()
         .to_owned();
-    let (entry, seat) = app.setup_typing(&candidate, Some(&swarm), "FIX-1234");
+    let (entry, row) = app.setup_typing(&candidate, Some(&swarm), "FIX-1234");
+    assert_eq!(row["record"]["swarm"], swarm.as_str(), "{row}");
     assert_eq!(entry["setup"]["state"], "logged_in", "{entry}");
     assert_eq!(entry["setup"]["login_exit"], 0, "{entry}");
     assert_eq!(entry["setup"]["detail"], "fixture account", "{entry}");
@@ -309,13 +328,12 @@ fn a_typed_login_in_the_plugin_login_row_logs_in_or_is_refused() {
     assert!(data_dir.join("logged-in").exists());
     let child = grandchild(&data_dir);
     assert!(gone(child), "the login's grandchild {child} outlived it");
-    let row = app.row(&seat);
-    assert_ne!(row["record"]["lifecycle"], "open", "the row closes: {row}");
-    assert_eq!(row["record"]["swarm"], swarm.as_str(), "{row}");
+    app.closed(row["record"]["id"].as_str().unwrap());
 
     // Unscoped (ctl without --swarm), and a wrong code.
     let (refused, _) = app.trusted("bboxy450-term-data_source-refused-fixture", "refused");
-    let (entry, _) = app.setup_typing(&refused, None, "WRONG");
+    let (entry, row) = app.setup_typing(&refused, None, "WRONG");
     assert_eq!(entry["setup"]["state"], "login_refused", "{entry}");
     assert_eq!(entry["setup"]["login_exit"], 2, "{entry}");
+    app.closed(row["record"]["id"].as_str().unwrap());
 }
