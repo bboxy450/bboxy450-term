@@ -76,15 +76,15 @@ sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-
 name = "bboxy450-plugin"
 status = "contract-model"
 models = ["PluginActivation", "PluginHook", "PluginConnection", "PluginHostApi", "PluginHookGate", "PluginSetup"]
-scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); plugin-originated host requests made during a host call are admitted and answered per PluginHostApi; JSON-RPC demultiplexing uses private host fixtures. Call and hook measurements (a bounded in-memory ring per plugin, observational only, never an authority input) are implementation-tested."
-sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host_api.rs", "crates/bbt-plugin/src/trust.rs", "crates/bbt-mux/src/plugins/measure.rs", "crates/bbt-mux/src/plugins/setup.rs"]
+scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); plugin-originated host requests made during a host call are admitted and answered per PluginHostApi; JSON-RPC demultiplexing uses private host fixtures. Call and hook measurements (a bounded in-memory ring per plugin, observational only, never an authority input) are implementation-tested. The models ship with the crates that own them (feature model, models/*.tla and *.cfg): PluginHook and PluginHostApi with bboxy450-plugin, PluginActivation, PluginConnection, PluginHookGate and PluginSetup with bboxy450-term-mux; make test-formal fails when a shipped file drifts from its Rust builder."
+sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host_api.rs", "crates/bbt-plugin/src/trust.rs", "crates/bbt-mux/src/plugins/measure.rs", "crates/bbt-mux/src/plugins/setup.rs", "crates/bbt-plugin/src/models.rs", "crates/bbt-mux/src/models.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-sdk"
-status = "implementation-tests"
-models = []
-scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits, refusal encoding, hook routing (on_hook) and host requests made while serving a call (Ctx::host) are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Typed contract traits and adapters (contracts.rs) are unit-tested, and one example plugin per contract passes the host conformance checker (bbt-mux tests/plugin_sdk_examples.rs). Host activation stays modelled by PluginActivation host hook delivery by PluginHook and the plugin-to-host request interleaving by PluginHostApi."
-sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-plugin-sdk/src/contracts.rs"]
+status = "contract-model"
+models = ["PluginRuntime"]
+scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits, refusal encoding, hook routing (on_hook) and host requests made while serving a call (Ctx::host) are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Typed contract traits and adapters (contracts.rs) are unit-tested, and one example plugin per contract passes the host conformance checker (bbt-mux tests/plugin_sdk_examples.rs). Its own runtime (admission, cancellation, host callbacks during a call) is modelled by PluginRuntime, shipped as models/PluginRuntime.tla; host activation stays modelled by PluginActivation, hook delivery by PluginHook and the plugin-to-host request interleaving by PluginHostApi."
+sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-plugin-sdk/src/contracts.rs", "crates/bbt-plugin-sdk/src/models.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-fixture"

@@ -14,6 +14,8 @@
 #![allow(clippy::disallowed_methods)]
 
 pub mod contracts;
+#[cfg(feature = "model")]
+pub mod models;
 mod runtime;
 pub mod testkit;
 

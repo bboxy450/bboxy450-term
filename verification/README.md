@@ -65,6 +65,18 @@ in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
 
+Plugin-system models ship with the crates that own each contract, behind each
+crate's `model` feature and built with `bboxy450_tlc::build`: PluginHook and
+PluginHostApi in `bboxy450-plugin`, PluginRuntime (the SDK's own admission,
+cancellation and host-callback contract, for plugin authors) in
+`bboxy450-term-plugin-sdk`, and PluginActivation, PluginConnection,
+PluginHookGate and PluginSetup in `bboxy450-term-mux`. Their exported
+`.tla`/`.cfg` files, broken controls included, live in `crates/<crate>/models/`
+and are part of each package (`cargo package --list`). `formal_contracts/plugin_models.rs`
+re-exports them into the gate; `make test-formal` fails when a shipped file
+differs from its Rust builder (`BBOXY_UPDATE_MODELS=1 cargo test -p
+bboxy450-term --test formal_contracts shipped` rewrites them).
+
 | Boundary | Property checked |
 | --- | --- |
 | Landing verification | A clean current commit, inputs, complete checks and current remote base authorize publication |

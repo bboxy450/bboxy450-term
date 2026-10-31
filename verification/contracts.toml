@@ -102,6 +102,16 @@ property = "A queued hook is delivered only to the enabled activation whose gene
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "PluginRuntime"
+title = "Plugin SDK runtime: bounded admission, cancellation and host callbacks during a call"
+models = ["PluginRuntime", "BrokenPluginRuntime"]
+sources = ["crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/models.rs"]
+implementation_tests = ["crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-mux/tests/plugin_sdk_examples.rs"]
+assumptions = "One plugin process, one worker and its reader thread; at most two admitted requests in this instance (MAX_PENDING abstracted; others are refused busy). A served call may ask the host once; the host answers or the call is cancelled. Fair reader, worker and host steps. Deadlines, frame and result limits, panics and the JSON-RPC wire are unit-tested."
+property = "Every admitted request is answered exactly once (EveryAdmittedRequestIsAnswered; AnsweredAtMostAdmitted) even while its call waits for a host answer that only the reader routes, and a cancelled call answers cancelled and drops a late host answer. The broken control lets the reader wait for the worker while the worker waits for the host and must fail liveness. Witnesses: runtime.rs host_requests_made_while_serving_a_call_are_answered_through_the_reader and rejects_parse_errors_and_requests_beyond_the_pending_bound. Shipped as crates/bbt-plugin-sdk/models/PluginRuntime.tla for plugin authors."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "PluginSetup"
 title = "Plugin setup: status, a bounded login in a visible bare login row, no surviving process"
 models = ["PluginSetup", "BrokenPluginSetup"]

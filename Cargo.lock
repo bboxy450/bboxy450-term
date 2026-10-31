@@ -323,6 +323,7 @@ version = "0.1.1"
 name = "bboxy450-plugin"
 version = "0.1.1"
 dependencies = [
+ "bboxy450-tlc",
  "jsonschema",
  "serde",
  "serde_json",
@@ -363,12 +364,14 @@ version = "0.1.1"
 dependencies = [
  "bboxy450-desktop-notifications",
  "bboxy450-doc",
+ "bboxy450-plugin",
  "bboxy450-render",
  "bboxy450-rt",
  "bboxy450-term-core",
  "bboxy450-term-desktop",
  "bboxy450-term-mux",
  "bboxy450-term-plugin-fixture",
+ "bboxy450-term-plugin-sdk",
  "bboxy450-term-proto",
  "bboxy450-tlc",
  "bboxy450-ui",
@@ -476,6 +479,7 @@ dependencies = [
  "bboxy450-term-core",
  "bboxy450-term-plugin-fixture",
  "bboxy450-term-proto",
+ "bboxy450-tlc",
  "core-foundation 0.10.1",
  "ed25519-dalek 3.0.0",
  "futures-util",
@@ -520,6 +524,7 @@ name = "bboxy450-term-plugin-sdk"
 version = "0.1.1"
 dependencies = [
  "bboxy450-plugin",
+ "bboxy450-tlc",
  "libc",
  "serde",
  "serde_json",

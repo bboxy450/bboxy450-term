@@ -10,6 +10,8 @@ pub mod contracts;
 pub mod data_source;
 pub mod decision_model;
 pub mod event_sink;
+#[cfg(feature = "model")]
+pub mod models;
 pub mod policy;
 pub mod provider;
 pub mod registry;

@@ -23,6 +23,8 @@ use std::string::{String, ToString};
 use std::vec;
 use std::vec::Vec;
 
+pub mod build;
+
 /// An exact state, in model variable order.
 pub type State = Vec<i64>;
 

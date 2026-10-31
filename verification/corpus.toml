@@ -161,6 +161,16 @@ expected = "liveness"
 frontend = "project"
 
 [[model]]
+name = "PluginRuntime"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginRuntime"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "PluginSetup"
 expected = "pass"
 frontend = "project"

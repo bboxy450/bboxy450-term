@@ -226,57 +226,9 @@ fn workspace(b: bool) -> Model {
     no_bad(&mut m, 6);
     m
 }
+// Shipped by bboxy450-term-mux (`models/PluginActivation.tla`).
 fn plugin(b: bool) -> Model {
-    let mut m = model(
-        "PluginActivation",
-        b,
-        &[
-            ("source_digest", 2, 1),
-            ("approved_digest", 2, 1),
-            ("enabled", 1, 1),
-            ("generation", 2, 1),
-            ("job_generation", 2, 0),
-            ("job_digest", 2, 0),
-            ("job", 2, 0),
-            ("bad", 1, 0),
-        ],
-    );
-    action(
-        &mut m,
-        "StartInspection",
-        all([eq(6, 0), eq(2, 1)]),
-        &[(4, Var(3)), (5, Var(0)), (6, Int(1))],
-    );
-    action(&mut m, "Disable", eq(2, 1), &[(2, Int(0)), (3, Int(2))]);
-    action(&mut m, "SourceChanged", eq(0, 1), &[(0, Int(2))]);
-    let valid = all([
-        eq(2, 1),
-        Var(4).eq(Var(3)),
-        Var(5).eq(Var(0)),
-        Var(5).eq(Var(1)),
-    ]);
-    action(
-        &mut m,
-        "AcceptCurrentInspection",
-        all([eq(6, 1), valid.clone()]),
-        &[(6, Int(2))],
-    );
-    action(
-        &mut m,
-        "RefuseOldInspection",
-        all([eq(6, 1), valid.clone().negate()]),
-        &[(6, Int(2))],
-    );
-    if b {
-        action(
-            &mut m,
-            "AcceptOldInspection",
-            all([eq(6, 1), valid.negate()]),
-            &[(7, Int(1))],
-        );
-    }
-    no_bad(&mut m, 7);
-    m
+    plugin_models::plugin_activation(b)
 }
 fn token(b: bool) -> Model {
     let mut m = model(
