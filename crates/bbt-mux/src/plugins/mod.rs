@@ -19,9 +19,10 @@ pub use client::set_test_budget;
 pub use discovery::DiscoveryRoots;
 pub use registry::{
     ConformanceJob, ConformanceResult, DataSourceProvider, EnabledSkills, HOOK_QUEUE, HOST_OWNED,
-    HookEvent, HookOutcome, InspectionJob, InspectionResult, MAX_CONCURRENT_CALLS, MessageSender,
-    PluginHost, ProviderConfig, ProviderObservation, RecordReader, Registry, RegistryConfig,
-    SETUP_LOGIN_BUDGET, SeatTool, SetupJob, SetupRun, Verdict, seat_role,
+    HookEvent, HookOutcome, InspectionJob, InspectionResult, LoginCommand, LoginRun,
+    MAX_CONCURRENT_CALLS, MessageSender, PluginHost, ProviderConfig, ProviderObservation,
+    RecordReader, Registry, RegistryConfig, SETUP_LOGIN_BUDGET, SeatTool, SetupJob, SetupRun,
+    Verdict, seat_role,
 };
 
 use bbt_plugin::Refusal;

@@ -217,6 +217,8 @@ fn role_first_presentation_uses_first_unicode_token_and_honest_missing_roles() {
     assert_eq!(role_label(Some(" "), "bash"), "SHELL");
     assert_eq!(role_label(None, "claude"), "UNASSIGNED");
     assert_eq!(role_label(None, "codex"), "UNASSIGNED");
+    // keeps: #57 — a plugin login row is marked as one whatever its role.
+    assert_eq!(role_label(Some("shell"), "plugin-login"), "PLUGIN LOGIN");
 
     let ctx = context();
     let mut row = SeatRow::new("canonical-key", "Éowyn\u{2003}Greywind", "zsh");

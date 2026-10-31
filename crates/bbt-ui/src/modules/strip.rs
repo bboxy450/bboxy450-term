@@ -166,7 +166,16 @@ impl Strip {
         if let Some(where_) = &seat.where_ {
             children.push(icon("pane/strip/where", where_, 13., on, 0.85).into());
         }
-        children.push(icon("pane/strip/hicon", &seat.harness, 13., on, 1.).into());
+        children.push(
+            icon(
+                "pane/strip/hicon",
+                &super::seat_row::harness_icon(&seat.harness),
+                13.,
+                on,
+                1.,
+            )
+            .into(),
+        );
         children.push(fixed_role(named(
             "pane/strip/rmark",
             named(

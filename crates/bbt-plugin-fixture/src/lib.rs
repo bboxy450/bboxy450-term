@@ -97,7 +97,9 @@ pub struct Knobs {
     /// Signed writer with commit, fixture bootstrap and a distinct external root.
     pub harmony: bool,
     /// Declare setup: `ok` (the login, on a terminal, logs in), `refuse` (the
-    /// login exits 2) or `hang` (the login starts a grandchild and never ends).
+    /// login exits 2), `hang` (the login starts a grandchild and never ends)
+    /// or `typed` (the login reads a typed code, `FIX-1234` logs in and leaves
+    /// a SIGHUP-ignoring grandchild; anything else exits 2).
     /// Logged in means `logged-in` exists in the plugin's data directory.
     pub auth: Option<String>,
     // Inspect.

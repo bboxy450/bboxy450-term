@@ -657,6 +657,71 @@ fn blocked_write_survives_fencing_and_becomes_unknown_without_replay() {
 }
 
 // keeps: spec mux-daemon.md — Ownership and failure boundaries
+// keeps: #57 bare login terminal — exactly the caller's environment (no seat
+// identity, TERM or inherited variables), and a child that ignores SIGHUP
+// does not outlive its leader's exit.
+#[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
+#[test]
+fn a_bare_terminal_gets_only_its_environment_and_ends_its_process_group() {
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let mut spec = LaunchSpec::new("/bin/sh", dir.path());
+    spec.args = vec![
+        "-c".into(),
+        "env > env.txt; (trap '' HUP; exec /bin/sleep 600) & echo $! > child.pid; read line; exit 3"
+            .into(),
+    ];
+    spec.env = BTreeMap::from([
+        ("PATH".into(), "/usr/bin:/bin".into()),
+        ("BARE_FIXTURE".into(), "only-this".into()),
+    ]);
+    spec.bare = true;
+    let info = client.spawn(spec).unwrap();
+    let attachment = client.attach(info.seat, 1).unwrap();
+    let pid_file = dir.path().join("child.pid");
+    let deadline = Instant::now() + DEADLINE;
+    while !pid_file.exists() || fs::read_to_string(&pid_file).unwrap().trim().is_empty() {
+        assert!(
+            Instant::now() < deadline,
+            "the fixture never started its child"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let child: i32 = fs::read_to_string(&pid_file)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    client.input(&attachment, Ulid::new(), b"done\n").unwrap();
+    loop {
+        assert!(Instant::now() < deadline);
+        if let Event::Exited { seat, status, .. } =
+            client.recv_timeout(Duration::from_secs(30)).unwrap()
+            && seat == info.seat
+        {
+            assert_eq!(status.code, 3);
+            break;
+        }
+    }
+    let env = fs::read_to_string(dir.path().join("env.txt")).unwrap();
+    assert!(env.contains("BARE_FIXTURE=only-this"), "{env}");
+    for absent in ["BBOXY_SEAT_ID=", "HOME=", "TERM=", "COLORTERM="] {
+        assert!(
+            !env.contains(absent),
+            "{absent} reached a bare terminal: {env}"
+        );
+    }
+    // Existence check only: signal 0 is never delivered.
+    while unsafe { libc::kill(child, 0) } == 0 {
+        assert!(
+            Instant::now() < deadline,
+            "child {child} outlived the leader"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
 #[ignore = "night native boundary: exact selector in scripts/night-test-boundaries.sh"]
 #[test]
 fn natural_exit_follows_all_final_output() {

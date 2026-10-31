@@ -443,6 +443,10 @@ enum Command {
         LaunchSpec,
         oneshot::Sender<Result<SeatInfo>>,
     ),
+    /// A plugin setup's login in a visible bare login seat (#57).
+    PluginLogin(Ulid, Box<crate::plugins::LoginCommand>, LoginReply),
+    /// The login seat's budget ended.
+    PluginLoginDeadline(Ulid),
     Snapshot(Ulid, u64, oneshot::Sender<Result<Snapshot>>),
     History(
         Ulid,
@@ -1749,6 +1753,27 @@ impl LogicClient {
         rx.await
             .map_err(|_| self.unavailable("spawn outcome unknown; query original seat id"))?
     }
+    /// Run a plugin setup's login in a visible bare login seat of `swarm`
+    /// (shown as a "plugin login" row the operator types into) and wait for
+    /// it to exit or for its budget; the seat's process group always ends.
+    pub async fn plugin_login(
+        &self,
+        swarm: Ulid,
+        command: crate::plugins::LoginCommand,
+    ) -> std::result::Result<crate::plugins::LoginRun, bbt_plugin::Refusal> {
+        let lost = || {
+            bbt_plugin::Refusal::new(
+                "login_outcome_unknown",
+                "the logic owner stopped during the login",
+            )
+        };
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::PluginLogin(swarm, Box::new(command), tx))
+            .await
+            .map_err(|_| lost())?;
+        rx.await.map_err(|_| lost())?
+    }
     pub async fn snapshot(&self, seat: Ulid, generation: u64) -> Result<Snapshot> {
         let (tx, rx) = oneshot::channel();
         self.tx
@@ -2182,6 +2207,19 @@ struct RecoveryLaunch {
     user_home: PathBuf,
     user_zdotdir: Option<PathBuf>,
 }
+/// The answer to a plugin login seat: what it showed and how it ended.
+type LoginReply =
+    oneshot::Sender<std::result::Result<crate::plugins::LoginRun, bbt_plugin::Refusal>>;
+
+/// A running plugin login seat's waiting setup job.
+struct PendingLogin {
+    reply: LoginReply,
+    timed_out: bool,
+}
+
+/// The seat row kind of a plugin login: a bare PTY, never a harness seat.
+pub const PLUGIN_LOGIN_HARNESS: &str = "plugin-login";
+
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -2778,6 +2816,10 @@ struct Worker {
     checkpoint_saves: Saves,
     /// Seats `ctl seat restart` stopped, by the generation that is exiting.
     restarts: BTreeMap<Ulid, u64>,
+    /// Plugin login seats whose setup job is waiting for their exit.
+    logins: BTreeMap<Ulid, PendingLogin>,
+    /// Attached bare plugin login seats: no adapter, OSC, attention or title.
+    bare: BTreeSet<Ulid>,
     checkpoint_images: BTreeMap<Ulid, CheckpointImage>,
     checkpoint_completion: Option<std::sync::mpsc::Receiver<CheckpointCompletion>>,
     checkpoint_cursor: Option<Ulid>,
@@ -3021,6 +3063,8 @@ impl Worker {
             checkpoint_policy,
             checkpoint_saves: Saves::new(checkpoint_policy),
             restarts: BTreeMap::new(),
+            logins: BTreeMap::new(),
+            bare: BTreeSet::new(),
             checkpoint_images: BTreeMap::new(),
             checkpoint_completion: None,
             checkpoint_cursor: None,
@@ -5809,6 +5853,12 @@ impl Worker {
         let kind = record
             .as_ref()
             .map_or("unknown", |r| r.harness_kind.as_str());
+        let bare = kind == PLUGIN_LOGIN_HARNESS;
+        if bare {
+            self.bare.insert(info.seat);
+        } else {
+            self.bare.remove(&info.seat);
+        }
         let harness = if let Some(bytes) = SqliteStore::open(&directory)?.get("adapter_record")? {
             serde_json::from_slice(&bytes)?
         } else {
@@ -5858,7 +5908,8 @@ impl Worker {
                     }),
             },
         )?;
-        for (sequence, params) in live_frames {
+        // A plugin login's OSC frames are never observed.
+        for (sequence, params) in live_frames.into_iter().filter(|_| !bare) {
             adapter.on_osc(&params, sequence, now_ms());
         }
         if let Some(exit) = &info.exited {
@@ -5942,7 +5993,16 @@ impl Worker {
         // publish one recovered tail instead of syncing every replay page.
         self.flush_protocol_replies(info.seat)?;
         self.save(info.seat)?;
-        if let Err(error) = self.ensure_endpoint(info.seat, info.generation) {
+        if bare {
+            // No seat socket (no MCP); an unowned login (its setup job was
+            // lost with an earlier logic owner) is ended and its row closed.
+            if !self.logins.contains_key(&info.seat) {
+                if info.exited.is_none() {
+                    self.end_login(info.seat)?;
+                }
+                self.close_login(info.seat)?;
+            }
+        } else if let Err(error) = self.ensure_endpoint(info.seat, info.generation) {
             if !error.is::<crate::seat_socket::SeatListenerPending>() {
                 return Err(error);
             }
@@ -6412,6 +6472,11 @@ impl Worker {
             {
                 return Err(invalid("only an open local seat restarts"));
             }
+            if record.harness_kind == PLUGIN_LOGIN_HARNESS {
+                return Err(invalid(
+                    "plugin_login_not_restartable: run the plugin's setup again",
+                ));
+            }
             let store =
                 SqliteStore::open(&object_dir(&this.config.run_dir, &format!("seat-{id}"))?)?;
             if store.get("process_running")?.as_deref() != Some(b"1") {
@@ -6542,17 +6607,25 @@ impl Worker {
         }
     }
     fn spawn(&mut self, record: SeatRecord, spec: LaunchSpec) -> Result<SeatInfo> {
-        role_catalog::validate_assignment(
-            self.configured_roles()?,
-            &record.harness_kind,
-            &record.role,
-        )?;
+        // A plugin login is a bare terminal, never a harness seat: no role
+        // grant, inbox, provenance, adapter, OSC observation or seat socket.
+        let bare = record.harness_kind == PLUGIN_LOGIN_HARNESS;
+        if bare != spec.bare {
+            return Err(invalid("a plugin login seat is exactly a bare terminal"));
+        }
+        if !bare {
+            role_catalog::validate_assignment(
+                self.configured_roles()?,
+                &record.harness_kind,
+                &record.role,
+            )?;
+        }
         check_size(spec.size.cols as usize, spec.size.rows as usize)?;
         if record.id != spec.seat || record.generation != spec.generation {
             return Err(invalid("launch and record identity mismatch"));
         }
         let new_record = self.registry.get(record.id).is_err();
-        if new_record {
+        if new_record && !bare {
             self.roles_idle()?;
         }
         match self.registry.get(record.id) {
@@ -6560,13 +6633,15 @@ impl Worker {
             Ok(_) => (),
             Err(_) => self.registry.insert(&record)?,
         }
-        self.messaging.sync_seat(&record)?;
-        SqliteStore::open(&object_dir(
-            &self.config.run_dir,
-            &format!("seat-{}", record.id),
-        )?)?
-        .put("provenance_cwd", &serde_json::to_vec(&spec.cwd)?)?;
-        if let Ok(port) = self.workspaces.select(&self.registry, record.swarm, None) {
+        if !bare {
+            self.messaging.sync_seat(&record)?;
+            SqliteStore::open(&object_dir(
+                &self.config.run_dir,
+                &format!("seat-{}", record.id),
+            )?)?
+            .put("provenance_cwd", &serde_json::to_vec(&spec.cwd)?)?;
+        }
+        if !bare && let Ok(port) = self.workspaces.select(&self.registry, record.swarm, None) {
             self.workspaces
                 .cache
                 .get_mut(&port.binding)?
@@ -6627,6 +6702,153 @@ impl Worker {
         // when its adapter remains in the initial state until the first output.
         self.publish_adapter(info.seat, self.views[&info.seat].adapter.status.clone())?;
         Ok(info)
+    }
+    /// Start a setup's login in a visible bare login seat; `reply` answers
+    /// when it exits (or after its budget ended it).
+    fn plugin_login(
+        &mut self,
+        swarm: Ulid,
+        command: crate::plugins::LoginCommand,
+        reply: LoginReply,
+    ) {
+        let id = Ulid::new();
+        // An unscoped request (ctl without --swarm) uses a known swarm, else
+        // its own new sidebar group.
+        // (Ulid::default() is nil, so the fresh ID is explicit.)
+        let known = self
+            .registry
+            .swarms()
+            .ok()
+            .and_then(|swarms| swarms.first().map(|record| record.id));
+        let swarm = match known {
+            _ if swarm != Ulid::nil() => swarm,
+            Some(known) => known,
+            None => Ulid::new(),
+        };
+        let name = format!("{} login", command.name);
+        let mut record = SeatRecord::new(id, swarm, &name, PLUGIN_LOGIN_HARNESS);
+        record.role = crate::registry::Role {
+            name: "shell".into(),
+            class: crate::registry::Class::Worker,
+        };
+        let mut spec = LaunchSpec::new(command.program.to_string_lossy(), &command.cwd);
+        spec.seat = id;
+        spec.args = command.args;
+        spec.env = command.env.into_iter().collect();
+        spec.bare = true;
+        let cwd = command.cwd.to_string_lossy().into_owned();
+        // Registered first: attach must see an owned login, not an orphan.
+        self.logins.insert(
+            id,
+            PendingLogin {
+                reply,
+                timed_out: false,
+            },
+        );
+        if let Err(error) = self.spawn(record, spec) {
+            if let Some(pending) = self.logins.remove(&id) {
+                let _ = pending.reply.send(Err(bbt_plugin::Refusal::new(
+                    "setup_spawn_failed",
+                    error.to_string(),
+                )));
+            }
+            return;
+        }
+        let tx = self.client.tx.clone();
+        let budget = command.budget;
+        self.handle.spawn(async move {
+            tokio::time::sleep(budget).await;
+            let _ = tx.send(Command::PluginLoginDeadline(id)).await;
+        });
+        // The window places and focuses it as it does a ctl-spawned seat.
+        self.client.captures.spawned(
+            Ulid::new(),
+            bbt_proto::SeatId::from_u128(id.0),
+            bbt_proto::SpawnSpec {
+                swarm: bbt_proto::SwarmId::from_u128(swarm.0),
+                harness_kind: PLUGIN_LOGIN_HARNESS.into(),
+                name: Some(name),
+                role: None,
+                cwd,
+                via: None,
+                location: bbt_proto::Where::Local,
+                resume: None,
+                placement: None,
+                args: Vec::new(),
+                command: None,
+                env: Vec::new(),
+            },
+        );
+        if self
+            .views
+            .get(&id)
+            .is_some_and(|view| view.info.exited.is_some())
+            && let Err(error) = self.finish_login(id)
+        {
+            eprintln!("plugin login {id}: {error}");
+        }
+    }
+    /// The budget ended: terminate the login's process group; its exit answers.
+    fn login_deadline(&mut self, id: Ulid) -> Result<()> {
+        let Some(pending) = self.logins.get_mut(&id) else {
+            return Ok(());
+        };
+        if self
+            .views
+            .get(&id)
+            .is_none_or(|view| view.info.exited.is_some())
+        {
+            return Ok(());
+        }
+        pending.timed_out = true;
+        self.end_login(id)
+    }
+    fn end_login(&mut self, id: Ulid) -> Result<()> {
+        let attachment = self
+            .attachments
+            .get(&id)
+            .ok_or_else(|| invalid("seat not attached"))?
+            .clone();
+        self.request_for_seat(id, Action::Kill { attachment })?;
+        Ok(())
+    }
+    /// A login seat exited: close its row and answer its setup job with the
+    /// exit and the text it showed.
+    fn finish_login(&mut self, id: Ulid) -> Result<()> {
+        let output = self
+            .seat_screen(id, false)
+            .map(|screen| screen.rows.join("\n").trim().to_owned())
+            .unwrap_or_default();
+        let exit = self
+            .views
+            .get(&id)
+            .and_then(|view| view.info.exited.clone());
+        self.close_login(id)?;
+        if let Some(pending) = self.logins.remove(&id) {
+            let _ = pending.reply.send(Ok(crate::plugins::LoginRun {
+                exit: exit
+                    .filter(|exit| exit.signal.is_none())
+                    .and_then(|exit| i32::try_from(exit.code).ok()),
+                output: output.chars().take(4096).collect(),
+                timed_out: pending.timed_out,
+            }));
+        }
+        Ok(())
+    }
+    // A plugin login row closes when its login ends; it is never retained open.
+    fn close_login(&mut self, id: Ulid) -> Result<()> {
+        self.registry.update(id, |record| {
+            if record.lifecycle != Lifecycle::ClosedRetained {
+                record.lifecycle = Lifecycle::ClosedRetained;
+                record.lifecycle_revision = record.lifecycle_revision.saturating_add(1);
+            }
+            Ok(())
+        })?;
+        self.client.current_attention.remove(id)?;
+        if let Some(view) = self.views.get(&id) {
+            self.publish_adapter(id, view.adapter.status.clone())?;
+        }
+        Ok(())
     }
     /// The window's input path: the displayed generation, then the seat's attachment.
     fn seat_input(
@@ -7043,12 +7265,17 @@ impl Worker {
                 view_generation: state.view_generation,
             },
             sequence: state.sequence,
-            screen: Screen::from_term(
-                &state.term,
-                state.title.clone(),
-                state.cwd.clone(),
-                state.gap.clone(),
-            ),
+            // A plugin login's own title and OSC 7 directory are never observed.
+            screen: if self.bare.contains(&id) {
+                Screen::from_term(&state.term, String::new(), None, state.gap.clone())
+            } else {
+                Screen::from_term(
+                    &state.term,
+                    state.title.clone(),
+                    state.cwd.clone(),
+                    state.gap.clone(),
+                )
+            },
         })
     }
     fn save(&mut self, id: Ulid) -> Result<()> {
@@ -7411,10 +7638,15 @@ impl Worker {
             Event::Output { .. } => {}
         }
         let now = now_ms();
-        view.adapter.output(now);
+        // A plugin login has no adapter observation and no OSC side channel.
+        let bare = self.bare.contains(&id);
+        if !bare {
+            view.adapter.output(now);
+        }
         let mut provenance_frames = Vec::new();
         let mut live_wait = false;
         match view.tap.drain() {
+            Ok(_) if bare => {}
             Ok(frames) => {
                 for params in frames {
                     live_wait |= view
@@ -7478,6 +7710,9 @@ impl Worker {
                 {
                     eprintln!("seat {id} restart failed after its exit: {error}");
                 }
+            }
+            if bare && let Err(error) = self.finish_login(id) {
+                eprintln!("plugin login {id}: {error}");
             }
         }
         if !self.checkpoint_saves.active() {
@@ -8533,9 +8768,12 @@ impl Worker {
         )
     }
     fn refresh_attention(&self, id: Ulid, live_wait: bool) -> Result<bool> {
+        // A plugin login never asks for attention or notifies.
         match self.gui_seat(id) {
-            Ok(row) => self.client.current_attention.update(row, live_wait),
-            Err(_) => self.client.current_attention.remove(id),
+            Ok(row) if !self.bare.contains(&id) => {
+                self.client.current_attention.update(row, live_wait)
+            }
+            _ => self.client.current_attention.remove(id),
         }
     }
     fn promote_attention(&self, id: Ulid, live_wait: bool) -> Result<bool> {
@@ -8702,7 +8940,10 @@ impl Worker {
                 None => ProcessStatus::Running { pid: view.info.pid },
             },
         };
-        let mut title = if !view.title.is_empty() {
+        // A plugin login's terminal title is never shown.
+        let mut title = if self.bare.contains(&id) {
+            record.name.clone()
+        } else if !view.title.is_empty() {
             view.title.clone()
         } else {
             status
@@ -9697,6 +9938,9 @@ impl Worker {
                         );
                     }
                     Command::GuiPlugin(id, request, scope, origin, reply) => {
+                        // A setup's login runs in a visible login seat of the
+                        // asking window's swarm.
+                        let login_swarm = scope.as_ref().map_or(Ulid::nil(), |scope| scope.swarm);
                         let prepared = (|| -> Result<_> {
                             let origin = self.identity.bind_origin(origin);
                             let device_id = self.operator_device_for_effect()?;
@@ -9726,6 +9970,18 @@ impl Worker {
                                     || self.plugins.clone(),
                                     |port| port.host.plugin_control(),
                                 );
+                                let plugins = if matches!(
+                                    request,
+                                    bbt_proto::gui::PluginRequest::Setup { .. }
+                                ) {
+                                    let client = self.client.clone();
+                                    let handle = self.handle.clone();
+                                    plugins.with_login(Arc::new(move |command| {
+                                        handle.block_on(client.plugin_login(login_swarm, command))
+                                    }))
+                                } else {
+                                    plugins
+                                };
                                 let journal = port.as_ref().map_or_else(
                                     || self.operator_journal.clone(),
                                     |port| self.root_journal(&self.operator_journal, port),
@@ -10483,6 +10739,14 @@ impl Worker {
                     Command::Spawn(record, spec, reply) => {
                         let result = self.spawn(*record, spec);
                         let _ = reply.send(result);
+                    }
+                    Command::PluginLogin(swarm, command, reply) => {
+                        self.plugin_login(swarm, *command, reply);
+                    }
+                    Command::PluginLoginDeadline(id) => {
+                        if let Err(error) = self.login_deadline(id) {
+                            eprintln!("plugin login {id} deadline: {error}");
+                        }
                     }
                     Command::Record(id, reply) => {
                         let _ = reply.send(self.registry.get(id));

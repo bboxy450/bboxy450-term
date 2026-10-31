@@ -1148,6 +1148,10 @@ impl Messaging {
         })
     }
     pub fn sync_seat(&mut self, record: &SeatRecord) -> Result<()> {
+        // A plugin login row is a bare terminal: no inbox, never a destination.
+        if record.harness_kind == crate::logic::PLUGIN_LOGIN_HARNESS {
+            return Ok(());
+        }
         let mut db = self.account.connection()?;
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         policy(&tx, record)?;

@@ -15,6 +15,11 @@ pub fn first_name(name: &str) -> &str {
 }
 /// Missing role data never inherits authority from an agent's harness kind.
 pub fn role_label(role: Option<&str>, harness: &str) -> String {
+    // A plugin setup's bare login terminal (bbt-mux `PLUGIN_LOGIN_HARNESS`)
+    // is always marked as such, never as a harness seat or role.
+    if harness == "plugin-login" {
+        return "PLUGIN LOGIN".into();
+    }
     if let Some(role) = role.map(str::trim).filter(|role| !role.is_empty()) {
         return role.to_uppercase();
     }
@@ -35,6 +40,14 @@ pub fn role_label(role: Option<&str>, harness: &str) -> String {
         "SHELL".into()
     } else {
         "UNASSIGNED".into()
+    }
+}
+/// The baked icon for a seat's harness kind; a plugin login shows the key.
+pub fn harness_icon(harness: &str) -> String {
+    if harness == "plugin-login" {
+        "key".into()
+    } else {
+        harness.into()
     }
 }
 /// Role text keeps its intrinsic width; the adjacent first name yields first.
@@ -423,7 +436,11 @@ impl SeatRow {
                     0.,
                     vec![
                         c::Element::Spacer.into(),
-                        named("tile/hicon", icon(&self.harness, 10., ui::Color::OnAccent)).into(),
+                        named(
+                            "tile/hicon",
+                            icon(&harness_icon(&self.harness), 10., ui::Color::OnAccent),
+                        )
+                        .into(),
                         c::Element::Spacer.into(),
                     ],
                 ),

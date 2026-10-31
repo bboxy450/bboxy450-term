@@ -18,11 +18,20 @@ use crate::{
     store::{Result, invalid},
 };
 
+/// Runs a setup's login in the visible plugin login seat (the logic owner's
+/// supervisor seat the operator types into). Blocking; called off logic's turn.
+pub(crate) type LoginSeat = Arc<
+    dyn Fn(super::LoginCommand) -> std::result::Result<super::LoginRun, bbt_plugin::Refusal>
+        + Send
+        + Sync,
+>;
+
 #[derive(Clone)]
 pub(crate) struct Control {
     registry: Registry,
     reads: Arc<Semaphore>,
     effects: Arc<Semaphore>,
+    login: Option<LoginSeat>,
 }
 
 impl Control {
@@ -31,7 +40,14 @@ impl Control {
             registry,
             reads: Arc::new(Semaphore::new(2)),
             effects: Arc::new(Semaphore::new(8)),
+            login: None,
         }
+    }
+
+    /// Setup logins run in `seat` instead of the private bare terminal.
+    pub(crate) fn with_login(mut self, seat: LoginSeat) -> Self {
+        self.login = Some(seat);
+        self
     }
 
     pub(crate) async fn request(
@@ -47,6 +63,7 @@ impl Control {
             .try_acquire_owned()
             .map_err(|_| invalid("plugin_busy: retry with the same operation ID"))?;
         let registry = self.registry.clone();
+        let login = self.login.clone();
         let preparation = blocking(move || {
             if mutation {
                 let (retained, fresh) = journal.admit(&actor, &call)?;
@@ -112,7 +129,10 @@ impl Control {
                         // Status and login block on their processes, never logic's turn.
                         Job::Setup(job) => {
                             blocking(move || {
-                                let run = (*job).run();
+                                let run = match &login {
+                                    Some(seat) => (*job).run_with(Some(&mut |c| seat(c))),
+                                    None => (*job).run(),
+                                };
                                 registry
                                     .finish_setup(run)
                                     .map(|entry| vec![entry])

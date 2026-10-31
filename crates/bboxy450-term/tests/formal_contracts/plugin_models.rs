@@ -553,18 +553,24 @@ fn plugin_hook_gate(b: bool) -> Model {
 // terminal when not logged in, then status again. The login may start a
 // child and may never end; its budget is three ticks. Ending the login ends
 // its whole process group, and a result is recorded only for an unchanged pin.
+// The login runs in a visible login row (logic.rs plugin_login): the row is
+// open exactly while the login runs. Its setup job (the owner) can be lost
+// with a stopped logic owner; the next owner's attach then ends the orphaned
+// login's process group and closes its row (phase 5), and nothing is recorded.
 fn plugin_setup(b: bool) -> Model {
     let mut m = model(
         "PluginSetup",
         b,
         &[
-            ("phase", 4, 0),
+            ("phase", 5, 0),
             ("login", 1, 0),
             ("child", 1, 0),
             ("clock", 3, 0),
             ("pin_changed", 1, 0),
             ("recorded", 1, 0),
             ("bad", 1, 0),
+            ("row", 1, 0),
+            ("owner", 1, 1),
         ],
     );
     action(&mut m, "StartStatus", eq(0, 0), &[(0, Int(1))]);
@@ -573,7 +579,7 @@ fn plugin_setup(b: bool) -> Model {
         &mut m,
         "StatusLoggedOut",
         eq(0, 1),
-        &[(0, Int(2)), (1, Int(1)), (3, Int(0))],
+        &[(0, Int(2)), (1, Int(1)), (3, Int(0)), (7, Int(1))],
     );
     action(
         &mut m,
@@ -593,20 +599,36 @@ fn plugin_setup(b: bool) -> Model {
         all([eq(0, 2), eq(1, 1), Var(3).lt(Int(3))]),
         &[(3, Var(3).plus(Int(1)))],
     );
-    let ended = all([eq(0, 2), eq(1, 0).or(eq(3, 3))]);
-    // The broken control ends only the login, not its process group.
-    let group: &[(usize, Expr)] = if b {
-        &[(1, Int(0)), (0, Int(3))]
-    } else {
-        &[(1, Int(0)), (2, Int(0)), (0, Int(3))]
+    // The broken control ends only the login, not its process group (the
+    // supervisor's bare-terminal group cleanup), on exit, at the budget and
+    // when an orphaned login is cleaned up on attach.
+    let end = |phase: i64| -> Vec<(usize, Expr)> {
+        let mut updates = vec![(1, Int(0)), (7, Int(0)), (0, Int(phase))];
+        if !b {
+            updates.push((2, Int(0)));
+        }
+        updates
     };
-    action(&mut m, "EndProcessGroup", ended, group);
+    let ended = all([eq(0, 2), eq(8, 1), eq(1, 0).or(eq(3, 3))]);
+    action(&mut m, "EndProcessGroup", ended, &end(3));
+    action(
+        &mut m,
+        "LoseOwner",
+        all([eq(0, 2), eq(8, 1)]),
+        &[(8, Int(0))],
+    );
+    action(
+        &mut m,
+        "CleanUpOrphanOnAttach",
+        all([eq(0, 2), eq(8, 0)]),
+        &end(5),
+    );
     action(&mut m, "StatusAgain", eq(0, 3), &[(0, Int(4))]);
     action(&mut m, "Retrust", eq(4, 0), &[(4, Int(1))]);
     action(
         &mut m,
         "RecordCurrentPin",
-        all([eq(0, 4), eq(5, 0), eq(4, 0)]),
+        all([eq(0, 4), eq(5, 0), eq(4, 0), eq(8, 1)]),
         &[(5, Int(1))],
     );
     no_bad(&mut m, 6);
@@ -616,5 +638,15 @@ fn plugin_setup(b: bool) -> Model {
         implies(Var(0).lt(Int(3)).negate(), all([eq(1, 0), eq(2, 0)])),
     );
     safe(&mut m, "LoginWithinBudget", Var(3).le(Int(3)));
+    safe(
+        &mut m,
+        "RowOpenOnlyWhileLoginRuns",
+        implies(eq(7, 1), eq(0, 2)),
+    );
+    safe(
+        &mut m,
+        "NothingRecordedWithoutOwner",
+        implies(eq(5, 1), eq(8, 1)),
+    );
     m
 }

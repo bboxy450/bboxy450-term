@@ -103,12 +103,12 @@ checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "PluginSetup"
-title = "Plugin setup: status, a bounded login in a bare terminal, no surviving process"
+title = "Plugin setup: status, a bounded login in a visible bare login row, no surviving process"
 models = ["PluginSetup", "BrokenPluginSetup"]
-sources = ["crates/bbt-mux/src/plugins/setup.rs", "crates/bbt-plugin/src/shape.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
-implementation_tests = ["crates/bbt-mux/tests/plugin_setup.rs", "crates/bbt-mux/src/plugins/setup.rs"]
-assumptions = "One setup run of one pin. The login may start one child and may never exit; its budget is three ticks. Re-trust may happen at any point. The PTY, signal delivery, reaping and the status command's own exit codes use real process tests."
-property = "Once the login phase ends, neither the login nor any process it started is alive (NoProcessOutlivesTheLogin), and the login never runs past its budget. A result is recorded only while the pin is unchanged. The broken control ends only the login, not its process group, and must fail safety. tests/plugin_setup.rs a_hanging_login_and_its_children_are_ended_at_the_budget is the API witness."
+sources = ["crates/bbt-mux/src/plugins/setup.rs", "crates/bbt-mux/src/plugins/control.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-plugin/src/shape.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_setup.rs", "crates/bbt-mux/src/plugins/setup.rs", "crates/bboxy450-term/tests/plugin_login.rs", "crates/bbt-supervisor/tests/supervisor.rs"]
+assumptions = "One setup run of one pin. The login may start one child and may never exit; its budget is three ticks. Re-trust may happen at any point. The login runs in a visible plugin login row; the setup job that owns it can be lost with its logic owner at any time while it runs. The PTY, signal delivery, reaping, the supervisor's bare-terminal group cleanup and the status command's own exit codes use real process tests."
+property = "Once the login phase ends (exit, budget, or the next logic owner's cleanup of an orphaned login), neither the login nor any process it started is alive (NoProcessOutlivesTheLogin), and the login never runs past its budget. The login row is open only while the login runs (RowOpenOnlyWhileLoginRuns). A result is recorded only by its owning setup job while the pin is unchanged (NothingRecordedWithoutOwner). The broken control ends only the login, not its process group, and must fail safety. Witnesses: tests/plugin_setup.rs a_hanging_login_and_its_children_are_ended_at_the_budget, a_login_seat_past_its_budget_ends_its_process_group_and_closes, a_login_seat_left_by_a_stopped_logic_owner_is_ended_on_reattach; bboxy450-term tests/plugin_login.rs a_typed_login_in_the_plugin_login_row_logs_in_or_is_refused; supervisor a_bare_terminal_gets_only_its_environment_and_ends_its_process_group."
 checks = ["make test-formal", "make test"]
 
 [[contract]]

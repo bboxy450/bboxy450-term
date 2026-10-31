@@ -2011,7 +2011,7 @@ impl Actor {
                 seat.check_writer(client, &attachment)?;
                 seat.check_live()?;
                 if seat.terminate_at.is_none() {
-                    signal(seat.pid, libc::SIGHUP)?;
+                    seat.signal_owned(libc::SIGHUP)?;
                     seat.terminate_at = Some(Instant::now() + Duration::from_millis(250));
                 }
                 Ok(Reply::Terminating)
@@ -2355,18 +2355,26 @@ impl Seat {
         let mut command = CommandBuilder::new(&spec.program);
         command.args(&spec.args);
         command.cwd(&spec.cwd);
-        // Interactive seats inherit color capability, not automation's NO_COLOR.
-        // Explicit launch overrides and the user's later shell startup still win.
-        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        command.env_remove("NO_COLOR");
-        command.env("TERM", "xterm-256color");
-        command.env("COLORTERM", "truecolor");
-        command.env("CLICOLOR", "1");
-        for (key, value) in &spec.env {
-            command.env(key, value);
+        if spec.bare {
+            // A bare terminal: exactly the caller's environment, no seat identity.
+            command.env_clear();
+            for (key, value) in &spec.env {
+                command.env(key, value);
+            }
+        } else {
+            // Interactive seats inherit color capability, not automation's NO_COLOR.
+            // Explicit launch overrides and the user's later shell startup still win.
+            // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+            command.env_remove("NO_COLOR");
+            command.env("TERM", "xterm-256color");
+            command.env("COLORTERM", "truecolor");
+            command.env("CLICOLOR", "1");
+            for (key, value) in &spec.env {
+                command.env(key, value);
+            }
+            command.env("BBOXY_SEAT_ID", spec.seat.to_string());
+            command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
         }
-        command.env("BBOXY_SEAT_ID", spec.seat.to_string());
-        command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
         let child = pair
             .slave
             .spawn_command(command)
@@ -2414,6 +2422,30 @@ impl Seat {
         })
     }
 
+    /// Termination reaches a bare terminal's whole process group (its child
+    /// is the session and group leader); other seats signal the exact child.
+    fn signal_owned(&self, sig: libc::c_int) -> io::Result<()> {
+        if !self.spec.bare {
+            return signal(self.pid, sig);
+        }
+        // SAFETY: the unreaped leader pins its process group ID.
+        if unsafe { libc::kill(-(self.pid as libc::pid_t), sig) } < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    }
+
+    /// When a bare terminal's leader exits, end anything left in its group.
+    fn end_bare_group(&self) {
+        if self.spec.bare {
+            // SAFETY: as in signal_owned; ESRCH when the group is already empty.
+            unsafe {
+                libc::kill(-(self.pid as libc::pid_t), libc::SIGKILL);
+                libc::kill(-(self.pid as libc::pid_t), libc::SIGCONT);
+            }
+        }
+    }
+
     fn info(&self) -> SeatInfo {
         SeatInfo {
             seat: self.spec.seat,
@@ -2456,6 +2488,8 @@ impl Seat {
             // e.g. while tty output drains. Never block that drain in wait().
             #[cfg(target_os = "macos")]
             {
+                // Before waitpid: the exited leader still pins its group ID.
+                self.end_bare_group();
                 self.reap_pending = true;
                 if let Some(status) = self.child.try_wait()? {
                     self.exited = Some(ExitInfo {
@@ -2693,7 +2727,7 @@ impl Seat {
             && self.terminate_at.is_none()
             && self.closing.expired(Instant::now())
         {
-            signal(self.pid, libc::SIGHUP).map_err(io::Error::other)?;
+            self.signal_owned(libc::SIGHUP)?;
             self.terminate_at = Some(Instant::now() + Duration::from_millis(250));
         }
         if self
@@ -2713,7 +2747,7 @@ impl Seat {
             && !self.termination_escalated
             && self.terminate_at.is_some_and(|at| Instant::now() >= at)
         {
-            signal(self.pid, libc::SIGKILL)?;
+            self.signal_owned(libc::SIGKILL)?;
             self.termination_escalated = true;
         }
         #[cfg(not(target_os = "macos"))]
@@ -2724,13 +2758,16 @@ impl Seat {
             if self.exited.is_none() && (now >= self.next_child_check || escalate) {
                 self.next_child_check = now + CHILD_POLL_INTERVAL;
                 if let Some(status) = self.child.try_wait()? {
+                    // Without an exit notification the leader is already reaped;
+                    // a nonempty group still holds its ID.
+                    self.end_bare_group();
                     self.exited = Some(ExitInfo {
                         code: status.exit_code(),
                         signal: status.signal().map(str::to_owned),
                     });
                     self.read_ready = true;
                 } else if escalate {
-                    signal(self.pid, libc::SIGKILL)?;
+                    self.signal_owned(libc::SIGKILL)?;
                     self.termination_escalated = true;
                 }
             }
@@ -2954,7 +2991,7 @@ impl Drop for Seat {
         }
         #[cfg(not(target_os = "macos"))]
         if self.exited.is_none() {
-            let _ = signal(self.pid, libc::SIGKILL);
+            let _ = self.signal_owned(libc::SIGKILL);
             let _ = self.child.wait();
         }
     }

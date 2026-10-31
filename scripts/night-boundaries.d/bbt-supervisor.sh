@@ -37,3 +37,4 @@ cargo test -p bboxy450-harness-host --locked --test supervisor unix_socket_auth_
 cargo test -p bboxy450-harness-host --locked --test supervisor blocked_write_survives_fencing_and_becomes_unknown_without_replay -- --ignored --exact --nocapture
 cargo test -p bboxy450-harness-host --locked --test supervisor natural_exit_follows_all_final_output -- --ignored --exact --nocapture
 cargo test -p bboxy450-harness-host --locked --test supervisor slow_reader_backpressures_and_recovers_the_complete_output -- --ignored --exact --nocapture
+cargo test -p bboxy450-harness-host --locked --test supervisor a_bare_terminal_gets_only_its_environment_and_ends_its_process_group -- --ignored --exact --nocapture

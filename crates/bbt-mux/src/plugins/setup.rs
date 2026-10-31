@@ -8,10 +8,11 @@
 //! then, when not logged in, its login command in a bare login terminal.
 //! Setup never trusts or enables anything; its result is recorded per pin.
 //!
-//! The bare login terminal is a private PTY owned by this job: no harness
-//! adapter, no MCP, hooks or skills, no OSC observation (its output is kept
-//! only as bounded text with escapes removed), a scrubbed environment and the
-//! plugin's own data directory as cwd. The login's whole process group is
+//! Under the logic owner the login runs in a visible plugin login row (a bare
+//! supervisor seat the operator types into, `Logic::plugin_login`); without
+//! one, in a private PTY owned by this job. Either way: no harness adapter,
+//! no MCP, hooks or skills, no OSC observation, a scrubbed environment and
+//! the plugin's own data directory as cwd. The login's whole process group is
 //! killed when it exits or exceeds its budget, so no child outlives setup.
 
 use std::io::Read;
@@ -63,10 +64,29 @@ pub struct SetupRun {
     pub login_output: String,
 }
 
-struct Ran {
-    exit: Option<i32>,
-    output: String,
-    timed_out: bool,
+/// What one login run observed.
+#[derive(Debug, Clone, Default)]
+pub struct LoginRun {
+    /// Exit code; `None` for a signal or no observed exit.
+    pub exit: Option<i32>,
+    /// Plain text the login showed, escapes removed.
+    pub output: String,
+    /// The budget ended it.
+    pub timed_out: bool,
+}
+
+/// A login command for the visible plugin login seat: the pinned copy, its
+/// login word, the data directory and exactly this environment.
+#[derive(Debug, Clone)]
+pub struct LoginCommand {
+    /// The plugin's display name, for the seat row.
+    pub name: String,
+    pub program: PathBuf,
+    pub args: Vec<String>,
+    pub cwd: PathBuf,
+    /// The complete environment: nothing else is inherited.
+    pub env: Vec<(String, String)>,
+    pub budget: Duration,
 }
 
 // Remove escape sequences and control bytes: a login terminal is never
@@ -113,19 +133,53 @@ fn first_line(text: &str) -> String {
 }
 
 impl SetupJob {
-    fn command(&self, word: &str) -> Command {
-        let data_dir = PathBuf::from(&self.record.data_dir);
-        let home = data_dir.join("home");
+    // The scrubbed allowlist, with HOME and TMPDIR inside the data directory.
+    fn environment(&self) -> Vec<(String, String)> {
+        let home = PathBuf::from(&self.record.data_dir).join("home");
         let _ = std::fs::create_dir_all(home.join("tmp"));
+        let mut env: Vec<(String, String)> = std::env::vars_os()
+            .filter_map(|(key, value)| Some((key.into_string().ok()?, value.into_string().ok()?)))
+            .filter(|(key, _)| allowed_env_name(key) && key != "HOME" && key != "TMPDIR")
+            .collect();
+        env.push(("HOME".into(), home.to_string_lossy().into_owned()));
+        env.push((
+            "TMPDIR".into(),
+            home.join("tmp").to_string_lossy().into_owned(),
+        ));
+        env
+    }
+
+    fn command(&self, word: &str) -> Command {
         let mut command = Command::new(&self.copy);
         command
             .arg(word)
-            .current_dir(&data_dir)
+            .current_dir(&self.record.data_dir)
             .env_clear()
-            .envs(std::env::vars_os().filter(|(key, _)| key.to_str().is_some_and(allowed_env_name)))
-            .env("HOME", &home)
-            .env("TMPDIR", home.join("tmp"));
+            .envs(self.environment());
         command
+    }
+
+    /// The login for a visible plugin login seat (`TERM=dumb`, as in the
+    /// private terminal).
+    pub fn login_command(&self) -> LoginCommand {
+        let mut env: Vec<_> = self
+            .environment()
+            .into_iter()
+            .filter(|(key, _)| key != "TERM")
+            .collect();
+        env.push(("TERM".into(), "dumb".into()));
+        LoginCommand {
+            name: self
+                .record
+                .shape
+                .as_ref()
+                .map_or_else(|| self.activation.candidate.clone(), |s| s.name.clone()),
+            program: self.copy.clone(),
+            args: vec![self.auth.login_command.clone()],
+            cwd: PathBuf::from(&self.record.data_dir),
+            env,
+            budget: self.login_budget,
+        }
     }
 
     // Wait at most `budget`, then end the whole process group; always reap.
@@ -160,7 +214,7 @@ impl SetupJob {
         (status.or(reaped).and_then(|s| s.code()), timed_out)
     }
 
-    fn status(&mut self) -> Result<Ran, Refusal> {
+    fn status(&mut self) -> Result<LoginRun, Refusal> {
         let mut command = self.command(&self.auth.status_command.clone());
         command
             .stdin(Stdio::null())
@@ -179,7 +233,7 @@ impl SetupJob {
         });
         let (exit, timed_out) = Self::wait(&mut child, crate::plugins::client::fixed(STATUS));
         let output = plain(&reader.join().unwrap_or_default());
-        Ok(Ran {
+        Ok(LoginRun {
             exit,
             output,
             timed_out,
@@ -188,7 +242,7 @@ impl SetupJob {
 
     // The bare login terminal: a private PTY with the plugin's login command
     // as its session leader and controlling terminal.
-    fn login(&mut self) -> Result<Ran, Refusal> {
+    fn login(&mut self) -> Result<LoginRun, Refusal> {
         let (mut master, mut slave) = (-1, -1);
         // SAFETY: openpty fills two fresh descriptors; null name/termios/size.
         if unsafe {
@@ -252,7 +306,7 @@ impl SetupJob {
         });
         let (exit, timed_out) = Self::wait(&mut child, self.login_budget);
         let output = plain(&reader.join().unwrap_or_default());
-        Ok(Ran {
+        Ok(LoginRun {
             exit,
             output,
             timed_out,
@@ -310,8 +364,20 @@ impl Registry {
 }
 
 impl SetupJob {
-    /// Status, then login when not logged in, then status again. Blocking.
-    pub fn run(mut self) -> SetupRun {
+    /// Status, then login (in the private bare login terminal) when not
+    /// logged in, then status again. Blocking.
+    pub fn run(self) -> SetupRun {
+        self.run_with(None)
+    }
+
+    /// [`SetupJob::run`] with the login run by `seat` (the visible plugin
+    /// login seat the operator types into), or the private terminal when
+    /// `None`. `seat` must end the login's whole process group and honour
+    /// [`LoginCommand::budget`]. Blocking.
+    pub fn run_with(
+        mut self,
+        mut seat: Option<&mut dyn FnMut(LoginCommand) -> Result<LoginRun, Refusal>>,
+    ) -> SetupRun {
         let started = Instant::now();
         let mut login_exit = None;
         let mut login_output = String::new();
@@ -338,7 +404,13 @@ impl SetupJob {
                     ));
                 }
             }
-            let login = self.login()?;
+            let login = match seat.as_mut() {
+                Some(seat) => {
+                    let command = self.login_command();
+                    seat(command)?
+                }
+                None => self.login()?,
+            };
             login_output = login.output.chars().take(OUTPUT).collect();
             login_exit = login.exit;
             if login.timed_out {
@@ -362,8 +434,10 @@ impl SetupJob {
                 ),
             })
         })();
-        let (state, code, detail) =
-            result.unwrap_or_else(|reason| (SetupState::Failed, Some(reason.code), String::new()));
+        let (state, code, detail) = result.unwrap_or_else(|reason| {
+            let detail = first_line(&reason.message);
+            (SetupState::Failed, Some(reason.code), detail)
+        });
         SetupRun {
             result: SetupResult {
                 sha256: self.activation.sha256.clone(),

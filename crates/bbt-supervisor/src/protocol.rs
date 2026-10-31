@@ -103,6 +103,11 @@ pub struct LaunchSpec {
     /// An optional process owned for this seat's lifetime, outside its PTY.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub companion: Option<Box<CompanionSpec>>,
+    /// A bare terminal (a plugin login): the environment is exactly `env`,
+    /// nothing inherited or injected, and termination signals and the exit
+    /// cleanup reach the whole process group, so no child outlives it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bare: bool,
 }
 
 /// A seat-local service started alongside its PTY. The client command handles
@@ -142,6 +147,7 @@ impl LaunchSpec {
             env: BTreeMap::new(),
             size: SeatSize::default(),
             companion: None,
+            bare: false,
         }
     }
 
@@ -179,6 +185,12 @@ impl LaunchSpec {
                     "invalid environment override",
                 ));
             }
+        }
+        if self.bare && self.companion.is_some() {
+            return Err(Failure::new(
+                FailureCode::Invalid,
+                "a bare terminal owns no companion",
+            ));
         }
         if let Some(companion) = &self.companion {
             let mut service = Self::new(&companion.program, &self.cwd);

@@ -549,7 +549,13 @@ pub fn records(
         ));
     }
     if let Some(model) = model {
-        for seat in model.ui.seats.values() {
+        // A plugin login row is a bare terminal, never a harness.
+        for seat in model
+            .ui
+            .seats
+            .values()
+            .filter(|seat| seat.harness.0 != bbt_mux::logic::PLUGIN_LOGIN_HARNESS)
+        {
             if !out.harness.iter().any(|(id, _)| *id == seat.harness.0) {
                 out.harness.push((
                     seat.harness.0.clone(),

@@ -755,7 +755,7 @@ pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     let icon = named(
         "hicon",
         c::Element::Icon {
-            name: p.harness.clone(),
+            name: super::seat_row::harness_icon(&p.harness),
             size: ui::Length::Px(d.icon as f32),
             paint: ui::Paint::solid(ui::Color::Rgba([lum, lum, lum, 0.55])),
         },

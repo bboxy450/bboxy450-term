@@ -456,7 +456,12 @@ impl GraphTab {
                 tile,
                 0.,
                 vec![c::Item {
-                    element: icon(&format!("{k}/hicon"), &s.harness, 10., ui::Color::OnAccent),
+                    element: icon(
+                        &format!("{k}/hicon"),
+                        &super::seat_row::harness_icon(&s.harness),
+                        10.,
+                        ui::Color::OnAccent,
+                    ),
                     extent: c::Extent::Fill,
                 }],
             );

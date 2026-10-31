@@ -59,7 +59,7 @@ pub use host::{MessageSender, RecordReader};
 mod measure;
 #[path = "setup.rs"]
 mod setup;
-pub use setup::{LOGIN as SETUP_LOGIN_BUDGET, SetupJob, SetupRun};
+pub use setup::{LOGIN as SETUP_LOGIN_BUDGET, LoginCommand, LoginRun, SetupJob, SetupRun};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]

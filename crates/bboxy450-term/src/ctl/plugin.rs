@@ -140,16 +140,9 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         _ => unreachable!(),
     };
     let entries: Vec<_> = entries.into_iter().map(|entry| {
-        json!({"state":entry.state(),"candidate":entry.candidate,"activation":entry.activation,"trust":entry.trust,"conformance":entry.conformance})
+        json!({"state":entry.state(),"candidate":entry.candidate,"activation":entry.activation,"trust":entry.trust,"conformance":entry.conformance,"setup":entry.setup})
     }).collect();
-    print_reply(
-        out,
-        noun,
-        verb,
-        id,
-        json!({"entries":entries,"setup":"unavailable"}),
-        human,
-    )
+    print_reply(out, noun, verb, id, json!({ "entries": entries }), human)
 }
 
 #[cfg(test)]

@@ -957,6 +957,37 @@ impl Plugin for RootFixture {
                     std::thread::sleep(Duration::from_secs(1));
                 }
             }
+            // The operator types the code into the visible login seat. On
+            // success it leaves a grandchild that ignores SIGHUP, so only
+            // ending the whole process group stops it.
+            Some("typed") => {
+                print!("Code: ");
+                let _ = std::io::Write::flush(&mut std::io::stdout());
+                let mut line = String::new();
+                std::io::stdin()
+                    .read_line(&mut line)
+                    .map_err(|e| refused("fixture_error", &e.to_string()))?;
+                if line.trim() != "FIX-1234" {
+                    return Err(refused("code_refused", "the code did not match"));
+                }
+                let mut grandchild = std::process::Command::new("/bin/sleep");
+                grandchild.arg("600");
+                // SAFETY: setting a signal disposition is async-signal-safe.
+                unsafe {
+                    std::os::unix::process::CommandExt::pre_exec(&mut grandchild, || {
+                        libc::signal(libc::SIGHUP, libc::SIG_IGN);
+                        Ok(())
+                    });
+                }
+                let child = grandchild
+                    .spawn()
+                    .map_err(|e| refused("fixture_error", &e.to_string()))?;
+                let _ = fs::write("grandchild.pid", child.id().to_string());
+                fs::write("logged-in", b"")
+                    .map_err(|e| refused("fixture_error", &e.to_string()))?;
+                println!("Logged in.");
+                Ok(())
+            }
             _ => Err(refused(
                 "login_refused",
                 "the fixture service refused the login",
