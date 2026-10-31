@@ -130,6 +130,39 @@ pub struct Entry {
     /// never in the account record. Empty means nothing was measured.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub measurements: Vec<Sample>,
+    /// The last setup (auth status, then login when needed) of this pin.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<SetupResult>,
+}
+
+/// How a plugin's setup ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SetupState {
+    /// The status command exited 0 (before or after a login).
+    LoggedIn,
+    /// The status command exited 1 and no login ran or it did not help.
+    LoggedOut,
+    /// The login command exited non-zero.
+    LoginRefused,
+    /// A command could not run, failed or exceeded its budget (`code`).
+    Failed,
+}
+
+/// The recorded result of one setup run, for the pin it ran against.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SetupResult {
+    pub sha256: String,
+    pub state: SetupState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    /// The login command's exit code, when one ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub login_exit: Option<i32>,
+    /// The status command's first output line, bounded.
+    #[serde(default)]
+    pub detail: String,
+    pub elapsed_ms: u64,
 }
 
 /// How one measured call or hook delivery ended.

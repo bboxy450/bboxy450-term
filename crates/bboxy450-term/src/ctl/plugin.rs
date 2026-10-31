@@ -15,6 +15,7 @@ pub(super) const VERBS: &[Verb] = &[
     ("plugin", "enable", "Plugin"),
     ("plugin", "disable", "Plugin"),
     ("plugin", "check", "Plugin"),
+    ("plugin", "setup", "Plugin"),
 ];
 
 macro_rules! plugin_commands {
@@ -51,6 +52,9 @@ pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, Str
                 candidate: candidate.into(),
             },
             ["plugin", "check", candidate] => PluginRequest::Check {
+                candidate: candidate.into(),
+            },
+            ["plugin", "setup", candidate] => PluginRequest::Setup {
                 candidate: candidate.into(),
             },
             _ => return Ok(None),
@@ -155,4 +159,5 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "plugin enable candidate",
     "plugin disable candidate",
     "plugin check candidate",
+    "plugin setup candidate",
 ];

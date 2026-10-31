@@ -102,6 +102,16 @@ property = "A queued hook is delivered only to the enabled activation whose gene
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "PluginSetup"
+title = "Plugin setup: status, a bounded login in a bare terminal, no surviving process"
+models = ["PluginSetup", "BrokenPluginSetup"]
+sources = ["crates/bbt-mux/src/plugins/setup.rs", "crates/bbt-plugin/src/shape.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_setup.rs", "crates/bbt-mux/src/plugins/setup.rs"]
+assumptions = "One setup run of one pin. The login may start one child and may never exit; its budget is three ticks. Re-trust may happen at any point. The PTY, signal delivery, reaping and the status command's own exit codes use real process tests."
+property = "Once the login phase ends, neither the login nor any process it started is alive (NoProcessOutlivesTheLogin), and the login never runs past its budget. A result is recorded only while the pin is unchanged. The broken control ends only the login, not its process group, and must fail safety. tests/plugin_setup.rs a_hanging_login_and_its_children_are_ended_at_the_budget is the API witness."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "PluginHookGate"
 title = "Hook shim waits for a blocking plugin's decision, boundedly"
 models = ["PluginHookGate", "BrokenPluginHookGate"]

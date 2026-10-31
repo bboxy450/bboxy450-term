@@ -124,6 +124,13 @@ impl Plugin {
                 && call.ms >= 0.
         })
     }
+    /// Setup runs for a trusted, actionable plugin whose shape declares auth.
+    pub fn can_set_up(&self, id: &str) -> bool {
+        self.control_key() == id
+            && self.actionable
+            && self.trust == "trusted"
+            && self.auth.is_some()
+    }
     /// An active root's provider and an untrusted binary cannot be toggled.
     pub fn can_toggle(&self) -> bool {
         self.trust == "trusted" && self.root.is_none()
@@ -600,9 +607,11 @@ impl Settings {
                 )
                 .into(),
             );
-            if plugin.auth.as_deref() == Some("needs login") || plugin.health.state == "crashed" {
+            if plugin.auth.is_some() && plugin.trust == "trusted"
+                || plugin.health.state == "crashed"
+            {
                 chips.push(
-                    b.button(&format!("{key}/setup"), "Re-run setup", None, "quiet")
+                    b.button(&format!("{key}/setup"), "Run setup", None, "quiet")
                         .into(),
                 );
             }

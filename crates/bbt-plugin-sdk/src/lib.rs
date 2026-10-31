@@ -310,6 +310,16 @@ pub struct Manifest {
     pub fixture_bootstrap: bool,
     /// Declare `trace`: the host may ask for [`Ctx::span`] spans with results.
     pub trace: bool,
+    /// `(status word, login word)` for [`Plugin::auth_status`] and
+    /// [`Plugin::auth_login`].
+    pub auth: Option<(String, String)>,
+}
+
+/// What [`Plugin::auth_status`] found, with one human line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthStatus {
+    LoggedIn(String),
+    LoggedOut(String),
 }
 
 impl Manifest {
@@ -331,7 +341,17 @@ impl Manifest {
             signed_writer: false,
             fixture_bootstrap: false,
             trace: false,
+            auth: None,
         }
+    }
+
+    /// Declare setup: the host runs `<binary> <status>` (exit 0 logged in,
+    /// 1 not) and, when not logged in, `<binary> <login>` in a bare login
+    /// terminal. Each is one lowercase word, e.g. `auth-status`. The runtime
+    /// routes them to [`Plugin::auth_status`] and [`Plugin::auth_login`].
+    pub fn auth(mut self, status: &str, login: &str) -> Self {
+        self.auth = Some((status.into(), login.into()));
+        self
     }
 
     /// Declare `trace: true`: when the host enables it at `initialize`, spans
@@ -562,6 +582,9 @@ impl Manifest {
         if !self.host_api.is_empty() {
             shape["host_api"] = self.host_api.clone().into();
         }
+        if let Some((status, login)) = &self.auth {
+            shape["auth"] = json!({"status_command": status, "login_command": login});
+        }
         shape
     }
 
@@ -654,6 +677,22 @@ pub trait Plugin: Sized + 'static {
     /// `health_command`; extend with plugin-specific facts.
     fn health(&mut self, _ctx: &Ctx) -> Result<Value, Refusal> {
         Ok(json!({"healthy": true}))
+    }
+
+    /// `auth.status_command` ([`Manifest::auth`]): run as its own process with
+    /// no root and no MCP, within 2 s. The default reports logged in.
+    fn auth_status() -> Result<AuthStatus, Refusal> {
+        Ok(AuthStatus::LoggedIn(String::new()))
+    }
+
+    /// `auth.login_command`: run in a bare login terminal (stdin, stdout and
+    /// stderr are its PTY) with a scrubbed environment and the plugin's data
+    /// directory as cwd. `Ok` exits 0; a refusal exits 2 with its message.
+    fn auth_login() -> Result<(), Refusal> {
+        Err(Refusal::new(
+            "login_unavailable",
+            "this plugin declares no login",
+        ))
     }
 
     /// Budget for `initialize`; fixture bootstrap may need longer.
@@ -845,6 +884,31 @@ mod tests {
                 .code,
             "unknown_host_api"
         );
+    }
+
+    // keeps: #57 setup — declared auth words reach the shape; the host's
+    // validator refuses anything but two distinct lowercase words.
+    #[test]
+    fn declared_auth_reaches_the_shape_and_is_validated_by_the_host() {
+        let m = manifest().auth("auth-status", "auth-login");
+        m.validate().unwrap();
+        assert_eq!(
+            m.shape()["auth"],
+            json!({"status_command":"auth-status","login_command":"auth-login"})
+        );
+        assert!(manifest().shape().get("auth").is_none());
+        for (status, login) in [
+            ("same", "same"),
+            ("Bad", "login"),
+            ("sh -c x", "login"),
+            ("serve", "login"),
+        ] {
+            assert_eq!(
+                manifest().auth(status, login).validate().unwrap_err().code,
+                "invalid_auth",
+                "{status} {login}"
+            );
+        }
     }
 
     #[test]

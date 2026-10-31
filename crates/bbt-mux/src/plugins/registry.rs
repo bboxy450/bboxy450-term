@@ -22,7 +22,9 @@ use std::{
 use bbt_plugin::{
     Refusal,
     contracts::Contract,
-    registry::{Activation, Approval, Candidate, Conformance, Entry, Inspection, State},
+    registry::{
+        Activation, Approval, Candidate, Conformance, Entry, Inspection, SetupResult, State,
+    },
     trust::TrustRecord,
 };
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
@@ -55,6 +57,9 @@ pub use host::{
 pub use host::{MessageSender, RecordReader};
 #[path = "measure.rs"]
 mod measure;
+#[path = "setup.rs"]
+mod setup;
+pub use setup::{LOGIN as SETUP_LOGIN_BUDGET, SetupJob, SetupRun};
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]
@@ -383,12 +388,21 @@ impl Registry {
             } else {
                 None
             };
+            // The last setup counts only for the pin it ran against.
+            let setup = match activation.as_ref() {
+                Some(activation) if trust.is_some() => {
+                    load::<SetupResult>(&tx, &setup::key(&candidate.id))?
+                        .filter(|result| result.sha256 == activation.sha256)
+                }
+                _ => None,
+            };
             entries.push(Entry {
                 candidate,
                 activation,
                 trust,
                 conformance,
                 measurements: Vec::new(),
+                setup,
             });
         }
         // Descriptors may add contracts beyond the filename's primary one.

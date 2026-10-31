@@ -234,6 +234,8 @@ pub enum PluginIntent {
         grant: String,
         on: bool,
     },
+    /// Run the trusted pin's setup (auth status, then login when needed).
+    Setup(String),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KnowledgeIntent {
@@ -436,7 +438,11 @@ impl Controller {
                             && plugin.grants.iter().any(|row| row.name == *grant)
                     })
             }
-            Field::PluginSetup(_) => false,
+            Field::PluginSetup(id) => {
+                (self.section == "Plugins" || !self.query.trim().is_empty())
+                    && values.plugin_controls
+                    && values.plugins.iter().any(|plugin| plugin.can_set_up(id))
+            }
             Field::KnowledgeProvider(root) => {
                 (self.section == "Knowledge" || !self.query.trim().is_empty())
                     && values.knowledge_controls
@@ -558,6 +564,7 @@ impl Controller {
             Field::PluginEnable(_)
                 | Field::PluginTrust(_)
                 | Field::PluginGrant(..)
+                | Field::PluginSetup(_)
                 | Field::KnowledgeProvider(_)
         ) && self.editable(field, values)
         {
@@ -575,7 +582,9 @@ impl Controller {
                 ),
             Field::PluginTrust(_) => "Plugin trust is unavailable in this build".into(),
             Field::PluginGrant(..) => "Trust the plugin before changing its grants".into(),
-            Field::PluginSetup(_) => "Plugin setup is unavailable in this build".into(),
+            Field::PluginSetup(_) => {
+                "Plugin setup needs a trusted plugin whose shape declares auth".into()
+            }
             Field::KnowledgeProvider(_) => {
                 "Provider swap is unavailable: the bundled provider remains active".into()
             }
@@ -693,6 +702,11 @@ impl Controller {
                     }
                     Field::PluginTrust(candidate) => {
                         self.plugin = Some(PluginIntent::Trust(candidate));
+                        self.error = None;
+                        return None;
+                    }
+                    Field::PluginSetup(candidate) => {
+                        self.plugin = Some(PluginIntent::Setup(candidate));
                         self.error = None;
                         return None;
                     }
@@ -1024,13 +1038,17 @@ mod production_plugin_tests {
             &mut records,
             &Default::default(),
         );
-        assert!(control.take_plugin().is_none());
-        assert!(
-            control
-                .error
-                .as_ref()
-                .unwrap()
-                .contains("setup is unavailable")
+        assert!(control.take_plugin().is_none(), "no auth declared");
+        assert!(control.error.as_ref().unwrap().contains("declares auth"));
+        records.plugins[0].auth = Some("setup not run".into());
+        control.handle(
+            Action::Toggle(Field::PluginSetup("candidate".into())),
+            &mut records,
+            &Default::default(),
+        );
+        assert_eq!(
+            control.take_plugin(),
+            Some(PluginIntent::Setup("candidate".into()))
         );
         records.plugin_controls = false;
         control.handle(
@@ -1157,7 +1175,14 @@ impl Regions {
                                 && plugin.trust == "trusted"
                         })
                 }
-                Field::PluginSetup(_) => false,
+                Field::PluginSetup(id) => {
+                    view.values.plugin_controls
+                        && view
+                            .values
+                            .plugins
+                            .iter()
+                            .any(|plugin| plugin.can_set_up(id))
+                }
                 Field::KnowledgeProvider(root) => {
                     view.values.knowledge_controls
                         && view
@@ -1234,7 +1259,7 @@ impl Regions {
                 if let Some(node) = find(layout, &format!("card0/plugin{i}/setup")) {
                     self.hits.push((
                         node.rect,
-                        Hit::Toggle(Field::PluginSetup(plugin.name.clone())),
+                        Hit::Toggle(Field::PluginSetup(plugin.control_key().to_owned())),
                         true,
                     ));
                 }

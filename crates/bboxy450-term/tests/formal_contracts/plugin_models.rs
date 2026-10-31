@@ -10,7 +10,13 @@
 use super::*;
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 4] = [plugin_connection, plugin_hook, plugin_host_api, plugin_hook_gate];
+    let families: [fn(bool) -> Model; 5] = [
+        plugin_connection,
+        plugin_hook,
+        plugin_host_api,
+        plugin_hook_gate,
+        plugin_setup,
+    ];
     families
         .into_iter()
         .flat_map(|family| {
@@ -540,5 +546,75 @@ fn plugin_hook_gate(b: bool) -> Model {
     for index in fair {
         m.weak_fair.push(vec![index]);
     }
+    m
+}
+
+// Plugin setup (plugins/setup.rs): status, then a login in a bare login
+// terminal when not logged in, then status again. The login may start a
+// child and may never end; its budget is three ticks. Ending the login ends
+// its whole process group, and a result is recorded only for an unchanged pin.
+fn plugin_setup(b: bool) -> Model {
+    let mut m = model(
+        "PluginSetup",
+        b,
+        &[
+            ("phase", 4, 0),
+            ("login", 1, 0),
+            ("child", 1, 0),
+            ("clock", 3, 0),
+            ("pin_changed", 1, 0),
+            ("recorded", 1, 0),
+            ("bad", 1, 0),
+        ],
+    );
+    action(&mut m, "StartStatus", eq(0, 0), &[(0, Int(1))]);
+    action(&mut m, "StatusLoggedIn", eq(0, 1), &[(0, Int(4))]);
+    action(
+        &mut m,
+        "StatusLoggedOut",
+        eq(0, 1),
+        &[(0, Int(2)), (1, Int(1)), (3, Int(0))],
+    );
+    action(
+        &mut m,
+        "LoginStartsChild",
+        all([eq(0, 2), eq(1, 1)]),
+        &[(2, Int(1))],
+    );
+    action(
+        &mut m,
+        "LoginExits",
+        all([eq(0, 2), eq(1, 1)]),
+        &[(1, Int(0))],
+    );
+    action(
+        &mut m,
+        "Tick",
+        all([eq(0, 2), eq(1, 1), Var(3).lt(Int(3))]),
+        &[(3, Var(3).plus(Int(1)))],
+    );
+    let ended = all([eq(0, 2), eq(1, 0).or(eq(3, 3))]);
+    // The broken control ends only the login, not its process group.
+    let group: &[(usize, Expr)] = if b {
+        &[(1, Int(0)), (0, Int(3))]
+    } else {
+        &[(1, Int(0)), (2, Int(0)), (0, Int(3))]
+    };
+    action(&mut m, "EndProcessGroup", ended, group);
+    action(&mut m, "StatusAgain", eq(0, 3), &[(0, Int(4))]);
+    action(&mut m, "Retrust", eq(4, 0), &[(4, Int(1))]);
+    action(
+        &mut m,
+        "RecordCurrentPin",
+        all([eq(0, 4), eq(5, 0), eq(4, 0)]),
+        &[(5, Int(1))],
+    );
+    no_bad(&mut m, 6);
+    safe(
+        &mut m,
+        "NoProcessOutlivesTheLogin",
+        implies(Var(0).lt(Int(3)).negate(), all([eq(1, 0), eq(2, 0)])),
+    );
+    safe(&mut m, "LoginWithinBudget", Var(3).le(Int(3)));
     m
 }

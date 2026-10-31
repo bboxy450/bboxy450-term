@@ -7,7 +7,8 @@
 //! Operator controls for the account-owned production plugin registry.
 use super::*;
 pub use bbt_plugin::registry::{
-    Entry as PluginEntry, Outcome as PluginOutcome, State as PluginState,
+    Entry as PluginEntry, Outcome as PluginOutcome, SetupResult as PluginSetupResult,
+    SetupState as PluginSetupState, State as PluginState,
 };
 pub use bbt_plugin::{
     policy::{FailurePolicy as PluginFailurePolicy, Phase as PluginPhase, Tier as PluginTier},
@@ -44,6 +45,12 @@ pub enum PluginRequest {
     },
     /// Check a trusted pin in a disposable fixture; never grants trust or enable.
     Check {
+        candidate: String,
+    },
+    /// Run the trusted pin's setup: its auth status command, and its login
+    /// command in a bare login terminal when not logged in. Records the
+    /// result for that pin; never grants trust or enable.
+    Setup {
         candidate: String,
     },
 }

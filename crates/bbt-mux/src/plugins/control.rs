@@ -109,6 +109,17 @@ impl Control {
                             })
                             .await
                         }
+                        // Status and login block on their processes, never logic's turn.
+                        Job::Setup(job) => {
+                            blocking(move || {
+                                let run = (*job).run();
+                                registry
+                                    .finish_setup(run)
+                                    .map(|entry| vec![entry])
+                                    .map_err(refusal)
+                            })
+                            .await
+                        }
                     },
                     Ok((entries, None)) => Ok(entries),
                     Err(error) => Err(error),
@@ -195,6 +206,7 @@ struct Work {
 enum Job {
     Descriptor(Box<super::InspectionJob>),
     Conformance(Box<super::ConformanceJob>),
+    Setup(Box<super::SetupJob>),
 }
 
 fn refusal(error: bbt_plugin::Refusal) -> crate::store::Error {
@@ -220,7 +232,8 @@ fn prepare(
         PluginRequest::Trust { path, .. } => normalized_source(path)?,
         PluginRequest::Enable { candidate }
         | PluginRequest::Disable { candidate }
-        | PluginRequest::Check { candidate } => candidate.clone(),
+        | PluginRequest::Check { candidate }
+        | PluginRequest::Setup { candidate } => candidate.clone(),
         PluginRequest::List => unreachable!(),
     };
     let matches: Vec<_> = entries
@@ -278,7 +291,7 @@ fn prepare(
         }
         PluginRequest::Enable { .. } => registry.set_enabled(actor, id, true).map_err(refusal)?,
         PluginRequest::Disable { .. } => registry.set_enabled(actor, id, false).map_err(refusal)?,
-        PluginRequest::Check { .. } => (**entry).clone(),
+        PluginRequest::Check { .. } | PluginRequest::Setup { .. } => (**entry).clone(),
         PluginRequest::List => unreachable!(),
     };
     let job = match request {
@@ -292,6 +305,9 @@ fn prepare(
             .map_err(refusal)?
             .map(Box::new)
             .map(Job::Conformance),
+        PluginRequest::Setup { .. } => {
+            Some(Job::Setup(Box::new(registry.setup(id).map_err(refusal)?)))
+        }
         _ => None,
     };
     Ok((vec![entry], job))

@@ -55,6 +55,7 @@ fn discovery_and_a_desired_enable_flag_do_not_imply_account_trust() {
         trust: None,
         conformance: None,
         measurements: Vec::new(),
+        setup: None,
     };
     assert_eq!(entry.state(), State::Untrusted);
     entry.activation = Some(Activation {

@@ -188,6 +188,31 @@ fn set_grant(
     Ok(())
 }
 
+/// The last recorded setup result for the current pin, in plain words.
+fn setup_label(setup: Option<&bbt_proto::gui::PluginSetupResult>) -> String {
+    use bbt_proto::gui::PluginSetupState as State;
+    let Some(setup) = setup else {
+        return "setup not run".into();
+    };
+    let mut label = match setup.state {
+        State::LoggedIn => "logged in".to_owned(),
+        State::LoggedOut => "not logged in".to_owned(),
+        State::LoginRefused => format!(
+            "login refused (exit {})",
+            setup.login_exit.map_or("signal".into(), |c| c.to_string())
+        ),
+        State::Failed => format!(
+            "setup failed ({})",
+            setup.code.as_deref().unwrap_or("unknown")
+        ),
+    };
+    if !setup.detail.is_empty() {
+        label.push_str(&format!(" · {}", setup.detail));
+    }
+    label.push_str(&format!(" · {} ms", setup.elapsed_ms));
+    label
+}
+
 /// The host's measured calls and hook deliveries, as Settings plots them.
 fn measured_calls(
     entry: &bbt_proto::gui::PluginEntry,
@@ -301,9 +326,10 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
             .map(|(record, shape)| grant_rows(record, shape))
             .unwrap_or_default(),
         version: shape.map(|s| s.version.clone()),
+        // The host's recorded setup of this pin, never an assumption.
         auth: shape
             .and_then(|s| s.auth.as_ref())
-            .map(|_| "setup unavailable".into()),
+            .map(|_| setup_label(entry.setup.as_ref())),
         health: Health {
             state: match state {
                 State::Refused => "degraded",
@@ -395,6 +421,7 @@ pub fn request(
             candidate,
             enabled: false,
         } => PluginRequest::Disable { candidate },
+        PluginIntent::Setup(candidate) => PluginRequest::Setup { candidate },
     };
     Ok(request)
 }
@@ -480,7 +507,8 @@ impl Requests {
                     }
                     PluginRequest::Enable { candidate }
                     | PluginRequest::Disable { candidate }
-                    | PluginRequest::Check { candidate } => *candidate == plugin.candidate,
+                    | PluginRequest::Check { candidate }
+                    | PluginRequest::Setup { candidate } => *candidate == plugin.candidate,
                     PluginRequest::List => false,
                 };
                 if !selected {
@@ -495,6 +523,7 @@ impl Requests {
                     PluginRequest::Enable { .. } => "enable",
                     PluginRequest::Disable { .. } => "disable",
                     PluginRequest::Check { .. } => "check",
+                    PluginRequest::Setup { .. } => "setup",
                     PluginRequest::List => unreachable!(),
                 };
                 match row.map(|row| &row.reply) {
@@ -577,6 +606,48 @@ mod tests {
         assert!(plugin.measurements_unavailable, "no data keeps the label");
         assert_eq!(plugin.contract.ok, None);
         assert!(!out.plugin_notice.as_ref().unwrap().contains("examples"));
+    }
+    // keeps: #57 — Settings shows the host's recorded setup of this pin, and
+    // the setup intent becomes a Setup request for the same candidate.
+    #[test]
+    fn recorded_setup_results_are_shown_in_plain_words() {
+        use bbt_proto::gui::{PluginSetupResult, PluginSetupState};
+        let result = |state, login_exit, code: Option<&str>| PluginSetupResult {
+            sha256: "a".repeat(64),
+            state,
+            code: code.map(str::to_owned),
+            login_exit,
+            detail: "fixture account".into(),
+            elapsed_ms: 12,
+        };
+        assert_eq!(setup_label(None), "setup not run");
+        assert_eq!(
+            setup_label(Some(&result(PluginSetupState::LoggedIn, Some(0), None))),
+            "logged in · fixture account · 12 ms"
+        );
+        assert!(
+            setup_label(Some(&result(PluginSetupState::LoginRefused, Some(2), None)))
+                .starts_with("login refused (exit 2)")
+        );
+        assert!(
+            setup_label(Some(&result(
+                PluginSetupState::Failed,
+                None,
+                Some("login_deadline_exceeded")
+            )))
+            .starts_with("setup failed (login_deadline_exceeded)")
+        );
+        let model = crate::model::Model::default();
+        assert_eq!(
+            request(
+                &model,
+                bbt_ui::modules::settings::controller::PluginIntent::Setup("candidate".into())
+            )
+            .unwrap(),
+            PluginRequest::Setup {
+                candidate: "candidate".into()
+            }
+        );
     }
     // keeps: #61 — only the host's measured samples become timeline calls.
     #[test]

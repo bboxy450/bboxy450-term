@@ -854,6 +854,9 @@ impl Plugin for RootFixture {
         if k.declare_trace {
             manifest = manifest.trace();
         }
+        if k.auth.is_some() {
+            manifest = manifest.auth("auth-status", "auth-login");
+        }
         if k.harmony {
             manifest = manifest
                 .method(Contract::DataSource, "commit")
@@ -915,6 +918,49 @@ impl Plugin for RootFixture {
             self.call_harmony(method, &args)
         } else {
             self.call_base(method, &args)
+        }
+    }
+
+    fn auth_status() -> Result<bbt_plugin_sdk::AuthStatus, Refusal> {
+        Ok(if Path::new("logged-in").exists() {
+            bbt_plugin_sdk::AuthStatus::LoggedIn("fixture account".into())
+        } else {
+            bbt_plugin_sdk::AuthStatus::LoggedOut("no fixture session".into())
+        })
+    }
+
+    // A scripted, unattended login: it proves it runs on a terminal of its
+    // own, then succeeds, refuses, or leaves a grandchild and never ends.
+    fn auth_login() -> Result<(), Refusal> {
+        // SAFETY: isatty only inspects descriptors 0 and 1.
+        if unsafe { libc::isatty(0) != 1 || libc::isatty(1) != 1 } {
+            return Err(refused(
+                "login_needs_terminal",
+                "stdin and stdout must be the login PTY",
+            ));
+        }
+        println!("\x1b]0;fixture title\x07Open https://login.invalid/device and enter FIX-1234");
+        match knobs().auth.as_deref() {
+            Some("ok") => {
+                fs::write("logged-in", b"")
+                    .map_err(|e| refused("fixture_error", &e.to_string()))?;
+                println!("Logged in.");
+                Ok(())
+            }
+            Some("hang") => {
+                let child = std::process::Command::new("/bin/sleep")
+                    .arg("600")
+                    .spawn()
+                    .map_err(|e| refused("fixture_error", &e.to_string()))?;
+                let _ = fs::write("grandchild.pid", child.id().to_string());
+                loop {
+                    std::thread::sleep(Duration::from_secs(1));
+                }
+            }
+            _ => Err(refused(
+                "login_refused",
+                "the fixture service refused the login",
+            )),
         }
     }
 

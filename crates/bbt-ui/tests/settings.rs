@@ -230,7 +230,10 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
             Field::PluginTrust("never-run".into()),
             "trust is unavailable",
         ),
-        (Field::PluginSetup("example".into()), "setup is unavailable"),
+        (
+            Field::PluginSetup("example".into()),
+            "setup needs a trusted plugin whose shape declares auth",
+        ),
         (
             Field::KnowledgeProvider(".bboxy".into()),
             "bundled provider remains active",

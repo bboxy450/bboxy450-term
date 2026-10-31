@@ -96,6 +96,10 @@ pub struct Knobs {
     pub gate_armed: Option<String>,
     /// Signed writer with commit, fixture bootstrap and a distinct external root.
     pub harmony: bool,
+    /// Declare setup: `ok` (the login, on a terminal, logs in), `refuse` (the
+    /// login exits 2) or `hang` (the login starts a grandchild and never ends).
+    /// Logged in means `logged-in` exists in the plugin's data directory.
+    pub auth: Option<String>,
     // Inspect.
     /// The descriptor printed by `--shape`.
     pub descriptor: Option<Value>,

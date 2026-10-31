@@ -94,6 +94,33 @@ impl Link {
 /// arguments and an open pipe.
 pub fn run<P: Plugin>() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if let (Some((status, login)), [word]) = (P::manifest().auth, args.as_slice()) {
+        if word == &status {
+            std::process::exit(match P::auth_status() {
+                Ok(crate::AuthStatus::LoggedIn(line)) => {
+                    println!("{line}");
+                    0
+                }
+                Ok(crate::AuthStatus::LoggedOut(line)) => {
+                    println!("{line}");
+                    1
+                }
+                Err(refusal) => {
+                    eprintln!("{refusal}");
+                    2
+                }
+            });
+        }
+        if word == &login {
+            std::process::exit(match P::auth_login() {
+                Ok(()) => 0,
+                Err(refusal) => {
+                    eprintln!("{refusal}");
+                    2
+                }
+            });
+        }
+    }
     match args
         .iter()
         .map(String::as_str)

@@ -239,11 +239,39 @@ impl Tool {
     }
 }
 
-/// Setup remains the later registry/login cut; a checker never calls login.
+/// Plugin setup. Each command is one argument word for the trusted pinned
+/// copy itself (`<copy> <word>`): the host never runs another program. The
+/// status run exits 0 when logged in and 1 when not; the login run happens
+/// in a bare login terminal. A checker never calls either.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Auth {
     pub status_command: String,
     pub login_command: String,
+}
+
+impl Auth {
+    /// Lowercase ASCII words of at most 32 bytes, distinct, never a flag
+    /// (`--shape`) or a serving mode.
+    pub fn validate(&self) -> Result<(), Refusal> {
+        let word = |w: &str| {
+            !w.is_empty()
+                && w.len() <= 32
+                && w.as_bytes()[0].is_ascii_lowercase()
+                && w.bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+                && !matches!(w, "serve" | "shape")
+        };
+        if !word(&self.status_command)
+            || !word(&self.login_command)
+            || self.status_command == self.login_command
+        {
+            return Err(Refusal::new(
+                "invalid_auth",
+                "auth commands are distinct lowercase words for the plugin itself",
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// Unknown fields are intentionally ignored by the plugin boundary DTOs.
@@ -315,6 +343,9 @@ impl Shape {
                 "invalid_shape",
                 "name, version, systems and health_command are required",
             ));
+        }
+        if let Some(auth) = &self.auth {
+            auth.validate()?;
         }
         let mut contracts = BTreeSet::new();
         let mut tier = Tier::Read;

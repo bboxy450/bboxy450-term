@@ -93,6 +93,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   plugin enable <candidate-id>
   plugin disable <candidate-id>
   plugin check <candidate-id> [--swarm ID]  disposable conformance check
+  plugin setup <candidate-id> [--swarm ID]  auth status, then login in a bare login terminal
   knowledge status [--swarm ID]
   knowledge select <root-id> <candidate-id> [--swarm ID]
   knowledge reset <root-id> [--swarm ID]    select the native local KB
