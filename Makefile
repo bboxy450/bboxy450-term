@@ -190,6 +190,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
+	  'make land                       Land this branch on main in one go (LAND.md; authorization required)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
@@ -666,6 +667,24 @@ push:
 	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+
+# One-go landing (LAND.md): scripts/land.sh rebases, runs the gate, rechecks only
+# what overlaps when main moves, then pushes. A private Cargo build dir keeps other
+# worktrees' artifacts out; transient network/TLC-tool failures retry, nothing else.
+.PHONY: land
+land:
+	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
+	mkdir -p '$(abspath $(TARGET_DIR))'; \
+	for attempt in 1 2 3; do \
+	  log='$(abspath $(TARGET_DIR))'/land-attempt-$$attempt.log; \
+	  sh scripts/land.sh > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \
+	  if [ $$rc -eq 0 ]; then exit 0; fi; \
+	  if tail -n 60 "$$log" | grep -qiE "$(LAND_TRANSIENT)"; then \
+	    printf 'land: transient failure (attempt %s, exit %s); retrying in 60 s\n' "$$attempt" "$$rc"; sleep 60; continue; \
+	  fi; \
+	  printf 'land: exit %s; see %s\n' "$$rc" "$$log"; exit $$rc; \
+	done; exit $$rc
+LAND_TRANSIENT := connection reset|network is unreachable|Resolving timed out|Could not resolve|TLS handshake|timed out after [0-9]+ milliseconds|unable to access 'https://github.com|TLC tool failure \(exit 150\)
 
 .PHONY: test-spawn-unit test-spawn check-spawn parity-launcher
 test-spawn-unit:
