@@ -59,16 +59,22 @@ assert!(tla.contains("MODULE Counter"));
 ## Supported semantics and limits
 
 The current subset includes finite signed-integer state vectors; integer/Boolean
-literals; equality, integer comparison/add/subtract, Boolean operations; guarded
-simultaneous assignments; invariants; explicit-action deadlocks; `request ~>
-response`; and weak fairness over named action groups. An enabled self-loop does
+literals; equality, integer comparison/add/subtract, Boolean operations;
+`IF-THEN-ELSE`; bounded `\A`/`\E` over constant integer ranges
+(`Expr::forall`/`exists`, `Expr::Bound` by de Bruijn depth); arrays of
+consecutive variables read by a dynamic index (`Expr::pick`, exported as a
+`CASE` that fails outside its domain); several initial values per variable
+(`Variable::choice`); guarded simultaneous assignments; invariants;
+explicit-action deadlocks; `request ~> response`; and weak and strong fairness
+over named action groups. An enabled self-loop does
 not count as nonstuttering progress for fairness. The native graph stores exact
 states, not fingerprints. Native arithmetic is checked i64; parity with TLC
 outside the tested numeric ranges is not claimed.
 
 Not yet implemented: reading general `.tla` source, modules/instantiation,
-sets/functions/sequences, quantifiers, arbitrary temporal formulas, strong
-fairness, symmetry/distributed checking, arbitrary Rust translation or a
+first-class sets, records and sequences (model them as arrays of variables
+with `pick` and per-slot `IF` updates), unbounded or state-dependent quantifier
+ranges, arbitrary temporal formulas beyond `~>`, symmetry/distributed checking, arbitrary Rust translation or a
 refinement proof connecting an application to its model. Domain bounds are
 checked as TypeOK, not used to prune inconvenient states. No elapsed-time,
 filesystem, OS, cryptographic or GPU property follows from a finite model alone.

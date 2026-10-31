@@ -41,6 +41,7 @@ fn model(name: &str, broken: bool, vars: &[(&str, i64, i64)]) -> Model {
         invariants: vec![],
         responses: vec![],
         weak_fair: vec![],
+        strong_fair: vec![],
         // Completed operations may quiesce; TLA stuttering is still explored for liveness.
         check_deadlock: false,
     }

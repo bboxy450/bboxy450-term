@@ -37,7 +37,9 @@ class GateTests(unittest.TestCase):
         self.assertEqual({row["frontend"] for row in rows}, {"checker", "yarn", "project"})
         project = {n for c in formal.contracts(root, {r["name"] for r in rows}) for n in c["models"]}
         self.assertEqual({r["name"] for r in rows if r["frontend"] == "project"}, project)
-        self.assertEqual(len([r for r in rows if r["frontend"] == "checker"]), 12)
+        # 12 original checker cases plus IteMax, QuantifiedScan and
+        # StrongFairFlicker with their broken controls (9c constructs).
+        self.assertEqual(len([r for r in rows if r["frontend"] == "checker"]), 18)
 
     def test_project_contracts_require_executed_pairs_and_real_evidence_paths(self):
         with tempfile.TemporaryDirectory() as own:

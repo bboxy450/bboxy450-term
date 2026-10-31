@@ -29,8 +29,17 @@ arbitration-count bound into a wall-clock latency claim.
 
 The native checker accepts an explicit expression/action representation: finite
 integer domains, integer/Boolean literals, equality, comparisons, arithmetic,
-Boolean operations, guarded simultaneous assignments, invariants, deadlocks,
-response properties and named weak-fair action groups. It explores exact states
+Boolean operations, `IF-THEN-ELSE`, bounded `\A`/`\E` over integer ranges
+(`Forall`/`Exists` with de Bruijn `Bound`), arrays of consecutive variables
+read by a dynamic index (`Pick`, a `CASE` in TLA+ that fails outside its
+domain, as TLC does), several initial values per variable
+(`Variable::choice`, `v \in {…}`), guarded simultaneous assignments,
+invariants, deadlocks, response properties and named weak-fair and
+strong-fair (`SF_vars`) action groups. Strong fairness is checked by
+refining a candidate component: an SF group enabled in it but never taken
+inside leaves only the sub-components that avoid its enabled states. Each of
+these constructs has corpus entries with Java TLC parity and a broken
+control (`IteMax`, `QuantifiedScan`, `StrongFairFlicker`). It explores exact states
 with BFS and analyzes strongly connected components for fair response violations,
 including implicit stuttering. Counterexamples include a prefix and, for
 liveness, a fair closed walk. State limits, overflow, invalid types/references and

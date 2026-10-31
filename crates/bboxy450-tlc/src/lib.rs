@@ -53,6 +53,17 @@ pub enum Expr {
     Or(BoxExpr, BoxExpr),
     /// Boolean negation.
     Not(BoxExpr),
+    /// `IF c THEN a ELSE b` over like-typed branches.
+    Ite(BoxExpr, BoxExpr, BoxExpr),
+    /// `\A k \in lo..hi : body`; the body names `k` as [`Expr::Bound`].
+    Forall(i64, i64, BoxExpr),
+    /// `\E k \in lo..hi : body`.
+    Exists(i64, i64, BoxExpr),
+    /// A quantifier's bound integer by de Bruijn depth (0 = innermost).
+    Bound(usize),
+    /// Element `index` of the array of `len` consecutive variables starting
+    /// at `base` (a function from `0..len`); an index outside it fails.
+    Pick(usize, usize, BoxExpr),
 }
 /// A boxed subexpression.
 pub type BoxExpr = std::boxed::Box<Expr>;
@@ -95,89 +106,192 @@ impl Expr {
     pub fn negate(self) -> Self {
         Self::Not(self.into())
     }
+    /// `IF self THEN then ELSE otherwise`.
+    pub fn ite(self, then: Self, otherwise: Self) -> Self {
+        Self::Ite(self.into(), then.into(), otherwise.into())
+    }
+    /// `\A k \in lo..hi : body`, with `k` as `Bound(0)` inside `body`.
+    pub fn forall(lo: i64, hi: i64, body: Self) -> Self {
+        Self::Forall(lo, hi, body.into())
+    }
+    /// `\E k \in lo..hi : body`, with `k` as `Bound(0)` inside `body`.
+    pub fn exists(lo: i64, hi: i64, body: Self) -> Self {
+        Self::Exists(lo, hi, body.into())
+    }
+    /// Element `index` of the `len` variables starting at `base`.
+    pub fn pick(base: usize, len: usize, index: Self) -> Self {
+        Self::Pick(base, len, index.into())
+    }
+
+    fn integer_kind(&self, variables: usize) -> Result<bool, String> {
+        self.kind_in(variables, 0)
+    }
 
     // Static type/reference validation includes unreachable actions and the
     // right-hand side of short-circuit expressions; neither backend may silently
     // accept an unsupported expression simply because this corpus did not take it.
-    fn integer_kind(&self, variables: usize) -> Result<bool, String> {
+    fn kind_in(&self, variables: usize, depth: usize) -> Result<bool, String> {
+        let kind = |e: &Expr| e.kind_in(variables, depth);
         match self {
             Self::Int(_) => Ok(true),
             Self::Bool(_) => Ok(false),
             Self::Var(i) if *i < variables => Ok(true),
             Self::Var(_) => Err("unknown variable".into()),
+            Self::Bound(d) if *d < depth => Ok(true),
+            Self::Bound(_) => Err("unbound quantifier variable".into()),
             Self::Eq(a, b) => {
-                if a.integer_kind(variables)? != b.integer_kind(variables)? {
+                if kind(a)? != kind(b)? {
                     return Err("equality operands have different types".into());
                 }
                 Ok(false)
             }
             Self::Lt(a, b) | Self::Le(a, b) | Self::Add(a, b) | Self::Sub(a, b) => {
-                if !a.integer_kind(variables)? || !b.integer_kind(variables)? {
+                if !kind(a)? || !kind(b)? {
                     return Err("expected an integer".into());
                 }
                 Ok(matches!(self, Self::Add(..) | Self::Sub(..)))
             }
             Self::And(a, b) | Self::Or(a, b) => {
-                if a.integer_kind(variables)? || b.integer_kind(variables)? {
+                if kind(a)? || kind(b)? {
                     return Err("expected a Boolean".into());
                 }
                 Ok(false)
             }
             Self::Not(a) => {
-                if a.integer_kind(variables)? {
+                if kind(a)? {
                     return Err("expected a Boolean".into());
                 }
                 Ok(false)
+            }
+            Self::Ite(c, a, b) => {
+                if kind(c)? {
+                    return Err("expected a Boolean condition".into());
+                }
+                let branch = kind(a)?;
+                if branch != kind(b)? {
+                    return Err("IF branches have different types".into());
+                }
+                Ok(branch)
+            }
+            Self::Forall(lo, hi, body) | Self::Exists(lo, hi, body) => {
+                if lo > hi {
+                    return Err("empty quantifier range".into());
+                }
+                if body.kind_in(variables, depth + 1)? {
+                    return Err("expected a Boolean quantifier body".into());
+                }
+                Ok(false)
+            }
+            Self::Pick(base, len, index) => {
+                if *len == 0 || base.checked_add(*len).is_none_or(|end| end > variables) {
+                    return Err("array outside the variables".into());
+                }
+                if !kind(index)? {
+                    return Err("expected an integer index".into());
+                }
+                Ok(true)
             }
         }
     }
 
     fn value(&self, state: &State) -> Result<Value, String> {
-        let integer = |e: &Expr| match e.value(state)? {
-            Value::Int(v) => Ok(v),
-            _ => Err("expected an integer".to_string()),
-        };
+        self.value_in(state, &mut Vec::new())
+    }
+
+    fn value_in(&self, state: &State, env: &mut Vec<i64>) -> Result<Value, String> {
+        fn integer(e: &Expr, state: &State, env: &mut Vec<i64>) -> Result<i64, String> {
+            match e.value_in(state, env)? {
+                Value::Int(v) => Ok(v),
+                _ => Err("expected an integer".to_string()),
+            }
+        }
         Ok(match self {
             Self::Int(n) => Value::Int(*n),
             Self::Bool(b) => Value::Bool(*b),
             Self::Var(i) => Value::Int(*state.get(*i).ok_or("unknown variable")?),
+            Self::Bound(d) => Value::Int(
+                *env.len()
+                    .checked_sub(d + 1)
+                    .and_then(|i| env.get(i))
+                    .ok_or("unbound quantifier variable")?,
+            ),
             Self::Eq(a, b) => {
-                let (a, b) = (a.value(state)?, b.value(state)?);
+                let (a, b) = (a.value_in(state, env)?, b.value_in(state, env)?);
                 if core::mem::discriminant(&a) != core::mem::discriminant(&b) {
                     return Err("equality operands have different types".into());
                 }
                 Value::Bool(a == b)
             }
-            Self::Lt(a, b) => Value::Bool(integer(a)? < integer(b)?),
-            Self::Le(a, b) => Value::Bool(integer(a)? <= integer(b)?),
+            Self::Lt(a, b) => Value::Bool(integer(a, state, env)? < integer(b, state, env)?),
+            Self::Le(a, b) => Value::Bool(integer(a, state, env)? <= integer(b, state, env)?),
             Self::Add(a, b) => Value::Int(
-                integer(a)?
-                    .checked_add(integer(b)?)
+                integer(a, state, env)?
+                    .checked_add(integer(b, state, env)?)
                     .ok_or("integer overflow")?,
             ),
             Self::Sub(a, b) => Value::Int(
-                integer(a)?
-                    .checked_sub(integer(b)?)
+                integer(a, state, env)?
+                    .checked_sub(integer(b, state, env)?)
                     .ok_or("integer overflow")?,
             ),
-            Self::And(a, b) => Value::Bool(a.boolean(state)? && b.boolean(state)?),
-            Self::Or(a, b) => Value::Bool(a.boolean(state)? || b.boolean(state)?),
-            Self::Not(a) => Value::Bool(!a.boolean(state)?),
+            Self::And(a, b) => Value::Bool(a.boolean_in(state, env)? && b.boolean_in(state, env)?),
+            Self::Or(a, b) => Value::Bool(a.boolean_in(state, env)? || b.boolean_in(state, env)?),
+            Self::Not(a) => Value::Bool(!a.boolean_in(state, env)?),
+            Self::Ite(c, a, b) => {
+                if c.boolean_in(state, env)? {
+                    a.value_in(state, env)?
+                } else {
+                    b.value_in(state, env)?
+                }
+            }
+            Self::Forall(lo, hi, body) | Self::Exists(lo, hi, body) => {
+                let all = matches!(self, Self::Forall(..));
+                let mut result = all;
+                for k in *lo..=*hi {
+                    env.push(k);
+                    let holds = body.boolean_in(state, env);
+                    env.pop();
+                    if holds? != all {
+                        result = !all;
+                        break;
+                    }
+                }
+                Value::Bool(result)
+            }
+            Self::Pick(base, len, index) => {
+                let i = integer(index, state, env)?;
+                let i = usize::try_from(i)
+                    .ok()
+                    .filter(|i| i < len)
+                    .ok_or("array index outside its domain")?;
+                Value::Int(*state.get(base + i).ok_or("unknown variable")?)
+            }
         })
     }
     fn boolean(&self, state: &State) -> Result<bool, String> {
-        match self.value(state)? {
+        self.boolean_in(state, &mut Vec::new())
+    }
+    fn boolean_in(&self, state: &State, env: &mut Vec<i64>) -> Result<bool, String> {
+        match self.value_in(state, env)? {
             Value::Bool(b) => Ok(b),
             _ => Err("expected a Boolean".into()),
         }
     }
     fn tla(&self) -> String {
-        let binary = |a: &Expr, op: &str, b: &Expr| format!("({} {op} {})", a.tla(), b.tla());
+        self.tla_in(0)
+    }
+    // Quantified variables are named q<absolute depth>, so nested
+    // quantifiers never shadow one another.
+    fn tla_in(&self, depth: usize) -> String {
+        let binary = |a: &Expr, op: &str, b: &Expr| {
+            format!("({} {op} {})", a.tla_in(depth), b.tla_in(depth))
+        };
         match self {
             Self::Int(n) => format!("({n})"),
             Self::Bool(true) => "TRUE".into(),
             Self::Bool(false) => "FALSE".into(),
             Self::Var(i) => format!("v{i}"),
+            Self::Bound(d) => format!("q{}", depth - 1 - d),
             Self::Eq(a, b) => binary(a, "=", b),
             Self::Lt(a, b) => binary(a, "<", b),
             Self::Le(a, b) => binary(a, "<=", b),
@@ -185,7 +299,30 @@ impl Expr {
             Self::Sub(a, b) => binary(a, "-", b),
             Self::And(a, b) => binary(a, "/\\", b),
             Self::Or(a, b) => binary(a, "\\/", b),
-            Self::Not(a) => format!("~({})", a.tla()),
+            Self::Not(a) => format!("~({})", a.tla_in(depth)),
+            Self::Ite(c, a, b) => format!(
+                "(IF {} THEN {} ELSE {})",
+                c.tla_in(depth),
+                a.tla_in(depth),
+                b.tla_in(depth)
+            ),
+            Self::Forall(lo, hi, body) | Self::Exists(lo, hi, body) => format!(
+                "({} q{depth} \\in ({lo})..({hi}) : {})",
+                if matches!(self, Self::Forall(..)) {
+                    "\\A"
+                } else {
+                    "\\E"
+                },
+                body.tla_in(depth + 1)
+            ),
+            // CASE without OTHER: TLC also fails on an index outside 0..len.
+            Self::Pick(base, len, index) => {
+                let index = index.tla_in(depth);
+                let arms: Vec<String> = (0..*len)
+                    .map(|i| format!("{index} = {i} -> v{}", base + i))
+                    .collect();
+                format!("(CASE {})", arms.join(" [] "))
+            }
         }
     }
 }
@@ -201,6 +338,9 @@ pub struct Variable {
     pub max: i64,
     /// Initial value.
     pub initial: i64,
+    /// Further initial values: the initial states are every combination of
+    /// each variable's `initial` and `also_initial` values.
+    pub also_initial: Vec<i64>,
 }
 impl Variable {
     /// Creates a finite variable.
@@ -210,7 +350,22 @@ impl Variable {
             min,
             max,
             initial,
+            also_initial: Vec::new(),
         }
+    }
+    /// A variable that starts at any of `initial` (at least one value).
+    pub fn choice(name: &str, min: i64, max: i64, initial: &[i64]) -> Self {
+        let mut v = Self::new(name, min, max, initial.first().copied().unwrap_or(min));
+        v.also_initial = initial.iter().skip(1).copied().collect();
+        v
+    }
+    fn initials(&self) -> Vec<i64> {
+        let mut values: Vec<i64> = std::iter::once(self.initial)
+            .chain(self.also_initial.iter().copied())
+            .collect();
+        values.sort_unstable();
+        values.dedup();
+        values
     }
 }
 /// One guarded atomic transition; updates read the same pre-state.
@@ -266,6 +421,9 @@ pub struct Model {
     pub responses: Vec<Response>,
     /// Weak fairness on each disjunction of action indices. No fairness is implicit.
     pub weak_fair: Vec<Vec<usize>>,
+    /// Strong fairness (`SF_vars`) on each disjunction of action indices:
+    /// enabled infinitely often implies taken infinitely often.
+    pub strong_fair: Vec<Vec<usize>>,
     /// Whether a state with no enabled explicit action is a violation.
     pub check_deadlock: bool,
 }
@@ -308,6 +466,7 @@ impl Model {
             invariants: vec![],
             responses: vec![],
             weak_fair: vec![],
+            strong_fair: vec![],
             check_deadlock: true,
         }
     }
@@ -318,14 +477,31 @@ impl Model {
         if max_states == 0 {
             return Err("state limit must be positive".into());
         }
-        let initial: State = self.variables.iter().map(|v| v.initial).collect();
-        let mut index = BTreeMap::from([(initial.clone(), 0)]);
+        // Every combination of the variables' initial values, in order.
+        let mut initials: Vec<State> = vec![vec![]];
+        for var in &self.variables {
+            initials = initials
+                .into_iter()
+                .flat_map(|prefix| {
+                    var.initials().into_iter().map(move |value| {
+                        let mut state = prefix.clone();
+                        state.push(value);
+                        state
+                    })
+                })
+                .collect();
+            if initials.len() > max_states {
+                return Err(format!("state limit {max_states} exceeded"));
+            }
+        }
+        let index_of = initials.iter().cloned().enumerate().map(|(i, s)| (s, i));
+        let mut index: BTreeMap<State, usize> = index_of.collect();
+        let mut parents = vec![None; initials.len()];
         let mut report = Report {
-            states: vec![initial],
+            states: initials,
             edges: vec![],
             violations: vec![],
         };
-        let mut parents = vec![None];
         let mut cursor = 0;
         while cursor < report.states.len() {
             let state = report.states[cursor].clone();
@@ -443,6 +619,7 @@ impl Model {
         if self
             .weak_fair
             .iter()
+            .chain(&self.strong_fair)
             .any(|g| g.is_empty() || g.iter().any(|a| *a >= self.actions.len()))
         {
             return Err("invalid fairness action group".into());
@@ -479,21 +656,43 @@ impl Model {
             }
         }
         let allowed: Vec<bool> = from_obligation.iter().map(Option::is_some).collect();
-        for component in components(&r.edges, &allowed) {
+        let mut pending = components(&r.edges, &allowed);
+        while let Some(component) = pending.pop() {
             let members: BTreeSet<usize> = component.iter().copied().collect();
-            // Every state permits implicit stuttering. WF only counts nonstuttering steps.
-            let fair = self.weak_fair.iter().all(|group| {
+            let enabled = |i: usize, group: &[usize]| {
+                r.edges[i]
+                    .iter()
+                    .any(|e| e.to != i && group.contains(&e.action))
+            };
+            let taken = |group: &[usize]| {
                 component.iter().any(|&i| {
-                    !r.edges[i]
-                        .iter()
-                        .any(|e| e.to != i && group.contains(&e.action))
-                }) || component.iter().any(|&i| {
                     r.edges[i]
                         .iter()
                         .any(|e| e.to != i && members.contains(&e.to) && group.contains(&e.action))
                 })
-            });
+            };
+            // Every state permits implicit stuttering. WF only counts nonstuttering steps.
+            let fair = self
+                .weak_fair
+                .iter()
+                .all(|group| component.iter().any(|&i| !enabled(i, group)) || taken(group));
             if !fair {
+                continue;
+            }
+            // SF: a group enabled somewhere in the component but never taken
+            // inside it leaves only the cycles that avoid its enabled states
+            // (Emerson-Lei refinement).
+            if let Some(group) = self
+                .strong_fair
+                .iter()
+                .find(|group| !taken(group) && component.iter().any(|&i| enabled(i, group)))
+            {
+                let mut inside = vec![false; r.states.len()];
+                for &i in &component {
+                    inside[i] = !enabled(i, group);
+                }
+                // Every state stutters, so each sub-component is a candidate.
+                pending.extend(components(&r.edges, &inside));
                 continue;
             }
             let root = component[0];
@@ -512,7 +711,7 @@ impl Model {
             for &node in &component {
                 append_path(&mut cycle, node, &r.edges, &members);
             }
-            for group in &self.weak_fair {
+            for group in self.weak_fair.iter().chain(&self.strong_fair) {
                 if let Some((from, e)) = component.iter().find_map(|&from| {
                     r.edges[from]
                         .iter()
@@ -555,7 +754,13 @@ impl Model {
         }
         out.push_str("Init ==\n");
         for (i, v) in self.variables.iter().enumerate() {
-            out.push_str(&format!("  /\\ v{i} = ({})\n", v.initial));
+            let values = v.initials();
+            if values.len() == 1 {
+                out.push_str(&format!("  /\\ v{i} = ({})\n", v.initial));
+            } else {
+                let values: Vec<_> = values.iter().map(|n| format!("({n})")).collect();
+                out.push_str(&format!("  /\\ v{i} \\in {{{}}}\n", values.join(", ")));
+            }
         }
         for (i, a) in self.actions.iter().enumerate() {
             out.push_str(&format!("A{i} ==\n  /\\ {}\n", a.guard.tla()));
@@ -580,6 +785,10 @@ impl Model {
         for group in &self.weak_fair {
             let actions: Vec<_> = group.iter().map(|i| format!("A{i}")).collect();
             out.push_str(&format!("  /\\ WF_vars({})\n", actions.join(" \\/ ")));
+        }
+        for group in &self.strong_fair {
+            let actions: Vec<_> = group.iter().map(|i| format!("A{i}")).collect();
+            out.push_str(&format!("  /\\ SF_vars({})\n", actions.join(" \\/ ")));
         }
         for (i, p) in self.invariants.iter().enumerate() {
             out.push_str(&format!("Inv{i} == {}\n", p.condition.tla()));

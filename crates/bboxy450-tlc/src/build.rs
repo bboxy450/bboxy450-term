@@ -46,6 +46,7 @@ pub fn model(name: &str, broken: bool, vars: &[(&str, i64, i64)]) -> Model {
         invariants: Vec::new(),
         responses: Vec::new(),
         weak_fair: Vec::new(),
+        strong_fair: Vec::new(),
         check_deadlock: false,
     }
 }

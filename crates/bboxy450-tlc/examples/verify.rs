@@ -58,6 +58,76 @@ fn response(name: &str, fair: bool, flicker: bool) -> Model {
     });
     m
 }
+// IF-THEN-ELSE and several initial states: every pair of starting operands
+// yields their maximum. The broken variant takes the minimum.
+fn ite_max(name: &str, bad: bool) -> Model {
+    let mut m = Model::new(
+        name,
+        vec![
+            Variable::choice("a", 0, 2, &[0, 1, 2]),
+            Variable::choice("b", 0, 2, &[0, 2]),
+            Variable::new("max", 0, 2, 0),
+            Variable::new("done", 0, 1, 0),
+        ],
+    );
+    let (bigger, smaller) = if bad { (V(0), V(1)) } else { (V(1), V(0)) };
+    m.actions.push(Action::new(
+        "compute",
+        V(3).eq(I(0)),
+        vec![(2, V(0).lt(V(1)).ite(bigger, smaller)), (3, I(1))],
+    ));
+    m.invariants.push(Invariant {
+        name: "max_bounds_both".into(),
+        condition: V(3).eq(I(0)).or(V(0).le(V(2)).and(V(1).le(V(2)))),
+    });
+    m.check_deadlock = false;
+    m
+}
+// Bounded quantifiers over an array of three slots read by a dynamic index
+// (Pick): a scan finds a marked slot exactly when one exists. The broken
+// scan overwrites an earlier find with a later unmarked slot.
+fn pick_scan(name: &str, bad: bool) -> Model {
+    let mut m = Model::new(
+        name,
+        vec![
+            Variable::choice("slot0", 0, 1, &[0, 1]),
+            Variable::choice("slot1", 0, 1, &[0, 1]),
+            Variable::choice("slot2", 0, 1, &[0, 1]),
+            Variable::new("cursor", 0, 3, 0),
+            Variable::new("found", 0, 1, 0),
+        ],
+    );
+    let marked = Expr::pick(0, 3, V(3)).eq(I(1));
+    let keep = if bad { I(0) } else { V(4) };
+    m.actions.push(Action::new(
+        "scan",
+        V(3).lt(I(3)),
+        vec![(4, marked.ite(I(1), keep)), (3, V(3).plus(I(1)))],
+    ));
+    let any = Expr::exists(0, 2, Expr::pick(0, 3, Expr::Bound(0)).eq(I(1)));
+    let none = Expr::forall(0, 2, Expr::pick(0, 3, Expr::Bound(0)).eq(I(0)));
+    let scanned = V(3).eq(I(3));
+    m.invariants.push(Invariant {
+        name: "found_iff_marked".into(),
+        condition: scanned
+            .clone()
+            .negate()
+            .or(V(4).eq(I(1)).and(any).or(V(4).eq(I(0)).and(none))),
+    });
+    m.check_deadlock = false;
+    m
+}
+// Strong fairness: `serve` is enabled only while `tick` is 0 and `busy`
+// toggles forever, so weak fairness cannot force it (WeakFairFlicker) but
+// strong fairness does. The broken control puts strong fairness on `busy`.
+fn strong_flicker(name: &str, bad: bool) -> Model {
+    let mut m = response(name, false, true);
+    // `busy` keeps toggling (weak fairness), so `serve` is enabled
+    // infinitely often without being continuously enabled.
+    m.weak_fair.push(vec![1]);
+    m.strong_fair.push(vec![if bad { 1 } else { 0 }]);
+    m
+}
 fn checkpoint(name: &str, bad: bool) -> Model {
     // Contract: bbt-mux/src/checkpoint.rs, Saves::start/complete. Two generations,
     // one save and two cursor steps; no disk durability or parser-byte claim.
@@ -277,6 +347,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (input("BrokenInputRetry", true), "safety"),
         (snapshot(), "pass"),
         (stutter(), "liveness"),
+        (ite_max("IteMax", false), "pass"),
+        (ite_max("BrokenIteMax", true), "safety"),
+        (pick_scan("QuantifiedScan", false), "pass"),
+        (pick_scan("BrokenQuantifiedScan", true), "safety"),
+        (strong_flicker("StrongFairFlicker", false), "pass"),
+        (strong_flicker("BrokenStrongFairFlicker", true), "liveness"),
     ] {
         export(m, expected, root, &mut manifest)?;
     }
