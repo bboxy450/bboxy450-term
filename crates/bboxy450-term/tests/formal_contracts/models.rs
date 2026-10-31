@@ -1575,6 +1575,8 @@ fn volatile_bus_subscription(b: bool) -> Model {
             ("stage", 3, 0),
             ("active", 1, 0),
             ("io", 1, 0),
+            ("publication", 3, 0),
+            ("publication_io", 1, 0),
         ],
     );
     // Anonymous/new, anonymous/replay, named/new, named/replay. The router
@@ -1609,6 +1611,41 @@ fn volatile_bus_subscription(b: bool) -> Model {
         &mut m,
         "UnsubscribeRetiresMemoryAndPreservesDurableIO",
         implies(eq(1, 3), all([eq(2, 0), Var(0).lt(Int(2)).eq(eq(3, 0))])),
+    );
+    // Publication is another atomic router call: PTY output has no retained
+    // head or append. Inbox and retained publication keep their storage path.
+    action(
+        &mut m,
+        "PublishLiveOutput",
+        eq(4, 0),
+        &[(4, Int(1)), (5, Int(i64::from(b)))],
+    );
+    action(
+        &mut m,
+        "PublishInbox",
+        eq(4, 0),
+        &[(4, Int(2)), (5, Int(1))],
+    );
+    action(
+        &mut m,
+        "PublishRetained",
+        eq(4, 0),
+        &[(4, Int(3)), (5, Int(1))],
+    );
+    safe(
+        &mut m,
+        "LiveOutputDoesNotReadRetainedStorage",
+        implies(eq(4, 1), eq(5, 0)),
+    );
+    safe(
+        &mut m,
+        "InboxPublicationKeepsStorage",
+        implies(eq(4, 2), eq(5, 1)),
+    );
+    safe(
+        &mut m,
+        "RetainedPublicationKeepsStorage",
+        implies(eq(4, 3), eq(5, 1)),
     );
     m
 }

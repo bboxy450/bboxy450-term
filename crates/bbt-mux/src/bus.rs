@@ -967,8 +967,15 @@ impl Broker {
             }
         }
         self.ensure_stream(stream)?;
-        let previous = self.streams[stream].log.last_sequence()?;
-        if (self.custody_signers || supplied) && !fanout(&event.subject) {
+        let live_only = fanout(&event.subject);
+        // PTY output never compares a retained cursor. Avoid opening every
+        // seat database on this hot path; leave inbox routing on its old path.
+        let previous = if live_only && !event.subject.starts_with("inbox/") {
+            0
+        } else {
+            self.streams[stream].log.last_sequence()?
+        };
+        if (self.custody_signers || supplied) && !live_only {
             // An outbox may replay across a hold/rekey or a crashed process.
             // Retain the original signed bytes after checking the full draft;
             // a different signer must not rewrite an already-journaled event.
@@ -1002,7 +1009,7 @@ impl Broker {
         if !supplied && let Some(hold) = &self.hold {
             event.source = format!("ephemeral-hold/{}/{}", hold.run, event.source);
         }
-        let envelope = if fanout(&event.subject) {
+        let envelope = if live_only {
             Envelope::signed(event, 0, String::new(), &key)?
         } else {
             self.streams[stream].log.append(event, &key)?
@@ -2230,6 +2237,29 @@ mod gui_tests {
         let mut durable = Consumer::gui("seat/live/output");
         durable.name = Some("durable".into());
         assert!(broker.subscribe(durable).is_err());
+    }
+
+    // keeps: spec events — seq-zero PTY output must not depend on retained storage.
+    #[test]
+    fn live_output_publish_does_not_read_retained_head() {
+        let fixture = Fixture::new();
+        let mut broker = fixture.open();
+        broker.ensure_stream("seat").unwrap();
+        let consumer = broker.subscribe(Consumer::gui(">")).unwrap();
+        broker.streams.get_mut("seat").unwrap().log.path = fixture.0.clone();
+        let envelope = broker.publish("seat", event("seat/live/output")).unwrap();
+        assert_eq!(envelope.seq, 0);
+        assert!(envelope.prev.is_empty());
+        envelope.verify().unwrap();
+        let deliveries = broker.poll(&consumer, 8, 1).unwrap();
+        assert_eq!(deliveries.len(), 1);
+        assert!(
+            matches!(&deliveries[0], Delivery::Event { envelope: delivered, .. }
+                if **delivered == envelope)
+        );
+        // Inbox and durable publication keep their existing storage path.
+        assert!(broker.publish("seat", event("inbox/live")).is_err());
+        assert!(broker.publish("seat", event("seat/live/state")).is_err());
     }
     fn sequences(deliveries: &[Delivery]) -> Vec<(String, u64)> {
         deliveries
