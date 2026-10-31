@@ -18,6 +18,7 @@ use bbt_mux::{
     registry::{Class, Registry, SeatRecord},
     store::sqlite::SqliteStore,
 };
+use bbt_plugin_fixture::Knobs;
 use bbt_proto::gui::{KnowledgeRequest, KnowledgeStatus, PluginRequest, SwarmScope};
 use serde_json::{Value, json};
 use std::{fs, os::unix::fs::PermissionsExt, path::Path, time::Duration};
@@ -79,56 +80,15 @@ async fn status(client: &LogicClient, scope: SwarmScope) -> KnowledgeStatus {
     panic!("workspace mount did not finish")
 }
 fn fixture(path: &Path) {
-    // Adapted from bboxy450-term, crates/bbt-mux/tests/fixtures/plugins/root_provider.py:
-    // https://github.com/bboxy450/bboxy450-term
-    // Changes: signed sidecar and distinct backing directory detect bundled fallback.
-    let script=include_str!("fixtures/plugins/root_provider.py")
-        .replace("\"timeout_ms\":30000", "\"timeout_ms\":15000 if m=='commit' else 30000")
-        .replace("\"health_command\":\"health\",","\"health_command\":\"health\", \"signed_writer\":True, \"fixture_bootstrap\":True,")
-        .replace("trace('initialize',root=str(ROOT),cwd=os.getcwd())", "if not params.get('fixture'):\n                ROOT=ROOT.parent/'external';ROOT.mkdir(exist_ok=True)\n            trace('initialize',root=str(ROOT),cwd=os.getcwd())")
-        .replace("if sys.argv[1:]==['--shape']:",r#"
-METHODS['commit']=('CommitRequest','CommitResult')
-BASE_CALL=call
-def call(method,args):
-    if method=='commit':
-        for reference in args['refs']: exact(reference,records())
-        import time
-        (ROOT/'commit-entered').touch()
-        with (ROOT/'commit-attempts').open('a') as log: log.write('commit\n')
-        while (ROOT/'hold-commit').exists() and not (ROOT/'release-commit').exists(): time.sleep(0.01)
-        return {'commit':'private-budget-fixture','committed':args['refs']}
-    if method=='fetch' and (ROOT/'slow-fetch').exists():
-        import time
-        (ROOT/'fetch-entered').touch()
-        time.sleep(3)
-    if method=='fetch' and (ROOT/'slow-preflight').exists():
-        import time
-        (ROOT/'preflight-entered').touch()
-        time.sleep(1.6)
-    if method=='write' and (ROOT/'hold-write').exists():
-        import time
-        (ROOT/'write-entered').touch()
-        while not (ROOT/'release-write').exists(): time.sleep(0.01)
-    if method=='graph' and (ROOT/'forbid-graph').exists(): raise Refused('global_scan_refused','task operations must use scoped lists/direct references')
-    if method=='write' and args.get('signed_record'):
-        args=dict(args);args['frontmatter']=dict(args['frontmatter'])
-        args['frontmatter']['bboxy_signed_record']=args['signed_record']
-    result=BASE_CALL(method,args)
-    if method=='write' and args.get('signed_record'): result['signed_record']=args['signed_record']
-    if method=='fetch' and result['frontmatter'].get('bboxy_signed_record'):
-        result['signed_record']=result['frontmatter']['bboxy_signed_record']
-    return result
-if sys.argv[1:]==['--shape']:
-"#);
-    fs::write(
-        path,
-        format!(
-            "#!/usr/bin/env python3\nimport json\nSCHEMA=json.loads({})\n{script}",
-            serde_json::to_string(bbt_plugin::data_source::SCHEMA).unwrap()
-        ),
-    )
-    .unwrap();
-    fs::set_permissions(path, fs::Permissions::from_mode(0o700)).unwrap();
+    // The root fixture's Harmony variant: signed writer with commit, held and
+    // slow calls keyed by marker files in its root, a signed sidecar, and a
+    // distinct backing directory outside the fixture bootstrap that detects a
+    // bundled fallback.
+    Knobs {
+        harmony: true,
+        ..Knobs::root()
+    }
+    .install(path);
 }
 async fn spawn(client: &LogicClient, temp: &Path, id: Ulid, swarm: Ulid, oracle: bool) {
     let mut seat = SeatRecord::new(id, swarm, "private source fixture", "zsh");
@@ -309,6 +269,7 @@ async fn assert_other_swarm_controls(
 // keeps: complete command schemas fit the existing registry/journal bounds.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn reference_provider_schemas_fit_a_multi_provider_inventory() {
+    bbt_mux::plugins::set_test_budget(Duration::from_secs(10));
     let temp = tempfile::tempdir().unwrap();
     let run = temp.path().join("run");
     let repo = temp.path().join("repo");
@@ -317,15 +278,8 @@ async fn reference_provider_schemas_fit_a_multi_provider_inventory() {
     let mut sources = Vec::new();
     for index in 0..3 {
         let source = plugins.join(format!("bboxy450-term-data_source-reference-{index}"));
-        fs::write(
-            &source,
-            format!(
-                "{}\n# Independent pinned candidate {index}\n",
-                include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
-            ),
-        )
-        .unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        // Independent pinned candidates: each nonce is its own variant and digest.
+        Knobs::reference().nonce(index).install(&source);
         sources.push(source.canonicalize().unwrap());
     }
     let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
@@ -786,7 +740,11 @@ async fn selected_source_owns_signed_documents_and_slug_task_lifecycle_without_b
         expired["structuredContent"]["error"]["code"], "deadline_exceeded",
         "{expired}"
     );
-    assert!(started.elapsed() < Duration::from_secs(17));
+    assert!(
+        started.elapsed() < Duration::from_secs(17),
+        "{:?}",
+        started.elapsed()
+    );
     assert!(a.join("external/preflight-entered").exists());
     assert_eq!(
         fs::read_to_string(a.join("external/commit-attempts")).unwrap(),

@@ -10,22 +10,18 @@
 )]
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
+use bbt_plugin_fixture::Knobs;
+
 fn fixture(fault: Option<&str>, provider: &str) -> (tempfile::TempDir, PathBuf) {
+    bbt_mux::plugins::set_test_budget(std::time::Duration::from_secs(10));
     let root = tempfile::tempdir().unwrap();
     let path = root
         .path()
         .join(format!("bboxy450-term-data_source-{provider}"));
-    let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference");
-    let source = if let Some(fault) = fault {
-        source.replacen("FAULT = None", &format!("FAULT = {fault:?}"), 1)
-    } else {
-        source.to_owned()
-    };
-    fs::write(&path, source).unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+    let knobs = fault.map_or_else(Knobs::reference, |fault| Knobs::reference().fault(fault));
+    knobs.install(&path);
     (root, path)
 }
 
@@ -154,19 +150,13 @@ async fn task_provider_must_return_every_app_signed_write_byte_for_byte() {
         (Some("omit_signed_record"), Some("signed_record_missing")),
         (Some("alter_signed_record"), Some("signed_record_changed")),
     ] {
+        bbt_mux::plugins::set_test_budget(std::time::Duration::from_secs(10));
         let root = tempfile::tempdir().unwrap();
         let path = root.path().join("bboxy450-term-task_system-reference");
-        let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference").replacen(
-            "SYSTEM = \"data_source\"",
-            "SYSTEM = \"task_system\"",
-            1,
-        );
-        let source = fault.map_or_else(
-            || source.clone(),
-            |fault| source.replacen("FAULT = None", &format!("FAULT = {fault:?}"), 1),
-        );
-        fs::write(&path, source).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        let knobs = Knobs::reference().system("task_system");
+        fault
+            .map_or(knobs.clone(), |fault| knobs.fault(fault))
+            .install(&path);
         let report = bbt_mux::plugins::check(&path).await;
         assert_eq!(
             report.refusal.as_ref().map(|e| e.code.as_str()),
@@ -220,21 +210,15 @@ async fn the_other_five_contracts_are_probed_and_cross_field_results_are_checked
             Some("unknown_field_rejected"),
         ),
     ] {
+        bbt_mux::plugins::set_test_budget(std::time::Duration::from_secs(10));
         let root = tempfile::tempdir().unwrap();
         let path = root
             .path()
             .join(format!("bboxy450-term-{system}-reference"));
-        let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference").replacen(
-            "SYSTEM = \"data_source\"",
-            &format!("SYSTEM = {system:?}"),
-            1,
-        );
-        let source = fault.map_or_else(
-            || source.clone(),
-            |fault| source.replacen("FAULT = None", &format!("FAULT = {fault:?}"), 1),
-        );
-        fs::write(&path, source).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        let knobs = Knobs::reference().system(system);
+        fault
+            .map_or(knobs.clone(), |fault| knobs.fault(fault))
+            .install(&path);
         let report = bbt_mux::plugins::check(&path).await;
         assert_eq!(
             report.refusal.as_ref().map(|r| r.code.as_str()),

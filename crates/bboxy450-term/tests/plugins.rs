@@ -10,7 +10,6 @@
 )]
 
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 
 #[test]
@@ -39,13 +38,8 @@ fn version_does_not_activate_or_create_an_account() {
 #[ignore = "night: real app/plugin process boundary, test-policy #327 B2"]
 fn real_binary_runs_headless_against_a_fixture_without_opening_the_production_root() {
     let root = tempfile::tempdir().unwrap();
-    let binary = root.path().join("bboxy450-term-data_source-reference");
-    fs::write(
-        &binary,
-        include_str!("../../bbt-mux/tests/fixtures/plugins/bboxy450-term-data_source-reference"),
-    )
-    .unwrap();
-    fs::set_permissions(&binary, fs::Permissions::from_mode(0o700)).unwrap();
+    let binary = bbt_plugin_fixture::Knobs::reference()
+        .install(&root.path().join("bboxy450-term-data_source-reference"));
     let protected = root.path().join("protected-run-root");
     fs::create_dir(&protected).unwrap();
     fs::write(

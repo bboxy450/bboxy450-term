@@ -61,6 +61,7 @@ the scope within that package.
 | `bboxy450-harness-wake-up` | itself (`crates/bboxy450-harness-wake-up`, [[harness-kits]] §2; extracted from `bbt-mux/src/adapters`) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-plugin` | `bboxy450-plugin` ([[plugins]] §1, the shape and contract schemas, tiers, ceilings, the trust-record type) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-plugin-sdk` | `bboxy450-term-plugin-sdk` ([[plugins]], the Rust plugin runtime) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
+| `bbt-plugin-fixture` | `bboxy450-term-plugin-fixture` ([[plugins]], private host test fixture plugins; `publish = false`) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none; translated from this project's former Python fixtures |
 | `gitkb` (`plugins/gitkb`) | `bboxy450-term-data_source-gitkb` ([[plugins]], the GitKB data_source plugin) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none copied; invokes the separately installed, hash-pinned GitKB CLI (MIT), credited in NOTICE |
 | `bbt-proto` | `bboxy450-term-proto` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-mux` | `bboxy450-term-mux` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
@@ -74,12 +75,12 @@ the scope within that package.
 
 ## Decision 362 package inventory — 2026-10-30
 
-All 30 current workspace packages were checked against [[d362-crate-names-app-then-package]].
+All 31 current workspace packages were checked against [[d362-crate-names-app-then-package]].
 The app segment is an explicit classification, not inferred by a script.
 
 | Scope | Current Cargo package names | Reason |
 |---|---|---|
-| Terminal app | `bboxy450-term`, `bboxy450-term-core`, `bboxy450-term-mux`, `bboxy450-term-proto`, `bboxy450-term-firehose`, `bboxy450-term-desktop-core`, `bboxy450-term-desktop-macos`, `bboxy450-term-desktop`, `bboxy450-term-plugin-sdk`, `bboxy450-term-data_source-gitkb` | App, terminal engine, seat orchestration/wire, terminal load generator, and terminal desktop integration. |
+| Terminal app | `bboxy450-term`, `bboxy450-term-core`, `bboxy450-term-mux`, `bboxy450-term-proto`, `bboxy450-term-firehose`, `bboxy450-term-desktop-core`, `bboxy450-term-desktop-macos`, `bboxy450-term-desktop`, `bboxy450-term-plugin-sdk`, `bboxy450-term-plugin-fixture`, `bboxy450-term-data_source-gitkb` | App, terminal engine, seat orchestration/wire, terminal load generator, and terminal desktop integration. |
 | Generic | `bboxy450-rt`, `bboxy450-tlc`, `bboxy450-yarn`, `bboxy450-yarn-macros`, `bboxy450-mermaid`, `bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-plugin` | Reusable runtime, verification, UI, document and plugin tools. Book independently consumes the renderer. |
 | Generic harness kits | `bboxy450-harness-host`, `bboxy450-harness-wake-up` | Caller-configured harness execution and wake adapters, without terminal app policy. |
 | Generic platform kits | `bboxy450-keychain`, `bboxy450-keychain-windows`, `bboxy450-keychain-file`, `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | Reusable custody and notification facades/backends. |

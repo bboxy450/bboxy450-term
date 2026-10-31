@@ -368,6 +368,7 @@ dependencies = [
  "bboxy450-term-core",
  "bboxy450-term-desktop",
  "bboxy450-term-mux",
+ "bboxy450-term-plugin-fixture",
  "bboxy450-term-proto",
  "bboxy450-tlc",
  "bboxy450-ui",
@@ -473,6 +474,7 @@ dependencies = [
  "bboxy450-plugin",
  "bboxy450-rt",
  "bboxy450-term-core",
+ "bboxy450-term-plugin-fixture",
  "bboxy450-term-proto",
  "core-foundation 0.10.1",
  "ed25519-dalek 3.0.0",
@@ -496,6 +498,21 @@ dependencies = [
  "tokio-tungstenite",
  "ulid",
  "zeroize",
+]
+
+[[package]]
+name = "bboxy450-term-plugin-fixture"
+version = "0.1.1"
+dependencies = [
+ "bboxy450-plugin",
+ "bboxy450-term-plugin-sdk",
+ "libc",
+ "regex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
 ]
 
 [[package]]

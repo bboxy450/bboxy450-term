@@ -18,6 +18,7 @@ use bbt_mux::{
     registry::{Class, Registry, SeatRecord},
     store::sqlite::SqliteStore,
 };
+use bbt_plugin_fixture::Knobs;
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest,
     gui::{KnowledgeRequest, KnowledgeStatus, PluginRequest},
@@ -98,35 +99,15 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
     let listener = tokio::net::UnixListener::bind(&gate).unwrap();
     let trace = temp.path().join("protocol.jsonl");
     let source = root.join("plugins/bboxy450-term-data_source-root-fixture");
-    let template = include_str!("fixtures/plugins/root_provider.py")
-        .replace(
-            "TRACE = None",
-            &format!("TRACE = {}", json!(trace.to_str().unwrap())),
-        )
-        .replace(
-            "GATE = None",
-            &format!("GATE = {}", json!(gate.to_str().unwrap())),
-        )
-        .replace(
-            "GATE_ROOT = None",
-            &format!(
-                "GATE_ROOT = {}",
-                json!(root.canonicalize().unwrap().to_str().unwrap())
-            ),
-        )
-        .replace(
-            "GATE_ARMED = None",
-            &format!("GATE_ARMED = {}", json!(armed.to_str().unwrap())),
-        );
-    fs::write(
-        &source,
-        format!(
-            "#!/usr/bin/env python3\nimport json\nSCHEMA=json.loads({})\n{template}",
-            serde_json::to_string(bbt_plugin::data_source::SCHEMA).unwrap()
-        ),
-    )
-    .unwrap();
-    fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+    let text = |path: &std::path::Path| Some(path.to_string_lossy().into_owned());
+    Knobs {
+        trace: text(&trace),
+        gate: text(&gate),
+        gate_root: text(&root.canonicalize().unwrap()),
+        gate_armed: text(&armed),
+        ..Knobs::root()
+    }
+    .install(&source);
     let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = Logic::start_custodied_with_plugin_config(
@@ -556,14 +537,11 @@ async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
     let root = repo.join(".bboxy");
     fs::create_dir_all(root.join("plugins")).unwrap();
     let source = root.join("plugins/bboxy450-term-task_system-reference");
-    fs::write(
-        &source,
-        include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
-            .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"task_system\"", 1)
-            .replacen("TOOLS = False", "TOOLS = True", 1),
-    )
-    .unwrap();
-    fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+    Knobs {
+        tools: true,
+        ..Knobs::reference().system("task_system")
+    }
+    .install(&source);
     let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let logic = Logic::start_custodied_with_plugin_config(
@@ -771,6 +749,106 @@ async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
         "unknown_tool",
         "a disabled plugin served a call"
     );
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
+}
+
+// keeps: G1/G2 oracle-only contract end to end — decision_model `choose` is
+// an oracle method: only an oracle seat sees and calls it, the worker is
+// refused, and the plugin's choice is one of the supplied criteria.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn oracle_only_decision_model_choose_reaches_only_oracle_seats() {
+    let temp = tempfile::tempdir().unwrap();
+    let run = temp.path().join("run");
+    let repo = temp.path().join("repo");
+    let source = repo.join(".bboxy/plugins/bboxy450-term-decision_model-reference");
+    Knobs::reference().system("decision_model").install(&source);
+    let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
+    let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
+    let logic = Logic::start_custodied_with_plugin_config(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository: repo,
+            ring: Default::default(),
+        },
+        account.key_store(),
+        HostConfig {
+            registry: RegistryConfig {
+                descriptor_timeout: Duration::from_secs(30),
+                conformance_timeout: Duration::from_secs(30),
+            },
+            provider: ProviderConfig {
+                timeout: Duration::from_secs(30),
+            },
+        },
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let swarm = Ulid::new();
+    let mut seats = Vec::new();
+    for oracle in [false, true] {
+        let mut seat = SeatRecord::new(Ulid::new(), swarm, "decision seat", "zsh");
+        if oracle {
+            seat.role.class = Class::Oracle;
+            seat.role.name = "oracle".into();
+        }
+        let mut launch = LaunchSpec::new("/bin/cat", temp.path());
+        launch.seat = seat.id;
+        launch.generation = seat.generation;
+        seats.push(seat.id);
+        logic.client.spawn(seat, launch).await.unwrap();
+    }
+    let (worker, oracle) = (seats[0], seats[1]);
+    let trusted = plugin(
+        &logic.client,
+        PluginRequest::Trust {
+            path: source.to_str().unwrap().into(),
+            sha256: None,
+            grants: None,
+            tier: None,
+        },
+    )
+    .await;
+    let candidate = trusted[0].candidate.id.clone();
+    let checked = plugin(
+        &logic.client,
+        PluginRequest::Check {
+            candidate: candidate.clone(),
+        },
+    )
+    .await;
+    assert!(checked[0].conformance.as_ref().unwrap().ok, "{checked:?}");
+    plugin(&logic.client, PluginRequest::Enable { candidate }).await;
+    let name = "plugin_decision_model_reference_choose";
+    let offered = |catalogue: Value| {
+        catalogue["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == name)
+    };
+    assert!(!offered(
+        logic.client.control_catalogue(worker, 1).await.unwrap()
+    ));
+    assert!(offered(
+        logic.client.control_catalogue(oracle, 1).await.unwrap()
+    ));
+    let request = json!({"state": {"queue": 2}, "instructions": "Pick the next step.",
+        "criteria": {"ship": "ready to ship", "wait": "needs review"}});
+    let refused = tool(&logic.client, worker, name, request.clone()).await;
+    assert_eq!(
+        refused["structuredContent"]["error"]["code"], "unknown_tool",
+        "a worker reached an oracle-only method: {refused}"
+    );
+    let chosen = tool(&logic.client, oracle, name, request).await;
+    assert_eq!(chosen["isError"], false, "{chosen}");
+    let result = &chosen["structuredContent"]["result"];
+    assert!(
+        ["ship", "wait"].contains(&result["choice"].as_str().unwrap()),
+        "{result}"
+    );
+    assert_eq!(result["model"], "fixture-1");
     logic.shutdown().unwrap();
     supervisor.shutdown().unwrap();
 }

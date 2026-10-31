@@ -15,6 +15,7 @@ mod signed;
 mod trust;
 
 pub use check::{CheckReport, Measurement, check, measure, run_cli};
+pub use client::set_test_budget;
 pub use discovery::DiscoveryRoots;
 pub use registry::{
     ConformanceJob, ConformanceResult, DataSourceProvider, EnabledSkills, HOOK_QUEUE, HOST_OWNED,

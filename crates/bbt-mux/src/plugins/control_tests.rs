@@ -11,6 +11,7 @@
 use super::*;
 use crate::{Ulid, store::sqlite::SqliteStore};
 use bbt_plugin::{contracts::Contract, registry::State};
+use bbt_plugin_fixture::{Kind, Knobs};
 use serde_json::json;
 use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf};
 
@@ -20,8 +21,14 @@ struct Fixture {
     journal: Journal,
     path: PathBuf,
     marker: PathBuf,
+    knobs: Knobs,
 }
 impl Fixture {
+    /// New bytes (a new digest) at the same path: the variant plus `nonce`.
+    fn replace(&self, nonce: &str) {
+        self.knobs.clone().nonce(nonce).install(&self.path);
+    }
+
     fn new() -> Self {
         let root = tempfile::tempdir().unwrap();
         let plugins = root.path().join("repo/.bboxy/plugins");
@@ -33,9 +40,13 @@ impl Fixture {
             "systems":[{"contract":contract.name(),"contract_version":contract.version(),
             "commands":contract.methods().iter().map(|method| json!({"name":method,
                 "args":contract.method_schema(method,false).unwrap(),"result":contract.method_schema(method,true).unwrap(),"timeout_ms":1000})).collect::<Vec<_>>()}]});
-        fs::write(&path, format!("#!/usr/bin/env python3\nimport json,sys\nassert sys.argv[1:]==['--shape']\nwith open({},'a') as f: f.write('shape\\n')\nprint({})\n",
-            serde_json::to_string(&marker.to_string_lossy()).unwrap(),serde_json::to_string(&shape.to_string()).unwrap())).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        // Prints the shape and marks `shape` once per descriptor run.
+        let knobs = Knobs {
+            descriptor: Some(shape),
+            marker: Some(marker.to_string_lossy().into_owned()),
+            ..Knobs::of(Kind::Inspect)
+        };
+        knobs.install(&path);
         let account = SqliteStore::open(&root.path().join("account")).unwrap();
         let registry = super::super::Registry::with_config(
             account.clone(),
@@ -51,6 +62,7 @@ impl Fixture {
             journal: Journal::new(account),
             path,
             marker,
+            knobs,
             _root: root,
         }
     }
@@ -59,33 +71,17 @@ impl Fixture {
         let path = f.path.with_file_name("bboxy450-term-data_source-reference");
         fs::rename(&f.path, &path).unwrap();
         f.path = path;
-        let mut source =
-            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference")
-                .to_owned();
-        if let Some(fault) = fault {
-            source = source.replace(
-                "FAULT = None",
-                &format!("FAULT = {}", serde_json::to_string(fault).unwrap()),
-            );
-        }
-        source = source.replace("else 2000,", "else 30000,");
-        let marker = serde_json::to_string(&f.marker.to_string_lossy()).unwrap();
-        source = source.replace("if sys.argv[1:]==[\"--shape\"]:\n", &format!("if sys.argv[1:]==[\"--shape\"]:\n    with open({marker},'a') as f: f.write(json.dumps({{'kind':'shape'}})+'\\n')\n"));
-        let barrier = gate.map_or_else(String::new, |path| format!("        import socket\n        with socket.socket(socket.AF_UNIX) as gate:\n            gate.connect({})\n            gate.recv(1)\n", serde_json::to_string(&path.to_string_lossy()).unwrap()));
-        let instrumentation = format!(
-            r#"    method=req.get("method")
-    if method == 'initialize':
-        root = req['params']['root']
-        assert os.path.isfile(os.path.join(root,'p0-fixture.md'))
-        assert os.path.realpath(root) != os.path.realpath(os.getcwd())
-        assert not any(key in req['params'] for key in ['author','signer','device','account'])
-        with open({marker},'a') as f: f.write(json.dumps({{'kind':'initialize','pid':os.getpid(),'root':root,'cwd':os.getcwd()}})+'\n')
-{barrier}    elif method == 'tools/call':
-        assert not any(key in req['params'].get('arguments',{{}}) for key in ['root','author','signer','device','account'])
-        with open({marker},'a') as f: f.write(json.dumps({{'kind':'call','name':req['params']['name'],'arguments':req['params'].get('arguments',{{}})}})+'\n')"#
-        );
-        source = source.replace("    method=req.get(\"method\")", &instrumentation);
-        fs::write(&f.path, source).unwrap();
+        // Observes shape, initialize (asserting a disposable root apart from
+        // its data dir and no host fields) and calls; `gate` holds initialize.
+        let text = |path: &std::path::Path| path.to_string_lossy().into_owned();
+        f.knobs = Knobs {
+            fault: fault.map(str::to_owned),
+            timeout_ms: Some(30_000),
+            observe: Some(text(&f.marker)),
+            initialize_gate: gate.map(text),
+            ..Knobs::reference()
+        };
+        f.knobs.install(&f.path);
         f
     }
 
@@ -259,8 +255,7 @@ async fn observed_digest_change_is_refused_before_trust_or_inspection() {
         .await
         .unwrap()
         .remove(0);
-    let source = fs::read_to_string(&f.path).unwrap();
-    fs::write(&f.path, format!("{source}\n# replacement\n")).unwrap();
+    f.replace("replacement");
     let error = f
         .ask(
             Ulid::new(),
@@ -287,11 +282,14 @@ async fn held_descriptor_leaves_inventory_and_another_plugin_independent() {
     let f = std::sync::Arc::new(Fixture::new());
     let socket = f._root.path().join("gate.sock");
     let listener = tokio::net::UnixListener::bind(&socket).unwrap();
-    let original = fs::read_to_string(&f.path).unwrap();
     let other = f.path.with_file_name("bboxy450-term-repo_graph-other");
-    fs::write(&other, &original).unwrap();
-    fs::set_permissions(&other, fs::Permissions::from_mode(0o700)).unwrap();
-    fs::write(&f.path,original.replace("\nprint(",&format!("\nimport socket\ngate=socket.socket(socket.AF_UNIX)\ngate.connect({})\ngate.recv(1)\ngate.close()\nprint(",serde_json::to_string(&socket.to_string_lossy()).unwrap()))).unwrap();
+    f.knobs.install(&other);
+    // The held plugin waits on the socket before printing its shape.
+    Knobs {
+        initialize_gate: Some(socket.to_string_lossy().into_owned()),
+        ..f.knobs.clone()
+    }
+    .install(&f.path);
     let task = tokio::spawn({
         let f = f.clone();
         async move {
@@ -575,9 +573,7 @@ async fn conformance_refusal_is_named_and_a_changed_digest_requires_explicit_tru
         error
     );
     assert_eq!(f.observations(), observations);
-    let mut source = fs::read_to_string(&f.path).unwrap();
-    source.push_str("\n# replaced bytes\n");
-    fs::write(&f.path, source).unwrap();
+    f.replace("replaced bytes");
     let entry = f
         .ask(Ulid::new(), PluginRequest::List)
         .await
@@ -643,9 +639,7 @@ async fn held_conformance_keeps_other_controls_independent_and_fences_stale_comp
             .state(),
         State::Enabled
     );
-    let mut source = fs::read_to_string(&f.path).unwrap();
-    source.push_str("\n# changed while checking\n");
-    fs::write(&f.path, source).unwrap();
+    f.replace("changed while checking");
     use tokio::io::AsyncWriteExt;
     gate.write_all(b"x").await.unwrap();
     let error = task.await.unwrap().unwrap_err().to_string();

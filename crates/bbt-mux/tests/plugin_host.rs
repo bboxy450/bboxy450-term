@@ -28,10 +28,10 @@ use bbt_plugin::{
     registry::Approval,
     trust::Grants,
 };
+use bbt_plugin_fixture::Knobs;
 use serde_json::{Value, json};
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
     path::PathBuf,
     time::{Duration, Instant},
 };
@@ -57,12 +57,13 @@ struct Fixture {
     hook_log: PathBuf,
 }
 
-/// Fixture knobs: Python lines of the reference plugin to replace, and the
-/// operator's approval at trust (the contract minimum when absent).
+/// Fixture knobs of the repo_graph reference plugin (the delay file and hook
+/// log are set per fixture), and the operator's approval at trust (the
+/// contract minimum when absent).
 #[derive(Default)]
 struct Variant {
     concurrent: bool,
-    knobs: Vec<(&'static str, String)>,
+    knobs: Knobs,
     approval: Option<Approval>,
 }
 
@@ -70,10 +71,11 @@ impl Variant {
     /// A plugin declaring `hooks` that answers every hook with `decision`.
     fn hooks(hooks: Value, decision: &str, approval: Approval) -> Self {
         Self {
-            knobs: vec![
-                ("HOOKS = []", format!("HOOKS = {hooks}")),
-                ("DECISION = \"allow\"", format!("DECISION = {decision:?}")),
-            ],
+            knobs: Knobs {
+                hooks: hooks.as_array().cloned().unwrap_or_default(),
+                decision: Some(decision.into()),
+                ..Knobs::default()
+            },
             approval: Some(approval),
             ..Self::default()
         }
@@ -109,34 +111,14 @@ impl Fixture {
         fs::create_dir_all(root.join("plugins")).unwrap();
         let delay = temp.path().join("delay");
         let hook_log = temp.path().join("hooks.jsonl");
-        let mut source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
-            .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
-            .replacen(
-                "CONCURRENT = False",
-                if variant.concurrent {
-                    "CONCURRENT = True"
-                } else {
-                    "CONCURRENT = False"
-                },
-                1,
-            )
-            .replacen(
-                "DELAY_FILE = None",
-                &format!("DELAY_FILE = {:?}", delay.to_str().unwrap()),
-                1,
-            )
-            .replacen(
-                "HOOK_LOG = None",
-                &format!("HOOK_LOG = {:?}", hook_log.to_str().unwrap()),
-                1,
-            );
-        for (line, replacement) in &variant.knobs {
-            assert!(source.contains(line), "fixture knob {line}");
-            source = source.replacen(line, replacement, 1);
+        Knobs {
+            system: Some("repo_graph".into()),
+            concurrent: variant.concurrent,
+            delay_file: Some(delay.to_string_lossy().into_owned()),
+            hook_log: Some(hook_log.to_string_lossy().into_owned()),
+            ..variant.knobs
         }
-        let path = root.join("plugins/bboxy450-term-repo_graph-reference");
-        fs::write(&path, source).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        .install(&root.join("plugins/bboxy450-term-repo_graph-reference"));
         let account = SqliteStore::open(&temp.path().join("account")).unwrap();
         let registry = Registry::with_config(
             account,
@@ -624,11 +606,17 @@ fn host_api_variant(granted: &[&str]) -> Variant {
     let mut approval = approval(&[], None);
     approval.grants.host_api = granted.iter().map(|m| (*m).to_owned()).collect();
     Variant {
-        knobs: vec![(
-            "HOST_API = []",
-            r#"HOST_API = ["records.search", "records.fetch", "events.publish", "messages.send"]"#
-                .into(),
-        )],
+        knobs: Knobs {
+            host_api: [
+                "records.search",
+                "records.fetch",
+                "events.publish",
+                "messages.send",
+            ]
+            .map(String::from)
+            .to_vec(),
+            ..Knobs::default()
+        },
         approval: Some(approval),
         ..Variant::default()
     }

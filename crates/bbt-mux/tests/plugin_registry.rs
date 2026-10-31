@@ -28,6 +28,7 @@ use bbt_plugin::{
     policy::{Hook, Phase, Tier},
     registry::{Approval, Entry, Scope, State},
 };
+use bbt_plugin_fixture::{Kind, Knobs};
 use serde_json::{Value, json};
 
 fn shape(contracts: &[Contract]) -> Value {
@@ -86,49 +87,24 @@ impl Harness {
         self.root.path().join("markers").join(filename)
     }
 
-    fn plugin(&self, scope: Scope, filename: &str, shape: Value, extra: &str) -> PathBuf {
+    /// A shape-only fixture that proves the approval is durable and the pinned
+    /// copy read-only before printing `shape`; `hang` ignores SIGTERM instead.
+    fn plugin(&self, scope: Scope, filename: &str, shape: Value, hang: bool) -> PathBuf {
         let parent = match scope {
             Scope::Application => "app/plugins",
             Scope::Repository => "repo/.bboxy/plugins",
         };
         let path = self.root.path().join(parent).join(filename);
-        let marker = serde_json::to_string(&self.marker(filename).to_string_lossy()).unwrap();
-        let source = serde_json::to_string(&path.to_string_lossy()).unwrap();
-        let db = serde_json::to_string(
-            &self
-                .root
-                .path()
-                .join("account/object.sqlite")
-                .to_string_lossy(),
-        )
-        .unwrap();
-        let descriptor = serde_json::to_string(&shape.to_string()).unwrap();
-        let code = format!(
-            r#"#!/usr/bin/env python3
-import hashlib,json,os,sqlite3,sys
-MARKER = {marker}
-SOURCE = {source}
-with open(MARKER, 'a') as output:
-    output.write(json.dumps({{'phase':'entered','pid':os.getpid()}})+'\n')
-assert sys.argv[1:] == ['--shape'], 'no business or setup method in P-1 cut 1'
-copy = os.path.realpath(sys.argv[0])
-with open(copy,'rb') as data:
-    digest = hashlib.sha256(data.read()).hexdigest()
-db = sqlite3.connect('file:' + {db} + '?mode=ro', uri=True)
-row = db.execute('SELECT value FROM kv WHERE key=?', ('plugins/trust/'+digest,)).fetchone()
-assert row is not None, 'account approval must be durable before --shape'
-record = json.loads(row[0])
-assert record['copy'] == copy and record['source'] == os.path.realpath(SOURCE)
-assert os.stat(copy).st_mode & 0o222 == 0
-with open(MARKER, 'a') as output:
-    output.write(json.dumps({{'phase':'verified','pid':os.getpid(),'cwd':os.getcwd(), 'copy':copy, 'env':sorted(os.environ)}})+'\n')
-{extra}
-print(json.dumps(json.loads({descriptor})))
-"#
-        );
-        fs::write(&path, code).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
-        path
+        let text = |path: &Path| Some(path.to_string_lossy().into_owned());
+        Knobs {
+            descriptor: Some(shape),
+            marker: text(&self.marker(filename)),
+            source: text(&path),
+            account_db: text(&self.root.path().join("account/object.sqlite")),
+            hang,
+            ..Knobs::of(Kind::Inspect)
+        }
+        .install(&path)
     }
 
     fn entry(&self, filename: &str) -> Entry {
@@ -195,7 +171,12 @@ fn reaped(pid: u32) {
 async fn discovery_never_executes_or_consumes_repository_trust_and_seats_cannot_approve() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    h.plugin(Scope::Repository, name, shape(&[Contract::DataSource]), "");
+    h.plugin(
+        Scope::Repository,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     fs::write(
         h.root.path().join("repo/.bboxy/plugins/trust.json"),
         br#"{"trusted":true,"enabled":true}"#,
@@ -260,7 +241,12 @@ async fn discovery_never_executes_or_consumes_repository_trust_and_seats_cannot_
 async fn missing_sources_and_unfinished_inspections_remain_disabled_after_restart() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    let source = h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
+    let source = h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let entry = h.trust(name);
     let job = h.registry.inspection(&entry.candidate.id).unwrap().unwrap();
     drop(job); // No native attempt: emulate a lost metadata job, not a retry.
@@ -300,7 +286,12 @@ async fn missing_sources_and_unfinished_inspections_remain_disabled_after_restar
 async fn account_trust_precedes_shape_and_enable_is_separate_persistent_and_pinned() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    let source = h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
+    let source = h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let entry = h.trust(name);
     assert_eq!(entry.state(), State::Unchecked);
     let record = entry.trust.as_ref().unwrap();
@@ -387,7 +378,7 @@ fn independent_plugins_can_pin_and_approve_concurrently_in_the_same_account() {
                 Scope::Application,
                 &name,
                 shape(&[Contract::DataSource]),
-                "",
+                false,
             );
             h.entry(&name)
         })
@@ -437,7 +428,12 @@ fn independent_plugins_can_pin_and_approve_concurrently_in_the_same_account() {
 async fn changed_digest_and_older_hash_restoration_require_explicit_reapproval() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    let source = h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
+    let source = h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let original = fs::read(&source).unwrap();
     let entry = h.trust(name);
     h.inspect(&entry.candidate.id).await;
@@ -477,7 +473,12 @@ async fn changed_digest_and_older_hash_restoration_require_explicit_reapproval()
 async fn writable_or_modified_pinned_copies_never_execute() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
+    h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let entry = h.trust(name);
     h.inspect(&entry.candidate.id).await;
     h.registry
@@ -509,7 +510,12 @@ async fn writable_or_modified_pinned_copies_never_execute() {
 async fn stale_descriptor_completion_cannot_undo_disable_or_a_source_change() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-reference";
-    let source = h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
+    let source = h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let entry = h.trust(name);
     let first = h
         .registry
@@ -547,8 +553,18 @@ async fn stale_descriptor_completion_cannot_undo_disable_or_a_source_change() {
 fn refused_entries_and_cross_root_collisions_are_listed_without_precedence_or_execution() {
     let h = Harness::new();
     let name = "bboxy450-term-data_source-duplicate";
-    let path = h.plugin(Scope::Application, name, shape(&[Contract::DataSource]), "");
-    h.plugin(Scope::Repository, name, shape(&[Contract::DataSource]), "");
+    let path = h.plugin(
+        Scope::Application,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
+    h.plugin(
+        Scope::Repository,
+        name,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     fs::create_dir(
         h.root
             .path()
@@ -627,7 +643,7 @@ async fn higher_tier_and_payload_grants_need_explicit_reapproval_and_reuse_obser
                 subject: None,
             }]);
         }
-        h.plugin(Scope::Application, name, descriptor, "");
+        h.plugin(Scope::Application, name, descriptor, false);
         let entry = h.trust(name);
         let checked = h.inspect(&entry.candidate.id).await;
         let refusal = if payload {
@@ -702,13 +718,13 @@ async fn descriptor_added_contract_collisions_revoke_both_activations() {
         Scope::Application,
         first,
         shape(&[Contract::DataSource]),
-        "",
+        false,
     );
     h.plugin(
         Scope::Repository,
         second,
         shape(&[Contract::RepoGraph, Contract::DataSource]),
-        "",
+        false,
     );
     let a = h.trust(first);
     h.inspect(&a.candidate.id).await;
@@ -754,9 +770,14 @@ async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() 
         Scope::Application,
         slow,
         shape(&[Contract::DataSource]),
-        "import signal\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\nwhile True: signal.pause()",
+        true,
     );
-    h.plugin(Scope::Repository, good, shape(&[Contract::DataSource]), "");
+    h.plugin(
+        Scope::Repository,
+        good,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     let a = h.trust(slow);
     let b = h.trust(good);
     let short_deadline = Registry::with_config(
@@ -801,12 +822,17 @@ async fn deadline_failure_is_named_and_another_plugin_job_remains_independent() 
 fn global_and_legacy_plugins_are_shared_but_repository_activations_do_not_leak_or_revoke() {
     let h = Harness::new();
     let local = "bboxy450-term-data_source-local";
-    h.plugin(Scope::Repository, local, shape(&[Contract::DataSource]), "");
+    h.plugin(
+        Scope::Repository,
+        local,
+        shape(&[Contract::DataSource]),
+        false,
+    );
     h.plugin(
         Scope::Application,
         "bboxy450-term-data_source-legacy",
         shape(&[Contract::DataSource]),
-        "",
+        false,
     );
     let trusted = h.trust(local);
     let home = h.root.path().join("home");

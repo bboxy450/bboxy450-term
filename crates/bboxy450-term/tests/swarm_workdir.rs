@@ -3866,39 +3866,14 @@ fn native_documents_capture_swarm_roots_and_drop_a_held_reply_after_cwd_change()
     let armed = fixture.root.join("held-fetch.armed");
     let listener = UnixListener::bind(&gate_path).unwrap();
     listener.set_nonblocking(true).unwrap();
-    let python = std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default())
-        .map(|root| root.join("python3"))
-        .find(|path| path.is_file())
-        .expect("unattended provider fixture needs installed python3");
-    let template = include_str!("../../bbt-mux/tests/fixtures/plugins/root_provider.py")
-        .replace(
-            "GATE = None",
-            &format!("GATE = {}", serde_json::json!(gate_path.to_str().unwrap())),
-        )
-        .replace(
-            "GATE_ROOT = None",
-            &format!(
-                "GATE_ROOT = {}",
-                serde_json::json!(first.join(".bboxy").to_str().unwrap())
-            ),
-        )
-        .replace(
-            "GATE_ARMED = None",
-            &format!(
-                "GATE_ARMED = {}",
-                serde_json::json!(armed.to_str().unwrap())
-            ),
-        );
-    fs::write(
-        &source,
-        format!(
-            "#!{}\nimport json\nSCHEMA=json.loads({})\n{template}",
-            python.display(),
-            serde_json::to_string(bbt_mux::knowledge::data_source::SCHEMA).unwrap()
-        ),
-    )
-    .unwrap();
-    fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+    let text = |path: &Path| Some(path.to_string_lossy().into_owned());
+    bbt_plugin_fixture::Knobs {
+        gate: text(&gate_path),
+        gate_root: text(&first.join(".bboxy")),
+        gate_armed: text(&armed),
+        ..bbt_plugin_fixture::Knobs::root()
+    }
+    .install(&source);
     fixture.start();
     let first_swarm = fixture.ctl(&["ui", "layout"])["swarm"]
         .as_str()
@@ -3961,7 +3936,7 @@ fn native_documents_capture_swarm_roots_and_drop_a_held_reply_after_cwd_change()
         .unwrap()
         .iter()
         .find(|root| root["path"] == first.join(".bboxy").to_str().unwrap())
-        .unwrap()["id"]
+        .unwrap_or_else(|| panic!("first swarm root missing: {status}"))["id"]
         .as_str()
         .unwrap()
         .to_owned();
@@ -4407,8 +4382,13 @@ fn terminal_selection_copies_actual_displayed_unicode_lines_without_operator_cli
     let until = Instant::now() + Duration::from_secs(10);
     loop {
         let pasted = fs::read(f.root.join("home/terminal-pastes")).unwrap_or_default();
-        if pasted == expected { break; }
-        assert!(Instant::now() < until, "Cmd-V did not reach the real private PTY: {pasted:?}");
+        if pasted == expected {
+            break;
+        }
+        assert!(
+            Instant::now() < until,
+            "Cmd-V did not reach the real private PTY: {pasted:?}"
+        );
         std::thread::sleep(Duration::from_millis(20));
     }
     let other = f.spawn("claude", swarm, None);

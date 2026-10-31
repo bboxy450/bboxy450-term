@@ -22,9 +22,10 @@ use bbt_mux::{
     plugins::{HostConfig, ProviderConfig, RegistryConfig},
     registry::SeatRecord,
 };
+use bbt_plugin_fixture::Knobs;
 use bbt_proto::gui::{PluginGrants, PluginRequest, PluginTier, SwarmScope};
 use serde_json::{Value, json};
-use std::{fs, os::unix::fs::PermissionsExt, time::Duration};
+use std::time::Duration;
 
 fn config() -> RegistryConfig {
     RegistryConfig {
@@ -56,17 +57,11 @@ async fn a_plugin_message_reaches_its_granted_seat_signed_by_the_host_as_the_plu
     let run = temp.path().join("run");
     let repo = temp.path().join("repo");
     let custody = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
-    let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
-        .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
-        .replacen(
-            "HOST_API = []",
-            r#"HOST_API = ["messages.send", "records.search"]"#,
-            1,
-        );
-    let path = repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference");
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(&path, source).unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+    let path = Knobs {
+        host_api: vec!["messages.send".into(), "records.search".into()],
+        ..Knobs::reference().system("repo_graph")
+    }
+    .install(&repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference"));
     let (caller, recipient, swarm) = (Ulid::new(), Ulid::new(), Ulid::new());
     let granted = format!("seats/{recipient}/inbox");
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();

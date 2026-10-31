@@ -25,6 +25,27 @@ use crate::mcp::bridge::{MAX_FRAME, VERSIONS};
 const STDERR_BYTES: usize = 32 * 1024;
 const HANDSHAKE: Duration = Duration::from_secs(2);
 
+// Zero in production: the fixed 2 s budgets apply unchanged.
+static TEST_BUDGET_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Raise the fixed 2 s `--shape`, `initialize` and conformance-call budgets
+/// for this process. Tests only: the first exec of a freshly copied fixture
+/// executable is scanned by macOS (measured about 0.2 s, more under heavy
+/// load), so tests on a loaded machine inject a larger budget. Production
+/// never calls this and keeps 2 s.
+#[doc(hidden)]
+pub fn set_test_budget(budget: Duration) {
+    let ms = u64::try_from(budget.as_millis()).unwrap_or(u64::MAX);
+    TEST_BUDGET_MS.store(ms, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// `production`, or the injected test budget when that is larger.
+pub(super) fn fixed(production: Duration) -> Duration {
+    production.max(Duration::from_millis(
+        TEST_BUDGET_MS.load(std::sync::atomic::Ordering::Relaxed),
+    ))
+}
+
 #[derive(Default)]
 pub(super) struct Stderr {
     pub text: String,
@@ -57,7 +78,7 @@ impl Client {
             fixture.executable()?,
             std::path::Path::new(&fixture.record.data_dir),
             shape,
-            HANDSHAKE,
+            fixed(HANDSHAKE),
             Some(&home),
         )
     }
@@ -123,8 +144,8 @@ impl Client {
             next: 0,
             pid,
             shape_timeout,
-            call_limit: HANDSHAKE,
-            handshake_timeout: HANDSHAKE,
+            call_limit: fixed(HANDSHAKE),
+            handshake_timeout: fixed(HANDSHAKE),
             #[cfg(test)]
             spawned_environment_names,
         })
@@ -807,20 +828,16 @@ impl Drop for Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bbt_plugin_fixture::{Kind, Knobs};
     use std::fs;
-    use std::os::unix::fs::PermissionsExt;
 
     // keeps: spec plugins
     #[tokio::test]
     async fn real_stdio_keeps_opaque_signed_bytes_and_only_allowed_environment_names() {
+        set_test_budget(CALL_BUDGET);
         let files = tempfile::tempdir().unwrap();
         let source = files.path().join("bboxy450-term-data_source-reference");
-        fs::write(
-            &source,
-            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference"),
-        )
-        .unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        Knobs::reference().install(&source);
         let mut account = FixtureAccount::prepare(&source).unwrap();
         let mut descriptor = Client::spawn(&account, true).unwrap();
         let shape = descriptor.shape().await;
@@ -876,38 +893,16 @@ mod tests {
         );
     }
 
-    const CALL_BUDGET: Duration = Duration::from_secs(2);
+    // Test-chosen: room for a fresh fixture copy's first exec under load.
+    const CALL_BUDGET: Duration = Duration::from_secs(10);
 
-    /// Answers id 2 before id 1, asks the host one question in between and
-    /// emits notifications; then replies with an ID it was never sent.
-    const DEMUX_SERVER: &str = r#"#!/usr/bin/env python3
-import json, sys
-def emit(value): print(json.dumps(value), flush=True)
-held = None
-for line in sys.stdin:
-    req = json.loads(line)
-    if "id" not in req: continue
-    if req["id"] == "plugin-1":
-        sys.stderr.write("host answered " + json.dumps(req["error"]) + "\n"); sys.stderr.flush()
-        emit({"jsonrpc":"2.0","method":"notifications/message","params":{"level":"info","data":"x"}})
-        emit({"jsonrpc":"2.0","id":2,"result":{"order":"second request first"}})
-        emit({"jsonrpc":"2.0","id":held,"result":{"order":"first request last"}})
-        continue
-    if req["params"].get("name") == "stray":
-        emit({"jsonrpc":"2.0","id":req["id"]+40,"result":{}}); continue
-    if held is None:
-        held = req["id"]
-        emit({"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"t","progress":1}})
-        continue
-    emit({"jsonrpc":"2.0","id":"plugin-1","method":"host/records.search","params":{}})
-"#;
-
+    /// The `Demux` fixture answers id 2 before id 1, asks the host one
+    /// question in between and emits notifications; then replies with an ID
+    /// it was never sent.
     #[tokio::test]
     async fn demultiplexed_replies_reach_their_callers_and_plugin_requests_are_answered() {
         let files = tempfile::tempdir().unwrap();
-        let source = files.path().join("demux-server");
-        fs::write(&source, DEMUX_SERVER).unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        let source = Knobs::of(Kind::Demux).install(&files.path().join("demux-server"));
         let client =
             Client::spawn_with_home(source, files.path(), false, CALL_BUDGET, None).unwrap();
         let shared = client.into_shared(None);
@@ -934,35 +929,20 @@ for line in sys.stdin:
         assert!(
             captured
                 .text
-                .contains(r#"host answered {"code": -32601, "message": "host API not available"}"#),
+                .contains(r#"host answered {"code":-32601,"message":"host API not available"}"#),
             "{}",
             captured.text
         );
     }
 
-    /// While serving a call, asks the host `host/<name>` and answers the call
-    /// only with the host's answer.
-    const CALLBACK_SERVER: &str = r#"#!/usr/bin/env python3
-import json, sys
-def emit(value): print(json.dumps(value), flush=True)
-for line in sys.stdin:
-    req = json.loads(line)
-    if "method" not in req or "id" not in req: continue
-    emit({"jsonrpc":"2.0","id":"cb-"+str(req["id"]),"method":"host/"+req["params"]["name"],"params":{"n":req["id"]}})
-    while True:
-        answer = json.loads(sys.stdin.readline())
-        if answer.get("id") == "cb-"+str(req["id"]): break
-    emit({"jsonrpc":"2.0","id":req["id"],"result":answer})
-"#;
-
     // keeps: PluginHostApi — a host request issued while the host waits on
-    // that plugin's call is served; the reader never blocks on it.
+    // that plugin's call is served; the reader never blocks on it. The
+    // `Callback` fixture asks the host `host/<name>` while serving each call
+    // and answers it only with the host's answer.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn a_host_request_during_a_call_is_answered_and_the_call_completes() {
         let files = tempfile::tempdir().unwrap();
-        let source = files.path().join("callback-server");
-        fs::write(&source, CALLBACK_SERVER).unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        let source = Knobs::of(Kind::Callback).install(&files.path().join("callback-server"));
         let client =
             Client::spawn_with_home(source, files.path(), false, CALL_BUDGET, None).unwrap();
         let handler: HostHandler = Arc::new(|method, params, _deadline| match method {
@@ -992,13 +972,10 @@ for line in sys.stdin:
 
     #[tokio::test]
     async fn progress_cannot_extend_a_deadline_and_cancellation_does_not_replay() {
+        set_test_budget(CALL_BUDGET);
         let files = tempfile::tempdir().unwrap();
         let source = files.path().join("bboxy450-term-data_source-timeout");
-        let bytes =
-            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference")
-                .replacen("FAULT = None", "FAULT = 'timeout'", 1);
-        fs::write(&source, bytes).unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        Knobs::reference().fault("timeout").install(&source);
         let mut account = FixtureAccount::prepare(&source).unwrap();
         let mut descriptor = Client::spawn(&account, true).unwrap();
         let shape = descriptor.shape().await;

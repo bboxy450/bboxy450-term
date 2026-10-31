@@ -19,7 +19,6 @@ use serde_json::{Value, json};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    os::unix::fs::PermissionsExt,
     path::Path,
 };
 
@@ -73,31 +72,14 @@ impl Fixture {
         .unwrap();
         let trace = temp.path().join("protocol.jsonl");
         let path = root.join("plugins/bboxy450-term-data_source-root-fixture");
-        let mut source = format!(
-            "#!/usr/bin/env python3\nimport json\nSCHEMA=json.loads({})\n{}",
-            serde_json::to_string(bbt_plugin::data_source::SCHEMA).unwrap(),
-            include_str!("../../tests/fixtures/plugins/root_provider.py")
-        );
-        source = source.replace(
-            "TRACE = None",
-            &format!("TRACE = {}", json!(trace.to_str().unwrap())),
-        );
-        if let Some(gate) = gate {
-            source = source
-                .replace(
-                    "GATE = None",
-                    &format!("GATE = {}", json!(gate.to_str().unwrap())),
-                )
-                .replace(
-                    "GATE_ROOT = None",
-                    &format!(
-                        "GATE_ROOT = {}",
-                        json!(root.canonicalize().unwrap().to_str().unwrap())
-                    ),
-                );
+        let text = |path: &Path| Some(path.to_string_lossy().into_owned());
+        bbt_plugin_fixture::Knobs {
+            trace: text(&trace),
+            gate: gate.and_then(text),
+            gate_root: gate.and_then(|_| text(&root.canonicalize().unwrap())),
+            ..bbt_plugin_fixture::Knobs::root()
         }
-        fs::write(&path, source).unwrap();
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+        .install(&path);
         let host = Host::with_config(
             &root,
             plugins.clone(),

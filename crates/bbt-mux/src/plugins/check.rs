@@ -658,7 +658,7 @@ async fn exercise(
 }
 
 async fn prepared(account: &mut FixtureAccount) -> CheckReport {
-    prepared_with_deadline(account, CALL).await
+    prepared_with_deadline(account, super::client::fixed(CALL)).await
 }
 
 pub(super) async fn prepared_with_deadline(
@@ -745,7 +745,11 @@ fn micros(start: Instant) -> u64 {
 
 async fn measured_call(client: &mut Client) -> Result<Value, Refusal> {
     client
-        .call("data_source_resolve", json!({"locator":"#7"}), CALL)
+        .call(
+            "data_source_resolve",
+            json!({"locator":"#7"}),
+            super::client::fixed(CALL),
+        )
         .await
 }
 
@@ -893,8 +897,7 @@ pub fn run_cli(args: &[String]) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::os::unix::fs::PermissionsExt;
+    use bbt_plugin_fixture::Knobs;
 
     fn expand(root: &Value, value: &Value) -> Value {
         if let Some(reference) = value.get("$ref").and_then(Value::as_str) {
@@ -967,12 +970,10 @@ mod tests {
 
     #[tokio::test]
     async fn cached_descriptor_survives_a_host_reload_and_a_new_digest_has_no_cache() {
+        super::super::set_test_budget(Duration::from_secs(10));
         let files = tempfile::tempdir().unwrap();
         let source = files.path().join("bboxy450-term-data_source-reference");
-        let bytes =
-            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference");
-        fs::write(&source, bytes).unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        Knobs::reference().install(&source);
         let mut account = FixtureAccount::prepare(&source).unwrap();
         let mut report = CheckReport::default();
         descriptor(&mut account, &mut report).await.unwrap();
@@ -984,11 +985,7 @@ mod tests {
             "cached shape came from the account, not another process"
         );
         assert_eq!(report.owned_pids.len(), 1);
-        fs::write(
-            &source,
-            bytes.replacen("FAULT = None", "FAULT = 'major'", 1),
-        )
-        .unwrap();
+        Knobs::reference().fault("major").install(&source);
         let mut changed = FixtureAccount::prepare(&source).unwrap();
         assert_ne!(changed.record.sha256, account.record.sha256);
         assert!(
@@ -1011,16 +1008,12 @@ mod tests {
     async fn standalone_check_applies_declared_grants_only_when_asked() {
         let files = tempfile::tempdir().unwrap();
         let source = files.path().join("bboxy450-term-repo_graph-reference");
-        let bytes =
-            include_str!("../../tests/fixtures/plugins/bboxy450-term-data_source-reference")
-                .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
-                .replacen(
-                    "HOOKS = []",
-                    r#"HOOKS = [{"event":"PreToolUse","phase":"before","budget_ms":500}]"#,
-                    1,
-                );
-        fs::write(&source, bytes).unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o700)).unwrap();
+        super::super::set_test_budget(Duration::from_secs(10));
+        Knobs {
+            hooks: vec![json!({"event":"PreToolUse","phase":"before","budget_ms":500})],
+            ..Knobs::reference().system("repo_graph")
+        }
+        .install(&source);
         let plain = check(&source).await;
         assert!(!plain.ok);
         assert_eq!(

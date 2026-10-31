@@ -28,6 +28,7 @@ use bbt_plugin::{
     registry::Approval,
     trust::Grants,
 };
+use bbt_plugin_fixture::Knobs;
 use serde_json::json;
 use std::{
     fs,
@@ -61,30 +62,13 @@ async fn plugin(
     decision: &str,
     block: Option<FailurePolicy>,
 ) {
-    let source = include_str!("fixtures/plugins/bboxy450-term-data_source-reference")
-        .replacen("SYSTEM = \"data_source\"", "SYSTEM = \"repo_graph\"", 1)
-        .replacen(
-            "HOOKS = []",
-            r#"HOOKS = [{"event":"PreToolUse","phase":"before","budget_ms":800}]"#,
-            1,
-        )
-        .replacen(
-            "DECISION = \"allow\"",
-            &format!("DECISION = {decision:?}"),
-            1,
-        )
-        .replacen(
-            "HOOK_LOG = None",
-            &format!(
-                "HOOK_LOG = {:?}",
-                temp.join("hooks.jsonl").to_str().unwrap()
-            ),
-            1,
-        );
-    let path = repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference");
-    fs::create_dir_all(path.parent().unwrap()).unwrap();
-    fs::write(&path, source).unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+    Knobs {
+        hooks: vec![json!({"event":"PreToolUse","phase":"before","budget_ms":800})],
+        decision: Some(decision.into()),
+        hook_log: Some(temp.join("hooks.jsonl").to_string_lossy().into_owned()),
+        ..Knobs::reference().system("repo_graph")
+    }
+    .install(&repo.join(".bboxy/plugins/bboxy450-term-repo_graph-reference"));
     let registry = Registry::with_config(
         SqliteStore::open(&run.join("account")).unwrap(),
         DiscoveryRoots::new(temp, repo),

@@ -87,6 +87,13 @@ scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlin
 sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
 
 [[crate]]
+name = "bboxy450-term-plugin-fixture"
+status = "implementation-tests"
+models = []
+scope = "Private, unpublished host test fixtures (reference contract adversary, SDK-served root data_source, inspection, demultiplexing and host-callback peers) with compile-time variants built once into a private target directory. They exist to drive the host's PluginActivation, PluginConnection, PluginHook, PluginHostApi and PluginHookGate witnesses; the fixtures' own protocol faults are deliberate and not modelled."
+sources = ["crates/bbt-plugin-fixture/src/lib.rs", "crates/bbt-plugin-fixture/src/main.rs", "crates/bbt-plugin-fixture/src/reference.rs", "crates/bbt-plugin-fixture/src/root.rs", "crates/bbt-plugin-fixture/src/raw.rs"]
+
+[[crate]]
 name = "bboxy450-term-data_source-gitkb"
 status = "implementation-tests"
 models = []

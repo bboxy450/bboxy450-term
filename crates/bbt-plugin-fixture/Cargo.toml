@@ -1,0 +1,30 @@
+[package]
+name = "bboxy450-term-plugin-fixture"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Private host test fixture plugins for bboxy450-term, built on the plugin SDK with compile-time variants"
+publish = false
+
+[dependencies]
+bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }
+bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.1.1", path = "../bbt-plugin-sdk" }
+libc = "0.2"
+regex = "1"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[lib]
+name = "bbt_plugin_fixture"
+
+[[bin]]
+name = "bboxy450-term-plugin-fixture"
+path = "src/main.rs"
+
+[dev-dependencies]
+tempfile = "3"
