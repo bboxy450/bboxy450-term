@@ -8,10 +8,16 @@
 //! application wire type. The host owns execution, authority and schema checking.
 pub mod contracts;
 pub mod data_source;
+pub mod decision_model;
+pub mod event_sink;
 pub mod policy;
+pub mod provider;
 pub mod registry;
+pub mod repo_graph;
+pub mod session;
 pub mod shape;
 pub mod skills;
+pub mod task_system;
 pub mod trust;
 
 /// A stable, named refusal suitable for a checker or registry entry.

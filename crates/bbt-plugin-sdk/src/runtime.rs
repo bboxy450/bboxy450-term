@@ -430,7 +430,25 @@ impl<P: Plugin> Worker<P> {
                 ));
             }
         };
-        if HOST_FIELDS.iter().any(|field| args.get(*field).is_some()) {
+        // A host-owned field a contract request itself declares (repo_graph
+        // `describe` takes the host-chosen `root`) is the host's to send;
+        // every other host-owned field is refused.
+        let declared = self
+            .manifest
+            .route(name)
+            .and_then(|(contract, method)| contract.method_schema(method, false))
+            .and_then(|schema| {
+                let name = schema["$ref"]
+                    .as_str()?
+                    .strip_prefix("#/$defs/")?
+                    .to_owned();
+                schema["$defs"][name]["properties"].as_object().cloned()
+            })
+            .unwrap_or_default();
+        if HOST_FIELDS
+            .iter()
+            .any(|field| args.get(*field).is_some() && !declared.contains_key(*field))
+        {
             return Err(Refusal::new(
                 "host_field_in_arguments",
                 "root and authority belong to initialize and the host",
@@ -694,10 +712,10 @@ mod tests {
             by_id(5)["result"]["structuredContent"]["candidates"],
             json!(["a", "b"])
         );
-        assert_eq!(
-            by_id(6)["result"]["structuredContent"]["code"],
-            "host_field_in_arguments"
-        );
+        // repo_graph `describe` declares the host-owned `root` in its request
+        // schema (the host checker sends it), so it is the host's to pass;
+        // the same field on a declared tool (call 15) is refused.
+        assert_eq!(by_id(6)["result"]["isError"], false, "{:?}", by_id(6));
         assert_eq!(
             by_id(7)["result"]["structuredContent"]["code"],
             "internal_error"

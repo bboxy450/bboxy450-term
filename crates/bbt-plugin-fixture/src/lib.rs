@@ -251,6 +251,90 @@ fn key(knobs: &Knobs) -> String {
 
 static BUILD: Mutex<()> = Mutex::new(());
 
+/// One SDK example plugin (`crates/bbt-plugin-sdk/examples/<name>.rs`),
+/// built once like a fixture variant (small, stripped, release) and cached
+/// by its sources.
+pub fn sdk_example(name: &str) -> PathBuf {
+    let base = base();
+    let mut hash = 0xcbf2_9ce4_8422_2325;
+    fnv(&mut hash, name.as_bytes());
+    for part in [
+        "Cargo.lock",
+        "crates/bbt-plugin-sdk/src",
+        "crates/bbt-plugin-sdk/examples",
+        "crates/bbt-plugin-sdk/Cargo.toml",
+        "crates/bbt-plugin/src",
+        "crates/bbt-plugin/schemas",
+        "crates/bbt-plugin/Cargo.toml",
+    ] {
+        stamp(&mut hash, &workspace().join(part));
+    }
+    for var in ["RUSTUP_TOOLCHAIN", "RUSTFLAGS"] {
+        fnv(&mut hash, std::env::var(var).unwrap_or_default().as_bytes());
+    }
+    let binary = base
+        .join("examples")
+        .join(format!("{hash:016x}"))
+        .join(name);
+    if binary.is_file() {
+        return binary;
+    }
+    let _guard = BUILD.lock().unwrap_or_else(|poison| poison.into_inner());
+    fs::create_dir_all(&base).expect("fixture build directory");
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(base.join("build.lock"))
+        .expect("fixture build lock");
+    use std::os::fd::AsRawFd;
+    // SAFETY: flock only locks the descriptor owned by `lock`; closing it unlocks.
+    assert_eq!(
+        unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX) },
+        0,
+        "fixture lock"
+    );
+    if binary.is_file() {
+        return binary;
+    }
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let output = Command::new(cargo)
+        .args([
+            "build",
+            "--locked",
+            "--offline",
+            "--quiet",
+            "--release",
+            "-p",
+            "bboxy450-term-plugin-sdk",
+            "--example",
+            name,
+        ])
+        .env("CARGO_PROFILE_RELEASE_OPT_LEVEL", "s")
+        .env("CARGO_PROFILE_RELEASE_STRIP", "symbols")
+        .env("CARGO_PROFILE_RELEASE_DEBUG", "false")
+        .arg("--manifest-path")
+        .arg(workspace().join("Cargo.toml"))
+        .env("CARGO_TARGET_DIR", base.join("target"))
+        .env("CARGO_BUILD_BUILD_DIR", base.join("build"))
+        .env("RUSTC_WRAPPER", "")
+        .env("RUSTC_WORKSPACE_WRAPPER", "")
+        .env_remove("CARGO_INCREMENTAL")
+        .output()
+        .expect("run cargo for the SDK example");
+    assert!(
+        output.status.success(),
+        "SDK example {name} build failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let parent = binary.parent().expect("example directory");
+    fs::create_dir_all(parent).expect("example directory");
+    let staged = parent.join(format!("{name}.partial"));
+    fs::copy(base.join("target/release/examples").join(name), &staged).expect("copy example");
+    fs::rename(&staged, &binary).expect("publish example");
+    binary
+}
+
 /// Seconds spent building variants in this process, for slow-test diagnosis.
 pub static BUILD_SECONDS: Mutex<f64> = Mutex::new(0.0);
 

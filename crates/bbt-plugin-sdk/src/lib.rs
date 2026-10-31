@@ -13,6 +13,7 @@
 // A plugin is its own process with no UI thread; blocking stdio is its job.
 #![allow(clippy::disallowed_methods)]
 
+pub mod contracts;
 mod runtime;
 pub mod testkit;
 

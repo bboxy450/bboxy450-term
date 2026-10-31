@@ -83,8 +83,8 @@ sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.
 name = "bboxy450-term-plugin-sdk"
 status = "implementation-tests"
 models = []
-scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits, refusal encoding, hook routing (on_hook) and host requests made while serving a call (Ctx::host) are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Host activation stays modelled by PluginActivation host hook delivery by PluginHook and the plugin-to-host request interleaving by PluginHostApi."
-sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
+scope = "Plugin-side stdio MCP runtime: request admission, cancellation, deadlines, limits, refusal encoding, hook routing (on_hook) and host requests made while serving a call (Ctx::host) are unit-tested in-process; descriptor validity reuses the host's bboxy450-plugin validator. Typed contract traits and adapters (contracts.rs) are unit-tested, and one example plugin per contract passes the host conformance checker (bbt-mux tests/plugin_sdk_examples.rs). Host activation stays modelled by PluginActivation host hook delivery by PluginHook and the plugin-to-host request interleaving by PluginHostApi."
+sources = ["crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-plugin-sdk/src/contracts.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-fixture"
