@@ -11,7 +11,7 @@ mod common;
 
 // keeps: invariant watched-replay-priority
 #[test]
-fn watched_lane_gets_at_least_half_of_replay_pages() {
+fn watched_replay_tail_finishes_within_a_fixed_page_budget() {
     capture_priority::watched_tail_with_background_backlogs();
 }
 use std::io::Write;

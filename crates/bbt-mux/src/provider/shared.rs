@@ -74,6 +74,27 @@ fn action_seat(action: &Action) -> Option<Ulid> {
     }
 }
 impl SupervisorConnection for LogicalLink {
+    fn start_capture(&mut self, action: Action) -> Result<bbt_supervisor::client::PendingCapture> {
+        let mut shared = match self.shared.0.try_lock() {
+            Ok(shared) => shared,
+            Err(TryLockError::WouldBlock) => {
+                return Err(crate::Failure {
+                    code: crate::FailureCode::Busy,
+                    message: "shared supervisor admission occupied; request not sent".into(),
+                }
+                .into());
+            }
+            Err(TryLockError::Poisoned(_)) => return Err(invalid("host router stopped")),
+        };
+        let owned = |seat| shared.owners.get(&seat).unwrap_or(&HostId::Local) == &self.host;
+        if action_seat(&action).is_some_and(|seat| !owned(seat))
+            || matches!(&action, Action::ReadRingBatch { reads, .. }
+                if reads.iter().any(|read| !owned(read.attachment.seat)))
+        {
+            return Err(invalid("capture request crosses supervisor host boundary"));
+        }
+        shared.connection.start_capture(action)
+    }
     fn request(&mut self, action: Action) -> Result<Reply> {
         bbt_rt::assert_not_ui_thread();
         let mut shared = match self.shared.0.try_lock() {

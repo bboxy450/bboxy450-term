@@ -666,6 +666,80 @@ fn seats(b: bool) -> Model {
     m.weak_fair.push(scheduler);
     m
 }
+// Two seats, two ordered records each, one pending read/parse slot per seat.
+// A peer/history read may remain held forever; healthy-seat service is fair.
+fn seat_ingestion(b: bool) -> Model {
+    let mut m = model(
+        "SeatIngestion",
+        b,
+        &[
+            ("a_applied", 2, 0),
+            ("b_applied", 2, 0),
+            ("a_slot", 2, 1),
+            ("b_slot", 2, 0),
+            ("a_ready", 1, 0),
+            ("b_ready", 1, 0),
+            ("a_held", 1, 1),
+            ("history_held", 1, 1),
+        ],
+    );
+    let mut fair = Vec::new();
+    for (name, cursor, slot, ready, healthy) in [
+        ("A", 0usize, 2usize, 4usize, eq(6, 0)),
+        ("B", 1, 3, 5, Bool(true)),
+    ] {
+        let admission = all([
+            eq(slot, 0),
+            Var(cursor).lt(Int(2)),
+            if b && name == "B" {
+                eq(2, 0)
+            } else {
+                Bool(true)
+            },
+        ]);
+        fair.push(vec![m.actions.len()]);
+        action(
+            &mut m,
+            &format!("Admit{name}"),
+            admission,
+            &[(slot, Var(cursor).plus(Int(1)))],
+        );
+        fair.push(vec![m.actions.len()]);
+        action(
+            &mut m,
+            &format!("Complete{name}"),
+            all([ne(slot, 0), eq(ready, 0), healthy.clone()]),
+            &[(ready, Int(1))],
+        );
+        fair.push(vec![m.actions.len()]);
+        action(
+            &mut m,
+            &format!("Publish{name}"),
+            all([eq(ready, 1), Var(slot).eq(Var(cursor).plus(Int(1)))]),
+            &[(cursor, Var(slot)), (slot, Int(0)), (ready, Int(0))],
+        );
+        safe(
+            &mut m,
+            &format!("{name}OneBoundedOrderedSlot"),
+            eq(slot, 0).or(Var(slot).eq(Var(cursor).plus(Int(1)))),
+        );
+        safe(
+            &mut m,
+            &format!("{name}NoUnownedCompletion"),
+            implies(eq(ready, 1), ne(slot, 0)),
+        );
+        m.responses.push(Response {
+            name: format!("{name}HealthySeatDrainsWithoutPeer"),
+            request: healthy.and(Var(cursor).lt(Int(2))),
+            response: eq(cursor, 2),
+        });
+    }
+    action(&mut m, "ReleasePeer", eq(6, 1), &[(6, Int(0))]);
+    action(&mut m, "ReleaseHistory", eq(7, 1), &[(7, Int(0))]);
+    m.weak_fair = fair;
+    m
+}
+
 fn arena(b: bool) -> Model {
     let mut m = model(
         "RenderSubmission",
@@ -1584,7 +1658,7 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 34] = [
+    let families: [fn(bool) -> Model; 35] = [
         native_surface_resize,
         crate_publication,
         native_frame_observation,
@@ -1618,6 +1692,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         focus,
         restore,
         seats,
+        seat_ingestion,
         arena,
     ];
     let mut cases = families

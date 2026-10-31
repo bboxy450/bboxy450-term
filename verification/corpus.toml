@@ -482,3 +482,13 @@ frontend = "project"
 name = "BrokenVolatileBusSubscription"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "SeatIngestion"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenSeatIngestion"
+expected = "liveness"
+frontend = "project"

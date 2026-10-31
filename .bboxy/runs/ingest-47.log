@@ -1,0 +1,974 @@
+{
+  "after": {
+    "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.FMLAks",
+    "binary_sha256": "06de8577d0d21083ebeadba620320b10e7bbc210675430b5e85ea32d500f62fa",
+    "bus_hz": 8178.025759731634,
+    "command": "make profile-ingestion",
+    "cpu_p99_ms": 48.041917000000005,
+    "cursor_cuts": {
+      "capture_at_probe_admitted": {
+        "applied_sequence": 518,
+        "captured_minus_applied_sequences": 0,
+        "captured_sequence": 518,
+        "checkpoint_paused": false,
+        "checkpoint_sequence": 0,
+        "committed_sequence": 518,
+        "notified_sequence": 518,
+        "observed_ns": 41866101417,
+        "parsed_byte_end": 200887,
+        "target_sequence": 518
+      },
+      "capture_at_probe_read": {
+        "applied_sequence": 531,
+        "captured_minus_applied_sequences": 18,
+        "captured_sequence": 549,
+        "checkpoint_paused": false,
+        "checkpoint_sequence": 0,
+        "committed_sequence": 548,
+        "notified_sequence": 553,
+        "observed_ns": 42361498125,
+        "parsed_byte_end": 216247,
+        "target_sequence": 543
+      }
+    },
+    "exit": 2,
+    "hashes": {
+      "binary.sha256": "d258141ad44d7f967e48a7d0b184bbe9c9fb497e2d2ca4ac6d325b149d6980c7",
+      "ingestion.json": "def519d506259a746dd5792d31ed2b86abb375d0b9b88bb20b6dda745cff2ed9",
+      "report.capture.json": "b88e50621deddc771ccb003005c511d9e0453c26d56493c8fc75790fde40578f",
+      "report.json": "5497ae4d96137b6e981c2a51bcf3c692b622de9aa79057624ace618e1799abb3",
+      "source.patch": "75d04a7234bd6a0c5ba7501c1211f109e2dddc67150f94d9141a5fd0ba8141a0"
+    },
+    "host_load_before": [
+      2.66845703125,
+      5.61181640625,
+      5.865234375
+    ],
+    "ingestion_budget_ms": 8.333333,
+    "input_budget_ms": 16.666666666666668,
+    "input_to_gpu_ms": 728.76325,
+    "non_timing_failures": [],
+    "quiet_start_load1_lt4": true,
+    "real_ptys": 967,
+    "rows": 967,
+    "source_head": "904629d522fc0d891b2375c747f9af881271f479",
+    "timing_failures": [
+      "ui-cpu-p99-over4ms",
+      "input-to-gpu-over-two-display-intervals",
+      "bus-below10k-events-per-second"
+    ],
+    "timing_gated": true,
+    "unique_owned_producers": 967,
+    "watched": 50,
+    "written_to_logic_output_read_ms": 425.442417
+  },
+  "base": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+  "before": {
+    "median_input_to_gpu_ms": 1224.975042,
+    "median_written_to_logic_output_read_ms": 1075.230208,
+    "runs": [
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.Lpnd45",
+        "binary_sha256": "4de3d10b2de7462fc0788c767a0d606766e04423fb9231e20e3ad13ad4da446c",
+        "bus_hz": 9991.403946088281,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 49.819,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 523,
+            "captured_minus_applied_sequences": 42,
+            "captured_sequence": 565,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 564,
+            "notified_sequence": 523,
+            "observed_ns": 46216530584,
+            "parsed_byte_end": 168033,
+            "target_sequence": 522
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 594,
+            "captured_minus_applied_sequences": 59,
+            "captured_sequence": 653,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 652,
+            "notified_sequence": 640,
+            "observed_ns": 47306614792,
+            "parsed_byte_end": 244833,
+            "target_sequence": 639
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "7524e391c2cf449ea4ee5cde26ef1f03aadc1cf0b413ffbe68447b620d7126b3",
+          "ingestion.json": "d87ef3cdcd70d3f588f2efbaed8b508938fb55e3d024012ed19cffc1073daf03",
+          "report.capture.json": "e0bc938712d16449f83f00b4f1550879b96d321833fa902fc97d2b1813e08506",
+          "report.json": "307c546f1863853c70e94a7b0b58cecb4a1dbd2c0497a69d21f53b3a21e5157d",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.59326171875,
+          6.44140625,
+          7.79931640625
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 1119.246792,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": false,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 986.705917
+      },
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.AfupzS",
+        "binary_sha256": "4de3d10b2de7462fc0788c767a0d606766e04423fb9231e20e3ad13ad4da446c",
+        "bus_hz": 9674.535292529674,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 54.299667,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 529,
+            "captured_minus_applied_sequences": 29,
+            "captured_sequence": 558,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 557,
+            "notified_sequence": 529,
+            "observed_ns": 50387312292,
+            "parsed_byte_end": 125860,
+            "target_sequence": 528
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 614,
+            "captured_minus_applied_sequences": 58,
+            "captured_sequence": 672,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 672,
+            "notified_sequence": 659,
+            "observed_ns": 51509215334,
+            "parsed_byte_end": 218120,
+            "target_sequence": 658
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "7524e391c2cf449ea4ee5cde26ef1f03aadc1cf0b413ffbe68447b620d7126b3",
+          "ingestion.json": "d89cc331ccbf5895861df3f89387ebf759b1584fb84f55f2b4462fcf37cd4b3f",
+          "report.capture.json": "8f1650ecb89e7b6a6446603082b39023fd554cc0d84a2faa7fbb819c0cb1746c",
+          "report.json": "554296b227d5e40ee30a5b61291f31f8d42d66966a0f8f2e928f01b16be3af70",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.5244140625,
+          5.70751953125,
+          7.322265625
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 1224.975042,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": false,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 1075.230208
+      },
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.hmfkUb",
+        "binary_sha256": "4de3d10b2de7462fc0788c767a0d606766e04423fb9231e20e3ad13ad4da446c",
+        "bus_hz": 9998.568001955586,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 49.712292,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 487,
+            "captured_minus_applied_sequences": 58,
+            "captured_sequence": 545,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 545,
+            "notified_sequence": 509,
+            "observed_ns": 41950832291,
+            "parsed_byte_end": 161311,
+            "target_sequence": 508
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 566,
+            "captured_minus_applied_sequences": 60,
+            "captured_sequence": 626,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 624,
+            "notified_sequence": 615,
+            "observed_ns": 43138075916,
+            "parsed_byte_end": 245459,
+            "target_sequence": 614
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "7524e391c2cf449ea4ee5cde26ef1f03aadc1cf0b413ffbe68447b620d7126b3",
+          "ingestion.json": "bb95c688151331908f13bd9a0cd4a555e60ead8be89ab1f0ef9ebacac5ce19f0",
+          "report.capture.json": "bf68e8ef16e6340f339dc61df0beb59225c287ba6f90d9a0cf16bbd40e5841c9",
+          "report.json": "33279a15898afa46b83e2e8d0593e008ac6b46e215bcaf3c08a384546eb8d883",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.63232421875,
+          7.09619140625,
+          7.796875
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 1264.599083,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": false,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 1150.153959
+      }
+    ]
+  },
+  "candidate_paths": [
+    ".bboxy/interfaces/logic-gui.md",
+    ".bboxy/interfaces/supervisor-logic.md",
+    ".bboxy/invariants/README.md",
+    ".bboxy/invariants/no-chokepoints.md",
+    ".bboxy/invariants/ring-reads-batched.md",
+    "Makefile",
+    "crates/bboxy450-term/src/stall/load.rs",
+    "crates/bboxy450-term/tests/formal_contracts/models.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/logic/history.rs",
+    "crates/bbt-mux/src/logic/ingestion.rs",
+    "crates/bbt-mux/src/logic/ring_batch_tests.rs",
+    "crates/bbt-mux/src/provider/fake.rs",
+    "crates/bbt-mux/src/provider/shared.rs",
+    "crates/bbt-supervisor/src/client.rs",
+    "crates/bbt-supervisor/src/client/tests.rs",
+    "crates/bbt-supervisor/src/client/wire.rs",
+    "crates/bbt-supervisor/src/supervisor.rs",
+    "crates/bbt-supervisor/src/transport.rs",
+    "verification/README.md",
+    "verification/contracts.toml",
+    "verification/corpus.toml",
+    "verification/coverage.toml"
+  ],
+  "decisions": [
+    "Replace aggregate hot-sweep waits with independently correlated per-seat reads, one pending live read and parse job/result per seat, separate bounded history completion.",
+    "Publish only a matching attachment, owner incarnation and starting cursor. Keep ring tail, checkpoint debt/durability and replay effect suppression.",
+    "Preserve the admitted connection/lease, including the profiling observer; never create a second diagnostic lease. Bound socket frames and late correlation slots, with nonblocking frame IO.",
+    "Service bounded fair ingestion quanta; count read/parser admission as progress. Busy retries are seat-local. Parser CPU lanes are capped at min(4,runtime_workers-1), minimum1, and yield on bounded record/byte quanta.",
+    "Root ATTRIBUTION.md already covers project-authored source; new modules retain its canonical identity, governing license and absolute policy URL. No unrelated license-copy changes.",
+    "Land the structural partial fix if signed gates pass; leave #47 open while the unchanged quiet latency verdict fails. No plugin host or Settings implementation change."
+  ],
+  "final_measured_source_sha256": {
+    ".bboxy/interfaces/logic-gui.md": "7ae506a114faa518747a2ff5a8966998d487208892fb1c686e1d762f67a9be62",
+    ".bboxy/interfaces/supervisor-logic.md": "bc6e812e17a24781d2d0f2473420bcc338e17254c286ffddc639dfa1af8c74d9",
+    ".bboxy/invariants/README.md": "bef40dad2791ef5ff1d2998cf21df28a4105d1f3759c886c345cdc869469b8fb",
+    ".bboxy/invariants/no-chokepoints.md": "64e513a318b573fca34c352f8010c6e8d31cb327f358a6dc9724aaed9d1485d3",
+    ".bboxy/invariants/ring-reads-batched.md": "b5babeac22bc1a8308ac3b5abaad2fc3f50d07517f3ac79ab79e8210e7f45252",
+    "Makefile": "07769d5bd03a83b754498f6466553827e2bf5de7e0e69541114291cca3dcfcfd",
+    "crates/bboxy450-term/src/stall/load.rs": "08f29be7ea7935c9cebb43413b6a92f7c788cc6edfae37396475865238ea3007",
+    "crates/bboxy450-term/tests/formal_contracts/models.rs": "8939d7a156236e5b1d96b34006d1417c99771ae0ad0027c9abfa1b9c14a250d4",
+    "crates/bbt-mux/src/logic.rs": "37aa113089779f4637490dcfc45df1800aba22d61c1934602bc3ea3948e6ccd5",
+    "crates/bbt-mux/src/logic/history.rs": "d5d2a12ff2735cecdd84fe78bef4f9838e6eef018c728bcdead5c929e331ab49",
+    "crates/bbt-mux/src/logic/ingestion.rs": "cce5692cd7e2e65fc53d923f1acdd8364085e9c5fc6bcefcca5f21f4edf73876",
+    "crates/bbt-mux/src/logic/ring_batch_tests.rs": "7ff837dfbc36050d25b7a7074f6dc966bd364b0d4191943115d7e71aaf705476",
+    "crates/bbt-mux/src/provider/fake.rs": "6fdfb21b49306c1295e3663ac7efa0418e9ed500fe5d1e61933e8fbe6e4fce4f",
+    "crates/bbt-mux/src/provider/shared.rs": "17a1376cceb741f04f68c1c40df2d37d90da6dcf58a288730834cf56c61319c3",
+    "crates/bbt-supervisor/src/client.rs": "1222707a63008c26472c1252e0332f17f45df89c775f5a2ce380af1c852546ba",
+    "crates/bbt-supervisor/src/client/tests.rs": "56f5cd5472098438626195f866aed70513de4a7061d90a1a8c30a98b1df8a4a5",
+    "crates/bbt-supervisor/src/client/wire.rs": "5bd357bbd59e5135e4c1e9f037f80fe9dba2301bc9426c600a52d7a35abf817f",
+    "crates/bbt-supervisor/src/supervisor.rs": "bf29a8a50e8fdcf4c518187de9f4369a703fe3d57be7a1d8f9bcd78eef27fe3e",
+    "crates/bbt-supervisor/src/transport.rs": "8f83c846633c7e811f7355f6301afcd837835c0bf9d51e8785e6a51ee4f7abc2",
+    "verification/README.md": "e30a2bef1d3f53546326d3aa63cbbd1fb7108a8ffad8dadb5f7a5ba3eec96163",
+    "verification/contracts.toml": "9c57d2bec7c4609ec1240fb40139d5eaa433834e9f68e021515830f85b45f5eb",
+    "verification/corpus.toml": "7f89569209e6495733ae86250598abeb897b3f31c6656b780d775a6cdc98e1c3",
+    "verification/coverage.toml": "391e095cb29e167bd2e2a5597f8d8301e445f948b02b71d392bba31f78d2d4a9"
+  },
+  "issue": 47,
+  "operator_authorization": "2026-10-30 ingest batch; implement and author-land, close only after passing quiet measurement",
+  "post_measurement": {
+    "changes": [
+      "The landing rebase retains unrelated new main models and crate inventory; the quiet after sample was taken before that rebase.",
+      "The first affected gate caught the obsolete one-reply capacity assertion. Correct it to require eight capture reserves plus one ordinary reply, refuse a tenth maximum frame, and include transport tests in the focused Make target. This changes no measured production behavior.",
+      "The complete first affected test gate also found erased typed provider-down admission and missing async history diagnostic cursor updates. Preserve the error before admission, restore monotonic diagnostic cursors, and retain existing park/up-resume behavior. The actual four-seat exact-screen and down/up process witnesses now pass.",
+      "A new final quiet sample was taken after the landing rebase and both implementation corrections, on the exact production source retained for the next landing attempt. Its actual report start load1 is 2.66845703125; 967 real PTYs/50 watched; no non-timing fixture failures. One after sample is compared with the three-run baseline medians.",
+      "The second complete affected gate failed only the old raw-RPC eight-page ratio: a watched parser may be pending while backgrounds independently finish reads. Under the operator concurrency amendment, keep the exact 3:1 runnable scheduling-turn/eight-turn check and finite SeatFairness model; rename the real process witness to prove watched-tail publication inside its fixed page budget and exact serial Screens. Already admitted parsing may finish while further reads stay closed at that budget. Explicitly amend watched-replay-priority and the ICD instead of restoring a shared completion barrier. No ingestion implementation changed after the final quiet measurement; later unrelated main changes are unmeasured."
+    ],
+    "commands": [
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-reserve.log",
+        "log_sha256": "76ee41e6a9356becc0e0b3f00a75308531cbe2421105a2835036d49a23a0814b"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-reserve.log",
+        "log_sha256": "b1a659d96cfc236c8c8df2946ce679b5bd6f73a97a0571eda8b4e7228defe51f"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-reconnect.log",
+        "log_sha256": "2e81b4805dff3182025a71618a474a299c940559fc3585cc3aea0882d259a64e"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-reconnect.log",
+        "log_sha256": "9d5fa9b8b924f5aa2cb13fc4e32e0b1f400d2b43945d5f60b11abc33f79c5d61"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-reconnect.log",
+        "log_sha256": "e46ebf2f3003a53f98906b7019d0d58be9bd6cc1ff5de38d04dbd632ccdf8238"
+      },
+      {
+        "command": "make test-boundaries",
+        "exit": 0,
+        "log": "target/ingest-checks/test-boundaries-corrected.log",
+        "log_sha256": "648a708846721d98bbc16797ce02e4d8fdee88841430f2b0aeddad3cd716deef"
+      },
+      {
+        "command": "make test-licenses",
+        "exit": 0,
+        "log": "target/ingest-checks/test-licenses-corrected.log",
+        "log_sha256": "bfb3035eee2df4bdd125ee0928d0723d876c8cb23258fb193f87b0130176a74a"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-quota.log",
+        "log_sha256": "0298f30c992d59ab4a6fcad81d479e915d49f6a0c02a3e9a12a4f1a2a5429259"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-quota.log",
+        "log_sha256": "1d27b850366c5faf62cd0894c3e1f982687e0d3dd68ad1ceb4c94cddf84d7fb5"
+      }
+    ],
+    "first_rebased_landing": {
+      "command": "sh scripts/land.sh",
+      "exit": 77,
+      "failed_tests": [
+        "transport::tests::saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue",
+        "four_watched_seats_advance_during_a_large_replay_and_match_serial_screens",
+        "down_host_replay_parks_and_idle_local_polling_stays_bounded_until_reconnect"
+      ],
+      "log": "target/ingest-landing-rebased.log",
+      "log_sha256": "88283b141f4a2343d0809c527216c7c46346bf1df33ad7d57966873ce0d40b57",
+      "scope": "complete affected host/mux/app test pass attempted, failed as recorded; no claim that this was an accepted landing"
+    },
+    "second_landing": {
+      "command": "sh scripts/land.sh",
+      "exit": 77,
+      "failed_test": "watched_lane_gets_at_least_half_of_replay_pages",
+      "log": "target/ingest-landing-corrected.log",
+      "log_sha256": "577d6811c3e460820d720a048645d95ba267a7a1165970aaa69d68a476674692",
+      "observed": "one three-of-eight RPC window; 32 watched replay reads inside the 82-read budget; all other affected tests passed; no accepted landing"
+    }
+  },
+  "recorded_utc": "2026-10-31T20:33:16.168993+00:00",
+  "remaining": [
+    "Input/GPU and other timing misses remain measured, never waived. One final after sample is compared with the three-run baseline medians; no full scale-night claim.",
+    "Finite contract projection and native/pinned-Java parity are not arbitrary Rust, filesystem/OS scheduling, CPU-deadline or whole-system refinement proofs. Shared storage/backend behavior remains outside this projection.",
+    "The signed landing result and clean current-source formal receipt are external repository-local gate records, not claims made by this pre-land summary."
+  ],
+  "role": "EXECUTOR",
+  "source_sha256": {
+    ".bboxy/interfaces/logic-gui.md": "7ae506a114faa518747a2ff5a8966998d487208892fb1c686e1d762f67a9be62",
+    ".bboxy/interfaces/supervisor-logic.md": "6c5a719e087639685ae69c8392f70b99313093448fb537116e76a84c19fa144c",
+    ".bboxy/invariants/README.md": "bef40dad2791ef5ff1d2998cf21df28a4105d1f3759c886c345cdc869469b8fb",
+    ".bboxy/invariants/no-chokepoints.md": "64e513a318b573fca34c352f8010c6e8d31cb327f358a6dc9724aaed9d1485d3",
+    ".bboxy/invariants/ring-reads-batched.md": "b5babeac22bc1a8308ac3b5abaad2fc3f50d07517f3ac79ab79e8210e7f45252",
+    "Makefile": "cb82f3bec6e31c91cf1c191bca1801b80fe2ff8e85c1df8733fd49448b157ef2",
+    "crates/bboxy450-term/src/stall/load.rs": "08f29be7ea7935c9cebb43413b6a92f7c788cc6edfae37396475865238ea3007",
+    "crates/bboxy450-term/tests/formal_contracts/models.rs": "e1b6d88470291fc0ca4ea015f706efefdbaa72ad7027adeea0831546cfe5f888",
+    "crates/bbt-mux/src/logic.rs": "e741d3cefceba61b775cc671d8ad5aec339b963ea83ac4b243e59437111215f6",
+    "crates/bbt-mux/src/logic/history.rs": "b6eaa54317fc6fba2cc197e93c808e65d15330f718d0105f5f0b1328772f93be",
+    "crates/bbt-mux/src/logic/ingestion.rs": "cce5692cd7e2e65fc53d923f1acdd8364085e9c5fc6bcefcca5f21f4edf73876",
+    "crates/bbt-mux/src/logic/ring_batch_tests.rs": "7ff837dfbc36050d25b7a7074f6dc966bd364b0d4191943115d7e71aaf705476",
+    "crates/bbt-mux/src/provider/fake.rs": "6fdfb21b49306c1295e3663ac7efa0418e9ed500fe5d1e61933e8fbe6e4fce4f",
+    "crates/bbt-mux/src/provider/shared.rs": "17a1376cceb741f04f68c1c40df2d37d90da6dcf58a288730834cf56c61319c3",
+    "crates/bbt-supervisor/src/client.rs": "80bea7b750ba24c0b73162ef16d85437dd3f629282b7e5dd1cac97f5a8b52d84",
+    "crates/bbt-supervisor/src/client/tests.rs": "7896b5e4f065ed8fe7f94d2eee0db999b01da3147c65f48c0f63570eba6b3c81",
+    "crates/bbt-supervisor/src/client/wire.rs": "5bd357bbd59e5135e4c1e9f037f80fe9dba2301bc9426c600a52d7a35abf817f",
+    "crates/bbt-supervisor/src/supervisor.rs": "bf29a8a50e8fdcf4c518187de9f4369a703fe3d57be7a1d8f9bcd78eef27fe3e",
+    "crates/bbt-supervisor/src/transport.rs": "c59f1b1e69e9136a85a582d4fa9638526581f39e46397f90f712edec10f8c80a",
+    "verification/README.md": "3406b868d7e1d3efaf76e593f1f3ea892c1772b7154ceccc3fc4ef8c84c219ad",
+    "verification/contracts.toml": "bd84df634ead18432f45b26214866b9b312290ba4361b6dfe218b5293ab67e39",
+    "verification/corpus.toml": "1bd34dc76c07af2b06d4842ffc4462cb938d8b8233913090d082b95d669b20da",
+    "verification/coverage.toml": "d1bc496d41df6f49462ca40ae02b0c72a79e3510f810bb007d963da8fbb7b522"
+  },
+  "superseded_candidates": {
+    "pre_gate_cpu": [
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.AOrymr",
+        "binary_sha256": "6988fc7c0f6bcba490ecccfb987fa512313f0aa3dc86d49fb247bfd169999743",
+        "bus_hz": 7838.719790996755,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 52.174042,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 507,
+            "captured_minus_applied_sequences": 3,
+            "captured_sequence": 510,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 509,
+            "notified_sequence": 518,
+            "observed_ns": 42155912959,
+            "parsed_byte_end": 185968,
+            "target_sequence": 507
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 533,
+            "captured_minus_applied_sequences": 15,
+            "captured_sequence": 548,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 547,
+            "notified_sequence": 548,
+            "observed_ns": 42619014084,
+            "parsed_byte_end": 213616,
+            "target_sequence": 544
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "d5f40d5896de09df94cf8ebb950ea4ed6914c8bcd54f08e14c43a824de43cd3e",
+          "ingestion.json": "4a3c6725b7c8d576a5e2300a46db3c637614b3afb34abc50fbe2edd02ed184f6",
+          "report.capture.json": "3481acf968516d5eb4ad591ce0cae2ebee40af8d1bf9c3042e1ff204412f7757",
+          "report.json": "adfd4b27dc1c793c043b0a6c637ab92f0b6abb0682ee5d241f2f7f65b8ba6019",
+          "source.patch": "9a1a71fbc7b9d70187fb5f6604b29642b7ba4be106b842f3d43bf6108ccdb5ad"
+        },
+        "host_load_before": [
+          2.8017578125,
+          4.17333984375,
+          4.384765625
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 838.048917,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": true,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 444.332917
+      }
+    ],
+    "quantum_only": [
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.UMzSnQ",
+        "binary_sha256": "d424e6ad43d9c86230b635a4bc5a17aa6abb055a681179ea4fafa6f64310ae11",
+        "bus_hz": 9992.357764283966,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 45.750416,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 336,
+            "captured_minus_applied_sequences": 133,
+            "captured_sequence": 469,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 468,
+            "notified_sequence": 480,
+            "observed_ns": 35502213167,
+            "parsed_byte_end": 54282,
+            "target_sequence": 338
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 509,
+            "captured_minus_applied_sequences": 524,
+            "captured_sequence": 1033,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 1033,
+            "notified_sequence": 1027,
+            "observed_ns": 42897744250,
+            "parsed_byte_end": 240650,
+            "target_sequence": 1022
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "5062d102e97babda29fd8da5469c4e106dd673118e26348186c9b10f36a8de88",
+          "ingestion.json": "6d592fd87eec365895662f864075e3738cdba9363d10c1188d10254146ad058c",
+          "report.capture.json": "5d812bed0df98b58e2cb0776011c2090ab3356a474491652e301723b9adf8441",
+          "report.json": "dcedf660f79b605d00cf7a5af39664ef2a948b3483c819f0e35f9aebe6b03932",
+          "source.patch": "16c44cda85a244c92cfb2e3344d56b85a0fa61ad15fb3b57073054958e49b167"
+        },
+        "host_load_before": [
+          2.9619140625,
+          6.5966796875,
+          8.47900390625
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 8246.758958,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": true,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 7372.665916
+      }
+    ],
+    "synchronous_observer": [
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.U9olk7",
+        "binary_sha256": "d6c9d4cef4dd2545a46397f27ed26b7f41cd2656cd6dafc1d9e59c36dc1b940e",
+        "bus_hz": 10003.820344047883,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 52.285582999999995,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 521,
+            "captured_minus_applied_sequences": 54,
+            "captured_sequence": 575,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 521,
+            "committed_sequence": 574,
+            "notified_sequence": 652,
+            "observed_ns": 63193770125,
+            "parsed_byte_end": 11005,
+            "target_sequence": 582
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 667,
+            "captured_minus_applied_sequences": 654,
+            "captured_sequence": 1321,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 521,
+            "committed_sequence": 1321,
+            "notified_sequence": 1321,
+            "observed_ns": 74658230333,
+            "parsed_byte_end": 199923,
+            "target_sequence": 1075
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "552141d032cf4d384a91b2ca650fbe457a9382b0e452a6bbbe2d6968ee1f47f9",
+          "ingestion.json": "03b2f8b9a62e2082df1b02e7667300106801a13029478aec43983ab0170f3835",
+          "report.capture.json": "10f531a347574d4c39205ee0b9ef624884ff70ababda63cbf6f8f1b271afbb90",
+          "report.json": "64341c599f696d3acc1dd7c1733f4dd7746ae5cd4266eec265f3ecdb922199eb",
+          "source.patch": "c17cbb174f9ebdb2beb1b8ddc4fe2d47a52beab96217f5a27086a9526f3a04c0"
+        },
+        "host_load_before": [
+          6.8583984375,
+          8.8232421875,
+          9.84375
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 12122.615791,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": false,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "timing_gated": true,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 11461.806333
+      },
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.cLbPIz",
+        "binary_sha256": "d6c9d4cef4dd2545a46397f27ed26b7f41cd2656cd6dafc1d9e59c36dc1b940e",
+        "bus_hz": 9861.884117513797,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 51.329417,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 384,
+            "captured_minus_applied_sequences": 141,
+            "captured_sequence": 525,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 524,
+            "notified_sequence": 527,
+            "observed_ns": 42709925750,
+            "parsed_byte_end": 41248,
+            "target_sequence": 413
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 541,
+            "captured_minus_applied_sequences": 496,
+            "captured_sequence": 1037,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 1036,
+            "notified_sequence": 1037,
+            "observed_ns": 50063502958,
+            "parsed_byte_end": 210208,
+            "target_sequence": 617
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "552141d032cf4d384a91b2ca650fbe457a9382b0e452a6bbbe2d6968ee1f47f9",
+          "ingestion.json": "3a6dee6a3c901dc58f74644fa2cdf328004f140b92288ef083129f1511e79f6d",
+          "report.capture.json": "c43beca438205522e28d9ba64e157dbd36a976539e2bfa917fbe11d35d62a27f",
+          "report.json": "2ce08826258fc3d2278141b35905014859f1a56c94baa7cbd3bf3f12b52decda",
+          "source.patch": "c17cbb174f9ebdb2beb1b8ddc4fe2d47a52beab96217f5a27086a9526f3a04c0"
+        },
+        "host_load_before": [
+          3.7197265625,
+          8.873046875,
+          10.15673828125
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 7971.801625,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": true,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 7318.054083
+      }
+    ],
+    "unbounded_parser_cpu": [
+      {
+        "artifact_directory": "/Users/feral/mydev/bboxy450-term-cx-ingest/target/ingestion.pPPNmB",
+        "binary_sha256": "8e05d6d411eeb7bb5396829a526121d3dbfc700e9ca3d5a60cfa27986837737c",
+        "bus_hz": 7814.999557239997,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 47.969333000000006,
+        "cursor_cuts": {
+          "capture_at_probe_admitted": {
+            "applied_sequence": 514,
+            "captured_minus_applied_sequences": 0,
+            "captured_sequence": 514,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 514,
+            "notified_sequence": 518,
+            "observed_ns": 42145843584,
+            "parsed_byte_end": 205143,
+            "target_sequence": 518
+          },
+          "capture_at_probe_read": {
+            "applied_sequence": 528,
+            "captured_minus_applied_sequences": 18,
+            "captured_sequence": 546,
+            "checkpoint_paused": false,
+            "checkpoint_sequence": 0,
+            "committed_sequence": 545,
+            "notified_sequence": 546,
+            "observed_ns": 42599448667,
+            "parsed_byte_end": 219479,
+            "target_sequence": 539
+          }
+        },
+        "exit": 2,
+        "hashes": {
+          "binary.sha256": "3d341d22a1bb7fc97ec8e4f4494be340a59b51d1ee47ba0514b5217a75af9511",
+          "ingestion.json": "75fd40f30f28ddb326e354c80d573c5a088842a7d3f68f7f13c4735efb03f186",
+          "report.capture.json": "7746965fc73742c9fbedc9df8c30a6c1e9d4b46eb341f258b442fba803067507",
+          "report.json": "79cb1355af936f2469fea33706db14071df652530381eeb3f19acc08a3d0afa0",
+          "source.patch": "9bfbb0b086537fd14806af162acb76bfc417070998455f7a2d3b921de862a9a8"
+        },
+        "host_load_before": [
+          2.830078125,
+          4.82861328125,
+          5.85693359375
+        ],
+        "ingestion_budget_ms": 8.333333,
+        "input_budget_ms": 16.666666666666668,
+        "input_to_gpu_ms": 734.997583,
+        "non_timing_failures": [],
+        "quiet_start_load1_lt4": true,
+        "real_ptys": 967,
+        "rows": 967,
+        "source_head": "c03d9cb8ff4facc11daef96a44db3144773b7ce5",
+        "timing_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "timing_gated": true,
+        "unique_owned_producers": 967,
+        "watched": 50,
+        "written_to_logic_output_read_ms": 444.657125
+      }
+    ]
+  },
+  "verification": {
+    "additional": {
+      "test-boundaries-landing.log": "c9fc5eea6c1fe4f0e9e0119b496bd5be919e66534cc2ea9307492003c73dd0bd",
+      "test-licenses-landing.log": "87dd64389b545a7de149b41b9c330cd776d288f0e234a78d9cfeef96e608c69d"
+    },
+    "commands": [
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion.log",
+        "log_sha256": "3eb9577beb8af6368498563fa574ed6b0f5b7c5e523232c00690f40fa80e4414"
+      },
+      {
+        "command": "make test-input-backend",
+        "exit": 2,
+        "log": "target/ingest-checks/test-input-backend.log",
+        "log_sha256": "2574fc1926819b60094df6de532d7a4177e592b1b59b7553a86e8dc1c7215ac4"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-v2.log",
+        "log_sha256": "5f930644ce31551cc9f2eedeabd0d6871ab919dfb5f7eb4e5969638ac59141da"
+      },
+      {
+        "command": "make test-input-backend",
+        "exit": 0,
+        "log": "target/ingest-checks/test-input-backend-v2.log",
+        "log_sha256": "d70ededa824b2c158bd7f066d35f1854316b911542b079daa8fdebf1b37e9416"
+      },
+      {
+        "command": "make test-terminal-replies",
+        "exit": 0,
+        "log": "target/ingest-checks/test-terminal-replies-v2.log",
+        "log_sha256": "b38d5e9f372a3017ad10bca6cd4efa1ef8dc60219dc59c955e75ece304190383"
+      },
+      {
+        "command": "make test-formal",
+        "exit": 2,
+        "log": "target/ingest-checks/test-formal-v2.log",
+        "log_sha256": "d8be1b9daaa216b17b323287dd1ca6afc56ade1fd6d10b53445b10e8c62c9915"
+      },
+      {
+        "command": "make test-formal",
+        "exit": 0,
+        "log": "target/ingest-checks/test-formal-v3.log",
+        "log_sha256": "81400432970c3a674f733511c80aae760c598450ce2efaa05ad8f201f12208d6"
+      },
+      {
+        "command": "make test-licenses",
+        "exit": 0,
+        "log": "target/ingest-checks/test-licenses-v3.log",
+        "log_sha256": "a26737325802814187d61e32e88abefa40b56b0c0dac743d8e64f7830cd24b04"
+      },
+      {
+        "command": "make test-boundaries",
+        "exit": 0,
+        "log": "target/ingest-checks/test-boundaries-v3.log",
+        "log_sha256": "0ac2888dd850f5dbb78ad390df12b014ebe848598737d9a62f94f06828122284"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-final.log",
+        "log_sha256": "c679f31c347c79fedbcc8f9eac1da92d92563c88928bc0bfe7f936d58c5bedf9"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 2,
+        "log": "target/ingest-checks/check-seat-ingestion-final.log",
+        "log_sha256": "21bf7ae128fc97458a89ff14984c6fc80a3bb3c42fd3a252e669ff45c7aaa418"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-v3.log",
+        "log_sha256": "546443f5e984ebeb64a24524ef7fa180e6df5c7c7d6ed4ba56e238acb436196a"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-verified.log",
+        "log_sha256": "6485749a63f287578dafac72d234bba12cc348bd410ab9b897f572d33d108cad"
+      },
+      {
+        "command": "make test-ingestion-report",
+        "exit": 0,
+        "log": "target/ingest-checks/test-ingestion-report-verified.log",
+        "log_sha256": "1be9f9ada96eef8fe0c94e713e559c48c319901bf876453b028dd2f9b78488dc"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-verified.log",
+        "log_sha256": "a35fdef1ac28ce45c2c5953d40f7142d1677bb9b55c15514751666f9bc128512"
+      },
+      {
+        "command": "make test-boundaries",
+        "exit": 0,
+        "log": "target/ingest-checks/test-boundaries-verified.log",
+        "log_sha256": "3f957339c7c50138fea371e7d837106bb77c3860d61c7ae4625beda69433df10"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-verified.log",
+        "log_sha256": "6223bbfceb71a49c143bb8edb943442fc9ec7d4765c558efc008ac9d312948df"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-quantum.log",
+        "log_sha256": "7d0c02114c612e96d9fa522a1adb7dec9a2e34d79d7eaaf9d6458993ec271abc"
+      },
+      {
+        "command": "make test-input-backend",
+        "exit": 0,
+        "log": "target/ingest-checks/test-input-backend-quantum.log",
+        "log_sha256": "afb980d7c937cd41400a7fd6c03002752ba9c47568e5bcb4d290edc70e2cf766"
+      },
+      {
+        "command": "make test-ingestion-report",
+        "exit": 0,
+        "log": "target/ingest-checks/test-ingestion-report-quantum.log",
+        "log_sha256": "565d31ee39dc3c1a73e4046c39c7b91d765f74669e81805762b653266204bccc"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-quantum.log",
+        "log_sha256": "28336e2b5aed1237eb6364cea034afadc0567759ac7001e96b9d8ec3148630b0"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-quantum.log",
+        "log_sha256": "6c6d4ec11250950e4f00e44c215434ab404970420ec00e178cafb62bd4ac4bde"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-observer.log",
+        "log_sha256": "be4f76ff576ce6ac52c6eafe1c763c5d30685d89befcd30c980f5fc4a3b3b16c"
+      },
+      {
+        "command": "make test-ingestion-report",
+        "exit": 0,
+        "log": "target/ingest-checks/test-ingestion-report-observer.log",
+        "log_sha256": "0234aaa8fdbb9b7ee5bc8c63d842b6b24f8184367cfff047c0b82e4a256b4599"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-observer.log",
+        "log_sha256": "7f81c71d1fb596ea46ee89487e1454ff46f44e7148d69f9488726e1e58580252"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-observer.log",
+        "log_sha256": "827cb82e1f07b0a5b0877eb326e7269980e410e6be01fbe6ef67f3780e22b499"
+      },
+      {
+        "command": "make test-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/test-seat-ingestion-cpu.log",
+        "log_sha256": "49837bbe95238f1b541c6772ab6d9085c2563fe3377ec322b0097fd57d3de1b6"
+      },
+      {
+        "command": "make test-input-backend",
+        "exit": 0,
+        "log": "target/ingest-checks/test-input-backend-cpu.log",
+        "log_sha256": "5f43e1d01279aa27a2537b3c9219aa5366631840b72b3baf4eaf6e81ee3e59ea"
+      },
+      {
+        "command": "make test-ingestion-report",
+        "exit": 0,
+        "log": "target/ingest-checks/test-ingestion-report-cpu.log",
+        "log_sha256": "5fdc82ebffc42d2a0de0931e5e45c5f3b43892a2841361d8ff4e4bc903f7be3e"
+      },
+      {
+        "command": "make check-seat-ingestion",
+        "exit": 0,
+        "log": "target/ingest-checks/check-seat-ingestion-cpu.log",
+        "log_sha256": "e38567dbcbce56f6a80ef0dd69b0f82b8d1821cb79da8ecf02b00aeb3f043536"
+      },
+      {
+        "command": "make build-perf-p1",
+        "exit": 0,
+        "log": "target/ingest-checks/build-perf-p1-cpu.log",
+        "log_sha256": "76d04b1899f8a3a8f98dc60c96d019b1309635e60f05a1ad8fba6ce50f8a390e"
+      }
+    ],
+    "formal_precommit": {
+      "broken_shared_queue_edges": 119,
+      "broken_shared_queue_states": 62,
+      "broken_shared_queue_verdict": "liveness",
+      "command": "make test-formal",
+      "contracts": 37,
+      "crates": 30,
+      "exit": 0,
+      "log": "target/ingest-checks/test-formal-v3.log",
+      "log_sha256": "81400432970c3a674f733511c80aae760c598450ce2efaa05ad8f201f12208d6",
+      "models": 88,
+      "positive_seat_model_edges": 217,
+      "positive_seat_model_states": 98,
+      "scope": "precommit dirty source; clean current-source formal evidence must be refreshed by landing"
+    },
+    "held_seat_before_exit": 101,
+    "observer_forwarding_before_exit": 101
+  },
+  "worktree": "/Users/feral/mydev/bboxy450-term-cx-ingest"
+}

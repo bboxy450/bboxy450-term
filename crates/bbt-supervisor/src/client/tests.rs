@@ -19,6 +19,34 @@ fn output(seat: Ulid, generation: u64, seq: u64, byte: u8) -> Event {
     }
 }
 
+// keeps: spec mux-daemon.md — typed provider refusal and reconnect recovery
+#[test]
+fn compatibility_capture_preserves_the_typed_admission_failure() {
+    struct Down;
+    impl SupervisorConnection for Down {
+        fn request(&mut self, _: Action) -> Result<Reply> {
+            Err(std::io::Error::other("provider down fixture").into())
+        }
+        fn receive(&mut self, _: Duration) -> Result<Option<Event>> {
+            Ok(None)
+        }
+    }
+    let error = match Down.start_capture(Action::RingRecovery {
+        attachment: Attachment {
+            seat: Ulid::from(1u128),
+            generation: 1,
+            writer_lease: Ulid::from(2u128),
+        },
+    }) {
+        Ok(_) => panic!("provider refusal was converted into an admitted capture"),
+        Err(error) => error,
+    };
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().to_string(),
+        "provider down fixture"
+    );
+}
+
 // keeps: spec mux-daemon.md — Ownership and failure boundaries
 #[test]
 fn diagnostic_queue_observation_keeps_the_same_event_order() {
@@ -71,6 +99,8 @@ fn a_peer_closed_after_its_final_reply_does_not_hide_buffered_bytes_behind_timeo
         replies: Default::default(),
         lease: None,
         pending_request: None,
+        captures: BTreeMap::new(),
+        capture_writes: Default::default(),
         broken: false,
         diagnostics: ClientDiagnostics::default(),
     };
@@ -114,6 +144,8 @@ impl Memory {
             replies: Default::default(),
             lease: None,
             pending_request: None,
+            captures: BTreeMap::new(),
+            capture_writes: Default::default(),
             broken: false,
             diagnostics: Default::default(),
         };
@@ -484,4 +516,286 @@ fn ring_notifications_survive_ten_thousand_requests_without_an_event_receive() {
     assert!(matches!(events[0], Event::Resized { seq: 5_001, .. }));
     assert!(matches!(events[1], Event::Output { seq: 10_001, .. }));
     assert!(matches!(events[2], Event::Exited { seq: 10_002, .. }));
+}
+
+// keeps: spec mux-daemon — independently correlated capture replies
+#[test]
+fn independent_capture_replies_pass_a_held_seat_on_the_same_socket() {
+    let (stream, mut peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    peer.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    let lease = Ulid::new();
+    let mut client = SocketSupervisor {
+        stream: stream.into(),
+        decoder: Default::default(),
+        events: Default::default(),
+        replies: Default::default(),
+        lease: Some(lease),
+        pending_request: None,
+        captures: Default::default(),
+        capture_writes: Default::default(),
+        broken: false,
+        diagnostics: Default::default(),
+    };
+    let read = |n: u128| Action::RingRecovery {
+        attachment: Attachment {
+            seat: Ulid::from(n),
+            generation: 1,
+            writer_lease: Ulid::from(n + 100),
+        },
+    };
+    let held = client.start_capture(read(1)).unwrap();
+    let ready = client.start_capture(read(2)).unwrap();
+    let first = read_frame::<Request>(&mut peer).unwrap().body;
+    let second = read_frame::<Request>(&mut peer).unwrap().body;
+    assert_ne!(first.request_id, second.request_id);
+    assert_eq!(first.logic_lease, Some(lease));
+    assert_eq!(second.logic_lease, Some(lease));
+    write_frame(
+        &mut peer,
+        &Frame::new(Message::Reply {
+            request_id: second.request_id,
+            result: Ok(Reply::Seats { seats: vec![] }),
+        }),
+    )
+    .unwrap();
+    assert!(client.receive(Duration::ZERO).unwrap().is_none());
+    assert!(
+        ready.try_recv().unwrap().is_some(),
+        "second seat waited for first"
+    );
+    assert!(held.try_recv().unwrap().is_none());
+    write_frame(
+        &mut peer,
+        &Frame::new(Message::Reply {
+            request_id: first.request_id,
+            result: Ok(Reply::Seats { seats: vec![] }),
+        }),
+    )
+    .unwrap();
+    assert!(client.receive(Duration::ZERO).unwrap().is_none());
+    assert!(held.try_recv().unwrap().is_some());
+}
+
+// keeps: spec mux-daemon — a full capture window refuses before sending
+#[test]
+fn capture_window_is_bounded_without_waiting_for_the_held_replies() {
+    let (stream, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    let mut client = SocketSupervisor {
+        stream: stream.into(),
+        decoder: Default::default(),
+        events: Default::default(),
+        replies: Default::default(),
+        lease: Some(Ulid::new()),
+        pending_request: None,
+        captures: Default::default(),
+        capture_writes: Default::default(),
+        broken: false,
+        diagnostics: Default::default(),
+    };
+    let mut pending = Vec::new();
+    for n in 0..crate::transport::MAX_PENDING_CAPTURES {
+        pending.push(
+            client
+                .start_capture(Action::RingRecovery {
+                    attachment: Attachment {
+                        seat: Ulid::from(n as u128 + 1),
+                        generation: 1,
+                        writer_lease: Ulid::new(),
+                    },
+                })
+                .unwrap(),
+        );
+    }
+    let error = match client.start_capture(Action::RingRecovery {
+        attachment: Attachment {
+            seat: Ulid::new(),
+            generation: 1,
+            writer_lease: Ulid::new(),
+        },
+    }) {
+        Ok(_) => panic!("unbounded capture window"),
+        Err(error) => error,
+    };
+    assert_eq!(
+        error.downcast_ref::<Failure>().unwrap().code,
+        crate::FailureCode::Busy
+    );
+    assert_eq!(
+        client.captures.len(),
+        crate::transport::MAX_PENDING_CAPTURES
+    );
+    assert!(
+        pending
+            .iter()
+            .all(|reply| reply.try_recv().unwrap().is_none())
+    );
+}
+
+// keeps: spec mux-daemon — a peer that stops reading cannot hold capture admission
+#[test]
+fn backpressured_capture_frames_are_bounded_and_do_not_block_control_admission() {
+    let (stream, _peer) = std::os::unix::net::UnixStream::pair().unwrap();
+    let mut client = SocketSupervisor {
+        stream: stream.into(),
+        decoder: Default::default(),
+        events: Default::default(),
+        replies: Default::default(),
+        lease: Some(Ulid::new()),
+        pending_request: None,
+        captures: Default::default(),
+        capture_writes: Default::default(),
+        broken: false,
+        diagnostics: Default::default(),
+    };
+    let mut pending = Vec::new();
+    for _ in 0..crate::transport::MAX_PENDING_CAPTURES {
+        pending.push(
+            client
+                .start_capture(Action::PublishCheckpoint {
+                    attachment: Attachment {
+                        seat: Ulid::new(),
+                        generation: 1,
+                        writer_lease: Ulid::new(),
+                    },
+                    checkpoint: vec![127; 200 * 1024],
+                })
+                .unwrap(),
+        );
+    }
+    assert!(
+        !client.capture_writes.is_empty(),
+        "fixture must fill the unread socket"
+    );
+    assert!(client.capture_writes.len() <= crate::transport::MAX_PENDING_CAPTURES);
+    let error = client.request(Action::ListOwnedSeats).unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<Failure>().unwrap().code,
+        crate::FailureCode::Busy
+    );
+    assert!(
+        client.pending_request.is_none(),
+        "ordinary request must remain unsent"
+    );
+}
+
+// keeps: spec mux-daemon — timeout and late completion are local to one seat
+#[test]
+fn expired_capture_keeps_its_bounded_slot_and_does_not_close_a_healthy_reply() {
+    let (mut client, memory) = Memory::client();
+    let expired = Ulid::new();
+    let healthy = Ulid::new();
+    let (old_tx, old_rx) = mpsc::sync_channel(1);
+    let (tx, rx) = mpsc::sync_channel(1);
+    client.captures.insert(
+        expired,
+        (
+            PendingRequest {
+                id: expired,
+                expires: memory.now(),
+            },
+            Some(old_tx),
+        ),
+    );
+    client.captures.insert(
+        healthy,
+        (
+            PendingRequest {
+                id: healthy,
+                expires: memory.now() + REQUEST_TIMEOUT,
+            },
+            Some(tx),
+        ),
+    );
+    client.check_connection().unwrap();
+    assert_eq!(
+        old_rx.try_recv().unwrap().unwrap_err().code,
+        crate::FailureCode::Io
+    );
+    assert!(!client.broken);
+    assert!(
+        client.captures[&expired].1.is_none(),
+        "late correlation remains charged"
+    );
+    for id in [healthy, expired] {
+        memory.0.lock().unwrap().incoming.extend(
+            crate::transport::encode(&Frame::new(Message::Reply {
+                request_id: id,
+                result: Ok(Reply::Seats { seats: vec![] }),
+            }))
+            .unwrap(),
+        );
+    }
+    assert!(client.receive(Duration::ZERO).unwrap().is_none());
+    assert!(rx.try_recv().unwrap().is_ok());
+    assert!(client.captures.is_empty());
+    assert!(
+        client.replies.is_empty(),
+        "late capture reply must not enter control correlation"
+    );
+}
+
+// keeps: spec mux-daemon — a long event wait cannot extend a capture deadline
+#[test]
+fn capture_deadline_bounds_a_long_event_receive() {
+    let (mut client, memory) = Memory::client();
+    let id = Ulid::new();
+    let (tx, rx) = mpsc::sync_channel(1);
+    let start = memory.now();
+    client.captures.insert(
+        id,
+        (
+            PendingRequest {
+                id,
+                expires: start + Duration::from_millis(20),
+            },
+            Some(tx),
+        ),
+    );
+    assert!(client.receive(Duration::from_secs(30)).unwrap().is_none());
+    assert_eq!(
+        memory.now().duration_since(start),
+        Duration::from_millis(20)
+    );
+    assert_eq!(
+        rx.try_recv().unwrap().unwrap_err().code,
+        crate::FailureCode::Io
+    );
+    assert!(!client.broken);
+}
+
+// keeps: spec mux-daemon — ready-seat turns never spend an idle timer quantum
+#[test]
+fn nonblocking_receive_does_not_spend_a_timer_quantum() {
+    let (mut client, memory) = Memory::client();
+    let now = memory.now();
+    assert!(client.receive(Duration::ZERO).unwrap().is_none());
+    assert_eq!(memory.now(), now);
+}
+
+// keeps: spec mux-daemon — ready capture frames do not wait for an Event to finish
+#[test]
+fn independent_capture_reply_drains_across_eventless_frame_fragments() {
+    let (mut client, memory) = Memory::client();
+    let id = Ulid::new();
+    let (tx, rx) = mpsc::sync_channel(1);
+    client.captures.insert(
+        id,
+        (
+            PendingRequest {
+                id,
+                expires: memory.now() + REQUEST_TIMEOUT,
+            },
+            Some(tx),
+        ),
+    );
+    let bytes = crate::transport::encode(&Frame::new(Message::Reply {
+        request_id: id,
+        result: Err(Failure::new(crate::FailureCode::Busy, "x".repeat(9000))),
+    }))
+    .unwrap();
+    assert!(bytes.len() > 8192 && bytes.len() < 2 * 8192);
+    memory.0.lock().unwrap().incoming.extend(bytes);
+    assert!(client.receive(Duration::ZERO).unwrap().is_none());
+    assert_eq!(rx.try_recv().unwrap().unwrap_err().message.len(), 9000);
+    assert!(client.captures.is_empty());
 }

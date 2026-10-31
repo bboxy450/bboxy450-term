@@ -5,6 +5,8 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
+mod history;
+mod ingestion;
 mod knowledge_effects;
 mod role_catalog;
 mod task_import;
@@ -57,7 +59,7 @@ use crate::store::{
 use crate::streams::{Screen, Snapshot, View};
 use crate::{Action, Attachment, Event, LaunchSpec, Reply, SeatInfo};
 
-pub use bbt_supervisor::{SocketSupervisor, SupervisorConnection};
+pub use bbt_supervisor::{SocketSupervisor, SupervisorConnection, client::PendingCapture};
 
 #[derive(Clone)]
 pub struct LogicConfig {
@@ -481,6 +483,7 @@ impl Command {
                 | Self::OperatorIdentity(..)
                 | Self::IdentityStatus(_)
                 | Self::Snapshot(..)
+                | Self::History(..)
                 | Self::Record(..)
                 | Self::Endpoint(..)
                 | Self::Status(..)
@@ -2185,6 +2188,7 @@ struct ViewState {
     delivery_endpoint: crate::adapters::Endpoint,
     delivery_failure: Option<String>,
     ring_refusal: Option<crate::Failure>,
+    ring_retry_at: Instant,
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
@@ -2247,6 +2251,7 @@ struct ReadyIndex {
 }
 
 impl ReadyIndex {
+    #[cfg(test)]
     fn runnable_len(&self, total: usize, parked: &BTreeSet<HostId>) -> usize {
         total
             - parked
@@ -2255,6 +2260,7 @@ impl ReadyIndex {
                 .map(|host| host.order.len())
                 .sum::<usize>()
     }
+    #[cfg(test)]
     fn runnable_rank(&self, ticket: u128, parked: &BTreeSet<HostId>) -> usize {
         let skipped: usize = parked
             .iter()
@@ -2381,6 +2387,7 @@ impl PendingSeats {
         }
     }
 
+    #[cfg(test)]
     fn ring_candidates(&self, host: &HostId, limit: usize) -> Vec<Ulid> {
         // Tickets are contiguous within each lane; subtraction gives its rank
         // without scanning other hosts. Merge at most 2*limit indexed rows in
@@ -2642,6 +2649,13 @@ impl RingPage {
     }
 }
 
+struct RingPending {
+    read: bbt_supervisor::protocol::RingRead,
+    result: bbt_supervisor::client::PendingCapture,
+    span: bbt_supervisor::supervisor::capture_diagnostics::Guard,
+    measurement: bbt_rt::diagnostics::Span<'static>,
+}
+
 struct RoleUpdate {
     reply: oneshot::Sender<Result<()>>,
     result: Result<bbt_proto::gui::RoleCatalog>,
@@ -2771,6 +2785,10 @@ struct Worker {
     gui_watches: GuiWatchInterests,
     gui_watch_epoch_seen: u64,
     ring_pages: BTreeMap<HostId, BTreeMap<Ulid, RingPage>>,
+    ring_reads: BTreeMap<Ulid, RingPending>,
+    history_reads: BTreeMap<Ulid, history::Read>,
+    parsers: ingestion::Parsers,
+    ingestion_ready: Arc<tokio::sync::Notify>,
 }
 /// Only the worker's internal validated fixture context may be passed here.
 fn private_document_test_run(
@@ -3010,6 +3028,10 @@ impl Worker {
             gui_watches: GuiWatchInterests::default(),
             gui_watch_epoch_seen: 0,
             ring_pages: BTreeMap::new(),
+            ring_reads: BTreeMap::new(),
+            history_reads: BTreeMap::new(),
+            parsers: Default::default(),
+            ingestion_ready: Arc::default(),
         };
         for (host, info) in worker.connections.owned_seats()? {
             // Several fixture links can wrap one local supervisor. Recover a
@@ -3491,7 +3513,7 @@ impl Worker {
         if crate::mcp::seats::handles(&call.tool) {
             return match self.prepare_seat_control(&actor, &record, &call) {
                 Ok(request) if request.is_read() => {
-                    let value = match self.read_seat_control(&request) {
+                    let value = match self.read_seat_control(&request, None) {
                         Ok(value) => {
                             let empty = value
                                 .get("records")
@@ -4637,6 +4659,7 @@ impl Worker {
     fn read_seat_control(
         &mut self,
         request: &crate::mcp::seats::Request,
+        history: Option<(crate::ring::History, u64, u64)>,
     ) -> std::result::Result<serde_json::Value, String> {
         use crate::mcp::seats::{self, Request};
         use serde_json::json;
@@ -4725,28 +4748,14 @@ impl Worker {
                     .get(&target.seat)
                     .ok_or("target viewport unavailable")?
                     .sequence;
-                let (from, to) = if let Some(cursor) = cursor {
-                    let cursor: seats::CaptureCursor = seats::decode_cursor(cursor)?;
-                    if cursor.seat != target.seat
-                        || cursor.generation != target.generation
-                        || cursor.next == 0
-                        || cursor.next > cursor.to
-                        || cursor.to > sequence
-                    {
-                        return Err("stale or invalid capture cursor".into());
-                    }
-                    (cursor.next, cursor.to)
-                } else {
-                    (1, sequence)
-                };
+                let (_, to) = history::range(target, cursor.as_deref(), sequence)?;
                 if to == 0 {
                     return Ok(
                         json!({"seat_id":target.seat,"process_generation":target.generation.to_string(),"records":[],"gaps":[],"next":null,"capture_to":"0"}),
                     );
                 }
-                let history = self
-                    .history(target.seat, target.generation, from, to)
-                    .map_err(|e| e.to_string())?;
+                let (history, from, to) =
+                    history.ok_or("history read requires the independent completion lane")?;
                 let mut records = Vec::new();
                 let mut bytes = 0;
                 let mut next = history.next;
@@ -5635,6 +5644,8 @@ impl Worker {
     }
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
+        self.parsers.retire(info.seat);
+        self.ring_reads.remove(&info.seat);
         let host = self.host_for_seat(info.seat)?;
         if let Some(pages) = self.ring_pages.get_mut(&host) {
             pages.remove(&info.seat);
@@ -5895,6 +5906,7 @@ impl Worker {
                 delivery_endpoint,
                 delivery_failure,
                 ring_refusal: None,
+                ring_retry_at: Instant::now(),
                 tap,
                 replies,
                 native_reader: None,
@@ -5916,6 +5928,7 @@ impl Worker {
                 checkpoint_retry_at: Instant::now(),
             },
         );
+        self.record_checkpoint_state(info.seat);
         self.checkpoint_saves.retire(info.seat);
         self.checkpoint_saves.generation(info.seat, info.generation);
         SqliteStore::open(&directory)?.put(
@@ -6198,7 +6211,11 @@ impl Worker {
             "recovery_launch",
             &serde_json::to_vec(&RecoveryLaunch {
                 via: options.via.clone(),
-                environment: if options.via.is_some() { options.env } else { vec![] },
+                environment: if options.via.is_some() {
+                    options.env
+                } else {
+                    vec![]
+                },
                 cwd: options.cwd,
                 role_prompt: options.role_prompt,
                 user_home: options.user_home,
@@ -6438,7 +6455,9 @@ impl Worker {
         use bbt_proto::gui::SeatControl;
         match command {
             SeatControl::Restart => self.ctl_restart(id, generation, op, origin),
-            SeatControl::AssignTask { .. } => Err(invalid("task assignment requires document IO dispatch")),
+            SeatControl::AssignTask { .. } => {
+                Err(invalid("task assignment requires document IO dispatch"))
+            }
             SeatControl::Role { name } => {
                 let args = serde_json::json!({"seat":id,"generation":generation,"role":name});
                 let notice_origin = self.identity.bind_origin(origin.clone());
@@ -6667,7 +6686,9 @@ impl Worker {
         if matches!(&request, bbt_proto::gui::UiRequest::Input(_))
             && self.gui_identity()?.private_test_run.is_none()
         {
-            return Err(invalid("test_account_required: native input requires a verified test account"));
+            return Err(invalid(
+                "test_account_required: native input requires a verified test account",
+            ));
         }
 
         if matches!(&request, bbt_proto::gui::UiRequest::Clock(_))
@@ -7030,46 +7051,6 @@ impl Worker {
             ),
         })
     }
-    fn history(
-        &mut self,
-        id: Ulid,
-        generation: u64,
-        from: u64,
-        to: u64,
-    ) -> Result<crate::ring::History> {
-        let attachment = self
-            .attachments
-            .get(&id)
-            .filter(|a| a.generation == generation)
-            .ok_or_else(|| invalid("stale history generation"))?
-            .clone();
-        let Reply::RingHistory { history } = self.capture_request(
-            id,
-            Action::ReadRing {
-                attachment,
-                from,
-                to,
-            },
-        )?
-        else {
-            return Err(invalid("history reply mismatch"));
-        };
-        self.client
-            .capture_diagnostics
-            .seat(id, generation, |row, now| {
-                row.ring_observed_ns = now;
-                row.captured_sequence = history.status.captured_sequence;
-                row.committed_sequence = history.status.committed_sequence;
-            });
-        if let Some(view) = self
-            .views
-            .get_mut(&id)
-            .filter(|v| v.generation == generation)
-        {
-            view.captured_sequence = history.status.captured_sequence;
-        }
-        Ok(*history)
-    }
     fn save(&mut self, id: Ulid) -> Result<()> {
         self.views.get_mut(&id).unwrap().checkpoint_requested = true;
         self.prepare_checkpoint(id, false)
@@ -7186,18 +7167,25 @@ impl Worker {
     fn service_checkpoints(&mut self, dispatch: bool) -> Result<()> {
         self.poll_checkpoint()?;
         // A fixed scan quantum, not a full synchronous checkpoint sweep.
-        let ids: Vec<_> = self.views.keys().copied().collect();
-        let start = self
-            .checkpoint_cursor
-            .and_then(|old| ids.iter().position(|id| *id > old))
-            .unwrap_or(0);
-        for id in ids
-            .iter()
-            .cycle()
-            .skip(start)
-            .take(ids.len().min(32))
-            .copied()
+        use std::ops::Bound::{Excluded, Included, Unbounded};
+        let after = self.checkpoint_cursor.map_or(Unbounded, Excluded);
+        let mut ids: Vec<_> = self
+            .views
+            .range((after, Unbounded))
+            .take(32)
+            .map(|(id, _)| *id)
+            .collect();
+        if ids.len() < 32
+            && let Some(cursor) = self.checkpoint_cursor
         {
+            ids.extend(
+                self.views
+                    .range((Unbounded, Included(cursor)))
+                    .take(32 - ids.len())
+                    .map(|(id, _)| *id),
+            );
+        }
+        for id in ids {
             self.checkpoint_cursor = Some(id);
             let view = &self.views[&id];
             let dirty = view.sequence != view.checkpoint_sequence;
@@ -7245,9 +7233,10 @@ impl Worker {
                     let recovery = link
                         .lock()
                         .map_err(|_| invalid("supervisor link owner stopped"))?
-                        .request(Action::RingRecovery {
+                        .start_capture(Action::RingRecovery {
                             attachment: image.attachment.clone(),
                         })?;
+                    let recovery = recovery.wait()?;
                     let Reply::RingRecovery { status, .. } = recovery else {
                         return Err(invalid("idle checkpoint recovery reply mismatch"));
                     };
@@ -7263,13 +7252,14 @@ impl Worker {
                         0,
                         cursor.sequence,
                     );
-                    let result = link
+                    let pending = link
                         .lock()
                         .map_err(|_| invalid("supervisor link owner stopped"))?
-                        .request(Action::PublishCheckpoint {
+                        .start_capture(Action::PublishCheckpoint {
                             attachment: image.attachment.clone(),
                             checkpoint: bytes.clone(),
                         });
+                    let result = pending.and_then(|pending| pending.wait());
                     rpc.finish(capture_outcome(&result), 0, 0);
                     result
                 })?;
@@ -7376,35 +7366,37 @@ impl Worker {
         if seq > view.sequence + 1 && !self.catch_up(id, seq - 1)? {
             return Ok(false);
         }
+        // Preserve the original read endpoint before checkpoint admission and parsing.
         if let Event::Output { bytes, .. } = &event {
             bbt_rt::diagnostics::probe_live_output(id.0, generation, seq, bytes);
         }
         if !self.allow_record(id, &event)? {
             return Ok(false);
         }
+        if !self.parsers.contains(id) {
+            ingestion::Parsers::start(self, id, vec![event], true);
+            return Ok(false);
+        }
+        let Some(parsed) =
+            self.parsers
+                .take(&self.views[&id], &self.attachments[&id], seq, true)?
+        else {
+            return Ok(false);
+        };
         let view = self.views.get_mut(&id).unwrap();
         let previous_end = view.byte_end;
         let before = view.adapter.status.clone();
-        let span = self
-            .client
-            .capture_diagnostics
-            .start(Phase::Parse, id, generation, seq, seq);
-        // Live terminal queries must reach the PTY. Replay/catch-up retain
-        // apply()'s effect suppression; retries reuse the existing input IDs.
-        // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        let replies = &mut view.replies;
-        view.state.apply_with_effects(&event, |effect| {
-            if let bbt_core::Event::PtyWrite(bytes) = effect
-                && replies.len() < 32
-            {
-                replies.push_back((Ulid::new(), bytes.into_bytes()));
+        view.state = parsed.state;
+        view.tap = parsed.tap;
+        for bytes in parsed.replies {
+            if view.replies.len() < 32 {
+                view.replies.push_back((Ulid::new(), bytes));
             }
-        })?;
+        }
         let bytes = match &event {
             Event::Output { bytes, .. } => bytes.len() as u64,
             _ => 0,
         };
-        span.finish(Outcome::Ok, 1, bytes);
         self.client
             .capture_diagnostics
             .seat(id, generation, |row, now| {
@@ -7555,155 +7547,169 @@ impl Worker {
         &mut self,
         key: &(HostId, Ulid),
         event: &Event,
-        pending: &PendingSeats,
+        _pending: &PendingSeats,
     ) -> Result<()> {
-        use bbt_supervisor::protocol::{
-            MAX_RING_BATCH_BYTES, MAX_RING_BATCH_MEMBERS, RingReadResult,
-        };
+        use bbt_supervisor::protocol::MAX_RING_BATCH_BYTES;
+        if self.parsers.contains(key.1)
+            || self
+                .views
+                .get(&key.1)
+                .is_some_and(|view| Instant::now() < view.ring_retry_at)
+        {
+            return Ok(());
+        }
         let through = event.sequence().unwrap().saturating_sub(1);
-        let Some(selected) = self.ring_read(key.1, through) else {
+        let Some(read) = self.ring_read(key.1, through) else {
             return Ok(());
         };
         if self
             .ring_pages
             .get(&key.0)
-            .and_then(|pages| pages.get(&key.1))
-            .is_some_and(|page| page.can_serve(&selected))
+            .and_then(|p| p.get(&key.1))
+            .is_some_and(|page| page.can_serve(&read))
         {
             return Ok(());
         }
-        let mut reads = Vec::with_capacity(MAX_RING_BATCH_MEMBERS);
-        let mut retained = BTreeMap::new();
-        let ids = std::iter::once(key.1)
-            .chain(pending.ring_candidates(&key.0, MAX_RING_BATCH_MEMBERS - 1));
-        for id in ids {
-            let Some(slot) = pending.seats.get(&(key.0.clone(), id)) else {
-                continue;
+        if !self.ring_reads.contains_key(&key.1) {
+            let link = self.connections.link(&key.0)?;
+            let mut connection = match link.try_lock() {
+                Ok(connection) => connection,
+                Err(std::sync::TryLockError::WouldBlock) => return Ok(()),
+                Err(std::sync::TryLockError::Poisoned(_)) => {
+                    return Err(invalid("supervisor link owner stopped"));
+                }
             };
-            let Some(view) = self.views.get(&id) else {
-                continue;
-            };
-            if view.generation != slot.generation {
-                continue;
-            }
-            let Some(read) = self.ring_read(id, slot.active.sequence().unwrap().saturating_sub(1))
-            else {
-                continue;
-            };
-            if let Some(old) = self.ring_pages.get(&key.0).and_then(|pages| pages.get(&id))
-                && old.can_serve(&read)
-            {
-                retained.insert(id, old.clone());
-            } else {
-                reads.push(read);
-            }
-        }
-        if reads.is_empty() {
-            self.ring_pages.insert(key.0.clone(), retained);
-            return Ok(());
-        }
-        let link = self.connections.link(&key.0)?;
-        let mut connection = match link.try_lock() {
-            Ok(connection) => connection,
-            Err(std::sync::TryLockError::WouldBlock) => return Ok(()),
-            Err(std::sync::TryLockError::Poisoned(_)) => {
-                return Err(invalid("supervisor link owner stopped"));
-            }
-        };
-        let rpc = self.client.capture_diagnostics.start(
-            Phase::ReadRingRpc,
-            key.1,
-            selected.attachment.generation,
-            selected.from,
-            selected.to,
-        );
-        let measurement = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
-        let reply = connection.request(Action::ReadRingBatch {
-            reads: reads.clone(),
-            max_bytes: MAX_RING_BATCH_BYTES as u32,
-        });
-        drop(connection);
-        rpc.finish(capture_outcome(&reply), 0, 0);
-        let reply = match reply {
-            Err(error) if is_capture_busy(&error) => {
-                measurement.finish(1, 0);
-                return Ok(());
-            }
-            reply => reply?,
-        };
-        let Reply::RingHistoryBatch { results } = reply else {
-            return Err(invalid("ring batch reply mismatch"));
-        };
-        if results.len() != reads.len() {
-            return Err(invalid("ring batch member count mismatch"));
-        }
-        let mut expected: BTreeMap<_, _> = reads
-            .into_iter()
-            .map(|read| {
-                (
-                    (
-                        read.attachment.seat,
-                        read.attachment.generation,
-                        read.from,
-                        read.to,
-                    ),
-                    read,
-                )
-            })
-            .collect();
-        let mut bytes = 0;
-        for RingReadResult {
-            seat,
-            generation,
-            from,
-            to,
-            mut result,
-        } in results
-        {
-            let Some(read) = expected.remove(&(seat, generation, from, to)) else {
-                return Err(invalid("ring batch member identity mismatch"));
-            };
-            if let Ok(history) = &result {
-                let mut next = from;
-                let valid = history.status.generation == generation
-                    && history.gap.is_none()
-                    && !history.records.is_empty()
-                    && history.records.iter().all(|record| {
-                        let current = record.event.sequence();
-                        let record_generation = match &record.event {
-                            Event::Output { generation, .. }
-                            | Event::Resized { generation, .. }
-                            | Event::Exited { generation, .. } => *generation,
-                        };
-                        let okay = record.event.seat() == seat
-                            && record_generation == generation
-                            && current == Some(next)
-                            && next <= to
-                            && next <= history.status.captured_sequence;
-                        next = next.saturating_add(1);
-                        okay
-                    });
-                if !valid {
-                    result = Err(crate::Failure {
-                        code: crate::FailureCode::Invalid,
-                        message: "ring batch history continuity mismatch".into(),
-                    });
+            let span = self.client.capture_diagnostics.start(
+                Phase::ReadRingRpc,
+                key.1,
+                read.attachment.generation,
+                read.from,
+                read.to,
+            );
+            let measurement =
+                bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingRequest);
+            let result = connection.start_capture(Action::ReadRingBatch {
+                reads: vec![read.clone()],
+                max_bytes: MAX_RING_BATCH_BYTES as u32,
+            });
+            match result {
+                Ok(result) => {
+                    self.ring_reads.insert(
+                        key.1,
+                        RingPending {
+                            read: read.clone(),
+                            result,
+                            span,
+                            measurement,
+                        },
+                    );
+                }
+                Err(error) if is_capture_busy(&error) => {
+                    span.finish(Outcome::Busy, 0, 0);
+                    measurement.finish(1, 0);
+                    self.views.get_mut(&key.1).unwrap().ring_retry_at =
+                        Instant::now() + Duration::from_millis(1);
+                    return Ok(());
+                }
+                Err(error) => {
+                    span.finish(Outcome::Error, 0, 0);
+                    measurement.finish(1, 0);
+                    return Err(error);
                 }
             }
-            if let Ok(history) = &result {
-                bytes += history
-                    .records
-                    .iter()
-                    .map(|r| match &r.event {
-                        Event::Output { bytes, .. } => bytes.len() as u64,
-                        _ => 0,
-                    })
-                    .sum::<u64>();
-            }
-            retained.insert(seat, RingPage { read, result });
         }
-        measurement.finish(1, bytes);
-        self.ring_pages.insert(key.0.clone(), retained);
+        let pending = &self.ring_reads[&key.1];
+        let reply = match pending.result.try_recv() {
+            Ok(None) => return Ok(()),
+            result => result,
+        };
+        let pending = self.ring_reads.remove(&key.1).unwrap();
+        pending.span.finish(capture_outcome(&reply), 0, 0);
+        let measured_bytes = match &reply {
+            Ok(Some(Reply::RingHistoryBatch { results })) => results
+                .iter()
+                .filter_map(|r| r.result.as_ref().ok())
+                .flat_map(|h| &h.records)
+                .map(|r| match &r.event {
+                    Event::Output { bytes, .. } => bytes.len() as u64,
+                    _ => 0,
+                })
+                .sum(),
+            _ => 0,
+        };
+        pending.measurement.finish(1, measured_bytes);
+        if pending.read != read {
+            return Err(invalid("stale ring read completion"));
+        }
+        let reply = match reply {
+            Err(error) if is_capture_busy(&error) => {
+                self.views.get_mut(&key.1).unwrap().ring_retry_at =
+                    Instant::now() + Duration::from_millis(1);
+                return Ok(());
+            }
+            Err(error) => {
+                if let Some(failure) = error.downcast_ref::<crate::Failure>() {
+                    self.ring_pages.entry(key.0.clone()).or_default().insert(
+                        key.1,
+                        RingPage {
+                            read,
+                            result: Err(failure.clone()),
+                        },
+                    );
+                    return Ok(());
+                }
+                return Err(error);
+            }
+            result => result?,
+        };
+        let Some(Reply::RingHistoryBatch { mut results }) = reply else {
+            return Err(invalid("ring read reply mismatch"));
+        };
+        if results.len() != 1 {
+            return Err(invalid("ring read member count mismatch"));
+        }
+        let result = results.remove(0);
+        if (result.seat, result.generation, result.from, result.to)
+            != (
+                read.attachment.seat,
+                read.attachment.generation,
+                read.from,
+                read.to,
+            )
+        {
+            return Err(invalid("ring read member identity mismatch"));
+        }
+        let mut result = result.result;
+        if let Ok(history) = &result {
+            let mut next = read.from;
+            if history.status.generation != read.attachment.generation
+                || history.gap.is_some()
+                || history.records.is_empty()
+                || !history.records.iter().all(|record| {
+                    let generation = match &record.event {
+                        Event::Output { generation, .. }
+                        | Event::Resized { generation, .. }
+                        | Event::Exited { generation, .. } => *generation,
+                    };
+                    let valid = record.event.seat() == read.attachment.seat
+                        && generation == read.attachment.generation
+                        && record.event.sequence() == Some(next)
+                        && next <= read.to
+                        && next <= history.status.captured_sequence;
+                    next = next.saturating_add(1);
+                    valid
+                })
+            {
+                result = Err(crate::Failure {
+                    code: crate::FailureCode::Invalid,
+                    message: "ring batch history continuity mismatch".into(),
+                });
+            }
+        }
+        self.ring_pages
+            .entry(key.0.clone())
+            .or_default()
+            .insert(key.1, RingPage { read, result });
         Ok(())
     }
     fn replay_page(&mut self, id: Ulid, through: u64) -> Result<Option<Box<crate::ring::History>>> {
@@ -7740,100 +7746,114 @@ impl Worker {
         if current.sequence >= through {
             return Ok(true);
         }
-        let generation = current.generation;
-        let from = current.sequence + 1;
         if current.checkpoint_paused
             && current.checkpoint_requested
             && current.checkpoint_pending.is_none()
         {
             return Ok(false);
         }
+        let generation = current.generation;
+        let from = current.sequence + 1;
         let page =
             self.client
                 .capture_diagnostics
                 .start(Phase::ReplayPage, id, generation, from, through);
-        let Some(history) = self.replay_page(id, through)? else {
+        if !self.parsers.contains(id) {
+            let Some(history) = self.replay_page(id, through)? else {
+                page.finish(Outcome::Busy, 0, 0);
+                return Ok(false);
+            };
+            if history.gap.is_some() || history.records.is_empty() {
+                return Err(invalid("capture recovery gap"));
+            }
+            let view = self.views.get_mut(&id).unwrap();
+            if history.status.captured_sequence > view.captured_sequence
+                && history.status.byte_end > view.byte_end
+            {
+                view.last_arrival_at = Instant::now();
+                view.changed_at.arrived(view.last_arrival_at);
+            }
+            view.captured_sequence = view.captured_sequence.max(history.status.captured_sequence);
+            self.client
+                .capture_diagnostics
+                .seat(id, generation, |row, now| {
+                    row.ring_observed_ns = now;
+                    row.captured_sequence = history.status.captured_sequence;
+                    row.committed_sequence = history.status.committed_sequence;
+                });
+            if let Event::Output { bytes, seq, .. } = &history.records[0].event {
+                bbt_rt::diagnostics::probe_ring_output(id.0, generation, *seq, bytes);
+            }
+            if !self.allow_record(id, &history.records[0].event)? {
+                page.finish(Outcome::Busy, 0, 0);
+                return Ok(false);
+            }
+            let view = &self.views[&id];
+            let prepared = view
+                .checkpoint_pending
+                .map_or(view.checkpoint_bytes, |c| c.byte_end);
+            let mut end = view.byte_end;
+            let mut events = Vec::new();
+            for record in history.records {
+                let bytes = match &record.event {
+                    Event::Output { bytes, .. } => bytes.len() as u64,
+                    _ => 0,
+                };
+                let interval = end.saturating_sub(prepared);
+                if end
+                    .saturating_sub(view.checkpoint_bytes)
+                    .saturating_add(bytes)
+                    > self.checkpoint_policy.recovery_bytes * 2
+                    || (interval > 0
+                        && interval.saturating_add(bytes) > self.checkpoint_policy.recovery_bytes)
+                {
+                    break;
+                }
+                end += bytes;
+                let boundary = !matches!(record.event, Event::Output { .. });
+                events.push(record.event);
+                if boundary
+                    || end.saturating_sub(view.checkpoint_bytes)
+                        >= self.checkpoint_policy.force_bytes
+                {
+                    break;
+                }
+            }
+            if events.is_empty() {
+                self.save(id)?;
+                page.finish(Outcome::Busy, 0, 0);
+                return Ok(false);
+            }
+            ingestion::Parsers::start(self, id, events, false);
+            page.finish(Outcome::Busy, 0, 0);
+            return Ok(false);
+        }
+        let Some(parsed) =
+            self.parsers
+                .take(&self.views[&id], &self.attachments[&id], through, false)?
+        else {
             page.finish(Outcome::Busy, 0, 0);
             return Ok(false);
         };
         let view = self.views.get_mut(&id).unwrap();
-        if history.status.captured_sequence > view.captured_sequence
-            && history.status.byte_end > view.byte_end
+        let previous_end = view.byte_end;
+        view.state = parsed.state;
+        view.tap = parsed.tap;
+        if parsed.boundary {
+            view.view_generation = Ulid::new();
+        }
+        self.parsed_bytes(id, previous_end);
+        let view = &self.views[&id];
+        if parsed.boundary
+            || (view.checkpoint_pending.is_none()
+                && (view.byte_end.saturating_sub(view.checkpoint_bytes)
+                    >= self.checkpoint_policy.force_bytes
+                    || view
+                        .changed_at
+                        .expired(Instant::now(), self.checkpoint_policy)))
         {
-            view.last_arrival_at = Instant::now();
-            view.changed_at.arrived(view.last_arrival_at);
+            self.save(id)?;
         }
-        view.captured_sequence = view.captured_sequence.max(history.status.captured_sequence);
-        self.client
-            .capture_diagnostics
-            .seat(id, generation, |row, now| {
-                row.ring_observed_ns = now;
-                row.captured_sequence = history.status.captured_sequence;
-                row.committed_sequence = history.status.committed_sequence;
-            });
-        if history.gap.is_some() || history.records.is_empty() {
-            return Err(invalid("capture recovery gap"));
-        }
-        let mut events = 0;
-        let mut bytes = 0;
-        let parse = self.client.capture_diagnostics.start(
-            Phase::Parse,
-            id,
-            generation,
-            self.views[&id].sequence + 1,
-            through,
-        );
-        for record in history.records {
-            if let Event::Output { bytes, .. } = &record.event {
-                bbt_rt::diagnostics::probe_ring_output(
-                    id.0,
-                    generation,
-                    record.event.sequence().unwrap_or(0),
-                    bytes,
-                );
-            }
-            if !self.allow_record(id, &record.event)? {
-                break;
-            }
-            let view = self.views.get_mut(&id).unwrap();
-            let previous_end = view.byte_end;
-            if matches!(record.event, Event::Resized { .. }) {
-                view.view_generation = Ulid::new();
-            }
-            let decode =
-                bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::ReadRingTerminalDecode);
-            view.state.apply(&record.event)?;
-            decode.finish(
-                1,
-                match &record.event {
-                    Event::Output { bytes, .. } => bytes.len() as u64,
-                    _ => 0,
-                },
-            );
-            if let Event::Output { bytes: output, .. } = &record.event {
-                bytes += output.len() as u64;
-            }
-            // Recovery must not replay probe responses or hook/native effects.
-            let _ = view.tap.drain();
-            events += 1;
-            let boundary = !matches!(record.event, Event::Output { .. });
-            self.parsed_bytes(id, previous_end);
-            let view = &self.views[&id];
-            if boundary
-                || (view.checkpoint_pending.is_none()
-                    && (view.byte_end.saturating_sub(view.checkpoint_bytes)
-                        >= self.checkpoint_policy.force_bytes
-                        || view
-                            .changed_at
-                            .expired(Instant::now(), self.checkpoint_policy)))
-            {
-                self.save(id)?;
-            }
-            if boundary {
-                break;
-            }
-        }
-        parse.finish(Outcome::Ok, events, bytes);
         let view = &self.views[&id];
         self.client
             .capture_diagnostics
@@ -7841,23 +7861,12 @@ impl Worker {
                 row.progress(view.sequence, now);
                 row.target_sequence = through;
                 row.pages += 1;
-                row.parsed_events += events;
-                row.parsed_bytes += bytes;
+                row.parsed_events += parsed.events;
+                row.parsed_bytes += parsed.bytes;
             });
         self.record_checkpoint_state(id);
-        let view = &self.views[&id];
-        if view.sequence >= through {
-            // An output notification's target is not a forced checkpoint
-            // boundary. R/age above and caught-up idle service own that policy;
-            // lifecycle records and #11 readiness still force their images.
-            page.finish(Outcome::Ok, events, bytes);
-            Ok(true)
-        } else {
-            // The caller keeps the final live event. Its sequence and this
-            // applied cursor survive the command-service turn between pages.
-            page.finish(Outcome::Ok, events, bytes);
-            Ok(false)
-        }
+        page.finish(Outcome::Ok, parsed.events, parsed.bytes);
+        Ok(self.views[&id].sequence >= through)
     }
     fn flush_protocol_replies(&mut self, id: Ulid) -> Result<()> {
         loop {
@@ -9438,6 +9447,10 @@ impl Worker {
         let Some((key, event)) = pending_events.next() else {
             return Ok(());
         };
+        let queued_before = (
+            self.ring_reads.contains_key(&key.1),
+            self.parsers.contains(key.1),
+        );
         let before = self.views.get(&key.1).map(|view| view.sequence);
         if let Some(view) = self.views.get(&key.1) {
             self.client
@@ -9451,8 +9464,13 @@ impl Worker {
             .and_then(|()| self.event(event));
         let complete = match result {
             Ok(complete) => {
-                *made_progress =
-                    complete || self.views.get(&key.1).map(|view| view.sequence) != before;
+                *made_progress |= complete
+                    || self.views.get(&key.1).map(|view| view.sequence) != before
+                    || queued_before
+                        != (
+                            self.ring_reads.contains_key(&key.1),
+                            self.parsers.contains(key.1),
+                        );
                 complete
             }
             Err(error) if crate::provider::fake::is_link_down(&error) => {
@@ -9585,7 +9603,9 @@ impl Worker {
                         } else {
                             call
                         };
-                        if call.tool == "diagnostic_errors" {
+                        if call.tool == "history_read" {
+                            self.start_control_history(id, generation, call, reply);
+                        } else if call.tool == "diagnostic_errors" {
                             self.start_diagnostic_read(id, generation, call, reply);
                         } else if call.tool == "task_import" {
                             self.start_seat_task_import(id, generation, call, reply);
@@ -10083,21 +10103,40 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::SeatControl(id, generation, op, command, origin, reply) => {
-                        if let bbt_proto::gui::SeatControl::AssignTask { scope, task_path } = command {
-                            let prepared = self.controlled_seat(id, generation).and_then(|record| {
-                                if scope.swarm != record.swarm {
-                                    return Err(invalid("task target belongs to another swarm"));
-                                }
-                                crate::mcp::work_items::call(op, bbt_proto::messaging::TaskRequest::Delegate {
-                                    task_path, seat_id: id, role: None,
-                                }).map_err(invalid)
-                            });
+                        if let bbt_proto::gui::SeatControl::AssignTask { scope, task_path } =
+                            command
+                        {
+                            let prepared =
+                                self.controlled_seat(id, generation).and_then(|record| {
+                                    if scope.swarm != record.swarm {
+                                        return Err(invalid(
+                                            "task target belongs to another swarm",
+                                        ));
+                                    }
+                                    crate::mcp::work_items::call(
+                                        op,
+                                        bbt_proto::messaging::TaskRequest::Delegate {
+                                            task_path,
+                                            seat_id: id,
+                                            role: None,
+                                        },
+                                    )
+                                    .map_err(invalid)
+                                });
                             match prepared {
                                 Ok(call) => self.start_operator_effect(
-                                    Some(scope), origin, call,
-                                    knowledge_effects::EffectReply::SeatControl { seat: id, generation, reply },
+                                    Some(scope),
+                                    origin,
+                                    call,
+                                    knowledge_effects::EffectReply::SeatControl {
+                                        seat: id,
+                                        generation,
+                                        reply,
+                                    },
                                 ),
-                                Err(error) => { let _ = reply.send(Err(error)); }
+                                Err(error) => {
+                                    let _ = reply.send(Err(error));
+                                }
                             }
                             continue;
                         }
@@ -10430,20 +10469,13 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::History(id, generation, from, to, masks, reply) => {
-                        let result = self.history(id, generation, from, to).and_then(|history| {
-                            let masks = if masks
-                                && self
-                                    .identity
-                                    .issued_by()
-                                    .is_some_and(|s| s.starts_with("test-account:"))
-                            {
-                                self.history_faults.ranges(id, generation)?
-                            } else {
-                                Vec::new()
-                            };
-                            Ok((history, masks))
-                        });
-                        let _ = reply.send(result);
+                        self.start_history(
+                            id,
+                            generation,
+                            from,
+                            to,
+                            history::Destination::Gui { masks, reply },
+                        );
                     }
                     Command::Snapshot(id, generation, reply) => {
                         let _ = reply.send(self.snapshot(id, generation));
@@ -10566,55 +10598,80 @@ impl Worker {
                 }
             }
             command_span.finish(Outcome::Ok, command_count, 0);
+            self.poll_history();
             self.refresh_gui_watch_interest(&mut pending_events);
             let receive =
                 self.client
                     .capture_diagnostics
                     .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
-            let idle_until = Instant::now() + crate::provider::IDLE_RECEIVE_WAIT;
+            let idle_until = Instant::now()
+                + if self.ring_reads.is_empty() && self.history_reads.is_empty() {
+                    crate::provider::IDLE_RECEIVE_WAIT
+                } else {
+                    Duration::from_millis(1)
+                };
             for host in self.connections.host_ids() {
                 // The socket probe is bounded/nonblocking. The idle wait below
                 // uses the existing command receiver, so fresh input can wake
                 // this worker instead of waiting inside a 10 ms socket read.
-                let event = self.connections.receive_ready_from(&host)?;
-                if let Some(event) = event {
-                    if self.host_for_seat(event.seat())? != host {
-                        continue;
+                for _ in 0..128 {
+                    let event = self.connections.receive_ready_from(&host)?;
+                    if event.is_none() {
+                        break;
                     }
-                    let generation = match &event {
-                        Event::Output { generation, .. }
-                        | Event::Resized { generation, .. }
-                        | Event::Exited { generation, .. } => *generation,
-                    };
-                    if let Some(view) = self.views.get(&event.seat())
-                        && generation == view.generation
-                        && event.sequence().unwrap() > view.sequence
-                    {
-                        let seat = event.seat();
-                        let view = self.views.get_mut(&seat).unwrap();
-                        view.captured_sequence =
-                            view.captured_sequence.max(event.sequence().unwrap());
-                        if matches!(&event, Event::Output { bytes, .. } if !bytes.is_empty()) {
-                            let now = Instant::now();
-                            view.last_arrival_at = now;
-                            view.changed_at.arrived(now);
+                    if let Some(event) = event {
+                        if self.host_for_seat(event.seat())? != host {
+                            continue;
                         }
-                        self.client.capture_diagnostics.seat(
-                            event.seat(),
-                            generation,
-                            |row, now| {
-                                row.notified_sequence =
-                                    row.notified_sequence.max(event.sequence().unwrap());
-                                row.progress(view.sequence, now);
-                            },
-                        );
-                        pending_events.push(host, event, generation, view.sequence + 1)?;
+                        let generation = match &event {
+                            Event::Output { generation, .. }
+                            | Event::Resized { generation, .. }
+                            | Event::Exited { generation, .. } => *generation,
+                        };
+                        if let Some(view) = self.views.get(&event.seat())
+                            && generation == view.generation
+                            && event.sequence().unwrap() > view.sequence
+                        {
+                            let seat = event.seat();
+                            let view = self.views.get_mut(&seat).unwrap();
+                            view.captured_sequence =
+                                view.captured_sequence.max(event.sequence().unwrap());
+                            if matches!(&event, Event::Output { bytes, .. } if !bytes.is_empty()) {
+                                let now = Instant::now();
+                                view.last_arrival_at = now;
+                                view.changed_at.arrived(now);
+                            }
+                            self.client.capture_diagnostics.seat(
+                                event.seat(),
+                                generation,
+                                |row, now| {
+                                    row.notified_sequence =
+                                        row.notified_sequence.max(event.sequence().unwrap());
+                                    row.progress(view.sequence, now);
+                                },
+                            );
+                            pending_events.push(
+                                host.clone(),
+                                event,
+                                generation,
+                                view.sequence + 1,
+                            )?;
+                        }
                     }
                 }
             }
             receive.finish(Outcome::Ok, 0, 0);
-            // One parsed page per turn, with fresh commands/notifications between.
-            self.ingest_one(&mut pending_events, &mut made_progress)?;
+            // Admit/service independent seats before considering an idle wait.
+            // A new read or parser is work, even before its cursor is published.
+            // Keep commands/notifications between bounded service quanta.
+            let ingest_until = Instant::now() + Duration::from_millis(1);
+            let attempts = pending_events.ready_len().saturating_mul(4).min(128);
+            for _ in 0..attempts {
+                self.ingest_one(&mut pending_events, &mut made_progress)?;
+                if Instant::now() >= ingest_until {
+                    break;
+                }
+            }
             let maintenance =
                 self.client
                     .capture_diagnostics
@@ -10706,10 +10763,12 @@ impl Worker {
                     self.client
                         .capture_diagnostics
                         .start(Phase::Receive, Ulid::nil(), 0, 0, 0);
-                if let Some(command) = self
-                    .handle
-                    .block_on(idle_command(commands, idle_until, &stop))
-                {
+                if let Some(command) = self.handle.block_on(async {
+                    tokio::select! {
+                        _ = self.ingestion_ready.notified() => None,
+                        command = idle_command(commands, idle_until, &stop) => command,
+                    }
+                }) {
                     // This is the next admitted command, not a replay. Keep the
                     // ordinary FIFO/checkpoint gates in the next work turn.
                     deferred_commands.push_back(command);
@@ -10723,6 +10782,11 @@ impl Worker {
             );
             turn.finish(Outcome::Ok, 0, 0);
         }
+        // Only published seat state is committed; unfinished work remains in
+        // the retained ring for replacement-owner replay.
+        self.parsers = Default::default();
+        self.ring_reads.clear();
+        self.history_reads.clear();
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             self.save(id)?;
         }
@@ -10731,6 +10795,9 @@ impl Worker {
         let mut progress = self.checkpoint_progress;
         let mut progressed_at = Instant::now();
         loop {
+            for host in self.connections.host_ids() {
+                let _ = self.connections.receive_ready_from(&host)?;
+            }
             self.service_checkpoints(true)?;
             if self.checkpoint_saves.in_flight() == 0
                 && self

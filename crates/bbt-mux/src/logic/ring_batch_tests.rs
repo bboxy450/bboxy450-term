@@ -18,6 +18,11 @@ struct Calls {
     batches: Vec<Vec<Ulid>>,
     refusals: BTreeMap<Ulid, crate::FailureCode>,
     reads: Vec<RingRead>,
+    hold: Option<Ulid>,
+    held: Vec<(
+        RingRead,
+        std::sync::mpsc::SyncSender<std::result::Result<Reply, crate::Failure>>,
+    )>,
 }
 
 struct Synthetic(Arc<Mutex<Calls>>);
@@ -64,6 +69,37 @@ fn history(read: &RingRead) -> Box<crate::ring::History> {
 }
 
 impl SupervisorConnection for Synthetic {
+    fn start_capture(&mut self, action: Action) -> Result<bbt_supervisor::client::PendingCapture> {
+        if let Action::ReadRing {
+            attachment,
+            from,
+            to,
+        } = &action
+            && self.0.lock().unwrap().hold == Some(attachment.seat)
+        {
+            let (tx, rx) = std::sync::mpsc::sync_channel(1);
+            self.0.lock().unwrap().held.push((
+                RingRead {
+                    attachment: attachment.clone(),
+                    from: *from,
+                    to: *to,
+                },
+                tx,
+            ));
+            return Ok(bbt_supervisor::client::PendingCapture::new(rx));
+        }
+        if let Action::ReadRingBatch { reads, .. } = &action
+            && reads.len() == 1
+            && self.0.lock().unwrap().hold == Some(reads[0].attachment.seat)
+        {
+            let (tx, rx) = std::sync::mpsc::sync_channel(1);
+            self.0.lock().unwrap().held.push((reads[0].clone(), tx));
+            return Ok(bbt_supervisor::client::PendingCapture::new(rx));
+        }
+        Ok(bbt_supervisor::client::PendingCapture::ready(
+            self.request(action),
+        ))
+    }
     fn request(&mut self, action: Action) -> Result<Reply> {
         match action {
             Action::ListOwnedSeats => Ok(Reply::Seats { seats: vec![] }),
@@ -82,6 +118,12 @@ impl SupervisorConnection for Synthetic {
                 })
             }
             Action::ReadRingBatch { reads, max_bytes } => {
+                if reads
+                    .iter()
+                    .any(|read| self.0.lock().unwrap().hold == Some(read.attachment.seat))
+                {
+                    return Err(invalid("serial ingestion waited on a held seat"));
+                }
                 assert!(!reads.is_empty() && reads.len() <= MAX_RING_BATCH_MEMBERS);
                 assert!(max_bytes as usize <= MAX_RING_BATCH_BYTES);
                 self.0
@@ -257,6 +299,7 @@ fn add_view(worker: &mut Worker, id: Ulid) {
             delivery_endpoint: crate::adapters::Endpoint::None,
             delivery_failure: None,
             ring_refusal: None,
+            ring_retry_at: Instant::now(),
             tap,
             replies: VecDeque::new(),
             native_reader: None,
@@ -282,14 +325,60 @@ fn add_view(worker: &mut Worker, id: Ulid) {
 
 // keeps: invariant ring-reads-batched
 #[test]
-fn ring_reads_are_batched() {
+fn ring_reads_progress_independently() {
     sweep(false);
 }
 
 // keeps: invariant ring-reads-batched
 #[test]
-fn ring_reads_are_batched_per_host() {
+fn ring_reads_progress_independently_per_host() {
     sweep(true);
+}
+
+// keeps: invariant ring-reads-batched — #47 supersedes the aggregate barrier
+#[test]
+fn held_seat_does_not_block_other_seat() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let calls = Arc::new(Mutex::new(Calls::default()));
+    let mut worker = worker(root.path(), &runtime, calls.clone());
+    let mut pending = PendingSeats::default();
+    for n in 1u128..=2 {
+        let id = Ulid::from(n);
+        add_view(&mut worker, id);
+        pending.push(HostId::Local, notification(id), 1, 1).unwrap();
+    }
+    calls.lock().unwrap().hold = Some(Ulid::from(1u128));
+    let until = Instant::now() + Duration::from_secs(2);
+    while worker.views[&Ulid::from(2u128)].sequence < 2 {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until, "unrelated seat did not progress");
+        std::thread::yield_now();
+    }
+    assert_eq!(worker.views[&Ulid::from(1u128)].sequence, 0);
+    assert_eq!(
+        calls.lock().unwrap().held.len(),
+        1,
+        "one pending read per seat"
+    );
+    calls.lock().unwrap().held[0]
+        .1
+        .try_send(Err(crate::Failure {
+            code: crate::FailureCode::Io,
+            message: "one seat read expired".into(),
+        }))
+        .unwrap();
+    let until = Instant::now() + Duration::from_secs(2);
+    while worker.views[&Ulid::from(1u128)].ring_refusal.is_none() {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until);
+    }
+    assert_eq!(worker.views[&Ulid::from(1u128)].sequence, 0);
+    assert_eq!(worker.views[&Ulid::from(2u128)].sequence, 2);
 }
 
 fn sweep(two_hosts: bool) {
@@ -323,10 +412,12 @@ fn sweep(two_hosts: bool) {
         pending.push(host, notification(id), 1, 1).unwrap();
     }
     pending.set_watched((1..=50).map(|n| (Ulid::from(n as u128), 1)).collect());
-    for _ in 0..SEATS * 2 {
-        if pending.is_empty() {
-            break;
-        }
+    let until = Instant::now() + Duration::from_secs(15);
+    while !pending.is_empty() {
+        assert!(
+            Instant::now() < until,
+            "all independent seat readers must advance"
+        );
         let before: u64 = worker.views.values().map(|v| v.sequence).sum();
         let mut progress = false;
         worker.ingest_one(&mut pending, &mut progress).unwrap();
@@ -364,12 +455,11 @@ fn sweep(two_hosts: bool) {
         calls.singleton, 0,
         "hot sweep must not issue singleton ReadRing"
     );
-    let bound = if two_hosts {
-        (SEATS / 2).div_ceil(MAX_RING_BATCH_MEMBERS)
-            + SEATS.div_ceil(2).div_ceil(MAX_RING_BATCH_MEMBERS)
-    } else {
-        SEATS.div_ceil(MAX_RING_BATCH_MEMBERS)
-    };
+    let bound = SEATS;
+    assert!(
+        calls.batches.iter().all(|batch| batch.len() == 1),
+        "a seat completion must not wait for a batch peer"
+    );
     if two_hosts {
         assert!(
             calls
@@ -484,8 +574,13 @@ fn refused_members_keep_their_cursors_while_other_members_finish() {
         add_view(&mut worker, id);
         pending.push(HostId::Local, notification(id), 1, 1).unwrap();
     }
-    for _ in 0..64 {
+    let until = Instant::now() + Duration::from_secs(3);
+    while (5u128..=16).any(|n| worker.views[&Ulid::from(n)].sequence != 2)
+        || (2u128..=4).any(|n| worker.views[&Ulid::from(n)].ring_refusal.is_none())
+    {
         worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until, "healthy members did not finish");
+        std::thread::yield_now();
     }
     for n in 5u128..=16 {
         assert_eq!(worker.views[&Ulid::from(n)].sequence, 2);
@@ -515,8 +610,11 @@ fn refused_members_keep_their_cursors_while_other_members_finish() {
         "definitive refusals were retried"
     );
     calls.lock().unwrap().refusals.remove(&Ulid::from(1u128));
-    for _ in 0..16 {
+    let until = Instant::now() + Duration::from_secs(3);
+    while worker.views[&Ulid::from(1u128)].sequence != 2 {
         worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until, "Busy did not recover");
+        std::thread::yield_now();
     }
     assert_eq!(
         worker.views[&Ulid::from(1u128)].sequence,
@@ -592,4 +690,125 @@ fn cached_page_preserves_unapplied_boundary_rows_and_rejects_other_generations()
     let mut writer = read;
     writer.attachment.writer_lease = Ulid::from(8u128);
     assert!(cached.page(&writer).is_none());
+}
+
+// keeps: spec mux-daemon — history and live output have independent completion slots
+#[test]
+fn held_history_is_bounded_and_does_not_block_live_echo() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let calls = Arc::new(Mutex::new(Calls::default()));
+    let mut worker = worker(root.path(), &runtime, calls.clone());
+    for n in 1u128..=2 {
+        add_view(&mut worker, Ulid::from(n));
+    }
+    calls.lock().unwrap().hold = Some(Ulid::from(1u128));
+    let (tx, mut rx) = oneshot::channel();
+    worker.start_history(
+        Ulid::from(1u128),
+        1,
+        1,
+        1,
+        history::Destination::Gui {
+            masks: false,
+            reply: tx,
+        },
+    );
+    let (tx, mut refused) = oneshot::channel();
+    worker.start_history(
+        Ulid::from(1u128),
+        1,
+        1,
+        1,
+        history::Destination::Gui {
+            masks: false,
+            reply: tx,
+        },
+    );
+    assert_eq!(
+        refused
+            .try_recv()
+            .unwrap()
+            .unwrap_err()
+            .downcast_ref::<crate::Failure>()
+            .unwrap()
+            .code,
+        crate::FailureCode::Busy
+    );
+    let mut pending = PendingSeats::default();
+    let id = Ulid::from(2u128);
+    pending.push(HostId::Local, notification(id), 1, 1).unwrap();
+    let until = Instant::now() + Duration::from_secs(2);
+    while worker.views[&id].sequence < 2 {
+        worker.poll_history();
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(
+            Instant::now() < until,
+            "live echo waited for unrelated history"
+        );
+        std::thread::yield_now();
+    }
+    assert!(matches!(
+        rx.try_recv(),
+        Err(oneshot::error::TryRecvError::Empty)
+    ));
+    assert_eq!(worker.history_reads.len(), 1);
+    assert_eq!(worker.views[&Ulid::from(1u128)].sequence, 0);
+}
+
+// keeps: spec mux-daemon — generation and owner incarnation fence
+#[test]
+fn parser_completion_cannot_cross_owner_replacement() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let calls = Arc::new(Mutex::new(Calls::default()));
+    let mut worker = worker(root.path(), &runtime, calls);
+    let id = Ulid::from(1u128);
+    add_view(&mut worker, id);
+    ingestion::Parsers::start(&mut worker, id, vec![first_event(id)], true);
+    worker.views.get_mut(&id).unwrap().view_generation = Ulid::new();
+    assert!(
+        worker
+            .parsers
+            .take(&worker.views[&id], &worker.attachments[&id], 1, true)
+            .is_err()
+    );
+    assert_eq!(worker.views[&id].sequence, 0);
+    assert!(!worker.parsers.contains(id));
+    // Same seat/process labels may return, but the owner incarnation is fresh.
+    worker.views.get_mut(&id).unwrap().view_generation = Ulid::new();
+    assert!(!worker.parsers.contains(id));
+}
+
+// keeps: spec mux-daemon — admitted asynchronous work cannot be mistaken for idle
+#[test]
+fn new_read_and_parser_admission_are_progress_before_cursor_publication() {
+    let root = tempfile::tempdir().unwrap();
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let calls = Arc::new(Mutex::new(Calls::default()));
+    let mut worker = worker(root.path(), &runtime, calls.clone());
+    let id = Ulid::from(1u128);
+    add_view(&mut worker, id);
+    calls.lock().unwrap().hold = Some(id);
+    let mut pending = PendingSeats::default();
+    pending.push(HostId::Local, notification(id), 1, 1).unwrap();
+    let mut progress = false;
+    worker.ingest_one(&mut pending, &mut progress).unwrap();
+    assert!(progress, "a new per-seat request is not an idle turn");
+    assert_eq!(worker.views[&id].sequence, 0);
+    let mut unchanged = false;
+    worker.ingest_one(&mut pending, &mut unchanged).unwrap();
+    assert!(!unchanged, "polling the same held request must not spin");
 }

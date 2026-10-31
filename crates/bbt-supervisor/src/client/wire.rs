@@ -23,6 +23,35 @@ impl From<UnixStream> for Wire {
 }
 
 impl Wire {
+    pub(super) fn try_read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Self::Socket(stream) => {
+                stream.set_nonblocking(true)?;
+                let result = stream.read(bytes);
+                stream.set_nonblocking(false)?;
+                result
+            }
+            #[cfg(test)]
+            Self::Memory(memory) => {
+                memory.set_read_timeout(Some(Duration::ZERO))?;
+                memory.read(bytes)
+            }
+        }
+    }
+    pub(super) fn try_write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::Socket(stream) => {
+                // The connection has one IO owner. Restore its blocking mode
+                // before returning to the ordinary synchronous control path.
+                stream.set_nonblocking(true)?;
+                let result = stream.write(bytes);
+                stream.set_nonblocking(false)?;
+                result
+            }
+            #[cfg(test)]
+            Self::Memory(memory) => memory.write(bytes),
+        }
+    }
     pub(super) fn now(&self) -> Instant {
         match self {
             Self::Socket(_) => Instant::now(),

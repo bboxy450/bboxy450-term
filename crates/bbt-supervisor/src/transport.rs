@@ -25,11 +25,13 @@ use crate::protocol::{Frame, Message, Request, VERSION};
 
 /// Largest accepted JSON frame body, excluding its four-byte length prefix.
 pub const MAX_FRAME_BYTES: usize = 1024 * 1024;
-pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize = 4 * MAX_FRAME_BYTES;
-// The serial supervisor client has one outstanding request. Keep room for its
-// largest legal reply (body plus length prefix); output can wait/replay. Any
-// future pipelining must scale this reserve or bound its request admission.
-const MAX_EVENT_QUEUE_BYTES: usize = MAX_SOCKET_QUEUE_BYTES - (MAX_FRAME_BYTES + 4);
+pub(crate) const MAX_PENDING_CAPTURES: usize = 8;
+// Each independently correlated capture and the ordinary control request own
+// one largest-frame reserve. Event capacity stays at its original 3 MiB.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+const MAX_EVENT_QUEUE_BYTES: usize = 3 * MAX_FRAME_BYTES - 4;
+pub(crate) const MAX_SOCKET_QUEUE_BYTES: usize =
+    MAX_EVENT_QUEUE_BYTES + (MAX_PENDING_CAPTURES + 1) * (MAX_FRAME_BYTES + 4);
 
 fn invalid(message: impl std::fmt::Display) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.to_string())
@@ -526,7 +528,7 @@ mod tests {
 
     // keeps: spec mux-daemon.md — Ownership and failure boundaries
     #[test]
-    fn saturated_events_leave_capacity_for_one_maximum_reply_without_growing_the_queue() {
+    fn saturated_events_leave_capacity_for_all_correlated_replies_without_growing_the_queue() {
         use crate::{Event, Failure, FailureCode, Reply, Ulid};
 
         let (stream, _reader) = std::os::unix::net::UnixStream::pair().unwrap();
@@ -559,10 +561,12 @@ mod tests {
             encode(&Frame::new(reply.clone())).unwrap().len(),
             MAX_FRAME_BYTES + 4
         );
-        assert!(
-            peer.enqueue(reply.clone()).unwrap(),
-            "event traffic consumed the reply's reserved capacity"
-        );
+        for _ in 0..=MAX_PENDING_CAPTURES {
+            assert!(
+                peer.enqueue(reply.clone()).unwrap(),
+                "event traffic consumed a correlated reply's reserved capacity"
+            );
+        }
         assert!(peer.queued_bytes <= MAX_SOCKET_QUEUE_BYTES);
         assert!(
             !peer.enqueue(reply).unwrap(),

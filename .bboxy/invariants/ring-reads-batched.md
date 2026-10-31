@@ -2,9 +2,9 @@
 id: 01M5S7QYBHREREW0FAJMZ7FAE2
 type: invariant
 number: 318
-title: "ring reads are batched: a catch-up pass over N seats costs a bounded number of supervisor round trips, never one RPC per seat"
+title: "seat ring reads progress independently without a shared completion barrier"
 status: active
-check: cargo test -p bboxy450-term-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
+check: cargo test -p bboxy450-term-mux --locked --lib logic::ring_batch_tests::held_seat_does_not_block_other_seat -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'
 cost: with hundreds of seats every catch-up pass serialises hundreds of one-seat round trips through the supervisor, input-to-GPU latency grows with the seat count instead of the page budget, and the watched panes wait behind the unwatched ones' RPCs
 links:
   - { to: "[[no-chokepoints]]", rel: instance-of }
@@ -13,62 +13,43 @@ links:
   - { to: "[[seats-967-frame]]", rel: unblocks }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-25T09:54:49Z"
-updated: "2026-10-25T14:36:14Z"
+updated: "2026-10-31T18:29:00Z"
 ---
-# Ring reads are batched
+# Seat ring reads progress independently
 
-**Property.** Logic's ring read toward the supervisor is batched: one catch-up
-pass over N seats with pending ring data costs at most `ceil(N / 8)` supervisor
-round trips, never N (967 seats: at most 121 requests, zero singleton calls
-from the hot sweep); a request carries up to eight seats, every member is
-admitted before any waiting, a refused member fails alone, never preventing the
-others' admission, reply or application and never advancing its own cursor,
-and the final cursors and Screens are exactly the ones the singleton path
-produced. Across hosts the bound is the sum of `ceil(N_host / 8)`. **One
-aggregate reply per batch is the design**, not a compromise: the group returns
-after its last member, so a slow member delays at most seven others by one
-read, a coupling bounded by the member count and `max_bytes`; the property is
-about round trips, failure independence and exactness, not about a completed
-member being visible before the slowest finishes. Streamed replies would be a
-new ruling with its own reply-reserve rule, taken only if a measurement shows
-the aggregate wait exceeding the page budget (Sable's question, 2026-10-25). The 6 824 serial RPCs that motivated this are evidence; the gate is a
-round-trip count under a fixed fixture, because a count does not depend on the
-machine.
+**Operator amendment, #47, 2026-10-30.** A single shared ingestion path is
+forbidden. This supersedes the original aggregate-batch request-count property
+of #318: a slow aggregate member used to delay up to seven other seats. Keeping
+that coupling would violate the new direct brief. The existing bounded batched
+wire API remains compatible; hot reads now use independently correlated members.
 
-**Protocol shape (Sable's design, the Oracle's ruling, 2026-10-25).** One new
-request and one new reply beside the existing singleton: `ReadRingBatch {
-reads: [(attachment, from, to)], max_bytes }` to the supervisor and
-`RingHistoryBatch { results: [(seat, generation, from, to, Result<History,
-Failure>)] }` back. A batch has at most **8 members** and at most **768 KiB
-encoded**; every member is admitted before any waiting begins; each member
-fails on its own with `Gone`, `Stale`, `Busy` or `Limit`, so a batch never
-carries an oversize frame and never advances a refused member's cursor; a batch
-is charged against the existing 128 pending-IO slots, not a new pool. The
-reply is one aggregate per batch, coupling bounded by the 8; streamed replies
-only if a measurement asks for them. Logic prefetches one bounded group per
-host in the 3 : 1 lane order of [[watched-replay-priority]] and still applies
-one page per turn. The singleton `ReadRing` stays for explicit history and
-recovery reads and leaves the hot sweep.
+**Property.** Each seat owns at most one pending ring read and one parser job;
+a held or flooded seat cannot hold another seat's completion or advance its
+cursor. Successful publication consumes exactly the next ordered capture prefix
+under the same attachment and owner incarnation. Ring-backed coalescing preserves
+the unapplied tail. GUI/MCP history has its own one-page-per-seat completion lane.
+The existing 3:1 fair admission and checkpoint/debt limits remain authoritative.
+No read, history page or checkpoint completion is awaited under the link mutex.
 
-**Check.** `cargo test -p bboxy450-term-mux --locked --lib logic::ring_batch_tests::ring_reads_are_batched -- --exact 2>&1 | grep -q 'ok. 1 passed; 0 failed'`
-— exit 0 held. **Active (Sable, landed 00fb087c, 2026-10-25).** The batched read landed
-with its test at `crates/bbt-mux/src/logic/ring_batch_tests.rs:274`, and a
-per-host companion beside it: 967 seats cost 121 batched requests and zero
-singleton hot-sweep reads, the bound of the property met exactly. The landing
-commit renamed the check to the test's real path and removed the skip flags;
-the Architect flipped the status on the Oracle's landing note, since the
-landing left it pending without flags, which `scripts/pending-flags.sh`
-refuses.
+**Check.** The frontmatter's native held-seat regression must exit 0. Companion
+`make test-seat-ingestion` checks held history and its admission bound, independent
+socket completion order, stale parser ownership and exact serial Screens/cursors
+for 967 seats on one and two hosts. `make test-formal` checks SeatIngestion and
+the deliberately shared-queue liveness failure in both native and pinned Java.
+Model fairness and implementation-only bounds are in `verification/contracts.toml`.
 
-**Cost of a violation.** With hundreds of seats every catch-up pass serialises
-hundreds of one-seat round trips through the supervisor; input-to-GPU latency
-grows with the seat count instead of the page budget, and the watched panes
-wait behind the unwatched ones' RPCs. The seventh known instance of
-[[no-chokepoints]]: one serial path everything reads through.
+**Limits.** This is per-seat read/parse isolation, not a CPU deadline, arbitrary
+Rust refinement or independent-filesystem proof. Cross-seat metadata/publication
+stays on logic; storage service and the OS remain shared dependencies. Quiet
+`make profile-ingestion` retains the unchanged latency verdict; #47 stays open
+until that measurement passes.
 
-**Evidence.** The measured 967/50 run on 0e97dc32 (Rook, 2026-10-25, Nyx's R5i
-diagnostics on): 6 824 serial one-seat `ReadRing` RPCs to the supervisor,
-93 % of an input-to-GPU of 8 618 ms, while decoding the data itself took
-0.8 s. Reported by the Oracle to the Architect the same day.
+**Prior evidence.** #318 at 00fb087c reduced 6,824 serial round trips to 121
+aggregate requests for 967 seats. That count proved the former batching
+property, not independent completion. The #47 fresh-main medians on c03d9cb8
+were 1075.230208 ms Written→LogicOutputRead and 1224.975042 ms input→GPU, with
+load1 below4 at each start and no functional fixture failures. Measurements and
+source/report hashes are recorded in `.bboxy/runs/ingest-47.log`.
 
-Owner: Corvin Duskmantle <ARCHITECT>.
+Owner: Corvin Duskmantle <ARCHITECT>; amendment implemented under the direct
+operator Executor brief, with decisions in the signed implementation commit.

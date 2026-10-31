@@ -173,3 +173,12 @@ Use `make check-formal-evidence` to validate existing evidence without rerunning
 the model checker. `make push` also runs this check. The evidence hash records a
 script-produced result; it is not a proof of arbitrary Rust refinement or a
 replacement for signed commits, actual test execution and review.
+
+
+`SeatIngestion` projects the #47 independent read/parse boundary: two seats,
+two records each, one pending slot per seat, fair healthy-seat admission/read/
+publication, and an indefinitely held peer/history read. `BrokenSeatIngestion`
+restores a shared head queue and must fail healthy-seat liveness. Native socket
+reordered completion, held seat/history, exact 967-seat serial replay and stale
+owner fixtures map it to implementation. Neither this projection nor corpus
+parity proves timing deadlines, Rust refinement or disk-writer independence.

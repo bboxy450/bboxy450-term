@@ -6,9 +6,10 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Blocking supervisor clients, shared by in-process and separate-process logic.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::io::{Read, Write};
 use std::path::Path;
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use crate::store::{Result, invalid};
@@ -18,6 +19,82 @@ mod wire;
 use wire::Wire;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// A single correlated capture completion. Dropping it cancels observation,
+/// never a write or the supervisor's lease. No IO lock is held while waiting.
+pub struct PendingCapture {
+    receiver: mpsc::Receiver<std::result::Result<Reply, Failure>>,
+    expires: Instant,
+}
+impl PendingCapture {
+    /// Wrap one bounded correlated reply from a connection adapter.
+    pub fn new(receiver: mpsc::Receiver<std::result::Result<Reply, Failure>>) -> Self {
+        Self {
+            receiver,
+            expires: Instant::now() + REQUEST_TIMEOUT * 2,
+        }
+    }
+    /// Construct an already completed reply, for in-memory connection adapters.
+    pub fn ready(result: Result<Reply>) -> Self {
+        let (tx, rx) = mpsc::sync_channel(1);
+        let _ = tx.send(result.map_err(|error| {
+            error
+                .downcast_ref::<Failure>()
+                .cloned()
+                .unwrap_or_else(|| Failure::new(crate::FailureCode::Io, error.to_string()))
+        }));
+        Self::new(rx)
+    }
+    /// Observe completion without waiting for another seat or reading a socket.
+    /// Socket owners must keep servicing `receive` to route correlated replies.
+    ///
+    /// # Errors
+    /// Returns the original refusal, a closed owner, or an expired read.
+    pub fn try_recv(&self) -> Result<Option<Reply>> {
+        match self.receiver.try_recv() {
+            Ok(result) => result.map(Some).map_err(Into::into),
+            Err(mpsc::TryRecvError::Empty) if Instant::now() < self.expires => Ok(None),
+            Err(mpsc::TryRecvError::Empty) => Err(Failure::new(
+                crate::FailureCode::Io,
+                "capture reply deadline expired; outcome unknown",
+            )
+            .into()),
+            Err(mpsc::TryRecvError::Disconnected) => Err(Failure::new(
+                crate::FailureCode::Io,
+                "capture reply owner stopped; outcome unknown",
+            )
+            .into()),
+        }
+    }
+    /// Wait on an IO side task without retaining the supervisor connection lock.
+    ///
+    /// # Errors
+    /// Returns the original refusal, disconnection or deadline expiration.
+    pub fn wait(self) -> Result<Reply> {
+        self.receiver
+            .recv_timeout(self.expires.saturating_duration_since(Instant::now()))
+            .map_err(|_| invalid("capture reply unavailable; outcome unknown"))?
+            .map_err(Into::into)
+    }
+}
+
+pub(crate) fn capture_action(action: &Action) -> Result<()> {
+    if matches!(
+        action,
+        Action::ReadRing { .. }
+            | Action::ReadRingBatch { .. }
+            | Action::RingRecovery { .. }
+            | Action::PublishCheckpoint { .. }
+    ) {
+        Ok(())
+    } else {
+        Err(invalid(
+            "only capture operations may use the independent completion port",
+        ))
+    }
+}
+
+type CaptureCompletion = mpsc::SyncSender<std::result::Result<Reply, Failure>>;
 
 struct PendingRequest {
     id: Ulid,
@@ -34,6 +111,19 @@ pub trait SupervisorConnection: Send {
     /// # Errors
     /// Returns named host refusals, framing, disconnection or request-completion failures.
     fn request(&mut self, action: Action) -> Result<Reply>;
+    /// Admit capture work and release the connection before its completion.
+    /// Native and socket clients pipeline independently correlated requests;
+    /// the compatibility default is for synchronous in-memory test adapters.
+    ///
+    /// # Errors
+    /// Returns admission/refusal without advancing an output cursor.
+    fn start_capture(&mut self, action: Action) -> Result<PendingCapture> {
+        capture_action(&action)?;
+        // Preserve typed admission failures (including provider LinkDown), so
+        // the owner can park and resume that host instead of fencing a seat.
+        let reply = self.request(action)?;
+        Ok(PendingCapture::ready(Ok(reply)))
+    }
     /// Receive one observed event, returning `None` when the supplied wait expires.
     ///
     /// # Errors
@@ -41,6 +131,9 @@ pub trait SupervisorConnection: Send {
     fn receive(&mut self, timeout: Duration) -> Result<Option<Event>>;
 }
 impl SupervisorConnection for Client {
+    fn start_capture(&mut self, action: Action) -> Result<PendingCapture> {
+        Ok(Client::start_capture(self, action)?)
+    }
     fn request(&mut self, action: Action) -> Result<Reply> {
         Ok(Client::request(self, action)?)
     }
@@ -181,6 +274,8 @@ pub struct SocketSupervisor {
     replies: BTreeMap<Ulid, std::result::Result<Reply, Failure>>,
     lease: Option<Ulid>,
     pending_request: Option<PendingRequest>,
+    captures: BTreeMap<Ulid, (PendingRequest, Option<CaptureCompletion>)>,
+    capture_writes: VecDeque<(Vec<u8>, usize)>,
     broken: bool,
     diagnostics: ClientDiagnostics,
 }
@@ -203,6 +298,8 @@ impl SocketSupervisor {
             replies: BTreeMap::new(),
             lease: None,
             pending_request: None,
+            captures: BTreeMap::new(),
+            capture_writes: VecDeque::new(),
             broken: false,
             diagnostics: ClientDiagnostics::default(),
         };
@@ -232,6 +329,19 @@ impl SocketSupervisor {
         if self.broken {
             return Err(invalid("supervisor disconnected"));
         }
+        let now = self.stream.now();
+        for (pending, sender) in self.captures.values_mut() {
+            if now >= pending.expires
+                && let Some(sender) = sender.take()
+            {
+                // Keep the bounded correlation slot until its late reply is
+                // drained. One failed seat never closes healthy seat reads.
+                let _ = sender.try_send(Err(Failure::new(
+                    crate::FailureCode::Io,
+                    "capture reply deadline expired; outcome unknown",
+                )));
+            }
+        }
         if let Some(pending) = &self.pending_request
             && self.stream.now() >= pending.expires
         {
@@ -245,15 +355,24 @@ impl SocketSupervisor {
         Ok(())
     }
 
-    fn read(&mut self, timeout: Duration) -> Result<()> {
+    fn read(&mut self, timeout: Duration) -> Result<bool> {
         self.check_connection()?;
+        self.flush_capture_writes()?;
         self.diagnostics.read_calls = self.diagnostics.read_calls.saturating_add(1);
         let timeout = self.pending_request.as_ref().map_or(timeout, |pending| {
             timeout.min(pending.expires.saturating_duration_since(self.stream.now()))
         });
-        if let Err(error) = self
-            .stream
-            .set_read_timeout(Some(timeout.max(Duration::from_millis(1))))
+        let timeout = self
+            .captures
+            .values()
+            .filter(|(_, sender)| sender.is_some())
+            .fold(timeout, |timeout, (pending, _)| {
+                timeout.min(pending.expires.saturating_duration_since(self.stream.now()))
+            });
+        if !timeout.is_zero()
+            && let Err(error) = self
+                .stream
+                .set_read_timeout(Some(timeout.max(Duration::from_millis(1))))
             && !(cfg!(target_os = "macos") && error.raw_os_error() == Some(libc::EINVAL))
         {
             return Err(error.into());
@@ -261,7 +380,12 @@ impl SocketSupervisor {
         // Darwin can reject SO_RCVTIMEO after peer close, with buffered bytes
         // still unread. Consume those bytes, then report the actual read/EOF.
         let mut bytes = [0; 8192];
-        let count = match self.stream.read(&mut bytes) {
+        let result = if timeout.is_zero() {
+            self.stream.try_read(&mut bytes)
+        } else {
+            self.stream.read(&mut bytes)
+        };
+        let count = match result {
             Ok(0) => {
                 self.broken = true;
                 return Err(invalid("supervisor disconnected"));
@@ -273,7 +397,7 @@ impl SocketSupervisor {
                     std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
                 ) =>
             {
-                return self.check_connection();
+                return self.check_connection().map(|()| false);
             }
             Err(e) => return Err(e.into()),
         };
@@ -287,6 +411,12 @@ impl SocketSupervisor {
                     self.events.push(event)?;
                 }
                 Message::Reply { request_id, result } => {
+                    if let Some((_, sender)) = self.captures.remove(&request_id) {
+                        if let Some(sender) = sender {
+                            let _ = sender.try_send(result);
+                        }
+                        continue;
+                    }
                     if self
                         .pending_request
                         .as_ref()
@@ -301,13 +431,71 @@ impl SocketSupervisor {
                 }
             }
         }
+        Ok(true)
+    }
+
+    fn flush_capture_writes(&mut self) -> Result<()> {
+        while let Some((bytes, offset)) = self.capture_writes.front_mut() {
+            match self.stream.try_write(&bytes[*offset..]) {
+                Ok(0) => return Err(invalid("supervisor capture write closed")),
+                Ok(count) => {
+                    *offset += count;
+                    if *offset == bytes.len() {
+                        self.capture_writes.pop_front();
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
         Ok(())
     }
 }
 impl SupervisorConnection for SocketSupervisor {
+    fn start_capture(&mut self, action: Action) -> Result<PendingCapture> {
+        capture_action(&action)?;
+        self.check_connection()?;
+        if self.captures.len() >= crate::transport::MAX_PENDING_CAPTURES {
+            return Err(Failure::new(
+                crate::FailureCode::Busy,
+                "capture request window full; not sent",
+            )
+            .into());
+        }
+        let request = crate::Request::new(self.lease, action);
+        let id = request.request_id;
+        let bytes = crate::transport::encode(&Frame::new(request))?;
+        let (sender, receiver) = mpsc::sync_channel(1);
+        self.captures.insert(
+            id,
+            (
+                PendingRequest {
+                    id,
+                    expires: self.stream.now() + REQUEST_TIMEOUT * 2,
+                },
+                Some(sender),
+            ),
+        );
+        self.capture_writes.push_back((bytes, 0));
+        if let Err(error) = self.flush_capture_writes() {
+            self.captures.remove(&id);
+            self.broken = true;
+            return Err(error);
+        }
+        Ok(PendingCapture::new(receiver))
+    }
     fn request(&mut self, action: Action) -> Result<Reply> {
         bbt_rt::assert_not_ui_thread();
         self.check_connection()?;
+        self.flush_capture_writes()?;
+        if !self.capture_writes.is_empty() {
+            return Err(Failure::new(
+                crate::FailureCode::Busy,
+                "capture frame write pending; control request not sent",
+            )
+            .into());
+        }
         if self.pending_request.is_some() {
             // A timed-out call may still have a reply on the wire. A small
             // drain permits recovery even while logic retains a replay event.
@@ -333,8 +521,9 @@ impl SupervisorConnection for SocketSupervisor {
         let id = request.request_id;
         let bytes = crate::transport::encode(&Frame::new(request))?;
         let started = self.stream.now();
-        // One unacknowledged wire request is the invariant behind the socket
-        // queue's one-frame reply reserve, including after an ambiguous timeout.
+        // One ordinary control request remains outstanding, including after an
+        // ambiguous timeout. Independent capture requests have their own bounded
+        // correlation slots and largest-frame reply reserves.
         let previous = self.pending_request.replace(PendingRequest {
             id,
             expires: started + REQUEST_TIMEOUT * 2,
@@ -379,6 +568,22 @@ impl SupervisorConnection for SocketSupervisor {
         self.diagnostics.receive_calls = self.diagnostics.receive_calls.saturating_add(1);
         let event = if let Some(event) = self.events.pop_front() {
             Some(event)
+        } else if timeout.is_zero() {
+            // A partial frame or a capture reply is IO progress even without
+            // an Event. Drain available bytes instead of one 8 KiB fragment
+            // per logic turn; retain a bounded byte/time service quantum.
+            let until = Instant::now() + Duration::from_millis(1);
+            let mut event = None;
+            for turn in 0..128 {
+                if !self.read(Duration::ZERO)? {
+                    break;
+                }
+                event = self.events.pop_front();
+                if event.is_some() || (turn > 0 && Instant::now() >= until) {
+                    break;
+                }
+            }
+            event
         } else {
             self.read(timeout)?;
             self.events.pop_front()

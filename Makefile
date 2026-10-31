@@ -101,6 +101,7 @@ help:
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
 	  'make profile-ingestion           Bounded real-PTY headless probe and endpoint/cursor report' \
 	  'make test-ingestion-report        Native probe-cut and evidence refusal controls' \
+	  'make test-seat-ingestion          Independent seat read/parse/history and socket regressions' \
 	  'make build-perf-acceptance        Prebuild the P2 gate executable; no compilation in the night' \
 	  'make test-perf-p2                 1000-recipient bus and 400-PTY peak-memory assertions' \
 	  'make build-perf-p1                Optimized P1 companion with private-custody guards' \
@@ -1604,14 +1605,38 @@ test-perf-p2: build-perf-acceptance
 test-ingestion-report:
 	@python3 -I -B scripts/test-ingestion-report.py
 	@set -eu; . scripts/cache-env.sh; \
-	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --bin $(APP) probe_capture_waits_for_the_read_endpoint_and_freezes_once
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --bin $(APP) probe_capture_waits_for_the_read_endpoint_and_freezes_once; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --bin $(APP) observer_preserves_independent_capture_admission
 
 profile-ingestion: build-perf-p1
 	@set -eu; \
 	run=$$(mktemp -d '$(abspath $(TARGET_DIR))/ingestion.XXXXXX'); \
 	echo "ingestion artifacts: $$run"; result=0; \
-	git rev-parse HEAD > "$$run/source.head"; git diff --binary > "$$run/source.patch"; \
+	git rev-parse HEAD > "$$run/source.head"; git diff HEAD --binary > "$$run/source.patch"; \
 	shasum -a 256 '$(abspath $(TARGET_DIR))/release/$(APP)' > "$$run/binary.sha256"; \
-	BBOXY_TEST_CUSTODY=memory '$(abspath $(TARGET_DIR))/release/$(APP)' --stall-test --stall-headless --stall-real --stall-seats "$${INGEST_SEATS:-967}" --stall-watched 50 --stall-seconds 10 --stall-idle 10 --stall-run-dir "$$run/run" --stall-report "$$run/report.json" > "$$run/stdout.log" 2> "$$run/stderr.log" || result=$$?; \
+	BBOXY_TEST_CUSTODY=memory '$(abspath $(TARGET_DIR))/release/$(APP)' --stall-test --stall-headless --stall-real --stall-frame-gate --stall-seats "$${INGEST_SEATS:-967}" --stall-watched 50 --stall-seconds 10 --stall-idle 10 --stall-run-dir "$$run/run" --stall-report "$$run/report.json" > "$$run/stdout.log" 2> "$$run/stderr.log" || result=$$?; \
 	python3 -I -B scripts/analyze-ingestion.py "$$run/report.json" --seats "$${INGEST_SEATS:-967}" > "$$run/ingestion.json" || result=$$?; \
 	cat "$$run/ingestion.json"; exit "$$result"
+
+.PHONY: test-seat-ingestion check-seat-ingestion
+test-seat-ingestion:
+	@set -eu; . scripts/cache-env.sh; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-harness-host --lib client::tests; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-harness-host --lib transport::tests; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-term-mux --lib logic::ring_batch_tests; \
+	$(MAKE) --no-print-directory test-watched-replay-priority; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-term-mux --test capture_fairness
+
+.PHONY: test-watched-replay-priority
+test-watched-replay-priority:
+	@set -eu; . scripts/cache-env.sh; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-term-mux --lib logic::pending_tests; \
+	cargo test --locked --target-dir '$(TARGET_DIR)' -p bboxy450-term-mux --test logic watched_replay_tail_finishes_within_a_fixed_page_budget -- --exact
+
+check-seat-ingestion:
+	@set -eu; . scripts/cache-env.sh; \
+	cargo clippy --locked --target-dir '$(TARGET_DIR)' -p bboxy450-harness-host -p bboxy450-term-mux -p $(APP) --all-targets -- -D warnings
+
+.PHONY: format-seat-ingestion
+format-seat-ingestion:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/client.rs crates/bbt-supervisor/src/client/wire.rs crates/bbt-supervisor/src/client/tests.rs crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/transport.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/provider/shared.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ingestion.rs crates/bbt-mux/src/logic/history.rs crates/bbt-mux/src/logic/ring_batch_tests.rs crates/bbt-mux/tests/logic.rs crates/bbt-mux/tests/common/capture_priority.rs crates/bboxy450-term/src/stall/load.rs crates/bboxy450-term/tests/formal_contracts/models.rs

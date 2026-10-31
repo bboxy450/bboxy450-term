@@ -45,7 +45,8 @@ struct CaptureStages {
 }
 impl CaptureStages {
     fn observe_probe_read(&mut self, read: bool, capture: impl FnOnce() -> CaptureSnapshot) {
-        if read && self.capture_at_probe_admitted.is_some() && self.capture_at_probe_read.is_none() {
+        if read && self.capture_at_probe_admitted.is_some() && self.capture_at_probe_read.is_none()
+        {
             self.capture_at_probe_read = Some(capture());
         }
     }
@@ -180,6 +181,23 @@ fn diagnostic_lock<T>(
 }
 
 impl SupervisorConnection for ObservedConnection {
+    fn start_capture(
+        &mut self,
+        action: Action,
+    ) -> bbt_mux::store::Result<bbt_mux::logic::PendingCapture> {
+        bbt_rt::assert_not_ui_thread();
+        match self.0.client.try_lock() {
+            Ok(mut client) => client.start_capture(action),
+            Err(std::sync::TryLockError::Poisoned(error)) => {
+                error.into_inner().start_capture(action)
+            }
+            Err(std::sync::TryLockError::WouldBlock) => Err(bbt_mux::Failure {
+                code: bbt_mux::FailureCode::Busy,
+                message: "diagnostic capture admission occupied; request not sent".into(),
+            }
+            .into()),
+        }
+    }
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
         let reply = io_lock(&self.0.client).request(action)?;
         if let Reply::Attached { attachment, .. } = &reply {
@@ -1673,8 +1691,12 @@ mod tests {
         use bbt_mux::supervisor::capture_diagnostics::Recorder;
         let logic = Recorder::default();
         let supervisor = Recorder::default();
-        logic.enable(); supervisor.enable();
-        let capture = || CaptureSnapshot {logic: logic.snapshot(), supervisor: supervisor.snapshot()};
+        logic.enable();
+        supervisor.enable();
+        let capture = || CaptureSnapshot {
+            logic: logic.snapshot(),
+            supervisor: supervisor.snapshot(),
+        };
         let mut stages = CaptureStages::default();
         stages.observe_probe_read(true, || panic!("unarmed probe"));
         stages.capture_at_probe_admitted = Some(capture());
@@ -1683,10 +1705,20 @@ mod tests {
         logic.seat(seat, 1, |row, _| row.pages = 1);
         stages.observe_probe_read(true, capture);
         logic.seat(seat, 1, |row, _| row.pages = 2);
-        stages.observe_probe_read(true, || panic!("a later poll cannot refresh the frozen cut"));
+        stages.observe_probe_read(true, || {
+            panic!("a later poll cannot refresh the frozen cut")
+        });
         let data = stages.export();
-        assert_eq!(data["capture_at_probe_read"]["logic"]["seats"][0]["pages"], 1);
-        assert!(data["capture_at_probe_admitted"]["logic"]["seats"].as_array().unwrap().is_empty());
+        assert_eq!(
+            data["capture_at_probe_read"]["logic"]["seats"][0]["pages"],
+            1
+        );
+        assert!(
+            data["capture_at_probe_admitted"]["logic"]["seats"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -2319,5 +2351,47 @@ mod tests {
         let (gated, same_timing) = assess(&config, &metrics, &sides);
         assert_eq!(same_timing, timing);
         assert_eq!(gated, timing);
+    }
+}
+
+#[cfg(test)]
+mod observer_async_tests {
+    use super::*;
+
+    struct HeldCapture(Option<std::sync::mpsc::Receiver<Result<Reply, bbt_mux::Failure>>>);
+    impl SupervisorConnection for HeldCapture {
+        fn request(&mut self, _: Action) -> bbt_mux::store::Result<Reply> {
+            panic!("diagnostic observer serialized capture through request()");
+        }
+        fn start_capture(
+            &mut self,
+            _: Action,
+        ) -> bbt_mux::store::Result<bbt_mux::logic::PendingCapture> {
+            Ok(bbt_mux::logic::PendingCapture::new(self.0.take().unwrap()))
+        }
+        fn receive(&mut self, _: Duration) -> bbt_mux::store::Result<Option<Event>> {
+            Ok(None)
+        }
+    }
+
+    // keeps: issue #47 — instrumentation must preserve independent capture admission
+    #[test]
+    fn observer_preserves_independent_capture_admission() {
+        let (_tx, rx) = std::sync::mpsc::sync_channel(1);
+        let probe = RingProbe::new(HeldCapture(Some(rx)));
+        let mut observed = ObservedConnection(probe);
+        let pending = observed
+            .start_capture(Action::RingRecovery {
+                attachment: Attachment {
+                    seat: Ulid::new(),
+                    generation: 1,
+                    writer_lease: Ulid::new(),
+                },
+            })
+            .unwrap();
+        assert!(
+            pending.try_recv().unwrap().is_none(),
+            "unresolved read must return without waiting"
+        );
     }
 }

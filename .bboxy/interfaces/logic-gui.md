@@ -148,3 +148,16 @@ one reattached frontend, unchanged harness PID/generation); existing notificatio
 copy/mute and GUI lifecycle gates. Native permission and alert style are read
 without prompting by `make notification-status`. Authorization initialization
 runs off the event/UI owners only when notifications are enabled.
+
+
+## Independent terminal ingestion and history — #47
+
+The operator's 2026-10-30 ingestion brief authorizes the supervisor/logic ICD's
+independent seat read/parse boundary. GUI snapshots retain the last fully applied
+seat state while a parse task is pending; no partially parsed grid or stale owner
+completion is published. Existing capture sequence, view incarnation, stream ACK,
+watch interest and terminal-effect rules remain authoritative. GUI history pages
+complete on a separate per-seat lane (one outstanding page per seat; excess
+admission is Busy), and never hold ingestion waiting for storage. A failed/stale
+history completion cannot advance live playback. Timing and frame verdicts are
+unchanged. Owners: logic and GUI under the direct operator #47 brief.

@@ -52,7 +52,7 @@ cache, so the cache returns with one `sccache` server per agent over one shared
 local disk cache, and no shared daemon ever again);
 logic's serial one-seat `ReadRing` RPCs to the supervisor (the measured 967/50
 run on 0e97dc32: 6 824 round trips, 93 % of an 8 618 ms input-to-GPU, decode
-0.8 s; fixed at 00fb087c by Sable's `ReadRingBatch`, 121 requests for 967 seats and zero singleton hot reads, gate [[ring-reads-batched]] active);
+0.8 s; fixed at 00fb087c by Sable's `ReadRingBatch`, 121 requests for 967 seats and zero singleton hot reads, gate [[ring-reads-batched]] active; operator #47 now replaces the aggregate completion barrier with bounded independent seat read/parse and history completions);
 the shared dispatchers every `ctl` cut edits (the `UiRequest`, `GuiAction` and
 `GuiReply` enums, the `VERBS` table, `apply_ui` and its headless twin), so each
 landing forced two or three peers to rebase (decision [[d320-dispatch-by-noun]]:

@@ -291,6 +291,10 @@ pub struct FakeLink {
     events: VecDeque<(u64, Event)>,
 }
 impl SupervisorConnection for FakeLink {
+    fn start_capture(&mut self, action: Action) -> Result<bbt_supervisor::client::PendingCapture> {
+        self.script.latency()?;
+        self.inner.start_capture(action)
+    }
     fn request(&mut self, action: Action) -> Result<Reply> {
         self.script.latency()?;
         self.inner.request(action)

@@ -988,6 +988,30 @@ pub struct Client {
 }
 
 impl Client {
+    /// Admit capture work without waiting for its seat's ring owner. This is
+    /// the same client and lease, with a distinct bounded reply per request.
+    ///
+    /// # Errors
+    /// Refuses non-capture work, full admission or a disconnected supervisor.
+    pub fn start_capture(&self, action: Action) -> Result<crate::client::PendingCapture, Failure> {
+        crate::client::capture_action(&action)
+            .map_err(|e| Failure::new(FailureCode::Invalid, e.to_string()))?;
+        let (reply, rx) = mpsc::sync_channel(1);
+        self.tx
+            .try_send(Control::Request {
+                client: self.id,
+                frame: Box::new(Frame::new(Request::new(Some(self.lease), action))),
+                reply,
+            })
+            .map_err(|error| match error {
+                mpsc::TrySendError::Full(_) => {
+                    Failure::new(FailureCode::Busy, "capture admission full; not sent")
+                }
+                mpsc::TrySendError::Disconnected(_) => disconnected(),
+            })?;
+        self.waker.wake()?;
+        Ok(crate::client::PendingCapture::new(rx))
+    }
     /// Return this client's admitted logic-lease identity.
     pub fn logic_lease(&self) -> Ulid {
         self.lease
