@@ -119,6 +119,10 @@ class GateTests(unittest.TestCase):
         self.assertEqual(publisher.retry_delay({}, "retry in 3 minutes"), 180)
         self.assertEqual(publisher.retry_delay({"Retry-After": "7"}, ""), 7)
         self.assertEqual(publisher.retry_delay({}, "Try again after 2026-10-31T18:00:00Z", now=1793469540), 60)
+        message = ('You have published too many new crates in a short period of time. '
+                   'Please try again after Sat, 31 Oct 2026 17:34:35 GMT and see '
+                   'https://crates.io/docs/rate-limits for more details.')
+        self.assertEqual(publisher.retry_delay({}, message, now=1793468040), 35)
 
     def test_publication_skips_existing_versions_and_waits_before_the_dependent(self):
         packages = [{"name": n, "version": "0.1.1"} for n in ["base", "app"]]

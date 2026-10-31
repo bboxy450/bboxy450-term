@@ -80,6 +80,9 @@ def retry_delay(headers, message, now=None):
                 return max(1, math.ceil(parsedate_to_datetime(value).timestamp() - now))
             except (ValueError, TypeError):
                 pass
+    match = re.search(r"(?:try again after|retry after)\s+([a-z]{3},\s+\d{1,2}\s+[a-z]{3}\s+\d{4}\s+\d\d:\d\d:\d\d\s+(?:GMT|UTC))", message, re.I)
+    if match:
+        return max(1, math.ceil(parsedate_to_datetime(match.group(1)).timestamp() - now))
     match = re.search(r"(?:try again after|retry after)\s+(\d{4}-\d\d-\d\d[T ]\d\d:\d\d:\d\d(?:Z|\+00:00| UTC)?)", message, re.I)
     if match:
         date = datetime.fromisoformat(match.group(1).replace(" UTC", "+00:00"))

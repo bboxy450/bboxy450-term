@@ -1,0 +1,197 @@
+{
+  "commands": [
+    {
+      "command": "python3 -I scripts/test-formal.py (new publication controls, before implementation)",
+      "exit": 1,
+      "log_sha256": "d092035db5e79410ce62d6b5e7abee70976e948d75e3110c07ce6d5046d88f72"
+    },
+    {
+      "command": "make test-licenses",
+      "exit": 0,
+      "log_sha256": "ed4d7f332497ffc5570e80407ec27a4aaa20bac03f42d2a7501199eac52aeae4"
+    },
+    {
+      "command": "cargo test --locked -p bboxy450-term --test formal_contracts --target-dir target",
+      "exit": 0,
+      "log_sha256": "d307c3704cc5944671a3f7ead4cdd311cee8620a7237faed4e0981fc024a5644"
+    },
+    {
+      "command": "python3 -I scripts/test-formal.py",
+      "exit": 0,
+      "log_sha256": "501e37650f504682abf4d3bb95c6d552a9f1f327fa9d4c18c1d24836cdb92e3b"
+    },
+    {
+      "command": "sh scripts/land.sh (publication tooling)",
+      "exit": 0,
+      "log_sha256": "1ee11064f125c5db679db1f2906c72202ff654b909b12c2255d94a7b074be9b8"
+    },
+    {
+      "command": "make test (exact clean published HEAD; normal gate)",
+      "exit": 0,
+      "log_sha256": "3656afde3934af4ff3243884b15013bbee72b631328437e3ad042dfd66528b05"
+    },
+    {
+      "command": "make publish-crates",
+      "exit": 0,
+      "log_sha256": "0f15ca0d482123c67ed39c183bde02f3266d1095a0251ccce236a15ccaf64b3c"
+    },
+    {
+      "command": "python3 -I - (assert all 27 published checksums match crates.io and new firehose sole owner is bboxy450)",
+      "exit": 0,
+      "log_sha256": "5d4000706273e68a9e67024ed7f7bdbb602b7d959a9a98e916963dc1d69dae6b"
+    },
+    {
+      "command": "gpg --verify target/package/bboxy450-mermaid-0.1.1.crate.asc target/package/bboxy450-mermaid-0.1.1.crate",
+      "exit": 0,
+      "log_sha256": "93a87a276967d8aed7c443e9653b195a745565ceed629e18987cb33c338a6c32"
+    },
+    {
+      "command": "git tag -s crates-v0.1.1 9ac8912d86b36555a2dce1e253b1218f3ba7ea6b; git verify-tag crates-v0.1.1; git push origin refs/tags/crates-v0.1.1",
+      "exit": 0,
+      "log_sha256": "93a87a276967d8aed7c443e9653b195a745565ceed629e18987cb33c338a6c32"
+    },
+    {
+      "command": "gh release create crates-v0.1.1 --verify-tag --notes-file target/release-validation/release-notes.md <54 artifacts> (parallel upload collision; incomplete release removed by gh)",
+      "exit": 1,
+      "log_sha256": "93a87a276967d8aed7c443e9653b195a745565ceed629e18987cb33c338a6c32"
+    },
+    {
+      "command": "gh api repos/bboxy450/bboxy450-term/releases/tags/crates-v0.1.1 (after gh removed incomplete release)",
+      "exit": 1,
+      "log_sha256": "854d107ea689b676bc48d3cdf691ce9e0bcbd178d073393877c35e67e4c5c44c"
+    },
+    {
+      "command": "gh release create crates-v0.1.1 --verify-tag; gh release upload crates-v0.1.1 <each artifact individually>; assert all 54 GitHub asset digests",
+      "exit": 0,
+      "log_sha256": "805ab39112bb6e8a9dd9ee4352d29794c9c07d97579a9fc8ba834947a2e69122"
+    },
+    {
+      "command": "cargo install --locked bboxy450-term --version 0.1.1 --root <empty private Cargo home install root> --target-dir <private build>",
+      "exit": 0,
+      "log_sha256": "05b28a8b2393b3fc0db64abe12b8ea522401916ffb1501237b78b7eba8192fd2"
+    },
+    {
+      "command": "cargo metadata --locked --format-version 1 --manifest-path target/release-validation/fresh-source/bboxy450-term-0.1.1/Cargo.toml; assert registry-only dependencies and no retired names",
+      "exit": 0,
+      "log_sha256": "0c250b92f023650e690207ded047f9106b59d64cbfb63fd2122c23afbc9ebcd5"
+    },
+    {
+      "command": "cargo yank --registry crates-io --version 0.1.0 bboxy-firehose; assert API/index yank and unyanked bboxy450-mux/proto 0.1.0",
+      "exit": 0,
+      "log_sha256": "39fdd07ed8050c2958e5cda7749f1d23449de60206998df96f5ab3460d9130b4"
+    },
+    {
+      "command": "cargo generate-lockfile --manifest-path target/release-validation/yank-lock-witness/Cargo.toml (before yank)",
+      "exit": 0,
+      "log_sha256": "77fbc7d306908d497c6ee1c5b7cb98bbda17c8c66e1856c571ecb342728e8595"
+    },
+    {
+      "command": "cargo metadata --locked --manifest-path <pre-yank firehose witness> (empty Cargo home after yank); assert original lock hash unchanged",
+      "exit": 0,
+      "log_sha256": "cd8a3d5271560f15e2d2968ed257e1603e1d2bf8591594227c4e586855f8a5eb"
+    },
+    {
+      "command": "cargo generate-lockfile --manifest-path <same firehose witness without existing lock> (expected yanked-version refusal)",
+      "exit": 101,
+      "log_sha256": "d935df50cc870f03f9156c04f16ffcd78bcee935207fb392e4175301303a093a"
+    },
+    {
+      "command": "cargo install --locked bboxy450-term --version 0.1.0 --root <private before-yank root> --target-dir <private old build>",
+      "exit": 0,
+      "log_sha256": "0912cb8b28b02144f90aacc1458790931e7d3cd26c1a27036fb054969928b3bf"
+    },
+    {
+      "command": "cargo install --locked bboxy450-term --version 0.1.0 --root <private after-yank root> --target-dir <same old build>",
+      "exit": 0,
+      "log_sha256": "9f21074c72c53c096393283785e113af882d27dd13295482a6934f5b65876072"
+    },
+    {
+      "command": "cargo metadata --locked --manifest-path <published 0.1.0 source>; assert same 525-package graph and original lock hash before/after yank",
+      "exit": 0,
+      "log_sha256": "3a191c23d046a285cbf491ab2d8f50d8c7d42ae0f5d4f49b890f95abada2d308"
+    },
+    {
+      "command": "cargo install bboxy450-term --version 0.1.0 --root <private unlocked root> --target-dir <private old build> (record only: old mux/new harness API mismatch)",
+      "exit": 101,
+      "log_sha256": "8b461ef14f43f4a93246cfe6a82358431a61de24bdbd73ab7258eb917a4f40aa"
+    },
+    {
+      "command": "target/release-validation/old-before/bin/bboxy450-term --version (unsupported old flag opened UI; old saved-layout parse error exited; all three observed probe PIDs gone without kill)",
+      "exit": 1,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "python3 -I scripts/test-formal.py GateTests.test_rate_limit_retries_without_a_count_limit_and_other_errors_fail (live RFC-date regression before fix)",
+      "exit": 1,
+      "log_sha256": "a73e304f087226849339f4d1e4bc1a2050656dabb864d135ff131f0ec093c2df"
+    },
+    {
+      "command": "python3 -I scripts/test-formal.py (including live RFC-date reset regression)",
+      "exit": 0,
+      "log_sha256": "30dd993bffc32df2d2ed936cf54a34e63929358ac987a811a0ac6baaffe3b100"
+    }
+  ],
+  "hashes": {
+    "git:published-source": "9ac8912d86b36555a2dce1e253b1218f3ba7ea6b",
+    "git:crates-v0.1.1:signed-tag-object": "20ed766382f3c5bea7e91534ccfb270ae5ec9ab7",
+    "formal:published-source-evidence": "ce545922c406e7fd4b0817ace953bda90f498dc22aa8427697e8075539fdff4d",
+    "target/package/bboxy450-mermaid-0.1.1.crate": "f12bea398e80723b2f8c4b7519cd8bce8e53df69e053d583ba738ebf37eacf40",
+    "target/package/bboxy450-mermaid-0.1.1.crate.asc": "661e9fa6c38036a9155b118f62a267d16ad1cfc971c225dd6b952fc75e18eaa1",
+    "target/package/bboxy450-ui-core-0.1.1.crate": "8fadff0d432545c123fee56351155a2eeae455eeb449c398cf08e4334b2ab70b",
+    "target/package/bboxy450-ui-core-0.1.1.crate.asc": "ede237ad4d54c2d301bda9d7f3b7e1d28fad9ecab73dd14bd23fc2b4df95e204",
+    "target/package/bboxy450-ui-0.1.1.crate": "afe7aa4fa6b217e6969993c5550eea756bc8be053076ed09a97ef710eb345400",
+    "target/package/bboxy450-ui-0.1.1.crate.asc": "ae22dca7016697450beed604ceaf08f8be2fd489a14f00584fd05317a2663987",
+    "target/package/bboxy450-doc-0.1.1.crate": "b66e0ae996cb98c28bd0d00fb26bf9a401da425fda4a2f44b3f2afbfee6f7584",
+    "target/package/bboxy450-doc-0.1.1.crate.asc": "809fc4f6635dd7d26c5db524f9f0df5f3ba015791d32b6fec159a582215d3a50",
+    "target/package/bboxy450-term-core-0.1.1.crate": "e57520bf4469f822ad19254bda55071214cf7cc205de35aa61dcec8b46cdbe68",
+    "target/package/bboxy450-term-core-0.1.1.crate.asc": "5a23a7672a4ac4855a223d20669ec5581f67b2d68c13b55e53ca1e114e0a6b4f",
+    "target/package/bboxy450-term-firehose-0.1.1.crate": "32fa6fd08dfcbbf9952b1dcca34eb249d7c5acbf3763240030496fa42ef28482",
+    "target/package/bboxy450-term-firehose-0.1.1.crate.asc": "9940a18fa529a12cb200c08e3f77b7cb3a55da369dee3bd633a369cff0a5ef96",
+    "target/package/bboxy450-render-0.1.1.crate": "6cd2263f93271aeb76d17448fbc23284a7f981e21d99288bce98ab1dfa9ff161",
+    "target/package/bboxy450-render-0.1.1.crate.asc": "74eceaea00a3187d3b8c879ddad575d081fb276baf45cbc48ec74dbbfc83aeec",
+    "target/package/bboxy450-book-0.1.1.crate": "46032d53fcbe033078dc8b707535b8600d517eb2f9732f273257530f91b05c1d",
+    "target/package/bboxy450-book-0.1.1.crate.asc": "793ea4496ee6815aaa28404fa2306229f80f728034ce3ae6ec5bdb18ce91641e",
+    "target/package/bboxy450-desktop-notifications-linux-0.1.1.crate": "a155727f53ab1e2633772d72d6da25aaf47733c2caac1e98727c1fec5c26ef6b",
+    "target/package/bboxy450-desktop-notifications-linux-0.1.1.crate.asc": "df4520d5010e713eee9a1eea565be9f335eccbea0ff8c949e6788096ab2b186b",
+    "target/package/bboxy450-desktop-notifications-macos-0.1.1.crate": "2b979298be29cf544fd1f1598484ba99d445888144c11514d8231f937d1cf4a8",
+    "target/package/bboxy450-desktop-notifications-macos-0.1.1.crate.asc": "52c74fff0e9f4a473bf8660b08b517752c17374c955a4e4ffa75e62d7d13a624",
+    "target/package/bboxy450-desktop-notifications-windows-0.1.1.crate": "d21adb3906f7c9d8609e145e4f8c1d13bfed95a347d086eef332eea8418b7c8c",
+    "target/package/bboxy450-desktop-notifications-windows-0.1.1.crate.asc": "a580b3258466c4dd4e9ca908280a364b52177d00c111d2cf52eb181eed059ec2",
+    "target/package/bboxy450-desktop-notifications-0.1.1.crate": "a99c7d1b639127d22f28919e03ecb199a34a508e7b55ca900940f1790b27e522",
+    "target/package/bboxy450-desktop-notifications-0.1.1.crate.asc": "dd61e377ed9b0dff97381de54ffbc90c40c68ed917fbb037b1237ba3a2c1bfb1",
+    "target/package/bboxy450-rt-0.1.1.crate": "4dba49f1876aa52a2810d0177374bce2e9e4dfefe60ef6caa052ffd6c491708f",
+    "target/package/bboxy450-rt-0.1.1.crate.asc": "1c6a7026cb9535eaf9c814daaa7a28920d7ebd2522cb51f958aba2d2e86e9042",
+    "target/package/bboxy450-harness-host-0.1.1.crate": "3fe068d35a650d7f834b3e439c2f8e7c898292a8252652268fa12ae4f02aee28",
+    "target/package/bboxy450-harness-host-0.1.1.crate.asc": "d4f5851fa195e685115babb0033f587af3a3bf9f98915ae625cf83754ef0de9e",
+    "target/package/bboxy450-harness-wake-up-0.1.1.crate": "bf0bd430e047028538eb180bf3e330aadc69e040176c960e6dcd12d35f350dfc",
+    "target/package/bboxy450-harness-wake-up-0.1.1.crate.asc": "5307ecb869a722cb9297a84f70e2a59a867206401543e730ca4b3d638116ab96",
+    "target/package/bboxy450-keychain-windows-0.1.1.crate": "e3f4768d8dfdb8103022955e9a7a4211e30b2dffbd74eedcc9829e3d745cf025",
+    "target/package/bboxy450-keychain-windows-0.1.1.crate.asc": "ef138a4146cc2be356e883052e52559dbb87ada7096b72145021b2b963fb8def",
+    "target/package/bboxy450-keychain-file-0.1.1.crate": "a1cfe8db9b6391cfade62703134a3dc54df156776bcbca2ba0c60314377e419c",
+    "target/package/bboxy450-keychain-file-0.1.1.crate.asc": "e86aa57d3f211515018a24885c94396fa316165d53692173710e00bc55a4e1be",
+    "target/package/bboxy450-keychain-0.1.1.crate": "78763e11fe8d0824d9b0e5c8a20154704fd18ffb0dc617508d53bb36b721a0ec",
+    "target/package/bboxy450-keychain-0.1.1.crate.asc": "d4d3b639e1f81fbaf346daa313cd94cbdaa28342ee9fa84677ecc3d67730f27a",
+    "target/package/bboxy450-plugin-0.1.1.crate": "fe93a2ece7c966c8b9f6f6a48669cea21daa3203a618bec0c8cb15cd32ed5d53",
+    "target/package/bboxy450-plugin-0.1.1.crate.asc": "4ced91b4e5b60c6d6b9daa609774da3345ac8cd2582c52677fbd0cb9f9b57901",
+    "target/package/bboxy450-term-desktop-core-0.1.1.crate": "c712e0f932e53da4003b6d66682be3e52e34c6ce1e914c92bd67ab4c46a0b409",
+    "target/package/bboxy450-term-desktop-core-0.1.1.crate.asc": "796c7b20dfdbbb4e2620006fd41b07ee3c4335b4d50ffc7dd9c9e8104f9efea1",
+    "target/package/bboxy450-term-desktop-macos-0.1.1.crate": "0712e3822c7089b37f17e361e3bfcf9785220977eab874026312533b4db1d939",
+    "target/package/bboxy450-term-desktop-macos-0.1.1.crate.asc": "a4b0cdfa81baa7279f442a06b1e5e23ef180ea9e7b16f8ac785099c50f7e92f6",
+    "target/package/bboxy450-term-desktop-0.1.1.crate": "ff6b2bb3532fb9244d411c1e46e68b8a10070011dfa2982755bd24d15d71d8aa",
+    "target/package/bboxy450-term-desktop-0.1.1.crate.asc": "65fd46cca9bffb12677035b8e1e23dc6d299e5b96c34def6ca7e41df233caa0a",
+    "target/package/bboxy450-term-proto-0.1.1.crate": "59bf3eb16c8e7a4ed948528cb5c5cbdbb65f0767dc503d58fc4a48fca1bc601e",
+    "target/package/bboxy450-term-proto-0.1.1.crate.asc": "36cce6dac2f3e631a14381bfff042fc1a05dd799b19d12830efd84f1dc81d286",
+    "target/package/bboxy450-term-mux-0.1.1.crate": "41f4db207d7f5da066281f7a5b8eb7df8048468a90ec625516eaafe6928a1a60",
+    "target/package/bboxy450-term-mux-0.1.1.crate.asc": "48b750536143b9782cda7b46bf2e53dbfce97b6c249989e21d3ea41b7bc27d44",
+    "target/package/bboxy450-term-0.1.1.crate": "ea067061805802c0ff29645c7d35e03438e41e16ebb714504334b01c9aea0b9f",
+    "target/package/bboxy450-term-0.1.1.crate.asc": "c94ce95568b0a93186db74909db9d3464b3ff3f6edac552953b23ec6dbc08551",
+    "target/package/bboxy450-yarn-macros-0.1.1.crate": "fa5b2b435c5f5f448fd559a81845e8a4102112f97f9a31c332b3e7709998960c",
+    "target/package/bboxy450-yarn-macros-0.1.1.crate.asc": "3e9941bdf2eb8f8c70388342ca08cf4ba1c3e727415cb24246b2e485d8a45919",
+    "target/package/bboxy450-yarn-0.1.1.crate": "76113e19f95610b98e59cbe5dd2497cf2a614f47bf83d4862e876ed652638b6b",
+    "target/package/bboxy450-yarn-0.1.1.crate.asc": "05018a5f36404b2d68e461758451ffe8cea8dff73f6ef53642fddc90649e2bec",
+    "target/release-validation/old-baseline/bboxy450-term-0.1.0/Cargo.lock": "e02105b3edc5484d0f0a5e2b96f35c0100d72371f483906c74014f82aaefd2d5",
+    "target/release-validation/fresh-source/bboxy450-term-0.1.1/Cargo.lock": "2842dee728bca2f30ae4b0d5cd739a672f0b28a95455069bfeefa8660da92091",
+    "target/release-validation/yank-lock-witness/Cargo.lock": "f601ac276c05cdead369ec93c5a1b1941352136da6650a850080c4f7f94b3d73",
+    "target/release-validation/release.json": "795e62024721a0e6f51674c6a942815e7b499f6514720dac8b04e1c2773c11fc"
+  }
+}
