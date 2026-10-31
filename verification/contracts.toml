@@ -102,6 +102,16 @@ property = "A queued hook is delivered only to the enabled activation whose gene
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "PluginHookQueue"
+title = "Plugin hook queue: many plugins share one bounded FIFO; superseded deliveries are never delivered"
+models = ["PluginHookQueue", "BrokenPluginHookQueue"]
+sources = ["crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs"]
+assumptions = "Two plugins of one root, a FIFO of two slots (HOOK_QUEUE abstracted) and three offers; each queued delivery records its plugin and that plugin's activation generation; any plugin may be disabled or re-enabled (its generation superseded) at any time; a full queue drops and counts. Delivery timing, budgets, grants and payloads are covered by PluginHook and implementation tests."
+property = "The head is delivered only while its plugin's generation is current, otherwise it is skipped as stale (NoInvalidEffect), and every queued delivery's generation is at most its plugin's current one (QueuedGenerationsNeverAhead, a bounded \\A over the slots with dynamic-index reads). The broken control delivers a stale head and must fail safety. Witness: tests/plugin_host.rs hook_deliveries_are_measured_and_superseded_ones_are_named_skips. Shipped as crates/bbt-mux/models/PluginHookQueue.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "PluginRuntime"
 title = "Plugin SDK runtime: bounded admission, cancellation and host callbacks during a call"
 models = ["PluginRuntime", "BrokenPluginRuntime"]

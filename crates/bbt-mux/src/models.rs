@@ -6,7 +6,8 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Host-side plugin contract models (feature `model`), shipped with this
 //! package as `models/*.tla` and `models/*.cfg`: activation, live
-//! connections, the hook gate and setup. Each family is the model and its
+//! connections, the hook gate, setup and the hook queue many plugins share.
+//! Each family is the model and its
 //! `Broken` control (one guard removed), checked by `make test-formal` with
 //! the native `bboxy450-tlc` checker and Java TLC.
 use bboxy450_tlc::Expr::{Int, Var};
@@ -16,13 +17,129 @@ use bboxy450_tlc::build::{action, all, eq, implies, model, ne, no_bad, safe};
 use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
-pub fn families() -> [fn(bool) -> Model; 4] {
+pub fn families() -> [fn(bool) -> Model; 5] {
     [
         plugin_activation,
         plugin_connection,
         plugin_hook_gate,
         plugin_setup,
+        plugin_hook_queue,
     ]
+}
+
+// The per-root hook queue (plugins/hooks.rs, HOOK_QUEUE) shared by many
+// plugins: two plugins here, a FIFO of two slots, three offers. Each queued
+// delivery carries its plugin and that plugin's activation generation; a
+// disable/re-enable supersedes a generation at any time; a full queue drops
+// and counts the offer. The head is delivered only while its generation is
+// current, else skipped as `stale`. The broken control delivers a stale head.
+pub fn plugin_hook_queue(b: bool) -> Model {
+    use bboxy450_tlc::Expr::Bound;
+    const PLUGINS: usize = 2;
+    const SLOTS: usize = 2;
+    let (generation, len, plugin, slot_generation, offers, bad) = (0, 2, 3, 5, 7, 8);
+    let mut m = model(
+        "PluginHookQueue",
+        b,
+        &[
+            ("generation_a", 1, 0),
+            ("generation_b", 1, 0),
+            ("len", 2, 0),
+            ("slot0_plugin", 1, 0),
+            ("slot1_plugin", 1, 0),
+            ("slot0_generation", 1, 0),
+            ("slot1_generation", 1, 0),
+            ("offers", 3, 0),
+            ("bad", 1, 0),
+        ],
+    );
+    let current =
+        |slot: Expr| Expr::pick(generation, PLUGINS, Expr::pick(plugin, SLOTS, slot.clone()));
+    for p in 0..PLUGINS {
+        // Enqueue at index `len`: every slot keeps its value unless it is that index.
+        let mut updates = vec![
+            (len, Var(len).plus(Int(1))),
+            (offers, Var(offers).plus(Int(1))),
+        ];
+        for slot in 0..SLOTS {
+            let here = Var(len).eq(Int(slot as i64));
+            updates.push((
+                plugin + slot,
+                here.clone().ite(Int(p as i64), Var(plugin + slot)),
+            ));
+            updates.push((
+                slot_generation + slot,
+                here.ite(Var(generation + p), Var(slot_generation + slot)),
+            ));
+        }
+        action(
+            &mut m,
+            &format!("Offer{p}"),
+            all([Var(len).lt(Int(SLOTS as i64)), Var(offers).lt(Int(3))]),
+            &updates,
+        );
+        action(
+            &mut m,
+            &format!("DropWhenFull{p}"),
+            all([eq(len, SLOTS as i64), Var(offers).lt(Int(3))]),
+            &[(offers, Var(offers).plus(Int(1)))],
+        );
+        action(
+            &mut m,
+            &format!("Supersede{p}"),
+            eq(generation + p, 0),
+            &[(generation + p, Int(1))],
+        );
+    }
+    // Pop the head: the second slot moves up and the vacated slot clears.
+    let pop = |extra: Option<(usize, Expr)>| {
+        let mut updates = vec![
+            (len, Var(len).minus(Int(1))),
+            (plugin, Var(plugin + 1)),
+            (slot_generation, Var(slot_generation + 1)),
+            (plugin + 1, Int(0)),
+            (slot_generation + 1, Int(0)),
+        ];
+        updates.extend(extra);
+        updates
+    };
+    let head_current = Var(slot_generation).eq(current(Int(0)));
+    let queued = Int(0).lt(Var(len));
+    action(
+        &mut m,
+        "DeliverCurrentHead",
+        all([queued.clone(), head_current.clone()]),
+        &pop(None),
+    );
+    action(
+        &mut m,
+        "SkipStaleHead",
+        all([queued.clone(), head_current.clone().negate()]),
+        &pop(None),
+    );
+    if b {
+        action(
+            &mut m,
+            "DeliverStaleHead",
+            all([queued, head_current.negate()]),
+            &pop(Some((bad, Int(1)))),
+        );
+    }
+    no_bad(&mut m, bad);
+    // Every queued delivery's generation is at most its plugin's current one.
+    safe(
+        &mut m,
+        "QueuedGenerationsNeverAhead",
+        Expr::forall(
+            0,
+            SLOTS as i64 - 1,
+            implies(
+                Bound(0).lt(Var(len)),
+                Expr::pick(slot_generation, SLOTS, Bound(0)).le(current(Bound(0))),
+            ),
+        ),
+    );
+    m
 }
 
 // Plugin activation (plugins/registry.rs): an inspection result is accepted

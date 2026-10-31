@@ -194,6 +194,16 @@ expected = "liveness"
 frontend = "project"
 
 [[model]]
+name = "PluginHookQueue"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginHookQueue"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "PluginRuntime"
 expected = "pass"
 frontend = "project"
