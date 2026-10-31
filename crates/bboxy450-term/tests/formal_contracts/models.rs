@@ -720,6 +720,71 @@ fn arena(b: bool) -> Model {
     m
 }
 
+// Two dependency-ordered crates, one possible HTTP 429 per crate. Each package,
+// upload, index observation and retry completion is atomic; network bytes,
+// signatures, token custody and permanent outages use the Python witnesses.
+fn crate_publication(b: bool) -> Model {
+    let mut m = model(
+        "CratePublication",
+        b,
+        &[
+            ("crate", 2, 0),
+            ("phase", 3, 0),
+            ("approved", 1, 0),
+            ("dependency_indexed", 1, 0),
+            ("rate_limit", 2, 0),
+        ],
+    );
+    action(&mut m, "VerifyPublisher", eq(2, 0), &[(2, Int(1))]);
+    action(
+        &mut m,
+        "PackageSignedCrate",
+        all([Var(0).lt(Int(2)), eq(1, 0), eq(2, 1), eq(0, 0).or(eq(3, 1))]),
+        &[(1, Int(1))],
+    );
+    action(
+        &mut m,
+        "RateLimited",
+        all([eq(1, 1), eq(4, 0)]),
+        &[(4, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetryAfterRateLimit",
+        all([eq(4, 1), Bool(!b)]),
+        &[(4, Int(2))],
+    );
+    action(&mut m, "Upload", all([eq(1, 1), ne(4, 1)]), &[(1, Int(2))]);
+    action(
+        &mut m,
+        "IndexVisible",
+        eq(1, 2),
+        &[(1, Int(3)), (3, Int(1))],
+    );
+    action(
+        &mut m,
+        "Advance",
+        eq(1, 3),
+        &[(0, Var(0).plus(Int(1))), (1, Int(0)), (4, Int(0))],
+    );
+    safe(&mut m, "PublisherVerified", implies(ne(1, 0), eq(2, 1)));
+    safe(
+        &mut m,
+        "DependencyIndexedBeforeDependent",
+        implies(all([eq(0, 1), ne(1, 0)]), eq(3, 1)),
+    );
+    m.responses.push(Response {
+        name: "PublicationEventuallyCompletes".into(),
+        request: Bool(true),
+        response: eq(0, 2),
+    });
+    m.weak_fair = [0, 1, 3, 4, 5, 6]
+        .into_iter()
+        .map(|index| vec![index])
+        .collect();
+    m
+}
+
 // Check/test evidence is tied to a commit, inputs and current remote base.
 fn landing_verification(b: bool) -> Model {
     let mut m = model(
@@ -1472,7 +1537,8 @@ fn volatile_bus_subscription(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 31] = [
+    let families: [fn(bool) -> Model; 32] = [
+        crate_publication,
         volatile_bus_subscription,
         pane_raster_publication,
         terminal_reply_progress,

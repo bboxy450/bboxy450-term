@@ -172,6 +172,16 @@ property = "Live slices do not overlap; uploads are flushed before submit and th
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "CratePublication"
+title = "Signed dependency-ordered crate publication with rate-limit recovery"
+models = ["CratePublication", "BrokenCratePublication"]
+sources = ["scripts/crates-publisher.py", "Makefile"]
+implementation_tests = ["scripts/test-formal.py"]
+assumptions = "Two crates with one dependency, four phases and at most one 429 per crate. The single publisher owns the immutable verified token environment and clean source for the run. Package/sign, upload, index observation and retry completion are separate atomic actions. Successful IO and the retry timer are weakly fair; permanent network/credential failures are not progress claims. Real HTTP parsing, repeated 429s without a retry-count limit, exact-token binding, GPG artifact bytes and dependency order use Python/process witnesses; no arbitrary Rust or network refinement proof."
+property = "A verified publisher and indexed dependency precede dependent publication; finite throttling eventually clears and both crates complete. The broken control omits retry completion and must fail liveness."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "LandingVerification"
 title = "Source-bound formal evidence before landing"
 models = ["LandingVerification", "BrokenLandingVerification"]

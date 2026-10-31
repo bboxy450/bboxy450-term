@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 33 contract families and 33 broken controls to the
-14 checker/Yarn conformance cases: **80 models** in total. The declarations live
+The project corpus adds 34 contract families and 34 broken controls to the
+14 checker/Yarn conformance cases: **82 models** in total. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
@@ -68,6 +68,7 @@ is added to the terminal runtime.
 | Boundary | Property checked |
 | --- | --- |
 | Landing verification | A clean current commit, inputs, complete checks and current remote base authorize publication |
+| Crate publication | Verified identity and indexed dependencies precede publication; finite rate limits retry to completion |
 | Immediate dirty wake | Rechecking after clearing pending prevents a lost wake |
 | Notification replacement | A queued replacement wins after slow authorization |
 | Notification recovery | Enabled policy checks permission before a question; finite IO failures retry and cancellation eventually withdraws |

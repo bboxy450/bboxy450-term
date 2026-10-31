@@ -7,11 +7,13 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Negative controls for false-green formal verification infrastructure."""
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 import sys
 sys.dont_write_bytecode = True
 
@@ -85,6 +87,117 @@ class GateTests(unittest.TestCase):
                         {**receipt, "token_sha256": "stale"}]:
             with self.assertRaises(ValueError):
                 publisher.verify_identity(token, changed)
+
+    def test_publication_order_includes_renamed_dev_and_platform_dependencies(self):
+        def package(name, dependencies=(), publish=None):
+            return {"id": name, "name": name, "version": "0.1.1", "publish": publish,
+                    "dependencies": [{"name": dep} for dep in dependencies]}
+        data = {"workspace_members": ["app", "render", "firehose", "private"], "packages": [
+            package("app", ["render"]), package("render", ["firehose"]),
+            package("firehose"), package("private", publish=[])]}
+        self.assertEqual([p["name"] for p in publisher.publication_order(data)],
+                         ["firehose", "render", "app"])
+        self.assertEqual([p["name"] for p in publisher.publication_order(data, ["app", "firehose"])],
+                         ["firehose", "app"])
+        with self.assertRaisesRegex(ValueError, "publishable"):
+            publisher.publication_order(data, ["private"])
+        data["packages"][2]["dependencies"] = [{"name": "app"}]
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            publisher.publication_order(data)
+
+    def test_rate_limit_retries_without_a_count_limit_and_other_errors_fail(self):
+        limited = subprocess.CompletedProcess([], 101, "", 'HTTP 429\nRetry-After: 2')
+        success = subprocess.CompletedProcess([], 0, "uploaded", "")
+        with mock.patch.object(publisher.subprocess, "run", side_effect=[limited] * 5 + [success]) as run, \
+                mock.patch.object(publisher.time, "sleep") as sleep:
+            publisher.run_retry(["cargo", "publish"])
+        self.assertEqual(run.call_count, 6)
+        self.assertEqual(sleep.call_args_list, [mock.call(2)] * 5)
+        with mock.patch.object(publisher.subprocess, "run", return_value=limited.__class__([], 101, "", "build failed")):
+            with self.assertRaises(subprocess.CalledProcessError):
+                publisher.run_retry(["cargo", "publish"])
+        self.assertEqual(publisher.retry_delay({}, "retry in 3 minutes"), 180)
+        self.assertEqual(publisher.retry_delay({"Retry-After": "7"}, ""), 7)
+        self.assertEqual(publisher.retry_delay({}, "Try again after 2026-10-31T18:00:00Z", now=1793469540), 60)
+
+    def test_publication_skips_existing_versions_and_waits_before_the_dependent(self):
+        packages = [{"name": n, "version": "0.1.1"} for n in ["base", "app"]]
+        events = []
+        with tempfile.TemporaryDirectory() as own, \
+                mock.patch.object(publisher, "version_exists", side_effect=[True, False]), \
+                mock.patch.object(publisher, "wait_index", side_effect=lambda p: events.append(("index", p["name"]))), \
+                mock.patch.object(publisher, "run_retry", side_effect=lambda argv, **kw: events.append(tuple(argv))), \
+                mock.patch.object(publisher, "verify_artifact", return_value="fixture-sha256"):
+            rows = publisher.publish_packages(packages, Path(own), {})
+        self.assertEqual(events[0], ("index", "base"))
+        self.assertEqual(events[1][0], "make")
+        self.assertIn("CRATE=app", events[1])
+        self.assertEqual(events[2][:2], ("cargo", "publish"))
+        self.assertIn("--registry", events[2])
+        self.assertEqual(events[3], ("index", "app"))
+        self.assertEqual([r["status"] for r in rows], ["already-published", "published"])
+
+    def test_registry_429_retries_and_index_waits_for_the_exact_live_version(self):
+        limited = publisher.urllib.error.HTTPError("https://fixture.invalid", 429, "limited",
+                                                  {"Retry-After": "3"}, io.BytesIO(b"limited"))
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b"indexed"
+        with mock.patch.object(publisher.urllib.request, "urlopen", side_effect=[limited, response]), \
+                mock.patch.object(publisher.time, "sleep") as sleep:
+            self.assertEqual(publisher.registry_read("https://fixture.invalid"), b"indexed")
+        sleep.assert_called_once_with(3)
+        rows = [None, b'{"vers":"0.1.0","yanked":false}',
+                b'{"vers":"0.1.1","yanked":true}', b'{"vers":"0.1.1","yanked":false}']
+        with mock.patch.object(publisher, "registry_read", side_effect=rows), \
+                mock.patch.object(publisher.time, "sleep") as sleep:
+            publisher.wait_index({"name": "bboxy450-term", "version": "0.1.1"})
+        self.assertEqual(sleep.call_count, 3)
+
+    def test_publish_refuses_an_invalid_signature_before_upload(self):
+        with tempfile.TemporaryDirectory() as own, \
+                mock.patch.object(publisher, "version_exists", return_value=False), \
+                mock.patch.object(publisher, "run_retry") as run, \
+                mock.patch.object(publisher, "verify_artifact", side_effect=ValueError("bad signature")):
+            with self.assertRaisesRegex(ValueError, "signature"):
+                publisher.publish_packages([{"name": "app", "version": "0.1.1"}], Path(own), {})
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][0], "make")
+
+    def test_workspace_publish_make_gate_requires_exact_normal_clean_bboxy_identity(self):
+        root = Path(__file__).resolve().parents[1]
+        if not (root / "crates/bboxy450-term").exists():
+            return  # The standalone checker has no workspace publication target.
+        with tempfile.TemporaryDirectory() as own:
+            own = Path(own)
+            (own / "bin").mkdir()
+            (own / "scripts").mkdir()
+            (own / "scripts/cache-env.sh").write_text(":\n")
+            fixtures = {
+                "gh": 'printf "%s\\n" "$FIXTURE_ACTOR"',
+                "git": 'case "$1" in status) printf "%s" "$FIXTURE_DIRTY";; rev-parse) echo fixture-head;; esac',
+                "python3": 'echo invoked > "$FIXTURE_CALLED"',
+            }
+            for name, body in fixtures.items():
+                path = own / "bin" / name
+                path.write_text("#!/bin/sh\n" + body + "\n")
+                path.chmod(0o700)
+            called, log = own / "called", own / "ci.log"
+            env = {k: v for k, v in publisher.os.environ.items() if k not in {"MAKEFLAGS", "MFLAGS", "MAKELEVEL"}}
+            env.update(PATH=str(own / "bin") + ":" + env["PATH"], FIXTURE_CALLED=str(called))
+            for actor, dirty, receipt, accepted in [
+                ("bboxy450", "", "fixture-head normal 0", True),
+                ("other", "", "fixture-head normal 0", False),
+                ("bboxy450", " M file", "fixture-head normal 0", False),
+                ("bboxy450", "", "old-head normal 0", False),
+                ("bboxy450", "", "fixture-head extended 0", False),
+            ]:
+                called.unlink(missing_ok=True)
+                log.write_text("ci-local: result " + receipt + "\n")
+                result = subprocess.run(["make", "-f", str(root / "Makefile"), "publish-crates", f"CI_LOG={log}"],
+                                        cwd=own, env={**env, "FIXTURE_ACTOR": actor, "FIXTURE_DIRTY": dirty},
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode == 0, accepted, result.stderr)
+                self.assertEqual(called.exists(), accepted)
 
     def test_tool_errors_and_incomplete_success_are_not_property_failures(self):
         for code, output in [(0, "Parsing complete"), (12, "Syntax error"),

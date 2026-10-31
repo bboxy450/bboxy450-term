@@ -201,6 +201,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "CratePublication"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenCratePublication"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "LandingVerification"
 expected = "pass"
 frontend = "project"
