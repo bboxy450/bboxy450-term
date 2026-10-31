@@ -7,6 +7,7 @@
 //! Surface ownership stays with winit; device setup runs on the shared IO runtime.
 use crate::budget::GpuSample;
 use crate::display_link::Drawable;
+mod native_probe;
 use bboxy450_term::model::{self, DrawCtx, Model};
 use bbt_proto::{Screen, SeatId};
 use bbt_render::cells::terminal::PreparedGrid;
@@ -255,6 +256,8 @@ pub struct Gpu {
     chrome: ChromeCache,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
+    native_probe: Option<native_probe::NativeProbe>,
+    configured: bool,
 }
 
 fn texture(device: &wgpu::Device, size: [u32; 2]) -> wgpu::Texture {
@@ -328,8 +331,9 @@ impl Gpu {
         Ok(())
     }
 
-    /// Clone handles to the same device while bootstrap still owns Gpu on IO.
+    /// Initial surface configuration precedes publication to submitting workers.
     pub fn shared_context(&self) -> std::sync::Arc<DeviceContext> {
+        debug_assert!(self.configured, "configure before sharing the GPU queue");
         std::sync::Arc::new(DeviceContext {
             device: self.renderer.context.device.clone(),
             queue: self.renderer.context.queue.clone(),
@@ -360,8 +364,11 @@ impl Gpu {
             .request_device(&Default::default())
             .await
             .map_err(|e| e.to_string())?;
+        let mut native_probe = native_probe::NativeProbe::from_args()?;
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | if native_probe.is_some() {
+                wgpu::TextureUsages::COPY_SRC
+            } else { wgpu::TextureUsages::empty() },
             format,
             width: size[0].max(1),
             height: size[1].max(1),
@@ -372,6 +379,9 @@ impl Gpu {
             color_space: wgpu::SurfaceColorSpace::Srgb,
         };
         prepare_cpu(move || {
+            if let Some(probe) = &mut native_probe {
+                probe.prepare_controls(&device, config.format);
+            }
             let target = texture(&device, [config.width, config.height]);
             let backdrop = texture(&device, [config.width, config.height]);
             let materials = m::Pass::new(&device, FORMAT);
@@ -397,13 +407,19 @@ impl Gpu {
                 chrome: ChromeCache::default(),
                 gpu_sender,
                 gpu_samples,
+                native_probe,
+                configured: false,
             })
         })
         .await
     }
-    pub fn configure(&self) {
+    pub fn configure(&mut self) {
         self.surface
             .configure(&self.renderer.context.device, &self.config);
+        self.configured = true;
+        if let Some(probe) = &mut self.native_probe {
+            probe.surface_configured();
+        }
     }
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 {
@@ -414,6 +430,34 @@ impl Gpu {
         self.configure();
         self.target = texture(&self.renderer.context.device, [width, height]);
         self.backdrop = texture(&self.renderer.context.device, [width, height]);
+    }
+    /// Display-link drawables are imported directly, so their layer owns the
+    /// current extent. Reconfiguring wgpu would demand global queue idleness,
+    /// which worker preparation cannot promise after the context is shared.
+    // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    pub fn resize_native(&mut self, width: u32, height: u32) -> Result<(), String> {
+        debug_assert!(self.configured);
+        if width == 0 || height == 0 { return Ok(()); }
+        let layer = {
+            // SAFETY: this UI owner configures the same layer bound by the
+            // display link. No drawable is imported until its new extent matches.
+            let surface = unsafe { self.surface.as_hal::<wgpu::hal::api::Metal>() }
+                .ok_or("native resize requires Metal")?;
+            let layer = surface.render_layer().try_lock().ok_or("Metal layer busy")?;
+            layer.clone()
+        };
+        let mut extent = layer.drawableSize();
+        extent.width = f64::from(width);
+        extent.height = f64::from(height);
+        layer.setDrawableSize(extent);
+        self.config.width = width;
+        self.config.height = height;
+        self.target = texture(&self.renderer.context.device, [width, height]);
+        self.backdrop = texture(&self.renderer.context.device, [width, height]);
+        if let Some(probe) = &mut self.native_probe {
+            probe.layer_resized();
+        }
+        Ok(())
     }
     pub fn adapter_name(&self) -> &str {
         &self.renderer.context.adapter_info.name
@@ -491,6 +535,9 @@ impl Gpu {
             if raw.width() != self.config.width as usize
                 || raw.height() != self.config.height as usize
             {
+                if let Some(probe) = &mut self.native_probe {
+                    probe.rejected_drawable();
+                }
                 return Ok(None);
             }
             let size = wgpu::Extent3d {
@@ -524,7 +571,7 @@ impl Gpu {
                             sample_count: 1,
                             dimension: wgpu::TextureDimension::D2,
                             format: self.config.format,
-                            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                            usage: self.config.usage,
                             view_formats: &self.config.view_formats,
                         },
                         wgpu::TextureUses::UNINITIALIZED,
@@ -586,6 +633,15 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        let mut probe_sample = self.native_probe.as_ref().and_then(|probe| {
+            panes.as_ref().and_then(|panes| probe.begin(&self.renderer.context.device, panes, &self.target, scale, frame_id))
+        });
+        if let Some(sample) = &mut probe_sample {
+            sample.surface(&self.surface, matches!(frame, Acquired::Metal { .. }));
+        }
+        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
+            probe.inject(sample,"source",&self.target,&mut encoder);
+        }
         if let Some(panes) = panes {
             self.cells.draw(
                 &mut self.renderer,
@@ -612,6 +668,9 @@ impl Gpu {
                 .map_err(|e| e.to_string())?;
             }
         }
+        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
+            probe.inject(sample,"copy",&self.target,&mut encoder);
+        }
         let surface_view = frame.texture().create_view(&Default::default());
         self.renderer
             .composite_group_clearing(
@@ -630,6 +689,10 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        if let (Some(probe),Some(sample)) = (&mut self.native_probe,probe_sample) {
+            probe.inject(&sample,"final",frame.texture(),&mut encoder);
+            probe.record(sample,&self.target,frame.texture(),&mut encoder);
+        }
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
         // queue markers bracket the submission (including staging uploads),
         // yielding a conservative GPU span without inspecting private state.
@@ -638,6 +701,9 @@ impl Gpu {
         let gpu_start = timing_marker(&self.renderer.context.queue)?;
         gpu_start.commit();
         self.renderer.context.queue.submit([encoder.finish()]);
+        if let Some(probe) = &mut self.native_probe {
+            probe.submitted(&self.renderer.context.device);
+        }
         self.passes = bbt_render::passes::take();
         let gpu_end = timing_marker(&self.renderer.context.queue)?;
         let sender = self.gpu_sender.clone();

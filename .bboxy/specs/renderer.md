@@ -4,7 +4,7 @@ type: "spec"
 number: 98
 title: "Renderer — architecture and automated render testing"
 created: "2026-10-21T21:11:08Z"
-updated: "2026-10-30T05:19:00Z"
+updated: "2026-10-31T18:18:14Z"
 ---
 # Renderer — architecture and automated render testing
 
@@ -60,6 +60,37 @@ finite `RenderLinePlan` and `AsyncRenderPreparation` models. CPU preparation
 profiles exclude GPU execution, presentation and physical input latency.
 
 Every renderer change is proven by pictures, not prose. Three layers, all run by `cargo test -p bbt-render` and in CI on macOS.
+
+**Native strip night (operator #72 round 2, 2026-10-31).**
+The native UI owns initial surface configuration and layer extents. It configures
+before publishing `RenderContext` to the independently submitting IO preparer.
+After sharing, Metal display-link resizes set the layer drawable size and replace
+the composition targets directly; they never ask wgpu for global queue idleness.
+The display link is rebound and acquisition rejects any old-size drawable. This
+fixes the observed `Surface::configure` failure when a worker submits during its
+idle check; it does not establish the original strip's cause. CV/FIFO retain
+their existing wgpu surface reconfiguration path. `NativeSurfaceResize` models
+these owner transitions, delayed drawables and A/B/A sizes with broken controls;
+the native witness requires exactly one real wgpu configuration per instance.
+
+`make test-native-strip` installs an ad-hoc private app, records a real Codex
+session against the local SSE provider, and replays its persisted bytes through
+a real seat while ctl resizes the native window and changes terminal font size.
+The night owns the same test through `tests/native_strip.rs`. Debug-only
+`--native-frame-probe DIR` requires an unattended native test account and copies
+16 columns from the focused source raster, composition and final display-link
+drawable in the normal frame command buffer. No redraw request or UI/GPU wait
+is added. Readback workers begin after 16 frames and poll without a GPU wait;
+there are at most 2048 observations, each at most 4 MiB and 4096 rows. The final
+partial batch is outside the accepted sample. Missing receipts or insufficient
+ink fail. The independent W-cell contrast oracle excludes the bottom 44 logical
+pixels where the known error HUD can cover text; other overlay and physical
+scanout coverage is not claimed. Source, copy and final GPU blank-strip mutants
+must fail at their corresponding stage. Samples record backing scale, layer
+bounds/contentsScale/drawable size, prepared grid/source identity and rejected
+old-size drawables and direct layer-resize counts. Native backing scales are reported as observed, never
+substituted by a synthetic scale claim; the existing private-layer test covers
+both 1× and 2×. Session bytes, accounts and pixel bands stay local.
 
 **4.1 Smoke.** Create a device, render one frame of a 80×24 grid with the fixture text, read back, assert non-black pixels in known cells. Runs in seconds, fails on any pipeline or shader compile error.
 

@@ -59,8 +59,8 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
-The project corpus adds 34 contract families and 34 broken controls to the
-14 checker/Yarn conformance cases: **82 models** in total. The declarations live
+Each project contract pairs a model family with its broken control. The checked
+totals come from `contracts.toml` and `corpus.toml`. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only
 integration consumer of the published native checker. No Java or model checker
 is added to the terminal runtime.
@@ -89,6 +89,8 @@ is added to the terminal runtime.
 | Live-only bus subscription | Anonymous new subscriptions bypass retained storage; replay and durable policies retain IO |
 | Seat ingestion | The watched quota permits background progress and pauses stay local |
 | Terminal raster publication | Worker-submitted pixels stay immutable across source replacement, including A → B → A |
+| Native surface resize | Configure precedes worker sharing, Metal layer resize avoids global GPU idleness, and acquire rejects lagging drawables |
+| Native frame observation | Private source/composition/drawable copies are read only after submission and retain their frame identity while the UI advances; real pixels, layer sizes and injected strips use the native night witness |
 | Render arena | Live slices are disjoint, uploads precede submit, rewind follows its boundary |
 | Read-only selection | Replacing displayed source retires its captured range |
 | Sidebar accordions | Independent fold choices preserve focus and survive save/restore |

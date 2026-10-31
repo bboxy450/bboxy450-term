@@ -363,6 +363,26 @@ property = "The same opaque token can occur in independent E2E/decision queries 
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "NativeSurfaceResize"
+title = "Native resize does not require shared GPU queue idleness"
+models = ["NativeSurfaceResize", "BrokenNativeSurfaceResize"]
+sources = ["crates/bboxy450-term/src/gpu.rs", "crates/bboxy450-term/src/main.rs"]
+implementation_tests = ["scripts/e2e/native_strip.py", "scripts/e2e/shared_codex.py", "crates/bboxy450-term/tests/native_strip.rs"]
+assumptions = "One UI owner, one independently submitting preparation worker, two sizes with A/B/A transitions and delayed/reordered drawable delivery. Configure/share, layer+target resize, worker submit, arrival and acquire are atomic here. No fairness/liveness claim: a matching drawable is an explicit progress assumption, and zero-size/occlusion can suppress frames. Native Metal display-link uses imported drawables; CV/FIFO retain the wgpu surface path. GPU execution, native API errors, backing-scale delivery and physical scanout use implementation tests."
+property = "Initial configuration precedes context sharing; native resizes never request global shared-queue idleness; old-size drawables cannot present. Broken controls expose the queue early, configure amid worker submission and present an old drawable. The real native detector counts actual wgpu configurations (exactly one) and layer resizes, checks target/layer/drawable sizes and checks source-to-final ink."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "NativeFrameObservation"
+title = "Native frame probe observes immutable submitted copies"
+models = ["NativeFrameObservation", "BrokenNativeFrameObservation"]
+sources = ["crates/bboxy450-term/src/gpu.rs", "crates/bboxy450-term/src/gpu/native_probe.rs"]
+implementation_tests = ["scripts/e2e/native_strip.py", "scripts/e2e/shared_codex.py"]
+assumptions = "One retained observation and three distinct frame identities with A/B/A content. Encoding, submission, advancing the UI and reading/retiring one private copy are atomic actions. No fairness assumption: incomplete or failed readback produces no accepted receipt. The actual observer batches 16 produced frames, caps samples at 2048 and each three-band allocation at 4 MiB. GPU/driver correctness, filesystem failures, native resize/scale, pixels, final scanout and the final partial batch remain implementation-only."
+property = "A read observation belongs to its immutable submitted frame even when the UI has advanced. The broken control reads before submission. The real-window witness independently rejects actual source, composition and final-drawable GPU strip mutations; known bottom HUD coverage is excluded."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "PaneRasterPublication"
 title = "Immutable worker-prepared terminal pixels"
 models = ["PaneRasterPublication", "BrokenPaneRasterPublication"]

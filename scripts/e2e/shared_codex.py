@@ -63,11 +63,14 @@ def main():
     parser.add_argument("--render-check", action="store_true")
     parser.add_argument("--stream-check", action="store_true",
                         help="stream synthetic local text while resizing and sample actual Codex source grids")
+    parser.add_argument("--native", action="store_true",
+                        help="use the real window/display link and retain this private Codex byte stream")
     parser.add_argument("--color-check", action="store_true",
                         help="prove real Codex foreground colors despite inherited automation settings")
     parser.add_argument("--codex", help="Codex executable (defaults to PATH)")
     parser.add_argument("--shim", action="store_true", help="exercise a private forwarding shim")
     options = parser.parse_args()
+    assert not options.native or options.stream_check, "--native requires --stream-check"
     binary = options.binary.resolve()
     cold, render_check = options.cold, options.render_check
     codex = shutil.which(options.codex or "codex")
@@ -85,6 +88,9 @@ def main():
                PATH=os.path.dirname(codex) + ":/usr/bin:/bin:/usr/sbin:/sbin",
                TERM="xterm-256color", LANG="en_US.UTF-8", BBOXY_RUN_DIR=str(run))
     env["BBOXY_CODEX_PREFLIGHT_TRACE"] = "1"
+    probe = root / "frames"
+    if options.native:
+        probe.mkdir()
     if options.color_check:
         # Contaminate the app/supervisor parent, never the explicit launch map.
         # The warm private daemon also inherits this, testing TUI-local colors.
@@ -315,7 +321,8 @@ def main():
             daemon_pid = started["pid"]
             record_updater()
         log = (root / "app.log").open("w")
-        app = subprocess.Popen([str(binary), "--headless", "--ctl", "--unattended", "--test-account",
+        app = subprocess.Popen([str(binary), *(["--native-frame-probe", str(probe)] if options.native else ["--headless"]),
+                                "--settings-config", str(root / "settings.toml"), "--ctl", "--unattended", "--test-account",
                                 str(root / "account"), "--run-dir", str(run), "--repository",
                                 str(root / "repository")], env=env, cwd=work,
                                stdin=subprocess.DEVNULL, stdout=log, stderr=log)
@@ -421,6 +428,8 @@ def main():
             for index in range(24):
                 if stream_finished.is_set():
                     break
+                if options.native and index % 6 == 0:
+                    ctl("ui", "key", "cmd-equal" if index % 12 == 0 else "cmd-minus")
                 ctl("app", "resize", sizes[index % len(sizes)])
                 snapshot = ctl("seat", "screen", a)["data"]
                 ink = [row for row in snapshot["rows"] if "W" * 8 in row]
@@ -431,13 +440,27 @@ def main():
                 time.sleep(.05)
             assert stream_finished.wait(20), "local Codex text stream did not finish"
             stream_stats["samples"] = samples
-            stream_stats["basis"] = "real private Codex 0.164 local SSE; source grids only, no forced capture or per-present GPU/scanout claim"
+            stream_stats["basis"] = ("real private Codex local SSE; native frame bands await independent native_strip.py analysis; no physical scanout claim"
+                                     if options.native else "real private Codex 0.164 local SSE; source grids only, no forced capture or per-present GPU/scanout claim")
             (root / "stream-evidence.json").write_text(json.dumps(stream_stats, indent=2) + "\n")
             print("Streaming observations: " + json.dumps(stream_stats), flush=True)
             assert stream_stats["deltas"] >= 64, stream_stats
             assert len(samples) >= 4 and sum(row["ink_rows"] > 0 for row in samples) >= 4, stream_stats
             assert len({(row["cols"], row["rows"]) for row in samples}) >= 3, stream_stats
         wait(lambda: screen(a), lambda text: "WAKE_ACK_A" in text, "native shared-daemon wake")
+        if options.native:
+            # Capture persistence can lag the live replica; never accept a
+            # startup-query prefix as a streaming fixture. Read only complete
+            # records and wait for discriminating real output with closed sync
+            # batches. The source screen above proves the final ack; raw delta
+            # paints may spell it as a reused W plus a new "AKE_ACK_A" suffix.
+            recorded = wait(lambda: captured_output(a),
+                            lambda data: data.count(b"W") >= 8192 and
+                            data.count(b"\x1b[?2026h") >= 20 and
+                            data.count(b"\x1b[?2026h") == data.count(b"\x1b[?2026l"),
+                            "real Codex bytes persisted for replay")
+            (root / "codex-stream.bin").write_bytes(recorded)
+            ctl("seat", "capture", a, str(root / "native.png"))
         assert "WAKE_ONLY_A" not in screen(b)
         assert not any(request["seat"] == "B" and request["wake"] for request in Provider.requests)
         ctl("seat", "close", a)
@@ -475,6 +498,11 @@ def main():
             except subprocess.TimeoutExpired:
                 app.terminate()
                 app.wait(timeout=5)
+        if app is not None and (run / "logic.owner.json").exists():
+            recovery = ctl("app", "start", "--headless", "--ctl", "--unattended",
+                           "--test-account", str(root / "account"))
+            (root / "cleanup-owner.json").write_text(json.dumps(recovery) + "\n")
+            ctl("app", "stop")
         if daemon_started:
             if updater is None:
                 record_updater()

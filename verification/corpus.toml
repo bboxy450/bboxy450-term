@@ -1,6 +1,26 @@
 # Independent expectations and frontend ownership; omitted corpus members fail the gate.
 
 [[model]]
+name = "NativeSurfaceResize"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenNativeSurfaceResize"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "NativeFrameObservation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenNativeFrameObservation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "YarnReactor"
 expected = "pass"
 frontend = "yarn"

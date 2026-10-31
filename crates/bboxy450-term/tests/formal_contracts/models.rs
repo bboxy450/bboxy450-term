@@ -1539,9 +1539,55 @@ fn volatile_bus_subscription(b: bool) -> Model {
     m
 }
 
+// One retained observation and three frame identities (A/B/A content). UI
+// encode/submit and worker read are atomic; native_strip.py checks GPU bytes.
+fn native_frame_observation(b: bool) -> Model {
+    let mut m = model(
+        "NativeFrameObservation",
+        b,
+        &[
+            ("frame", 3, 1),
+            ("sample_frame", 3, 0),
+            ("sample_bytes", 3, 0),
+            ("stage", 3, 0),
+            ("submitted", 3, 0),
+            ("bad_read", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "EncodePrivateBandCopies",
+        eq(3, 0),
+        &[(1, Var(0)), (2, Var(0)), (3, Int(1))],
+    );
+    action(&mut m, "SubmitFrame", eq(3, 1), &[(4, Var(1)), (3, Int(2))]);
+    for next in [2, 3] {
+        action(
+            &mut m,
+            &format!("NextFrame{next}"),
+            all([eq(0, next - 1), eq(4, next - 1)]),
+            &[(0, Int(next))],
+        );
+    }
+    action(&mut m, "WorkerReadback", eq(3, 2), &[(3, Int(3))]);
+    action(&mut m, "RetireReadback", eq(3, 3), &[(3, Int(0))]);
+    if b {
+        action(&mut m, "ReadBeforeSubmit", eq(3, 1), &[(5, Int(1))]);
+    }
+    safe(
+        &mut m,
+        "ReadOnlySubmittedFrame",
+        implies(eq(3, 3), all([Var(1).le(Var(4)), Var(1).eq(Var(2))])),
+    );
+    no_bad(&mut m, 5);
+    m
+}
+
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 32] = [
+    let families: [fn(bool) -> Model; 34] = [
+        native_surface_resize,
         crate_publication,
+        native_frame_observation,
         volatile_bus_subscription,
         pane_raster_publication,
         terminal_reply_progress,
@@ -1594,4 +1640,77 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     // Plugin-system families live beside their own contract module.
     cases.extend(plugin_models::cases());
     cases
+}
+
+// UI owns configuration, target extent and acquire; the preparation worker can
+// submit independently once shared. Drawable arrival may lag A/B/A resizes.
+fn native_surface_resize(b: bool) -> Model {
+    let mut m = model(
+        "NativeSurfaceResize",
+        b,
+        &[
+            ("configured", 1, 0),
+            ("shared", 1, 0),
+            ("worker", 1, 0),
+            ("extent", 2, 1),
+            ("drawable", 2, 1),
+            ("global_wait", 1, 0),
+            ("bad_present", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "InitialConfigure",
+        all([eq(0, 0), eq(1, 0)]),
+        &[(0, Int(1))],
+    );
+    action(
+        &mut m,
+        "SharePreparationQueue",
+        all([eq(1, 0), if b { Bool(true) } else { eq(0, 1) }]),
+        &[(1, Int(1))],
+    );
+    action(&mut m, "WorkerSubmit", eq(1, 1), &[(2, Int(1))]);
+    for size in [1, 2] {
+        action(
+            &mut m,
+            &format!("ResizeLayer{size}"),
+            all([eq(0, 1), eq(1, 1), ne(3, size)]),
+            &[(3, Int(size))],
+        );
+        action(
+            &mut m,
+            &format!("DrawableArrives{size}"),
+            eq(0, 1),
+            &[(4, Int(size))],
+        );
+    }
+    action(
+        &mut m,
+        "PresentMatchingDrawable",
+        all([eq(0, 1), Var(3).eq(Var(4))]),
+        &[(6, Int(0))],
+    );
+    if b {
+        action(
+            &mut m,
+            "ReconfigureWhileWorkerSubmits",
+            all([eq(1, 1), eq(2, 1)]),
+            &[(5, Int(1))],
+        );
+        action(
+            &mut m,
+            "PresentOldDrawable",
+            all([eq(0, 1), Var(3).eq(Var(4)).negate()]),
+            &[(6, Int(1))],
+        );
+    }
+    safe(
+        &mut m,
+        "ConfigureBeforeSharing",
+        implies(eq(1, 1), eq(0, 1)),
+    );
+    safe(&mut m, "NativeResizeNeverWaitsForSharedQueue", eq(5, 0));
+    safe(&mut m, "PresentedExtentMatchesTarget", eq(6, 0));
+    m
 }

@@ -5526,14 +5526,8 @@ impl App {
         } else {
             Theme::Dark
         };
-        let theme = self
-            .preferences
-            .preferences
-            .context(self.verify.theme.unwrap_or(self.system_theme))
-            .theme;
         let effects = self.animate;
         let fixture = self.fake || self.animate;
-        let render_context = self.render_context.take();
         let bootstrap = if self.smoke {
             let (open, wait) = tokio::sync::oneshot::channel();
             self.smoke_bootstrap = Some(open);
@@ -5547,13 +5541,6 @@ impl App {
             }
             let result = async {
                 let mut gpu = gpu::Gpu::new(instance, surface, [size.width, size.height]).await?;
-                if let Some(sender) = render_context {
-                    let _ = sender.send(live::RenderContext {
-                        context: gpu.shared_context(),
-                        scale,
-                        theme,
-                    });
-                }
                 let scene = if fixture {
                     scene::Scene::new()
                 } else {
@@ -5583,6 +5570,17 @@ impl App {
             self.apply_preferences();
             let size = self.window.as_ref().unwrap().inner_size();
             gpu.resize(size.width, size.height);
+            // Configure before the IO preparer can submit to this queue. wgpu
+            // refuses configuration if concurrent submission keeps it nonempty.
+            if let Some(sender) = self.render_context.take() {
+                let theme = self.preferences.preferences.context(
+                    self.verify.theme.unwrap_or(self.system_theme)).theme;
+                let _ = sender.send(live::RenderContext {
+                    context: gpu.shared_context(),
+                    scale: self.window.as_ref().unwrap().scale_factor() as f32,
+                    theme,
+                });
+            }
             self.logger.write(format!(
                 "renderer ready: {}, Fifo, frame latency 2, scene seats={}",
                 gpu.adapter_name(),
@@ -7841,8 +7839,13 @@ impl App {
         {
             // Detach the display link and its old-size drawables before
             // reconfiguring the layer, then bind it to the new size.
+            let native = self.pacer.as_ref().is_some_and(DisplayLink::is_metal);
             self.pacer.take();
-            self.gpu.as_mut().unwrap().resize(size.width, size.height);
+            if native {
+                self.gpu.as_mut().unwrap().resize_native(size.width, size.height)?;
+            } else {
+                self.gpu.as_mut().unwrap().resize(size.width, size.height);
+            }
             let gpu = self.gpu.as_ref().unwrap();
             let display = self
                 .window
@@ -9384,6 +9387,8 @@ Debug and verification only, never for normal use:
   --settings-config P  use this preferences TOML path (for isolated probes)
   --capture PNG        write the first presented frame to PNG; Cmd+Shift+S re-captures
   --capture-after SECS re-capture once, SECS after the cockpit's first model
+  --native-frame-probe DIR  bounded normal-frame bands; debug unattended native test account only
+  --native-frame-control source|copy|final  inject a GPU blank strip into that private probe
   --spawn-zsh N        open N zsh seats once the cockpit is ready (default zsh picks)
   --theme light|dark   terminal palette for live verification (default: dark)
   --grid-size COLSxROWS fit one live pane by resizing the real window; 10s deadline

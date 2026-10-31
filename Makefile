@@ -96,6 +96,7 @@ help:
 	  'make test-terminal-replies       Live query responses, quiet replay and bounded models' \
 	  'make test-terminal-streaming     Private Metal streaming/resize and injected strip controls' \
 	  'make test-codex-streaming        Real private Codex local stream, resizes and source-grid samples' \
+	  'make test-native-strip           Real-window Codex/replay frame bands and GPU strip mutants' \
 	  'make test-checkpoint-resize      Both terminal screens survive bounded resize checkpoints' \
 	  'make test-terminal-replay        Busy idle saves, bounded replay recovery and real ctl input' \
 	  'make profile-ingestion           Bounded real-PTY headless probe and endpoint/cursor report' \
@@ -764,6 +765,10 @@ test-codex-rendering: build test-harness-proxy
 .PHONY: test-codex-streaming
 test-codex-streaming: build test-harness-proxy
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --render-check --stream-check
+
+.PHONY: test-native-strip
+test-native-strip: install-unsigned
+	@python3 -I -B scripts/e2e/native_strip.py --binary '$(UNSIGNED_INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)' --night
 
 .PHONY: test-terminal-replies
 test-terminal-replies:
