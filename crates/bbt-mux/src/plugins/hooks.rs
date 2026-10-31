@@ -352,14 +352,26 @@ impl PluginHost {
         deadline: Instant,
     ) -> d::Result<Value> {
         let candidate = &subscription.candidate;
-        let connection = self.connection(candidate, Lane::Hooks)?;
+        let hook = event.subject.as_deref().unwrap_or(&event.event);
+        // A delivery refused before dispatch is a named skip; a dispatched
+        // one is measured by the call itself.
+        let skip = |reason: d::CommandError| {
+            super::super::measure::skipped(
+                self.0.registry.measurements(),
+                candidate,
+                hook,
+                &reason.code,
+            );
+            reason
+        };
+        let connection = self.connection(candidate, Lane::Hooks).map_err(skip)?;
         if connection.authority.activation.generation != subscription.generation
             || !connection.shape().hooks.contains(&subscription.hook)
         {
-            return Err(error(
+            return Err(skip(error(
                 "stale_generation",
                 "the hook was offered under an activation that is no longer current",
-            ));
+            )));
         }
         let budget = subscription.budget();
         let mut args = json!({
@@ -380,6 +392,7 @@ impl PluginHost {
             candidate,
             &connection,
             "hook",
+            Some(hook),
             args,
             &[],
             &[(&result_schema(), "invalid_provider_result")],
@@ -401,6 +414,15 @@ impl PluginHost {
             outcome: outcome.into(),
             code,
         };
+        // Never queued: the bounded queue was full or closed.
+        if outcome == "dropped" {
+            super::super::measure::skipped(
+                self.0.registry.measurements(),
+                &entry.candidate,
+                &entry.event,
+                "queue_full",
+            );
+        }
         let bus = self.0.hooks.bus.lock().ok().and_then(|bus| bus.clone());
         if let Some(bus) = bus {
             let mut detail = json!(entry);

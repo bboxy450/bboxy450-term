@@ -214,7 +214,7 @@ fn prepare(
 ) -> Result<(Vec<Entry>, Option<Job>)> {
     let entries = registry.refresh().map_err(refusal)?;
     if matches!(request, PluginRequest::List) {
-        return Ok((entries, None));
+        return Ok((registry.with_measurements(entries), None));
     }
     let selector = match request {
         PluginRequest::Trust { path, .. } => normalized_source(path)?,

@@ -778,3 +778,133 @@ async fn a_host_request_after_the_activation_changed_is_refused_provider_changed
     assert_eq!(answers.len(), 1, "{answers:?}");
     assert_eq!(answers[0]["error"]["data"]["code"], "provider_changed");
 }
+
+impl Fixture {
+    /// This plugin's measurements as the inventory listing reports them.
+    fn measured(&self) -> Vec<bbt_plugin::registry::Sample> {
+        self.registry
+            .with_measurements(self.registry.refresh().unwrap())
+            .into_iter()
+            .find(|entry| entry.candidate.id == self.candidate)
+            .unwrap()
+            .measurements
+    }
+}
+
+// keeps: #61 call and hook measurements — every dispatched call is measured
+// with its host phases and outcome; a call held by the fixture plugin is
+// measured at its real duration; an exhausted budget is a named failure;
+// a busy connection is a named skip; hook deliveries carry their event and a
+// delivery to a superseded activation is a named skip. No call, no sample.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn calls_and_hooks_are_measured_with_phases_outcomes_and_named_skips() {
+    use bbt_plugin::registry::Outcome;
+    let f = Fixture::new(false).await;
+    assert!(f.measured().is_empty(), "nothing measured before a call");
+    f.changes().await.unwrap();
+    let first = f.measured();
+    assert_eq!(first.len(), 1);
+    assert_eq!(first[0].method, "repo_graph_changes_since");
+    assert_eq!(first[0].outcome, Outcome::Ok);
+    let phases: Vec<&str> = first[0].spans.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(
+        phases,
+        [
+            "repo_graph_changes_since",
+            "validate",
+            "admit",
+            "connect",
+            "plugin",
+            "result",
+            "recheck"
+        ]
+    );
+    assert!(first[0].spans[1..].iter().all(|s| s.depth == 1));
+    let phase_total: f64 = first[0].spans[1..].iter().map(|s| s.ms).sum();
+    assert!(phase_total <= first[0].ms + 0.5, "{first:?}");
+
+    // The fixture holds the call for one second while the delay file exists.
+    fs::write(&f.delay, b"").unwrap();
+    let held = f.changes().await.unwrap();
+    assert_eq!(held["next"], "1");
+    let measured = f.measured();
+    let slow = measured.last().unwrap();
+    assert!(slow.ms >= 1000., "held call measured {} ms", slow.ms);
+    let plugin = slow.spans.iter().find(|s| s.name == "plugin").unwrap();
+    assert!(plugin.ms >= 1000., "{slow:?}");
+
+    // A 300 ms deadline cuts the held call: a named failure at its budget.
+    let cut = f
+        .call_at(Instant::now() + Duration::from_millis(300))
+        .await
+        .unwrap_err();
+    assert_eq!(cut.code, "deadline_exceeded");
+    let failed = f.measured().last().unwrap().clone();
+    assert_eq!(failed.outcome, Outcome::Failed);
+    assert_eq!(failed.code.as_deref(), Some("deadline_exceeded"));
+    assert!((250. ..1000.).contains(&failed.ms), "{failed:?}");
+
+    // One request at a time on this connection: a second is a named skip.
+    let held = {
+        let f = (f.host.clone(), f.candidate.clone());
+        tokio::task::spawn_blocking(move || {
+            f.0.call(
+                &f.1,
+                Contract::RepoGraph,
+                "changes_since",
+                json!({"cursor": "0"}),
+                Instant::now() + Duration::from_secs(10),
+            )
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(f.changes().await.unwrap_err().code, "provider_busy");
+    held.await.unwrap().unwrap();
+    fs::remove_file(&f.delay).unwrap();
+    let skipped: Vec<_> = f
+        .measured()
+        .into_iter()
+        .filter(|s| s.outcome == Outcome::Skipped)
+        .collect();
+    assert_eq!(skipped.len(), 1);
+    assert_eq!(skipped[0].code.as_deref(), Some("provider_busy"));
+    let listed = f.measured();
+    assert!(
+        listed[..listed.len() - 1]
+            .iter()
+            .all(|s| s.spans.is_empty()),
+        "spans only on the newest listed sample"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn hook_deliveries_are_measured_and_superseded_ones_are_named_skips() {
+    use bbt_plugin::registry::Outcome;
+    let hooks = json!([{"event":"PreToolUse","phase":"before","budget_ms":1000}]);
+    let f = Fixture::with(Variant::hooks(
+        hooks,
+        "allow",
+        approval(&["PreToolUse"], None),
+    ))
+    .await;
+    let seat = Ulid::from(9_u128);
+    f.host
+        .notify(&HookEvent::harness("PreToolUse", Some(seat), json!({})));
+    f.wait_for_outcome("allowed").await;
+    let delivered = f.measured();
+    assert_eq!(delivered.len(), 1, "{delivered:?}");
+    assert_eq!(delivered[0].method, "hook");
+    assert_eq!(delivered[0].hook.as_deref(), Some("PreToolUse"));
+    assert_eq!(delivered[0].outcome, Outcome::Ok);
+    assert!(delivered[0].spans.iter().any(|s| s.name == "plugin"));
+    // A -> B -> A without a reconcile: the queued item's generation is stale.
+    f.enable(false);
+    f.enable(true);
+    f.host
+        .notify(&HookEvent::harness("PreToolUse", Some(seat), json!({})));
+    f.wait_for_outcome("stale").await;
+    let last = f.measured().last().unwrap().clone();
+    assert_eq!(last.outcome, Outcome::Skipped);
+    assert_eq!(last.code.as_deref(), Some("stale_generation"));
+    assert_eq!(last.hook.as_deref(), Some("PreToolUse"));
+}

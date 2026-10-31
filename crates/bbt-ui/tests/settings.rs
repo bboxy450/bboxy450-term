@@ -291,6 +291,51 @@ fn registry_projects_hook_warning_and_only_the_current_minute_and_latest_trace()
     assert!(rendered.contains("decision_model 1.0 ✕ choose"));
 }
 
+// keeps: #61 — measured outcomes are named in the summary; a trusted plugin
+// without measurements keeps the unavailable label and plots nothing.
+#[test]
+fn measured_failures_and_skips_are_named_and_no_data_keeps_the_label() {
+    let mut measured: plugins::Plugin = serde_json::from_value(serde_json::json!({
+        "name":"measured", "trust":"trusted", "tier":"read", "enabled":true,
+        "contract":{"name":"repo_graph","version":"1.0"}, "trace":true,
+        "calls":[
+            {"t":3000,"method":"repo_graph_changes_since","ms":300,"outcome":"failed","code":"deadline_exceeded"},
+            {"t":2000,"method":"repo_graph_changes_since","ms":0,"outcome":"skipped","code":"provider_busy"},
+            {"t":1000,"method":"repo_graph_changes_since","ms":12,
+             "spans":[{"name":"repo_graph_changes_since","start":0,"ms":12,"depth":0},
+                      {"name":"plugin","start":2,"ms":9,"depth":1}]}
+        ]
+    }))
+    .unwrap();
+    let unmeasured = plugins::Plugin {
+        name: "unmeasured".into(),
+        trust: "trusted".into(),
+        measurements_unavailable: true,
+        ..Default::default()
+    };
+    measured.measurements_unavailable = false;
+    let view = Settings {
+        section: "Plugins".into(),
+        values: Records {
+            plugins: vec![measured, unmeasured],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let rendered = labels(&layout(&view));
+    assert!(
+        rendered.contains("3 in the last minute · p50 12 ms · max 300 ms · 1 failed (deadline_exceeded) · 1 skipped (provider_busy)"),
+        "{rendered}"
+    );
+    assert!(rendered.contains("plugin 9 ms"), "{rendered}");
+    assert_eq!(
+        rendered
+            .matches("Call and hook measurements unavailable")
+            .count(),
+        1
+    );
+}
+
 // keeps: spec gui-components §1.3
 #[test]
 fn role_prompt_grows_to_its_content_then_retains_a_bounded_scroll_view() {

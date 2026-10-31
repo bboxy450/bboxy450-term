@@ -38,6 +38,9 @@ pub struct Call {
     pub ms: f64,
     pub hook: Option<String>,
     pub spans: Vec<Span>,
+    /// `refused`, `failed` or `skipped` with its named `code`; absent when accepted.
+    pub outcome: Option<String>,
+    pub code: Option<String>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -126,15 +129,30 @@ impl Plugin {
         let mut samples: Vec<_> = self.recent().map(|call| call.ms).collect();
         samples.sort_by(f64::total_cmp);
         if samples.is_empty() {
-            "no calls in the last minute".into()
-        } else {
-            format!(
-                "{} in the last minute · p50 {} · max {}",
-                samples.len(),
-                duration(samples[samples.len() / 2]),
-                duration(*samples.last().unwrap())
-            )
+            return "no calls in the last minute".into();
         }
+        let mut summary = format!(
+            "{} in the last minute · p50 {} · max {}",
+            samples.len(),
+            duration(samples[samples.len() / 2]),
+            duration(*samples.last().unwrap())
+        );
+        // Named non-accepted outcomes, e.g. "2 failed (deadline_exceeded)".
+        let mut named: std::collections::BTreeMap<(&str, &str), usize> = Default::default();
+        for call in self.recent() {
+            if let Some(outcome) = &call.outcome {
+                *named
+                    .entry((outcome, call.code.as_deref().unwrap_or("")))
+                    .or_default() += 1;
+            }
+        }
+        for ((outcome, code), count) in named {
+            summary.push_str(&format!(" · {count} {outcome}"));
+            if !code.is_empty() {
+                summary.push_str(&format!(" ({code})"));
+            }
+        }
+        summary
     }
 }
 
@@ -220,7 +238,7 @@ fn timeline(b: &Build, key: &str, plugin: &Plugin) -> c::Element {
             .map(|(i, call)| {
                 let left = ((WINDOW_MS - call.t) / WINDOW_MS) as f32 * width;
                 let bar_width = (call.ms.min(call.t) / WINDOW_MS) as f32 * width;
-                let co = if call.ms >= 5000. {
+                let co = if call.ms >= 5000. || call.outcome.is_some() {
                     color(TOKENS.color.state.waiting)
                 } else if hooks {
                     color(b.ctx.theme.palette().accent_soft)

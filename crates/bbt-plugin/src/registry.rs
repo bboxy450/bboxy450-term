@@ -125,6 +125,53 @@ pub struct Entry {
     pub trust: Option<TrustRecord>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conformance: Option<Conformance>,
+    /// Host-side measurements of this plugin's recent calls and hook
+    /// deliveries, oldest first; present only in a live inventory listing,
+    /// never in the account record. Empty means nothing was measured.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub measurements: Vec<Sample>,
+}
+
+/// How one measured call or hook delivery ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Outcome {
+    /// The plugin answered and the host accepted the result.
+    Ok,
+    /// The plugin answered with a named refusal (`code`).
+    Refused,
+    /// The host failed the call (`code`): transport, deadline, schema, authority.
+    Failed,
+    /// The host did not deliver it (`code`): queue full, stale activation, busy.
+    Skipped,
+}
+
+/// One host-side phase of a measured call, relative to the call's start.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Span {
+    pub name: String,
+    pub start_ms: f64,
+    pub ms: f64,
+    /// 0 is the whole call; 1 its phases.
+    pub depth: u32,
+}
+
+/// One measured plugin call or hook delivery.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Sample {
+    /// Milliseconds between the call's end and the listing snapshot.
+    pub ago_ms: f64,
+    /// The wire method (`<contract>_<method>`, `tool_<name>` or `hook`).
+    pub method: String,
+    /// The harness event or bus subject of a hook delivery.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hook: Option<String>,
+    pub ms: f64,
+    pub outcome: Outcome,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spans: Vec<Span>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

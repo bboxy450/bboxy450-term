@@ -227,12 +227,43 @@ impl DataSourceProvider {
         }
         Ok(record)
     }
+    /// One provider call, measured host-side like every plugin call.
     fn request_before<T: DeserializeOwned>(
         &self,
         method: &str,
         request: impl Serialize,
         deadline: Option<Instant>,
     ) -> d::Result<T> {
+        let mut trace = super::measure::Trace::start(&format!("data_source_{method}"), None);
+        let mut refused_by_plugin = false;
+        let result = self.request_traced(
+            method,
+            request,
+            deadline,
+            &mut trace,
+            &mut refused_by_plugin,
+        );
+        let (outcome, code) = super::measure::outcome(&result, refused_by_plugin);
+        trace.finish(
+            self.registry.measurements(),
+            &self.activation.candidate,
+            outcome,
+            code,
+        );
+        result.and_then(|value| {
+            serde_json::from_value(value)
+                .map_err(|e| error("invalid_provider_result", e.to_string()))
+        })
+    }
+
+    fn request_traced(
+        &self,
+        method: &str,
+        request: impl Serialize,
+        deadline: Option<Instant>,
+        trace: &mut super::measure::Trace,
+        refused_by_plugin: &mut bool,
+    ) -> d::Result<Value> {
         bbt_rt::assert_not_ui_thread();
         let mut args =
             serde_json::to_value(request).map_err(|e| error("invalid_request", e.to_string()))?;
@@ -292,6 +323,7 @@ impl DataSourceProvider {
             "invalid_request",
         )?;
         validate(&command.args, &args, "argument_schema_mismatch")?;
+        trace.mark("validate");
         let mut slot = self.client.try_lock().map_err(|_| {
             let mut reason = error(
                 "provider_busy",
@@ -310,6 +342,7 @@ impl DataSourceProvider {
                 return Err(reason);
             }
         };
+        trace.mark("authority");
         let result = self.handle.block_on(async {
             if slot.is_none() {
                 let initialize_limit = deadline
@@ -343,6 +376,7 @@ impl DataSourceProvider {
                 }
                 client.configure_deadlines(self.config.timeout);
                 *slot = Some(client);
+                trace.mark("connect");
             }
             let client = slot.as_mut().expect("connection initialized");
             let ceiling = if method == "commit" {
@@ -365,6 +399,7 @@ impl DataSourceProvider {
                 .request("tools/call", json!({"name":name,"arguments":args}), budget)
                 .await
                 .map_err(refused)?;
+            trace.mark("plugin");
             let value = outer.get("structuredContent").cloned().ok_or_else(|| {
                 error(
                     "invalid_provider_result",
@@ -372,6 +407,7 @@ impl DataSourceProvider {
                 )
             })?;
             if outer["isError"] == true {
+                *refused_by_plugin = true;
                 return Err(serde_json::from_value::<d::CommandError>(value)
                     .map_err(|e| error("invalid_provider_result", e.to_string()))?);
             }
@@ -381,6 +417,7 @@ impl DataSourceProvider {
                 "invalid_provider_result",
             )?;
             validate(&command.result, &value, "result_schema_mismatch")?;
+            trace.mark("result");
             Ok(value)
         });
         let pid = slot.as_ref().map(|client| client.pid);
@@ -403,10 +440,8 @@ impl DataSourceProvider {
             self.handle.block_on(client.shutdown());
         }
         self.observe(pid, method, &result);
-        result.and_then(|value| {
-            serde_json::from_value(value)
-                .map_err(|e| error("invalid_provider_result", e.to_string()))
-        })
+        trace.mark("recheck");
+        result
     }
 
     /// The owner may close in background when a root is reset; callers never retry effects.

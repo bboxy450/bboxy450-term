@@ -53,6 +53,8 @@ pub use host::{
     Verdict, seat_role,
 };
 pub use host::{MessageSender, RecordReader};
+#[path = "measure.rs"]
+mod measure;
 
 /// Host-owned deadlines, never supplied by an untrusted descriptor or wire call.
 #[derive(Debug, Clone, Copy)]
@@ -96,6 +98,8 @@ pub struct Registry {
     roots: DiscoveryRoots,
     config: RegistryConfig,
     private_home: Option<PathBuf>,
+    /// Recent call and hook measurements, shared by every clone.
+    measurements: measure::Measurements,
 }
 
 fn activation_key(id: &str) -> String {
@@ -245,7 +249,25 @@ impl Registry {
             roots,
             config,
             private_home: None,
+            measurements: measure::Measurements::default(),
         })
+    }
+
+    /// Attach each entry's host-side call and hook measurements of the last
+    /// minute, for a live inventory listing only: at most
+    /// [`measure::LISTED`] per plugin, with phase spans on the newest only,
+    /// so the listing stays inside its bounded control page.
+    pub fn with_measurements(&self, mut entries: Vec<Entry>) -> Vec<Entry> {
+        let now = std::time::Instant::now();
+        for entry in &mut entries {
+            entry.measurements =
+                measure::listed(self.measurements.snapshot(&entry.candidate.id, now));
+        }
+        entries
+    }
+
+    pub(super) fn measurements(&self) -> &measure::Measurements {
+        &self.measurements
     }
 
     /// Rescan observations and durably revoke changed/missing/colliding bindings.
@@ -366,6 +388,7 @@ impl Registry {
                 activation,
                 trust,
                 conformance,
+                measurements: Vec::new(),
             });
         }
         // Descriptors may add contracts beyond the filename's primary one.

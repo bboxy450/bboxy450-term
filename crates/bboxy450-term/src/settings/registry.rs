@@ -188,6 +188,41 @@ fn set_grant(
     Ok(())
 }
 
+/// The host's measured calls and hook deliveries, as Settings plots them.
+fn measured_calls(
+    entry: &bbt_proto::gui::PluginEntry,
+) -> Vec<bbt_ui::modules::settings::plugins::Call> {
+    use bbt_proto::gui::PluginOutcome as Outcome;
+    use bbt_ui::modules::settings::plugins::{Call, Span};
+    entry
+        .measurements
+        .iter()
+        .map(|sample| Call {
+            t: sample.ago_ms,
+            method: sample.method.clone(),
+            ms: sample.ms,
+            hook: sample.hook.clone(),
+            spans: sample
+                .spans
+                .iter()
+                .map(|span| Span {
+                    name: span.name.clone(),
+                    start: span.start_ms,
+                    ms: span.ms,
+                    depth: span.depth,
+                })
+                .collect(),
+            outcome: match sample.outcome {
+                Outcome::Ok => None,
+                Outcome::Refused => Some("refused".into()),
+                Outcome::Failed => Some("failed".into()),
+                Outcome::Skipped => Some("skipped".into()),
+            },
+            code: sample.code.clone(),
+        })
+        .collect()
+}
+
 fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
     use bbt_proto::gui::PluginState as State;
     use bbt_ui::modules::settings::plugins::{Contract, Health};
@@ -214,8 +249,10 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         .and_then(|tier| serde_json::to_value(tier).ok())
         .and_then(|value| value.as_str().map(str::to_owned))
         .unwrap_or_else(|| "unavailable".into());
+    let calls = measured_calls(entry);
     Plugin {
-        measurements_unavailable: true,
+        // Only the host's real measurements; no data keeps the label.
+        measurements_unavailable: calls.is_empty(),
         candidate: entry.candidate.id.clone(),
         actionable: matches!(
             state,
@@ -292,7 +329,9 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
             ),
         },
         enabled: state == State::Enabled,
-        trace: shape.is_some_and(|s| s.trace),
+        // Host phase spans are measured for every call; a flame graph needs one.
+        trace: shape.is_some_and(|s| s.trace) || calls.iter().any(|call| !call.spans.is_empty()),
+        calls,
         alerts: if state == State::NeedsRetrust {
             vec!["Binary changed; explicit trust of the current digest is required.".into()]
         } else {
@@ -533,8 +572,38 @@ mod tests {
         assert_eq!(plugin.trust, "untrusted");
         assert!(!plugin.enabled);
         assert!(plugin.calls.is_empty());
+        assert!(plugin.measurements_unavailable, "no data keeps the label");
         assert_eq!(plugin.contract.ok, None);
         assert!(!out.plugin_notice.as_ref().unwrap().contains("examples"));
+    }
+    // keeps: #61 — only the host's measured samples become timeline calls.
+    #[test]
+    fn host_measurements_become_calls_with_named_outcomes_and_spans() {
+        let mut measured = entry(Some(1));
+        measured.measurements = serde_json::from_value(json!([
+            {"ago_ms":2000.0,"method":"hook","hook":"PreToolUse","ms":0.0,"outcome":"skipped","code":"stale_generation"},
+            {"ago_ms":500.0,"method":"repo_graph_describe","ms":12.5,"outcome":"ok",
+             "spans":[{"name":"repo_graph_describe","start_ms":0.0,"ms":12.5,"depth":0},
+                      {"name":"plugin","start_ms":1.0,"ms":10.0,"depth":1}]}
+        ]))
+        .unwrap();
+        let model = crate::model::Model {
+            plugin_registry: Some(std::sync::Arc::new(vec![measured])),
+            ..Default::default()
+        };
+        let mut out = Records::default();
+        project(&mut out, Some(&model));
+        let plugin = &out.plugins[0];
+        assert!(!plugin.measurements_unavailable);
+        assert!(plugin.trace, "host spans enable the flame graph");
+        assert_eq!(plugin.calls.len(), 2);
+        assert_eq!(plugin.calls[0].hook.as_deref(), Some("PreToolUse"));
+        assert_eq!(plugin.calls[0].outcome.as_deref(), Some("skipped"));
+        assert_eq!(plugin.calls[0].code.as_deref(), Some("stale_generation"));
+        assert_eq!(plugin.calls[1].outcome, None);
+        assert_eq!(plugin.calls[1].t, 500.0);
+        assert_eq!(plugin.calls[1].spans[1].name, "plugin");
+        assert_eq!(plugin.calls[1].spans[1].start, 1.0);
     }
     // keeps: plugins §3b/§3c operator grants — the card lists what the shape
     // requests with the current grant, and a toggle re-trusts the same digest
@@ -736,7 +805,10 @@ mod tests {
         use bbt_proto::gui::{KnowledgeProvider, KnowledgeRoot, KnowledgeStatus, SwarmScope};
         let a = bbt_ui_model::SwarmId::from_u128(1);
         let b = bbt_ui_model::SwarmId::from_u128(2);
-        let mut model = crate::model::Model { swarm_metadata_loaded: true, ..Default::default() };
+        let mut model = crate::model::Model {
+            swarm_metadata_loaded: true,
+            ..Default::default()
+        };
         model
             .ui
             .window

@@ -6,7 +6,9 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Operator controls for the account-owned production plugin registry.
 use super::*;
-pub use bbt_plugin::registry::{Entry as PluginEntry, State as PluginState};
+pub use bbt_plugin::registry::{
+    Entry as PluginEntry, Outcome as PluginOutcome, State as PluginState,
+};
 pub use bbt_plugin::{
     policy::{FailurePolicy as PluginFailurePolicy, Phase as PluginPhase, Tier as PluginTier},
     shape::Shape as PluginShape,

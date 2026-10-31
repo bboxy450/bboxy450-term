@@ -472,6 +472,21 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
             "code":"plugin_copy_writable",
             "message":"Plugin guidance is unavailable; other guidance remains available."}])
     );
+    // #61: the selected provider's reads are measured host-side and listed.
+    let listed = plugin(&logic.client, PluginRequest::List).await;
+    let measured = &listed
+        .iter()
+        .find(|entry| entry.candidate.id == candidate)
+        .unwrap()
+        .measurements;
+    assert!(
+        measured
+            .iter()
+            .any(|sample| sample.method.starts_with("data_source_")
+                && sample.outcome == bbt_plugin::registry::Outcome::Ok
+                && sample.ms > 0.),
+        "{measured:?}"
+    );
     plugin(
         &logic.client,
         PluginRequest::Disable {
@@ -849,6 +864,15 @@ async fn oracle_only_decision_model_choose_reaches_only_oracle_seats() {
         "{result}"
     );
     assert_eq!(result["model"], "fixture-1");
+    // #61: the oracle's call is measured; the refused worker call never dispatched.
+    let listed = plugin(&logic.client, PluginRequest::List).await;
+    let measured: Vec<_> = listed
+        .iter()
+        .flat_map(|entry| entry.measurements.iter())
+        .filter(|sample| sample.method == "decision_model_choose")
+        .collect();
+    assert_eq!(measured.len(), 1, "{measured:?}");
+    assert_eq!(measured[0].outcome, bbt_plugin::registry::Outcome::Ok);
     logic.shutdown().unwrap();
     supervisor.shutdown().unwrap();
 }

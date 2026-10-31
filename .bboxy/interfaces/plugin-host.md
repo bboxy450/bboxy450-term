@@ -156,3 +156,15 @@ Agreement in [[plugins]] §3c. Both sides: the host (`bbt-mux` `plugins/client.r
 | Lifetime | Each request rechecks that the connection's activation generation and trust record are still current. Requests are served only on `PluginHost` connections, not on the selected data_source provider's own connection. |
 | Messages | `messages.send {destination, text, id?, priority?}` → `{id, destination}`: plain text to a destination exactly in `messages_to`, else `destination_not_granted`; `invalid_request` for threads/mentions/attachments. Sender `plugin:<candidate>` (ledger `Recipient::Plugin`, tree `Actor::Plugin`, row `AuthorKind::Plugin` with the shape name); envelope `IssuerKind::Host` signed by the host's key, `issued_by` `plugin:<candidate>`, seat = derived plugin ID, generation 0, role `plugin`, worker class, no door. Never a seat or operator key. |
 | Verification | `PluginHostApi`/`BrokenPluginHostApi` (native and Java TLC); `tests/plugin_host.rs` host API tests; `tests/plugin_messages.rs` (logic end to end); `messaging/plugin_sender_tests.rs` (attribution, signature, impersonation); `client.rs` callback test; SDK runtime host test; `bbt-plugin` shape test. |
+
+## Call and hook measurements — #61, 2026-10-31
+
+Both sides: the host (`bbt-mux` `plugins/measure.rs`, `PluginHost::dispatch`, `DataSourceProvider::request_before`, hook delivery) and Settings (`bboxy450-term` `settings/registry.rs`, `bbt-ui` `settings/plugins.rs`).
+
+| Boundary | Agreement |
+|---|---|
+| Recording | Every dispatched contract call, declared seat tool, hook delivery and selected-provider call is measured host-side: the whole call (depth 0) and its phases (depth 1: `validate`, `admit`, `authority`, `connect`, `plugin`, `result`, `recheck`, as they apply). A ring of 64 per plugin, 256 plugins at most, in memory only. |
+| Outcomes | `ok`; `refused` (the plugin's own refusal, with its `code`); `failed` (host: deadline, transport, schema, authority, with its `code`); `skipped` (never dispatched: `provider_busy`, `stale_generation`, `plugin_disabled`, `queue_full`, …). |
+| Listing | `PluginRequest::List` entries carry `measurements: [{ago_ms, method, hook?, ms, outcome, code?, spans?}]`: the last minute, newest 32, spans only on the newest. Absent when nothing was measured; never in the account record. |
+| Settings | Timelines, the summary (with named non-`ok` outcomes) and the flame graph come only from these samples; a trusted plugin without samples keeps "Call and hook measurements unavailable". The bundled in-process provider is not measured. |
+| Verification | `tests/plugin_host.rs` `calls_and_hooks_are_measured_with_phases_outcomes_and_named_skips` (a fixture call held 1 s, a 300 ms budget cut, a busy skip) and `hook_deliveries_are_measured_and_superseded_ones_are_named_skips`; `knowledge_provider.rs` provider and oracle-seat listings; `measure.rs` ring/listing units; app projection and `bbt-ui` `tests/settings.rs` rendering tests. |

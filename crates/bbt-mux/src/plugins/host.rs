@@ -20,6 +20,7 @@ use super::*;
 mod hooks;
 #[path = "host_api.rs"]
 mod host_api;
+use super::measure::Trace;
 use crate::knowledge::data_source as d;
 use crate::plugins::client::Shared;
 use bbt_plugin::policy::RoleClass;
@@ -402,6 +403,7 @@ impl PluginHost {
             &tool.candidate,
             &connection,
             &declared.wire_name(),
+            None,
             args,
             &[(&declared.input_schema, "invalid_request")],
             &[(&declared.output_schema, "invalid_provider_result")],
@@ -548,6 +550,7 @@ impl PluginHost {
             candidate,
             &connection,
             &wire,
+            None,
             args,
             &[
                 (&request, "invalid_request"),
@@ -562,8 +565,43 @@ impl PluginHost {
         )
     }
 
+    /// Dispatch one call and record its host-side measurement: the whole call
+    /// and its phases, and how it ended (accepted, refused by the plugin, or
+    /// failed by the host with a named code).
     #[allow(clippy::too_many_arguments)]
     fn dispatch(
+        &self,
+        candidate: &str,
+        connection: &Arc<Connection>,
+        wire: &str,
+        hook: Option<&str>,
+        args: Value,
+        requests: &[(&Value, &str)],
+        results: &[(&Value, &str)],
+        timeout_ms: u64,
+        deadline: Instant,
+    ) -> d::Result<Value> {
+        let mut trace = Trace::start(wire, hook.map(str::to_owned));
+        let mut refused_by_plugin = false;
+        let result = self.dispatch_inner(
+            candidate,
+            connection,
+            wire,
+            args,
+            requests,
+            results,
+            timeout_ms,
+            deadline,
+            &mut trace,
+            &mut refused_by_plugin,
+        );
+        let (outcome, code) = super::measure::outcome(&result, refused_by_plugin);
+        trace.finish(self.0.registry.measurements(), candidate, outcome, code);
+        result
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn dispatch_inner(
         &self,
         candidate: &str,
         connection: &Arc<Connection>,
@@ -573,6 +611,8 @@ impl PluginHost {
         results: &[(&Value, &str)],
         timeout_ms: u64,
         deadline: Instant,
+        trace: &mut Trace,
+        plugin_refused: &mut bool,
     ) -> d::Result<Value> {
         if serde_json::to_vec(&args)
             .map_err(|e| error("invalid_request", e.to_string()))?
@@ -587,6 +627,7 @@ impl PluginHost {
         for (schema, code) in requests {
             validate(schema, &args, code)?;
         }
+        trace.mark("validate");
         let slots = connection.slots.clone();
         let _permit = match connection.lane {
             Lane::Calls => slots.try_acquire_owned().map_err(|_| {
@@ -607,12 +648,14 @@ impl PluginHost {
                 .map_err(|_| error("deadline_exceeded", "an earlier hook held the hook lane"))?
                 .map_err(|_| error("provider_closed", "the hook lane is closed"))?,
         };
+        trace.mark("admit");
         // A transport failure closes the connection; a plugin refusal does not.
         let outcome: Result<Value, (d::CommandError, bool)> = self.0.handle.block_on(async {
             let shared = connection
                 .open(&self.0, deadline)
                 .await
                 .map_err(|e| (e, true))?;
+            trace.mark("connect");
             let budget = Duration::from_millis(timeout_ms)
                 .min(deadline.saturating_duration_since(Instant::now()));
             if budget.is_zero() {
@@ -628,6 +671,7 @@ impl PluginHost {
                 .request("tools/call", json!({"name":wire,"arguments":args}), budget)
                 .await
                 .map_err(|reason| (refused(reason), true))?;
+            trace.mark("plugin");
             let value = outer.get("structuredContent").cloned().ok_or_else(|| {
                 (
                     error(
@@ -638,6 +682,7 @@ impl PluginHost {
                 )
             })?;
             if outer["isError"] == true {
+                *plugin_refused = true;
                 return Err((
                     serde_json::from_value::<d::CommandError>(value)
                         .map_err(|e| error("invalid_provider_result", e.to_string()))
@@ -657,12 +702,17 @@ impl PluginHost {
             for (schema, code) in results {
                 validate(schema, &value, code).map_err(|e| (e, true))?;
             }
+            trace.mark("result");
             Ok(value)
         });
         // Recheck after the call: a result from a superseded generation is refused.
         let current = self
             .authorize(candidate)
             .map(|(authority, _)| authority == connection.authority);
+        trace.mark("recheck");
+        if !matches!(current, Ok(true)) {
+            *plugin_refused = false;
+        }
         match (outcome, current) {
             (Ok(value), Ok(true)) => Ok(value),
             (Err((reason, false)), Ok(true)) => Err(reason),

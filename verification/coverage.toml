@@ -76,8 +76,8 @@ sources = ["crates/bboxy450-desktop-notifications/src/lib.rs", "crates/bboxy450-
 name = "bboxy450-plugin"
 status = "contract-model"
 models = ["PluginActivation", "PluginHook", "PluginConnection", "PluginHostApi", "PluginHookGate"]
-scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); plugin-originated host requests made during a host call are admitted and answered per PluginHostApi; JSON-RPC demultiplexing uses private host fixtures."
-sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host_api.rs", "crates/bbt-plugin/src/trust.rs"]
+scope = "Host activation generation/source-digest contract and hook policy (subjects, ceilings, payload and block grants, delivered per PluginHook); guest execution, ABI and cryptographic implementation use fixtures. Live plugin connections are fenced by activation generation (PluginConnection); plugin-originated host requests made during a host call are admitted and answered per PluginHostApi; JSON-RPC demultiplexing uses private host fixtures. Call and hook measurements (a bounded in-memory ring per plugin, observational only, never an authority input) are implementation-tested."
+sources = ["crates/bbt-plugin/src/lib.rs", "crates/bbt-mux/src/plugins/registry.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/src/plugins/client.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/host_api.rs", "crates/bbt-plugin/src/trust.rs", "crates/bbt-mux/src/plugins/measure.rs"]
 
 [[crate]]
 name = "bboxy450-term-plugin-sdk"
