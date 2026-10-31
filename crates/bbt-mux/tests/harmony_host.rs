@@ -284,7 +284,9 @@ async fn reference_provider_schemas_fit_a_multi_provider_inventory() {
     }
     let account = TestAccount::open(&temp.path().join("custody"), &run).unwrap();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
-    let logic = Logic::start_custodied_with_store(
+    // Injected descriptor/conformance budgets: production keeps 2 s, while a
+    // fresh fixture copy's first exec under full-gate load may not.
+    let logic = Logic::start_custodied_with_plugin_config(
         supervisor.connect().unwrap(),
         LogicConfig {
             run_dir: run,
@@ -292,6 +294,13 @@ async fn reference_provider_schemas_fit_a_multi_provider_inventory() {
             ring: Default::default(),
         },
         account.key_store(),
+        bbt_mux::plugins::HostConfig {
+            registry: bbt_mux::plugins::RegistryConfig {
+                descriptor_timeout: Duration::from_secs(30),
+                conformance_timeout: Duration::from_secs(30),
+            },
+            provider: Default::default(),
+        },
         &tokio::runtime::Handle::current(),
     )
     .unwrap();

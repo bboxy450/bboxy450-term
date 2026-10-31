@@ -908,3 +908,62 @@ async fn hook_deliveries_are_measured_and_superseded_ones_are_named_skips() {
     assert_eq!(last.code.as_deref(), Some("stale_generation"));
     assert_eq!(last.hook.as_deref(), Some("PreToolUse"));
 }
+
+// keeps: #61 trace — a trusted shape declaring trace is asked for spans; its
+// spans merge in order inside the plugin phase at depth 2; a shape without
+// trace contributes none even if the plugin sends some; malformed spans are
+// dropped and counted as a named skip, never changing the host's timing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn declared_trace_spans_merge_inside_the_plugin_phase_and_bad_ones_are_counted() {
+    let spans = json!([
+        {"name":"lookup","start_ms":0.0,"ms":0.0},
+        {"name":"encode","start_ms":0.0,"ms":0.0}
+    ]);
+    let variant = |declare_trace: bool, spans: Value| Variant {
+        knobs: Knobs {
+            declare_trace,
+            spans: Some(spans),
+            ..Knobs::default()
+        },
+        ..Variant::default()
+    };
+    let traced = Fixture::with(variant(true, spans.clone())).await;
+    traced.changes().await.unwrap();
+    let sample = traced.measured().pop().unwrap();
+    let names: Vec<(&str, u32)> = sample
+        .spans
+        .iter()
+        .map(|s| (s.name.as_str(), s.depth))
+        .collect();
+    let plugin = names.iter().position(|(n, _)| *n == "plugin").unwrap();
+    assert_eq!(names[plugin + 1], ("lookup", 2), "{names:?}");
+    assert_eq!(names[plugin + 2], ("encode", 2), "{names:?}");
+    let window = sample.spans.iter().find(|s| s.name == "plugin").unwrap();
+    assert!(sample.spans.iter().filter(|s| s.depth == 2).all(|s| {
+        s.start_ms >= window.start_ms && s.start_ms + s.ms <= window.start_ms + window.ms
+    }));
+    assert!(sample.span_skip.is_none());
+    drop(traced);
+
+    let untraced = Fixture::with(variant(false, spans)).await;
+    untraced.changes().await.unwrap();
+    let sample = untraced.measured().pop().unwrap();
+    assert!(
+        sample.spans.iter().all(|s| s.depth < 2),
+        "no trace declared, none merged"
+    );
+    assert!(sample.span_skip.is_none());
+    drop(untraced);
+
+    let malformed = Fixture::with(variant(
+        true,
+        json!([{"name":"ok","start_ms":0.0,"ms":0.0},{"name":7},{"name":"far","start_ms":0.0,"ms":1.0e9}]),
+    ))
+    .await;
+    malformed.changes().await.unwrap();
+    let sample = malformed.measured().pop().unwrap();
+    assert_eq!(sample.outcome, bbt_plugin::registry::Outcome::Ok);
+    assert!(sample.spans.iter().any(|s| s.name == "ok" && s.depth == 2));
+    let skip = sample.span_skip.unwrap();
+    assert_eq!((skip.code.as_str(), skip.count), ("trace_span_invalid", 2));
+}

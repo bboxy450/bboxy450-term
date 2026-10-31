@@ -103,20 +103,52 @@ pub struct Ctx {
     cancelled: Arc<AtomicBool>,
     deadline: Instant,
     link: Option<Arc<runtime::Link>>,
+    started: Instant,
+    /// Present only when the trusted shape declares `trace` and the host
+    /// asked for spans at `initialize`.
+    spans: Option<Arc<std::sync::Mutex<Vec<Value>>>>,
 }
 
 impl Ctx {
     pub fn new(cancelled: Arc<AtomicBool>, budget: Duration) -> Self {
+        let started = Instant::now();
         Self {
             cancelled,
-            deadline: Instant::now() + budget,
+            deadline: started + budget,
             link: None,
+            started,
+            spans: None,
         }
     }
 
     pub(crate) fn with_link(mut self, link: Arc<runtime::Link>) -> Self {
         self.link = Some(link);
         self
+    }
+
+    pub(crate) fn with_spans(mut self, spans: Arc<std::sync::Mutex<Vec<Value>>>) -> Self {
+        self.spans = Some(spans);
+        self
+    }
+
+    /// Time one named step of this call; the span ends when the guard drops.
+    /// Spans reach the host with the result only when the shape declares
+    /// [`Manifest::trace`] and the host enabled tracing; otherwise this is a
+    /// no-op. At most [`bbt_plugin::registry::TRACE_SPANS`] per call.
+    pub fn span(&self, name: &str) -> SpanGuard<'_> {
+        SpanGuard {
+            ctx: self,
+            name: name
+                .chars()
+                .take(bbt_plugin::registry::TRACE_SPAN_NAME)
+                .collect(),
+            start: Instant::now(),
+        }
+    }
+
+    /// Whether spans recorded through [`Ctx::span`] reach the host.
+    pub fn tracing(&self) -> bool {
+        self.spans.is_some()
     }
 
     /// The host API, bound to this request's deadline. Outside a served
@@ -153,6 +185,32 @@ impl Ctx {
             ))
         } else {
             Ok(())
+        }
+    }
+}
+
+/// One running span from [`Ctx::span`]; recorded when dropped.
+#[derive(Debug)]
+pub struct SpanGuard<'a> {
+    ctx: &'a Ctx,
+    name: String,
+    start: Instant,
+}
+
+impl Drop for SpanGuard<'_> {
+    fn drop(&mut self) {
+        let Some(spans) = &self.ctx.spans else {
+            return;
+        };
+        let ms = |d: Duration| d.as_secs_f64() * 1000.;
+        if let Ok(mut spans) = spans.lock()
+            && spans.len() < bbt_plugin::registry::TRACE_SPANS
+        {
+            spans.push(json!({
+                "name": self.name,
+                "start_ms": ms(self.start.saturating_duration_since(self.ctx.started)),
+                "ms": ms(self.start.elapsed()),
+            }));
         }
     }
 }
@@ -250,6 +308,8 @@ pub struct Manifest {
     pub resource_scheme: String,
     pub signed_writer: bool,
     pub fixture_bootstrap: bool,
+    /// Declare `trace`: the host may ask for [`Ctx::span`] spans with results.
+    pub trace: bool,
 }
 
 impl Manifest {
@@ -270,7 +330,16 @@ impl Manifest {
             resource_scheme: scheme,
             signed_writer: false,
             fixture_bootstrap: false,
+            trace: false,
         }
+    }
+
+    /// Declare `trace: true`: when the host enables it at `initialize`, spans
+    /// from [`Ctx::span`] are returned with each result and merged into the
+    /// host's measurement of that call.
+    pub fn trace(mut self) -> Self {
+        self.trace = true;
+        self
     }
 
     /// Fulfil every method of `contract`.
@@ -481,7 +550,7 @@ impl Manifest {
             "signed_writer": self.signed_writer,
             "fixture_bootstrap": self.fixture_bootstrap,
             "concurrent": false,
-            "trace": false,
+            "trace": self.trace,
             "skills": self.skills,
         });
         if let Some(icon) = &self.icon {

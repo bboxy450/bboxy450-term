@@ -333,7 +333,7 @@ impl Client {
             .iter()
             .map(|s| (s.contract.clone(), json!(s.contract_version)))
             .collect();
-        let mut params = json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":concurrent,"trace":false}}},"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")}});
+        let mut params = json!({"protocolVersion":VERSIONS[0],"capabilities":{"experimental":{"bboxy450":{"shape_version":SHAPE_VERSION,"contracts":contracts,"concurrent":concurrent,"trace":shape.trace}}},"clientInfo":{"name":client_name,"version":env!("CARGO_PKG_VERSION")}});
         if let Some(root) = root {
             params["root"] = json!(
                 root.to_str()

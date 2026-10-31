@@ -146,13 +146,30 @@ pub enum Outcome {
     Skipped,
 }
 
-/// One host-side phase of a measured call, relative to the call's start.
+/// Plugin trace spans the host accepts with one result
+/// (`result._meta.bboxy450.spans`, only when the trusted shape declares
+/// `trace: true`).
+pub const TRACE_SPANS: usize = 32;
+/// Longest accepted plugin span name, in characters.
+pub const TRACE_SPAN_NAME: usize = 64;
+
+/// Plugin trace spans the host refused for one call, with the first reason.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpanSkip {
+    /// `trace_spans_invalid`, `trace_spans_oversized`, `trace_span_invalid`
+    /// or `trace_span_outside_window`.
+    pub code: String,
+    pub count: u32,
+}
+
+/// One phase of a measured call, relative to the call's start: the host's
+/// own phases, and accepted plugin spans (depth 2) inside the `plugin` phase.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Span {
     pub name: String,
     pub start_ms: f64,
     pub ms: f64,
-    /// 0 is the whole call; 1 its phases.
+    /// 0 is the whole call; 1 the host's phases; 2 the plugin's own spans.
     pub depth: u32,
 }
 
@@ -172,6 +189,9 @@ pub struct Sample {
     pub code: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub spans: Vec<Span>,
+    /// Plugin trace spans dropped as malformed or outside the plugin phase.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub span_skip: Option<SpanSkip>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

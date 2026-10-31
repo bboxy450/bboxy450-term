@@ -79,6 +79,11 @@ pub struct Knobs {
     pub timeout_ms: Option<u64>,
     /// Append `shape`, `initialize` and `call` observations as JSON lines.
     pub observe: Option<String>,
+    /// Declare `trace: true` in the shape.
+    pub declare_trace: bool,
+    /// Return these as `_meta.bboxy450.spans` with every contract result,
+    /// whether or not the host asked (valid or deliberately malformed).
+    pub spans: Option<Value>,
     /// Wait for one byte from this Unix socket during `initialize`
     /// (reference) or before printing the descriptor (inspect).
     pub initialize_gate: Option<String>,

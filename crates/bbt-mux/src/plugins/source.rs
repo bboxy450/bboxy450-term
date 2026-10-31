@@ -400,6 +400,10 @@ impl DataSourceProvider {
                 .await
                 .map_err(refused)?;
             trace.mark("plugin");
+            // Only a shape that declares trace was asked for spans.
+            if shape.trace {
+                trace.plugin_spans(&outer);
+            }
             let value = outer.get("structuredContent").cloned().ok_or_else(|| {
                 error(
                     "invalid_provider_result",

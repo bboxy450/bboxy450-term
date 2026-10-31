@@ -41,6 +41,9 @@ pub struct Call {
     /// `refused`, `failed` or `skipped` with its named `code`; absent when accepted.
     pub outcome: Option<String>,
     pub code: Option<String>,
+    /// Plugin trace spans the host dropped for this call, and the first reason.
+    pub spans_dropped: u32,
+    pub spans_dropped_code: Option<String>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -151,6 +154,14 @@ impl Plugin {
             if !code.is_empty() {
                 summary.push_str(&format!(" ({code})"));
             }
+        }
+        let dropped: u32 = self.recent().map(|call| call.spans_dropped).sum();
+        if dropped > 0 {
+            let code = self
+                .recent()
+                .find_map(|call| call.spans_dropped_code.as_deref())
+                .unwrap_or("trace_span_invalid");
+            summary.push_str(&format!(" · {dropped} trace spans dropped ({code})"));
         }
         summary
     }

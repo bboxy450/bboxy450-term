@@ -672,6 +672,10 @@ impl PluginHost {
                 .await
                 .map_err(|reason| (refused(reason), true))?;
             trace.mark("plugin");
+            // Only a shape that declares trace was asked for spans.
+            if connection.shape().trace {
+                trace.plugin_spans(&outer);
+            }
             let value = outer.get("structuredContent").cloned().ok_or_else(|| {
                 (
                     error(

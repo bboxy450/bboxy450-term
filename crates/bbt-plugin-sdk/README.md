@@ -78,6 +78,13 @@ calling request's deadline. The runtime's reader thread routes the host's
 answer back while your call is still running. An ungranted method refuses
 `host_api_not_granted`; outside a served call, `host_unavailable`.
 
+Trace: the host measures every call itself (Settings shows its timeline and
+phases). Declare `Manifest::trace()` to add your own steps: `let _scan =
+ctx.span("scan");` times the step until the guard drops, and the runtime
+returns the spans beside the result (`_meta.bboxy450.spans`) only when the
+host enabled trace at `initialize`; otherwise `ctx.span` is a no-op. At most
+32 spans per call; the host keeps only those inside its own `plugin` phase.
+
 [`testkit::Client`] drives a built plugin executable over stdio for
 conformance tests and probes.
 

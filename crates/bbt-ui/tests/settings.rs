@@ -301,9 +301,11 @@ fn measured_failures_and_skips_are_named_and_no_data_keeps_the_label() {
         "calls":[
             {"t":3000,"method":"repo_graph_changes_since","ms":300,"outcome":"failed","code":"deadline_exceeded"},
             {"t":2000,"method":"repo_graph_changes_since","ms":0,"outcome":"skipped","code":"provider_busy"},
-            {"t":1000,"method":"repo_graph_changes_since","ms":12,
+            {"t":1000,"method":"repo_graph_changes_since","ms":12,"spans_dropped":2,
+             "spans_dropped_code":"trace_span_invalid",
              "spans":[{"name":"repo_graph_changes_since","start":0,"ms":12,"depth":0},
-                      {"name":"plugin","start":2,"ms":9,"depth":1}]}
+                      {"name":"plugin","start":2,"ms":9,"depth":1},
+                      {"name":"scan","start":3,"ms":4,"depth":2}]}
         ]
     }))
     .unwrap();
@@ -324,10 +326,14 @@ fn measured_failures_and_skips_are_named_and_no_data_keeps_the_label() {
     };
     let rendered = labels(&layout(&view));
     assert!(
-        rendered.contains("3 in the last minute · p50 12 ms · max 300 ms · 1 failed (deadline_exceeded) · 1 skipped (provider_busy)"),
+        rendered.contains("3 in the last minute · p50 12 ms · max 300 ms · 1 failed (deadline_exceeded) · 1 skipped (provider_busy) · 2 trace spans dropped (trace_span_invalid)"),
         "{rendered}"
     );
     assert!(rendered.contains("plugin 9 ms"), "{rendered}");
+    assert!(
+        rendered.contains("scan 4 ms"),
+        "plugin span in the flame graph: {rendered}"
+    );
     assert_eq!(
         rendered
             .matches("Call and hook measurements unavailable")

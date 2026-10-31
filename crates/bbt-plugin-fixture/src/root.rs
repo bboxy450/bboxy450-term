@@ -851,6 +851,9 @@ impl Plugin for RootFixture {
             description: "Root fixture knowledge instructions.".into(),
             content: SKILL_CONTENT.into(),
         });
+        if k.declare_trace {
+            manifest = manifest.trace();
+        }
         if k.harmony {
             manifest = manifest
                 .method(Contract::DataSource, "commit")
@@ -900,9 +903,11 @@ impl Plugin for RootFixture {
         _contract: Contract,
         method: &str,
         args: Value,
-        _ctx: &Ctx,
+        ctx: &Ctx,
     ) -> Result<Value, Refusal> {
         trace("call", json!({"method": method}));
+        // A no-op unless the shape declares trace and the host enabled it.
+        let _span = ctx.span(&format!("root.{method}"));
         if method == "fetch" {
             self.wait_gate();
         }

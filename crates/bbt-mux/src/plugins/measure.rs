@@ -11,7 +11,8 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use bbt_plugin::registry::{Outcome, Sample, Span};
+use bbt_plugin::registry::{Outcome, Sample, Span, SpanSkip, TRACE_SPAN_NAME, TRACE_SPANS};
+use serde_json::Value;
 
 /// Samples kept per plugin; older ones are dropped first.
 pub const RING: usize = 64;
@@ -106,6 +107,7 @@ pub(crate) struct Trace {
     method: String,
     hook: Option<String>,
     spans: Vec<Span>,
+    span_skip: Option<SpanSkip>,
 }
 
 impl Trace {
@@ -117,6 +119,66 @@ impl Trace {
             method: method.into(),
             hook,
             spans: Vec::new(),
+            span_skip: None,
+        }
+    }
+
+    fn skip_spans(&mut self, code: &str, count: usize) {
+        let count = u32::try_from(count).unwrap_or(u32::MAX);
+        match &mut self.span_skip {
+            Some(skip) => skip.count = skip.count.saturating_add(count),
+            None => {
+                self.span_skip = Some(SpanSkip {
+                    code: code.into(),
+                    count,
+                })
+            }
+        }
+    }
+
+    /// Merge the plugin's own spans from a traced call's result
+    /// (`result._meta.bboxy450.spans`, offsets in ms from when the plugin
+    /// took the call) under the `plugin` phase just marked. A span is kept
+    /// only inside that phase's window; malformed, oversized or outside
+    /// spans are dropped and counted as a named skip. Plugin spans never
+    /// change the host's own timing.
+    pub(crate) fn plugin_spans(&mut self, result: &Value) {
+        let Some(raw) = result.pointer("/_meta/bboxy450/spans") else {
+            return;
+        };
+        let Some(window) = self.spans.last().filter(|s| s.name == "plugin").cloned() else {
+            return;
+        };
+        let Some(raw) = raw.as_array() else {
+            return self.skip_spans("trace_spans_invalid", 1);
+        };
+        if raw.len() > TRACE_SPANS {
+            return self.skip_spans("trace_spans_oversized", raw.len());
+        }
+        for span in raw {
+            let name = span["name"]
+                .as_str()
+                .filter(|name| !name.is_empty() && name.chars().count() <= TRACE_SPAN_NAME);
+            let (Some(name), Some(start), Some(length)) =
+                (name, span["start_ms"].as_f64(), span["ms"].as_f64())
+            else {
+                self.skip_spans("trace_span_invalid", 1);
+                continue;
+            };
+            if !(start.is_finite() && length.is_finite() && start >= 0. && length >= 0.) {
+                self.skip_spans("trace_span_invalid", 1);
+                continue;
+            }
+            if start + length > window.ms {
+                self.skip_spans("trace_span_outside_window", 1);
+                continue;
+            }
+            self.spans.push(Span {
+                name: name.into(),
+                start_ms: window.start_ms + start,
+                ms: length,
+                depth: 2,
+            });
         }
     }
 
@@ -161,6 +223,7 @@ impl Trace {
                 outcome,
                 code,
                 spans: self.spans,
+                span_skip: self.span_skip,
             },
         );
     }
@@ -196,6 +259,7 @@ pub(crate) fn skipped(measurements: &Measurements, candidate: &str, hook: &str, 
             outcome: Outcome::Skipped,
             code: Some(code.into()),
             spans: Vec::new(),
+            span_skip: None,
         },
     );
 }
@@ -244,6 +308,7 @@ mod tests {
                 ms: 1.,
                 depth: 0,
             }],
+            span_skip: None,
         };
         let mut samples = vec![sample(WINDOW_MS + 1.)];
         samples.extend((0..LISTED + 3).rev().map(|i| sample(i as f64)));
@@ -253,6 +318,53 @@ mod tests {
         assert!(kept[..LISTED - 1].iter().all(|s| s.spans.is_empty()));
         assert_eq!(kept.last().unwrap().spans.len(), 1);
         assert!(listed(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn plugin_spans_merge_inside_the_plugin_phase_and_bad_ones_are_named_skips() {
+        let m = Measurements::default();
+        let mut trace = Trace::start("repo_graph_describe", None);
+        trace.mark("validate");
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        trace.mark("plugin");
+        let window = trace.spans.last().unwrap().clone();
+        trace.plugin_spans(&serde_json::json!({"_meta":{"bboxy450":{"spans":[
+            {"name":"scan","start_ms":1.0,"ms":5.0},
+            {"name":"","start_ms":0.0,"ms":1.0},
+            {"name":"late","start_ms":0.0,"ms":window.ms + 100.0},
+            {"name":"negative","start_ms":-1.0,"ms":1.0}
+        ]}}}));
+        trace.finish(&m, "p", Outcome::Ok, None);
+        let sample = &m.snapshot("p", Instant::now())[0];
+        let scan = sample.spans.iter().find(|s| s.name == "scan").unwrap();
+        assert_eq!(scan.depth, 2);
+        assert_eq!(
+            scan.start_ms,
+            window.start_ms + 1.0,
+            "relative to the plugin phase"
+        );
+        assert_eq!(
+            sample.span_skip,
+            Some(SpanSkip {
+                code: "trace_span_invalid".into(),
+                count: 3
+            })
+        );
+        let mut many = Trace::start("m", None);
+        many.mark("plugin");
+        let spans: Vec<Value> = (0..=TRACE_SPANS)
+            .map(|_| serde_json::json!({"name":"x","start_ms":0.0,"ms":0.0}))
+            .collect();
+        many.plugin_spans(&serde_json::json!({"_meta":{"bboxy450":{"spans":spans}}}));
+        assert_eq!(many.spans.len(), 1, "an oversized list is dropped whole");
+        assert_eq!(
+            many.span_skip.as_ref().unwrap().code,
+            "trace_spans_oversized"
+        );
+        let mut none = Trace::start("m", None);
+        none.mark("plugin");
+        none.plugin_spans(&serde_json::json!({"structuredContent":{}}));
+        assert!(none.span_skip.is_none() && none.spans.len() == 1);
     }
 
     #[test]

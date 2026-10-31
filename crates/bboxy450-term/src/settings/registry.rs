@@ -219,6 +219,8 @@ fn measured_calls(
                 Outcome::Skipped => Some("skipped".into()),
             },
             code: sample.code.clone(),
+            spans_dropped: sample.span_skip.as_ref().map_or(0, |skip| skip.count),
+            spans_dropped_code: sample.span_skip.as_ref().map(|skip| skip.code.clone()),
         })
         .collect()
 }
@@ -583,6 +585,7 @@ mod tests {
         measured.measurements = serde_json::from_value(json!([
             {"ago_ms":2000.0,"method":"hook","hook":"PreToolUse","ms":0.0,"outcome":"skipped","code":"stale_generation"},
             {"ago_ms":500.0,"method":"repo_graph_describe","ms":12.5,"outcome":"ok",
+             "span_skip":{"code":"trace_span_invalid","count":1},
              "spans":[{"name":"repo_graph_describe","start_ms":0.0,"ms":12.5,"depth":0},
                       {"name":"plugin","start_ms":1.0,"ms":10.0,"depth":1}]}
         ]))
@@ -604,6 +607,11 @@ mod tests {
         assert_eq!(plugin.calls[1].t, 500.0);
         assert_eq!(plugin.calls[1].spans[1].name, "plugin");
         assert_eq!(plugin.calls[1].spans[1].start, 1.0);
+        assert_eq!(plugin.calls[1].spans_dropped, 1);
+        assert_eq!(
+            plugin.calls[1].spans_dropped_code.as_deref(),
+            Some("trace_span_invalid")
+        );
     }
     // keeps: plugins §3b/§3c operator grants — the card lists what the shape
     // requests with the current grant, and a toggle re-trusts the same digest

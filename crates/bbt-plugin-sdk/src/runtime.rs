@@ -167,6 +167,7 @@ pub fn serve<P: Plugin>(input: impl Read, output: impl Write + Send + 'static) {
                 plugin: None,
                 manifest: P::manifest(),
                 link,
+                trace: false,
             };
             for (request, cancelled) in rx {
                 let id = request.get("id").cloned().unwrap_or(Value::Null);
@@ -291,6 +292,8 @@ struct Worker<P> {
     plugin: Option<P>,
     manifest: crate::Manifest,
     link: Arc<Link>,
+    /// The host enabled trace spans at `initialize`.
+    trace: bool,
 }
 
 impl<P: Plugin> Worker<P> {
@@ -334,6 +337,9 @@ impl<P: Plugin> Worker<P> {
                 "one process binds one root",
             ));
         }
+        // Spans travel only when the shape declares trace and the host asks.
+        self.trace = self.manifest.trace
+            && params["capabilities"]["experimental"]["bboxy450"]["trace"] == true;
         let init = Init {
             root: params["root"].as_str().map(str::to_owned),
             fixture: params["fixture"] == json!({"version": 1, "kind": "data_source_conformance"}),
@@ -348,7 +354,7 @@ impl<P: Plugin> Worker<P> {
             .map(|s| (s.contract.name().to_owned(), s.contract.version().into()))
             .collect();
         let mut bboxy = json!({"shape_version": crate::SHAPE_VERSION, "contracts": contracts,
-                               "concurrent": false, "trace": false});
+                               "concurrent": false, "trace": self.trace});
         if self.manifest.signed_writer {
             bboxy["signed_writer"] = "1.0".into();
         }
@@ -404,7 +410,15 @@ impl<P: Plugin> Worker<P> {
             ));
         }
         let link = self.link.clone();
-        let ctx = |limit| Ctx::new(cancelled, limit).with_link(link);
+        let spans: Option<Arc<Mutex<Vec<Value>>>> = self.trace.then(Default::default);
+        let traced = spans.clone();
+        let ctx = |limit| {
+            let ctx = Ctx::new(cancelled, limit).with_link(link);
+            match traced {
+                Some(spans) => ctx.with_spans(spans),
+                None => ctx,
+            }
+        };
         let plugin = self.plugin.as_mut().expect("bound");
         let result = if name == "health" {
             plugin.health(&ctx(budget(crate::DEFAULT_TIMEOUT_MS)))?
@@ -434,9 +448,14 @@ impl<P: Plugin> Worker<P> {
                 "serialized result exceeds 256 KiB; use a smaller page",
             ));
         }
-        Ok(
-            json!({"content":[{"type":"text","text":text}],"structuredContent":result,"isError":false}),
-        )
+        let mut reply = json!({"content":[{"type":"text","text":text}],"structuredContent":result,"isError":false});
+        // Spans ride beside the result, never inside the contract's structuredContent.
+        if let Some(spans) = spans.and_then(|spans| spans.lock().ok().map(|s| s.clone()))
+            && !spans.is_empty()
+        {
+            reply["_meta"] = json!({"bboxy450": {"spans": spans}});
+        }
+        Ok(reply)
     }
 
     fn resources(&self) -> Value {
@@ -869,5 +888,78 @@ mod tests {
     fn budget_answers_inside_the_declared_timeout() {
         assert_eq!(budget(2_000), Duration::from_millis(1_900));
         assert_eq!(budget(15_000), Duration::from_millis(14_250));
+    }
+
+    // keeps: #61 trace — spans travel only when the shape declares trace and
+    // the host enabled it, beside the result, with offsets inside the call.
+    #[test]
+    fn spans_ride_with_results_only_when_declared_and_enabled() {
+        struct Traced;
+        impl Plugin for Traced {
+            fn manifest() -> Manifest {
+                Manifest::new("bboxy450-term-repo_graph-traced", "Traced", "Traced")
+                    .contract(Contract::RepoGraph)
+                    .trace()
+            }
+            fn initialize(_: Init, _: &Ctx) -> Result<Self, Refusal> {
+                Ok(Traced)
+            }
+            fn call(
+                &mut self,
+                _: Contract,
+                _: &str,
+                _: Value,
+                ctx: &Ctx,
+            ) -> Result<Value, Refusal> {
+                {
+                    let _scan = ctx.span("scan");
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Ok(json!({"repos": [], "edges": [], "tracing": ctx.tracing()}))
+            }
+        }
+        let run = |trace: bool| {
+            let init = json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{"root":"/r",
+                "capabilities":{"experimental":{"bboxy450":{"trace":trace}}}}});
+            let input = [
+                init,
+                call(1, "repo_graph_describe", json!({"root_path": "x"})),
+            ]
+            .iter()
+            .map(|l| encoded(l) + "\n")
+            .collect::<String>();
+            let output = Arc::new(Mutex::new(Vec::<u8>::new()));
+            serve::<Traced>(Cursor::new(input), Sink(output.clone()));
+            let text = String::from_utf8(output.lock().unwrap().clone()).unwrap();
+            text.lines()
+                .map(|l| serde_json::from_str::<Value>(l).unwrap())
+                .collect::<Vec<_>>()
+        };
+        let traced = run(true);
+        assert_eq!(
+            traced[0]["result"]["capabilities"]["experimental"]["bboxy450"]["trace"],
+            true
+        );
+        let spans = &traced[1]["result"]["_meta"]["bboxy450"]["spans"];
+        assert_eq!(spans[0]["name"], "scan");
+        assert!(spans[0]["ms"].as_f64().unwrap() >= 5.0);
+        assert!(spans[0]["start_ms"].as_f64().unwrap() >= 0.0);
+        assert_eq!(traced[1]["result"]["structuredContent"]["tracing"], true);
+        assert!(
+            traced[1]["result"]["structuredContent"]
+                .get("_meta")
+                .is_none()
+        );
+        let plain = run(false);
+        assert_eq!(
+            plain[0]["result"]["capabilities"]["experimental"]["bboxy450"]["trace"],
+            false
+        );
+        assert!(
+            plain[1]["result"].get("_meta").is_none(),
+            "no spans unless enabled"
+        );
+        assert_eq!(plain[1]["result"]["structuredContent"]["tracing"], false);
+        assert_eq!(Traced::manifest().shape()["trace"], true);
     }
 }

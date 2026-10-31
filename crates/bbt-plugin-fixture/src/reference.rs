@@ -107,6 +107,9 @@ impl Server<'_> {
         if self.k.concurrent {
             value["concurrent"] = true.into();
         }
+        if self.k.declare_trace {
+            value["trace"] = true.into();
+        }
         if !self.declared.is_empty() {
             value["tools"] = self.declared.clone().into();
         }
@@ -127,10 +130,17 @@ impl Server<'_> {
         value
     }
 
-    fn reply(&self, req: &Value, result: Value) {
+    fn reply(&self, req: &Value, mut result: Value) {
         let mut id = req["id"].clone();
         if self.fault == "wrong_id" {
             id = (id.as_i64().unwrap_or(0) + 1).into();
+        }
+        let contract_call = req["method"] == "tools/call"
+            && req["params"]["name"]
+                .as_str()
+                .is_some_and(|name| name.starts_with(&format!("{}_", self.system)));
+        if let Some(spans) = self.k.spans.as_ref().filter(|_| contract_call) {
+            result["_meta"] = json!({"bboxy450": {"spans": spans}});
         }
         emit(
             &self.out,
