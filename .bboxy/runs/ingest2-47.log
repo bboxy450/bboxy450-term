@@ -607,6 +607,14 @@
       }
     ],
     "decision": "The broader fanout experiment failed the plugin orient catalogue witness, including in isolation, while pristine main passed. Narrowing to the profiled PTY output path restored the isolated and complete catalogue target without editing plugin host, Settings, budgets or measurement assertions.",
+    "landed": {
+      "command": "sh scripts/land.sh",
+      "commit": "d7d12490a1135c9513e1f2a615d89564724965b3",
+      "exit": 0,
+      "log_sha256": "4a564b5c4c42d1b79e9620088aebf412b166c7e24f5e2ad416576f5e75ce5f0d",
+      "rechecked_after_main_advanced": true,
+      "signature": "G; Boxy <bboxy450@gmail.com>"
+    },
     "mechanism": "Skip retained-head lookup only for initialized seat/*/output fanout; inbox and retained publication keep their existing storage path.",
     "median": {
       "bus_hz": 9985.011883859872,
@@ -758,6 +766,420 @@
       }
     ],
     "remaining": "Every quiet profile exits 2 on unchanged CPU, input-to-GPU and bus-throughput gates. No full scale-night or OS/PTY ceiling is claimed."
+  },
+  "step2": {
+    "after_median": {
+      "bus_hz": 9982.23264559793,
+      "cpu_p99_ms": 45.034749999999995,
+      "ingestion_ms": 248.54425,
+      "input_to_gpu_ms": 510.629625
+    },
+    "after_sample": {
+      "bus_inclusive": {
+        "draft_clone": 16,
+        "ed25519_signing": 347,
+        "envelope_clone": 13,
+        "envelope_signed": 539,
+        "json_value_serialization": 286,
+        "samples": 1834
+      },
+      "exit": 0,
+      "frames": {
+        "<bbt_mux::logic::Worker>::host_for_seat": 425,
+        "<bbt_mux::logic::Worker>::provenance_binding": 284,
+        "<bbt_mux::logic::Worker>::publish": 544,
+        "<bbt_mux::registry::Registry>::get": 539,
+        "<bbt_mux::store::sqlite::SqliteStore as bbt_mux::store::Store>::get": 569,
+        "<rusqlite::Connection>::prepare_with_flags": 2,
+        "bbt_mux::store::sqlite::identity": 253
+      },
+      "limits": "Inclusive counts overlap and include waits, not exclusive CPU. Sampling run excluded from timing medians. Process syscall counts cannot establish syscalls per PTY read. No kernel/PTY ceiling established.",
+      "main_inclusive": {
+        "samples": 1834,
+        "wgpu_command_encoder_finish": 1266
+      },
+      "note": "Inclusive samples, including waits. Nested counts overlap; not exclusive CPU.",
+      "probe_pid": 3646,
+      "process_counters": {
+        "context_switches": 300431,
+        "interrupt_wakeups": 4555,
+        "pkg_idle_wakeups": 2,
+        "syscalls_mach": 123428,
+        "syscalls_unix": 2404606
+      },
+      "raw_sha256": "e001bf2440f4a65ae0d715258771b2072e5b4e9d44dbfa0c8e7ad6dfd96d9486",
+      "sample_pid": 6197,
+      "samples": 1834,
+      "stats_sha256": "620a5fac364b5c73ba4b6c87ac0b67d1ac99a05d47f17da5cdcfc9cf6f5d7485",
+      "supervisor_inclusive": {
+        "batch_wire_bytes": 377,
+        "mutex_wait": 83,
+        "read": 536,
+        "ring_result_serialization": 713,
+        "samples": 1834,
+        "transport_encode": 367
+      },
+      "window_seconds": 8.63768533396069
+    },
+    "before_median": {
+      "bus_hz": 10003.33116966218,
+      "cpu_p99_ms": 45.058665999999995,
+      "input_to_gpu_ms": 574.210875,
+      "written_to_logic_output_read_ms": 303.052167
+    },
+    "before_runs": [
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.GrW3TJ",
+        "bus_hz": 10005.869451538629,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 46.779083,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "hashes": {
+          "binary.sha256": "dbbdecc221757468b42cffd100e33a7cbdfd294da5cba8c9327268015f4b5edd",
+          "ingestion.json": "54dccdbdc7aeee25c8330216e7a56c2585f6ac8a9f1eee100bd53ce2613fc66f",
+          "report.capture.json": "0c38ddfe82fa3a2ea73edf11c97691d21da5fa7120e5c108f6281f796999835b",
+          "report.json": "9a37708b48548137ac9e3779ccc4c22aa7f9f2fc9c7039eec78f6d9d98459b32",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.17822265625,
+          4.93896484375,
+          5.025390625
+        ],
+        "input_to_gpu_ms": 612.702541,
+        "label": "post-land",
+        "legs_ms": {
+          "Admitted->Written": 0.394041,
+          "Encoded->GpuComplete": 145.581875,
+          "GuiReceived->ModelPublished": 2.52775,
+          "LatestTaken->ProjectionFinished": 1.046958,
+          "LogicOutputRead->GuiReceived": 41.247458,
+          "ModelPublished->LatestTaken": 14.386792,
+          "ProjectionFinished->Encoded": 40.310458,
+          "Written->LogicOutputRead": 367.207209
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/post-land-1.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "run": 1,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:36  up 11 days,  2:20, 2 users, load averages: 3.18 4.94 5.03"
+      },
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.duBpjU",
+        "bus_hz": 10003.33116966218,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 44.55925,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "hashes": {
+          "binary.sha256": "dbbdecc221757468b42cffd100e33a7cbdfd294da5cba8c9327268015f4b5edd",
+          "ingestion.json": "cd040a52e2629237825edab5963eaf01691380612da36cdac8840ce1ab7245fc",
+          "report.capture.json": "bb5befc43a28e8f643940bfd88d067a9b50538da1b3aed5c46c71bd70caea82c",
+          "report.json": "6cb2f8de283bb4221d94914d7ffe5026fee6951e530821d1dad892daf764a756",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.4384765625,
+          4.658203125,
+          4.9111328125
+        ],
+        "input_to_gpu_ms": 491.591167,
+        "label": "post-land",
+        "legs_ms": {
+          "Admitted->Written": 33.1115,
+          "Encoded->GpuComplete": 141.396584,
+          "GuiReceived->ModelPublished": 6.489125,
+          "LatestTaken->ProjectionFinished": 1.313583,
+          "LogicOutputRead->GuiReceived": 44.083583,
+          "ModelPublished->LatestTaken": 43.790542,
+          "ProjectionFinished->Encoded": 48.462583,
+          "Written->LogicOutputRead": 172.943667
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/post-land-2.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "run": 2,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:37  up 11 days,  2:21, 2 users, load averages: 3.13 4.62 4.90"
+      },
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.246MAH",
+        "bus_hz": 10002.273138192362,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 45.058665999999995,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "hashes": {
+          "binary.sha256": "dbbdecc221757468b42cffd100e33a7cbdfd294da5cba8c9327268015f4b5edd",
+          "ingestion.json": "8f5574115055be9f6cf33a4822fd39e9e6693cb91fa7e5c0fdf6e7639ef01083",
+          "report.capture.json": "278a205a5fafe8d8bf7acd8f88e9266bb5be0819b79130f791772f8a555ac796",
+          "report.json": "8d0543399f325674181f0a6847e1fbd4a414d66b21bb46023f43aad4b6b849e3",
+          "source.patch": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "host_load_before": [
+          3.24658203125,
+          4.5888671875,
+          4.876953125
+        ],
+        "input_to_gpu_ms": 574.210875,
+        "label": "post-land",
+        "legs_ms": {
+          "Admitted->Written": 7.0605,
+          "Encoded->GpuComplete": 131.222333,
+          "GuiReceived->ModelPublished": 11.538541,
+          "LatestTaken->ProjectionFinished": 1.209166,
+          "LogicOutputRead->GuiReceived": 23.12125,
+          "ModelPublished->LatestTaken": 48.609709,
+          "ProjectionFinished->Encoded": 48.397209,
+          "Written->LogicOutputRead": 303.052167
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/post-land-3.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals"
+        ],
+        "run": 3,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:41  up 11 days,  2:24, 2 users, load averages: 3.18 4.60 4.88"
+      }
+    ],
+    "before_sample": {
+      "frames": {
+        "<bbt_mux::logic::Worker>::host_for_seat": 509,
+        "<bbt_mux::logic::Worker>::provenance_binding": 328,
+        "<bbt_mux::logic::Worker>::publish": 449,
+        "<bbt_mux::logic::Worker>::publish_control_audits": 3,
+        "<bbt_mux::registry::Registry>::get": 626,
+        "<bbt_mux::store::sqlite::SqliteStore as bbt_mux::store::Store>::get": 733,
+        "<rusqlite::Connection>::prepare_with_flags": 211,
+        "bbt_mux::store::sqlite::identity": 216
+      },
+      "samples": 1868
+    },
+    "before_source": "d7d12490a1135c9513e1f2a615d89564724965b3",
+    "checks": [
+      {
+        "command": "cargo test --locked --target-dir target -p bboxy450-term-mux --lib store:: (cache-env, canonical profiles, two Cargo jobs)",
+        "exit": 0,
+        "ignored": 1,
+        "passed": 7
+      },
+      {
+        "command": "cargo test --locked --target-dir target -p bboxy450-term-mux --test storage_bus_index --test knowledge_provider (cache-env, canonical profiles, two Cargo jobs)",
+        "exit": 0,
+        "ignored": 1,
+        "passed": 17
+      },
+      {
+        "command": "make check-terminal-replay (canonical profiles)",
+        "exit": 0
+      },
+      {
+        "command": "make test-licenses",
+        "exit": 0,
+        "log_sha256": "dabeef42bfe2fa0431924e00606480c6b9b5bb96c84824ddd78422f6c1a2c0b2"
+      }
+    ],
+    "decision": "Keep the existing per-connection statement cache, fetching fresh bytes and preserving per-call inode/device fencing. No cached registry values or reduced identity validation. State transitions, concurrency ownership, transactions and persistence are unchanged, so no model/contract change is needed; landing still refreshes current-source formal evidence.",
+    "mechanism": "SqliteStore::get reuses the existing per-connection prepared SELECT. Every call still checks file identity, binds its key and fetches current row bytes; transaction and logical ownership boundaries are unchanged. No new model-state contract; fresh source-bound formal verification remains mandatory during landing.",
+    "quiet_runs": [
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.jaBwSz",
+        "bus_hz": 9982.23264559793,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 44.800917000000005,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "hashes": {
+          "binary.sha256": "f73bfcf4987153cbeb3320025a4870457aaf516982e66e5d134ffe1f4f38d7f2",
+          "ingestion.json": "0b37efea6104ce086b26c1a20af27d4c9ec9a6e74df1b50a84e69ca894a551e6",
+          "report.capture.json": "989e1fc6bea8420006eb873c0c218aa4b59d7218fc68f41fa26f45fa1137b4b9",
+          "report.json": "872a252893c49bc599eec7147537e5ba330f5c4987db1d50a321412d4cfb787a",
+          "source.head": "345024354ebc2c4bc8dc748c65a2ec527f17ad67bbf31516bcc05dcc604dbf67",
+          "source.patch": "c196799eb3afd99732f35aeaed8bb1caa2f5a33257bfe25d38da26274a4cd82d"
+        },
+        "host_load_before": [
+          2.279296875,
+          5.91259765625,
+          5.90380859375
+        ],
+        "input_to_gpu_ms": 510.629625,
+        "label": "point-read",
+        "legs_ms": {
+          "Admitted->Written": 0.78625,
+          "Encoded->GpuComplete": 142.62275,
+          "GuiReceived->ModelPublished": 5.802541,
+          "LatestTaken->ProjectionFinished": 0.485708,
+          "LogicOutputRead->GuiReceived": 42.465959,
+          "ModelPublished->LatestTaken": 22.014459,
+          "ProjectionFinished->Encoded": 47.907708,
+          "Written->LogicOutputRead": 248.54425
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/point-read-1.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "run": 1,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:50  up 11 days,  2:34, 2 users, load averages: 2.39 6.00 5.93"
+      },
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.tGsvc2",
+        "bus_hz": 9882.024167391766,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 45.467583,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "hashes": {
+          "binary.sha256": "f73bfcf4987153cbeb3320025a4870457aaf516982e66e5d134ffe1f4f38d7f2",
+          "ingestion.json": "8a63216761db9ef4a195e85205edabeb8509e56f8fd1ba27ec5f2afb7d22f823",
+          "report.capture.json": "af4f510341c5e9ec4456df03a9aae0f40b78f161754486f93eee396cb65042b4",
+          "report.json": "6dd6cef9e7a5da8038123346d64cdb60117fbcb4acad6c57208bc1dd897394ed",
+          "source.head": "345024354ebc2c4bc8dc748c65a2ec527f17ad67bbf31516bcc05dcc604dbf67",
+          "source.patch": "c196799eb3afd99732f35aeaed8bb1caa2f5a33257bfe25d38da26274a4cd82d"
+        },
+        "host_load_before": [
+          3.46826171875,
+          5.47802734375,
+          5.75439453125
+        ],
+        "input_to_gpu_ms": 440.027875,
+        "label": "point-read",
+        "legs_ms": {
+          "Admitted->Written": 1.518792,
+          "Encoded->GpuComplete": 140.256208,
+          "GuiReceived->ModelPublished": 4.738375,
+          "LatestTaken->ProjectionFinished": 0.8955,
+          "LogicOutputRead->GuiReceived": 66.038667,
+          "ModelPublished->LatestTaken": 23.778083,
+          "ProjectionFinished->Encoded": 44.3385,
+          "Written->LogicOutputRead": 158.46375
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/point-read-2.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "run": 2,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:53  up 11 days,  2:36, 2 users, load averages: 3.34 5.49 5.76"
+      },
+      {
+        "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.bdtKch",
+        "bus_hz": 9987.72862868999,
+        "command": "make profile-ingestion",
+        "cpu_p99_ms": 45.034749999999995,
+        "exit": 2,
+        "fixture_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "hashes": {
+          "binary.sha256": "f73bfcf4987153cbeb3320025a4870457aaf516982e66e5d134ffe1f4f38d7f2",
+          "ingestion.json": "3fd2c15396ed73bad9422ad6bc17507921d381114ab0ad60277e477e3749fe9b",
+          "report.capture.json": "8e1fa35891a32bf91123ad87c9780a256f67169a74e454600b9584b741b2ace7",
+          "report.json": "3d6e98aafda7c8105ac9280eec93c38d2f987e17d7e6d466e8593237e9d3e522",
+          "source.head": "345024354ebc2c4bc8dc748c65a2ec527f17ad67bbf31516bcc05dcc604dbf67",
+          "source.patch": "c196799eb3afd99732f35aeaed8bb1caa2f5a33257bfe25d38da26274a4cd82d"
+        },
+        "host_load_before": [
+          2.89111328125,
+          4.92822265625,
+          5.521484375
+        ],
+        "input_to_gpu_ms": 711.006584,
+        "label": "point-read",
+        "legs_ms": {
+          "Admitted->Written": 1.796792,
+          "Encoded->GpuComplete": 170.482209,
+          "GuiReceived->ModelPublished": 5.764791,
+          "LatestTaken->ProjectionFinished": 0.597458,
+          "LogicOutputRead->GuiReceived": 19.035042,
+          "ModelPublished->LatestTaken": 38.259667,
+          "ProjectionFinished->Encoded": 43.048,
+          "Written->LogicOutputRead": 432.022625
+        },
+        "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/point-read-3.log",
+        "quiet_eligible": true,
+        "report_failures": [
+          "ui-cpu-p99-over4ms",
+          "input-to-gpu-over-two-display-intervals",
+          "bus-below10k-events-per-second"
+        ],
+        "run": 3,
+        "sampling": null,
+        "timing_gated": true,
+        "uptime": "16:55  up 11 days,  2:38, 2 users, load averages: 2.89 4.93 5.52"
+      }
+    ],
+    "remaining": "All three quiet make profile-ingestion runs exit 2, analyzer exit 1: UI CPU p99, input-to-GPU and bus throughput checks fail. Ingestion budget is also unmet. Budgets/assertions unchanged. Measured residual costs are in application/library work; OS/PTY hard limit unproven.",
+    "sample_run": {
+      "artifacts": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingestion.IQjNOi",
+      "bus_hz": 8104.884057428161,
+      "command": "make profile-ingestion",
+      "cpu_p99_ms": 46.064083,
+      "exit": 2,
+      "fixture_failures": [
+        "ui-cpu-p99-over4ms",
+        "input-to-gpu-over-two-display-intervals",
+        "bus-below10k-events-per-second"
+      ],
+      "host_load_before": [
+        3.0244140625,
+        4.52587890625,
+        5.30224609375
+      ],
+      "input_to_gpu_ms": 925.034292,
+      "label": "point-read-profile",
+      "log": "/Users/feral/mydev/bboxy450-term-cx-ingest2/target/ingest2/point-read-profile-1.log",
+      "quiet_eligible": true,
+      "report_failures": [
+        "ui-cpu-p99-over4ms",
+        "input-to-gpu-over-two-display-intervals",
+        "bus-below10k-events-per-second"
+      ],
+      "run": 1,
+      "timing_gated": true,
+      "uptime": "16:56  up 11 days,  2:40, 2 users, load averages: 3.02 4.53 5.30"
+    },
+    "source_file_sha256": "a987462fbe99fe7ec719778df903a0d16d2aec488fa9feaaa6289d3005192a42"
   },
   "worktree": "/Users/feral/mydev/bboxy450-term-cx-ingest2"
 }

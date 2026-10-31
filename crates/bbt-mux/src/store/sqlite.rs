@@ -195,10 +195,9 @@ impl SqliteStore {
 
 impl Store for SqliteStore {
     fn get(&self, key: &str) -> Result<Option<Vec<u8>>> {
-        Ok(self
-            .connection()?
-            .query_row("SELECT value FROM kv WHERE key=?1", [key], |r| r.get(0))
-            .optional()?)
+        let db = self.connection()?;
+        let mut query = db.prepare_cached("SELECT value FROM kv WHERE key=?1")?;
+        Ok(query.query_row([key], |r| r.get(0)).optional()?)
     }
     fn put(&self, key: &str, value: &[u8]) -> Result<()> {
         self.connection()?.execute(
