@@ -213,12 +213,9 @@ fn every_seat_kind_keeps_capability_out_of_seat_and_ancestor_environments() {
     let output = helper.wait_with_output().unwrap();
     assert!(
         status.success(),
-        "capability process failed: {}",
-        format!(
-            "{}; progress={}",
-            String::from_utf8_lossy(&output.stderr),
-            fs::read_to_string(root.path().join("progress.json")).unwrap_or_default()
-        )
+        "capability process failed: {}; progress={}",
+        String::from_utf8_lossy(&output.stderr),
+        fs::read_to_string(root.path().join("progress.json")).unwrap_or_default()
     );
     let proof: Value =
         serde_json::from_slice(&fs::read(root.path().join("proof.json")).unwrap()).unwrap();
