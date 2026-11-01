@@ -111,6 +111,18 @@ def descendants(pid):
     return result
 
 
+def proven_exit(pid, error):
+    """Only ESRCH or a successful PID census can excuse missing observations."""
+    if isinstance(error, OSError) and error.errno == errno.ESRCH:
+        return 'esrch'
+    result = subprocess.run(['/usr/bin/pgrep', '-f', '.*'], capture_output=True, timeout=10)
+    if result.returncode not in (0, 1):
+        raise RuntimeError('owned process exit recheck failed')
+    if pid not in set(map(int, result.stdout.split())):
+        return 'absent-on-pgrep-recheck'
+    return None
+
+
 class NativeScanner:
     """One private HOME/daemon; remember retired generation values only in RAM."""
     def __init__(self, root, binary):
@@ -131,11 +143,11 @@ class NativeScanner:
             pid = row.get('pid') or row.get('process', {}).get('pid')
             if type(pid) is int and pid > 1:
                 owned |= descendants(pid)
-        rows = []
+        rows, exited = [], []
         for pid in sorted(owned):
+            roles = ['shared-daemon'] if pid == daemon else []
             try:
                 argv, _ = process_snapshot(pid)
-                roles = ['shared-daemon'] if pid == daemon else []
                 if argv and os.path.realpath(argv[0]) == self.binary:
                     if b'--codex-proxy' in argv:
                         roles.append('proxy-companion')
@@ -145,15 +157,26 @@ class NativeScanner:
                             roles.append('daemon-started-mcp-child')
                 if roles:
                     rows.append(scan_process(pid, self.values, self.root / 'home', roles))
-            except OSError as error:
-                if error.errno in (errno.ESRCH, errno.EINVAL):
-                    continue  # A short-lived irrelevant child may have exited.
-                raise
-            except subprocess.CalledProcessError:
-                continue
+            except Exception as error:
+                labels = roles or ['unclassified-owned']
+                context = f'NativeCapabilityScanFailed pid={pid} roles={",".join(labels)}'
+                # Never excuse an observed leak, bad HOME, parser error or a
+                # replaced process as an exit. Only sampling failures qualify.
+                if isinstance(error, (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired)):
+                    try:
+                        reason = proven_exit(pid, error)
+                    except Exception:
+                        raise RuntimeError(context + ' cause=exit-recheck-failed') from None
+                    if reason:
+                        exited.append(dict(pid=pid, roles=labels, reason=reason))
+                        continue
+                # Do not include raw subprocess output or environment bytes.
+                raise RuntimeError(context + ' cause=' + type(error).__name__) from None
         roles = {role for row in rows for role in row['roles']}
         required = {'shared-daemon', 'proxy-companion', 'mcp-bridge', 'daemon-started-mcp-child'}
-        assert required <= roles, 'missing production process roles: ' + str(sorted(required - roles))
-        observation = dict(stage=stage, distinct_admission_values=len(self.values), processes=rows)
+        observation = dict(stage=stage, distinct_admission_values=len(self.values), processes=rows,
+                           exited_count=len(exited), exited_processes=exited)
         self.observations.append(observation)
+        assert required <= roles, ('missing production process roles: ' + str(sorted(required - roles))
+                                   + f'; exited_count={len(exited)} exited_processes={exited}')
         return observation
