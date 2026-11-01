@@ -6,6 +6,8 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Stable seat/session metadata. Activity and close lifecycle are separate axes.
 
+mod routing;
+
 use rusqlite::OptionalExtension;
 use ulid::Ulid;
 
@@ -19,6 +21,7 @@ pub use bbt_proto::registry::{
 #[derive(Clone)]
 pub struct Registry {
     store: SqliteStore,
+    routing: std::sync::Arc<routing::Cache>,
 }
 
 // Native account bootstrap builds this additive index before any sending lookup.
@@ -60,7 +63,8 @@ fn canonical_workdir(path: &str) -> Result<String> {
 
 impl Registry {
     pub fn new(store: SqliteStore) -> Self {
-        Self { store }
+        let routing = routing::Cache::for_path(&store.path);
+        Self { store, routing }
     }
     /// Off the UI and first-send paths; old version-1 clients keep their tables and writes.
     pub(crate) fn prepare_swarm_index(&self) -> Result<()> {
@@ -143,6 +147,7 @@ impl Registry {
         }
         tx.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", rusqlite::params![key, serde_json::to_vec(&record)?])?;
         tx.commit()?;
+        self.routing.invalidate();
         Ok(record)
     }
     pub fn rename_swarm(&self, id: Ulid, name: &str) -> Result<SwarmRecord> {
@@ -177,6 +182,7 @@ impl Registry {
             "INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO NOTHING",
             rusqlite::params![format!("swarm/{id}"), serde_json::to_vec(&record)?],
         )?;
+        self.routing.invalidate();
         Ok(())
     }
     pub fn insert(&self, record: &SeatRecord) -> Result<()> {
@@ -188,6 +194,7 @@ impl Registry {
             "INSERT INTO kv VALUES(?1,?2)",
             rusqlite::params![format!("seat/{}", record.id), serde_json::to_vec(record)?],
         )?;
+        self.routing.invalidate();
         Ok(())
     }
     pub fn get(&self, id: Ulid) -> Result<SeatRecord> {
@@ -217,6 +224,7 @@ impl Registry {
             rusqlite::params![key, serde_json::to_vec(&record)?],
         )?;
         tx.commit()?;
+        self.routing.invalidate();
         Ok(result)
     }
     /// Only the admitted control owner supplies this seat and generation.

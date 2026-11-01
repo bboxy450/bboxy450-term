@@ -157,6 +157,53 @@ fn notification(b: bool) -> Model {
     safe(&mut m, "ProcessedWasSubmitted", Var(4).le(Var(0)));
     m
 }
+// Owner writes have a monotonically increasing epoch, even when A returns.
+fn routing_cache(b: bool) -> Model {
+    let mut m = model(
+        "RoutingCache",
+        b,
+        &[
+            ("epoch", 2, 0),
+            ("route", 1, 0),
+            ("cache_epoch", 2, 0),
+            ("cache_route", 1, 0),
+            ("valid", 1, 0),
+            ("bad", 1, 0),
+            ("load_epoch", 2, 0),
+            ("load_route", 1, 0),
+            ("loading", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "RegistryWrite",
+        Var(0).lt(Int(2)),
+        &[(0, Var(0).plus(Int(1))), (1, Int(1).minus(Var(1)))],
+    );
+    let hit = eq(4, 1).and(if b { Bool(true) } else { Var(2).eq(Var(0)) });
+    let current = Var(2).eq(Var(0)).and(Var(3).eq(Var(1)));
+    action(
+        &mut m,
+        "UseStaleRoute",
+        hit.clone().and(current.clone().negate()),
+        &[(5, Int(1))],
+    );
+    action(&mut m, "UseCurrentRoute", hit.clone().and(current), &[]);
+    action(
+        &mut m,
+        "StartLoad",
+        hit.negate().and(eq(8, 0)),
+        &[(6, Var(0)), (7, Var(1)), (8, Int(1))],
+    );
+    action(
+        &mut m,
+        "CompleteLoad",
+        eq(8, 1),
+        &[(2, Var(6)), (3, Var(7)), (4, Int(1)), (8, Int(0))],
+    );
+    no_bad(&mut m, 5);
+    m
+}
 fn workspace(b: bool) -> Model {
     let mut m = model(
         "WorkspaceFence",
@@ -1654,7 +1701,7 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 36] = [
+    let families: [fn(bool) -> Model; 37] = [
         seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
@@ -1679,6 +1726,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         notification,
         notification_models::recovery,
         notification_models::lifecycle,
+        routing_cache,
         workspace,
         plugin,
         token,

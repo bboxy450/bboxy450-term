@@ -3158,7 +3158,7 @@ impl Worker {
         );
     }
     fn host_for_seat(&self, seat: Ulid) -> Result<HostId> {
-        match self.registry.get(seat) {
+        match self.registry.route(seat) {
             Ok(record) => Ok(HostId::from(&record.location)),
             // Preserve the existing recovery of supervisor-owned local seats
             // predating registry metadata. Other storage failures propagate.
@@ -5591,7 +5591,7 @@ impl Worker {
         )
     }
     fn provenance_binding(&mut self, seat: Ulid, generation: u64) -> Option<RootBinding> {
-        let record = self.registry.get(seat).ok()?;
+        let record = self.registry.route(seat).ok()?;
         let port = self
             .workspaces
             .select(&self.registry, record.swarm, None)

@@ -481,3 +481,13 @@ implementation_tests = ["crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-m
 assumptions = "One already reported task and two owner identities including A-B-A (revision 0..2), one absent/own/foreign report and one optional link. Preparation captures the task digest/revision; publication rechecks it. Final validation/publication is one atomic model action; external edits racing its last read and filesystem transactions are outside this abstraction; an external editor may delete/corrupt a report before acceptance. No scheduling fairness or eventual acceptance promise: each command completes or refuses. Filesystem durability, signatures, provider/authority revision fences, number allocation, full source/commit tree resolution and unbounded histories use native API and Git fixtures; no Rust refinement claim."
 property = "A worker creates reports only for its assigned task, reports cannot be rewritten, and acceptance with a link requires a present report naming that task. Broken controls remove ownership, immutability, task revision and linked acceptance guards."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RoutingCache"
+title = "Seat routing invalidates on every committed registry mutation"
+models = ["RoutingCache", "BrokenRoutingCache"]
+sources = ["crates/bbt-mux/src/registry.rs", "crates/bbt-mux/src/registry/routing.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/src/registry/routing.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs"]
+assumptions = "The active logic process owns registry writes; every Registry handle for the canonical account path shares a monotonic in-process epoch. Mutations commit before bumping it and return only after invalidation. Cache load/use and a completed registry write are atomic abstract actions. Epochs 0..2, two routes, one seat, initially empty cache; writes include A to B to A. No fairness is needed for this safety property. Concurrent reads overlapping a write may linearize before it; miss entries retain their starting epoch and cannot survive its invalidation. Direct external SQLite edits/replacement are outside this routing-hint cache contract; fresh authority/grant reads remain uncached. Restart creates a fresh cache. SQLite persistence/failures, path aliasing and thread scheduling use implementation tests, not a refinement proof."
+property = "A cache hit has the current write epoch and route, including A to B to A. The stale-cache broken control omits the epoch guard and must fail safety. API witnesses use separately constructed handles and fresh authority reads."
+checks = ["make test-formal", "make test"]
