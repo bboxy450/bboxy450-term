@@ -7,3 +7,7 @@ verification=pending make test-landing; author scripts-only landing before G3
 make_test-landing_exit=0;133 private fixture tests in111.832s; three new scoped evidence cases passed
 metadata_followup=retain measured cut tier in full-gate receipt; added code-tier assertion; final author gate reruns current-source fixtures
 G3_full_gate_2d17186d_exit=143; explicitly stopped own recorded make descendant PIDs when prerequisite changes invalidated its future source proof; no pass claimed
+land_465993c6_exit=77; formal command exit2; TLC tool exit150: shared Java temp Integers.tla vanished while loading BrokenNativeFrameObservation; no semantic/model negative accepted as a pass
+fix_java_temp=scripts/formal.py gives every JVM a private java.io.tmpdir; standard-module extraction and delete-on-exit cannot race another checking slot; deadlines and verdict validation unchanged
+temp_control=scripts/test-formal.py real concurrent reader/cleaner processes pass with private extraction paths; deliberately shared path loses the module and returns tool exit150
+python3_-I_scripts/test-formal.py_exit=0;15 infrastructure tests in0.632s; includes private-temp and deliberately shared-temp process controls
